@@ -16,6 +16,12 @@ The first milestone is intentionally narrow:
 npm run audit:example
 ```
 
+Run the auditor regression tests:
+
+```powershell
+npm test
+```
+
 Node is required for the CLI. If Node is not available yet, the repository still includes a PowerShell smoke check:
 
 ```powershell

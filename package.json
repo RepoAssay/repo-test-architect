@@ -9,6 +9,7 @@
   },
   "scripts": {
     "audit:example": "node ./src/cli/index.js audit ./examples/node-vitest-basic",
+    "test": "node --test \"test/**/*.test.js\"",
     "smoke": "powershell -ExecutionPolicy Bypass -File ./scripts/smoke.ps1"
   },
   "keywords": [
