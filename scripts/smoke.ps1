@@ -13,7 +13,12 @@ $required = @(
   "examples/node-vitest-basic/src/deckParser.ts",
   "examples/node-vitest-basic/src/deckParser.test.ts",
   "examples/node-vitest-basic/src/authService.ts",
-  "examples/node-vitest-basic/src/userDto.ts"
+  "examples/node-vitest-basic/src/userDto.ts",
+  "examples/node-no-tests-yet/package.json",
+  "examples/node-no-tests-yet/src/paymentParser.ts",
+  "examples/node-no-tests-yet/src/paymentClient.ts",
+  "examples/node-no-tests-yet/src/paymentResponseDto.ts",
+  "examples/node-no-tests-yet/src/config.ts"
 )
 
 foreach ($relative in $required) {
