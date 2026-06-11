@@ -1,0 +1,21 @@
+{
+  "name": "repo-test-architect",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Audit-first test strategy agent for repository-native test planning.",
+  "type": "module",
+  "bin": {
+    "repo-test-architect": "./src/cli/index.js"
+  },
+  "scripts": {
+    "audit:example": "node ./src/cli/index.js audit ./examples/node-vitest-basic",
+    "smoke": "powershell -ExecutionPolicy Bypass -File ./scripts/smoke.ps1"
+  },
+  "keywords": [
+    "testing",
+    "audit",
+    "agent",
+    "strategy"
+  ],
+  "license": "MIT"
+}
