@@ -12,7 +12,8 @@ $required = @(
   "examples/node-vitest-basic/vitest.config.ts",
   "examples/node-vitest-basic/src/deckParser.ts",
   "examples/node-vitest-basic/src/deckParser.test.ts",
-  "examples/node-vitest-basic/src/authService.ts"
+  "examples/node-vitest-basic/src/authService.ts",
+  "examples/node-vitest-basic/src/userDto.ts"
 )
 
 foreach ($relative in $required) {

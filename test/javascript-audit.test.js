@@ -33,6 +33,8 @@ describe("JavaScript audit adapter", () => {
 
     const deckParser = audit.coveredButRisky[0];
     assert.deepEqual(deckParser.existingTestPaths, ["src/deckParser.test.ts"]);
+    assert.equal(deckParser.riskReductionScore, 9);
+    assert.equal(deckParser.maintenanceCost, 2);
     assert.ok(deckParser.reasons.includes("Existing test file detected; review missing edge cases"));
   });
 
@@ -41,8 +43,17 @@ describe("JavaScript audit adapter", () => {
 
     assert.deepEqual(
       audit.skipped.map((target) => target.name),
-      ["constants"]
+      ["constants", "userDto"]
     );
-    assert.match(audit.skipped[0].reason, /No meaningful runtime behavior/);
+
+    const constants = audit.skipped.find((target) => target.name === "constants");
+    assert.equal(constants.kind, "constants");
+    assert.match(constants.reason, /Constants-only files/);
+    assert.match(constants.preferredCoveragePath, /uses these constants/);
+
+    const userDto = audit.skipped.find((target) => target.name === "userDto");
+    assert.equal(userDto.kind, "dto");
+    assert.match(userDto.reason, /DTO-only models/);
+    assert.match(userDto.preferredCoveragePath, /API\/client parsing/);
   });
 });

@@ -22,7 +22,10 @@ export function auditJavaScriptRepo(root) {
         name,
         path: file.path,
         kind: classification.kind,
-        reason: classification.skipReason
+        riskReductionScore: classification.riskReductionScore,
+        maintenanceCost: classification.maintenanceCost,
+        reason: classification.skipReason,
+        preferredCoveragePath: classification.preferredCoveragePath
       });
       continue;
     }
@@ -34,6 +37,8 @@ export function auditJavaScriptRepo(root) {
       risk: classification.risk,
       testability: classification.testability,
       recommendedTestLevel: classification.testLevel,
+      riskReductionScore: classification.riskReductionScore,
+      maintenanceCost: classification.maintenanceCost,
       reasons:
         existingTestPaths.length > 0
           ? [...classification.reasons, "Existing test file detected; review missing edge cases"]
@@ -292,15 +297,35 @@ function classifySourceFile(file) {
   const lowerPath = currentPath.toLowerCase();
 
   if (lowerPath.includes("generated") || lowerPath.includes("/dist/") || lowerPath.includes("/build/")) {
-    return skipped("generated", "Generated or build output should not be test-authored directly.");
+    return skipped("generated", 1, 8, "Generated or build output should not be test-authored directly.");
   }
 
   if (lowerPath.endsWith(".d.ts") || lowerPath.includes("/types/")) {
-    return skipped("types", "Type-only files do not need runtime tests.");
+    return skipped("types", 1, 2, "Type-only files do not need runtime tests.");
   }
 
   if (lowerPath.includes("index.") && /export\s+\*/.test(content)) {
-    return skipped("barrel", "Barrel export files are low-value test targets.");
+    return skipped("barrel", 1, 2, "Barrel export files are low-value test targets.");
+  }
+
+  if (isDtoLike(lowerPath, content)) {
+    return skipped(
+      "dto",
+      2,
+      4,
+      "DTO-only models are usually better covered through boundary parsing or mapper tests.",
+      "Cover through API/client parsing, mapper tests, or route integration tests."
+    );
+  }
+
+  if (isConstantsOnly(content)) {
+    return skipped(
+      "constants",
+      1,
+      3,
+      "Constants-only files are better covered by behavior that consumes the constants.",
+      "Cover through tests for the service, parser, or component that uses these constants."
+    );
   }
 
   if (lowerPath.includes("component") || lowerPath.endsWith(".tsx") || content.includes("jsx")) {
@@ -309,13 +334,15 @@ function classifySourceFile(file) {
       risk: "medium",
       testability: "medium",
       testLevel: "component",
+      riskReductionScore: 4,
+      maintenanceCost: 6,
       reasons: ["UI component behavior"],
       skipReason: "Component tests should follow an existing React Testing Library convention first."
     };
   }
 
   if (matchesAny(lowerPath, ["parser", "mapper", "validator", "formatter"])) {
-    return recommended("pure-logic", "high", "high", "unit", ["Pure transformation logic", "edge-case surface"]);
+    return recommended("pure-logic", "high", "high", "unit", 9, 2, ["Pure transformation logic", "edge-case surface"]);
   }
 
   if (matchesAny(lowerPath, ["service", "client", "repository"])) {
@@ -332,32 +359,35 @@ function classifySourceFile(file) {
       reasons.push("auth or permission branches");
     }
 
-    return recommended("service", risk, "medium", "unit", reasons);
+    return recommended("service", risk, "medium", "unit", risk === "high" ? 8 : 6, 4, reasons);
   }
 
   if (lowerPath.includes("/routes/") || lowerPath.includes("controller")) {
-    return recommended("http-route", "high", "medium", "integration", ["HTTP behavior", "status code and error handling"]);
+    return recommended("http-route", "high", "medium", "integration", 8, 5, ["HTTP behavior", "status code and error handling"]);
   }
 
   if (hasBranching(content)) {
-    return recommended("utility", "medium", "high", "unit", ["Branching logic"]);
+    return recommended("utility", "medium", "high", "unit", 5, 2, ["Branching logic"]);
   }
 
-  return skipped("low-value", "No meaningful runtime behavior detected by current heuristics.");
+  return skipped("low-value", 1, 3, "No meaningful runtime behavior detected by current heuristics.");
 }
 
-function recommended(kind, risk, testability, testLevel, reasons) {
-  return { kind, risk, testability, testLevel, reasons };
+function recommended(kind, risk, testability, testLevel, riskReductionScore, maintenanceCost, reasons) {
+  return { kind, risk, testability, testLevel, riskReductionScore, maintenanceCost, reasons };
 }
 
-function skipped(kind, skipReason) {
+function skipped(kind, riskReductionScore, maintenanceCost, skipReason, preferredCoveragePath) {
   return {
     kind,
     risk: "low",
     testability: "low",
     testLevel: "none",
+    riskReductionScore,
+    maintenanceCost,
     reasons: [],
-    skipReason
+    skipReason,
+    preferredCoveragePath
   };
 }
 
@@ -418,6 +448,28 @@ function hasAuthSignal(content) {
 
 function hasBranching(content) {
   return /\b(if|switch|catch|\?\s*[^:]+:)\b/.test(content);
+}
+
+function isDtoLike(currentPath, content) {
+  const hasDtoName = /(dto|model|schema|response|request)/i.test(currentPath);
+  const typeOnlyShape = /^\s*(export\s+)?(interface|type)\s+/m.test(content) && !/\bfunction\b|=>|\bclass\b/.test(content);
+  return hasDtoName && typeOnlyShape;
+}
+
+function isConstantsOnly(content) {
+  const withoutComments = content
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/\/\/.*$/gm, "")
+    .trim();
+
+  if (!withoutComments) return false;
+
+  const lines = withoutComments
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  return lines.every((line) => /^export\s+const\s+\w+\s*=/.test(line) || /^const\s+\w+\s*=/.test(line));
 }
 
 function byRiskThenName(a, b) {

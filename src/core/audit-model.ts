@@ -23,6 +23,8 @@ export interface AuditTarget {
   risk: RiskLevel;
   testability: RiskLevel;
   recommendedTestLevel: TestLevel;
+  riskReductionScore: number;
+  maintenanceCost: number;
   reasons: string[];
   existingTestPaths: string[];
 }
@@ -31,7 +33,10 @@ export interface SkippedTarget {
   name: string;
   path: string;
   kind: string;
+  riskReductionScore: number;
+  maintenanceCost: number;
   reason: string;
+  preferredCoveragePath?: string;
 }
 
 export interface AuditResult {

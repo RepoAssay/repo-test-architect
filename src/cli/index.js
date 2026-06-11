@@ -69,7 +69,7 @@ function renderMarkdownReport(audit) {
     lines.push("- Nothing skipped.");
   } else {
     for (const target of audit.skipped) {
-      lines.push(`- ${target.name}: ${target.reason}`);
+      lines.push(formatSkippedTarget(target));
     }
   }
 
@@ -95,5 +95,11 @@ function formatTarget(target) {
   const existingTests =
     target.existingTestPaths.length > 0 ? `; existing tests: ${target.existingTestPaths.join(", ")}` : "";
 
-  return `- ${target.name}: ${target.recommendedTestLevel} test for ${target.kind} (${target.reasons.join("; ")}${existingTests})`;
+  return `- ${target.name}: ${target.recommendedTestLevel} test for ${target.kind} (risk reduction ${target.riskReductionScore}/10, maintenance ${target.maintenanceCost}/10; ${target.reasons.join("; ")}${existingTests})`;
+}
+
+function formatSkippedTarget(target) {
+  const preferredPath = target.preferredCoveragePath ? ` Preferred path: ${target.preferredCoveragePath}` : "";
+
+  return `- ${target.name}: ${target.reason} (risk reduction ${target.riskReductionScore}/10, maintenance ${target.maintenanceCost}/10).${preferredPath}`;
 }
