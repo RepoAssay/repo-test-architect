@@ -1,0 +1,146 @@
+{
+  "tools": [
+    {
+      "name": "audit_repo",
+      "description": "Audit a repository and return the deterministic audit graph.",
+      "outputArtifact": {
+        "schemaVersion": "audit/v1",
+        "schemaPath": "schemas/audit-v1.schema.json"
+      },
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "repoRoot"
+        ],
+        "properties": {
+          "repoRoot": {
+            "type": "string",
+            "description": "Repository root path."
+          },
+          "changedPaths": {
+            "type": "array",
+            "description": "Optional repository-relative source paths to limit target selection.",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "get_audit_graph",
+      "description": "Return a validated audit graph artifact.",
+      "outputArtifact": {
+        "schemaVersion": "audit/v1",
+        "schemaPath": "schemas/audit-v1.schema.json"
+      },
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "audit"
+        ],
+        "properties": {
+          "audit": {
+            "type": "object",
+            "description": "An audit/v1 artifact."
+          }
+        }
+      }
+    },
+    {
+      "name": "generate_test_plan",
+      "description": "Generate a deterministic test plan from an audit graph.",
+      "outputArtifact": {
+        "schemaVersion": "plan/v1",
+        "schemaPath": "schemas/plan-v1.schema.json"
+      },
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "audit"
+        ],
+        "properties": {
+          "audit": {
+            "type": "object",
+            "description": "An audit/v1 artifact."
+          },
+          "itemId": {
+            "type": "string",
+            "description": "Optional stable plan item id to select."
+          }
+        }
+      }
+    },
+    {
+      "name": "explain_target",
+      "description": "Explain one audit target by stable target id.",
+      "outputArtifact": {
+        "schemaVersion": "target-explanation/v1",
+        "schemaPath": "schemas/target-explanation-v1.schema.json"
+      },
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "audit",
+          "targetId"
+        ],
+        "properties": {
+          "audit": {
+            "type": "object",
+            "description": "An audit/v1 artifact."
+          },
+          "targetId": {
+            "type": "string",
+            "description": "Stable audit target id."
+          }
+        }
+      }
+    },
+    {
+      "name": "rank_test_candidates",
+      "description": "Rank testable audit targets by risk reduction and maintenance cost.",
+      "outputArtifact": {
+        "schemaVersion": "candidate-ranking/v1",
+        "schemaPath": "schemas/candidate-ranking-v1.schema.json"
+      },
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "audit"
+        ],
+        "properties": {
+          "audit": {
+            "type": "object",
+            "description": "An audit/v1 artifact."
+          }
+        }
+      }
+    },
+    {
+      "name": "generate_selected_test",
+      "description": "Return a structured deferred result until native test generation is enabled.",
+      "outputArtifact": {
+        "schemaVersion": "generation-deferred/v1",
+        "schemaPath": "schemas/generation-deferred-v1.schema.json"
+      },
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "planItemId"
+        ],
+        "properties": {
+          "planItemId": {
+            "type": "string",
+            "description": "Stable plan item id selected for future generation."
+          }
+        }
+      }
+    }
+  ]
+}

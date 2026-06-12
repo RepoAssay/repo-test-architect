@@ -2,8 +2,9 @@ import fs from "node:fs";
 import path from "node:path";
 import { auditJavaScriptRepo } from "../src/adapters/javascript/audit.js";
 import { createTestPlan } from "../src/core/test-plan.js";
+import { mcpTools } from "../src/mcp/tool-definitions.js";
 import { loadEvalFixtures } from "../test/support/eval-fixtures.js";
-import { normalizeAuditForSnapshot } from "../test/support/normalize-audit.js";
+import { normalizeAuditForSnapshot, normalizeJsonForSnapshot } from "../test/support/normalize-audit.js";
 
 const expectedDir = path.resolve("evals/expected");
 fs.mkdirSync(expectedDir, { recursive: true });
@@ -19,3 +20,7 @@ for (const fixture of loadEvalFixtures()) {
   console.log(`Updated ${path.relative(process.cwd(), auditOutputPath)}`);
   console.log(`Updated ${path.relative(process.cwd(), planOutputPath)}`);
 }
+
+const mcpToolsOutputPath = path.join(expectedDir, "mcp-tools.json");
+fs.writeFileSync(mcpToolsOutputPath, `${JSON.stringify(normalizeJsonForSnapshot({ tools: mcpTools }), null, 2)}\n`);
+console.log(`Updated ${path.relative(process.cwd(), mcpToolsOutputPath)}`);

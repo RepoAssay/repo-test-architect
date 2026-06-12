@@ -4,6 +4,7 @@ import path from "node:path";
 import { describe, it } from "node:test";
 import { auditJavaScriptRepo } from "../src/adapters/javascript/audit.js";
 import { createTestPlan } from "../src/core/test-plan.js";
+import { mcpTools } from "../src/mcp/tool-definitions.js";
 import { loadEvalFixtures } from "./support/eval-fixtures.js";
 import { normalizeAuditForSnapshot, normalizeJsonForSnapshot } from "./support/normalize-audit.js";
 
@@ -41,5 +42,14 @@ describe("eval fixture manifest", () => {
       assert.ok(fs.existsSync(path.join(expectedDir, `${fixture.name}.audit.json`)));
       assert.ok(fs.existsSync(path.join(expectedDir, `${fixture.name}.plan.json`)));
     }
+  });
+});
+
+describe("golden MCP tool snapshot", () => {
+  it("matches mcp-tools", () => {
+    const expected = JSON.parse(fs.readFileSync(path.join(expectedDir, "mcp-tools.json"), "utf8"));
+    const actual = normalizeJsonForSnapshot({ tools: mcpTools });
+
+    assert.deepEqual(actual, expected);
   });
 });

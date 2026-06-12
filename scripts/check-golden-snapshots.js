@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { auditJavaScriptRepo } from "../src/adapters/javascript/audit.js";
 import { createTestPlan } from "../src/core/test-plan.js";
+import { mcpTools } from "../src/mcp/tool-definitions.js";
 import { loadEvalFixtures } from "../test/support/eval-fixtures.js";
 import { normalizeAuditForSnapshot, normalizeJsonForSnapshot } from "../test/support/normalize-audit.js";
 
@@ -21,15 +22,19 @@ for (const fixture of loadEvalFixtures()) {
   }
 }
 
+compareSnapshot("mcp-tools", undefined, normalizeJsonForSnapshot({ tools: mcpTools }));
+
 if (failures > 0) {
   console.error(`\n${failures} snapshot check(s) failed.`);
   process.exit(1);
 }
 
 console.log(`\n${loadEvalFixtures().length} fixture(s) matched audit and plan snapshots.`);
+console.log("MCP tool snapshot matched.");
 
 function compareSnapshot(fixtureName, kind, actual) {
-  const snapshotPath = path.join(expectedDir, `${fixtureName}.${kind}.json`);
+  const snapshotFile = kind ? `${fixtureName}.${kind}.json` : `${fixtureName}.json`;
+  const snapshotPath = path.join(expectedDir, snapshotFile);
 
   try {
     const expected = JSON.parse(fs.readFileSync(snapshotPath, "utf8"));
@@ -37,7 +42,7 @@ function compareSnapshot(fixtureName, kind, actual) {
     return true;
   } catch (error) {
     failures += 1;
-    console.error(`FAIL ${fixtureName} ${kind}: ${error.message}`);
+    console.error(`FAIL ${snapshotFile}: ${error.message}`);
     return false;
   }
 }
