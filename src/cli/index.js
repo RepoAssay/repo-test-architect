@@ -4,6 +4,7 @@ import { execFileSync } from "node:child_process";
 import path from "node:path";
 import {
   auditRepo,
+  detectRepoProjects,
   explainAuditTarget,
   generateTestPlan,
   rankAuditTestCandidates,
@@ -12,8 +13,8 @@ import {
 
 const options = parseArgs(process.argv.slice(2));
 
-if (!["audit", "plan", "explain", "rank"].includes(options.command)) {
-  console.error("Usage: repo-test-architect <audit|plan|explain|rank> <repo> [--format markdown|json] [--from-audit audit.json] [--item id] [--target id] [--changed] [--changed-since ref]");
+if (!["detect", "audit", "plan", "explain", "rank"].includes(options.command)) {
+  console.error("Usage: repo-test-architect <detect|audit|plan|explain|rank> <repo> [--format markdown|json] [--from-audit audit.json] [--item id] [--target id] [--changed] [--changed-since ref]");
   process.exit(1);
 }
 
@@ -28,15 +29,20 @@ if (options.fromAuditPath && !["plan", "explain", "rank"].includes(options.comma
 }
 
 const repoRoot = path.resolve(process.cwd(), options.repoPath);
+const detection = options.command === "detect" ? detectRepoProjects(repoRoot) : undefined;
 const audit = options.fromAuditPath
   ? readAuditJson(options.fromAuditPath)
-  : auditRepo(repoRoot, {
+  : detection
+    ? undefined
+    : auditRepo(repoRoot, {
       changedPaths: readSelectedChangedPaths(repoRoot, options)
     });
-const output = selectOutput(audit, options);
+const output = detection ?? selectOutput(audit, options);
 
 if (options.format === "json") {
   console.log(JSON.stringify(output, null, 2));
+} else if (options.command === "detect") {
+  console.log(renderMarkdownDetection(output));
 } else if (options.command === "plan") {
   console.log(renderMarkdownPlan(output));
 } else if (options.command === "explain") {
@@ -282,6 +288,32 @@ function renderMarkdownReport(audit) {
   } else {
     for (const risk of audit.risks) {
       lines.push(`- ${risk}`);
+    }
+  }
+
+  return lines.join("\n");
+}
+
+function renderMarkdownDetection(detection) {
+  const lines = [];
+
+  lines.push("# Project Detection");
+  lines.push("");
+  lines.push("## Summary");
+  lines.push(`- Projects: ${detection.summary.projectCount}`);
+  lines.push(`- Supported: ${detection.summary.supportedProjectCount}`);
+  lines.push(`- Unsupported: ${detection.summary.unsupportedProjectCount}`);
+  lines.push("");
+  lines.push("## Projects");
+
+  if (detection.projects.length === 0) {
+    lines.push("- No project roots detected.");
+  } else {
+    for (const project of detection.projects) {
+      const adapterText = project.adapterIds.length > 0 ? project.adapterIds.join(", ") : "none available";
+      lines.push(
+        `- ${project.root}: ${formatList(project.languages)} (${project.supported ? "supported" : "unsupported"}; adapters: ${adapterText}; markers: ${project.markerFiles.join(", ")})`
+      );
     }
   }
 

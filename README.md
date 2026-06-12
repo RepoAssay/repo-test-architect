@@ -12,6 +12,13 @@ The first milestone is intentionally narrow:
 
 ## Working CLI
 
+Detect project roots and adapter matches:
+
+```powershell
+npm run detect:example
+npm run detect:example:json
+```
+
 ```powershell
 npm run audit:example
 ```

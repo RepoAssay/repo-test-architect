@@ -9,6 +9,34 @@ const cliPath = "src/cli/index.js";
 const fixturePath = "examples/node-vitest-basic";
 
 describe("CLI", () => {
+  it("detects project roots in markdown", () => {
+    const output = execFileSync(process.execPath, [cliPath, "detect", "examples/polyglot-workspace"], {
+      encoding: "utf8"
+    });
+
+    assert.match(output, /^# Project Detection/);
+    assert.match(output, /apps\/web: javascript, typescript \(supported; adapters: javascript/);
+    assert.match(output, /services\/api: python \(unsupported; adapters: none available/);
+  });
+
+  it("detects project roots as JSON", () => {
+    const output = execFileSync(
+      process.execPath,
+      [cliPath, "detect", "examples/polyglot-workspace", "--format=json"],
+      {
+        encoding: "utf8"
+      }
+    );
+    const detection = JSON.parse(output);
+
+    assert.equal(detection.schemaVersion, "project-detection/v1");
+    assert.equal(detection.summary.projectCount, 2);
+    assert.deepEqual(
+      detection.projects.map((project) => `${project.root}:${project.supported}`),
+      ["apps/web:true", "services/api:false"]
+    );
+  });
+
   it("emits markdown by default", () => {
     const output = execFileSync(process.execPath, [cliPath, "audit", fixturePath], {
       encoding: "utf8"

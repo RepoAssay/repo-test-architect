@@ -44,6 +44,7 @@ Current tool names:
 Primary checks:
 
 ```powershell
+npm run detect:example:json
 npm test
 npm run eval:check
 powershell -ExecutionPolicy Bypass -File ./scripts/smoke.ps1
