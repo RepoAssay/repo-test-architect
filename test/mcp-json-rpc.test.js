@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { mcpToolErrorKinds } from "../src/mcp/errors.js";
-import { handleJsonRpcRequest } from "../src/mcp/json-rpc.js";
+import { handleJsonRpcMessage, handleJsonRpcRequest } from "../src/mcp/json-rpc.js";
 import { expectedMcpToolNames } from "./support/mcp-tools.js";
 
 describe("MCP JSON-RPC scaffold", () => {
@@ -101,5 +101,36 @@ describe("MCP JSON-RPC scaffold", () => {
     });
 
     assert.equal(response, undefined);
+  });
+
+  it("handles JSON-RPC batches", () => {
+    const response = handleJsonRpcMessage([
+      {
+        jsonrpc: "2.0",
+        id: 6,
+        method: "tools/list"
+      },
+      {
+        jsonrpc: "2.0",
+        method: "notifications/initialized"
+      },
+      {
+        jsonrpc: "2.0",
+        id: 7,
+        method: "missing/method"
+      }
+    ]);
+
+    assert.equal(response.length, 2);
+    assert.equal(response[0].id, 6);
+    assert.deepEqual(response[0].result.tools.map((tool) => tool.name), expectedMcpToolNames);
+    assert.equal(response[1].id, 7);
+    assert.equal(response[1].error.code, -32601);
+  });
+
+  it("rejects empty JSON-RPC batches", () => {
+    const response = handleJsonRpcMessage([]);
+
+    assert.equal(response.error.code, -32600);
   });
 });

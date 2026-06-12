@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import readline from "node:readline";
-import { handleJsonRpcRequest } from "./json-rpc.js";
+import { handleJsonRpcMessage } from "./json-rpc.js";
 
 const rl = readline.createInterface({
   input: process.stdin,
@@ -18,7 +18,7 @@ rl.on("line", (line) => {
 
 function handleLine(line) {
   try {
-    return handleJsonRpcRequest(JSON.parse(line));
+    return handleJsonRpcMessage(JSON.parse(line));
   } catch (error) {
     return {
       jsonrpc: "2.0",

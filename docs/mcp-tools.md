@@ -45,6 +45,8 @@ It handles:
 - `initialize`
 - `tools/list`
 - `tools/call`
+- single JSON-RPC request lines
+- batch JSON-RPC request lines
 
 It is intentionally small and should be replaced or wrapped by an official MCP SDK transport later.
 

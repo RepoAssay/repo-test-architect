@@ -35,4 +35,30 @@ describe("MCP stdio scaffold", () => {
     const response = JSON.parse(result.stdout.trim());
     assert.equal(response.error.code, -32700);
   });
+
+  it("handles JSON-RPC batch lines", () => {
+    const batch = [
+      {
+        jsonrpc: "2.0",
+        id: 2,
+        method: "tools/list"
+      },
+      {
+        jsonrpc: "2.0",
+        id: 3,
+        method: "missing/method"
+      }
+    ];
+    const result = spawnSync(process.execPath, [stdioPath], {
+      input: `${JSON.stringify(batch)}\n`,
+      encoding: "utf8"
+    });
+
+    assert.equal(result.status, 0);
+
+    const response = JSON.parse(result.stdout.trim());
+    assert.equal(response.length, 2);
+    assert.equal(response[0].id, 2);
+    assert.equal(response[1].error.code, -32601);
+  });
 });

@@ -2,6 +2,22 @@ import { toMcpToolResult } from "./responses.js";
 import { callTool, mcpTools } from "./tool-definitions.js";
 import { toJsonRpcErrorData } from "./errors.js";
 
+export function handleJsonRpcMessage(message) {
+  if (!Array.isArray(message)) {
+    return handleJsonRpcRequest(message);
+  }
+
+  if (message.length === 0) {
+    return errorResponse(undefined, -32600, "Invalid Request");
+  }
+
+  const responses = message
+    .map((request) => handleJsonRpcRequest(request))
+    .filter(Boolean);
+
+  return responses.length > 0 ? responses : undefined;
+}
+
 export function handleJsonRpcRequest(request) {
   if (!request || typeof request !== "object" || Array.isArray(request)) {
     return errorResponse(undefined, -32600, "Invalid Request");
