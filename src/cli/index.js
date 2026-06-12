@@ -2,17 +2,53 @@
 import path from "node:path";
 import { auditJavaScriptRepo } from "../adapters/javascript/audit.js";
 
-const [, , command, repoPath = "."] = process.argv;
+const options = parseArgs(process.argv.slice(2));
 
-if (command !== "audit") {
-  console.error("Usage: repo-test-architect audit <repo>");
+if (options.command !== "audit") {
+  console.error("Usage: repo-test-architect audit <repo> [--format markdown|json]");
   process.exit(1);
 }
 
-const root = path.resolve(process.cwd(), repoPath);
+if (!["markdown", "json"].includes(options.format)) {
+  console.error(`Unsupported format: ${options.format}`);
+  process.exit(1);
+}
+
+const root = path.resolve(process.cwd(), options.repoPath);
 const audit = auditJavaScriptRepo(root);
 
-console.log(renderMarkdownReport(audit));
+if (options.format === "json") {
+  console.log(JSON.stringify(audit, null, 2));
+} else {
+  console.log(renderMarkdownReport(audit));
+}
+
+function parseArgs(args) {
+  const [command, ...rest] = args;
+  let repoPath = ".";
+  let format = "markdown";
+
+  for (let index = 0; index < rest.length; index += 1) {
+    const arg = rest[index];
+
+    if (arg === "--format") {
+      format = rest[index + 1] ?? "";
+      index += 1;
+      continue;
+    }
+
+    if (arg.startsWith("--format=")) {
+      format = arg.slice("--format=".length);
+      continue;
+    }
+
+    if (!arg.startsWith("-")) {
+      repoPath = arg;
+    }
+  }
+
+  return { command, repoPath, format };
+}
 
 function renderMarkdownReport(audit) {
   const lines = [];

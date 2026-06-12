@@ -16,6 +16,12 @@ The first milestone is intentionally narrow:
 npm run audit:example
 ```
 
+Output the structured audit graph:
+
+```powershell
+npm run audit:example:json
+```
+
 Run the auditor regression tests:
 
 ```powershell
