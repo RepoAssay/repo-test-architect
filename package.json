@@ -13,6 +13,7 @@
     "plan:example": "node ./src/cli/index.js plan ./examples/node-vitest-basic",
     "plan:example:json": "node ./src/cli/index.js plan ./examples/node-vitest-basic --format json",
     "plan:from-audit:example": "node ./src/cli/index.js plan --from-audit ./evals/expected/node-vitest-basic.audit.json",
+    "eval:check": "node --test test/golden-snapshots.test.js",
     "eval:update": "node ./scripts/update-golden-snapshots.js",
     "test": "node --test \"test/**/*.test.js\"",
     "smoke": "powershell -ExecutionPolicy Bypass -File ./scripts/smoke.ps1"

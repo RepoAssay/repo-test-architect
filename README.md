@@ -46,6 +46,7 @@ The tests include golden audit and plan snapshots under `evals/expected`, driven
 Refresh snapshots after intentional audit behavior changes:
 
 ```powershell
+npm run eval:check
 npm run eval:update
 ```
 
