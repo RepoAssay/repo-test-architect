@@ -1,0 +1,72 @@
+{
+  "summary": {
+    "confidence": "high",
+    "verificationCommand": "npm run test",
+    "blockerCount": 0,
+    "addTestCount": 1,
+    "extendTestCount": 1,
+    "deferredCount": 2
+  },
+  "blockers": [],
+  "items": [
+    {
+      "action": "add-test",
+      "target": "userService",
+      "path": "src/services/userService.ts",
+      "testLevel": "unit",
+      "priority": 4,
+      "riskReductionScore": 8,
+      "maintenanceCost": 4,
+      "rationale": [
+        "Service boundary",
+        "auth or permission branches"
+      ],
+      "existingTestPaths": []
+    },
+    {
+      "action": "extend-test",
+      "target": "userRoutes",
+      "path": "src/routes/userRoutes.ts",
+      "testLevel": "integration",
+      "priority": 3,
+      "riskReductionScore": 8,
+      "maintenanceCost": 5,
+      "rationale": [
+        "HTTP behavior",
+        "status code and error handling",
+        "Existing test file detected; review missing edge cases"
+      ],
+      "existingTestPaths": [
+        "src/routes/userRoutes.test.ts"
+      ]
+    },
+    {
+      "action": "defer",
+      "target": "app",
+      "path": "src/app.ts",
+      "testLevel": "none",
+      "priority": -2,
+      "riskReductionScore": 2,
+      "maintenanceCost": 4,
+      "rationale": [
+        "Application wiring is better covered through route or integration tests.",
+        "Cover through Supertest or API-level integration tests."
+      ],
+      "existingTestPaths": []
+    },
+    {
+      "action": "defer",
+      "target": "userDto",
+      "path": "src/models/userDto.ts",
+      "testLevel": "none",
+      "priority": -2,
+      "riskReductionScore": 2,
+      "maintenanceCost": 4,
+      "rationale": [
+        "DTO-only models are usually better covered through boundary parsing or mapper tests.",
+        "Cover through API/client parsing, mapper tests, or route integration tests."
+      ],
+      "existingTestPaths": []
+    }
+  ]
+}

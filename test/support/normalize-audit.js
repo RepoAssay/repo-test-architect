@@ -9,3 +9,7 @@ export function normalizeAuditForSnapshot(audit) {
     })
   );
 }
+
+export function normalizeJsonForSnapshot(value) {
+  return JSON.parse(JSON.stringify(value));
+}

@@ -1,0 +1,71 @@
+{
+  "summary": {
+    "confidence": "high",
+    "verificationCommand": "npm run test",
+    "blockerCount": 0,
+    "addTestCount": 1,
+    "extendTestCount": 1,
+    "deferredCount": 2
+  },
+  "blockers": [],
+  "items": [
+    {
+      "action": "add-test",
+      "target": "sessionService",
+      "path": "src/services/sessionService.ts",
+      "testLevel": "unit",
+      "priority": 4,
+      "riskReductionScore": 8,
+      "maintenanceCost": 4,
+      "rationale": [
+        "Service boundary",
+        "auth or permission branches"
+      ],
+      "existingTestPaths": []
+    },
+    {
+      "action": "extend-test",
+      "target": "LoginForm",
+      "path": "src/components/LoginForm.tsx",
+      "testLevel": "component",
+      "priority": 0,
+      "riskReductionScore": 5,
+      "maintenanceCost": 5,
+      "rationale": [
+        "React component behavior",
+        "Existing test file detected; review missing edge cases"
+      ],
+      "existingTestPaths": [
+        "src/components/LoginForm.test.tsx"
+      ]
+    },
+    {
+      "action": "defer",
+      "target": "sessionDto",
+      "path": "src/models/sessionDto.ts",
+      "testLevel": "none",
+      "priority": -2,
+      "riskReductionScore": 2,
+      "maintenanceCost": 4,
+      "rationale": [
+        "DTO-only models are usually better covered through boundary parsing or mapper tests.",
+        "Cover through API/client parsing, mapper tests, or route integration tests."
+      ],
+      "existingTestPaths": []
+    },
+    {
+      "action": "defer",
+      "target": "Avatar",
+      "path": "src/components/Avatar.tsx",
+      "testLevel": "none",
+      "priority": -3,
+      "riskReductionScore": 2,
+      "maintenanceCost": 5,
+      "rationale": [
+        "Presentational components with no branching or interaction are low-value direct test targets.",
+        "Cover through parent component or user-flow tests when behavior depends on this rendering."
+      ],
+      "existingTestPaths": []
+    }
+  ]
+}

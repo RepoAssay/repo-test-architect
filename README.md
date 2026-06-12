@@ -35,7 +35,7 @@ Run the auditor regression tests:
 npm test
 ```
 
-The tests include golden audit snapshots under `evals/expected`.
+The tests include golden audit and plan snapshots under `evals/expected`.
 
 Refresh snapshots after intentional audit behavior changes:
 

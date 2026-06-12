@@ -1,0 +1,58 @@
+{
+  "summary": {
+    "confidence": "high",
+    "verificationCommand": "npm run test",
+    "blockerCount": 0,
+    "addTestCount": 1,
+    "extendTestCount": 1,
+    "deferredCount": 1
+  },
+  "blockers": [],
+  "items": [
+    {
+      "action": "extend-test",
+      "target": "deckParser",
+      "path": "src/deckParser.ts",
+      "testLevel": "unit",
+      "priority": 7,
+      "riskReductionScore": 9,
+      "maintenanceCost": 2,
+      "rationale": [
+        "Pure transformation logic",
+        "edge-case surface",
+        "Existing test file detected; review missing edge cases"
+      ],
+      "existingTestPaths": [
+        "src/deckParser.test.ts"
+      ]
+    },
+    {
+      "action": "add-test",
+      "target": "authService",
+      "path": "src/authService.ts",
+      "testLevel": "unit",
+      "priority": 4,
+      "riskReductionScore": 8,
+      "maintenanceCost": 4,
+      "rationale": [
+        "Service boundary",
+        "auth or permission branches"
+      ],
+      "existingTestPaths": []
+    },
+    {
+      "action": "defer",
+      "target": "userDto",
+      "path": "src/userDto.ts",
+      "testLevel": "none",
+      "priority": -2,
+      "riskReductionScore": 2,
+      "maintenanceCost": 4,
+      "rationale": [
+        "DTO-only models are usually better covered through boundary parsing or mapper tests.",
+        "Cover through API/client parsing, mapper tests, or route integration tests."
+      ],
+      "existingTestPaths": []
+    }
+  ]
+}
