@@ -77,3 +77,9 @@ examples/
 ```
 
 The JavaScript adapter is the first proof point. Later adapters should emit the same core audit model instead of inventing language-specific report formats.
+
+## Docs
+
+- [Project plan](docs/project-plan.md)
+- [Adapter contract](docs/adapter-contract.md)
+- [Artifact contract](docs/artifact-contract.md)
