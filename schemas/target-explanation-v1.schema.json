@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://repo-test-architect.local/schemas/target-explanation-v1.schema.json",
+  "title": "Repo Test Architect Target Explanation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "targetId",
+    "target",
+    "path",
+    "category",
+    "kind",
+    "recommendation",
+    "testLevel",
+    "risk",
+    "testability",
+    "riskReductionScore",
+    "maintenanceCost",
+    "signals",
+    "rationale",
+    "existingTestPaths"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "target-explanation/v1"
+    },
+    "targetId": { "type": "string" },
+    "target": { "type": "string" },
+    "path": { "type": "string" },
+    "category": { "enum": ["untestedCandidates", "coveredButRisky", "skipped"] },
+    "kind": { "type": "string" },
+    "recommendation": { "enum": ["test", "defer"] },
+    "testLevel": { "enum": ["unit", "integration", "component", "ui", "none"] },
+    "risk": { "enum": ["low", "medium", "high"] },
+    "testability": { "enum": ["low", "medium", "high"] },
+    "riskReductionScore": { "type": "integer", "minimum": 0, "maximum": 10 },
+    "maintenanceCost": { "type": "integer", "minimum": 0, "maximum": 10 },
+    "signals": { "type": "array", "items": { "type": "string" } },
+    "rationale": { "type": "array", "items": { "type": "string" } },
+    "existingTestPaths": { "type": "array", "items": { "type": "string" } }
+  }
+}

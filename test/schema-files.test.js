@@ -28,6 +28,16 @@ describe("schema files", () => {
     assert.ok(schema.properties.items.items.required.includes("targetId"));
     assert.ok(schema.properties.items.items.required.includes("sourceSignals"));
   });
+
+  it("documents target-explanation/v1", () => {
+    const schema = readSchema("schemas/target-explanation-v1.schema.json");
+
+    assert.equal(schema.properties.schemaVersion.const, "target-explanation/v1");
+    assert.ok(schema.required.includes("targetId"));
+    assert.ok(schema.required.includes("recommendation"));
+    assert.ok(schema.required.includes("rationale"));
+    assert.deepEqual(schema.properties.category.enum, ["untestedCandidates", "coveredButRisky", "skipped"]);
+  });
 });
 
 function readSchema(path) {

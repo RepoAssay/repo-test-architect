@@ -110,6 +110,32 @@ describe("CLI", () => {
     );
   });
 
+  it("emits a JSON target explanation", () => {
+    const output = execFileSync(process.execPath, [cliPath, "explain", fixturePath, "--target", "src/authService.ts", "--format=json"], {
+      encoding: "utf8"
+    });
+    const explanation = JSON.parse(output);
+
+    assert.equal(explanation.schemaVersion, "target-explanation/v1");
+    assert.equal(explanation.targetId, "src/authService.ts");
+    assert.equal(explanation.recommendation, "test");
+    assert.equal(explanation.testLevel, "unit");
+  });
+
+  it("emits a markdown target explanation from an existing audit file", () => {
+    const output = execFileSync(
+      process.execPath,
+      [cliPath, "explain", "--from-audit", "evals/expected/node-vitest-basic.audit.json", "--target=src/userDto.ts"],
+      {
+        encoding: "utf8"
+      }
+    );
+
+    assert.match(output, /^# Target Explanation/);
+    assert.match(output, /Target ID: src\/userDto\.ts/);
+    assert.match(output, /Recommendation: defer/);
+  });
+
   it("emits a JSON test plan from an existing audit file", () => {
     const output = execFileSync(
       process.execPath,
@@ -161,6 +187,17 @@ describe("CLI", () => {
     assert.throws(
       () =>
         execFileSync(process.execPath, [cliPath, "audit", "--from-audit", "evals/expected/node-vitest-basic.audit.json"], {
+          encoding: "utf8",
+          stdio: "pipe"
+        }),
+      /Command failed/
+    );
+  });
+
+  it("rejects unknown explanation target ids", () => {
+    assert.throws(
+      () =>
+        execFileSync(process.execPath, [cliPath, "explain", fixturePath, "--target", "src/missing.ts"], {
           encoding: "utf8",
           stdio: "pipe"
         }),

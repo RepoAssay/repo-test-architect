@@ -16,6 +16,7 @@
     "plan:changed": "node ./src/cli/index.js plan . --changed",
     "plan:changed-since": "node ./src/cli/index.js plan . --changed-since HEAD",
     "plan:from-audit:example": "node ./src/cli/index.js plan --from-audit ./evals/expected/node-vitest-basic.audit.json",
+    "explain:example": "node ./src/cli/index.js explain ./examples/node-vitest-basic --target src/authService.ts",
     "eval:check": "node --test test/golden-snapshots.test.js",
     "eval:summary": "node ./scripts/check-golden-snapshots.js",
     "eval:update": "node ./scripts/update-golden-snapshots.js",

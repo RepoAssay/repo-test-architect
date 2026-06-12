@@ -3,12 +3,13 @@ import fs from "node:fs";
 import { execFileSync } from "node:child_process";
 import path from "node:path";
 import { auditJavaScriptRepo } from "../adapters/javascript/audit.js";
+import { explainTarget } from "../core/explain-target.js";
 import { createTestPlan } from "../core/test-plan.js";
 
 const options = parseArgs(process.argv.slice(2));
 
-if (!["audit", "plan"].includes(options.command)) {
-  console.error("Usage: repo-test-architect <audit|plan> <repo> [--format markdown|json] [--from-audit audit.json] [--item id] [--changed] [--changed-since ref]");
+if (!["audit", "plan", "explain"].includes(options.command)) {
+  console.error("Usage: repo-test-architect <audit|plan|explain> <repo> [--format markdown|json] [--from-audit audit.json] [--item id] [--target id] [--changed] [--changed-since ref]");
   process.exit(1);
 }
 
@@ -17,8 +18,8 @@ if (!["markdown", "json"].includes(options.format)) {
   process.exit(1);
 }
 
-if (options.fromAuditPath && options.command !== "plan") {
-  console.error("--from-audit is only supported with the plan command.");
+if (options.fromAuditPath && !["plan", "explain"].includes(options.command)) {
+  console.error("--from-audit is only supported with plan and explain commands.");
   process.exit(1);
 }
 
@@ -28,12 +29,14 @@ const audit = options.fromAuditPath
   : auditJavaScriptRepo(repoRoot, {
       changedPaths: readSelectedChangedPaths(repoRoot, options)
     });
-const output = options.command === "plan" ? filterPlan(createTestPlan(audit), options.itemId) : audit;
+const output = selectOutput(audit, options);
 
 if (options.format === "json") {
   console.log(JSON.stringify(output, null, 2));
 } else if (options.command === "plan") {
   console.log(renderMarkdownPlan(output));
+} else if (options.command === "explain") {
+  console.log(renderMarkdownExplanation(output));
 } else {
   console.log(renderMarkdownReport(audit));
 }
@@ -44,6 +47,7 @@ function parseArgs(args) {
   let format = "markdown";
   let fromAuditPath;
   let itemId;
+  let targetId;
   let changedOnly = false;
   let changedSinceRef;
 
@@ -83,6 +87,17 @@ function parseArgs(args) {
       continue;
     }
 
+    if (arg === "--target") {
+      targetId = rest[index + 1] ?? "";
+      index += 1;
+      continue;
+    }
+
+    if (arg.startsWith("--target=")) {
+      targetId = arg.slice("--target=".length);
+      continue;
+    }
+
     if (arg === "--changed") {
       changedOnly = true;
       continue;
@@ -104,7 +119,7 @@ function parseArgs(args) {
     }
   }
 
-  return { command, repoPath, format, fromAuditPath, itemId, changedOnly, changedSinceRef };
+  return { command, repoPath, format, fromAuditPath, itemId, targetId, changedOnly, changedSinceRef };
 }
 
 function readAuditJson(auditPath) {
@@ -206,6 +221,21 @@ function filterPlan(plan, itemId) {
     },
     items: [item]
   };
+}
+
+function selectOutput(audit, options) {
+  if (options.command === "plan") return filterPlan(createTestPlan(audit), options.itemId);
+
+  if (options.command === "explain") {
+    try {
+      return explainTarget(audit, options.targetId);
+    } catch (error) {
+      console.error(error.message);
+      process.exit(1);
+    }
+  }
+
+  return audit;
 }
 
 function renderMarkdownReport(audit) {
@@ -317,6 +347,34 @@ function renderMarkdownPlan(plan) {
         `- ${item.action}: ${item.target} [${item.id}] (${item.testLevel}, priority ${item.priority}, risk reduction ${item.riskReductionScore}/10, maintenance ${item.maintenanceCost}/10). ${rationale}.${existingTests}`
       );
     }
+  }
+
+  return lines.join("\n");
+}
+
+function renderMarkdownExplanation(explanation) {
+  const lines = [];
+
+  lines.push("# Target Explanation");
+  lines.push("");
+  lines.push(`- Target: ${explanation.target}`);
+  lines.push(`- Target ID: ${explanation.targetId}`);
+  lines.push(`- Path: ${explanation.path}`);
+  lines.push(`- Category: ${explanation.category}`);
+  lines.push(`- Kind: ${explanation.kind}`);
+  lines.push(`- Recommendation: ${explanation.recommendation}`);
+  lines.push(`- Test level: ${explanation.testLevel}`);
+  lines.push(`- Risk: ${explanation.risk}`);
+  lines.push(`- Testability: ${explanation.testability}`);
+  lines.push(`- Risk reduction: ${explanation.riskReductionScore}/10`);
+  lines.push(`- Maintenance: ${explanation.maintenanceCost}/10`);
+  lines.push(`- Signals: ${formatList(explanation.signals)}`);
+  lines.push(`- Existing tests: ${formatList(explanation.existingTestPaths)}`);
+  lines.push("");
+  lines.push("## Rationale");
+
+  for (const reason of explanation.rationale) {
+    lines.push(`- ${reason}`);
   }
 
   return lines.join("\n");

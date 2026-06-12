@@ -32,6 +32,12 @@ npm run plan:changed
 npm run plan:changed-since
 ```
 
+Explain one audited target by stable target ID:
+
+```powershell
+npm run explain:example
+```
+
 Generate a plan from an existing audit JSON file:
 
 ```powershell

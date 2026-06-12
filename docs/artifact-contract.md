@@ -73,6 +73,31 @@ Future generation should target these IDs rather than array positions or display
 Audit targets also expose a stable `id`, currently the repository-relative source path.
 Plan items carry that value as `targetId` so model and MCP layers can link plan actions back to audit evidence.
 
+## Target Explanation Artifact
+
+Schema:
+
+- `schemas/target-explanation-v1.schema.json`
+- `schemaVersion: "target-explanation/v1"`
+
+Commands:
+
+```powershell
+node ./src/cli/index.js explain ./examples/node-vitest-basic --target src/authService.ts --format json
+node ./src/cli/index.js explain --from-audit ./evals/expected/node-vitest-basic.audit.json --target src/authService.ts --format json
+```
+
+The target explanation artifact is the MCP-shaped view for one audit target.
+
+It contains:
+
+- stable target ID
+- classification category
+- recommendation and test level
+- risk and maintenance scores
+- source signals
+- rationale and existing test paths
+
 ## Changed-Only Flow
 
 For PR-style workflows, use `--changed`:
