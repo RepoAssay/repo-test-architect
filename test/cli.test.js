@@ -84,6 +84,36 @@ describe("CLI", () => {
     );
   });
 
+  it("filters a JSON test plan by stable item id", () => {
+    const output = execFileSync(
+      process.execPath,
+      [cliPath, "plan", fixturePath, "--item", "add-test:src/authService.ts", "--format=json"],
+      {
+        encoding: "utf8"
+      }
+    );
+    const plan = JSON.parse(output);
+
+    assert.equal(plan.summary.addTestCount, 1);
+    assert.equal(plan.summary.extendTestCount, 0);
+    assert.equal(plan.summary.deferredCount, 0);
+    assert.deepEqual(
+      plan.items.map((item) => item.id),
+      ["add-test:src/authService.ts"]
+    );
+  });
+
+  it("rejects unknown plan item ids", () => {
+    assert.throws(
+      () =>
+        execFileSync(process.execPath, [cliPath, "plan", fixturePath, "--item", "add-test:missing.ts"], {
+          encoding: "utf8",
+          stdio: "pipe"
+        }),
+      /Command failed/
+    );
+  });
+
   it("rejects audit-from-file input for the audit command", () => {
     assert.throws(
       () =>

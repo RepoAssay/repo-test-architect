@@ -27,6 +27,7 @@ Generate an actionable test plan from the audit graph:
 ```powershell
 npm run plan:example
 npm run plan:example:json
+npm run plan:item:example
 ```
 
 Generate a plan from an existing audit JSON file:

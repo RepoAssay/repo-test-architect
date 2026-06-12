@@ -7,7 +7,7 @@ import { createTestPlan } from "../core/test-plan.js";
 const options = parseArgs(process.argv.slice(2));
 
 if (!["audit", "plan"].includes(options.command)) {
-  console.error("Usage: repo-test-architect <audit|plan> <repo> [--format markdown|json] [--from-audit audit.json]");
+  console.error("Usage: repo-test-architect <audit|plan> <repo> [--format markdown|json] [--from-audit audit.json] [--item id]");
   process.exit(1);
 }
 
@@ -24,7 +24,7 @@ if (options.fromAuditPath && options.command !== "plan") {
 const audit = options.fromAuditPath
   ? readAuditJson(options.fromAuditPath)
   : auditJavaScriptRepo(path.resolve(process.cwd(), options.repoPath));
-const output = options.command === "plan" ? createTestPlan(audit) : audit;
+const output = options.command === "plan" ? filterPlan(createTestPlan(audit), options.itemId) : audit;
 
 if (options.format === "json") {
   console.log(JSON.stringify(output, null, 2));
@@ -39,6 +39,7 @@ function parseArgs(args) {
   let repoPath = ".";
   let format = "markdown";
   let fromAuditPath;
+  let itemId;
 
   for (let index = 0; index < rest.length; index += 1) {
     const arg = rest[index];
@@ -65,12 +66,23 @@ function parseArgs(args) {
       continue;
     }
 
+    if (arg === "--item") {
+      itemId = rest[index + 1] ?? "";
+      index += 1;
+      continue;
+    }
+
+    if (arg.startsWith("--item=")) {
+      itemId = arg.slice("--item=".length);
+      continue;
+    }
+
     if (!arg.startsWith("-")) {
       repoPath = arg;
     }
   }
 
-  return { command, repoPath, format, fromAuditPath };
+  return { command, repoPath, format, fromAuditPath, itemId };
 }
 
 function readAuditJson(auditPath) {
@@ -85,6 +97,28 @@ function readAuditJson(auditPath) {
     console.error(`Failed to read audit JSON: ${error.message}`);
     process.exit(1);
   }
+}
+
+function filterPlan(plan, itemId) {
+  if (!itemId) return plan;
+
+  const item = plan.items.find((candidate) => candidate.id === itemId);
+
+  if (!item) {
+    console.error(`Plan item not found: ${itemId}`);
+    process.exit(1);
+  }
+
+  return {
+    ...plan,
+    summary: {
+      ...plan.summary,
+      addTestCount: item.action === "add-test" ? 1 : 0,
+      extendTestCount: item.action === "extend-test" ? 1 : 0,
+      deferredCount: item.action === "defer" ? 1 : 0
+    },
+    items: [item]
+  };
 }
 
 function renderMarkdownReport(audit) {

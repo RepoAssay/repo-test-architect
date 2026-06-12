@@ -12,6 +12,7 @@
     "audit:example:json": "node ./src/cli/index.js audit ./examples/node-vitest-basic --format json",
     "plan:example": "node ./src/cli/index.js plan ./examples/node-vitest-basic",
     "plan:example:json": "node ./src/cli/index.js plan ./examples/node-vitest-basic --format json",
+    "plan:item:example": "node ./src/cli/index.js plan ./examples/node-vitest-basic --item add-test:src/authService.ts",
     "plan:from-audit:example": "node ./src/cli/index.js plan --from-audit ./evals/expected/node-vitest-basic.audit.json",
     "eval:check": "node --test test/golden-snapshots.test.js",
     "eval:summary": "node ./scripts/check-golden-snapshots.js",
