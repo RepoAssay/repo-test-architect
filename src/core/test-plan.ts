@@ -12,6 +12,7 @@ export interface TestPlanItem {
   riskReductionScore: number;
   maintenanceCost: number;
   rationale: string[];
+  sourceSignals: string[];
   existingTestPaths: string[];
 }
 
@@ -44,6 +45,7 @@ export function createTestPlan(audit: AuditResult): TestPlan {
       riskReductionScore: target.riskReductionScore,
       maintenanceCost: target.maintenanceCost,
       rationale: [target.reason, target.preferredCoveragePath].filter(Boolean) as string[],
+      sourceSignals: target.signals,
       existingTestPaths: []
     }));
 
@@ -77,6 +79,7 @@ function toPlanItem(action: "add-test" | "extend-test", target: AuditTarget): Te
     riskReductionScore: target.riskReductionScore,
     maintenanceCost: target.maintenanceCost,
     rationale: target.reasons,
+    sourceSignals: target.signals,
     existingTestPaths: target.existingTestPaths
   };
 }

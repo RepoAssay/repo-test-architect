@@ -24,6 +24,11 @@
         "edge-case surface",
         "Existing test file detected; review missing edge cases"
       ],
+      "sourceSignals": [
+        "pure-logic",
+        "edge-case-surface",
+        "matching-test"
+      ],
       "existingTestPaths": [
         "src/deckParser.test.ts"
       ]
@@ -41,6 +46,10 @@
         "Service boundary",
         "auth or permission branches"
       ],
+      "sourceSignals": [
+        "service-name",
+        "auth-branch"
+      ],
       "existingTestPaths": []
     },
     {
@@ -55,6 +64,9 @@
       "rationale": [
         "DTO-only models are usually better covered through boundary parsing or mapper tests.",
         "Cover through API/client parsing, mapper tests, or route integration tests."
+      ],
+      "sourceSignals": [
+        "dto-only"
       ],
       "existingTestPaths": []
     }

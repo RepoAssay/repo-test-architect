@@ -12,6 +12,7 @@ describe("schema files", () => {
     assert.ok(schema.required.includes("coveredButRisky"));
     assert.ok(schema.required.includes("skipped"));
     assert.ok(schema.$defs.auditTarget.required.includes("riskReductionScore"));
+    assert.ok(schema.$defs.auditTarget.required.includes("signals"));
   });
 
   it("documents plan/v1", () => {
@@ -22,6 +23,7 @@ describe("schema files", () => {
     assert.ok(schema.required.includes("items"));
     assert.ok(schema.properties.items.items.required.includes("id"));
     assert.ok(schema.properties.items.items.required.includes("action"));
+    assert.ok(schema.properties.items.items.required.includes("sourceSignals"));
   });
 });
 

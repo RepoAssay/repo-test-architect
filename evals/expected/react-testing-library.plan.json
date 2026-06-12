@@ -23,6 +23,10 @@
         "Service boundary",
         "auth or permission branches"
       ],
+      "sourceSignals": [
+        "service-name",
+        "auth-branch"
+      ],
       "existingTestPaths": []
     },
     {
@@ -37,6 +41,11 @@
       "rationale": [
         "React component behavior",
         "Existing test file detected; review missing edge cases"
+      ],
+      "sourceSignals": [
+        "react-component",
+        "rtl-convention",
+        "matching-test"
       ],
       "existingTestPaths": [
         "src/components/LoginForm.test.tsx"
@@ -55,6 +64,9 @@
         "DTO-only models are usually better covered through boundary parsing or mapper tests.",
         "Cover through API/client parsing, mapper tests, or route integration tests."
       ],
+      "sourceSignals": [
+        "dto-only"
+      ],
       "existingTestPaths": []
     },
     {
@@ -69,6 +81,9 @@
       "rationale": [
         "Presentational components with no branching or interaction are low-value direct test targets.",
         "Cover through parent component or user-flow tests when behavior depends on this rendering."
+      ],
+      "sourceSignals": [
+        "presentational-component"
       ],
       "existingTestPaths": []
     }

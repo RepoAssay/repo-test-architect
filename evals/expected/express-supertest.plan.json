@@ -23,6 +23,10 @@
         "Service boundary",
         "auth or permission branches"
       ],
+      "sourceSignals": [
+        "service-name",
+        "auth-branch"
+      ],
       "existingTestPaths": []
     },
     {
@@ -38,6 +42,11 @@
         "HTTP behavior",
         "status code and error handling",
         "Existing test file detected; review missing edge cases"
+      ],
+      "sourceSignals": [
+        "http-route",
+        "status-handling",
+        "matching-test"
       ],
       "existingTestPaths": [
         "src/routes/userRoutes.test.ts"
@@ -56,6 +65,9 @@
         "Application wiring is better covered through route or integration tests.",
         "Cover through Supertest or API-level integration tests."
       ],
+      "sourceSignals": [
+        "app-wiring"
+      ],
       "existingTestPaths": []
     },
     {
@@ -70,6 +82,9 @@
       "rationale": [
         "DTO-only models are usually better covered through boundary parsing or mapper tests.",
         "Cover through API/client parsing, mapper tests, or route integration tests."
+      ],
+      "sourceSignals": [
+        "dto-only"
       ],
       "existingTestPaths": []
     }

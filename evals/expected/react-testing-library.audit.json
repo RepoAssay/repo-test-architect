@@ -33,6 +33,10 @@
       "name": "sessionService",
       "path": "src/services/sessionService.ts",
       "kind": "service",
+      "signals": [
+        "service-name",
+        "auth-branch"
+      ],
       "risk": "high",
       "testability": "medium",
       "recommendedTestLevel": "unit",
@@ -50,6 +54,11 @@
       "name": "LoginForm",
       "path": "src/components/LoginForm.tsx",
       "kind": "component",
+      "signals": [
+        "react-component",
+        "rtl-convention",
+        "matching-test"
+      ],
       "risk": "medium",
       "testability": "medium",
       "recommendedTestLevel": "component",
@@ -69,6 +78,10 @@
       "name": "sessionService",
       "path": "src/services/sessionService.ts",
       "kind": "service",
+      "signals": [
+        "service-name",
+        "auth-branch"
+      ],
       "risk": "high",
       "testability": "medium",
       "recommendedTestLevel": "unit",
@@ -84,6 +97,11 @@
       "name": "LoginForm",
       "path": "src/components/LoginForm.tsx",
       "kind": "component",
+      "signals": [
+        "react-component",
+        "rtl-convention",
+        "matching-test"
+      ],
       "risk": "medium",
       "testability": "medium",
       "recommendedTestLevel": "component",
@@ -103,6 +121,9 @@
       "name": "Avatar",
       "path": "src/components/Avatar.tsx",
       "kind": "presentational-component",
+      "signals": [
+        "presentational-component"
+      ],
       "riskReductionScore": 2,
       "maintenanceCost": 5,
       "reason": "Presentational components with no branching or interaction are low-value direct test targets.",
@@ -112,6 +133,9 @@
       "name": "sessionDto",
       "path": "src/models/sessionDto.ts",
       "kind": "dto",
+      "signals": [
+        "dto-only"
+      ],
       "riskReductionScore": 2,
       "maintenanceCost": 4,
       "reason": "DTO-only models are usually better covered through boundary parsing or mapper tests.",

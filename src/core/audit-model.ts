@@ -20,6 +20,7 @@ export interface AuditTarget {
   name: string;
   path: string;
   kind: string;
+  signals: string[];
   risk: RiskLevel;
   testability: RiskLevel;
   recommendedTestLevel: TestLevel;
@@ -33,6 +34,7 @@ export interface SkippedTarget {
   name: string;
   path: string;
   kind: string;
+  signals: string[];
   riskReductionScore: number;
   maintenanceCost: number;
   reason: string;

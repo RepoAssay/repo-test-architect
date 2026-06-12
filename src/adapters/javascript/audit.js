@@ -22,6 +22,7 @@ export function auditJavaScriptRepo(root) {
         name,
         path: file.path,
         kind: classification.kind,
+        signals: classification.signals,
         riskReductionScore: classification.riskReductionScore,
         maintenanceCost: classification.maintenanceCost,
         reason: classification.skipReason,
@@ -34,6 +35,10 @@ export function auditJavaScriptRepo(root) {
       name,
       path: file.path,
       kind: classification.kind,
+      signals:
+        existingTestPaths.length > 0
+          ? [...classification.signals, "matching-test"]
+          : classification.signals,
       risk: classification.risk,
       testability: classification.testability,
       recommendedTestLevel: classification.testLevel,
@@ -298,20 +303,21 @@ function classifySourceFile(file, profile) {
   const lowerPath = currentPath.toLowerCase();
 
   if (lowerPath.includes("generated") || lowerPath.includes("/dist/") || lowerPath.includes("/build/")) {
-    return skipped("generated", 1, 8, "Generated or build output should not be test-authored directly.");
+    return skipped("generated", ["generated-code"], 1, 8, "Generated or build output should not be test-authored directly.");
   }
 
   if (lowerPath.endsWith(".d.ts") || lowerPath.includes("/types/")) {
-    return skipped("types", 1, 2, "Type-only files do not need runtime tests.");
+    return skipped("types", ["type-only"], 1, 2, "Type-only files do not need runtime tests.");
   }
 
   if (lowerPath.includes("index.") && /export\s+\*/.test(content)) {
-    return skipped("barrel", 1, 2, "Barrel export files are low-value test targets.");
+    return skipped("barrel", ["barrel-export"], 1, 2, "Barrel export files are low-value test targets.");
   }
 
   if (isDtoLike(lowerPath, content)) {
     return skipped(
       "dto",
+      ["dto-only"],
       2,
       4,
       "DTO-only models are usually better covered through boundary parsing or mapper tests.",
@@ -322,6 +328,7 @@ function classifySourceFile(file, profile) {
   if (isConstantsOnly(content)) {
     return skipped(
       "constants",
+      ["constants-only"],
       1,
       3,
       "Constants-only files are better covered by behavior that consumes the constants.",
@@ -332,6 +339,7 @@ function classifySourceFile(file, profile) {
   if (isAppWiring(lowerPath, content)) {
     return skipped(
       "app-wiring",
+      ["app-wiring"],
       2,
       4,
       "Application wiring is better covered through route or integration tests.",
@@ -343,6 +351,7 @@ function classifySourceFile(file, profile) {
     if (isPresentationalComponent(content)) {
       return skipped(
         "presentational-component",
+        ["presentational-component"],
         2,
         5,
         "Presentational components with no branching or interaction are low-value direct test targets.",
@@ -351,11 +360,12 @@ function classifySourceFile(file, profile) {
     }
 
     if (profile.testFrameworks.includes("react-testing-library")) {
-      return recommended("component", "medium", "medium", "component", 5, 5, ["React component behavior"]);
+      return recommended("component", ["react-component", "rtl-convention"], "medium", "medium", "component", 5, 5, ["React component behavior"]);
     }
 
     return {
       kind: "component",
+      signals: ["react-component", "missing-component-test-convention"],
       risk: "medium",
       testability: "medium",
       testLevel: "component",
@@ -367,44 +377,48 @@ function classifySourceFile(file, profile) {
   }
 
   if (matchesAny(lowerPath, ["parser", "mapper", "validator", "formatter"])) {
-    return recommended("pure-logic", "high", "high", "unit", 9, 2, ["Pure transformation logic", "edge-case surface"]);
+    return recommended("pure-logic", ["pure-logic", "edge-case-surface"], "high", "high", "unit", 9, 2, ["Pure transformation logic", "edge-case surface"]);
   }
 
   if (matchesAny(lowerPath, ["service", "client", "repository"])) {
     const reasons = ["Service boundary"];
+    const signals = ["service-name"];
     let risk = "medium";
 
     if (hasExternalBoundary(content)) {
       risk = "high";
       reasons.push("external dependency boundary");
+      signals.push("external-boundary");
     }
 
     if (hasAuthSignal(content)) {
       risk = "high";
       reasons.push("auth or permission branches");
+      signals.push("auth-branch");
     }
 
-    return recommended("service", risk, "medium", "unit", risk === "high" ? 8 : 6, 4, reasons);
+    return recommended("service", signals, risk, "medium", "unit", risk === "high" ? 8 : 6, 4, reasons);
   }
 
   if (lowerPath.includes("/routes/") || lowerPath.includes("controller")) {
-    return recommended("http-route", "high", "medium", "integration", 8, 5, ["HTTP behavior", "status code and error handling"]);
+    return recommended("http-route", ["http-route", "status-handling"], "high", "medium", "integration", 8, 5, ["HTTP behavior", "status code and error handling"]);
   }
 
   if (hasBranching(content)) {
-    return recommended("utility", "medium", "high", "unit", 5, 2, ["Branching logic"]);
+    return recommended("utility", ["branching-logic"], "medium", "high", "unit", 5, 2, ["Branching logic"]);
   }
 
-  return skipped("low-value", 1, 3, "No meaningful runtime behavior detected by current heuristics.");
+  return skipped("low-value", ["low-runtime-behavior"], 1, 3, "No meaningful runtime behavior detected by current heuristics.");
 }
 
-function recommended(kind, risk, testability, testLevel, riskReductionScore, maintenanceCost, reasons) {
-  return { kind, risk, testability, testLevel, riskReductionScore, maintenanceCost, reasons };
+function recommended(kind, signals, risk, testability, testLevel, riskReductionScore, maintenanceCost, reasons) {
+  return { kind, signals, risk, testability, testLevel, riskReductionScore, maintenanceCost, reasons };
 }
 
-function skipped(kind, riskReductionScore, maintenanceCost, skipReason, preferredCoveragePath) {
+function skipped(kind, signals, riskReductionScore, maintenanceCost, skipReason, preferredCoveragePath) {
   return {
     kind,
+    signals,
     risk: "low",
     testability: "low",
     testLevel: "none",

@@ -37,6 +37,10 @@
       "name": "userService",
       "path": "src/services/userService.ts",
       "kind": "service",
+      "signals": [
+        "service-name",
+        "auth-branch"
+      ],
       "risk": "high",
       "testability": "medium",
       "recommendedTestLevel": "unit",
@@ -54,6 +58,11 @@
       "name": "userRoutes",
       "path": "src/routes/userRoutes.ts",
       "kind": "http-route",
+      "signals": [
+        "http-route",
+        "status-handling",
+        "matching-test"
+      ],
       "risk": "high",
       "testability": "medium",
       "recommendedTestLevel": "integration",
@@ -74,6 +83,11 @@
       "name": "userRoutes",
       "path": "src/routes/userRoutes.ts",
       "kind": "http-route",
+      "signals": [
+        "http-route",
+        "status-handling",
+        "matching-test"
+      ],
       "risk": "high",
       "testability": "medium",
       "recommendedTestLevel": "integration",
@@ -92,6 +106,10 @@
       "name": "userService",
       "path": "src/services/userService.ts",
       "kind": "service",
+      "signals": [
+        "service-name",
+        "auth-branch"
+      ],
       "risk": "high",
       "testability": "medium",
       "recommendedTestLevel": "unit",
@@ -109,6 +127,9 @@
       "name": "app",
       "path": "src/app.ts",
       "kind": "app-wiring",
+      "signals": [
+        "app-wiring"
+      ],
       "riskReductionScore": 2,
       "maintenanceCost": 4,
       "reason": "Application wiring is better covered through route or integration tests.",
@@ -118,6 +139,9 @@
       "name": "userDto",
       "path": "src/models/userDto.ts",
       "kind": "dto",
+      "signals": [
+        "dto-only"
+      ],
       "riskReductionScore": 2,
       "maintenanceCost": 4,
       "reason": "DTO-only models are usually better covered through boundary parsing or mapper tests.",

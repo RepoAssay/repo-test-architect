@@ -13,6 +13,7 @@ export function createTestPlan(audit) {
       riskReductionScore: target.riskReductionScore,
       maintenanceCost: target.maintenanceCost,
       rationale: [target.reason, target.preferredCoveragePath].filter(Boolean),
+      sourceSignals: target.signals,
       existingTestPaths: []
     }));
 
@@ -46,6 +47,7 @@ function toPlanItem(action, target) {
     riskReductionScore: target.riskReductionScore,
     maintenanceCost: target.maintenanceCost,
     rationale: target.reasons,
+    sourceSignals: target.signals,
     existingTestPaths: target.existingTestPaths
   };
 }

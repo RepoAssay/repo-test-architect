@@ -26,6 +26,11 @@
       "name": "paymentClient",
       "path": "src/paymentClient.ts",
       "kind": "service",
+      "signals": [
+        "service-name",
+        "external-boundary",
+        "auth-branch"
+      ],
       "risk": "high",
       "testability": "medium",
       "recommendedTestLevel": "unit",
@@ -42,6 +47,10 @@
       "name": "paymentParser",
       "path": "src/paymentParser.ts",
       "kind": "pure-logic",
+      "signals": [
+        "pure-logic",
+        "edge-case-surface"
+      ],
       "risk": "high",
       "testability": "high",
       "recommendedTestLevel": "unit",
@@ -60,6 +69,11 @@
       "name": "paymentClient",
       "path": "src/paymentClient.ts",
       "kind": "service",
+      "signals": [
+        "service-name",
+        "external-boundary",
+        "auth-branch"
+      ],
       "risk": "high",
       "testability": "medium",
       "recommendedTestLevel": "unit",
@@ -76,6 +90,10 @@
       "name": "paymentParser",
       "path": "src/paymentParser.ts",
       "kind": "pure-logic",
+      "signals": [
+        "pure-logic",
+        "edge-case-surface"
+      ],
       "risk": "high",
       "testability": "high",
       "recommendedTestLevel": "unit",
@@ -93,6 +111,9 @@
       "name": "config",
       "path": "src/config.ts",
       "kind": "constants",
+      "signals": [
+        "constants-only"
+      ],
       "riskReductionScore": 1,
       "maintenanceCost": 3,
       "reason": "Constants-only files are better covered by behavior that consumes the constants.",
@@ -102,6 +123,9 @@
       "name": "paymentResponseDto",
       "path": "src/paymentResponseDto.ts",
       "kind": "dto",
+      "signals": [
+        "dto-only"
+      ],
       "riskReductionScore": 2,
       "maintenanceCost": 4,
       "reason": "DTO-only models are usually better covered through boundary parsing or mapper tests.",

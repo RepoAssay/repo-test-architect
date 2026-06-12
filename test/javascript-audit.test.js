@@ -40,6 +40,7 @@ describe("JavaScript audit adapter", () => {
     assert.deepEqual(deckParser.existingTestPaths, ["src/deckParser.test.ts"]);
     assert.equal(deckParser.riskReductionScore, 9);
     assert.equal(deckParser.maintenanceCost, 2);
+    assert.deepEqual(deckParser.signals, ["pure-logic", "edge-case-surface", "matching-test"]);
     assert.ok(deckParser.reasons.includes("Existing test file detected; review missing edge cases"));
   });
 
@@ -58,6 +59,7 @@ describe("JavaScript audit adapter", () => {
 
     const userDto = audit.skipped.find((target) => target.name === "userDto");
     assert.equal(userDto.kind, "dto");
+    assert.deepEqual(userDto.signals, ["dto-only"]);
     assert.match(userDto.reason, /DTO-only models/);
     assert.match(userDto.preferredCoveragePath, /API\/client parsing/);
   });
@@ -167,6 +169,8 @@ describe("JavaScript audit adapter", () => {
     const userRoutes = audit.coveredButRisky[0];
     assert.equal(userRoutes.kind, "http-route");
     assert.equal(userRoutes.recommendedTestLevel, "integration");
+    assert.ok(userRoutes.signals.includes("http-route"));
+    assert.ok(userRoutes.signals.includes("matching-test"));
     assert.deepEqual(userRoutes.existingTestPaths, ["src/routes/userRoutes.test.ts"]);
   });
 

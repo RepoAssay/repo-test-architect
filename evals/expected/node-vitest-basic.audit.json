@@ -32,6 +32,10 @@
       "name": "authService",
       "path": "src/authService.ts",
       "kind": "service",
+      "signals": [
+        "service-name",
+        "auth-branch"
+      ],
       "risk": "high",
       "testability": "medium",
       "recommendedTestLevel": "unit",
@@ -49,6 +53,11 @@
       "name": "deckParser",
       "path": "src/deckParser.ts",
       "kind": "pure-logic",
+      "signals": [
+        "pure-logic",
+        "edge-case-surface",
+        "matching-test"
+      ],
       "risk": "high",
       "testability": "high",
       "recommendedTestLevel": "unit",
@@ -69,6 +78,10 @@
       "name": "authService",
       "path": "src/authService.ts",
       "kind": "service",
+      "signals": [
+        "service-name",
+        "auth-branch"
+      ],
       "risk": "high",
       "testability": "medium",
       "recommendedTestLevel": "unit",
@@ -84,6 +97,11 @@
       "name": "deckParser",
       "path": "src/deckParser.ts",
       "kind": "pure-logic",
+      "signals": [
+        "pure-logic",
+        "edge-case-surface",
+        "matching-test"
+      ],
       "risk": "high",
       "testability": "high",
       "recommendedTestLevel": "unit",
@@ -104,6 +122,9 @@
       "name": "constants",
       "path": "src/constants.ts",
       "kind": "constants",
+      "signals": [
+        "constants-only"
+      ],
       "riskReductionScore": 1,
       "maintenanceCost": 3,
       "reason": "Constants-only files are better covered by behavior that consumes the constants.",
@@ -113,6 +134,9 @@
       "name": "userDto",
       "path": "src/userDto.ts",
       "kind": "dto",
+      "signals": [
+        "dto-only"
+      ],
       "riskReductionScore": 2,
       "maintenanceCost": 4,
       "reason": "DTO-only models are usually better covered through boundary parsing or mapper tests.",

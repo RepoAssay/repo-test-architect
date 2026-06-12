@@ -52,6 +52,7 @@
           "riskReductionScore",
           "maintenanceCost",
           "rationale",
+          "sourceSignals",
           "existingTestPaths"
         ],
         "properties": {
@@ -64,6 +65,7 @@
           "riskReductionScore": { "type": "integer", "minimum": 0, "maximum": 10 },
           "maintenanceCost": { "type": "integer", "minimum": 0, "maximum": 10 },
           "rationale": { "type": "array", "items": { "type": "string" } },
+          "sourceSignals": { "type": "array", "items": { "type": "string" } },
           "existingTestPaths": { "type": "array", "items": { "type": "string" } }
         }
       }

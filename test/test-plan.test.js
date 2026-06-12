@@ -29,6 +29,7 @@ describe("test plan generator", () => {
         "defer:src/components/Avatar.tsx"
       ]
     );
+    assert.deepEqual(plan.items[0].sourceSignals, ["service-name", "auth-branch"]);
   });
 
   it("carries blockers into the plan for repos without tests", () => {

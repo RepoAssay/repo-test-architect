@@ -25,6 +25,10 @@
         "Pure transformation logic",
         "edge-case surface"
       ],
+      "sourceSignals": [
+        "pure-logic",
+        "edge-case-surface"
+      ],
       "existingTestPaths": []
     },
     {
@@ -41,6 +45,11 @@
         "external dependency boundary",
         "auth or permission branches"
       ],
+      "sourceSignals": [
+        "service-name",
+        "external-boundary",
+        "auth-branch"
+      ],
       "existingTestPaths": []
     },
     {
@@ -55,6 +64,9 @@
       "rationale": [
         "DTO-only models are usually better covered through boundary parsing or mapper tests.",
         "Cover through API/client parsing, mapper tests, or route integration tests."
+      ],
+      "sourceSignals": [
+        "dto-only"
       ],
       "existingTestPaths": []
     }
