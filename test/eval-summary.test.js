@@ -11,8 +11,12 @@ describe("eval summary", () => {
 
     for (const fixture of loadEvalFixtures()) {
       assert.match(output, new RegExp(`PASS ${fixture.name}`));
+      assert.match(output, new RegExp(`PASS ${fixture.name}\\.audit\\.json`));
+      assert.match(output, new RegExp(`PASS ${fixture.name}\\.plan\\.json`));
     }
 
+    assert.match(output, /PASS mcp-tools\.json/);
+    assert.match(output, /11 snapshot\(s\) matched/);
     assert.match(output, /fixture\(s\) matched audit and plan snapshots/);
   });
 });

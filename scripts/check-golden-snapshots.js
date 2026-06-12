@@ -9,6 +9,7 @@ import { normalizeAuditForSnapshot, normalizeJsonForSnapshot } from "../test/sup
 
 const expectedDir = path.resolve("evals/expected");
 let failures = 0;
+let matches = 0;
 
 for (const fixture of loadEvalFixtures()) {
   const audit = normalizeAuditForSnapshot(auditJavaScriptRepo(fixture.root));
@@ -17,9 +18,7 @@ for (const fixture of loadEvalFixtures()) {
   const auditMatched = compareSnapshot(fixture.name, "audit", audit);
   const planMatched = compareSnapshot(fixture.name, "plan", plan);
 
-  if (auditMatched && planMatched) {
-    console.log(`PASS ${fixture.name}`);
-  }
+  if (auditMatched && planMatched) console.log(`PASS ${fixture.name}`);
 }
 
 compareSnapshot("mcp-tools", undefined, normalizeJsonForSnapshot({ tools: mcpTools }));
@@ -29,8 +28,8 @@ if (failures > 0) {
   process.exit(1);
 }
 
-console.log(`\n${loadEvalFixtures().length} fixture(s) matched audit and plan snapshots.`);
-console.log("MCP tool snapshot matched.");
+console.log(`\n${matches} snapshot(s) matched.`);
+console.log(`${loadEvalFixtures().length} fixture(s) matched audit and plan snapshots.`);
 
 function compareSnapshot(fixtureName, kind, actual) {
   const snapshotFile = kind ? `${fixtureName}.${kind}.json` : `${fixtureName}.json`;
@@ -39,6 +38,8 @@ function compareSnapshot(fixtureName, kind, actual) {
   try {
     const expected = JSON.parse(fs.readFileSync(snapshotPath, "utf8"));
     assert.deepEqual(actual, expected);
+    matches += 1;
+    console.log(`PASS ${snapshotFile}`);
     return true;
   } catch (error) {
     failures += 1;
