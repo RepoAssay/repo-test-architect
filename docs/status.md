@@ -8,6 +8,7 @@ Implemented:
 
 - JavaScript/TypeScript repository profiling
 - runtime adapter registry with the initial `javascript` adapter
+- deterministic project detection for polyglot repository roots
 - fixture-based regression coverage
 - audit, plan, explanation, ranking, and deferred-generation artifacts
 - stable JSON schemas for generated artifacts
@@ -29,6 +30,7 @@ Current tool names:
 
 - `audit_repo`
 - `list_adapters`
+- `detect_projects`
 - `get_audit_graph`
 - `generate_test_plan`
 - `explain_target`

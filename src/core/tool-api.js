@@ -1,7 +1,12 @@
 import { getAdapter } from "./adapter-registry.js";
 import { explainTarget } from "./explain-target.js";
+import { detectProjects } from "./project-detector.js";
 import { rankTestCandidates } from "./rank-test-candidates.js";
 import { createTestPlan } from "./test-plan.js";
+
+export function detectRepoProjects(repoRoot) {
+  return detectProjects(repoRoot);
+}
 
 export function auditRepo(repoRoot, options = {}) {
   return getAdapter(options.adapterId).audit(repoRoot, {

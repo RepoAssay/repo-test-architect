@@ -11,6 +11,7 @@ Descriptor schema:
 ## Tools
 
 - `list_adapters`
+- `detect_projects`
 - `audit_repo`
 - `get_audit_graph`
 - `generate_test_plan`
@@ -25,6 +26,7 @@ Each tool returns one of the stable artifacts documented in `docs/artifact-contr
 The model should consume these artifacts directly:
 
 - available language adapters come from `list_adapters`
+- project roots and adapter matches come from `detect_projects`
 - audit facts come from `audit_repo` or `get_audit_graph`
 - target-level explanation comes from `explain_target`
 - candidate ordering comes from `rank_test_candidates`
@@ -41,6 +43,7 @@ Each tool descriptor includes `outputArtifact` metadata:
 | Tool | Output |
 | --- | --- |
 | `list_adapters` | `adapter-registry/v1` |
+| `detect_projects` | `project-detection/v1` |
 | `audit_repo` | `audit/v1` |
 | `get_audit_graph` | `audit/v1` |
 | `generate_test_plan` | `plan/v1` |
@@ -49,6 +52,7 @@ Each tool descriptor includes `outputArtifact` metadata:
 | `generate_selected_test` | `generation-deferred/v1` |
 
 Use `list_adapters` before `audit_repo` when a client needs to discover supported adapter IDs.
+Use `detect_projects` when a repository may contain multiple language or package roots.
 `audit_repo` accepts an optional `adapterId`. The current registered adapter is `javascript`.
 
 ## Future Transport

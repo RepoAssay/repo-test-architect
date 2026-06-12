@@ -154,6 +154,22 @@ list_adapters
 This artifact lists registered language adapters and their supported language labels.
 Clients should use the adapter `id` when passing `adapterId` to `audit_repo`.
 
+## Project Detection Artifact
+
+Schema:
+
+- `schemas/project-detection-v1.schema.json`
+- `schemaVersion: "project-detection/v1"`
+
+MCP tool:
+
+```txt
+detect_projects
+```
+
+This artifact lists project roots found inside a repository, their marker files, likely languages, matching adapter IDs, and whether the current runtime can audit them.
+It is the first deterministic step toward polyglot repo support and future parallel adapter execution.
+
 ## Changed-Only Flow
 
 For PR-style workflows, use `--changed`:
@@ -201,6 +217,7 @@ Internal tool API:
 
 - `auditRepo`
 - `getAdapterRegistry`
+- `detectRepoProjects`
 - `getAuditGraph`
 - `explainAuditTarget`
 - `rankAuditTestCandidates`

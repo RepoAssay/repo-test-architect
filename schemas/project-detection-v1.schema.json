@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "project-detection-v1.schema.json",
+  "title": "Project Detection Artifact",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "root", "projects", "summary"],
+  "properties": {
+    "schemaVersion": {
+      "const": "project-detection/v1"
+    },
+    "root": {
+      "type": "string",
+      "minLength": 1
+    },
+    "projects": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "root",
+          "absoluteRoot",
+          "ecosystems",
+          "languages",
+          "markerFiles",
+          "adapterIds",
+          "supported"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "root": {
+            "type": "string",
+            "minLength": 1
+          },
+          "absoluteRoot": {
+            "type": "string",
+            "minLength": 1
+          },
+          "ecosystems": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "languages": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "markerFiles": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "adapterIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "supported": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["projectCount", "supportedProjectCount", "unsupportedProjectCount"],
+      "properties": {
+        "projectCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "supportedProjectCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unsupportedProjectCount": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    }
+  }
+}

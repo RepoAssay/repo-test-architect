@@ -15,6 +15,27 @@
       }
     },
     {
+      "name": "detect_projects",
+      "description": "Detect project roots and matching adapters inside a repository.",
+      "outputArtifact": {
+        "schemaVersion": "project-detection/v1",
+        "schemaPath": "schemas/project-detection-v1.schema.json"
+      },
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "repoRoot"
+        ],
+        "properties": {
+          "repoRoot": {
+            "type": "string",
+            "description": "Repository root path."
+          }
+        }
+      }
+    },
+    {
       "name": "audit_repo",
       "description": "Audit a repository and return the deterministic audit graph.",
       "outputArtifact": {

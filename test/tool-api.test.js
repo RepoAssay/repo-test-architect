@@ -3,6 +3,7 @@ import path from "node:path";
 import { describe, it } from "node:test";
 import {
   auditRepo,
+  detectRepoProjects,
   explainAuditTarget,
   generateTestPlan,
   getAuditGraph,
@@ -11,6 +12,13 @@ import {
 } from "../src/core/tool-api.js";
 
 describe("tool API", () => {
+  it("detects repository projects", () => {
+    const detection = detectRepoProjects(path.resolve("examples/polyglot-workspace"));
+
+    assert.equal(detection.schemaVersion, "project-detection/v1");
+    assert.equal(detection.summary.projectCount, 2);
+  });
+
   it("audits a repo and exposes the audit graph", () => {
     const audit = auditRepo(path.resolve("examples/node-vitest-basic"), { adapterId: "javascript" });
 

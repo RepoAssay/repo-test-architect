@@ -3,6 +3,28 @@ import { explainTarget } from "./explain-target";
 import { rankTestCandidates } from "./rank-test-candidates";
 import { createTestPlan, type TestPlan } from "./test-plan";
 
+export interface ProjectDetection {
+  schemaVersion: "project-detection/v1";
+  root: string;
+  projects: DetectedProject[];
+  summary: {
+    projectCount: number;
+    supportedProjectCount: number;
+    unsupportedProjectCount: number;
+  };
+}
+
+export interface DetectedProject {
+  id: string;
+  root: string;
+  absoluteRoot: string;
+  ecosystems: string[];
+  languages: string[];
+  markerFiles: string[];
+  adapterIds: string[];
+  supported: boolean;
+}
+
 export interface AuditRepoOptions {
   adapterId?: string;
   changedPaths?: string[];
@@ -11,6 +33,8 @@ export interface AuditRepoOptions {
 export interface GenerateTestPlanOptions {
   itemId?: string;
 }
+
+export declare function detectRepoProjects(repoRoot: string): ProjectDetection;
 
 export function getAuditGraph(audit: AuditResult): AuditResult {
   validateAudit(audit);

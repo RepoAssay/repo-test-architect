@@ -21,6 +21,7 @@
     "explain:example": "node ./src/cli/index.js explain ./examples/node-vitest-basic --target src/authService.ts",
     "rank:example": "node ./src/cli/index.js rank ./examples/node-vitest-basic",
     "mcp:tools": "node ./src/mcp/invoke.js tools",
+    "mcp:detect:example": "node ./src/mcp/invoke.js call detect_projects \"{\\\"repoRoot\\\":\\\"./examples/polyglot-workspace\\\"}\"",
     "mcp:audit:example": "node ./src/mcp/invoke.js call audit_repo \"{\\\"repoRoot\\\":\\\"./examples/node-vitest-basic\\\"}\"",
     "mcp:audit:envelope": "node ./src/mcp/invoke.js call-envelope audit_repo \"{\\\"repoRoot\\\":\\\"./examples/node-vitest-basic\\\"}\"",
     "mcp:stdio": "node ./src/mcp/stdio.js",

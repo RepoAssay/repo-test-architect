@@ -67,6 +67,16 @@ describe("schema files", () => {
     assert.ok(schema.properties.adapters.items.required.includes("languages"));
   });
 
+  it("documents project-detection/v1", () => {
+    const schema = readSchema("schemas/project-detection-v1.schema.json");
+
+    assert.equal(schema.properties.schemaVersion.const, "project-detection/v1");
+    assert.ok(schema.required.includes("projects"));
+    assert.ok(schema.required.includes("summary"));
+    assert.ok(schema.properties.projects.items.required.includes("adapterIds"));
+    assert.ok(schema.properties.projects.items.required.includes("supported"));
+  });
+
   it("documents MCP tool descriptors", () => {
     const schema = readSchema("schemas/mcp-tool-v1.schema.json");
 
