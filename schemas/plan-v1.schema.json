@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://repo-test-architect.local/schemas/plan-v1.schema.json",
+  "title": "Repo Test Architect Test Plan",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "summary",
+    "blockers",
+    "items"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "plan/v1"
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "confidence",
+        "blockerCount",
+        "addTestCount",
+        "extendTestCount",
+        "deferredCount"
+      ],
+      "properties": {
+        "confidence": { "enum": ["low", "medium", "high"] },
+        "verificationCommand": { "type": "string" },
+        "blockerCount": { "type": "integer", "minimum": 0 },
+        "addTestCount": { "type": "integer", "minimum": 0 },
+        "extendTestCount": { "type": "integer", "minimum": 0 },
+        "deferredCount": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "blockers": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "action",
+          "target",
+          "path",
+          "testLevel",
+          "priority",
+          "riskReductionScore",
+          "maintenanceCost",
+          "rationale",
+          "existingTestPaths"
+        ],
+        "properties": {
+          "id": { "type": "string" },
+          "action": { "enum": ["add-test", "extend-test", "defer"] },
+          "target": { "type": "string" },
+          "path": { "type": "string" },
+          "testLevel": { "enum": ["unit", "integration", "component", "ui", "none"] },
+          "priority": { "type": "integer" },
+          "riskReductionScore": { "type": "integer", "minimum": 0, "maximum": 10 },
+          "maintenanceCost": { "type": "integer", "minimum": 0, "maximum": 10 },
+          "rationale": { "type": "array", "items": { "type": "string" } },
+          "existingTestPaths": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    }
+  }
+}

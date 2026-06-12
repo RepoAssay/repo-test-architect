@@ -1,0 +1,121 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://repo-test-architect.local/schemas/audit-v1.schema.json",
+  "title": "Repo Test Architect Audit",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "profile",
+    "untestedCandidates",
+    "coveredButRisky",
+    "recommended",
+    "skipped",
+    "risks"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "audit/v1"
+    },
+    "profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "root",
+        "languages",
+        "packageManagers",
+        "testFrameworks",
+        "architectures",
+        "detectedConventions",
+        "existingTestLocations",
+        "setupSignals",
+        "confidence",
+        "blockers"
+      ],
+      "properties": {
+        "root": { "type": "string" },
+        "languages": { "type": "array", "items": { "type": "string" } },
+        "packageManagers": { "type": "array", "items": { "type": "string" } },
+        "testFrameworks": { "type": "array", "items": { "type": "string" } },
+        "architectures": { "type": "array", "items": { "type": "string" } },
+        "testCommand": { "type": "string" },
+        "detectedConventions": { "type": "array", "items": { "type": "string" } },
+        "existingTestLocations": { "type": "array", "items": { "type": "string" } },
+        "setupSignals": { "type": "array", "items": { "type": "string" } },
+        "confidence": { "enum": ["low", "medium", "high"] },
+        "blockers": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "untestedCandidates": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/auditTarget" }
+    },
+    "coveredButRisky": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/auditTarget" }
+    },
+    "recommended": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/auditTarget" }
+    },
+    "skipped": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/skippedTarget" }
+    },
+    "risks": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  },
+  "$defs": {
+    "auditTarget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "path",
+        "kind",
+        "risk",
+        "testability",
+        "recommendedTestLevel",
+        "riskReductionScore",
+        "maintenanceCost",
+        "reasons",
+        "existingTestPaths"
+      ],
+      "properties": {
+        "name": { "type": "string" },
+        "path": { "type": "string" },
+        "kind": { "type": "string" },
+        "risk": { "enum": ["low", "medium", "high"] },
+        "testability": { "enum": ["low", "medium", "high"] },
+        "recommendedTestLevel": { "enum": ["unit", "integration", "component", "ui", "none"] },
+        "riskReductionScore": { "type": "integer", "minimum": 0, "maximum": 10 },
+        "maintenanceCost": { "type": "integer", "minimum": 0, "maximum": 10 },
+        "reasons": { "type": "array", "items": { "type": "string" } },
+        "existingTestPaths": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "skippedTarget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "path",
+        "kind",
+        "riskReductionScore",
+        "maintenanceCost",
+        "reason"
+      ],
+      "properties": {
+        "name": { "type": "string" },
+        "path": { "type": "string" },
+        "kind": { "type": "string" },
+        "riskReductionScore": { "type": "integer", "minimum": 0, "maximum": 10 },
+        "maintenanceCost": { "type": "integer", "minimum": 0, "maximum": 10 },
+        "reason": { "type": "string" },
+        "preferredCoveragePath": { "type": "string" }
+      }
+    }
+  }
+}
