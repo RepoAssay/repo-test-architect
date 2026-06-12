@@ -47,6 +47,7 @@ Refresh snapshots after intentional audit behavior changes:
 
 ```powershell
 npm run eval:check
+npm run eval:summary
 npm run eval:update
 ```
 
