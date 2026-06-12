@@ -48,6 +48,20 @@ It handles:
 
 It is intentionally small and should be replaced or wrapped by an official MCP SDK transport later.
 
+## Error Data
+
+Tool call failures return JSON-RPC code `-32000` with stable `error.data.kind` values:
+
+- `unknown-tool`
+- `invalid-arguments`
+- `missing-required-argument`
+- `unsupported-argument`
+
+Known tool errors may also include:
+
+- `toolName`
+- `argument`
+
 ## Local Harness
 
 Until the real transport is added, use the local invoke harness:

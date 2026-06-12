@@ -1,3 +1,10 @@
+export const mcpToolErrorKinds = [
+  "unknown-tool",
+  "invalid-arguments",
+  "missing-required-argument",
+  "unsupported-argument"
+];
+
 export class McpToolError extends Error {
   constructor(kind, message, details = {}) {
     super(message);

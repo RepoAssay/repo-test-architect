@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import { mcpToolErrorKinds } from "../src/mcp/errors.js";
 import { handleJsonRpcRequest } from "../src/mcp/json-rpc.js";
 import { expectedMcpToolNames } from "./support/mcp-tools.js";
 
@@ -63,6 +64,15 @@ describe("MCP JSON-RPC scaffold", () => {
     assert.match(response.error.message, /Unknown MCP tool/);
     assert.equal(response.error.data.kind, "unknown-tool");
     assert.equal(response.error.data.toolName, "missing_tool");
+  });
+
+  it("documents stable MCP tool error kinds", () => {
+    assert.deepEqual(mcpToolErrorKinds, [
+      "unknown-tool",
+      "invalid-arguments",
+      "missing-required-argument",
+      "unsupported-argument"
+    ]);
   });
 
   it("returns JSON-RPC error data for invalid tool arguments", () => {
