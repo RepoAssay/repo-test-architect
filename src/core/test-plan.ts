@@ -3,6 +3,7 @@ import type { AuditResult, AuditTarget, TestLevel } from "./audit-model";
 export type PlanAction = "add-test" | "extend-test" | "defer";
 
 export interface TestPlanItem {
+  id: string;
   action: PlanAction;
   target: string;
   path: string;
@@ -34,6 +35,7 @@ export function createTestPlan(audit: AuditResult): TestPlan {
   const deferredItems = audit.skipped
     .filter((target) => target.riskReductionScore >= 2)
     .map((target) => ({
+      id: `defer:${target.path}`,
       action: "defer" as const,
       target: target.name,
       path: target.path,
@@ -66,6 +68,7 @@ export function createTestPlan(audit: AuditResult): TestPlan {
 
 function toPlanItem(action: "add-test" | "extend-test", target: AuditTarget): TestPlanItem {
   return {
+    id: `${action}:${target.path}`,
     action,
     target: target.name,
     path: target.path,

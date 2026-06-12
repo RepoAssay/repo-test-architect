@@ -13,6 +13,7 @@
   ],
   "items": [
     {
+      "id": "add-test:src/paymentParser.ts",
       "action": "add-test",
       "target": "paymentParser",
       "path": "src/paymentParser.ts",
@@ -27,6 +28,7 @@
       "existingTestPaths": []
     },
     {
+      "id": "add-test:src/paymentClient.ts",
       "action": "add-test",
       "target": "paymentClient",
       "path": "src/paymentClient.ts",
@@ -42,6 +44,7 @@
       "existingTestPaths": []
     },
     {
+      "id": "defer:src/paymentResponseDto.ts",
       "action": "defer",
       "target": "paymentResponseDto",
       "path": "src/paymentResponseDto.ts",

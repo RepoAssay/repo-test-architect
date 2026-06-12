@@ -11,6 +11,7 @@
   "blockers": [],
   "items": [
     {
+      "id": "add-test:src/services/userService.ts",
       "action": "add-test",
       "target": "userService",
       "path": "src/services/userService.ts",
@@ -25,6 +26,7 @@
       "existingTestPaths": []
     },
     {
+      "id": "extend-test:src/routes/userRoutes.ts",
       "action": "extend-test",
       "target": "userRoutes",
       "path": "src/routes/userRoutes.ts",
@@ -42,6 +44,7 @@
       ]
     },
     {
+      "id": "defer:src/app.ts",
       "action": "defer",
       "target": "app",
       "path": "src/app.ts",
@@ -56,6 +59,7 @@
       "existingTestPaths": []
     },
     {
+      "id": "defer:src/models/userDto.ts",
       "action": "defer",
       "target": "userDto",
       "path": "src/models/userDto.ts",

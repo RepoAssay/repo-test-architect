@@ -20,6 +20,15 @@ describe("test plan generator", () => {
       plan.items.map((item) => `${item.action}:${item.target}`),
       ["add-test:sessionService", "extend-test:LoginForm", "defer:sessionDto", "defer:Avatar"]
     );
+    assert.deepEqual(
+      plan.items.map((item) => item.id),
+      [
+        "add-test:src/services/sessionService.ts",
+        "extend-test:src/components/LoginForm.tsx",
+        "defer:src/models/sessionDto.ts",
+        "defer:src/components/Avatar.tsx"
+      ]
+    );
   });
 
   it("carries blockers into the plan for repos without tests", () => {

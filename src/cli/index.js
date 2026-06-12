@@ -193,7 +193,7 @@ function renderMarkdownPlan(plan) {
         item.existingTestPaths.length > 0 ? ` Existing tests: ${item.existingTestPaths.join(", ")}.` : "";
       const rationale = item.rationale.map(trimTrailingPeriod).join(". ");
       lines.push(
-        `- ${item.action}: ${item.target} (${item.testLevel}, priority ${item.priority}, risk reduction ${item.riskReductionScore}/10, maintenance ${item.maintenanceCost}/10). ${rationale}.${existingTests}`
+        `- ${item.action}: ${item.target} [${item.id}] (${item.testLevel}, priority ${item.priority}, risk reduction ${item.riskReductionScore}/10, maintenance ${item.maintenanceCost}/10). ${rationale}.${existingTests}`
       );
     }
   }

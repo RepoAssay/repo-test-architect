@@ -11,6 +11,7 @@
   "blockers": [],
   "items": [
     {
+      "id": "add-test:src/services/sessionService.ts",
       "action": "add-test",
       "target": "sessionService",
       "path": "src/services/sessionService.ts",
@@ -25,6 +26,7 @@
       "existingTestPaths": []
     },
     {
+      "id": "extend-test:src/components/LoginForm.tsx",
       "action": "extend-test",
       "target": "LoginForm",
       "path": "src/components/LoginForm.tsx",
@@ -41,6 +43,7 @@
       ]
     },
     {
+      "id": "defer:src/models/sessionDto.ts",
       "action": "defer",
       "target": "sessionDto",
       "path": "src/models/sessionDto.ts",
@@ -55,6 +58,7 @@
       "existingTestPaths": []
     },
     {
+      "id": "defer:src/components/Avatar.tsx",
       "action": "defer",
       "target": "Avatar",
       "path": "src/components/Avatar.tsx",

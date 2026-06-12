@@ -11,6 +11,7 @@
   "blockers": [],
   "items": [
     {
+      "id": "extend-test:src/invoiceParser.ts",
       "action": "extend-test",
       "target": "invoiceParser",
       "path": "src/invoiceParser.ts",
@@ -28,6 +29,7 @@
       ]
     },
     {
+      "id": "add-test:src/invoiceService.ts",
       "action": "add-test",
       "target": "invoiceService",
       "path": "src/invoiceService.ts",
@@ -43,6 +45,7 @@
       "existingTestPaths": []
     },
     {
+      "id": "defer:src/invoiceDto.ts",
       "action": "defer",
       "target": "invoiceDto",
       "path": "src/invoiceDto.ts",

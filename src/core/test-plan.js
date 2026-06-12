@@ -4,6 +4,7 @@ export function createTestPlan(audit) {
   const deferredItems = audit.skipped
     .filter((target) => target.riskReductionScore >= 2)
     .map((target) => ({
+      id: `defer:${target.path}`,
       action: "defer",
       target: target.name,
       path: target.path,
@@ -36,6 +37,7 @@ export function createTestPlan(audit) {
 
 function toPlanItem(action, target) {
   return {
+    id: `${action}:${target.path}`,
     action,
     target: target.name,
     path: target.path,

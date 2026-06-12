@@ -49,6 +49,7 @@ describe("CLI", () => {
 
     assert.match(output, /^# Test Plan/);
     assert.match(output, /add-test: authService/);
+    assert.match(output, /\[add-test:src\/authService\.ts\]/);
     assert.match(output, /extend-test: deckParser/);
   });
 

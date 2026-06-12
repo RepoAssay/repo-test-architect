@@ -11,6 +11,7 @@
   "blockers": [],
   "items": [
     {
+      "id": "extend-test:src/deckParser.ts",
       "action": "extend-test",
       "target": "deckParser",
       "path": "src/deckParser.ts",
@@ -28,6 +29,7 @@
       ]
     },
     {
+      "id": "add-test:src/authService.ts",
       "action": "add-test",
       "target": "authService",
       "path": "src/authService.ts",
@@ -42,6 +44,7 @@
       "existingTestPaths": []
     },
     {
+      "id": "defer:src/userDto.ts",
       "action": "defer",
       "target": "userDto",
       "path": "src/userDto.ts",
