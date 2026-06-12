@@ -48,6 +48,15 @@ describe("schema files", () => {
     assert.ok(schema.properties.candidates.items.required.includes("targetId"));
     assert.ok(schema.properties.candidates.items.required.includes("priority"));
   });
+
+  it("documents generation-deferred/v1", () => {
+    const schema = readSchema("schemas/generation-deferred-v1.schema.json");
+
+    assert.equal(schema.properties.schemaVersion.const, "generation-deferred/v1");
+    assert.equal(schema.properties.status.const, "deferred");
+    assert.ok(schema.required.includes("planItemId"));
+    assert.ok(schema.required.includes("nextSteps"));
+  });
 });
 
 function readSchema(path) {

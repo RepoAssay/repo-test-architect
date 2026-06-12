@@ -62,7 +62,7 @@ foreach ($signal in @("vitest", "pure-logic", "auth or permission branches", "te
 }
 
 $mcpTools = Get-Content (Join-Path $root "src/mcp/tool-definitions.js") -Raw
-foreach ($tool in @("audit_repo", "get_audit_graph", "generate_test_plan", "explain_target", "rank_test_candidates")) {
+foreach ($tool in @("audit_repo", "get_audit_graph", "generate_test_plan", "explain_target", "rank_test_candidates", "generate_selected_test")) {
   if (-not $mcpTools.Contains($tool)) {
     throw "Missing expected MCP tool: $tool"
   }

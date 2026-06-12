@@ -122,6 +122,22 @@ It contains:
 - priority, risk reduction, and maintenance scores
 - source signals and rationale
 
+## Generation Deferred Artifact
+
+Schema:
+
+- `schemas/generation-deferred-v1.schema.json`
+- `schemaVersion: "generation-deferred/v1"`
+
+MCP tool:
+
+```txt
+generate_selected_test
+```
+
+This artifact is returned while native test generation remains intentionally disabled.
+It tells clients that the plan item was understood, but no test code should be produced yet.
+
 ## Changed-Only Flow
 
 For PR-style workflows, use `--changed`:

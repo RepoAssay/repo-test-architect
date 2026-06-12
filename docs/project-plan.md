@@ -83,6 +83,8 @@ The internal tool API now mirrors the first five MCP-shaped operations:
 
 The later MCP server should wrap that API rather than duplicate audit, ranking, or planning logic.
 
+`generate_selected_test` exists in the MCP tool surface but returns a structured deferred artifact until native generation has adapter-specific fixtures and repair-loop coverage.
+
 The dependency-free MCP tool surface lives in `src/mcp/tool-definitions.js` and is documented in `docs/mcp-tools.md`.
 It defines tool names, input schemas, and dispatch behavior without committing to a specific transport package yet.
 

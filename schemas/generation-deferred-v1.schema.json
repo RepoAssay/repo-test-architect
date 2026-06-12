@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://repo-test-architect.local/schemas/generation-deferred-v1.schema.json",
+  "title": "Repo Test Architect Generation Deferred",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "planItemId",
+    "status",
+    "reason",
+    "nextSteps"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "generation-deferred/v1"
+    },
+    "planItemId": { "type": "string" },
+    "status": { "const": "deferred" },
+    "reason": { "type": "string" },
+    "nextSteps": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}

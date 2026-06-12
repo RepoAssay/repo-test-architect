@@ -5,6 +5,7 @@ import {
   getAuditGraph,
   rankAuditTestCandidates
 } from "../core/tool-api.js";
+import { createGenerationDeferredResult } from "../core/generation-deferred.js";
 
 export const mcpTools = [
   {
@@ -48,6 +49,13 @@ export const mcpTools = [
     inputSchema: objectSchema({
       audit: { type: "object", description: "An audit/v1 artifact." }
     }, ["audit"])
+  },
+  {
+    name: "generate_selected_test",
+    description: "Return a structured deferred result until native test generation is enabled.",
+    inputSchema: objectSchema({
+      planItemId: { type: "string", description: "Stable plan item id selected for future generation." }
+    }, ["planItemId"])
   }
 ];
 
@@ -67,6 +75,8 @@ export function callTool(name, args = {}) {
       return explainAuditTarget(requireObject(args.audit, "audit"), requireString(args.targetId, "targetId"));
     case "rank_test_candidates":
       return rankAuditTestCandidates(requireObject(args.audit, "audit"));
+    case "generate_selected_test":
+      return createGenerationDeferredResult(requireString(args.planItemId, "planItemId"));
     default:
       throw new Error(`Unknown MCP tool: ${name}`);
   }

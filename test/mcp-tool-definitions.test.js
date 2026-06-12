@@ -7,7 +7,7 @@ describe("MCP tool definitions", () => {
   it("declares the expected deterministic tools", () => {
     assert.deepEqual(
       mcpTools.map((tool) => tool.name),
-      ["audit_repo", "get_audit_graph", "generate_test_plan", "explain_target", "rank_test_candidates"]
+      ["audit_repo", "get_audit_graph", "generate_test_plan", "explain_target", "rank_test_candidates", "generate_selected_test"]
     );
 
     for (const tool of mcpTools) {
@@ -25,12 +25,15 @@ describe("MCP tool definitions", () => {
     const plan = callTool("generate_test_plan", { audit, itemId: "add-test:src/authService.ts" });
     const explanation = callTool("explain_target", { audit, targetId: "src/authService.ts" });
     const ranking = callTool("rank_test_candidates", { audit });
+    const deferredGeneration = callTool("generate_selected_test", { planItemId: "add-test:src/authService.ts" });
 
     assert.equal(graph, audit);
     assert.equal(plan.schemaVersion, "plan/v1");
     assert.deepEqual(plan.items.map((item) => item.id), ["add-test:src/authService.ts"]);
     assert.equal(explanation.schemaVersion, "target-explanation/v1");
     assert.equal(ranking.schemaVersion, "candidate-ranking/v1");
+    assert.equal(deferredGeneration.schemaVersion, "generation-deferred/v1");
+    assert.equal(deferredGeneration.status, "deferred");
   });
 
   it("validates tool input before dispatch", () => {

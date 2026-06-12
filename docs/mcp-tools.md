@@ -11,6 +11,7 @@ The tool definitions are dependency-free so the deterministic contract can be te
 - `generate_test_plan`
 - `explain_target`
 - `rank_test_candidates`
+- `generate_selected_test`
 
 ## Contract
 
@@ -22,8 +23,10 @@ The model should consume these artifacts directly:
 - target-level explanation comes from `explain_target`
 - candidate ordering comes from `rank_test_candidates`
 - actionable plan items come from `generate_test_plan`
+- selected test generation currently returns `generation-deferred/v1`
 
 The MCP layer should not reclassify code, rerank candidates, or infer repository facts from raw source files.
+It should also not generate test code until adapter-specific generation rules and repair loops exist.
 
 ## Future Transport
 
