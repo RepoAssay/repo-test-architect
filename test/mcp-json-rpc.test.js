@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { handleJsonRpcRequest } from "../src/mcp/json-rpc.js";
+import { expectedMcpToolNames } from "./support/mcp-tools.js";
 
 describe("MCP JSON-RPC scaffold", () => {
   it("handles initialize", () => {
@@ -26,10 +27,7 @@ describe("MCP JSON-RPC scaffold", () => {
       method: "tools/list"
     });
 
-    assert.deepEqual(
-      response.result.tools.map((tool) => tool.name),
-      ["audit_repo", "get_audit_graph", "generate_test_plan", "explain_target", "rank_test_candidates", "generate_selected_test"]
-    );
+    assert.deepEqual(response.result.tools.map((tool) => tool.name), expectedMcpToolNames);
   });
 
   it("calls tools with MCP-style content results", () => {

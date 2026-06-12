@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { describe, it } from "node:test";
+import { expectedMcpToolNames } from "./support/mcp-tools.js";
 
 const invokePath = "src/mcp/invoke.js";
 
@@ -11,10 +12,7 @@ describe("MCP invoke harness", () => {
     });
     const payload = JSON.parse(output);
 
-    assert.deepEqual(
-      payload.tools.map((tool) => tool.name),
-      ["audit_repo", "get_audit_graph", "generate_test_plan", "explain_target", "rank_test_candidates", "generate_selected_test"]
-    );
+    assert.deepEqual(payload.tools.map((tool) => tool.name), expectedMcpToolNames);
   });
 
   it("calls a tool with JSON args", () => {

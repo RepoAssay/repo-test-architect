@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { describe, it } from "node:test";
+import { expectedMcpToolNames } from "./support/mcp-tools.js";
 
 const stdioPath = "src/mcp/stdio.js";
 
@@ -20,10 +21,7 @@ describe("MCP stdio scaffold", () => {
 
     const response = JSON.parse(result.stdout.trim());
     assert.equal(response.id, 1);
-    assert.deepEqual(
-      response.result.tools.map((tool) => tool.name),
-      ["audit_repo", "get_audit_graph", "generate_test_plan", "explain_target", "rank_test_candidates", "generate_selected_test"]
-    );
+    assert.deepEqual(response.result.tools.map((tool) => tool.name), expectedMcpToolNames);
   });
 
   it("returns parse errors for invalid JSON lines", () => {

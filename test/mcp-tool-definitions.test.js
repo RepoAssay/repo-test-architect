@@ -1,14 +1,13 @@
 import assert from "node:assert/strict";
 import path from "node:path";
 import { describe, it } from "node:test";
-import { callTool, mcpTools } from "../src/mcp/tool-definitions.js";
+import { callTool, mcpToolNames, mcpTools } from "../src/mcp/tool-definitions.js";
+import { expectedMcpToolNames } from "./support/mcp-tools.js";
 
 describe("MCP tool definitions", () => {
   it("declares the expected deterministic tools", () => {
-    assert.deepEqual(
-      mcpTools.map((tool) => tool.name),
-      ["audit_repo", "get_audit_graph", "generate_test_plan", "explain_target", "rank_test_candidates", "generate_selected_test"]
-    );
+    assert.deepEqual(mcpTools.map((tool) => tool.name), expectedMcpToolNames);
+    assert.deepEqual(mcpToolNames, expectedMcpToolNames);
 
     for (const tool of mcpTools) {
       assert.equal(tool.inputSchema.type, "object");

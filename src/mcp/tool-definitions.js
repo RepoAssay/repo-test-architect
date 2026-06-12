@@ -59,6 +59,8 @@ export const mcpTools = [
   }
 ];
 
+export const mcpToolNames = mcpTools.map((tool) => tool.name);
+
 export function callTool(name, args = {}) {
   switch (name) {
     case "audit_repo":
