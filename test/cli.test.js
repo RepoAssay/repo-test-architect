@@ -63,4 +63,32 @@ describe("CLI", () => {
       ["extend-test:deckParser", "add-test:authService", "defer:userDto"]
     );
   });
+
+  it("emits a JSON test plan from an existing audit file", () => {
+    const output = execFileSync(
+      process.execPath,
+      [cliPath, "plan", "--from-audit", "evals/expected/node-vitest-basic.audit.json", "--format=json"],
+      {
+        encoding: "utf8"
+      }
+    );
+    const plan = JSON.parse(output);
+
+    assert.equal(plan.summary.verificationCommand, "npm run test");
+    assert.deepEqual(
+      plan.items.map((item) => `${item.action}:${item.target}`),
+      ["extend-test:deckParser", "add-test:authService", "defer:userDto"]
+    );
+  });
+
+  it("rejects audit-from-file input for the audit command", () => {
+    assert.throws(
+      () =>
+        execFileSync(process.execPath, [cliPath, "audit", "--from-audit", "evals/expected/node-vitest-basic.audit.json"], {
+          encoding: "utf8",
+          stdio: "pipe"
+        }),
+      /Command failed/
+    );
+  });
 });

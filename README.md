@@ -29,6 +29,12 @@ npm run plan:example
 npm run plan:example:json
 ```
 
+Generate a plan from an existing audit JSON file:
+
+```powershell
+npm run plan:from-audit:example
+```
+
 Run the auditor regression tests:
 
 ```powershell

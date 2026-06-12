@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import fs from "node:fs";
 import path from "node:path";
 import { auditJavaScriptRepo } from "../adapters/javascript/audit.js";
 import { createTestPlan } from "../core/test-plan.js";
@@ -6,7 +7,7 @@ import { createTestPlan } from "../core/test-plan.js";
 const options = parseArgs(process.argv.slice(2));
 
 if (!["audit", "plan"].includes(options.command)) {
-  console.error("Usage: repo-test-architect <audit|plan> <repo> [--format markdown|json]");
+  console.error("Usage: repo-test-architect <audit|plan> <repo> [--format markdown|json] [--from-audit audit.json]");
   process.exit(1);
 }
 
@@ -15,8 +16,14 @@ if (!["markdown", "json"].includes(options.format)) {
   process.exit(1);
 }
 
-const root = path.resolve(process.cwd(), options.repoPath);
-const audit = auditJavaScriptRepo(root);
+if (options.fromAuditPath && options.command !== "plan") {
+  console.error("--from-audit is only supported with the plan command.");
+  process.exit(1);
+}
+
+const audit = options.fromAuditPath
+  ? readAuditJson(options.fromAuditPath)
+  : auditJavaScriptRepo(path.resolve(process.cwd(), options.repoPath));
 const output = options.command === "plan" ? createTestPlan(audit) : audit;
 
 if (options.format === "json") {
@@ -31,6 +38,7 @@ function parseArgs(args) {
   const [command, ...rest] = args;
   let repoPath = ".";
   let format = "markdown";
+  let fromAuditPath;
 
   for (let index = 0; index < rest.length; index += 1) {
     const arg = rest[index];
@@ -46,12 +54,37 @@ function parseArgs(args) {
       continue;
     }
 
+    if (arg === "--from-audit") {
+      fromAuditPath = rest[index + 1] ?? "";
+      index += 1;
+      continue;
+    }
+
+    if (arg.startsWith("--from-audit=")) {
+      fromAuditPath = arg.slice("--from-audit=".length);
+      continue;
+    }
+
     if (!arg.startsWith("-")) {
       repoPath = arg;
     }
   }
 
-  return { command, repoPath, format };
+  return { command, repoPath, format, fromAuditPath };
+}
+
+function readAuditJson(auditPath) {
+  if (!auditPath) {
+    console.error("--from-audit requires a JSON file path.");
+    process.exit(1);
+  }
+
+  try {
+    return JSON.parse(fs.readFileSync(path.resolve(process.cwd(), auditPath), "utf8"));
+  } catch (error) {
+    console.error(`Failed to read audit JSON: ${error.message}`);
+    process.exit(1);
+  }
 }
 
 function renderMarkdownReport(audit) {
