@@ -65,6 +65,26 @@ describe("CLI", () => {
     assert.equal(Array.isArray(plan.items), true);
   });
 
+  it("supports changed-since audit mode", () => {
+    const output = execFileSync(process.execPath, [cliPath, "audit", ".", "--changed-since", "HEAD", "--format=json"], {
+      encoding: "utf8"
+    });
+    const audit = JSON.parse(output);
+
+    assert.equal(audit.schemaVersion, "audit/v1");
+    assert.deepEqual(audit.recommended, []);
+  });
+
+  it("supports changed-since plan mode", () => {
+    const output = execFileSync(process.execPath, [cliPath, "plan", ".", "--changed-since=HEAD", "--format=json"], {
+      encoding: "utf8"
+    });
+    const plan = JSON.parse(output);
+
+    assert.equal(plan.schemaVersion, "plan/v1");
+    assert.deepEqual(plan.items, []);
+  });
+
   it("emits a markdown test plan", () => {
     const output = execFileSync(process.execPath, [cliPath, "plan", fixturePath], {
       encoding: "utf8"

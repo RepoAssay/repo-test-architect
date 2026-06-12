@@ -8,7 +8,7 @@ import { createTestPlan } from "../core/test-plan.js";
 const options = parseArgs(process.argv.slice(2));
 
 if (!["audit", "plan"].includes(options.command)) {
-  console.error("Usage: repo-test-architect <audit|plan> <repo> [--format markdown|json] [--from-audit audit.json] [--item id]");
+  console.error("Usage: repo-test-architect <audit|plan> <repo> [--format markdown|json] [--from-audit audit.json] [--item id] [--changed] [--changed-since ref]");
   process.exit(1);
 }
 
@@ -26,7 +26,7 @@ const repoRoot = path.resolve(process.cwd(), options.repoPath);
 const audit = options.fromAuditPath
   ? readAuditJson(options.fromAuditPath)
   : auditJavaScriptRepo(repoRoot, {
-      changedPaths: options.changedOnly ? readChangedPaths(repoRoot) : undefined
+      changedPaths: readSelectedChangedPaths(repoRoot, options)
     });
 const output = options.command === "plan" ? filterPlan(createTestPlan(audit), options.itemId) : audit;
 
@@ -45,6 +45,7 @@ function parseArgs(args) {
   let fromAuditPath;
   let itemId;
   let changedOnly = false;
+  let changedSinceRef;
 
   for (let index = 0; index < rest.length; index += 1) {
     const arg = rest[index];
@@ -87,12 +88,23 @@ function parseArgs(args) {
       continue;
     }
 
+    if (arg === "--changed-since") {
+      changedSinceRef = rest[index + 1] ?? "";
+      index += 1;
+      continue;
+    }
+
+    if (arg.startsWith("--changed-since=")) {
+      changedSinceRef = arg.slice("--changed-since=".length);
+      continue;
+    }
+
     if (!arg.startsWith("-")) {
       repoPath = arg;
     }
   }
 
-  return { command, repoPath, format, fromAuditPath, itemId, changedOnly };
+  return { command, repoPath, format, fromAuditPath, itemId, changedOnly, changedSinceRef };
 }
 
 function readAuditJson(auditPath) {
@@ -128,6 +140,34 @@ function readChangedPaths(repoRoot) {
     console.error(`Failed to read changed files: ${error.message}`);
     process.exit(1);
   }
+}
+
+function readChangedPathsSince(repoRoot, ref) {
+  if (!ref) {
+    console.error("--changed-since requires a Git ref.");
+    process.exit(1);
+  }
+
+  try {
+    const output = execFileSync("git", ["-C", repoRoot, "diff", "--name-only", `${ref}...HEAD`], {
+      encoding: "utf8"
+    });
+
+    return output
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => line.replaceAll("\\", "/"));
+  } catch (error) {
+    console.error(`Failed to read changed files since ${ref}: ${error.message}`);
+    process.exit(1);
+  }
+}
+
+function readSelectedChangedPaths(repoRoot, options) {
+  if (options.changedSinceRef) return readChangedPathsSince(repoRoot, options.changedSinceRef);
+  if (options.changedOnly) return readChangedPaths(repoRoot);
+  return undefined;
 }
 
 function validateAuditJson(audit) {
