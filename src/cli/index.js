@@ -3,18 +3,20 @@ import fs from "node:fs";
 import { execFileSync } from "node:child_process";
 import path from "node:path";
 import {
+  auditRepoProjects,
   auditRepo,
   detectRepoProjects,
   explainAuditTarget,
   generateTestPlan,
   rankAuditTestCandidates,
+  summarizeRepoProjectAudits,
   validateAudit
 } from "../core/tool-api.js";
 
 const options = parseArgs(process.argv.slice(2));
 
-if (!["detect", "audit", "plan", "explain", "rank"].includes(options.command)) {
-  console.error("Usage: repo-test-architect <detect|audit|plan|explain|rank> <repo> [--format markdown|json] [--from-audit audit.json] [--item id] [--target id] [--changed] [--changed-since ref]");
+if (!["detect", "audit-projects", "summarize-projects", "audit", "plan", "explain", "rank"].includes(options.command)) {
+  console.error("Usage: repo-test-architect <detect|audit-projects|summarize-projects|audit|plan|explain|rank> <repo> [--format markdown|json] [--from-audit audit.json] [--item id] [--target id] [--changed] [--changed-since ref]");
   process.exit(1);
 }
 
@@ -30,19 +32,26 @@ if (options.fromAuditPath && !["plan", "explain", "rank"].includes(options.comma
 
 const repoRoot = path.resolve(process.cwd(), options.repoPath);
 const detection = options.command === "detect" ? detectRepoProjects(repoRoot) : undefined;
+const projectAudits = ["audit-projects", "summarize-projects"].includes(options.command)
+  ? auditRepoProjects(repoRoot)
+  : undefined;
 const audit = options.fromAuditPath
   ? readAuditJson(options.fromAuditPath)
-  : detection
+  : detection || projectAudits
     ? undefined
     : auditRepo(repoRoot, {
       changedPaths: readSelectedChangedPaths(repoRoot, options)
     });
-const output = detection ?? selectOutput(audit, options);
+const output = detection ?? selectProjectOutput(projectAudits, options) ?? selectOutput(audit, options);
 
 if (options.format === "json") {
   console.log(JSON.stringify(output, null, 2));
 } else if (options.command === "detect") {
   console.log(renderMarkdownDetection(output));
+} else if (options.command === "audit-projects") {
+  console.log(renderMarkdownProjectAudits(output));
+} else if (options.command === "summarize-projects") {
+  console.log(renderMarkdownProjectAuditSummary(output));
 } else if (options.command === "plan") {
   console.log(renderMarkdownPlan(output));
 } else if (options.command === "explain") {
@@ -221,6 +230,12 @@ function selectOutput(audit, options) {
   return audit;
 }
 
+function selectProjectOutput(projectAudits, options) {
+  if (!projectAudits) return undefined;
+  if (options.command === "summarize-projects") return summarizeRepoProjectAudits(projectAudits);
+  return projectAudits;
+}
+
 function renderMarkdownReport(audit) {
   const lines = [];
 
@@ -314,6 +329,82 @@ function renderMarkdownDetection(detection) {
       lines.push(
         `- ${project.root}: ${formatList(project.languages)} (${project.supported ? "supported" : "unsupported"}; adapters: ${adapterText}; markers: ${project.markerFiles.join(", ")})`
       );
+    }
+  }
+
+  return lines.join("\n");
+}
+
+function renderMarkdownProjectAudits(projectAudits) {
+  const lines = [];
+
+  lines.push("# Project Audits");
+  lines.push("");
+  lines.push("## Summary");
+  lines.push(`- Projects: ${projectAudits.summary.projectCount}`);
+  lines.push(`- Audited: ${projectAudits.summary.auditedProjectCount}`);
+  lines.push(`- Skipped: ${projectAudits.summary.skippedProjectCount}`);
+  lines.push("");
+  lines.push("## Audited Projects");
+
+  if (projectAudits.audits.length === 0) {
+    lines.push("- No supported projects audited.");
+  } else {
+    for (const project of projectAudits.audits) {
+      lines.push(
+        `- ${project.projectRoot}: ${project.adapterId} (${project.audit.untestedCandidates.length} untested, ${project.audit.coveredButRisky.length} covered but risky, ${project.audit.risks.length} risks)`
+      );
+    }
+  }
+
+  lines.push("");
+  lines.push("## Skipped Projects");
+
+  if (projectAudits.skippedProjects.length === 0) {
+    lines.push("- No projects skipped.");
+  } else {
+    for (const project of projectAudits.skippedProjects) {
+      lines.push(`- ${project.projectRoot}: ${project.reason} (${formatList(project.languages)})`);
+    }
+  }
+
+  return lines.join("\n");
+}
+
+function renderMarkdownProjectAuditSummary(summary) {
+  const lines = [];
+
+  lines.push("# Project Audit Summary");
+  lines.push("");
+  lines.push("## Summary");
+  lines.push(`- Projects: ${summary.summary.projectCount}`);
+  lines.push(`- Audited: ${summary.summary.auditedProjectCount}`);
+  lines.push(`- Unsupported: ${summary.summary.unsupportedProjectCount}`);
+  lines.push(`- Untested candidates: ${summary.summary.untestedCandidateCount}`);
+  lines.push(`- Covered but risky: ${summary.summary.coveredButRiskyCount}`);
+  lines.push(`- Skipped targets: ${summary.summary.skippedTargetCount}`);
+  lines.push(`- Risks: ${summary.summary.riskCount}`);
+  lines.push("");
+  lines.push("## Projects");
+
+  if (summary.projects.length === 0) {
+    lines.push("- No audited projects.");
+  } else {
+    for (const project of summary.projects) {
+      lines.push(
+        `- ${project.projectRoot}: ${project.adapterId}, ${project.confidence} confidence, ${project.untestedCandidateCount} untested, top candidates: ${formatList(project.topCandidateIds)}`
+      );
+    }
+  }
+
+  lines.push("");
+  lines.push("## Unsupported Projects");
+
+  if (summary.unsupportedProjects.length === 0) {
+    lines.push("- No unsupported projects.");
+  } else {
+    for (const project of summary.unsupportedProjects) {
+      lines.push(`- ${project.projectRoot}: ${project.reason} (${formatList(project.languages)})`);
     }
   }
 

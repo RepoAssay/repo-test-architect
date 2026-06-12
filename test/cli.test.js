@@ -37,6 +37,56 @@ describe("CLI", () => {
     );
   });
 
+  it("audits detected projects in markdown", () => {
+    const output = execFileSync(process.execPath, [cliPath, "audit-projects", "examples/polyglot-workspace"], {
+      encoding: "utf8"
+    });
+
+    assert.match(output, /^# Project Audits/);
+    assert.match(output, /apps\/web: javascript \(1 untested, 0 covered but risky, 1 risks\)/);
+    assert.match(output, /services\/api: No registered adapter supports this project's detected languages/);
+  });
+
+  it("audits detected projects as JSON", () => {
+    const output = execFileSync(
+      process.execPath,
+      [cliPath, "audit-projects", "examples/polyglot-workspace", "--format=json"],
+      {
+        encoding: "utf8"
+      }
+    );
+    const projectAudits = JSON.parse(output);
+
+    assert.equal(projectAudits.schemaVersion, "project-audits/v1");
+    assert.equal(projectAudits.summary.auditedProjectCount, 1);
+    assert.equal(projectAudits.audits[0].audit.schemaVersion, "audit/v1");
+  });
+
+  it("summarizes detected project audits in markdown", () => {
+    const output = execFileSync(process.execPath, [cliPath, "summarize-projects", "examples/polyglot-workspace"], {
+      encoding: "utf8"
+    });
+
+    assert.match(output, /^# Project Audit Summary/);
+    assert.match(output, /Untested candidates: 1/);
+    assert.match(output, /apps\/web: javascript, medium confidence, 1 untested/);
+  });
+
+  it("summarizes detected project audits as JSON", () => {
+    const output = execFileSync(
+      process.execPath,
+      [cliPath, "summarize-projects", "examples/polyglot-workspace", "--format=json"],
+      {
+        encoding: "utf8"
+      }
+    );
+    const summary = JSON.parse(output);
+
+    assert.equal(summary.schemaVersion, "project-audit-summary/v1");
+    assert.equal(summary.summary.untestedCandidateCount, 1);
+    assert.deepEqual(summary.projects[0].topCandidateIds, ["src/sessionClient.ts"]);
+  });
+
   it("emits markdown by default", () => {
     const output = execFileSync(process.execPath, [cliPath, "audit", fixturePath], {
       encoding: "utf8"

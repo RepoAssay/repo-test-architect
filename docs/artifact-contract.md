@@ -190,6 +190,13 @@ MCP tool:
 audit_projects
 ```
 
+Commands:
+
+```powershell
+node ./src/cli/index.js audit-projects ./examples/polyglot-workspace
+node ./src/cli/index.js audit-projects ./examples/polyglot-workspace --format json
+```
+
 This artifact runs the matching adapter for each supported detected project root and reports unsupported project roots separately.
 It does not yet merge or rank findings across projects; that belongs in a later core merge layer.
 
@@ -204,6 +211,13 @@ MCP tool:
 
 ```txt
 summarize_project_audits
+```
+
+Commands:
+
+```powershell
+node ./src/cli/index.js summarize-projects ./examples/polyglot-workspace
+node ./src/cli/index.js summarize-projects ./examples/polyglot-workspace --format json
 ```
 
 This artifact summarizes a `project-audits/v1` artifact into project-level counts, top candidate IDs, risk counts, and unsupported project roots.

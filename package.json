@@ -12,6 +12,10 @@
   "scripts": {
     "detect:example": "node ./src/cli/index.js detect ./examples/polyglot-workspace",
     "detect:example:json": "node ./src/cli/index.js detect ./examples/polyglot-workspace --format json",
+    "audit-projects:example": "node ./src/cli/index.js audit-projects ./examples/polyglot-workspace",
+    "audit-projects:example:json": "node ./src/cli/index.js audit-projects ./examples/polyglot-workspace --format json",
+    "summarize-projects:example": "node ./src/cli/index.js summarize-projects ./examples/polyglot-workspace",
+    "summarize-projects:example:json": "node ./src/cli/index.js summarize-projects ./examples/polyglot-workspace --format json",
     "audit:example": "node ./src/cli/index.js audit ./examples/node-vitest-basic",
     "audit:example:json": "node ./src/cli/index.js audit ./examples/node-vitest-basic --format json",
     "plan:example": "node ./src/cli/index.js plan ./examples/node-vitest-basic",
