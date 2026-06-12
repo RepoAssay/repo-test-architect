@@ -1,0 +1,127 @@
+{
+  "profile": {
+    "root": "<fixture>",
+    "languages": [
+      "typescript",
+      "javascript"
+    ],
+    "packageManagers": [
+      "npm"
+    ],
+    "testFrameworks": [
+      "jest"
+    ],
+    "architectures": [],
+    "testCommand": "npm run test",
+    "detectedConventions": [
+      "*.spec files"
+    ],
+    "existingTestLocations": [
+      "colocated with source"
+    ],
+    "setupSignals": [
+      "tsconfig",
+      "jest config"
+    ],
+    "confidence": "high",
+    "blockers": []
+  },
+  "untestedCandidates": [
+    {
+      "name": "invoiceService",
+      "path": "src/invoiceService.ts",
+      "kind": "service",
+      "risk": "high",
+      "testability": "medium",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 8,
+      "maintenanceCost": 4,
+      "reasons": [
+        "Service boundary",
+        "external dependency boundary",
+        "auth or permission branches"
+      ],
+      "existingTestPaths": []
+    }
+  ],
+  "coveredButRisky": [
+    {
+      "name": "invoiceParser",
+      "path": "src/invoiceParser.ts",
+      "kind": "pure-logic",
+      "risk": "high",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 9,
+      "maintenanceCost": 2,
+      "reasons": [
+        "Pure transformation logic",
+        "edge-case surface",
+        "Existing test file detected; review missing edge cases"
+      ],
+      "existingTestPaths": [
+        "src/invoiceParser.spec.ts"
+      ]
+    }
+  ],
+  "recommended": [
+    {
+      "name": "invoiceParser",
+      "path": "src/invoiceParser.ts",
+      "kind": "pure-logic",
+      "risk": "high",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 9,
+      "maintenanceCost": 2,
+      "reasons": [
+        "Pure transformation logic",
+        "edge-case surface",
+        "Existing test file detected; review missing edge cases"
+      ],
+      "existingTestPaths": [
+        "src/invoiceParser.spec.ts"
+      ]
+    },
+    {
+      "name": "invoiceService",
+      "path": "src/invoiceService.ts",
+      "kind": "service",
+      "risk": "high",
+      "testability": "medium",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 8,
+      "maintenanceCost": 4,
+      "reasons": [
+        "Service boundary",
+        "external dependency boundary",
+        "auth or permission branches"
+      ],
+      "existingTestPaths": []
+    }
+  ],
+  "skipped": [
+    {
+      "name": "constants",
+      "path": "src/constants.ts",
+      "kind": "constants",
+      "riskReductionScore": 1,
+      "maintenanceCost": 3,
+      "reason": "Constants-only files are better covered by behavior that consumes the constants.",
+      "preferredCoveragePath": "Cover through tests for the service, parser, or component that uses these constants."
+    },
+    {
+      "name": "invoiceDto",
+      "path": "src/invoiceDto.ts",
+      "kind": "dto",
+      "riskReductionScore": 2,
+      "maintenanceCost": 4,
+      "reason": "DTO-only models are usually better covered through boundary parsing or mapper tests.",
+      "preferredCoveragePath": "Cover through API/client parsing, mapper tests, or route integration tests."
+    }
+  ],
+  "risks": [
+    "invoiceParser has pure transformation logic, edge-case surface and needs edge-case review.",
+    "invoiceService has service boundary, external dependency boundary, auth or permission branches and has no matching test file."
+  ]
+}

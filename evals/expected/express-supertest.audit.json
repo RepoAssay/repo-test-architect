@@ -1,0 +1,130 @@
+{
+  "profile": {
+    "root": "<fixture>",
+    "languages": [
+      "typescript",
+      "javascript"
+    ],
+    "packageManagers": [
+      "npm"
+    ],
+    "testFrameworks": [
+      "jest",
+      "supertest"
+    ],
+    "architectures": [
+      "http-routes",
+      "service-layer"
+    ],
+    "testCommand": "npm run test",
+    "detectedConventions": [
+      "*.test files"
+    ],
+    "existingTestLocations": [
+      "colocated with source"
+    ],
+    "setupSignals": [
+      "tsconfig",
+      "jest config",
+      "supertest"
+    ],
+    "confidence": "high",
+    "blockers": []
+  },
+  "untestedCandidates": [
+    {
+      "name": "userService",
+      "path": "src/services/userService.ts",
+      "kind": "service",
+      "risk": "high",
+      "testability": "medium",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 8,
+      "maintenanceCost": 4,
+      "reasons": [
+        "Service boundary",
+        "auth or permission branches"
+      ],
+      "existingTestPaths": []
+    }
+  ],
+  "coveredButRisky": [
+    {
+      "name": "userRoutes",
+      "path": "src/routes/userRoutes.ts",
+      "kind": "http-route",
+      "risk": "high",
+      "testability": "medium",
+      "recommendedTestLevel": "integration",
+      "riskReductionScore": 8,
+      "maintenanceCost": 5,
+      "reasons": [
+        "HTTP behavior",
+        "status code and error handling",
+        "Existing test file detected; review missing edge cases"
+      ],
+      "existingTestPaths": [
+        "src/routes/userRoutes.test.ts"
+      ]
+    }
+  ],
+  "recommended": [
+    {
+      "name": "userRoutes",
+      "path": "src/routes/userRoutes.ts",
+      "kind": "http-route",
+      "risk": "high",
+      "testability": "medium",
+      "recommendedTestLevel": "integration",
+      "riskReductionScore": 8,
+      "maintenanceCost": 5,
+      "reasons": [
+        "HTTP behavior",
+        "status code and error handling",
+        "Existing test file detected; review missing edge cases"
+      ],
+      "existingTestPaths": [
+        "src/routes/userRoutes.test.ts"
+      ]
+    },
+    {
+      "name": "userService",
+      "path": "src/services/userService.ts",
+      "kind": "service",
+      "risk": "high",
+      "testability": "medium",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 8,
+      "maintenanceCost": 4,
+      "reasons": [
+        "Service boundary",
+        "auth or permission branches"
+      ],
+      "existingTestPaths": []
+    }
+  ],
+  "skipped": [
+    {
+      "name": "app",
+      "path": "src/app.ts",
+      "kind": "app-wiring",
+      "riskReductionScore": 2,
+      "maintenanceCost": 4,
+      "reason": "Application wiring is better covered through route or integration tests.",
+      "preferredCoveragePath": "Cover through Supertest or API-level integration tests."
+    },
+    {
+      "name": "userDto",
+      "path": "src/models/userDto.ts",
+      "kind": "dto",
+      "riskReductionScore": 2,
+      "maintenanceCost": 4,
+      "reason": "DTO-only models are usually better covered through boundary parsing or mapper tests.",
+      "preferredCoveragePath": "Cover through API/client parsing, mapper tests, or route integration tests."
+    }
+  ],
+  "risks": [
+    "userRoutes has http behavior, status code and error handling and needs edge-case review.",
+    "userService has service boundary, auth or permission branches and has no matching test file."
+  ]
+}

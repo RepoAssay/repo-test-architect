@@ -1,0 +1,114 @@
+{
+  "profile": {
+    "root": "<fixture>",
+    "languages": [
+      "typescript"
+    ],
+    "packageManagers": [
+      "npm"
+    ],
+    "testFrameworks": [],
+    "architectures": [],
+    "detectedConventions": [],
+    "existingTestLocations": [],
+    "setupSignals": [
+      "tsconfig"
+    ],
+    "confidence": "low",
+    "blockers": [
+      "No supported JS test framework detected.",
+      "No runnable test command detected from package scripts or framework config."
+    ]
+  },
+  "untestedCandidates": [
+    {
+      "name": "paymentClient",
+      "path": "src/paymentClient.ts",
+      "kind": "service",
+      "risk": "high",
+      "testability": "medium",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 8,
+      "maintenanceCost": 4,
+      "reasons": [
+        "Service boundary",
+        "external dependency boundary",
+        "auth or permission branches"
+      ],
+      "existingTestPaths": []
+    },
+    {
+      "name": "paymentParser",
+      "path": "src/paymentParser.ts",
+      "kind": "pure-logic",
+      "risk": "high",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 9,
+      "maintenanceCost": 2,
+      "reasons": [
+        "Pure transformation logic",
+        "edge-case surface"
+      ],
+      "existingTestPaths": []
+    }
+  ],
+  "coveredButRisky": [],
+  "recommended": [
+    {
+      "name": "paymentClient",
+      "path": "src/paymentClient.ts",
+      "kind": "service",
+      "risk": "high",
+      "testability": "medium",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 8,
+      "maintenanceCost": 4,
+      "reasons": [
+        "Service boundary",
+        "external dependency boundary",
+        "auth or permission branches"
+      ],
+      "existingTestPaths": []
+    },
+    {
+      "name": "paymentParser",
+      "path": "src/paymentParser.ts",
+      "kind": "pure-logic",
+      "risk": "high",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 9,
+      "maintenanceCost": 2,
+      "reasons": [
+        "Pure transformation logic",
+        "edge-case surface"
+      ],
+      "existingTestPaths": []
+    }
+  ],
+  "skipped": [
+    {
+      "name": "config",
+      "path": "src/config.ts",
+      "kind": "constants",
+      "riskReductionScore": 1,
+      "maintenanceCost": 3,
+      "reason": "Constants-only files are better covered by behavior that consumes the constants.",
+      "preferredCoveragePath": "Cover through tests for the service, parser, or component that uses these constants."
+    },
+    {
+      "name": "paymentResponseDto",
+      "path": "src/paymentResponseDto.ts",
+      "kind": "dto",
+      "riskReductionScore": 2,
+      "maintenanceCost": 4,
+      "reason": "DTO-only models are usually better covered through boundary parsing or mapper tests.",
+      "preferredCoveragePath": "Cover through API/client parsing, mapper tests, or route integration tests."
+    }
+  ],
+  "risks": [
+    "paymentClient has service boundary, external dependency boundary, auth or permission branches and has no matching test file.",
+    "paymentParser has pure transformation logic, edge-case surface and has no matching test file."
+  ]
+}

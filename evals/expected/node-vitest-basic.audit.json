@@ -1,0 +1,125 @@
+{
+  "profile": {
+    "root": "<fixture>",
+    "languages": [
+      "typescript"
+    ],
+    "packageManagers": [
+      "npm"
+    ],
+    "testFrameworks": [
+      "vitest"
+    ],
+    "architectures": [],
+    "testCommand": "npm run test",
+    "detectedConventions": [
+      "*.test files",
+      "fixture folders"
+    ],
+    "existingTestLocations": [
+      "colocated with source"
+    ],
+    "setupSignals": [
+      "tsconfig",
+      "vitest config"
+    ],
+    "confidence": "high",
+    "blockers": []
+  },
+  "untestedCandidates": [
+    {
+      "name": "authService",
+      "path": "src/authService.ts",
+      "kind": "service",
+      "risk": "high",
+      "testability": "medium",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 8,
+      "maintenanceCost": 4,
+      "reasons": [
+        "Service boundary",
+        "auth or permission branches"
+      ],
+      "existingTestPaths": []
+    }
+  ],
+  "coveredButRisky": [
+    {
+      "name": "deckParser",
+      "path": "src/deckParser.ts",
+      "kind": "pure-logic",
+      "risk": "high",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 9,
+      "maintenanceCost": 2,
+      "reasons": [
+        "Pure transformation logic",
+        "edge-case surface",
+        "Existing test file detected; review missing edge cases"
+      ],
+      "existingTestPaths": [
+        "src/deckParser.test.ts"
+      ]
+    }
+  ],
+  "recommended": [
+    {
+      "name": "authService",
+      "path": "src/authService.ts",
+      "kind": "service",
+      "risk": "high",
+      "testability": "medium",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 8,
+      "maintenanceCost": 4,
+      "reasons": [
+        "Service boundary",
+        "auth or permission branches"
+      ],
+      "existingTestPaths": []
+    },
+    {
+      "name": "deckParser",
+      "path": "src/deckParser.ts",
+      "kind": "pure-logic",
+      "risk": "high",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 9,
+      "maintenanceCost": 2,
+      "reasons": [
+        "Pure transformation logic",
+        "edge-case surface",
+        "Existing test file detected; review missing edge cases"
+      ],
+      "existingTestPaths": [
+        "src/deckParser.test.ts"
+      ]
+    }
+  ],
+  "skipped": [
+    {
+      "name": "constants",
+      "path": "src/constants.ts",
+      "kind": "constants",
+      "riskReductionScore": 1,
+      "maintenanceCost": 3,
+      "reason": "Constants-only files are better covered by behavior that consumes the constants.",
+      "preferredCoveragePath": "Cover through tests for the service, parser, or component that uses these constants."
+    },
+    {
+      "name": "userDto",
+      "path": "src/userDto.ts",
+      "kind": "dto",
+      "riskReductionScore": 2,
+      "maintenanceCost": 4,
+      "reason": "DTO-only models are usually better covered through boundary parsing or mapper tests.",
+      "preferredCoveragePath": "Cover through API/client parsing, mapper tests, or route integration tests."
+    }
+  ],
+  "risks": [
+    "authService has service boundary, auth or permission branches and has no matching test file.",
+    "deckParser has pure transformation logic, edge-case surface and needs edge-case review."
+  ]
+}

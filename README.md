@@ -28,6 +28,8 @@ Run the auditor regression tests:
 npm test
 ```
 
+The tests include golden audit snapshots under `evals/expected`.
+
 Node is required for the CLI. If Node is not available yet, the repository still includes a PowerShell smoke check:
 
 ```powershell
