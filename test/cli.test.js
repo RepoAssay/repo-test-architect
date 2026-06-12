@@ -55,6 +55,16 @@ describe("CLI", () => {
     assert.equal(Array.isArray(audit.recommended), true);
   });
 
+  it("supports changed-only plan mode", () => {
+    const output = execFileSync(process.execPath, [cliPath, "plan", ".", "--changed", "--format=json"], {
+      encoding: "utf8"
+    });
+    const plan = JSON.parse(output);
+
+    assert.equal(plan.schemaVersion, "plan/v1");
+    assert.equal(Array.isArray(plan.items), true);
+  });
+
   it("emits a markdown test plan", () => {
     const output = execFileSync(process.execPath, [cliPath, "plan", fixturePath], {
       encoding: "utf8"

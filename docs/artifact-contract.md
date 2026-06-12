@@ -69,6 +69,17 @@ node ./src/cli/index.js plan ./examples/node-vitest-basic --item add-test:src/au
 
 Future generation should target these IDs rather than array positions or display names.
 
+## Changed-Only Flow
+
+For PR-style workflows, use `--changed`:
+
+```powershell
+node ./src/cli/index.js audit . --changed --format json
+node ./src/cli/index.js plan . --changed --format json
+```
+
+The repository profile still uses the full repo. Candidate targets are limited to changed source files reported by Git.
+
 ## Signals
 
 Signal registry:
