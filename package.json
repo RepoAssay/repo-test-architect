@@ -24,8 +24,9 @@
     "mcp:audit:example": "node ./src/mcp/invoke.js call audit_repo \"{\\\"repoRoot\\\":\\\"./examples/node-vitest-basic\\\"}\"",
     "mcp:audit:envelope": "node ./src/mcp/invoke.js call-envelope audit_repo \"{\\\"repoRoot\\\":\\\"./examples/node-vitest-basic\\\"}\"",
     "mcp:stdio": "node ./src/mcp/stdio.js",
-    "eval:check": "node --test test/golden-snapshots.test.js",
+    "eval:check": "node ./scripts/check-golden-snapshots.js",
     "eval:summary": "node ./scripts/check-golden-snapshots.js",
+    "eval:test": "node --test test/golden-snapshots.test.js",
     "eval:update": "node ./scripts/update-golden-snapshots.js",
     "test": "node --test \"test/**/*.test.js\"",
     "smoke": "powershell -ExecutionPolicy Bypass -File ./scripts/smoke.ps1"

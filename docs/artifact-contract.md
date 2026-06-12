@@ -214,6 +214,7 @@ Commands:
 ```powershell
 npm run eval:check
 npm run eval:summary
+npm run eval:test
 npm run eval:update
 ```
 
