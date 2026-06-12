@@ -38,6 +38,12 @@ Explain one audited target by stable target ID:
 npm run explain:example
 ```
 
+Rank test candidates without generating tests:
+
+```powershell
+npm run rank:example
+```
+
 Generate a plan from an existing audit JSON file:
 
 ```powershell

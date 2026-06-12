@@ -3,6 +3,7 @@ import path from "node:path";
 import { describe, it } from "node:test";
 import { auditJavaScriptRepo } from "../src/adapters/javascript/audit.js";
 import { explainTarget } from "../src/core/explain-target.js";
+import { rankTestCandidates } from "../src/core/rank-test-candidates.js";
 import { loadEvalFixtures } from "./support/eval-fixtures.js";
 import { assertMatchesSchema } from "./support/json-schema-validator.js";
 
@@ -10,6 +11,7 @@ const expectedDir = path.resolve("evals/expected");
 const auditSchema = readJson("schemas/audit-v1.schema.json");
 const planSchema = readJson("schemas/plan-v1.schema.json");
 const explanationSchema = readJson("schemas/target-explanation-v1.schema.json");
+const rankingSchema = readJson("schemas/candidate-ranking-v1.schema.json");
 const fixtures = loadEvalFixtures();
 
 describe("artifact schema compatibility", () => {
@@ -32,6 +34,13 @@ describe("artifact schema compatibility", () => {
       const artifact = explainTarget(audit, target.id);
 
       assertMatchesSchema(artifact, explanationSchema, `${fixture.name}.target-explanation.json`);
+    });
+
+    it(`validates ${fixture.name} candidate ranking artifact`, () => {
+      const audit = auditJavaScriptRepo(fixture.root);
+      const artifact = rankTestCandidates(audit);
+
+      assertMatchesSchema(artifact, rankingSchema, `${fixture.name}.candidate-ranking.json`);
     });
   }
 });

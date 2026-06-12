@@ -4,12 +4,13 @@ import { execFileSync } from "node:child_process";
 import path from "node:path";
 import { auditJavaScriptRepo } from "../adapters/javascript/audit.js";
 import { explainTarget } from "../core/explain-target.js";
+import { rankTestCandidates } from "../core/rank-test-candidates.js";
 import { createTestPlan } from "../core/test-plan.js";
 
 const options = parseArgs(process.argv.slice(2));
 
-if (!["audit", "plan", "explain"].includes(options.command)) {
-  console.error("Usage: repo-test-architect <audit|plan|explain> <repo> [--format markdown|json] [--from-audit audit.json] [--item id] [--target id] [--changed] [--changed-since ref]");
+if (!["audit", "plan", "explain", "rank"].includes(options.command)) {
+  console.error("Usage: repo-test-architect <audit|plan|explain|rank> <repo> [--format markdown|json] [--from-audit audit.json] [--item id] [--target id] [--changed] [--changed-since ref]");
   process.exit(1);
 }
 
@@ -18,8 +19,8 @@ if (!["markdown", "json"].includes(options.format)) {
   process.exit(1);
 }
 
-if (options.fromAuditPath && !["plan", "explain"].includes(options.command)) {
-  console.error("--from-audit is only supported with plan and explain commands.");
+if (options.fromAuditPath && !["plan", "explain", "rank"].includes(options.command)) {
+  console.error("--from-audit is only supported with plan, explain, and rank commands.");
   process.exit(1);
 }
 
@@ -37,6 +38,8 @@ if (options.format === "json") {
   console.log(renderMarkdownPlan(output));
 } else if (options.command === "explain") {
   console.log(renderMarkdownExplanation(output));
+} else if (options.command === "rank") {
+  console.log(renderMarkdownRanking(output));
 } else {
   console.log(renderMarkdownReport(audit));
 }
@@ -235,6 +238,8 @@ function selectOutput(audit, options) {
     }
   }
 
+  if (options.command === "rank") return rankTestCandidates(audit);
+
   return audit;
 }
 
@@ -375,6 +380,46 @@ function renderMarkdownExplanation(explanation) {
 
   for (const reason of explanation.rationale) {
     lines.push(`- ${reason}`);
+  }
+
+  return lines.join("\n");
+}
+
+function renderMarkdownRanking(ranking) {
+  const lines = [];
+
+  lines.push("# Candidate Ranking");
+  lines.push("");
+  lines.push("## Summary");
+  lines.push(`- Confidence: ${ranking.summary.confidence}`);
+  lines.push(`- Candidates: ${ranking.summary.candidateCount}`);
+  lines.push(`- Blockers: ${ranking.summary.blockerCount}`);
+  lines.push(`- Verification command: ${ranking.summary.verificationCommand ?? "none detected"}`);
+  lines.push("");
+  lines.push("## Blockers");
+
+  if (ranking.blockers.length === 0) {
+    lines.push("- None detected.");
+  } else {
+    for (const blocker of ranking.blockers) {
+      lines.push(`- ${blocker}`);
+    }
+  }
+
+  lines.push("");
+  lines.push("## Candidates");
+
+  if (ranking.candidates.length === 0) {
+    lines.push("- No test candidates ranked.");
+  } else {
+    for (const candidate of ranking.candidates) {
+      const existingTests =
+        candidate.existingTestPaths.length > 0 ? ` Existing tests: ${candidate.existingTestPaths.join(", ")}.` : "";
+      const rationale = candidate.rationale.map(trimTrailingPeriod).join(". ");
+      lines.push(
+        `- ${candidate.target} [${candidate.targetId}] (${candidate.category}, ${candidate.testLevel}, priority ${candidate.priority}, risk reduction ${candidate.riskReductionScore}/10, maintenance ${candidate.maintenanceCost}/10). ${rationale}.${existingTests}`
+      );
+    }
   }
 
   return lines.join("\n");

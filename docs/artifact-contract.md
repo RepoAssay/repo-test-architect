@@ -98,6 +98,30 @@ It contains:
 - source signals
 - rationale and existing test paths
 
+## Candidate Ranking Artifact
+
+Schema:
+
+- `schemas/candidate-ranking-v1.schema.json`
+- `schemaVersion: "candidate-ranking/v1"`
+
+Commands:
+
+```powershell
+node ./src/cli/index.js rank ./examples/node-vitest-basic --format json
+node ./src/cli/index.js rank --from-audit ./evals/expected/node-vitest-basic.audit.json --format json
+```
+
+The candidate ranking artifact is the MCP-shaped view for ordered testable targets.
+
+It contains:
+
+- summary counts and blockers
+- ordered candidates
+- stable target IDs
+- priority, risk reduction, and maintenance scores
+- source signals and rationale
+
 ## Changed-Only Flow
 
 For PR-style workflows, use `--changed`:

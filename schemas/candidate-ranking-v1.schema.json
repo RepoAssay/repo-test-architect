@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://repo-test-architect.local/schemas/candidate-ranking-v1.schema.json",
+  "title": "Repo Test Architect Candidate Ranking",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "summary",
+    "blockers",
+    "candidates"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "candidate-ranking/v1"
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "confidence",
+        "candidateCount",
+        "blockerCount"
+      ],
+      "properties": {
+        "confidence": { "enum": ["low", "medium", "high"] },
+        "candidateCount": { "type": "integer", "minimum": 0 },
+        "blockerCount": { "type": "integer", "minimum": 0 },
+        "verificationCommand": { "type": "string" }
+      }
+    },
+    "blockers": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "candidates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "targetId",
+          "target",
+          "path",
+          "category",
+          "kind",
+          "testLevel",
+          "priority",
+          "riskReductionScore",
+          "maintenanceCost",
+          "signals",
+          "rationale",
+          "existingTestPaths"
+        ],
+        "properties": {
+          "targetId": { "type": "string" },
+          "target": { "type": "string" },
+          "path": { "type": "string" },
+          "category": { "enum": ["untested", "covered-but-risky"] },
+          "kind": { "type": "string" },
+          "testLevel": { "enum": ["unit", "integration", "component", "ui", "none"] },
+          "priority": { "type": "integer" },
+          "riskReductionScore": { "type": "integer", "minimum": 0, "maximum": 10 },
+          "maintenanceCost": { "type": "integer", "minimum": 0, "maximum": 10 },
+          "signals": { "type": "array", "items": { "type": "string" } },
+          "rationale": { "type": "array", "items": { "type": "string" } },
+          "existingTestPaths": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    }
+  }
+}

@@ -122,6 +122,32 @@ describe("CLI", () => {
     assert.equal(explanation.testLevel, "unit");
   });
 
+  it("emits a JSON candidate ranking", () => {
+    const output = execFileSync(process.execPath, [cliPath, "rank", fixturePath, "--format=json"], {
+      encoding: "utf8"
+    });
+    const ranking = JSON.parse(output);
+
+    assert.equal(ranking.schemaVersion, "candidate-ranking/v1");
+    assert.deepEqual(
+      ranking.candidates.map((candidate) => candidate.targetId),
+      ["src/deckParser.ts", "src/authService.ts"]
+    );
+  });
+
+  it("emits a markdown candidate ranking from an existing audit file", () => {
+    const output = execFileSync(
+      process.execPath,
+      [cliPath, "rank", "--from-audit", "evals/expected/node-vitest-basic.audit.json"],
+      {
+        encoding: "utf8"
+      }
+    );
+
+    assert.match(output, /^# Candidate Ranking/);
+    assert.match(output, /deckParser \[src\/deckParser\.ts\]/);
+  });
+
   it("emits a markdown target explanation from an existing audit file", () => {
     const output = execFileSync(
       process.execPath,
