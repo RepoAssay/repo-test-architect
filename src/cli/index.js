@@ -92,10 +92,28 @@ function readAuditJson(auditPath) {
   }
 
   try {
-    return JSON.parse(fs.readFileSync(path.resolve(process.cwd(), auditPath), "utf8"));
+    const audit = JSON.parse(fs.readFileSync(path.resolve(process.cwd(), auditPath), "utf8"));
+    validateAuditJson(audit);
+    return audit;
   } catch (error) {
     console.error(`Failed to read audit JSON: ${error.message}`);
     process.exit(1);
+  }
+}
+
+function validateAuditJson(audit) {
+  if (audit?.schemaVersion !== "audit/v1") {
+    throw new Error("Expected audit schemaVersion audit/v1.");
+  }
+
+  if (!audit.profile || typeof audit.profile !== "object") {
+    throw new Error("Audit profile is missing.");
+  }
+
+  for (const key of ["untestedCandidates", "coveredButRisky", "skipped", "risks"]) {
+    if (!Array.isArray(audit[key])) {
+      throw new Error(`Audit ${key} must be an array.`);
+    }
   }
 }
 

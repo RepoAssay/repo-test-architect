@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { describe, it } from "node:test";
 
 const cliPath = "src/cli/index.js";
@@ -124,4 +127,46 @@ describe("CLI", () => {
       /Command failed/
     );
   });
+
+  it("rejects audit JSON with the wrong schema version", () => {
+    const auditPath = writeTempJson({
+      schemaVersion: "audit/v0",
+      profile: {},
+      untestedCandidates: [],
+      coveredButRisky: [],
+      skipped: [],
+      risks: []
+    });
+
+    assert.throws(
+      () =>
+        execFileSync(process.execPath, [cliPath, "plan", "--from-audit", auditPath], {
+          encoding: "utf8",
+          stdio: "pipe"
+        }),
+      /Command failed/
+    );
+  });
+
+  it("rejects audit JSON missing required arrays", () => {
+    const auditPath = writeTempJson({
+      schemaVersion: "audit/v1",
+      profile: {}
+    });
+
+    assert.throws(
+      () =>
+        execFileSync(process.execPath, [cliPath, "plan", "--from-audit", auditPath], {
+          encoding: "utf8",
+          stdio: "pipe"
+        }),
+      /Command failed/
+    );
+  });
 });
+
+function writeTempJson(value) {
+  const filePath = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-")), "audit.json");
+  fs.writeFileSync(filePath, `${JSON.stringify(value)}\n`);
+  return filePath;
+}
