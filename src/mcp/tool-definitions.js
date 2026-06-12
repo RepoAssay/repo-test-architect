@@ -62,6 +62,13 @@ export const mcpTools = [
 export const mcpToolNames = mcpTools.map((tool) => tool.name);
 
 export function callTool(name, args = {}) {
+  const tool = mcpTools.find((candidate) => candidate.name === name);
+  if (!tool) {
+    throw new Error(`Unknown MCP tool: ${name}`);
+  }
+
+  validateToolArgs(tool, args);
+
   switch (name) {
     case "audit_repo":
       return auditRepo(requireString(args.repoRoot, "repoRoot"), {
@@ -80,7 +87,7 @@ export function callTool(name, args = {}) {
     case "generate_selected_test":
       return createGenerationDeferredResult(requireString(args.planItemId, "planItemId"));
     default:
-      throw new Error(`Unknown MCP tool: ${name}`);
+      throw new Error(`Unhandled MCP tool: ${name}`);
   }
 }
 
@@ -122,4 +129,24 @@ function optionalStringArray(value, name) {
   }
 
   return value;
+}
+
+function validateToolArgs(tool, args) {
+  if (!args || typeof args !== "object" || Array.isArray(args)) {
+    throw new Error(`${tool.name} arguments must be an object.`);
+  }
+
+  const allowed = new Set(Object.keys(tool.inputSchema.properties ?? {}));
+
+  for (const key of tool.inputSchema.required ?? []) {
+    if (!Object.hasOwn(args, key)) {
+      throw new Error(`${key} is required for ${tool.name}.`);
+    }
+  }
+
+  for (const key of Object.keys(args)) {
+    if (!allowed.has(key)) {
+      throw new Error(`${key} is not a supported argument for ${tool.name}.`);
+    }
+  }
 }

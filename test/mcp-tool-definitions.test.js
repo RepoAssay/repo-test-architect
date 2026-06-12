@@ -36,7 +36,33 @@ describe("MCP tool definitions", () => {
   });
 
   it("validates tool input before dispatch", () => {
-    assert.throws(() => callTool("audit_repo", {}), /repoRoot must be a non-empty string/);
+    assert.throws(() => callTool("audit_repo", {}), /repoRoot is required for audit_repo/);
     assert.throws(() => callTool("missing_tool", {}), /Unknown MCP tool/);
   });
+
+  it("enforces declared required and allowed arguments", () => {
+    for (const tool of mcpTools) {
+      for (const requiredKey of tool.inputSchema.required) {
+        const args = minimalArgsFor(tool.name);
+        delete args[requiredKey];
+
+        assert.throws(
+          () => callTool(tool.name, args),
+          new RegExp(`${requiredKey} is required for ${tool.name}`)
+        );
+      }
+
+      assert.throws(
+        () => callTool(tool.name, { ...minimalArgsFor(tool.name), extra: true }),
+        new RegExp(`extra is not a supported argument for ${tool.name}`)
+      );
+    }
+  });
 });
+
+function minimalArgsFor(toolName) {
+  if (toolName === "audit_repo") return { repoRoot: "." };
+  if (toolName === "explain_target") return { audit: {}, targetId: "src/example.ts" };
+  if (toolName === "generate_selected_test") return { planItemId: "add-test:src/example.ts" };
+  return { audit: {} };
+}
