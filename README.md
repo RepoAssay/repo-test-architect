@@ -43,7 +43,7 @@ npm test
 ```
 
 The tests include golden audit and plan snapshots under `evals/expected`, driven by `evals/fixtures.json`.
-JSON schemas for versioned artifacts live under `schemas/`.
+JSON schemas and the signal registry for versioned artifacts live under `schemas/`.
 
 Refresh snapshots after intentional audit behavior changes:
 

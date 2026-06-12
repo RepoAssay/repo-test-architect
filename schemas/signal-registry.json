@@ -1,0 +1,102 @@
+[
+  {
+    "id": "app-wiring",
+    "category": "structure",
+    "description": "Application composition or framework setup that should usually be covered through integration tests."
+  },
+  {
+    "id": "auth-branch",
+    "category": "risk",
+    "description": "Authentication, authorization, token, session, role, or permission logic was detected."
+  },
+  {
+    "id": "barrel-export",
+    "category": "low-value",
+    "description": "File primarily re-exports symbols and has little direct runtime behavior."
+  },
+  {
+    "id": "branching-logic",
+    "category": "behavior",
+    "description": "Conditional or branching behavior was detected."
+  },
+  {
+    "id": "constants-only",
+    "category": "low-value",
+    "description": "File only defines constants and should usually be covered through consuming behavior."
+  },
+  {
+    "id": "dto-only",
+    "category": "low-value",
+    "description": "File appears to contain DTO, model, schema, request, or response type declarations only."
+  },
+  {
+    "id": "edge-case-surface",
+    "category": "risk",
+    "description": "Code shape suggests malformed input, edge cases, or boundary cases are likely valuable to test."
+  },
+  {
+    "id": "external-boundary",
+    "category": "risk",
+    "description": "Code touches network, database, file system, or another external boundary."
+  },
+  {
+    "id": "generated-code",
+    "category": "low-value",
+    "description": "Generated or build output was detected."
+  },
+  {
+    "id": "http-route",
+    "category": "architecture",
+    "description": "HTTP route, controller, or route-like behavior was detected."
+  },
+  {
+    "id": "low-runtime-behavior",
+    "category": "low-value",
+    "description": "No meaningful runtime behavior was detected by current heuristics."
+  },
+  {
+    "id": "matching-test",
+    "category": "coverage",
+    "description": "A matching existing test file was found for this target."
+  },
+  {
+    "id": "missing-component-test-convention",
+    "category": "blocker",
+    "description": "Component-like code exists without a supported component testing convention."
+  },
+  {
+    "id": "presentational-component",
+    "category": "low-value",
+    "description": "Component appears presentational with no local branching or interaction."
+  },
+  {
+    "id": "pure-logic",
+    "category": "behavior",
+    "description": "Pure parser, mapper, validator, formatter, or transformation logic was detected."
+  },
+  {
+    "id": "react-component",
+    "category": "architecture",
+    "description": "React component code was detected."
+  },
+  {
+    "id": "rtl-convention",
+    "category": "test-convention",
+    "description": "React Testing Library convention was detected."
+  },
+  {
+    "id": "service-name",
+    "category": "architecture",
+    "description": "Service, client, repository, or similar boundary naming was detected."
+  },
+  {
+    "id": "status-handling",
+    "category": "risk",
+    "description": "HTTP status code or request/response error handling is likely relevant."
+  },
+  {
+    "id": "type-only",
+    "category": "low-value",
+    "description": "Type-only declaration file was detected."
+  }
+]
