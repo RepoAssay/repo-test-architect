@@ -61,7 +61,7 @@ npm run eval:test
 
 ## Next Useful Milestones
 
-1. Add a real MCP SDK transport wrapper around `src/mcp/tool-definitions.js`.
+1. Add a real local stdio MCP SDK transport wrapper around `src/mcp/tool-definitions.js`.
 2. Add TypeScript/JSDoc typing for the runtime JS modules or consolidate TS reference files.
 3. Add Kotlin/JUnit or Swift adapter discovery as the next language spike.
 4. Add model-consistency eval fixtures that compare generated explanations against the same deterministic audit graph.

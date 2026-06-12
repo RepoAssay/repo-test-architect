@@ -91,6 +91,9 @@ The later MCP server should wrap that API rather than duplicate audit, ranking, 
 The dependency-free MCP tool surface lives in `src/mcp/tool-definitions.js` and is documented in `docs/mcp-tools.md`.
 It defines tool names, input schemas, and dispatch behavior without committing to a specific transport package yet.
 
+The default deployment target is local stdio MCP because repository audits need local source, Git, and test execution context.
+Remote hosting is a later option for shared evals, policy packs, team reporting, or model-consistency runs, not the first path for raw repo access.
+
 ## Polyglot Repository Direction
 
 Real repositories often contain more than one language or project shape.
