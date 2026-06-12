@@ -18,3 +18,9 @@ An adapter should not:
 - treat coverage growth as the main success metric
 
 The core model lives in `src/core/audit-model.ts`.
+
+Runtime adapter registration lives in `src/core/adapter-registry.js`.
+
+The initial registered adapter is:
+
+- `javascript` for JavaScript and TypeScript repositories

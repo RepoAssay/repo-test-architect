@@ -7,6 +7,7 @@ Repo Test Architect currently has a deterministic JavaScript/TypeScript audit pi
 Implemented:
 
 - JavaScript/TypeScript repository profiling
+- runtime adapter registry with the initial `javascript` adapter
 - fixture-based regression coverage
 - audit, plan, explanation, ranking, and deferred-generation artifacts
 - stable JSON schemas for generated artifacts

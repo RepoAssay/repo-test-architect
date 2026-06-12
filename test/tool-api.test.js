@@ -12,10 +12,17 @@ import {
 
 describe("tool API", () => {
   it("audits a repo and exposes the audit graph", () => {
-    const audit = auditRepo(path.resolve("examples/node-vitest-basic"));
+    const audit = auditRepo(path.resolve("examples/node-vitest-basic"), { adapterId: "javascript" });
 
     assert.equal(audit.schemaVersion, "audit/v1");
     assert.equal(getAuditGraph(audit), audit);
+  });
+
+  it("rejects unsupported audit adapters", () => {
+    assert.throws(
+      () => auditRepo(path.resolve("examples/node-vitest-basic"), { adapterId: "swift" }),
+      /Unsupported adapter: swift/
+    );
   });
 
   it("generates and filters test plans", () => {

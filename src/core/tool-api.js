@@ -1,10 +1,10 @@
-import { auditJavaScriptRepo } from "../adapters/javascript/audit.js";
+import { getAdapter } from "./adapter-registry.js";
 import { explainTarget } from "./explain-target.js";
 import { rankTestCandidates } from "./rank-test-candidates.js";
 import { createTestPlan } from "./test-plan.js";
 
 export function auditRepo(repoRoot, options = {}) {
-  return auditJavaScriptRepo(repoRoot, {
+  return getAdapter(options.adapterId).audit(repoRoot, {
     changedPaths: options.changedPaths
   });
 }

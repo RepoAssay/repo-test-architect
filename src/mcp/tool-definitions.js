@@ -15,6 +15,7 @@ export const mcpTools = [
     outputArtifact: artifact("audit/v1", "schemas/audit-v1.schema.json"),
     inputSchema: objectSchema({
       repoRoot: { type: "string", description: "Repository root path." },
+      adapterId: { type: "string", description: "Optional adapter id. Defaults to javascript." },
       changedPaths: {
         type: "array",
         description: "Optional repository-relative source paths to limit target selection.",
@@ -79,6 +80,7 @@ export function callTool(name, args = {}) {
   switch (name) {
     case "audit_repo":
       return auditRepo(requireString(args.repoRoot, "repoRoot"), {
+        adapterId: optionalString(args.adapterId, "adapterId"),
         changedPaths: optionalStringArray(args.changedPaths, "changedPaths")
       });
     case "get_audit_graph":

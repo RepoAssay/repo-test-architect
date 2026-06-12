@@ -45,6 +45,8 @@ Each tool descriptor includes `outputArtifact` metadata:
 | `rank_test_candidates` | `candidate-ranking/v1` |
 | `generate_selected_test` | `generation-deferred/v1` |
 
+`audit_repo` accepts an optional `adapterId`. The current registered adapter is `javascript`.
+
 ## Future Transport
 
 When adding the real MCP server with an SDK:

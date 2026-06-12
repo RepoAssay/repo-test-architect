@@ -18,6 +18,10 @@
             "type": "string",
             "description": "Repository root path."
           },
+          "adapterId": {
+            "type": "string",
+            "description": "Optional adapter id. Defaults to javascript."
+          },
           "changedPaths": {
             "type": "array",
             "description": "Optional repository-relative source paths to limit target selection.",

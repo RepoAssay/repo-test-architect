@@ -38,7 +38,8 @@ describe("MCP tool definitions", () => {
 
   it("dispatches audit, plan, explanation, and ranking tools", () => {
     const audit = callTool("audit_repo", {
-      repoRoot: path.resolve("examples/node-vitest-basic")
+      repoRoot: path.resolve("examples/node-vitest-basic"),
+      adapterId: "javascript"
     });
     const graph = callTool("get_audit_graph", { audit });
     const plan = callTool("generate_test_plan", { audit, itemId: "add-test:src/authService.ts" });

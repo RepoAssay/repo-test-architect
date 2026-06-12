@@ -4,6 +4,7 @@ import { rankTestCandidates } from "./rank-test-candidates";
 import { createTestPlan, type TestPlan } from "./test-plan";
 
 export interface AuditRepoOptions {
+  adapterId?: string;
   changedPaths?: string[];
 }
 
