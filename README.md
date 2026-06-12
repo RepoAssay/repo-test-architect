@@ -30,6 +30,12 @@ npm test
 
 The tests include golden audit snapshots under `evals/expected`.
 
+Refresh snapshots after intentional audit behavior changes:
+
+```powershell
+npm run eval:update
+```
+
 Node is required for the CLI. If Node is not available yet, the repository still includes a PowerShell smoke check:
 
 ```powershell
