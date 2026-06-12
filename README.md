@@ -105,6 +105,7 @@ The JavaScript adapter is the first proof point. Later adapters should emit the 
 ## Docs
 
 - [Project plan](docs/project-plan.md)
+- [Project status](docs/status.md)
 - [Adapter contract](docs/adapter-contract.md)
 - [Artifact contract](docs/artifact-contract.md)
 - [MCP tool surface](docs/mcp-tools.md)

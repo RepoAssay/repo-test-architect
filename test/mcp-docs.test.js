@@ -16,4 +16,12 @@ describe("MCP docs", () => {
       assert.match(docs, new RegExp(`\\b${kind}\\b`));
     }
   });
+
+  it("keeps project status aligned with MCP tool names", () => {
+    const status = fs.readFileSync("docs/status.md", "utf8");
+
+    for (const toolName of expectedMcpToolNames) {
+      assert.match(status, new RegExp(`\\b${toolName}\\b`));
+    }
+  });
 });
