@@ -5,7 +5,8 @@
   "description": "Audit-first test strategy agent for repository-native test planning.",
   "type": "module",
   "bin": {
-    "repo-test-architect": "./src/cli/index.js"
+    "repo-test-architect": "./src/cli/index.js",
+    "repo-test-architect-mcp": "./src/mcp/invoke.js"
   },
   "scripts": {
     "audit:example": "node ./src/cli/index.js audit ./examples/node-vitest-basic",
@@ -18,6 +19,8 @@
     "plan:from-audit:example": "node ./src/cli/index.js plan --from-audit ./evals/expected/node-vitest-basic.audit.json",
     "explain:example": "node ./src/cli/index.js explain ./examples/node-vitest-basic --target src/authService.ts",
     "rank:example": "node ./src/cli/index.js rank ./examples/node-vitest-basic",
+    "mcp:tools": "node ./src/mcp/invoke.js tools",
+    "mcp:audit:example": "node ./src/mcp/invoke.js call audit_repo \"{\\\"repoRoot\\\":\\\"./examples/node-vitest-basic\\\"}\"",
     "eval:check": "node --test test/golden-snapshots.test.js",
     "eval:summary": "node ./scripts/check-golden-snapshots.js",
     "eval:update": "node ./scripts/update-golden-snapshots.js",

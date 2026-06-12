@@ -4,6 +4,8 @@ $root = Split-Path -Parent $PSScriptRoot
 $required = @(
   "package.json",
   "src/cli/index.js",
+  "src/mcp/tool-definitions.js",
+  "src/mcp/invoke.js",
   "src/adapters/javascript/audit.js",
   "src/adapters/javascript/audit.ts",
   "src/core/audit-model.ts",
@@ -53,6 +55,13 @@ $adapter = Get-Content (Join-Path $root "src/adapters/javascript/audit.js") -Raw
 foreach ($signal in @("vitest", "pure-logic", "auth or permission branches", "testCommand", "existingTestLocations")) {
   if (-not $adapter.Contains($signal)) {
     throw "Missing expected adapter signal: $signal"
+  }
+}
+
+$mcpTools = Get-Content (Join-Path $root "src/mcp/tool-definitions.js") -Raw
+foreach ($tool in @("audit_repo", "get_audit_graph", "generate_test_plan", "explain_target", "rank_test_candidates")) {
+  if (-not $mcpTools.Contains($tool)) {
+    throw "Missing expected MCP tool: $tool"
   }
 }
 

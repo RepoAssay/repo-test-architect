@@ -44,6 +44,13 @@ Rank test candidates without generating tests:
 npm run rank:example
 ```
 
+Exercise the MCP-style tool surface:
+
+```powershell
+npm run mcp:tools
+npm run mcp:audit:example
+```
+
 Generate a plan from an existing audit JSON file:
 
 ```powershell

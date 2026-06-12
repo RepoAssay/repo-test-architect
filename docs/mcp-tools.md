@@ -33,3 +33,21 @@ When adding the real MCP server:
 - keep input schemas compatible with `mcpTools`
 - call `callTool(name, args)` for execution
 - add transport tests separately from deterministic tool tests
+
+## Local Harness
+
+Until the real transport is added, use the local invoke harness:
+
+```powershell
+npm run mcp:tools
+npm run mcp:audit:example
+```
+
+Direct form:
+
+```powershell
+node ./src/mcp/invoke.js tools
+node ./src/mcp/invoke.js call audit_repo "{\"repoRoot\":\"./examples/node-vitest-basic\"}"
+```
+
+This validates the same tool descriptors and dispatcher the future MCP server should mount.
