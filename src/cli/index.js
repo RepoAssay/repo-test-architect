@@ -2,10 +2,13 @@
 import fs from "node:fs";
 import { execFileSync } from "node:child_process";
 import path from "node:path";
-import { auditJavaScriptRepo } from "../adapters/javascript/audit.js";
-import { explainTarget } from "../core/explain-target.js";
-import { rankTestCandidates } from "../core/rank-test-candidates.js";
-import { createTestPlan } from "../core/test-plan.js";
+import {
+  auditRepo,
+  explainAuditTarget,
+  generateTestPlan,
+  rankAuditTestCandidates,
+  validateAudit
+} from "../core/tool-api.js";
 
 const options = parseArgs(process.argv.slice(2));
 
@@ -27,7 +30,7 @@ if (options.fromAuditPath && !["plan", "explain", "rank"].includes(options.comma
 const repoRoot = path.resolve(process.cwd(), options.repoPath);
 const audit = options.fromAuditPath
   ? readAuditJson(options.fromAuditPath)
-  : auditJavaScriptRepo(repoRoot, {
+  : auditRepo(repoRoot, {
       changedPaths: readSelectedChangedPaths(repoRoot, options)
     });
 const output = selectOutput(audit, options);
@@ -133,7 +136,7 @@ function readAuditJson(auditPath) {
 
   try {
     const audit = JSON.parse(fs.readFileSync(path.resolve(process.cwd(), auditPath), "utf8"));
-    validateAuditJson(audit);
+    validateAudit(audit);
     return audit;
   } catch (error) {
     console.error(`Failed to read audit JSON: ${error.message}`);
@@ -188,57 +191,26 @@ function readSelectedChangedPaths(repoRoot, options) {
   return undefined;
 }
 
-function validateAuditJson(audit) {
-  if (audit?.schemaVersion !== "audit/v1") {
-    throw new Error("Expected audit schemaVersion audit/v1.");
-  }
-
-  if (!audit.profile || typeof audit.profile !== "object") {
-    throw new Error("Audit profile is missing.");
-  }
-
-  for (const key of ["untestedCandidates", "coveredButRisky", "skipped", "risks"]) {
-    if (!Array.isArray(audit[key])) {
-      throw new Error(`Audit ${key} must be an array.`);
-    }
-  }
-}
-
-function filterPlan(plan, itemId) {
-  if (!itemId) return plan;
-
-  const item = plan.items.find((candidate) => candidate.id === itemId);
-
-  if (!item) {
-    console.error(`Plan item not found: ${itemId}`);
-    process.exit(1);
-  }
-
-  return {
-    ...plan,
-    summary: {
-      ...plan.summary,
-      addTestCount: item.action === "add-test" ? 1 : 0,
-      extendTestCount: item.action === "extend-test" ? 1 : 0,
-      deferredCount: item.action === "defer" ? 1 : 0
-    },
-    items: [item]
-  };
-}
-
 function selectOutput(audit, options) {
-  if (options.command === "plan") return filterPlan(createTestPlan(audit), options.itemId);
-
-  if (options.command === "explain") {
+  if (options.command === "plan") {
     try {
-      return explainTarget(audit, options.targetId);
+      return generateTestPlan(audit, { itemId: options.itemId });
     } catch (error) {
       console.error(error.message);
       process.exit(1);
     }
   }
 
-  if (options.command === "rank") return rankTestCandidates(audit);
+  if (options.command === "explain") {
+    try {
+      return explainAuditTarget(audit, options.targetId);
+    } catch (error) {
+      console.error(error.message);
+      process.exit(1);
+    }
+  }
+
+  if (options.command === "rank") return rankAuditTestCandidates(audit);
 
   return audit;
 }

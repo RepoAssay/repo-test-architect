@@ -73,6 +73,16 @@ The MCP server should expose stable tools around the deterministic audit graph:
 
 The model should call tools and act on structured evidence. It should not own repository fact discovery.
 
+The internal tool API now mirrors the first five MCP-shaped operations:
+
+- `auditRepo`
+- `getAuditGraph`
+- `explainAuditTarget`
+- `rankAuditTestCandidates`
+- `generateTestPlan`
+
+The later MCP server should wrap that API rather than duplicate audit, ranking, or planning logic.
+
 ## Model Consistency Goal
 
 When this runs through MCP, different users or companies may choose different models.

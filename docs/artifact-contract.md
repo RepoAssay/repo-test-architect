@@ -162,6 +162,16 @@ The deterministic layer owns:
 - risk and maintenance scoring
 - audit graph creation
 - plan creation
+- target explanation
+- candidate ranking
+
+Internal tool API:
+
+- `auditRepo`
+- `getAuditGraph`
+- `explainAuditTarget`
+- `rankAuditTestCandidates`
+- `generateTestPlan`
 
 Future model-assisted layers may:
 
