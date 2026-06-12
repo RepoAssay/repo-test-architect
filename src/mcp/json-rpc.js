@@ -1,5 +1,6 @@
 import { toMcpToolResult } from "./responses.js";
 import { callTool, mcpTools } from "./tool-definitions.js";
+import { toJsonRpcErrorData } from "./errors.js";
 
 export function handleJsonRpcRequest(request) {
   if (!request || typeof request !== "object" || Array.isArray(request)) {
@@ -38,7 +39,7 @@ export function handleJsonRpcRequest(request) {
     return errorResponse(request.id, -32601, `Method not found: ${request.method}`);
   } catch (error) {
     if (request.id === undefined) return undefined;
-    return errorResponse(request.id, -32000, error.message);
+    return errorResponse(request.id, -32000, error.message, toJsonRpcErrorData(error));
   }
 }
 
@@ -52,8 +53,8 @@ function successResponse(id, result) {
   };
 }
 
-function errorResponse(id, code, message) {
-  return {
+function errorResponse(id, code, message, data) {
+  const response = {
     jsonrpc: "2.0",
     id: id ?? null,
     error: {
@@ -61,4 +62,8 @@ function errorResponse(id, code, message) {
       message
     }
   };
+
+  if (data) response.error.data = data;
+
+  return response;
 }

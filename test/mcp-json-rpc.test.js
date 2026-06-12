@@ -61,6 +61,27 @@ describe("MCP JSON-RPC scaffold", () => {
 
     assert.equal(response.error.code, -32000);
     assert.match(response.error.message, /Unknown MCP tool/);
+    assert.equal(response.error.data.kind, "unknown-tool");
+    assert.equal(response.error.data.toolName, "missing_tool");
+  });
+
+  it("returns JSON-RPC error data for invalid tool arguments", () => {
+    const response = handleJsonRpcRequest({
+      jsonrpc: "2.0",
+      id: 5,
+      method: "tools/call",
+      params: {
+        name: "audit_repo",
+        arguments: {
+          unexpected: true
+        }
+      }
+    });
+
+    assert.equal(response.error.code, -32000);
+    assert.equal(response.error.data.kind, "missing-required-argument");
+    assert.equal(response.error.data.toolName, "audit_repo");
+    assert.equal(response.error.data.argument, "repoRoot");
   });
 
   it("does not answer notifications", () => {

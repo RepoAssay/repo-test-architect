@@ -36,8 +36,14 @@ describe("MCP tool definitions", () => {
   });
 
   it("validates tool input before dispatch", () => {
-    assert.throws(() => callTool("audit_repo", {}), /repoRoot is required for audit_repo/);
-    assert.throws(() => callTool("missing_tool", {}), /Unknown MCP tool/);
+    assert.throws(
+      () => callTool("audit_repo", {}),
+      (error) => error.kind === "missing-required-argument" && /repoRoot is required for audit_repo/.test(error.message)
+    );
+    assert.throws(
+      () => callTool("missing_tool", {}),
+      (error) => error.kind === "unknown-tool" && /Unknown MCP tool/.test(error.message)
+    );
   });
 
   it("enforces declared required and allowed arguments", () => {
@@ -54,7 +60,11 @@ describe("MCP tool definitions", () => {
 
       assert.throws(
         () => callTool(tool.name, { ...minimalArgsFor(tool.name), extra: true }),
-        new RegExp(`extra is not a supported argument for ${tool.name}`)
+        (error) =>
+          error.kind === "unsupported-argument" &&
+          error.details.toolName === tool.name &&
+          error.details.argument === "extra" &&
+          new RegExp(`extra is not a supported argument for ${tool.name}`).test(error.message)
       );
     }
   });
