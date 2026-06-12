@@ -3,6 +3,7 @@ export const expectedMcpToolNames = [
   "detect_projects",
   "audit_projects",
   "summarize_project_audits",
+  "rank_project_candidates",
   "audit_repo",
   "get_audit_graph",
   "generate_test_plan",

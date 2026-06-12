@@ -223,6 +223,22 @@ node ./src/cli/index.js summarize-projects ./examples/polyglot-workspace --forma
 This artifact summarizes a `project-audits/v1` artifact into project-level counts, top candidate IDs, risk counts, and unsupported project roots.
 It is intentionally not a merged audit graph and does not perform cross-project ranking.
 
+## Project Candidate Ranking Artifact
+
+Schema:
+
+- `schemas/project-candidate-ranking-v1.schema.json`
+- `schemaVersion: "project-candidate-ranking/v1"`
+
+MCP tool:
+
+```txt
+rank_project_candidates
+```
+
+This artifact ranks candidates from a `project-audits/v1` artifact using the same deterministic per-audit priority calculation, while adding project identity to each candidate.
+It preserves unsupported project roots instead of hiding them.
+
 ## Changed-Only Flow
 
 For PR-style workflows, use `--changed`:
@@ -273,6 +289,7 @@ Internal tool API:
 - `detectRepoProjects`
 - `auditRepoProjects`
 - `summarizeRepoProjectAudits`
+- `rankRepoProjectCandidates`
 - `getAuditGraph`
 - `explainAuditTarget`
 - `rankAuditTestCandidates`

@@ -42,6 +42,38 @@ export interface ProjectAuditSummary {
   unsupportedProjects: SkippedProjectAudit[];
 }
 
+export interface ProjectCandidateRanking {
+  schemaVersion: "project-candidate-ranking/v1";
+  root: string;
+  summary: {
+    projectCount: number;
+    auditedProjectCount: number;
+    unsupportedProjectCount: number;
+    candidateCount: number;
+  };
+  unsupportedProjects: SkippedProjectAudit[];
+  candidates: ProjectCandidate[];
+}
+
+export interface ProjectCandidate {
+  projectId: string;
+  projectRoot: string;
+  adapterId: string;
+  projectTargetId: string;
+  targetId: string;
+  target: string;
+  path: string;
+  category: "untested" | "covered-but-risky";
+  kind: string;
+  testLevel: "unit" | "integration" | "component" | "ui" | "none";
+  priority: number;
+  riskReductionScore: number;
+  maintenanceCost: number;
+  signals: string[];
+  rationale: string[];
+  existingTestPaths: string[];
+}
+
 export interface ProjectAuditSummaryEntry {
   projectId: string;
   projectRoot: string;
@@ -94,6 +126,8 @@ export declare function detectRepoProjects(repoRoot: string): ProjectDetection;
 export declare function auditRepoProjects(repoRoot: string): ProjectAudits;
 
 export declare function summarizeRepoProjectAudits(projectAudits: ProjectAudits): ProjectAuditSummary;
+
+export declare function rankRepoProjectCandidates(projectAudits: ProjectAudits): ProjectCandidateRanking;
 
 export function getAuditGraph(audit: AuditResult): AuditResult {
   validateAudit(audit);

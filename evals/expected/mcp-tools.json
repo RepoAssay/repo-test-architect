@@ -78,6 +78,27 @@
       }
     },
     {
+      "name": "rank_project_candidates",
+      "description": "Rank test candidates across project-audits while preserving project identity.",
+      "outputArtifact": {
+        "schemaVersion": "project-candidate-ranking/v1",
+        "schemaPath": "schemas/project-candidate-ranking-v1.schema.json"
+      },
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "projectAudits"
+        ],
+        "properties": {
+          "projectAudits": {
+            "type": "object",
+            "description": "A project-audits/v1 artifact."
+          }
+        }
+      }
+    },
+    {
       "name": "audit_repo",
       "description": "Audit a repository and return the deterministic audit graph.",
       "outputArtifact": {

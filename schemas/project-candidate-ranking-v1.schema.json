@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "project-candidate-ranking-v1.schema.json",
+  "title": "Project Candidate Ranking Artifact",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "root", "summary", "unsupportedProjects", "candidates"],
+  "properties": {
+    "schemaVersion": {
+      "const": "project-candidate-ranking/v1"
+    },
+    "root": {
+      "type": "string",
+      "minLength": 1
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["projectCount", "auditedProjectCount", "unsupportedProjectCount", "candidateCount"],
+      "properties": {
+        "projectCount": { "type": "integer", "minimum": 0 },
+        "auditedProjectCount": { "type": "integer", "minimum": 0 },
+        "unsupportedProjectCount": { "type": "integer", "minimum": 0 },
+        "candidateCount": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "unsupportedProjects": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["projectId", "projectRoot", "reason", "languages"],
+        "properties": {
+          "projectId": { "type": "string", "minLength": 1 },
+          "projectRoot": { "type": "string", "minLength": 1 },
+          "reason": { "type": "string", "minLength": 1 },
+          "languages": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    },
+    "candidates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "projectId",
+          "projectRoot",
+          "adapterId",
+          "projectTargetId",
+          "targetId",
+          "target",
+          "path",
+          "category",
+          "kind",
+          "testLevel",
+          "priority",
+          "riskReductionScore",
+          "maintenanceCost",
+          "signals",
+          "rationale",
+          "existingTestPaths"
+        ],
+        "properties": {
+          "projectId": { "type": "string", "minLength": 1 },
+          "projectRoot": { "type": "string", "minLength": 1 },
+          "adapterId": { "type": "string", "minLength": 1 },
+          "projectTargetId": { "type": "string", "minLength": 1 },
+          "targetId": { "type": "string", "minLength": 1 },
+          "target": { "type": "string", "minLength": 1 },
+          "path": { "type": "string", "minLength": 1 },
+          "category": { "enum": ["untested", "covered-but-risky"] },
+          "kind": { "type": "string", "minLength": 1 },
+          "testLevel": { "enum": ["unit", "integration", "component", "ui", "none"] },
+          "priority": { "type": "integer" },
+          "riskReductionScore": { "type": "integer", "minimum": 0, "maximum": 10 },
+          "maintenanceCost": { "type": "integer", "minimum": 0, "maximum": 10 },
+          "signals": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "rationale": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "existingTestPaths": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      }
+    }
+  }
+}

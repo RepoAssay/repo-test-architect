@@ -3,6 +3,7 @@ import { explainTarget } from "./explain-target.js";
 import { auditDetectedProjects } from "./project-auditor.js";
 import { summarizeProjectAudits } from "./project-audit-summary.js";
 import { detectProjects } from "./project-detector.js";
+import { rankProjectTestCandidates } from "./project-candidate-ranking.js";
 import { rankTestCandidates } from "./rank-test-candidates.js";
 import { createTestPlan } from "./test-plan.js";
 
@@ -16,6 +17,10 @@ export function auditRepoProjects(repoRoot) {
 
 export function summarizeRepoProjectAudits(projectAudits) {
   return summarizeProjectAudits(projectAudits);
+}
+
+export function rankRepoProjectCandidates(projectAudits) {
+  return rankProjectTestCandidates(projectAudits);
 }
 
 export function auditRepo(repoRoot, options = {}) {

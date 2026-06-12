@@ -7,6 +7,7 @@ import {
   detectRepoProjects,
   explainAuditTarget,
   generateTestPlan,
+  rankRepoProjectCandidates,
   getAuditGraph,
   rankAuditTestCandidates,
   summarizeRepoProjectAudits,
@@ -35,6 +36,14 @@ describe("tool API", () => {
 
     assert.equal(summary.schemaVersion, "project-audit-summary/v1");
     assert.equal(summary.summary.untestedCandidateCount, 1);
+  });
+
+  it("ranks detected repository project candidates", () => {
+    const projectAudits = auditRepoProjects(path.resolve("examples/polyglot-workspace"));
+    const ranking = rankRepoProjectCandidates(projectAudits);
+
+    assert.equal(ranking.schemaVersion, "project-candidate-ranking/v1");
+    assert.equal(ranking.summary.candidateCount, 1);
   });
 
   it("audits a repo and exposes the audit graph", () => {

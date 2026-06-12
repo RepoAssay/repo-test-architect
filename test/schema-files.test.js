@@ -97,6 +97,16 @@ describe("schema files", () => {
     assert.ok(schema.properties.unsupportedProjects.items.required.includes("languages"));
   });
 
+  it("documents project-candidate-ranking/v1", () => {
+    const schema = readSchema("schemas/project-candidate-ranking-v1.schema.json");
+
+    assert.equal(schema.properties.schemaVersion.const, "project-candidate-ranking/v1");
+    assert.ok(schema.required.includes("candidates"));
+    assert.ok(schema.required.includes("unsupportedProjects"));
+    assert.ok(schema.properties.candidates.items.required.includes("projectTargetId"));
+    assert.ok(schema.properties.candidates.items.required.includes("priority"));
+  });
+
   it("documents MCP tool descriptors", () => {
     const schema = readSchema("schemas/mcp-tool-v1.schema.json");
 

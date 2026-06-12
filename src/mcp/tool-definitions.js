@@ -5,6 +5,7 @@ import {
   explainAuditTarget,
   generateTestPlan,
   getAuditGraph,
+  rankRepoProjectCandidates,
   rankAuditTestCandidates,
   summarizeRepoProjectAudits
 } from "../core/tool-api.js";
@@ -39,6 +40,14 @@ export const mcpTools = [
     name: "summarize_project_audits",
     description: "Summarize a project-audits artifact without merging cross-project rankings.",
     outputArtifact: artifact("project-audit-summary/v1", "schemas/project-audit-summary-v1.schema.json"),
+    inputSchema: objectSchema({
+      projectAudits: { type: "object", description: "A project-audits/v1 artifact." }
+    }, ["projectAudits"])
+  },
+  {
+    name: "rank_project_candidates",
+    description: "Rank test candidates across project-audits while preserving project identity.",
+    outputArtifact: artifact("project-candidate-ranking/v1", "schemas/project-candidate-ranking-v1.schema.json"),
     inputSchema: objectSchema({
       projectAudits: { type: "object", description: "A project-audits/v1 artifact." }
     }, ["projectAudits"])
@@ -120,6 +129,8 @@ export function callTool(name, args = {}) {
       return auditRepoProjects(requireString(args.repoRoot, "repoRoot"));
     case "summarize_project_audits":
       return summarizeRepoProjectAudits(requireObject(args.projectAudits, "projectAudits"));
+    case "rank_project_candidates":
+      return rankRepoProjectCandidates(requireObject(args.projectAudits, "projectAudits"));
     case "audit_repo":
       return auditRepo(requireString(args.repoRoot, "repoRoot"), {
         adapterId: optionalString(args.adapterId, "adapterId"),

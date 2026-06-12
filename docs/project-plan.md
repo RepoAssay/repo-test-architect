@@ -68,6 +68,7 @@ The MCP server should expose stable tools around the deterministic audit graph:
 - `detect_projects`
 - `audit_projects`
 - `summarize_project_audits`
+- `rank_project_candidates`
 - `audit_repo`
 - `get_audit_graph`
 - `explain_target`
@@ -82,6 +83,7 @@ The internal tool API now mirrors the first five MCP-shaped operations:
 - `detectRepoProjects`
 - `auditRepoProjects`
 - `summarizeRepoProjectAudits`
+- `rankRepoProjectCandidates`
 - `auditRepo`
 - `getAuditGraph`
 - `explainAuditTarget`
