@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 import path from "node:path";
 import { auditJavaScriptRepo } from "../adapters/javascript/audit.js";
+import { createTestPlan } from "../core/test-plan.js";
 
 const options = parseArgs(process.argv.slice(2));
 
-if (options.command !== "audit") {
-  console.error("Usage: repo-test-architect audit <repo> [--format markdown|json]");
+if (!["audit", "plan"].includes(options.command)) {
+  console.error("Usage: repo-test-architect <audit|plan> <repo> [--format markdown|json]");
   process.exit(1);
 }
 
@@ -16,9 +17,12 @@ if (!["markdown", "json"].includes(options.format)) {
 
 const root = path.resolve(process.cwd(), options.repoPath);
 const audit = auditJavaScriptRepo(root);
+const output = options.command === "plan" ? createTestPlan(audit) : audit;
 
 if (options.format === "json") {
-  console.log(JSON.stringify(audit, null, 2));
+  console.log(JSON.stringify(output, null, 2));
+} else if (options.command === "plan") {
+  console.log(renderMarkdownPlan(output));
 } else {
   console.log(renderMarkdownReport(audit));
 }
@@ -123,8 +127,53 @@ function renderMarkdownReport(audit) {
   return lines.join("\n");
 }
 
+function renderMarkdownPlan(plan) {
+  const lines = [];
+
+  lines.push("# Test Plan");
+  lines.push("");
+  lines.push("## Summary");
+  lines.push(`- Confidence: ${plan.summary.confidence}`);
+  lines.push(`- Verification command: ${plan.summary.verificationCommand ?? "none detected"}`);
+  lines.push(`- Add tests: ${plan.summary.addTestCount}`);
+  lines.push(`- Extend tests: ${plan.summary.extendTestCount}`);
+  lines.push(`- Deferred: ${plan.summary.deferredCount}`);
+  lines.push("");
+  lines.push("## Blockers");
+
+  if (plan.blockers.length === 0) {
+    lines.push("- None detected.");
+  } else {
+    for (const blocker of plan.blockers) {
+      lines.push(`- ${blocker}`);
+    }
+  }
+
+  lines.push("");
+  lines.push("## Items");
+
+  if (plan.items.length === 0) {
+    lines.push("- No plan items generated.");
+  } else {
+    for (const item of plan.items) {
+      const existingTests =
+        item.existingTestPaths.length > 0 ? ` Existing tests: ${item.existingTestPaths.join(", ")}.` : "";
+      const rationale = item.rationale.map(trimTrailingPeriod).join(". ");
+      lines.push(
+        `- ${item.action}: ${item.target} (${item.testLevel}, priority ${item.priority}, risk reduction ${item.riskReductionScore}/10, maintenance ${item.maintenanceCost}/10). ${rationale}.${existingTests}`
+      );
+    }
+  }
+
+  return lines.join("\n");
+}
+
 function formatList(values) {
   return values.length > 0 ? values.join(", ") : "none detected";
+}
+
+function trimTrailingPeriod(value) {
+  return value.endsWith(".") ? value.slice(0, -1) : value;
 }
 
 function formatTarget(target) {

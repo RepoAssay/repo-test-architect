@@ -22,6 +22,13 @@ Output the structured audit graph:
 npm run audit:example:json
 ```
 
+Generate an actionable test plan from the audit graph:
+
+```powershell
+npm run plan:example
+npm run plan:example:json
+```
+
 Run the auditor regression tests:
 
 ```powershell

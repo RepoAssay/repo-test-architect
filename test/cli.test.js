@@ -40,4 +40,27 @@ describe("CLI", () => {
 
     assert.equal(audit.profile.testCommand, "npm run test");
   });
+
+  it("emits a markdown test plan", () => {
+    const output = execFileSync(process.execPath, [cliPath, "plan", fixturePath], {
+      encoding: "utf8"
+    });
+
+    assert.match(output, /^# Test Plan/);
+    assert.match(output, /add-test: authService/);
+    assert.match(output, /extend-test: deckParser/);
+  });
+
+  it("emits a JSON test plan", () => {
+    const output = execFileSync(process.execPath, [cliPath, "plan", fixturePath, "--format=json"], {
+      encoding: "utf8"
+    });
+    const plan = JSON.parse(output);
+
+    assert.equal(plan.summary.verificationCommand, "npm run test");
+    assert.deepEqual(
+      plan.items.map((item) => `${item.action}:${item.target}`),
+      ["extend-test:deckParser", "add-test:authService", "defer:userDto"]
+    );
+  });
 });

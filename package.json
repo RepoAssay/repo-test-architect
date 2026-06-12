@@ -10,6 +10,8 @@
   "scripts": {
     "audit:example": "node ./src/cli/index.js audit ./examples/node-vitest-basic",
     "audit:example:json": "node ./src/cli/index.js audit ./examples/node-vitest-basic --format json",
+    "plan:example": "node ./src/cli/index.js plan ./examples/node-vitest-basic",
+    "plan:example:json": "node ./src/cli/index.js plan ./examples/node-vitest-basic --format json",
     "eval:update": "node ./scripts/update-golden-snapshots.js",
     "test": "node --test \"test/**/*.test.js\"",
     "smoke": "powershell -ExecutionPolicy Bypass -File ./scripts/smoke.ps1"
