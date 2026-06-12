@@ -13,6 +13,7 @@
     {
       "id": "add-test:src/services/userService.ts",
       "action": "add-test",
+      "targetId": "src/services/userService.ts",
       "target": "userService",
       "path": "src/services/userService.ts",
       "testLevel": "unit",
@@ -32,6 +33,7 @@
     {
       "id": "extend-test:src/routes/userRoutes.ts",
       "action": "extend-test",
+      "targetId": "src/routes/userRoutes.ts",
       "target": "userRoutes",
       "path": "src/routes/userRoutes.ts",
       "testLevel": "integration",
@@ -55,6 +57,7 @@
     {
       "id": "defer:src/app.ts",
       "action": "defer",
+      "targetId": "src/app.ts",
       "target": "app",
       "path": "src/app.ts",
       "testLevel": "none",
@@ -73,6 +76,7 @@
     {
       "id": "defer:src/models/userDto.ts",
       "action": "defer",
+      "targetId": "src/models/userDto.ts",
       "target": "userDto",
       "path": "src/models/userDto.ts",
       "testLevel": "none",

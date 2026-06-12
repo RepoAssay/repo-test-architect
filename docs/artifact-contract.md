@@ -49,6 +49,7 @@ It contains:
 - blockers
 - ordered plan items
 - stable item IDs
+- stable target IDs
 - source signals from the audit target
 
 ## Stable Plan Item IDs
@@ -68,6 +69,9 @@ node ./src/cli/index.js plan ./examples/node-vitest-basic --item add-test:src/au
 ```
 
 Future generation should target these IDs rather than array positions or display names.
+
+Audit targets also expose a stable `id`, currently the repository-relative source path.
+Plan items carry that value as `targetId` so model and MCP layers can link plan actions back to audit evidence.
 
 ## Changed-Only Flow
 

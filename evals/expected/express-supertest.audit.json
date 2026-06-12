@@ -34,6 +34,7 @@
   },
   "untestedCandidates": [
     {
+      "id": "src/services/userService.ts",
       "name": "userService",
       "path": "src/services/userService.ts",
       "kind": "service",
@@ -55,6 +56,7 @@
   ],
   "coveredButRisky": [
     {
+      "id": "src/routes/userRoutes.ts",
       "name": "userRoutes",
       "path": "src/routes/userRoutes.ts",
       "kind": "http-route",
@@ -80,6 +82,7 @@
   ],
   "recommended": [
     {
+      "id": "src/routes/userRoutes.ts",
       "name": "userRoutes",
       "path": "src/routes/userRoutes.ts",
       "kind": "http-route",
@@ -103,6 +106,7 @@
       ]
     },
     {
+      "id": "src/services/userService.ts",
       "name": "userService",
       "path": "src/services/userService.ts",
       "kind": "service",
@@ -124,6 +128,7 @@
   ],
   "skipped": [
     {
+      "id": "src/app.ts",
       "name": "app",
       "path": "src/app.ts",
       "kind": "app-wiring",
@@ -136,6 +141,7 @@
       "preferredCoveragePath": "Cover through Supertest or API-level integration tests."
     },
     {
+      "id": "src/models/userDto.ts",
       "name": "userDto",
       "path": "src/models/userDto.ts",
       "kind": "dto",

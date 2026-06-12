@@ -29,6 +29,7 @@
   },
   "untestedCandidates": [
     {
+      "id": "src/invoiceService.ts",
       "name": "invoiceService",
       "path": "src/invoiceService.ts",
       "kind": "service",
@@ -52,6 +53,7 @@
   ],
   "coveredButRisky": [
     {
+      "id": "src/invoiceParser.ts",
       "name": "invoiceParser",
       "path": "src/invoiceParser.ts",
       "kind": "pure-logic",
@@ -77,6 +79,7 @@
   ],
   "recommended": [
     {
+      "id": "src/invoiceParser.ts",
       "name": "invoiceParser",
       "path": "src/invoiceParser.ts",
       "kind": "pure-logic",
@@ -100,6 +103,7 @@
       ]
     },
     {
+      "id": "src/invoiceService.ts",
       "name": "invoiceService",
       "path": "src/invoiceService.ts",
       "kind": "service",
@@ -123,6 +127,7 @@
   ],
   "skipped": [
     {
+      "id": "src/constants.ts",
       "name": "constants",
       "path": "src/constants.ts",
       "kind": "constants",
@@ -135,6 +140,7 @@
       "preferredCoveragePath": "Cover through tests for the service, parser, or component that uses these constants."
     },
     {
+      "id": "src/invoiceDto.ts",
       "name": "invoiceDto",
       "path": "src/invoiceDto.ts",
       "kind": "dto",

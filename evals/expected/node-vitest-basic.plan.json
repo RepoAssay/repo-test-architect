@@ -13,6 +13,7 @@
     {
       "id": "extend-test:src/deckParser.ts",
       "action": "extend-test",
+      "targetId": "src/deckParser.ts",
       "target": "deckParser",
       "path": "src/deckParser.ts",
       "testLevel": "unit",
@@ -36,6 +37,7 @@
     {
       "id": "add-test:src/authService.ts",
       "action": "add-test",
+      "targetId": "src/authService.ts",
       "target": "authService",
       "path": "src/authService.ts",
       "testLevel": "unit",
@@ -55,6 +57,7 @@
     {
       "id": "defer:src/userDto.ts",
       "action": "defer",
+      "targetId": "src/userDto.ts",
       "target": "userDto",
       "path": "src/userDto.ts",
       "testLevel": "none",

@@ -6,6 +6,7 @@ export function createTestPlan(audit) {
     .map((target) => ({
       id: `defer:${target.path}`,
       action: "defer",
+      targetId: target.id,
       target: target.name,
       path: target.path,
       testLevel: "none",
@@ -40,6 +41,7 @@ function toPlanItem(action, target) {
   return {
     id: `${action}:${target.path}`,
     action,
+    targetId: target.id,
     target: target.name,
     path: target.path,
     testLevel: target.recommendedTestLevel,

@@ -17,6 +17,7 @@ export interface RepoProfile {
 }
 
 export interface AuditTarget {
+  id: string;
   name: string;
   path: string;
   kind: string;
@@ -31,6 +32,7 @@ export interface AuditTarget {
 }
 
 export interface SkippedTarget {
+  id: string;
   name: string;
   path: string;
   kind: string;

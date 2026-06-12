@@ -13,6 +13,7 @@
     {
       "id": "extend-test:src/invoiceParser.ts",
       "action": "extend-test",
+      "targetId": "src/invoiceParser.ts",
       "target": "invoiceParser",
       "path": "src/invoiceParser.ts",
       "testLevel": "unit",
@@ -36,6 +37,7 @@
     {
       "id": "add-test:src/invoiceService.ts",
       "action": "add-test",
+      "targetId": "src/invoiceService.ts",
       "target": "invoiceService",
       "path": "src/invoiceService.ts",
       "testLevel": "unit",
@@ -57,6 +59,7 @@
     {
       "id": "defer:src/invoiceDto.ts",
       "action": "defer",
+      "targetId": "src/invoiceDto.ts",
       "target": "invoiceDto",
       "path": "src/invoiceDto.ts",
       "testLevel": "none",

@@ -5,6 +5,7 @@ export type PlanAction = "add-test" | "extend-test" | "defer";
 export interface TestPlanItem {
   id: string;
   action: PlanAction;
+  targetId: string;
   target: string;
   path: string;
   testLevel: TestLevel;
@@ -38,6 +39,7 @@ export function createTestPlan(audit: AuditResult): TestPlan {
     .map((target) => ({
       id: `defer:${target.path}`,
       action: "defer" as const,
+      targetId: target.id,
       target: target.name,
       path: target.path,
       testLevel: "none" as const,
@@ -72,6 +74,7 @@ function toPlanItem(action: "add-test" | "extend-test", target: AuditTarget): Te
   return {
     id: `${action}:${target.path}`,
     action,
+    targetId: target.id,
     target: target.name,
     path: target.path,
     testLevel: target.recommendedTestLevel,

@@ -15,6 +15,7 @@
     {
       "id": "add-test:src/paymentParser.ts",
       "action": "add-test",
+      "targetId": "src/paymentParser.ts",
       "target": "paymentParser",
       "path": "src/paymentParser.ts",
       "testLevel": "unit",
@@ -34,6 +35,7 @@
     {
       "id": "add-test:src/paymentClient.ts",
       "action": "add-test",
+      "targetId": "src/paymentClient.ts",
       "target": "paymentClient",
       "path": "src/paymentClient.ts",
       "testLevel": "unit",
@@ -55,6 +57,7 @@
     {
       "id": "defer:src/paymentResponseDto.ts",
       "action": "defer",
+      "targetId": "src/paymentResponseDto.ts",
       "target": "paymentResponseDto",
       "path": "src/paymentResponseDto.ts",
       "testLevel": "none",

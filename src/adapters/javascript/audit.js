@@ -20,6 +20,7 @@ export function auditJavaScriptRepo(root, options = {}) {
 
     if (classification.skipReason) {
       skipped.push({
+        id: file.path,
         name,
         path: file.path,
         kind: classification.kind,
@@ -33,6 +34,7 @@ export function auditJavaScriptRepo(root, options = {}) {
     }
 
     const target = {
+      id: file.path,
       name,
       path: file.path,
       kind: classification.kind,

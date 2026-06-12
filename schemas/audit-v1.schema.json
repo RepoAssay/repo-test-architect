@@ -73,6 +73,7 @@
       "additionalProperties": false,
       "required": [
         "name",
+        "id",
         "path",
         "kind",
         "signals",
@@ -86,6 +87,7 @@
       ],
       "properties": {
         "name": { "type": "string" },
+        "id": { "type": "string" },
         "path": { "type": "string" },
         "kind": { "type": "string" },
         "signals": { "type": "array", "items": { "type": "string" } },
@@ -103,6 +105,7 @@
       "additionalProperties": false,
       "required": [
         "name",
+        "id",
         "path",
         "kind",
         "signals",
@@ -112,6 +115,7 @@
       ],
       "properties": {
         "name": { "type": "string" },
+        "id": { "type": "string" },
         "path": { "type": "string" },
         "kind": { "type": "string" },
         "signals": { "type": "array", "items": { "type": "string" } },

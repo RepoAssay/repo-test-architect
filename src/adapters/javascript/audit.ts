@@ -28,6 +28,7 @@ export function auditJavaScriptRepo(snapshot: JavaScriptRepoSnapshot): AuditResu
 
     if (classification.skipReason) {
       skipped.push({
+        id: file.path,
         name,
         path: file.path,
         kind: classification.kind,
@@ -41,6 +42,7 @@ export function auditJavaScriptRepo(snapshot: JavaScriptRepoSnapshot): AuditResu
     }
 
     const target: AuditTarget = {
+      id: file.path,
       name,
       path: file.path,
       kind: classification.kind,

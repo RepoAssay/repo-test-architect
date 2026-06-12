@@ -30,6 +30,7 @@
   },
   "untestedCandidates": [
     {
+      "id": "src/services/sessionService.ts",
       "name": "sessionService",
       "path": "src/services/sessionService.ts",
       "kind": "service",
@@ -51,6 +52,7 @@
   ],
   "coveredButRisky": [
     {
+      "id": "src/components/LoginForm.tsx",
       "name": "LoginForm",
       "path": "src/components/LoginForm.tsx",
       "kind": "component",
@@ -75,6 +77,7 @@
   ],
   "recommended": [
     {
+      "id": "src/services/sessionService.ts",
       "name": "sessionService",
       "path": "src/services/sessionService.ts",
       "kind": "service",
@@ -94,6 +97,7 @@
       "existingTestPaths": []
     },
     {
+      "id": "src/components/LoginForm.tsx",
       "name": "LoginForm",
       "path": "src/components/LoginForm.tsx",
       "kind": "component",
@@ -118,6 +122,7 @@
   ],
   "skipped": [
     {
+      "id": "src/components/Avatar.tsx",
       "name": "Avatar",
       "path": "src/components/Avatar.tsx",
       "kind": "presentational-component",
@@ -130,6 +135,7 @@
       "preferredCoveragePath": "Cover through parent component or user-flow tests when behavior depends on this rendering."
     },
     {
+      "id": "src/models/sessionDto.ts",
       "name": "sessionDto",
       "path": "src/models/sessionDto.ts",
       "kind": "dto",

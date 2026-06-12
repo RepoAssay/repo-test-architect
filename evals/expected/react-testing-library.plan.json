@@ -13,6 +13,7 @@
     {
       "id": "add-test:src/services/sessionService.ts",
       "action": "add-test",
+      "targetId": "src/services/sessionService.ts",
       "target": "sessionService",
       "path": "src/services/sessionService.ts",
       "testLevel": "unit",
@@ -32,6 +33,7 @@
     {
       "id": "extend-test:src/components/LoginForm.tsx",
       "action": "extend-test",
+      "targetId": "src/components/LoginForm.tsx",
       "target": "LoginForm",
       "path": "src/components/LoginForm.tsx",
       "testLevel": "component",
@@ -54,6 +56,7 @@
     {
       "id": "defer:src/models/sessionDto.ts",
       "action": "defer",
+      "targetId": "src/models/sessionDto.ts",
       "target": "sessionDto",
       "path": "src/models/sessionDto.ts",
       "testLevel": "none",
@@ -72,6 +75,7 @@
     {
       "id": "defer:src/components/Avatar.tsx",
       "action": "defer",
+      "targetId": "src/components/Avatar.tsx",
       "target": "Avatar",
       "path": "src/components/Avatar.tsx",
       "testLevel": "none",

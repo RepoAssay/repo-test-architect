@@ -45,6 +45,7 @@
         "required": [
           "id",
           "action",
+          "targetId",
           "target",
           "path",
           "testLevel",
@@ -58,6 +59,7 @@
         "properties": {
           "id": { "type": "string" },
           "action": { "enum": ["add-test", "extend-test", "defer"] },
+          "targetId": { "type": "string" },
           "target": { "type": "string" },
           "path": { "type": "string" },
           "testLevel": { "enum": ["unit", "integration", "component", "ui", "none"] },
