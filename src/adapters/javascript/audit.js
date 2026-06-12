@@ -328,6 +328,16 @@ function classifySourceFile(file) {
     );
   }
 
+  if (isAppWiring(lowerPath, content)) {
+    return skipped(
+      "app-wiring",
+      2,
+      4,
+      "Application wiring is better covered through route or integration tests.",
+      "Cover through Supertest or API-level integration tests."
+    );
+  }
+
   if (lowerPath.includes("component") || lowerPath.endsWith(".tsx") || content.includes("jsx")) {
     return {
       kind: "component",
@@ -470,6 +480,14 @@ function isConstantsOnly(content) {
     .filter(Boolean);
 
   return lines.every((line) => /^export\s+const\s+\w+\s*=/.test(line) || /^const\s+\w+\s*=/.test(line));
+}
+
+function isAppWiring(currentPath, content) {
+  return (
+    /(^|\/)(app|server|main)\.[cm]?[jt]sx?$/.test(currentPath) &&
+    (content.includes("express()") || content.includes(".use(")) &&
+    !/\b(app|get|post|put|patch|delete)\s*\(/.test(content)
+  );
 }
 
 function byRiskThenName(a, b) {

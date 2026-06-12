@@ -6,6 +6,7 @@ import { auditJavaScriptRepo } from "../src/adapters/javascript/audit.js";
 const exampleRoot = path.resolve("examples/node-vitest-basic");
 const noTestsRoot = path.resolve("examples/node-no-tests-yet");
 const jestServiceRoot = path.resolve("examples/node-jest-service");
+const expressSupertestRoot = path.resolve("examples/express-supertest");
 
 describe("JavaScript audit adapter", () => {
   it("detects package, framework, command, and repository conventions", () => {
@@ -140,5 +141,44 @@ describe("JavaScript audit adapter", () => {
       audit.skipped.map((target) => target.name),
       ["constants", "invoiceDto"]
     );
+  });
+
+  it("detects Express and Supertest integration conventions", () => {
+    const audit = auditJavaScriptRepo(expressSupertestRoot);
+
+    assert.deepEqual(audit.profile.testFrameworks, ["jest", "supertest"]);
+    assert.equal(audit.profile.testCommand, "npm run test");
+    assert.equal(audit.profile.confidence, "high");
+    assert.ok(audit.profile.architectures.includes("http-routes"));
+    assert.ok(audit.profile.architectures.includes("service-layer"));
+    assert.ok(audit.profile.setupSignals.includes("supertest"));
+  });
+
+  it("classifies covered routes as integration-risk targets", () => {
+    const audit = auditJavaScriptRepo(expressSupertestRoot);
+
+    assert.deepEqual(
+      audit.coveredButRisky.map((target) => target.name),
+      ["userRoutes"]
+    );
+
+    const userRoutes = audit.coveredButRisky[0];
+    assert.equal(userRoutes.kind, "http-route");
+    assert.equal(userRoutes.recommendedTestLevel, "integration");
+    assert.deepEqual(userRoutes.existingTestPaths, ["src/routes/userRoutes.test.ts"]);
+  });
+
+  it("keeps Express wiring and DTOs out of direct test recommendations", () => {
+    const audit = auditJavaScriptRepo(expressSupertestRoot);
+
+    assert.deepEqual(
+      audit.untestedCandidates.map((target) => target.name),
+      ["userService"]
+    );
+    assert.deepEqual(
+      audit.skipped.map((target) => target.name),
+      ["app", "userDto"]
+    );
+    assert.equal(audit.skipped.find((target) => target.name === "app").kind, "app-wiring");
   });
 });

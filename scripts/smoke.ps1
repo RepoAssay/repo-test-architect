@@ -25,7 +25,14 @@ $required = @(
   "examples/node-jest-service/src/invoiceParser.ts",
   "examples/node-jest-service/src/invoiceParser.spec.ts",
   "examples/node-jest-service/src/invoiceDto.ts",
-  "examples/node-jest-service/src/constants.ts"
+  "examples/node-jest-service/src/constants.ts",
+  "examples/express-supertest/package.json",
+  "examples/express-supertest/jest.config.js",
+  "examples/express-supertest/src/app.ts",
+  "examples/express-supertest/src/routes/userRoutes.ts",
+  "examples/express-supertest/src/routes/userRoutes.test.ts",
+  "examples/express-supertest/src/services/userService.ts",
+  "examples/express-supertest/src/models/userDto.ts"
 )
 
 foreach ($relative in $required) {
