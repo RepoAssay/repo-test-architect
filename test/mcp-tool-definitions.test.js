@@ -36,9 +36,12 @@ describe("MCP tool definitions", () => {
     }
   });
 
-  it("dispatches adapter registry, project detection, audit, plan, explanation, and ranking tools", () => {
+  it("dispatches adapter registry, project detection, project audits, audit, plan, explanation, and ranking tools", () => {
     const adapterRegistry = callTool("list_adapters");
     const projectDetection = callTool("detect_projects", {
+      repoRoot: path.resolve("examples/polyglot-workspace")
+    });
+    const projectAudits = callTool("audit_projects", {
       repoRoot: path.resolve("examples/polyglot-workspace")
     });
     const audit = callTool("audit_repo", {
@@ -55,6 +58,8 @@ describe("MCP tool definitions", () => {
     assert.deepEqual(adapterRegistry.adapters.map((adapter) => adapter.id), ["javascript"]);
     assert.equal(projectDetection.schemaVersion, "project-detection/v1");
     assert.equal(projectDetection.summary.projectCount, 2);
+    assert.equal(projectAudits.schemaVersion, "project-audits/v1");
+    assert.equal(projectAudits.summary.auditedProjectCount, 1);
     assert.equal(graph, audit);
     assert.equal(plan.schemaVersion, "plan/v1");
     assert.deepEqual(plan.items.map((item) => item.id), ["add-test:src/authService.ts"]);
@@ -102,6 +107,7 @@ describe("MCP tool definitions", () => {
 function minimalArgsFor(toolName) {
   if (toolName === "list_adapters") return {};
   if (toolName === "detect_projects") return { repoRoot: "." };
+  if (toolName === "audit_projects") return { repoRoot: "." };
   if (toolName === "audit_repo") return { repoRoot: "." };
   if (toolName === "explain_target") return { audit: {}, targetId: "src/example.ts" };
   if (toolName === "generate_selected_test") return { planItemId: "add-test:src/example.ts" };

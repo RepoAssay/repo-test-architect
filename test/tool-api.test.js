@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import path from "node:path";
 import { describe, it } from "node:test";
 import {
+  auditRepoProjects,
   auditRepo,
   detectRepoProjects,
   explainAuditTarget,
@@ -17,6 +18,14 @@ describe("tool API", () => {
 
     assert.equal(detection.schemaVersion, "project-detection/v1");
     assert.equal(detection.summary.projectCount, 2);
+  });
+
+  it("audits detected repository projects", () => {
+    const result = auditRepoProjects(path.resolve("examples/polyglot-workspace"));
+
+    assert.equal(result.schemaVersion, "project-audits/v1");
+    assert.equal(result.summary.auditedProjectCount, 1);
+    assert.equal(result.summary.skippedProjectCount, 1);
   });
 
   it("audits a repo and exposes the audit graph", () => {

@@ -1,0 +1,112 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "project-audits-v1.schema.json",
+  "title": "Project Audits Artifact",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "root", "summary", "audits", "skippedProjects"],
+  "properties": {
+    "schemaVersion": {
+      "const": "project-audits/v1"
+    },
+    "root": {
+      "type": "string",
+      "minLength": 1
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["projectCount", "auditedProjectCount", "skippedProjectCount"],
+      "properties": {
+        "projectCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "auditedProjectCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "skippedProjectCount": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "audits": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["projectId", "projectRoot", "adapterId", "audit"],
+        "properties": {
+          "projectId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "projectRoot": {
+            "type": "string",
+            "minLength": 1
+          },
+          "adapterId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "audit": {
+            "type": "object",
+            "additionalProperties": true,
+            "required": ["schemaVersion", "profile", "untestedCandidates", "coveredButRisky", "skipped", "risks"],
+            "properties": {
+              "schemaVersion": {
+                "const": "audit/v1"
+              },
+              "profile": {
+                "type": "object"
+              },
+              "untestedCandidates": {
+                "type": "array"
+              },
+              "coveredButRisky": {
+                "type": "array"
+              },
+              "skipped": {
+                "type": "array"
+              },
+              "risks": {
+                "type": "array"
+              }
+            }
+          }
+        }
+      }
+    },
+    "skippedProjects": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["projectId", "projectRoot", "reason", "languages"],
+        "properties": {
+          "projectId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "projectRoot": {
+            "type": "string",
+            "minLength": 1
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          },
+          "languages": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      }
+    }
+  }
+}

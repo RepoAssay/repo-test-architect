@@ -56,6 +56,7 @@ Exercise the MCP-style tool surface:
 ```powershell
 npm run mcp:tools
 npm run mcp:detect:example
+npm run mcp:audit-projects:example
 npm run mcp:audit:example
 npm run mcp:audit:envelope
 npm run mcp:stdio

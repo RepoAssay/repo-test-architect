@@ -4,6 +4,7 @@ import { describe, it } from "node:test";
 import { auditJavaScriptRepo } from "../src/adapters/javascript/audit.js";
 import { getAdapterRegistry } from "../src/core/adapter-registry.js";
 import { explainTarget } from "../src/core/explain-target.js";
+import { auditDetectedProjects } from "../src/core/project-auditor.js";
 import { detectProjects } from "../src/core/project-detector.js";
 import { rankTestCandidates } from "../src/core/rank-test-candidates.js";
 import { loadEvalFixtures } from "./support/eval-fixtures.js";
@@ -17,6 +18,7 @@ const rankingSchema = readJson("schemas/candidate-ranking-v1.schema.json");
 const generationDeferredSchema = readJson("schemas/generation-deferred-v1.schema.json");
 const adapterRegistrySchema = readJson("schemas/adapter-registry-v1.schema.json");
 const projectDetectionSchema = readJson("schemas/project-detection-v1.schema.json");
+const projectAuditsSchema = readJson("schemas/project-audits-v1.schema.json");
 const fixtures = loadEvalFixtures();
 
 describe("artifact schema compatibility", () => {
@@ -75,6 +77,14 @@ describe("project detection artifact schema compatibility", () => {
     const artifact = detectProjects(path.resolve("examples/polyglot-workspace"));
 
     assertMatchesSchema(artifact, projectDetectionSchema, "project-detection.json");
+  });
+});
+
+describe("project audits artifact schema compatibility", () => {
+  it("validates project-audits/v1", () => {
+    const artifact = auditDetectedProjects(path.resolve("examples/polyglot-workspace"));
+
+    assertMatchesSchema(artifact, projectAuditsSchema, "project-audits.json");
   });
 });
 

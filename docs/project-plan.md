@@ -66,6 +66,7 @@ The MCP server should expose stable tools around the deterministic audit graph:
 
 - `list_adapters`
 - `detect_projects`
+- `audit_projects`
 - `audit_repo`
 - `get_audit_graph`
 - `explain_target`
@@ -78,6 +79,7 @@ The model should call tools and act on structured evidence. It should not own re
 The internal tool API now mirrors the first five MCP-shaped operations:
 
 - `detectRepoProjects`
+- `auditRepoProjects`
 - `auditRepo`
 - `getAuditGraph`
 - `explainAuditTarget`

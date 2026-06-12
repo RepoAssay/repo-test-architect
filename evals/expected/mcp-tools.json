@@ -36,6 +36,27 @@
       }
     },
     {
+      "name": "audit_projects",
+      "description": "Audit detected supported projects and report unsupported project roots.",
+      "outputArtifact": {
+        "schemaVersion": "project-audits/v1",
+        "schemaPath": "schemas/project-audits-v1.schema.json"
+      },
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "repoRoot"
+        ],
+        "properties": {
+          "repoRoot": {
+            "type": "string",
+            "description": "Repository root path."
+          }
+        }
+      }
+    },
+    {
       "name": "audit_repo",
       "description": "Audit a repository and return the deterministic audit graph.",
       "outputArtifact": {

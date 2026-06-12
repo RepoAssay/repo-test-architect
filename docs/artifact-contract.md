@@ -177,6 +177,22 @@ node ./src/cli/index.js detect ./examples/polyglot-workspace --format json
 This artifact lists project roots found inside a repository, their marker files, likely languages, matching adapter IDs, and whether the current runtime can audit them.
 It is the first deterministic step toward polyglot repo support and future parallel adapter execution.
 
+## Project Audits Artifact
+
+Schema:
+
+- `schemas/project-audits-v1.schema.json`
+- `schemaVersion: "project-audits/v1"`
+
+MCP tool:
+
+```txt
+audit_projects
+```
+
+This artifact runs the matching adapter for each supported detected project root and reports unsupported project roots separately.
+It does not yet merge or rank findings across projects; that belongs in a later core merge layer.
+
 ## Changed-Only Flow
 
 For PR-style workflows, use `--changed`:
@@ -225,6 +241,7 @@ Internal tool API:
 - `auditRepo`
 - `getAdapterRegistry`
 - `detectRepoProjects`
+- `auditRepoProjects`
 - `getAuditGraph`
 - `explainAuditTarget`
 - `rankAuditTestCandidates`

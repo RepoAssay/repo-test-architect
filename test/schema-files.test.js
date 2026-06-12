@@ -77,6 +77,16 @@ describe("schema files", () => {
     assert.ok(schema.properties.projects.items.required.includes("supported"));
   });
 
+  it("documents project-audits/v1", () => {
+    const schema = readSchema("schemas/project-audits-v1.schema.json");
+
+    assert.equal(schema.properties.schemaVersion.const, "project-audits/v1");
+    assert.ok(schema.required.includes("audits"));
+    assert.ok(schema.required.includes("skippedProjects"));
+    assert.ok(schema.properties.audits.items.required.includes("adapterId"));
+    assert.ok(schema.properties.skippedProjects.items.required.includes("reason"));
+  });
+
   it("documents MCP tool descriptors", () => {
     const schema = readSchema("schemas/mcp-tool-v1.schema.json");
 

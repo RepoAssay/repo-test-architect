@@ -11,6 +11,7 @@ Implemented:
 - deterministic project detection for polyglot repository roots
 - fixture-based regression coverage
 - audit, plan, explanation, ranking, and deferred-generation artifacts
+- project detection and project audit artifacts for polyglot repository groundwork
 - stable JSON schemas for generated artifacts
 - golden snapshots for fixture audits, plans, and MCP tool descriptors
 - changed-file workflows with `--changed` and `--changed-since`
@@ -31,6 +32,7 @@ Current tool names:
 - `audit_repo`
 - `list_adapters`
 - `detect_projects`
+- `audit_projects`
 - `get_audit_graph`
 - `generate_test_plan`
 - `explain_target`

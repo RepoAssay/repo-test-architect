@@ -14,6 +14,32 @@ export interface ProjectDetection {
   };
 }
 
+export interface ProjectAudits {
+  schemaVersion: "project-audits/v1";
+  root: string;
+  summary: {
+    projectCount: number;
+    auditedProjectCount: number;
+    skippedProjectCount: number;
+  };
+  audits: ProjectAuditEntry[];
+  skippedProjects: SkippedProjectAudit[];
+}
+
+export interface ProjectAuditEntry {
+  projectId: string;
+  projectRoot: string;
+  adapterId: string;
+  audit: AuditResult;
+}
+
+export interface SkippedProjectAudit {
+  projectId: string;
+  projectRoot: string;
+  reason: string;
+  languages: string[];
+}
+
 export interface DetectedProject {
   id: string;
   root: string;
@@ -35,6 +61,8 @@ export interface GenerateTestPlanOptions {
 }
 
 export declare function detectRepoProjects(repoRoot: string): ProjectDetection;
+
+export declare function auditRepoProjects(repoRoot: string): ProjectAudits;
 
 export function getAuditGraph(audit: AuditResult): AuditResult {
   validateAudit(audit);

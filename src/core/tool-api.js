@@ -1,11 +1,16 @@
 import { getAdapter } from "./adapter-registry.js";
 import { explainTarget } from "./explain-target.js";
+import { auditDetectedProjects } from "./project-auditor.js";
 import { detectProjects } from "./project-detector.js";
 import { rankTestCandidates } from "./rank-test-candidates.js";
 import { createTestPlan } from "./test-plan.js";
 
 export function detectRepoProjects(repoRoot) {
   return detectProjects(repoRoot);
+}
+
+export function auditRepoProjects(repoRoot) {
+  return auditDetectedProjects(repoRoot);
 }
 
 export function auditRepo(repoRoot, options = {}) {

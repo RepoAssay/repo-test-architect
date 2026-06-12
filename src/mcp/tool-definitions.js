@@ -1,4 +1,5 @@
 import {
+  auditRepoProjects,
   auditRepo,
   detectRepoProjects,
   explainAuditTarget,
@@ -21,6 +22,14 @@ export const mcpTools = [
     name: "detect_projects",
     description: "Detect project roots and matching adapters inside a repository.",
     outputArtifact: artifact("project-detection/v1", "schemas/project-detection-v1.schema.json"),
+    inputSchema: objectSchema({
+      repoRoot: { type: "string", description: "Repository root path." }
+    }, ["repoRoot"])
+  },
+  {
+    name: "audit_projects",
+    description: "Audit detected supported projects and report unsupported project roots.",
+    outputArtifact: artifact("project-audits/v1", "schemas/project-audits-v1.schema.json"),
     inputSchema: objectSchema({
       repoRoot: { type: "string", description: "Repository root path." }
     }, ["repoRoot"])
@@ -98,6 +107,8 @@ export function callTool(name, args = {}) {
       return getAdapterRegistry();
     case "detect_projects":
       return detectRepoProjects(requireString(args.repoRoot, "repoRoot"));
+    case "audit_projects":
+      return auditRepoProjects(requireString(args.repoRoot, "repoRoot"));
     case "audit_repo":
       return auditRepo(requireString(args.repoRoot, "repoRoot"), {
         adapterId: optionalString(args.adapterId, "adapterId"),
