@@ -24,3 +24,17 @@ Runtime adapter registration lives in `src/core/adapter-registry.js`.
 The initial registered adapter is:
 
 - `javascript` for JavaScript and TypeScript repositories
+
+## Polyglot Repositories
+
+Adapters are project-level units, not necessarily repository-level units.
+
+A future repository detector should be able to find multiple project roots in one checkout and run the matching adapters independently. For example:
+
+- `apps/web` -> `javascript`
+- `services/api` -> `python`
+- `apps/android` -> `kotlin`
+
+Independent adapter audits can run in parallel once project roots and adapter matches are known.
+
+The core layer should merge project audit results into one repo-level graph and perform cross-project ranking there. Adapters should not reach across unrelated language roots unless the core passes them explicit boundary information.

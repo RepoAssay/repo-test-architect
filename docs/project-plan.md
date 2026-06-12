@@ -64,6 +64,7 @@ Later adapter fixtures:
 
 The MCP server should expose stable tools around the deterministic audit graph:
 
+- `list_adapters`
 - `audit_repo`
 - `get_audit_graph`
 - `explain_target`
@@ -87,6 +88,45 @@ The later MCP server should wrap that API rather than duplicate audit, ranking, 
 
 The dependency-free MCP tool surface lives in `src/mcp/tool-definitions.js` and is documented in `docs/mcp-tools.md`.
 It defines tool names, input schemas, and dispatch behavior without committing to a specific transport package yet.
+
+## Polyglot Repository Direction
+
+Real repositories often contain more than one language or project shape.
+
+Examples:
+
+- React frontend plus Python or Node backend
+- Kotlin Android app plus JavaScript tooling
+- Swift app plus generated TypeScript clients
+- backend service plus OpenAPI/protobuf/schema packages
+- monorepos with multiple package managers and test commands
+
+The long-term architecture should not assume one repository equals one adapter.
+
+Target flow:
+
+1. Detect projects/workspaces inside the repository.
+2. Match each project root to one or more applicable adapters.
+3. Run independent adapter audits in parallel where there are no dependency constraints.
+4. Merge adapter outputs into one repository-level audit graph.
+5. Rank risk across projects after merging, not inside one adapter only.
+
+Sequential responsibilities:
+
+- project/workspace detection
+- adapter selection
+- cross-project dependency/boundary detection
+- merged risk ranking and final reporting
+
+Parallel responsibilities:
+
+- independent adapter audits
+- independent test convention discovery
+- independent static classification for separate project roots
+
+Adapters should remain isolated. A JavaScript adapter should not need to understand Kotlin files elsewhere in the repository. It should audit its assigned project root and emit the shared audit model with project identity attached.
+
+The core merge layer should handle cross-project recommendations. For example, generated frontend API clients may be skipped directly while backend API contract or route behavior receives the higher-value test recommendation.
 
 ## Model Consistency Goal
 
