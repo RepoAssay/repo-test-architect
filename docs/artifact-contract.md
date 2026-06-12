@@ -138,6 +138,22 @@ generate_selected_test
 This artifact is returned while native test generation remains intentionally disabled.
 It tells clients that the plan item was understood, but no test code should be produced yet.
 
+## Adapter Registry Artifact
+
+Schema:
+
+- `schemas/adapter-registry-v1.schema.json`
+- `schemaVersion: "adapter-registry/v1"`
+
+MCP tool:
+
+```txt
+list_adapters
+```
+
+This artifact lists registered language adapters and their supported language labels.
+Clients should use the adapter `id` when passing `adapterId` to `audit_repo`.
+
 ## Changed-Only Flow
 
 For PR-style workflows, use `--changed`:
@@ -184,6 +200,7 @@ The deterministic layer owns:
 Internal tool API:
 
 - `auditRepo`
+- `getAdapterRegistry`
 - `getAuditGraph`
 - `explainAuditTarget`
 - `rankAuditTestCandidates`

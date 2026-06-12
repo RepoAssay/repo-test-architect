@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import path from "node:path";
 import { describe, it } from "node:test";
-import { getAdapter, listAdapters } from "../src/core/adapter-registry.js";
+import { getAdapter, getAdapterRegistry, listAdapters } from "../src/core/adapter-registry.js";
 
 describe("adapter registry", () => {
   it("lists registered adapters", () => {
@@ -11,6 +11,18 @@ describe("adapter registry", () => {
         languages: ["javascript", "typescript"]
       }
     ]);
+  });
+
+  it("returns the adapter registry artifact", () => {
+    assert.deepEqual(getAdapterRegistry(), {
+      schemaVersion: "adapter-registry/v1",
+      adapters: [
+        {
+          id: "javascript",
+          languages: ["javascript", "typescript"]
+        }
+      ]
+    });
   });
 
   it("audits through the JavaScript adapter", () => {

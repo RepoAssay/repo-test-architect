@@ -1,6 +1,20 @@
 {
   "tools": [
     {
+      "name": "list_adapters",
+      "description": "List registered language adapters available to audit repositories.",
+      "outputArtifact": {
+        "schemaVersion": "adapter-registry/v1",
+        "schemaPath": "schemas/adapter-registry-v1.schema.json"
+      },
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {}
+      }
+    },
+    {
       "name": "audit_repo",
       "description": "Audit a repository and return the deterministic audit graph.",
       "outputArtifact": {

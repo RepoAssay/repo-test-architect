@@ -28,3 +28,10 @@ export function listAdapters() {
     languages: adapter.languages
   }));
 }
+
+export function getAdapterRegistry() {
+  return {
+    schemaVersion: "adapter-registry/v1",
+    adapters: listAdapters()
+  };
+}

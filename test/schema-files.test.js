@@ -58,6 +58,15 @@ describe("schema files", () => {
     assert.ok(schema.required.includes("nextSteps"));
   });
 
+  it("documents adapter-registry/v1", () => {
+    const schema = readSchema("schemas/adapter-registry-v1.schema.json");
+
+    assert.equal(schema.properties.schemaVersion.const, "adapter-registry/v1");
+    assert.ok(schema.required.includes("adapters"));
+    assert.ok(schema.properties.adapters.items.required.includes("id"));
+    assert.ok(schema.properties.adapters.items.required.includes("languages"));
+  });
+
   it("documents MCP tool descriptors", () => {
     const schema = readSchema("schemas/mcp-tool-v1.schema.json");
 

@@ -5,10 +5,17 @@ import {
   getAuditGraph,
   rankAuditTestCandidates
 } from "../core/tool-api.js";
+import { getAdapterRegistry } from "../core/adapter-registry.js";
 import { createGenerationDeferredResult } from "../core/generation-deferred.js";
 import { McpToolError } from "./errors.js";
 
 export const mcpTools = [
+  {
+    name: "list_adapters",
+    description: "List registered language adapters available to audit repositories.",
+    outputArtifact: artifact("adapter-registry/v1", "schemas/adapter-registry-v1.schema.json"),
+    inputSchema: objectSchema({}, [])
+  },
   {
     name: "audit_repo",
     description: "Audit a repository and return the deterministic audit graph.",
@@ -78,6 +85,8 @@ export function callTool(name, args = {}) {
   validateToolArgs(tool, args);
 
   switch (name) {
+    case "list_adapters":
+      return getAdapterRegistry();
     case "audit_repo":
       return auditRepo(requireString(args.repoRoot, "repoRoot"), {
         adapterId: optionalString(args.adapterId, "adapterId"),

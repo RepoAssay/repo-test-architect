@@ -36,7 +36,8 @@ describe("MCP tool definitions", () => {
     }
   });
 
-  it("dispatches audit, plan, explanation, and ranking tools", () => {
+  it("dispatches adapter registry, audit, plan, explanation, and ranking tools", () => {
+    const adapterRegistry = callTool("list_adapters");
     const audit = callTool("audit_repo", {
       repoRoot: path.resolve("examples/node-vitest-basic"),
       adapterId: "javascript"
@@ -47,6 +48,8 @@ describe("MCP tool definitions", () => {
     const ranking = callTool("rank_test_candidates", { audit });
     const deferredGeneration = callTool("generate_selected_test", { planItemId: "add-test:src/authService.ts" });
 
+    assert.equal(adapterRegistry.schemaVersion, "adapter-registry/v1");
+    assert.deepEqual(adapterRegistry.adapters.map((adapter) => adapter.id), ["javascript"]);
     assert.equal(graph, audit);
     assert.equal(plan.schemaVersion, "plan/v1");
     assert.deepEqual(plan.items.map((item) => item.id), ["add-test:src/authService.ts"]);
@@ -92,6 +95,7 @@ describe("MCP tool definitions", () => {
 });
 
 function minimalArgsFor(toolName) {
+  if (toolName === "list_adapters") return {};
   if (toolName === "audit_repo") return { repoRoot: "." };
   if (toolName === "explain_target") return { audit: {}, targetId: "src/example.ts" };
   if (toolName === "generate_selected_test") return { planItemId: "add-test:src/example.ts" };

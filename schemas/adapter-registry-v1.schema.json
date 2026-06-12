@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "adapter-registry-v1.schema.json",
+  "title": "Adapter Registry Artifact",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "adapters"],
+  "properties": {
+    "schemaVersion": {
+      "const": "adapter-registry/v1"
+    },
+    "adapters": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "languages"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "languages": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      }
+    }
+  }
+}

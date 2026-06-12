@@ -28,6 +28,7 @@ Implemented:
 Current tool names:
 
 - `audit_repo`
+- `list_adapters`
 - `get_audit_graph`
 - `generate_test_plan`
 - `explain_target`

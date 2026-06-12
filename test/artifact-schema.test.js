@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { describe, it } from "node:test";
 import { auditJavaScriptRepo } from "../src/adapters/javascript/audit.js";
+import { getAdapterRegistry } from "../src/core/adapter-registry.js";
 import { explainTarget } from "../src/core/explain-target.js";
 import { rankTestCandidates } from "../src/core/rank-test-candidates.js";
 import { loadEvalFixtures } from "./support/eval-fixtures.js";
@@ -13,6 +14,7 @@ const planSchema = readJson("schemas/plan-v1.schema.json");
 const explanationSchema = readJson("schemas/target-explanation-v1.schema.json");
 const rankingSchema = readJson("schemas/candidate-ranking-v1.schema.json");
 const generationDeferredSchema = readJson("schemas/generation-deferred-v1.schema.json");
+const adapterRegistrySchema = readJson("schemas/adapter-registry-v1.schema.json");
 const fixtures = loadEvalFixtures();
 
 describe("artifact schema compatibility", () => {
@@ -57,6 +59,12 @@ describe("deferred generation artifact schema compatibility", () => {
     };
 
     assertMatchesSchema(artifact, generationDeferredSchema, "generation-deferred.json");
+  });
+});
+
+describe("adapter registry artifact schema compatibility", () => {
+  it("validates adapter-registry/v1", () => {
+    assertMatchesSchema(getAdapterRegistry(), adapterRegistrySchema, "adapter-registry.json");
   });
 });
 
