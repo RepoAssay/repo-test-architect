@@ -8,11 +8,13 @@ export interface FileSnapshot {
 export interface JavaScriptRepoSnapshot {
   root: string;
   files: FileSnapshot[];
+  changedPaths?: string[];
 }
 
 export function auditJavaScriptRepo(snapshot: JavaScriptRepoSnapshot): AuditResult {
   const profile = buildProfile(snapshot);
-  const sourceFiles = snapshot.files.filter((file) => isSourceFile(file.path));
+  const changedPaths = snapshot.changedPaths ? new Set(snapshot.changedPaths.map(normalizePath)) : undefined;
+  const sourceFiles = snapshot.files.filter((file) => isSourceFile(file.path) && isIncludedByChangedPaths(file.path, changedPaths));
   const testFiles = snapshot.files.filter((file) => isTestFile(file.path)).map((file) => normalizePath(file.path));
   const untestedCandidates: AuditTarget[] = [];
   const coveredButRisky: AuditTarget[] = [];
@@ -81,6 +83,11 @@ export function auditJavaScriptRepo(snapshot: JavaScriptRepoSnapshot): AuditResu
     skipped: skipped.sort((a, b) => a.name.localeCompare(b.name)),
     risks
   };
+}
+
+function isIncludedByChangedPaths(path: string, changedPaths?: Set<string>): boolean {
+  if (!changedPaths) return true;
+  return changedPaths.has(normalizePath(path));
 }
 
 function buildProfile(snapshot: JavaScriptRepoSnapshot): RepoProfile {

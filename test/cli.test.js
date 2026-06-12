@@ -45,6 +45,16 @@ describe("CLI", () => {
     assert.equal(audit.profile.testCommand, "npm run test");
   });
 
+  it("supports changed-only audit mode", () => {
+    const output = execFileSync(process.execPath, [cliPath, "audit", ".", "--changed", "--format=json"], {
+      encoding: "utf8"
+    });
+    const audit = JSON.parse(output);
+
+    assert.equal(audit.schemaVersion, "audit/v1");
+    assert.equal(Array.isArray(audit.recommended), true);
+  });
+
   it("emits a markdown test plan", () => {
     const output = execFileSync(process.execPath, [cliPath, "plan", fixturePath], {
       encoding: "utf8"

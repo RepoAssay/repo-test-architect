@@ -3,16 +3,17 @@ import path from "node:path";
 
 const SOURCE_EXTENSIONS = [".js", ".jsx", ".mjs", ".ts", ".tsx"];
 
-export function auditJavaScriptRepo(root) {
+export function auditJavaScriptRepo(root, options = {}) {
   const files = readRepoFiles(root);
   const profile = buildProfile(root, files);
+  const changedPaths = options.changedPaths ? new Set(options.changedPaths.map(normalizePath)) : undefined;
   const testFiles = files.filter((file) => isTestFile(file.path)).map((file) => normalizePath(file.path));
   const untestedCandidates = [];
   const coveredButRisky = [];
   const skipped = [];
   const risks = [];
 
-  for (const file of files.filter((candidate) => isSourceFile(candidate.path))) {
+  for (const file of files.filter((candidate) => isSourceFile(candidate.path) && isIncludedByChangedPaths(candidate.path, changedPaths))) {
     const name = basenameWithoutExtension(file.path);
     const classification = classifySourceFile(file, profile);
     const existingTestPaths = findExistingTests(file.path, testFiles);
@@ -74,6 +75,11 @@ export function auditJavaScriptRepo(root) {
     skipped: skipped.sort((a, b) => a.name.localeCompare(b.name)),
     risks
   };
+}
+
+function isIncludedByChangedPaths(currentPath, changedPaths) {
+  if (!changedPaths) return true;
+  return changedPaths.has(normalizePath(currentPath));
 }
 
 function readRepoFiles(root) {

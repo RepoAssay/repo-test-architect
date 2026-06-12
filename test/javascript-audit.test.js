@@ -44,6 +44,30 @@ describe("JavaScript audit adapter", () => {
     assert.ok(deckParser.reasons.includes("Existing test file detected; review missing edge cases"));
   });
 
+  it("can limit candidates to changed source files while keeping repo profile", () => {
+    const audit = auditJavaScriptRepo(exampleRoot, {
+      changedPaths: ["src/authService.ts"]
+    });
+
+    assert.deepEqual(audit.profile.testFrameworks, ["vitest"]);
+    assert.deepEqual(
+      audit.untestedCandidates.map((target) => target.name),
+      ["authService"]
+    );
+    assert.deepEqual(audit.coveredButRisky, []);
+    assert.deepEqual(audit.skipped, []);
+  });
+
+  it("ignores changed test files for source target selection", () => {
+    const audit = auditJavaScriptRepo(exampleRoot, {
+      changedPaths: ["src/deckParser.test.ts"]
+    });
+
+    assert.deepEqual(audit.untestedCandidates, []);
+    assert.deepEqual(audit.coveredButRisky, []);
+    assert.deepEqual(audit.skipped, []);
+  });
+
   it("skips low-value source files with an explicit reason", () => {
     const audit = auditJavaScriptRepo(exampleRoot);
 

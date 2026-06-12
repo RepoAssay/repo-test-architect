@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import fs from "node:fs";
+import { execFileSync } from "node:child_process";
 import path from "node:path";
 import { auditJavaScriptRepo } from "../adapters/javascript/audit.js";
 import { createTestPlan } from "../core/test-plan.js";
@@ -21,9 +22,12 @@ if (options.fromAuditPath && options.command !== "plan") {
   process.exit(1);
 }
 
+const repoRoot = path.resolve(process.cwd(), options.repoPath);
 const audit = options.fromAuditPath
   ? readAuditJson(options.fromAuditPath)
-  : auditJavaScriptRepo(path.resolve(process.cwd(), options.repoPath));
+  : auditJavaScriptRepo(repoRoot, {
+      changedPaths: options.changedOnly ? readChangedPaths(repoRoot) : undefined
+    });
 const output = options.command === "plan" ? filterPlan(createTestPlan(audit), options.itemId) : audit;
 
 if (options.format === "json") {
@@ -40,6 +44,7 @@ function parseArgs(args) {
   let format = "markdown";
   let fromAuditPath;
   let itemId;
+  let changedOnly = false;
 
   for (let index = 0; index < rest.length; index += 1) {
     const arg = rest[index];
@@ -77,12 +82,17 @@ function parseArgs(args) {
       continue;
     }
 
+    if (arg === "--changed") {
+      changedOnly = true;
+      continue;
+    }
+
     if (!arg.startsWith("-")) {
       repoPath = arg;
     }
   }
 
-  return { command, repoPath, format, fromAuditPath, itemId };
+  return { command, repoPath, format, fromAuditPath, itemId, changedOnly };
 }
 
 function readAuditJson(auditPath) {
@@ -97,6 +107,25 @@ function readAuditJson(auditPath) {
     return audit;
   } catch (error) {
     console.error(`Failed to read audit JSON: ${error.message}`);
+    process.exit(1);
+  }
+}
+
+function readChangedPaths(repoRoot) {
+  try {
+    const output = execFileSync("git", ["-C", repoRoot, "status", "--short"], {
+      encoding: "utf8"
+    });
+
+    return output
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => line.slice(3).trim())
+      .map((line) => line.includes(" -> ") ? line.split(" -> ").at(-1) : line)
+      .map((line) => line.replaceAll("\\", "/"));
+  } catch (error) {
+    console.error(`Failed to read changed files: ${error.message}`);
     process.exit(1);
   }
 }
