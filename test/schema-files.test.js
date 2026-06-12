@@ -57,6 +57,15 @@ describe("schema files", () => {
     assert.ok(schema.required.includes("planItemId"));
     assert.ok(schema.required.includes("nextSteps"));
   });
+
+  it("documents MCP tool descriptors", () => {
+    const schema = readSchema("schemas/mcp-tool-v1.schema.json");
+
+    assert.ok(schema.required.includes("name"));
+    assert.ok(schema.required.includes("inputSchema"));
+    assert.ok(schema.required.includes("outputArtifact"));
+    assert.equal(schema.properties.inputSchema.properties.type.const, "object");
+  });
 });
 
 function readSchema(path) {

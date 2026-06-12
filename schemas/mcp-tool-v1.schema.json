@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://repo-test-architect.local/schemas/mcp-tool-v1.schema.json",
+  "title": "Repo Test Architect MCP Tool Descriptor",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "name",
+    "description",
+    "outputArtifact",
+    "inputSchema"
+  ],
+  "properties": {
+    "name": { "type": "string" },
+    "description": { "type": "string" },
+    "outputArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "schemaPath"
+      ],
+      "properties": {
+        "schemaVersion": { "type": "string" },
+        "schemaPath": { "type": "string" }
+      }
+    },
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "additionalProperties",
+        "required",
+        "properties"
+      ],
+      "properties": {
+        "type": { "const": "object" },
+        "additionalProperties": { "const": false },
+        "required": { "type": "array", "items": { "type": "string" } },
+        "properties": { "type": "object" }
+      }
+    }
+  }
+}

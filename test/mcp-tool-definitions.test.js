@@ -3,7 +3,10 @@ import fs from "node:fs";
 import path from "node:path";
 import { describe, it } from "node:test";
 import { callTool, mcpToolNames, mcpTools } from "../src/mcp/tool-definitions.js";
+import { assertMatchesSchema } from "./support/json-schema-validator.js";
 import { expectedMcpToolNames } from "./support/mcp-tools.js";
+
+const toolSchema = JSON.parse(fs.readFileSync("schemas/mcp-tool-v1.schema.json", "utf8"));
 
 describe("MCP tool definitions", () => {
   it("declares the expected deterministic tools", () => {
@@ -24,6 +27,12 @@ describe("MCP tool definitions", () => {
       const schema = JSON.parse(fs.readFileSync(tool.outputArtifact.schemaPath, "utf8"));
 
       assert.equal(schema.properties.schemaVersion.const, tool.outputArtifact.schemaVersion);
+    }
+  });
+
+  it("matches the MCP tool descriptor schema", () => {
+    for (const tool of mcpTools) {
+      assertMatchesSchema(tool, toolSchema, `${tool.name}.mcp-tool.json`);
     }
   });
 

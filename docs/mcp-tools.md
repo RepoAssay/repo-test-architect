@@ -4,6 +4,10 @@ The MCP server should expose a thin wrapper around `src/mcp/tool-definitions.js`
 
 The tool definitions are dependency-free so the deterministic contract can be tested before wiring a specific MCP SDK transport.
 
+Descriptor schema:
+
+- `schemas/mcp-tool-v1.schema.json`
+
 ## Tools
 
 - `audit_repo`
