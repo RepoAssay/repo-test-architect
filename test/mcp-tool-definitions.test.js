@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
 import path from "node:path";
 import { describe, it } from "node:test";
 import { callTool, mcpToolNames, mcpTools } from "../src/mcp/tool-definitions.js";
@@ -13,6 +14,16 @@ describe("MCP tool definitions", () => {
       assert.equal(tool.inputSchema.type, "object");
       assert.equal(tool.inputSchema.additionalProperties, false);
       assert.ok(Array.isArray(tool.inputSchema.required));
+      assert.equal(typeof tool.outputArtifact.schemaVersion, "string");
+      assert.equal(typeof tool.outputArtifact.schemaPath, "string");
+    }
+  });
+
+  it("declares output artifacts with matching schemas", () => {
+    for (const tool of mcpTools) {
+      const schema = JSON.parse(fs.readFileSync(tool.outputArtifact.schemaPath, "utf8"));
+
+      assert.equal(schema.properties.schemaVersion.const, tool.outputArtifact.schemaVersion);
     }
   });
 

@@ -28,6 +28,19 @@ The model should consume these artifacts directly:
 The MCP layer should not reclassify code, rerank candidates, or infer repository facts from raw source files.
 It should also not generate test code until adapter-specific generation rules and repair loops exist.
 
+## Output Artifacts
+
+Each tool descriptor includes `outputArtifact` metadata:
+
+| Tool | Output |
+| --- | --- |
+| `audit_repo` | `audit/v1` |
+| `get_audit_graph` | `audit/v1` |
+| `generate_test_plan` | `plan/v1` |
+| `explain_target` | `target-explanation/v1` |
+| `rank_test_candidates` | `candidate-ranking/v1` |
+| `generate_selected_test` | `generation-deferred/v1` |
+
 ## Future Transport
 
 When adding the real MCP server with an SDK:

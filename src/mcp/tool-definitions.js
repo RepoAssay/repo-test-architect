@@ -12,6 +12,7 @@ export const mcpTools = [
   {
     name: "audit_repo",
     description: "Audit a repository and return the deterministic audit graph.",
+    outputArtifact: artifact("audit/v1", "schemas/audit-v1.schema.json"),
     inputSchema: objectSchema({
       repoRoot: { type: "string", description: "Repository root path." },
       changedPaths: {
@@ -24,6 +25,7 @@ export const mcpTools = [
   {
     name: "get_audit_graph",
     description: "Return a validated audit graph artifact.",
+    outputArtifact: artifact("audit/v1", "schemas/audit-v1.schema.json"),
     inputSchema: objectSchema({
       audit: { type: "object", description: "An audit/v1 artifact." }
     }, ["audit"])
@@ -31,6 +33,7 @@ export const mcpTools = [
   {
     name: "generate_test_plan",
     description: "Generate a deterministic test plan from an audit graph.",
+    outputArtifact: artifact("plan/v1", "schemas/plan-v1.schema.json"),
     inputSchema: objectSchema({
       audit: { type: "object", description: "An audit/v1 artifact." },
       itemId: { type: "string", description: "Optional stable plan item id to select." }
@@ -39,6 +42,7 @@ export const mcpTools = [
   {
     name: "explain_target",
     description: "Explain one audit target by stable target id.",
+    outputArtifact: artifact("target-explanation/v1", "schemas/target-explanation-v1.schema.json"),
     inputSchema: objectSchema({
       audit: { type: "object", description: "An audit/v1 artifact." },
       targetId: { type: "string", description: "Stable audit target id." }
@@ -47,6 +51,7 @@ export const mcpTools = [
   {
     name: "rank_test_candidates",
     description: "Rank testable audit targets by risk reduction and maintenance cost.",
+    outputArtifact: artifact("candidate-ranking/v1", "schemas/candidate-ranking-v1.schema.json"),
     inputSchema: objectSchema({
       audit: { type: "object", description: "An audit/v1 artifact." }
     }, ["audit"])
@@ -54,6 +59,7 @@ export const mcpTools = [
   {
     name: "generate_selected_test",
     description: "Return a structured deferred result until native test generation is enabled.",
+    outputArtifact: artifact("generation-deferred/v1", "schemas/generation-deferred-v1.schema.json"),
     inputSchema: objectSchema({
       planItemId: { type: "string", description: "Stable plan item id selected for future generation." }
     }, ["planItemId"])
@@ -98,6 +104,13 @@ function objectSchema(properties, required) {
     additionalProperties: false,
     required,
     properties
+  };
+}
+
+function artifact(schemaVersion, schemaPath) {
+  return {
+    schemaVersion,
+    schemaPath
   };
 }
 
