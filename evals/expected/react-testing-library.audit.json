@@ -1,4 +1,5 @@
 {
+  "schemaVersion": "audit/v1",
   "profile": {
     "root": "<fixture>",
     "languages": [

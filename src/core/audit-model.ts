@@ -40,6 +40,7 @@ export interface SkippedTarget {
 }
 
 export interface AuditResult {
+  schemaVersion: "audit/v1";
   profile: RepoProfile;
   untestedCandidates: AuditTarget[];
   coveredButRisky: AuditTarget[];

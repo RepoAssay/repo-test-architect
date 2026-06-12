@@ -1,4 +1,5 @@
 {
+  "schemaVersion": "plan/v1",
   "summary": {
     "confidence": "high",
     "verificationCommand": "npm run test",

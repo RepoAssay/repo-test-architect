@@ -20,6 +20,7 @@ export function createTestPlan(audit) {
   );
 
   return {
+    schemaVersion: "plan/v1",
     summary: {
       confidence: audit.profile.confidence,
       verificationCommand: audit.profile.testCommand,

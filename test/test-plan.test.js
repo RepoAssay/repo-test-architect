@@ -9,6 +9,7 @@ describe("test plan generator", () => {
     const audit = auditJavaScriptRepo(path.resolve("examples/react-testing-library"));
     const plan = createTestPlan(audit);
 
+    assert.equal(plan.schemaVersion, "plan/v1");
     assert.equal(plan.summary.confidence, "high");
     assert.equal(plan.summary.verificationCommand, "npm run test");
     assert.equal(plan.summary.addTestCount, 1);

@@ -21,6 +21,7 @@ describe("CLI", () => {
     });
     const audit = JSON.parse(output);
 
+    assert.equal(audit.schemaVersion, "audit/v1");
     assert.deepEqual(audit.profile.testFrameworks, ["vitest"]);
     assert.deepEqual(
       audit.untestedCandidates.map((target) => target.name),
@@ -57,6 +58,7 @@ describe("CLI", () => {
     });
     const plan = JSON.parse(output);
 
+    assert.equal(plan.schemaVersion, "plan/v1");
     assert.equal(plan.summary.verificationCommand, "npm run test");
     assert.deepEqual(
       plan.items.map((item) => `${item.action}:${item.target}`),

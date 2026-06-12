@@ -13,6 +13,7 @@ describe("JavaScript audit adapter", () => {
   it("detects package, framework, command, and repository conventions", () => {
     const audit = auditJavaScriptRepo(exampleRoot);
 
+    assert.equal(audit.schemaVersion, "audit/v1");
     assert.deepEqual(audit.profile.languages, ["typescript"]);
     assert.deepEqual(audit.profile.packageManagers, ["npm"]);
     assert.deepEqual(audit.profile.testFrameworks, ["vitest"]);

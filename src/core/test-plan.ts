@@ -15,6 +15,7 @@ export interface TestPlanItem {
 }
 
 export interface TestPlan {
+  schemaVersion: "plan/v1";
   summary: {
     confidence: string;
     verificationCommand?: string;
@@ -49,6 +50,7 @@ export function createTestPlan(audit: AuditResult): TestPlan {
   );
 
   return {
+    schemaVersion: "plan/v1",
     summary: {
       confidence: audit.profile.confidence,
       verificationCommand: audit.profile.testCommand,

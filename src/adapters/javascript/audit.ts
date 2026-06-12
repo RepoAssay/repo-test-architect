@@ -68,6 +68,7 @@ export function auditJavaScriptRepo(snapshot: JavaScriptRepoSnapshot): AuditResu
   const recommended = [...untestedCandidates, ...coveredButRisky].sort(byRiskThenName);
 
   return {
+    schemaVersion: "audit/v1",
     profile,
     untestedCandidates: untestedCandidates.sort(byRiskThenName),
     coveredButRisky: coveredButRisky.sort(byRiskThenName),
