@@ -27,12 +27,23 @@ The MCP layer should not reclassify code, rerank candidates, or infer repository
 
 ## Future Transport
 
-When adding the real MCP server:
+When adding the real MCP server with an SDK:
 
 - keep tool names snake_case
 - keep input schemas compatible with `mcpTools`
 - call `callTool(name, args)` for execution
 - add transport tests separately from deterministic tool tests
+
+## Local JSON-RPC Scaffold
+
+`src/mcp/stdio.js` is a dependency-free JSON-RPC scaffold for local testing.
+It handles:
+
+- `initialize`
+- `tools/list`
+- `tools/call`
+
+It is intentionally small and should be replaced or wrapped by an official MCP SDK transport later.
 
 ## Local Harness
 
@@ -50,6 +61,7 @@ Direct form:
 node ./src/mcp/invoke.js tools
 node ./src/mcp/invoke.js call audit_repo "{\"repoRoot\":\"./examples/node-vitest-basic\"}"
 node ./src/mcp/invoke.js call-envelope audit_repo "{\"repoRoot\":\"./examples/node-vitest-basic\"}"
+node ./src/mcp/stdio.js
 ```
 
 This validates the same tool descriptors and dispatcher the future MCP server should mount.

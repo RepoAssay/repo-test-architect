@@ -6,7 +6,8 @@
   "type": "module",
   "bin": {
     "repo-test-architect": "./src/cli/index.js",
-    "repo-test-architect-mcp": "./src/mcp/invoke.js"
+    "repo-test-architect-mcp": "./src/mcp/stdio.js",
+    "repo-test-architect-mcp-invoke": "./src/mcp/invoke.js"
   },
   "scripts": {
     "audit:example": "node ./src/cli/index.js audit ./examples/node-vitest-basic",
@@ -22,6 +23,7 @@
     "mcp:tools": "node ./src/mcp/invoke.js tools",
     "mcp:audit:example": "node ./src/mcp/invoke.js call audit_repo \"{\\\"repoRoot\\\":\\\"./examples/node-vitest-basic\\\"}\"",
     "mcp:audit:envelope": "node ./src/mcp/invoke.js call-envelope audit_repo \"{\\\"repoRoot\\\":\\\"./examples/node-vitest-basic\\\"}\"",
+    "mcp:stdio": "node ./src/mcp/stdio.js",
     "eval:check": "node --test test/golden-snapshots.test.js",
     "eval:summary": "node ./scripts/check-golden-snapshots.js",
     "eval:update": "node ./scripts/update-golden-snapshots.js",
