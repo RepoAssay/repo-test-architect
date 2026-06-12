@@ -41,6 +41,7 @@ Until the real transport is added, use the local invoke harness:
 ```powershell
 npm run mcp:tools
 npm run mcp:audit:example
+npm run mcp:audit:envelope
 ```
 
 Direct form:
@@ -48,6 +49,8 @@ Direct form:
 ```powershell
 node ./src/mcp/invoke.js tools
 node ./src/mcp/invoke.js call audit_repo "{\"repoRoot\":\"./examples/node-vitest-basic\"}"
+node ./src/mcp/invoke.js call-envelope audit_repo "{\"repoRoot\":\"./examples/node-vitest-basic\"}"
 ```
 
 This validates the same tool descriptors and dispatcher the future MCP server should mount.
+Use `call-envelope` to inspect the MCP-style `content` response shape.

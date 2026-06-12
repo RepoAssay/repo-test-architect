@@ -31,6 +31,21 @@ describe("MCP invoke harness", () => {
     assert.deepEqual(audit.profile.testFrameworks, ["vitest"]);
   });
 
+  it("calls a tool with an MCP-style response envelope", () => {
+    const output = execFileSync(
+      process.execPath,
+      [invokePath, "call-envelope", "audit_repo", JSON.stringify({ repoRoot: "./examples/node-vitest-basic" })],
+      {
+        encoding: "utf8"
+      }
+    );
+    const result = JSON.parse(output);
+    const audit = JSON.parse(result.content[0].text);
+
+    assert.equal(result.content[0].type, "text");
+    assert.equal(audit.schemaVersion, "audit/v1");
+  });
+
   it("rejects invalid JSON args", () => {
     assert.throws(
       () =>

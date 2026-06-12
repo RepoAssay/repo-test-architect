@@ -6,6 +6,7 @@ $required = @(
   "src/cli/index.js",
   "src/mcp/tool-definitions.js",
   "src/mcp/invoke.js",
+  "src/mcp/responses.js",
   "src/adapters/javascript/audit.js",
   "src/adapters/javascript/audit.ts",
   "src/core/audit-model.ts",

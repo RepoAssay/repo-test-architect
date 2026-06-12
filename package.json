@@ -21,6 +21,7 @@
     "rank:example": "node ./src/cli/index.js rank ./examples/node-vitest-basic",
     "mcp:tools": "node ./src/mcp/invoke.js tools",
     "mcp:audit:example": "node ./src/mcp/invoke.js call audit_repo \"{\\\"repoRoot\\\":\\\"./examples/node-vitest-basic\\\"}\"",
+    "mcp:audit:envelope": "node ./src/mcp/invoke.js call-envelope audit_repo \"{\\\"repoRoot\\\":\\\"./examples/node-vitest-basic\\\"}\"",
     "eval:check": "node --test test/golden-snapshots.test.js",
     "eval:summary": "node ./scripts/check-golden-snapshots.js",
     "eval:update": "node ./scripts/update-golden-snapshots.js",

@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { callTool, mcpTools } from "./tool-definitions.js";
+import { toMcpToolResult } from "./responses.js";
 
 const [command, toolName, argsJson = "{}"] = process.argv.slice(2);
 
@@ -8,8 +9,10 @@ try {
     writeJson({ tools: mcpTools });
   } else if (command === "call") {
     writeJson(callTool(requireToolName(toolName), parseArgsJson(argsJson)));
+  } else if (command === "call-envelope") {
+    writeJson(toMcpToolResult(callTool(requireToolName(toolName), parseArgsJson(argsJson))));
   } else {
-    throw new Error("Usage: repo-test-architect-mcp <tools|call toolName argsJson>");
+    throw new Error("Usage: repo-test-architect-mcp <tools|call|call-envelope toolName argsJson>");
   }
 } catch (error) {
   console.error(error.message);

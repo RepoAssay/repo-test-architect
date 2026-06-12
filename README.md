@@ -49,6 +49,7 @@ Exercise the MCP-style tool surface:
 ```powershell
 npm run mcp:tools
 npm run mcp:audit:example
+npm run mcp:audit:envelope
 ```
 
 Generate a plan from an existing audit JSON file:
