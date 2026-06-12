@@ -1,0 +1,16 @@
+{
+  "name": "node-jest-service",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "jest --runInBand"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "ts-jest": "^29.2.5",
+    "typescript": "^5.6.0"
+  },
+  "dependencies": {
+    "axios": "^1.7.7"
+  }
+}

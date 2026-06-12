@@ -5,6 +5,7 @@ import { auditJavaScriptRepo } from "../src/adapters/javascript/audit.js";
 
 const exampleRoot = path.resolve("examples/node-vitest-basic");
 const noTestsRoot = path.resolve("examples/node-no-tests-yet");
+const jestServiceRoot = path.resolve("examples/node-jest-service");
 
 describe("JavaScript audit adapter", () => {
   it("detects package, framework, command, and repository conventions", () => {
@@ -96,6 +97,48 @@ describe("JavaScript audit adapter", () => {
     assert.deepEqual(
       audit.skipped.map((target) => target.name),
       ["config", "paymentResponseDto"]
+    );
+  });
+
+  it("detects Jest service conventions", () => {
+    const audit = auditJavaScriptRepo(jestServiceRoot);
+
+    assert.deepEqual(audit.profile.languages, ["typescript", "javascript"]);
+    assert.deepEqual(audit.profile.packageManagers, ["npm"]);
+    assert.deepEqual(audit.profile.testFrameworks, ["jest"]);
+    assert.equal(audit.profile.testCommand, "npm run test");
+    assert.equal(audit.profile.confidence, "high");
+    assert.ok(audit.profile.detectedConventions.includes("*.spec files"));
+    assert.ok(audit.profile.setupSignals.includes("jest config"));
+  });
+
+  it("separates Jest service candidates by existing test coverage", () => {
+    const audit = auditJavaScriptRepo(jestServiceRoot);
+
+    assert.deepEqual(
+      audit.untestedCandidates.map((target) => target.name),
+      ["invoiceService"]
+    );
+    assert.deepEqual(
+      audit.coveredButRisky.map((target) => target.name),
+      ["invoiceParser"]
+    );
+
+    const invoiceService = audit.untestedCandidates[0];
+    assert.equal(invoiceService.kind, "service");
+    assert.ok(invoiceService.reasons.includes("external dependency boundary"));
+    assert.ok(invoiceService.reasons.includes("auth or permission branches"));
+
+    const invoiceParser = audit.coveredButRisky[0];
+    assert.deepEqual(invoiceParser.existingTestPaths, ["src/invoiceParser.spec.ts"]);
+  });
+
+  it("skips Jest fixture DTOs and constants", () => {
+    const audit = auditJavaScriptRepo(jestServiceRoot);
+
+    assert.deepEqual(
+      audit.skipped.map((target) => target.name),
+      ["constants", "invoiceDto"]
     );
   });
 });

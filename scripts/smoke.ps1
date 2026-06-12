@@ -18,7 +18,14 @@ $required = @(
   "examples/node-no-tests-yet/src/paymentParser.ts",
   "examples/node-no-tests-yet/src/paymentClient.ts",
   "examples/node-no-tests-yet/src/paymentResponseDto.ts",
-  "examples/node-no-tests-yet/src/config.ts"
+  "examples/node-no-tests-yet/src/config.ts",
+  "examples/node-jest-service/package.json",
+  "examples/node-jest-service/jest.config.js",
+  "examples/node-jest-service/src/invoiceService.ts",
+  "examples/node-jest-service/src/invoiceParser.ts",
+  "examples/node-jest-service/src/invoiceParser.spec.ts",
+  "examples/node-jest-service/src/invoiceDto.ts",
+  "examples/node-jest-service/src/constants.ts"
 )
 
 foreach ($relative in $required) {
