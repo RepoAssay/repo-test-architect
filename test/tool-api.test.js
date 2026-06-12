@@ -9,6 +9,7 @@ import {
   generateTestPlan,
   getAuditGraph,
   rankAuditTestCandidates,
+  summarizeRepoProjectAudits,
   validateAudit
 } from "../src/core/tool-api.js";
 
@@ -26,6 +27,14 @@ describe("tool API", () => {
     assert.equal(result.schemaVersion, "project-audits/v1");
     assert.equal(result.summary.auditedProjectCount, 1);
     assert.equal(result.summary.skippedProjectCount, 1);
+  });
+
+  it("summarizes detected repository project audits", () => {
+    const projectAudits = auditRepoProjects(path.resolve("examples/polyglot-workspace"));
+    const summary = summarizeRepoProjectAudits(projectAudits);
+
+    assert.equal(summary.schemaVersion, "project-audit-summary/v1");
+    assert.equal(summary.summary.untestedCandidateCount, 1);
   });
 
   it("audits a repo and exposes the audit graph", () => {

@@ -44,6 +44,7 @@ describe("MCP tool definitions", () => {
     const projectAudits = callTool("audit_projects", {
       repoRoot: path.resolve("examples/polyglot-workspace")
     });
+    const projectAuditSummary = callTool("summarize_project_audits", { projectAudits });
     const audit = callTool("audit_repo", {
       repoRoot: path.resolve("examples/node-vitest-basic"),
       adapterId: "javascript"
@@ -60,6 +61,8 @@ describe("MCP tool definitions", () => {
     assert.equal(projectDetection.summary.projectCount, 2);
     assert.equal(projectAudits.schemaVersion, "project-audits/v1");
     assert.equal(projectAudits.summary.auditedProjectCount, 1);
+    assert.equal(projectAuditSummary.schemaVersion, "project-audit-summary/v1");
+    assert.equal(projectAuditSummary.summary.untestedCandidateCount, 1);
     assert.equal(graph, audit);
     assert.equal(plan.schemaVersion, "plan/v1");
     assert.deepEqual(plan.items.map((item) => item.id), ["add-test:src/authService.ts"]);
@@ -108,6 +111,7 @@ function minimalArgsFor(toolName) {
   if (toolName === "list_adapters") return {};
   if (toolName === "detect_projects") return { repoRoot: "." };
   if (toolName === "audit_projects") return { repoRoot: "." };
+  if (toolName === "summarize_project_audits") return { projectAudits: { schemaVersion: "project-audits/v1", audits: [], skippedProjects: [], summary: {} } };
   if (toolName === "audit_repo") return { repoRoot: "." };
   if (toolName === "explain_target") return { audit: {}, targetId: "src/example.ts" };
   if (toolName === "generate_selected_test") return { planItemId: "add-test:src/example.ts" };

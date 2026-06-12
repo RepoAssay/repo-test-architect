@@ -26,6 +26,35 @@ export interface ProjectAudits {
   skippedProjects: SkippedProjectAudit[];
 }
 
+export interface ProjectAuditSummary {
+  schemaVersion: "project-audit-summary/v1";
+  root: string;
+  summary: {
+    projectCount: number;
+    auditedProjectCount: number;
+    unsupportedProjectCount: number;
+    untestedCandidateCount: number;
+    coveredButRiskyCount: number;
+    skippedTargetCount: number;
+    riskCount: number;
+  };
+  projects: ProjectAuditSummaryEntry[];
+  unsupportedProjects: SkippedProjectAudit[];
+}
+
+export interface ProjectAuditSummaryEntry {
+  projectId: string;
+  projectRoot: string;
+  adapterId: string;
+  confidence: string;
+  testCommand?: string;
+  untestedCandidateCount: number;
+  coveredButRiskyCount: number;
+  skippedTargetCount: number;
+  riskCount: number;
+  topCandidateIds: string[];
+}
+
 export interface ProjectAuditEntry {
   projectId: string;
   projectRoot: string;
@@ -63,6 +92,8 @@ export interface GenerateTestPlanOptions {
 export declare function detectRepoProjects(repoRoot: string): ProjectDetection;
 
 export declare function auditRepoProjects(repoRoot: string): ProjectAudits;
+
+export declare function summarizeRepoProjectAudits(projectAudits: ProjectAudits): ProjectAuditSummary;
 
 export function getAuditGraph(audit: AuditResult): AuditResult {
   validateAudit(audit);

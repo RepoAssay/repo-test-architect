@@ -193,6 +193,22 @@ audit_projects
 This artifact runs the matching adapter for each supported detected project root and reports unsupported project roots separately.
 It does not yet merge or rank findings across projects; that belongs in a later core merge layer.
 
+## Project Audit Summary Artifact
+
+Schema:
+
+- `schemas/project-audit-summary-v1.schema.json`
+- `schemaVersion: "project-audit-summary/v1"`
+
+MCP tool:
+
+```txt
+summarize_project_audits
+```
+
+This artifact summarizes a `project-audits/v1` artifact into project-level counts, top candidate IDs, risk counts, and unsupported project roots.
+It is intentionally not a merged audit graph and does not perform cross-project ranking.
+
 ## Changed-Only Flow
 
 For PR-style workflows, use `--changed`:
@@ -242,6 +258,7 @@ Internal tool API:
 - `getAdapterRegistry`
 - `detectRepoProjects`
 - `auditRepoProjects`
+- `summarizeRepoProjectAudits`
 - `getAuditGraph`
 - `explainAuditTarget`
 - `rankAuditTestCandidates`

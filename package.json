@@ -25,6 +25,7 @@
     "mcp:tools": "node ./src/mcp/invoke.js tools",
     "mcp:detect:example": "node ./src/mcp/invoke.js call detect_projects \"{\\\"repoRoot\\\":\\\"./examples/polyglot-workspace\\\"}\"",
     "mcp:audit-projects:example": "node ./src/mcp/invoke.js call audit_projects \"{\\\"repoRoot\\\":\\\"./examples/polyglot-workspace\\\"}\"",
+    "mcp:summarize-projects:example": "node ./src/mcp/invoke.js call summarize_project_audits \"{\\\"projectAudits\\\":{\\\"schemaVersion\\\":\\\"project-audits/v1\\\",\\\"root\\\":\\\".\\\",\\\"summary\\\":{\\\"projectCount\\\":0,\\\"auditedProjectCount\\\":0,\\\"skippedProjectCount\\\":0},\\\"audits\\\":[],\\\"skippedProjects\\\":[]}}\"",
     "mcp:audit:example": "node ./src/mcp/invoke.js call audit_repo \"{\\\"repoRoot\\\":\\\"./examples/node-vitest-basic\\\"}\"",
     "mcp:audit:envelope": "node ./src/mcp/invoke.js call-envelope audit_repo \"{\\\"repoRoot\\\":\\\"./examples/node-vitest-basic\\\"}\"",
     "mcp:stdio": "node ./src/mcp/stdio.js",

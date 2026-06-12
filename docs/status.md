@@ -33,6 +33,7 @@ Current tool names:
 - `list_adapters`
 - `detect_projects`
 - `audit_projects`
+- `summarize_project_audits`
 - `get_audit_graph`
 - `generate_test_plan`
 - `explain_target`

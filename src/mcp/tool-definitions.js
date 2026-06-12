@@ -5,7 +5,8 @@ import {
   explainAuditTarget,
   generateTestPlan,
   getAuditGraph,
-  rankAuditTestCandidates
+  rankAuditTestCandidates,
+  summarizeRepoProjectAudits
 } from "../core/tool-api.js";
 import { getAdapterRegistry } from "../core/adapter-registry.js";
 import { createGenerationDeferredResult } from "../core/generation-deferred.js";
@@ -33,6 +34,14 @@ export const mcpTools = [
     inputSchema: objectSchema({
       repoRoot: { type: "string", description: "Repository root path." }
     }, ["repoRoot"])
+  },
+  {
+    name: "summarize_project_audits",
+    description: "Summarize a project-audits artifact without merging cross-project rankings.",
+    outputArtifact: artifact("project-audit-summary/v1", "schemas/project-audit-summary-v1.schema.json"),
+    inputSchema: objectSchema({
+      projectAudits: { type: "object", description: "A project-audits/v1 artifact." }
+    }, ["projectAudits"])
   },
   {
     name: "audit_repo",
@@ -109,6 +118,8 @@ export function callTool(name, args = {}) {
       return detectRepoProjects(requireString(args.repoRoot, "repoRoot"));
     case "audit_projects":
       return auditRepoProjects(requireString(args.repoRoot, "repoRoot"));
+    case "summarize_project_audits":
+      return summarizeRepoProjectAudits(requireObject(args.projectAudits, "projectAudits"));
     case "audit_repo":
       return auditRepo(requireString(args.repoRoot, "repoRoot"), {
         adapterId: optionalString(args.adapterId, "adapterId"),

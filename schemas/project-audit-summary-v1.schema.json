@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "project-audit-summary-v1.schema.json",
+  "title": "Project Audit Summary Artifact",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "root", "summary", "projects", "unsupportedProjects"],
+  "properties": {
+    "schemaVersion": {
+      "const": "project-audit-summary/v1"
+    },
+    "root": {
+      "type": "string",
+      "minLength": 1
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "projectCount",
+        "auditedProjectCount",
+        "unsupportedProjectCount",
+        "untestedCandidateCount",
+        "coveredButRiskyCount",
+        "skippedTargetCount",
+        "riskCount"
+      ],
+      "properties": {
+        "projectCount": { "type": "integer", "minimum": 0 },
+        "auditedProjectCount": { "type": "integer", "minimum": 0 },
+        "unsupportedProjectCount": { "type": "integer", "minimum": 0 },
+        "untestedCandidateCount": { "type": "integer", "minimum": 0 },
+        "coveredButRiskyCount": { "type": "integer", "minimum": 0 },
+        "skippedTargetCount": { "type": "integer", "minimum": 0 },
+        "riskCount": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "projects": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "projectId",
+          "projectRoot",
+          "adapterId",
+          "confidence",
+          "untestedCandidateCount",
+          "coveredButRiskyCount",
+          "skippedTargetCount",
+          "riskCount",
+          "topCandidateIds"
+        ],
+        "properties": {
+          "projectId": { "type": "string", "minLength": 1 },
+          "projectRoot": { "type": "string", "minLength": 1 },
+          "adapterId": { "type": "string", "minLength": 1 },
+          "confidence": { "type": "string", "minLength": 1 },
+          "testCommand": { "type": "string" },
+          "untestedCandidateCount": { "type": "integer", "minimum": 0 },
+          "coveredButRiskyCount": { "type": "integer", "minimum": 0 },
+          "skippedTargetCount": { "type": "integer", "minimum": 0 },
+          "riskCount": { "type": "integer", "minimum": 0 },
+          "topCandidateIds": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    },
+    "unsupportedProjects": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["projectId", "projectRoot", "reason", "languages"],
+        "properties": {
+          "projectId": { "type": "string", "minLength": 1 },
+          "projectRoot": { "type": "string", "minLength": 1 },
+          "reason": { "type": "string", "minLength": 1 },
+          "languages": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    }
+  }
+}

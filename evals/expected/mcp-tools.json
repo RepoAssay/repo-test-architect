@@ -57,6 +57,27 @@
       }
     },
     {
+      "name": "summarize_project_audits",
+      "description": "Summarize a project-audits artifact without merging cross-project rankings.",
+      "outputArtifact": {
+        "schemaVersion": "project-audit-summary/v1",
+        "schemaPath": "schemas/project-audit-summary-v1.schema.json"
+      },
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "projectAudits"
+        ],
+        "properties": {
+          "projectAudits": {
+            "type": "object",
+            "description": "A project-audits/v1 artifact."
+          }
+        }
+      }
+    },
+    {
       "name": "audit_repo",
       "description": "Audit a repository and return the deterministic audit graph.",
       "outputArtifact": {

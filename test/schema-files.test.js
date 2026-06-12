@@ -87,6 +87,16 @@ describe("schema files", () => {
     assert.ok(schema.properties.skippedProjects.items.required.includes("reason"));
   });
 
+  it("documents project-audit-summary/v1", () => {
+    const schema = readSchema("schemas/project-audit-summary-v1.schema.json");
+
+    assert.equal(schema.properties.schemaVersion.const, "project-audit-summary/v1");
+    assert.ok(schema.required.includes("projects"));
+    assert.ok(schema.required.includes("unsupportedProjects"));
+    assert.ok(schema.properties.projects.items.required.includes("topCandidateIds"));
+    assert.ok(schema.properties.unsupportedProjects.items.required.includes("languages"));
+  });
+
   it("documents MCP tool descriptors", () => {
     const schema = readSchema("schemas/mcp-tool-v1.schema.json");
 
