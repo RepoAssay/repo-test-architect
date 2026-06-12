@@ -8,6 +8,7 @@ import {
   detectRepoProjects,
   explainAuditTarget,
   generateTestPlan,
+  rankRepoProjectCandidates,
   rankAuditTestCandidates,
   summarizeRepoProjectAudits,
   validateAudit
@@ -15,8 +16,8 @@ import {
 
 const options = parseArgs(process.argv.slice(2));
 
-if (!["detect", "audit-projects", "summarize-projects", "audit", "plan", "explain", "rank"].includes(options.command)) {
-  console.error("Usage: repo-test-architect <detect|audit-projects|summarize-projects|audit|plan|explain|rank> <repo> [--format markdown|json] [--from-audit audit.json] [--item id] [--target id] [--changed] [--changed-since ref]");
+if (!["detect", "audit-projects", "summarize-projects", "rank-projects", "audit", "plan", "explain", "rank"].includes(options.command)) {
+  console.error("Usage: repo-test-architect <detect|audit-projects|summarize-projects|rank-projects|audit|plan|explain|rank> <repo> [--format markdown|json] [--from-audit audit.json] [--item id] [--target id] [--changed] [--changed-since ref]");
   process.exit(1);
 }
 
@@ -32,7 +33,7 @@ if (options.fromAuditPath && !["plan", "explain", "rank"].includes(options.comma
 
 const repoRoot = path.resolve(process.cwd(), options.repoPath);
 const detection = options.command === "detect" ? detectRepoProjects(repoRoot) : undefined;
-const projectAudits = ["audit-projects", "summarize-projects"].includes(options.command)
+const projectAudits = ["audit-projects", "summarize-projects", "rank-projects"].includes(options.command)
   ? auditRepoProjects(repoRoot)
   : undefined;
 const audit = options.fromAuditPath
@@ -52,6 +53,8 @@ if (options.format === "json") {
   console.log(renderMarkdownProjectAudits(output));
 } else if (options.command === "summarize-projects") {
   console.log(renderMarkdownProjectAuditSummary(output));
+} else if (options.command === "rank-projects") {
+  console.log(renderMarkdownProjectCandidateRanking(output));
 } else if (options.command === "plan") {
   console.log(renderMarkdownPlan(output));
 } else if (options.command === "explain") {
@@ -233,6 +236,7 @@ function selectOutput(audit, options) {
 function selectProjectOutput(projectAudits, options) {
   if (!projectAudits) return undefined;
   if (options.command === "summarize-projects") return summarizeRepoProjectAudits(projectAudits);
+  if (options.command === "rank-projects") return rankRepoProjectCandidates(projectAudits);
   return projectAudits;
 }
 
@@ -404,6 +408,44 @@ function renderMarkdownProjectAuditSummary(summary) {
     lines.push("- No unsupported projects.");
   } else {
     for (const project of summary.unsupportedProjects) {
+      lines.push(`- ${project.projectRoot}: ${project.reason} (${formatList(project.languages)})`);
+    }
+  }
+
+  return lines.join("\n");
+}
+
+function renderMarkdownProjectCandidateRanking(ranking) {
+  const lines = [];
+
+  lines.push("# Project Candidate Ranking");
+  lines.push("");
+  lines.push("## Summary");
+  lines.push(`- Projects: ${ranking.summary.projectCount}`);
+  lines.push(`- Audited: ${ranking.summary.auditedProjectCount}`);
+  lines.push(`- Unsupported: ${ranking.summary.unsupportedProjectCount}`);
+  lines.push(`- Candidates: ${ranking.summary.candidateCount}`);
+  lines.push("");
+  lines.push("## Candidates");
+
+  if (ranking.candidates.length === 0) {
+    lines.push("- No project candidates ranked.");
+  } else {
+    for (const candidate of ranking.candidates) {
+      const rationale = candidate.rationale.map(trimTrailingPeriod).join(". ");
+      lines.push(
+        `- ${candidate.projectRoot}: ${candidate.target} [${candidate.projectTargetId}] (${candidate.category}, ${candidate.testLevel}, priority ${candidate.priority}, risk reduction ${candidate.riskReductionScore}/10, maintenance ${candidate.maintenanceCost}/10). ${rationale}.`
+      );
+    }
+  }
+
+  lines.push("");
+  lines.push("## Unsupported Projects");
+
+  if (ranking.unsupportedProjects.length === 0) {
+    lines.push("- No unsupported projects.");
+  } else {
+    for (const project of ranking.unsupportedProjects) {
       lines.push(`- ${project.projectRoot}: ${project.reason} (${formatList(project.languages)})`);
     }
   }

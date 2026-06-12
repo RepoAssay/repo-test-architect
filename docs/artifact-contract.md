@@ -236,6 +236,13 @@ MCP tool:
 rank_project_candidates
 ```
 
+Commands:
+
+```powershell
+node ./src/cli/index.js rank-projects ./examples/polyglot-workspace
+node ./src/cli/index.js rank-projects ./examples/polyglot-workspace --format json
+```
+
 This artifact ranks candidates from a `project-audits/v1` artifact using the same deterministic per-audit priority calculation, while adding project identity to each candidate.
 It preserves unsupported project roots instead of hiding them.
 

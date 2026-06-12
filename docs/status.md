@@ -51,6 +51,7 @@ Primary checks:
 npm run detect:example:json
 npm run audit-projects:example:json
 npm run summarize-projects:example:json
+npm run rank-projects:example:json
 npm test
 npm run eval:check
 powershell -ExecutionPolicy Bypass -File ./scripts/smoke.ps1

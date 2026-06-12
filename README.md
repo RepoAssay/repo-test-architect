@@ -21,6 +21,8 @@ npm run audit-projects:example
 npm run audit-projects:example:json
 npm run summarize-projects:example
 npm run summarize-projects:example:json
+npm run rank-projects:example
+npm run rank-projects:example:json
 ```
 
 ```powershell

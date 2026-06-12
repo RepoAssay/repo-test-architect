@@ -87,6 +87,34 @@ describe("CLI", () => {
     assert.deepEqual(summary.projects[0].topCandidateIds, ["src/sessionClient.ts"]);
   });
 
+  it("ranks detected project candidates in markdown", () => {
+    const output = execFileSync(process.execPath, [cliPath, "rank-projects", "examples/polyglot-workspace"], {
+      encoding: "utf8"
+    });
+
+    assert.match(output, /^# Project Candidate Ranking/);
+    assert.match(output, /Candidates: 1/);
+    assert.match(output, /apps\/web: sessionClient \[apps\/web:src\/sessionClient\.ts\]/);
+  });
+
+  it("ranks detected project candidates as JSON", () => {
+    const output = execFileSync(
+      process.execPath,
+      [cliPath, "rank-projects", "examples/polyglot-workspace", "--format=json"],
+      {
+        encoding: "utf8"
+      }
+    );
+    const ranking = JSON.parse(output);
+
+    assert.equal(ranking.schemaVersion, "project-candidate-ranking/v1");
+    assert.equal(ranking.summary.candidateCount, 1);
+    assert.deepEqual(
+      ranking.candidates.map((candidate) => candidate.projectTargetId),
+      ["apps/web:src/sessionClient.ts"]
+    );
+  });
+
   it("emits markdown by default", () => {
     const output = execFileSync(process.execPath, [cliPath, "audit", fixturePath], {
       encoding: "utf8"
