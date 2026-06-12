@@ -14,7 +14,7 @@ export function auditJavaScriptRepo(root) {
 
   for (const file of files.filter((candidate) => isSourceFile(candidate.path))) {
     const name = basenameWithoutExtension(file.path);
-    const classification = classifySourceFile(file);
+    const classification = classifySourceFile(file, profile);
     const existingTestPaths = findExistingTests(file.path, testFiles);
 
     if (classification.skipReason) {
@@ -291,7 +291,7 @@ function detectArchitectures(paths, packageText) {
   return [...architectures];
 }
 
-function classifySourceFile(file) {
+function classifySourceFile(file, profile) {
   const currentPath = normalizePath(file.path);
   const content = file.content;
   const lowerPath = currentPath.toLowerCase();
@@ -339,6 +339,20 @@ function classifySourceFile(file) {
   }
 
   if (lowerPath.includes("component") || lowerPath.endsWith(".tsx") || content.includes("jsx")) {
+    if (isPresentationalComponent(content)) {
+      return skipped(
+        "presentational-component",
+        2,
+        5,
+        "Presentational components with no branching or interaction are low-value direct test targets.",
+        "Cover through parent component or user-flow tests when behavior depends on this rendering."
+      );
+    }
+
+    if (profile.testFrameworks.includes("react-testing-library")) {
+      return recommended("component", "medium", "medium", "component", 5, 5, ["React component behavior"]);
+    }
+
     return {
       kind: "component",
       risk: "medium",
@@ -406,10 +420,7 @@ function isSourceFile(currentPath) {
   return (
     normalized.startsWith("src/") &&
     SOURCE_EXTENSIONS.some((extension) => normalized.endsWith(extension)) &&
-    !normalized.endsWith(".test.ts") &&
-    !normalized.endsWith(".spec.ts") &&
-    !normalized.endsWith(".test.js") &&
-    !normalized.endsWith(".spec.js")
+    !isTestFile(normalized)
   );
 }
 
@@ -417,10 +428,7 @@ function isTestFile(currentPath) {
   const normalized = normalizePath(currentPath);
   return (
     normalized.includes("__tests__/") ||
-    normalized.endsWith(".test.ts") ||
-    normalized.endsWith(".spec.ts") ||
-    normalized.endsWith(".test.js") ||
-    normalized.endsWith(".spec.js")
+    /\.(test|spec)\.[cm]?[jt]sx?$/.test(normalized)
   );
 }
 
@@ -488,6 +496,12 @@ function isAppWiring(currentPath, content) {
     (content.includes("express()") || content.includes(".use(")) &&
     !/\b(app|get|post|put|patch|delete)\s*\(/.test(content)
   );
+}
+
+function isPresentationalComponent(content) {
+  const hasJsxReturn = /return\s*\(?\s*</.test(content);
+  const hasInteraction = /\bon[A-Z]\w+\s*=|useState|useReducer|useEffect|if\s*\(|\?\s*[^:]+:/.test(content);
+  return hasJsxReturn && !hasInteraction;
 }
 
 function byRiskThenName(a, b) {

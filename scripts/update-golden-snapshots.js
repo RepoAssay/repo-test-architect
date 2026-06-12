@@ -7,7 +7,8 @@ const fixtures = [
   "node-vitest-basic",
   "node-no-tests-yet",
   "node-jest-service",
-  "express-supertest"
+  "express-supertest",
+  "react-testing-library"
 ];
 
 const expectedDir = path.resolve("evals/expected");

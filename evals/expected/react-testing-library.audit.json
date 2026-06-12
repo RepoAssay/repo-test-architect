@@ -1,0 +1,123 @@
+{
+  "profile": {
+    "root": "<fixture>",
+    "languages": [
+      "typescript"
+    ],
+    "packageManagers": [
+      "npm"
+    ],
+    "testFrameworks": [
+      "vitest",
+      "react-testing-library"
+    ],
+    "architectures": [
+      "react",
+      "service-layer"
+    ],
+    "testCommand": "npm run test",
+    "detectedConventions": [],
+    "existingTestLocations": [
+      "colocated with source"
+    ],
+    "setupSignals": [
+      "tsconfig",
+      "vitest config"
+    ],
+    "confidence": "high",
+    "blockers": []
+  },
+  "untestedCandidates": [
+    {
+      "name": "sessionService",
+      "path": "src/services/sessionService.ts",
+      "kind": "service",
+      "risk": "high",
+      "testability": "medium",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 8,
+      "maintenanceCost": 4,
+      "reasons": [
+        "Service boundary",
+        "auth or permission branches"
+      ],
+      "existingTestPaths": []
+    }
+  ],
+  "coveredButRisky": [
+    {
+      "name": "LoginForm",
+      "path": "src/components/LoginForm.tsx",
+      "kind": "component",
+      "risk": "medium",
+      "testability": "medium",
+      "recommendedTestLevel": "component",
+      "riskReductionScore": 5,
+      "maintenanceCost": 5,
+      "reasons": [
+        "React component behavior",
+        "Existing test file detected; review missing edge cases"
+      ],
+      "existingTestPaths": [
+        "src/components/LoginForm.test.tsx"
+      ]
+    }
+  ],
+  "recommended": [
+    {
+      "name": "sessionService",
+      "path": "src/services/sessionService.ts",
+      "kind": "service",
+      "risk": "high",
+      "testability": "medium",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 8,
+      "maintenanceCost": 4,
+      "reasons": [
+        "Service boundary",
+        "auth or permission branches"
+      ],
+      "existingTestPaths": []
+    },
+    {
+      "name": "LoginForm",
+      "path": "src/components/LoginForm.tsx",
+      "kind": "component",
+      "risk": "medium",
+      "testability": "medium",
+      "recommendedTestLevel": "component",
+      "riskReductionScore": 5,
+      "maintenanceCost": 5,
+      "reasons": [
+        "React component behavior",
+        "Existing test file detected; review missing edge cases"
+      ],
+      "existingTestPaths": [
+        "src/components/LoginForm.test.tsx"
+      ]
+    }
+  ],
+  "skipped": [
+    {
+      "name": "Avatar",
+      "path": "src/components/Avatar.tsx",
+      "kind": "presentational-component",
+      "riskReductionScore": 2,
+      "maintenanceCost": 5,
+      "reason": "Presentational components with no branching or interaction are low-value direct test targets.",
+      "preferredCoveragePath": "Cover through parent component or user-flow tests when behavior depends on this rendering."
+    },
+    {
+      "name": "sessionDto",
+      "path": "src/models/sessionDto.ts",
+      "kind": "dto",
+      "riskReductionScore": 2,
+      "maintenanceCost": 4,
+      "reason": "DTO-only models are usually better covered through boundary parsing or mapper tests.",
+      "preferredCoveragePath": "Cover through API/client parsing, mapper tests, or route integration tests."
+    }
+  ],
+  "risks": [
+    "sessionService has service boundary, auth or permission branches and has no matching test file."
+  ]
+}

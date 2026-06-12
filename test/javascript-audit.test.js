@@ -7,6 +7,7 @@ const exampleRoot = path.resolve("examples/node-vitest-basic");
 const noTestsRoot = path.resolve("examples/node-no-tests-yet");
 const jestServiceRoot = path.resolve("examples/node-jest-service");
 const expressSupertestRoot = path.resolve("examples/express-supertest");
+const reactTestingLibraryRoot = path.resolve("examples/react-testing-library");
 
 describe("JavaScript audit adapter", () => {
   it("detects package, framework, command, and repository conventions", () => {
@@ -180,5 +181,42 @@ describe("JavaScript audit adapter", () => {
       ["app", "userDto"]
     );
     assert.equal(audit.skipped.find((target) => target.name === "app").kind, "app-wiring");
+  });
+
+  it("detects React Testing Library conventions", () => {
+    const audit = auditJavaScriptRepo(reactTestingLibraryRoot);
+
+    assert.deepEqual(audit.profile.testFrameworks, ["vitest", "react-testing-library"]);
+    assert.equal(audit.profile.testCommand, "npm run test");
+    assert.equal(audit.profile.confidence, "high");
+    assert.ok(audit.profile.architectures.includes("react"));
+    assert.ok(audit.profile.existingTestLocations.includes("colocated with source"));
+  });
+
+  it("classifies tested interactive React components as covered but risky", () => {
+    const audit = auditJavaScriptRepo(reactTestingLibraryRoot);
+
+    assert.deepEqual(
+      audit.coveredButRisky.map((target) => target.name),
+      ["LoginForm"]
+    );
+
+    const loginForm = audit.coveredButRisky[0];
+    assert.equal(loginForm.kind, "component");
+    assert.equal(loginForm.recommendedTestLevel, "component");
+    assert.deepEqual(loginForm.existingTestPaths, ["src/components/LoginForm.test.tsx"]);
+  });
+
+  it("does not recommend presentational React components directly", () => {
+    const audit = auditJavaScriptRepo(reactTestingLibraryRoot);
+
+    assert.deepEqual(
+      audit.untestedCandidates.map((target) => target.name),
+      ["sessionService"]
+    );
+
+    const avatar = audit.skipped.find((target) => target.name === "Avatar");
+    assert.equal(avatar.kind, "presentational-component");
+    assert.match(avatar.reason, /Presentational components/);
   });
 });

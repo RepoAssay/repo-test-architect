@@ -32,7 +32,14 @@ $required = @(
   "examples/express-supertest/src/routes/userRoutes.ts",
   "examples/express-supertest/src/routes/userRoutes.test.ts",
   "examples/express-supertest/src/services/userService.ts",
-  "examples/express-supertest/src/models/userDto.ts"
+  "examples/express-supertest/src/models/userDto.ts",
+  "examples/react-testing-library/package.json",
+  "examples/react-testing-library/vitest.config.ts",
+  "examples/react-testing-library/src/components/LoginForm.tsx",
+  "examples/react-testing-library/src/components/LoginForm.test.tsx",
+  "examples/react-testing-library/src/components/Avatar.tsx",
+  "examples/react-testing-library/src/services/sessionService.ts",
+  "examples/react-testing-library/src/models/sessionDto.ts"
 )
 
 foreach ($relative in $required) {

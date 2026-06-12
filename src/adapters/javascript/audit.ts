@@ -21,7 +21,7 @@ export function auditJavaScriptRepo(snapshot: JavaScriptRepoSnapshot): AuditResu
 
   for (const file of sourceFiles) {
     const name = basenameWithoutExtension(file.path);
-    const classification = classifySourceFile(file);
+    const classification = classifySourceFile(file, profile);
     const existingTestPaths = findExistingTests(file.path, testFiles);
 
     if (classification.skipReason) {
@@ -284,7 +284,7 @@ function detectArchitectures(paths: string[], packageText: string): string[] {
   return [...architectures];
 }
 
-function classifySourceFile(file: FileSnapshot): {
+function classifySourceFile(file: FileSnapshot, profile: RepoProfile): {
   kind: string;
   risk: "low" | "medium" | "high";
   testability: "low" | "medium" | "high";
@@ -342,6 +342,20 @@ function classifySourceFile(file: FileSnapshot): {
   }
 
   if (lowerPath.includes("component") || lowerPath.endsWith(".tsx") || content.includes("jsx")) {
+    if (isPresentationalComponent(content)) {
+      return skipped(
+        "presentational-component",
+        2,
+        5,
+        "Presentational components with no branching or interaction are low-value direct test targets.",
+        "Cover through parent component or user-flow tests when behavior depends on this rendering."
+      );
+    }
+
+    if (profile.testFrameworks.includes("react-testing-library")) {
+      return recommended("component", "medium", "medium", "component", 5, 5, ["React component behavior"]);
+    }
+
     return {
       kind: "component",
       risk: "medium",
@@ -423,10 +437,7 @@ function isSourceFile(path: string): boolean {
   return (
     normalized.startsWith("src/") &&
     [".js", ".jsx", ".mjs", ".ts", ".tsx"].some((extension) => normalized.endsWith(extension)) &&
-    !normalized.endsWith(".test.ts") &&
-    !normalized.endsWith(".spec.ts") &&
-    !normalized.endsWith(".test.js") &&
-    !normalized.endsWith(".spec.js")
+    !isTestFile(normalized)
   );
 }
 
@@ -434,10 +445,7 @@ function isTestFile(path: string): boolean {
   const normalized = normalizePath(path);
   return (
     normalized.includes("__tests__/") ||
-    normalized.endsWith(".test.ts") ||
-    normalized.endsWith(".spec.ts") ||
-    normalized.endsWith(".test.js") ||
-    normalized.endsWith(".spec.js")
+    /\.(test|spec)\.[cm]?[jt]sx?$/.test(normalized)
   );
 }
 
@@ -505,6 +513,12 @@ function isAppWiring(path: string, content: string): boolean {
     (content.includes("express()") || content.includes(".use(")) &&
     !/\b(app|get|post|put|patch|delete)\s*\(/.test(content)
   );
+}
+
+function isPresentationalComponent(content: string): boolean {
+  const hasJsxReturn = /return\s*\(?\s*</.test(content);
+  const hasInteraction = /\bon[A-Z]\w+\s*=|useState|useReducer|useEffect|if\s*\(|\?\s*[^:]+:/.test(content);
+  return hasJsxReturn && !hasInteraction;
 }
 
 function byRiskThenName(a: AuditTarget, b: AuditTarget): number {
