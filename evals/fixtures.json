@@ -1,0 +1,27 @@
+[
+  {
+    "name": "node-vitest-basic",
+    "adapter": "javascript",
+    "path": "examples/node-vitest-basic"
+  },
+  {
+    "name": "node-no-tests-yet",
+    "adapter": "javascript",
+    "path": "examples/node-no-tests-yet"
+  },
+  {
+    "name": "node-jest-service",
+    "adapter": "javascript",
+    "path": "examples/node-jest-service"
+  },
+  {
+    "name": "express-supertest",
+    "adapter": "javascript",
+    "path": "examples/express-supertest"
+  },
+  {
+    "name": "react-testing-library",
+    "adapter": "javascript",
+    "path": "examples/react-testing-library"
+  }
+]
