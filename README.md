@@ -27,6 +27,15 @@ npm run plan-projects:example
 npm run plan-projects:example:json
 ```
 
+Reuse a saved project audit artifact:
+
+```powershell
+node ./src/cli/index.js audit-projects ./examples/polyglot-workspace --format json
+node ./src/cli/index.js summarize-projects --from-project-audits ./project-audits.json --format json
+node ./src/cli/index.js rank-projects --from-project-audits ./project-audits.json --format json
+node ./src/cli/index.js plan-projects --from-project-audits ./project-audits.json --format json
+```
+
 ```powershell
 npm run audit:example
 ```

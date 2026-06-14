@@ -59,6 +59,8 @@ npm run eval:check
 powershell -ExecutionPolicy Bypass -File ./scripts/smoke.ps1
 ```
 
+The project-derived CLI commands also accept `--from-project-audits` for reusing a saved `project-audits/v1` artifact.
+
 Snapshot maintenance:
 
 ```powershell

@@ -218,6 +218,7 @@ Commands:
 ```powershell
 node ./src/cli/index.js summarize-projects ./examples/polyglot-workspace
 node ./src/cli/index.js summarize-projects ./examples/polyglot-workspace --format json
+node ./src/cli/index.js summarize-projects --from-project-audits ./project-audits.json --format json
 ```
 
 This artifact summarizes a `project-audits/v1` artifact into project-level counts, top candidate IDs, risk counts, and unsupported project roots.
@@ -241,6 +242,7 @@ Commands:
 ```powershell
 node ./src/cli/index.js rank-projects ./examples/polyglot-workspace
 node ./src/cli/index.js rank-projects ./examples/polyglot-workspace --format json
+node ./src/cli/index.js rank-projects --from-project-audits ./project-audits.json --format json
 ```
 
 This artifact ranks candidates from a `project-audits/v1` artifact using the same deterministic per-audit priority calculation, while adding project identity to each candidate.
@@ -264,6 +266,7 @@ Commands:
 ```powershell
 node ./src/cli/index.js plan-projects ./examples/polyglot-workspace
 node ./src/cli/index.js plan-projects ./examples/polyglot-workspace --format json
+node ./src/cli/index.js plan-projects --from-project-audits ./project-audits.json --format json
 ```
 
 This artifact generates per-project plan items from a `project-audits/v1` artifact and flattens them with project identity attached.

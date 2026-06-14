@@ -143,6 +143,60 @@ describe("CLI", () => {
     );
   });
 
+  it("summarizes, ranks, and plans from an existing project audits file", () => {
+    const projectAuditsPath = writeTempJson(
+      JSON.parse(
+        execFileSync(process.execPath, [cliPath, "audit-projects", "examples/polyglot-workspace", "--format=json"], {
+          encoding: "utf8"
+        })
+      )
+    );
+    const summary = JSON.parse(
+      execFileSync(
+        process.execPath,
+        [cliPath, "summarize-projects", "--from-project-audits", projectAuditsPath, "--format=json"],
+        { encoding: "utf8" }
+      )
+    );
+    const ranking = JSON.parse(
+      execFileSync(
+        process.execPath,
+        [cliPath, "rank-projects", "--from-project-audits", projectAuditsPath, "--format=json"],
+        { encoding: "utf8" }
+      )
+    );
+    const plan = JSON.parse(
+      execFileSync(
+        process.execPath,
+        [cliPath, "plan-projects", "--from-project-audits", projectAuditsPath, "--format=json"],
+        { encoding: "utf8" }
+      )
+    );
+
+    assert.equal(summary.schemaVersion, "project-audit-summary/v1");
+    assert.equal(ranking.schemaVersion, "project-candidate-ranking/v1");
+    assert.equal(plan.schemaVersion, "project-test-plan/v1");
+    assert.equal(plan.summary.itemCount, 1);
+  });
+
+  it("rejects project audits JSON with the wrong schema version", () => {
+    const projectAuditsPath = writeTempJson({
+      schemaVersion: "project-audits/v0",
+      summary: {},
+      audits: [],
+      skippedProjects: []
+    });
+
+    assert.throws(
+      () =>
+        execFileSync(process.execPath, ["src/cli/index.js", "summarize-projects", "--from-project-audits", projectAuditsPath], {
+          encoding: "utf8",
+          stdio: "pipe"
+        }),
+      /Command failed/
+    );
+  });
+
   it("emits markdown by default", () => {
     const output = execFileSync(process.execPath, [cliPath, "audit", fixturePath], {
       encoding: "utf8"

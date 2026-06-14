@@ -18,7 +18,7 @@ import {
 const options = parseArgs(process.argv.slice(2));
 
 if (!["detect", "audit-projects", "summarize-projects", "rank-projects", "plan-projects", "audit", "plan", "explain", "rank"].includes(options.command)) {
-  console.error("Usage: repo-test-architect <detect|audit-projects|summarize-projects|rank-projects|plan-projects|audit|plan|explain|rank> <repo> [--format markdown|json] [--from-audit audit.json] [--item id] [--target id] [--changed] [--changed-since ref]");
+  console.error("Usage: repo-test-architect <detect|audit-projects|summarize-projects|rank-projects|plan-projects|audit|plan|explain|rank> <repo> [--format markdown|json] [--from-audit audit.json] [--from-project-audits project-audits.json] [--item id] [--target id] [--changed] [--changed-since ref]");
   process.exit(1);
 }
 
@@ -32,11 +32,18 @@ if (options.fromAuditPath && !["plan", "explain", "rank"].includes(options.comma
   process.exit(1);
 }
 
+if (options.fromProjectAuditsPath && !["audit-projects", "summarize-projects", "rank-projects", "plan-projects"].includes(options.command)) {
+  console.error("--from-project-audits is only supported with audit-projects, summarize-projects, rank-projects, and plan-projects commands.");
+  process.exit(1);
+}
+
 const repoRoot = path.resolve(process.cwd(), options.repoPath);
 const detection = options.command === "detect" ? detectRepoProjects(repoRoot) : undefined;
-const projectAudits = ["audit-projects", "summarize-projects", "rank-projects", "plan-projects"].includes(options.command)
-  ? auditRepoProjects(repoRoot)
-  : undefined;
+const projectAudits = options.fromProjectAuditsPath
+  ? readProjectAuditsJson(options.fromProjectAuditsPath)
+  : ["audit-projects", "summarize-projects", "rank-projects", "plan-projects"].includes(options.command)
+    ? auditRepoProjects(repoRoot)
+    : undefined;
 const audit = options.fromAuditPath
   ? readAuditJson(options.fromAuditPath)
   : detection || projectAudits
@@ -73,6 +80,7 @@ function parseArgs(args) {
   let repoPath = ".";
   let format = "markdown";
   let fromAuditPath;
+  let fromProjectAuditsPath;
   let itemId;
   let targetId;
   let changedOnly = false;
@@ -100,6 +108,17 @@ function parseArgs(args) {
 
     if (arg.startsWith("--from-audit=")) {
       fromAuditPath = arg.slice("--from-audit=".length);
+      continue;
+    }
+
+    if (arg === "--from-project-audits") {
+      fromProjectAuditsPath = rest[index + 1] ?? "";
+      index += 1;
+      continue;
+    }
+
+    if (arg.startsWith("--from-project-audits=")) {
+      fromProjectAuditsPath = arg.slice("--from-project-audits=".length);
       continue;
     }
 
@@ -146,7 +165,7 @@ function parseArgs(args) {
     }
   }
 
-  return { command, repoPath, format, fromAuditPath, itemId, targetId, changedOnly, changedSinceRef };
+  return { command, repoPath, format, fromAuditPath, fromProjectAuditsPath, itemId, targetId, changedOnly, changedSinceRef };
 }
 
 function readAuditJson(auditPath) {
@@ -162,6 +181,38 @@ function readAuditJson(auditPath) {
   } catch (error) {
     console.error(`Failed to read audit JSON: ${error.message}`);
     process.exit(1);
+  }
+}
+
+function readProjectAuditsJson(projectAuditsPath) {
+  if (!projectAuditsPath) {
+    console.error("--from-project-audits requires a JSON file path.");
+    process.exit(1);
+  }
+
+  try {
+    const projectAudits = JSON.parse(fs.readFileSync(path.resolve(process.cwd(), projectAuditsPath), "utf8"));
+    validateProjectAudits(projectAudits);
+    return projectAudits;
+  } catch (error) {
+    console.error(`Failed to read project audits JSON: ${error.message}`);
+    process.exit(1);
+  }
+}
+
+function validateProjectAudits(projectAudits) {
+  if (projectAudits?.schemaVersion !== "project-audits/v1") {
+    throw new Error("Expected project audits schemaVersion project-audits/v1.");
+  }
+
+  if (!projectAudits.summary || typeof projectAudits.summary !== "object") {
+    throw new Error("Project audits summary is missing.");
+  }
+
+  for (const key of ["audits", "skippedProjects"]) {
+    if (!Array.isArray(projectAudits[key])) {
+      throw new Error(`Project audits ${key} must be an array.`);
+    }
   }
 }
 
