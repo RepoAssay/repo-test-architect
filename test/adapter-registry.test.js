@@ -8,6 +8,7 @@ describe("adapter registry", () => {
     assert.deepEqual(listAdapters(), [
       {
         id: "javascript",
+        ecosystems: ["javascript"],
         languages: ["javascript", "typescript"]
       }
     ]);
@@ -19,6 +20,7 @@ describe("adapter registry", () => {
       adapters: [
         {
           id: "javascript",
+          ecosystems: ["javascript"],
           languages: ["javascript", "typescript"]
         }
       ]

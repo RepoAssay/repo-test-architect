@@ -151,7 +151,7 @@ MCP tool:
 list_adapters
 ```
 
-This artifact lists registered language adapters and their supported language labels.
+This artifact lists registered language adapters, their ecosystem labels, and their supported language labels.
 Clients should use the adapter `id` when passing `adapterId` to `audit_repo`.
 
 ## Project Detection Artifact

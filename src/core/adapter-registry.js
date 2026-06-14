@@ -3,6 +3,7 @@ import { auditJavaScriptRepo } from "../adapters/javascript/audit.js";
 export const adapters = [
   {
     id: "javascript",
+    ecosystems: ["javascript"],
     languages: ["javascript", "typescript"],
     audit(repoRoot, options = {}) {
       return auditJavaScriptRepo(repoRoot, {
@@ -25,6 +26,7 @@ export function getAdapter(adapterId = "javascript") {
 export function listAdapters() {
   return adapters.map((adapter) => ({
     id: adapter.id,
+    ecosystems: adapter.ecosystems,
     languages: adapter.languages
   }));
 }

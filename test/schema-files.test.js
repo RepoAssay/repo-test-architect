@@ -64,6 +64,7 @@ describe("schema files", () => {
     assert.equal(schema.properties.schemaVersion.const, "adapter-registry/v1");
     assert.ok(schema.required.includes("adapters"));
     assert.ok(schema.properties.adapters.items.required.includes("id"));
+    assert.ok(schema.properties.adapters.items.required.includes("ecosystems"));
     assert.ok(schema.properties.adapters.items.required.includes("languages"));
   });
 

@@ -23,7 +23,13 @@ Runtime adapter registration lives in `src/core/adapter-registry.js`.
 
 The initial registered adapter is:
 
-- `javascript` for JavaScript and TypeScript repositories
+- `javascript` for the JavaScript ecosystem, covering JavaScript and TypeScript repositories
+
+Adapter registry entries expose:
+
+- `id`: stable adapter ID used by CLI and MCP calls
+- `ecosystems`: package/build ecosystem labels the adapter understands
+- `languages`: source language labels the adapter can classify
 
 ## Polyglot Repositories
 
