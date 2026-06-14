@@ -12,6 +12,7 @@ Implemented:
 - fixture-based regression coverage
 - audit, plan, explanation, ranking, and deferred-generation artifacts
 - project detection and project audit artifacts for polyglot repository groundwork
+- documented polyglot artifact workflow from project detection through project test planning
 - stable JSON schemas for generated artifacts
 - golden snapshots for fixture audits, plans, and MCP tool descriptors
 - changed-file workflows with `--changed` and `--changed-since`
