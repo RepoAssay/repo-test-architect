@@ -103,14 +103,15 @@ function collectMarkerGroups(root) {
 }
 
 function toDetectedProject(repoRoot, project) {
+  const ecosystems = [...project.ecosystems].sort();
   const languages = [...project.languages].sort();
-  const adapterIds = matchingAdapterIds(languages);
+  const adapterIds = matchingAdapterIds({ ecosystems, languages });
 
   return {
     id: project.root,
     root: project.root,
     absoluteRoot: path.resolve(repoRoot, project.root),
-    ecosystems: [...project.ecosystems].sort(),
+    ecosystems,
     languages,
     markerFiles: project.markerFiles.sort(),
     adapterIds,
@@ -118,11 +119,15 @@ function toDetectedProject(repoRoot, project) {
   };
 }
 
-function matchingAdapterIds(languages) {
+function matchingAdapterIds({ ecosystems, languages }) {
+  const ecosystemSet = new Set(ecosystems);
   const languageSet = new Set(languages);
 
   return listAdapters()
-    .filter((adapter) => adapter.languages.some((language) => languageSet.has(language)))
+    .filter((adapter) =>
+      adapter.ecosystems.some((ecosystem) => ecosystemSet.has(ecosystem)) ||
+      adapter.languages.some((language) => languageSet.has(language))
+    )
     .map((adapter) => adapter.id)
     .sort();
 }

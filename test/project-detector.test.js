@@ -23,6 +23,7 @@ describe("project detector", () => {
     assert.deepEqual(
       detection.projects.map((project) => ({
         root: project.root,
+        ecosystems: project.ecosystems,
         languages: project.languages,
         adapterIds: project.adapterIds,
         supported: project.supported
@@ -30,18 +31,21 @@ describe("project detector", () => {
       [
         {
           root: "apps/android",
+          ecosystems: ["jvm"],
           languages: ["java", "kotlin"],
           adapterIds: [],
           supported: false
         },
         {
           root: "apps/web",
+          ecosystems: ["javascript"],
           languages: ["javascript", "typescript"],
           adapterIds: ["javascript"],
           supported: true
         },
         {
           root: "services/api",
+          ecosystems: ["python"],
           languages: ["python"],
           adapterIds: [],
           supported: false

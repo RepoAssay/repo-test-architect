@@ -23,7 +23,7 @@ node ./src/cli/index.js detect ./examples/polyglot-workspace --format json
 
 This emits `project-detection/v1`.
 
-Detection finds project roots from marker files such as `package.json` or `pyproject.toml`, records likely languages, and lists matching adapter IDs.
+Detection finds project roots from marker files such as `package.json` or `pyproject.toml`, records likely ecosystems and languages, and lists matching adapter IDs.
 
 Unsupported projects stay visible. They are part of the audit result because hiding them would make the final risk report misleading.
 
