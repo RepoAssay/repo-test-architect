@@ -7,6 +7,7 @@ import {
   auditRepo,
   detectRepoProjects,
   explainAuditTarget,
+  generateRepoProjectTestPlan,
   generateTestPlan,
   rankRepoProjectCandidates,
   rankAuditTestCandidates,
@@ -16,8 +17,8 @@ import {
 
 const options = parseArgs(process.argv.slice(2));
 
-if (!["detect", "audit-projects", "summarize-projects", "rank-projects", "audit", "plan", "explain", "rank"].includes(options.command)) {
-  console.error("Usage: repo-test-architect <detect|audit-projects|summarize-projects|rank-projects|audit|plan|explain|rank> <repo> [--format markdown|json] [--from-audit audit.json] [--item id] [--target id] [--changed] [--changed-since ref]");
+if (!["detect", "audit-projects", "summarize-projects", "rank-projects", "plan-projects", "audit", "plan", "explain", "rank"].includes(options.command)) {
+  console.error("Usage: repo-test-architect <detect|audit-projects|summarize-projects|rank-projects|plan-projects|audit|plan|explain|rank> <repo> [--format markdown|json] [--from-audit audit.json] [--item id] [--target id] [--changed] [--changed-since ref]");
   process.exit(1);
 }
 
@@ -33,7 +34,7 @@ if (options.fromAuditPath && !["plan", "explain", "rank"].includes(options.comma
 
 const repoRoot = path.resolve(process.cwd(), options.repoPath);
 const detection = options.command === "detect" ? detectRepoProjects(repoRoot) : undefined;
-const projectAudits = ["audit-projects", "summarize-projects", "rank-projects"].includes(options.command)
+const projectAudits = ["audit-projects", "summarize-projects", "rank-projects", "plan-projects"].includes(options.command)
   ? auditRepoProjects(repoRoot)
   : undefined;
 const audit = options.fromAuditPath
@@ -55,6 +56,8 @@ if (options.format === "json") {
   console.log(renderMarkdownProjectAuditSummary(output));
 } else if (options.command === "rank-projects") {
   console.log(renderMarkdownProjectCandidateRanking(output));
+} else if (options.command === "plan-projects") {
+  console.log(renderMarkdownProjectTestPlan(output));
 } else if (options.command === "plan") {
   console.log(renderMarkdownPlan(output));
 } else if (options.command === "explain") {
@@ -237,6 +240,7 @@ function selectProjectOutput(projectAudits, options) {
   if (!projectAudits) return undefined;
   if (options.command === "summarize-projects") return summarizeRepoProjectAudits(projectAudits);
   if (options.command === "rank-projects") return rankRepoProjectCandidates(projectAudits);
+  if (options.command === "plan-projects") return generateRepoProjectTestPlan(projectAudits);
   return projectAudits;
 }
 
@@ -446,6 +450,46 @@ function renderMarkdownProjectCandidateRanking(ranking) {
     lines.push("- No unsupported projects.");
   } else {
     for (const project of ranking.unsupportedProjects) {
+      lines.push(`- ${project.projectRoot}: ${project.reason} (${formatList(project.languages)})`);
+    }
+  }
+
+  return lines.join("\n");
+}
+
+function renderMarkdownProjectTestPlan(plan) {
+  const lines = [];
+
+  lines.push("# Project Test Plan");
+  lines.push("");
+  lines.push("## Summary");
+  lines.push(`- Projects: ${plan.summary.projectCount}`);
+  lines.push(`- Planned: ${plan.summary.plannedProjectCount}`);
+  lines.push(`- Unsupported: ${plan.summary.unsupportedProjectCount}`);
+  lines.push(`- Add tests: ${plan.summary.addTestCount}`);
+  lines.push(`- Extend tests: ${plan.summary.extendTestCount}`);
+  lines.push(`- Deferred: ${plan.summary.deferredCount}`);
+  lines.push("");
+  lines.push("## Items");
+
+  if (plan.items.length === 0) {
+    lines.push("- No project plan items generated.");
+  } else {
+    for (const item of plan.items) {
+      const rationale = item.rationale.map(trimTrailingPeriod).join(". ");
+      lines.push(
+        `- ${item.projectRoot}: ${item.action}: ${item.target} [${item.projectItemId}] (${item.testLevel}, priority ${item.priority}, risk reduction ${item.riskReductionScore}/10, maintenance ${item.maintenanceCost}/10). ${rationale}.`
+      );
+    }
+  }
+
+  lines.push("");
+  lines.push("## Unsupported Projects");
+
+  if (plan.unsupportedProjects.length === 0) {
+    lines.push("- No unsupported projects.");
+  } else {
+    for (const project of plan.unsupportedProjects) {
       lines.push(`- ${project.projectRoot}: ${project.reason} (${formatList(project.languages)})`);
     }
   }

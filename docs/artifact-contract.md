@@ -259,6 +259,13 @@ MCP tool:
 generate_project_test_plan
 ```
 
+Commands:
+
+```powershell
+node ./src/cli/index.js plan-projects ./examples/polyglot-workspace
+node ./src/cli/index.js plan-projects ./examples/polyglot-workspace --format json
+```
+
 This artifact generates per-project plan items from a `project-audits/v1` artifact and flattens them with project identity attached.
 It preserves the underlying `plan/v1` artifacts per project for detailed inspection.
 

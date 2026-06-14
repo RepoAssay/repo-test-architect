@@ -115,6 +115,34 @@ describe("CLI", () => {
     );
   });
 
+  it("plans detected project tests in markdown", () => {
+    const output = execFileSync(process.execPath, [cliPath, "plan-projects", "examples/polyglot-workspace"], {
+      encoding: "utf8"
+    });
+
+    assert.match(output, /^# Project Test Plan/);
+    assert.match(output, /Add tests: 1/);
+    assert.match(output, /apps\/web: add-test: sessionClient \[apps\/web:add-test:src\/sessionClient\.ts\]/);
+  });
+
+  it("plans detected project tests as JSON", () => {
+    const output = execFileSync(
+      process.execPath,
+      [cliPath, "plan-projects", "examples/polyglot-workspace", "--format=json"],
+      {
+        encoding: "utf8"
+      }
+    );
+    const plan = JSON.parse(output);
+
+    assert.equal(plan.schemaVersion, "project-test-plan/v1");
+    assert.equal(plan.summary.itemCount, 1);
+    assert.deepEqual(
+      plan.items.map((item) => item.projectItemId),
+      ["apps/web:add-test:src/sessionClient.ts"]
+    );
+  });
+
   it("emits markdown by default", () => {
     const output = execFileSync(process.execPath, [cliPath, "audit", fixturePath], {
       encoding: "utf8"
