@@ -179,6 +179,32 @@ describe("CLI", () => {
     assert.equal(plan.summary.itemCount, 1);
   });
 
+  it("emits project audits from an existing project audits file", () => {
+    const projectAuditsPath = writeTempJson(
+      JSON.parse(
+        execFileSync(process.execPath, [cliPath, "audit-projects", "examples/polyglot-workspace", "--format=json"], {
+          encoding: "utf8"
+        })
+      )
+    );
+    const jsonOutput = execFileSync(
+      process.execPath,
+      [cliPath, "audit-projects", "--from-project-audits", projectAuditsPath, "--format=json"],
+      { encoding: "utf8" }
+    );
+    const markdownOutput = execFileSync(
+      process.execPath,
+      [cliPath, "audit-projects", "--from-project-audits", projectAuditsPath],
+      { encoding: "utf8" }
+    );
+    const projectAudits = JSON.parse(jsonOutput);
+
+    assert.equal(projectAudits.schemaVersion, "project-audits/v1");
+    assert.equal(projectAudits.summary.auditedProjectCount, 1);
+    assert.match(markdownOutput, /^# Project Audits/);
+    assert.match(markdownOutput, /apps\/web: javascript \(1 untested, 0 covered but risky, 1 risks\)/);
+  });
+
   it("rejects project audits JSON with the wrong schema version", () => {
     const projectAuditsPath = writeTempJson({
       schemaVersion: "project-audits/v0",
