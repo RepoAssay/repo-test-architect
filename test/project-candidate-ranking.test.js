@@ -11,9 +11,9 @@ describe("project candidate ranking", () => {
 
     assert.equal(ranking.schemaVersion, "project-candidate-ranking/v1");
     assert.deepEqual(ranking.summary, {
-      projectCount: 2,
+      projectCount: 3,
       auditedProjectCount: 1,
-      unsupportedProjectCount: 1,
+      unsupportedProjectCount: 2,
       candidateCount: 1
     });
     assert.deepEqual(
@@ -30,7 +30,10 @@ describe("project candidate ranking", () => {
         }
       ]
     );
-    assert.equal(ranking.unsupportedProjects[0].projectId, "services/api");
+    assert.deepEqual(
+      ranking.unsupportedProjects.map((project) => project.projectId),
+      ["apps/android", "services/api"]
+    );
   });
 
   it("rejects non-project-audits artifacts", () => {

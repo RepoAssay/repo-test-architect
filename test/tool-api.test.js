@@ -20,7 +20,7 @@ describe("tool API", () => {
     const detection = detectRepoProjects(path.resolve("examples/polyglot-workspace"));
 
     assert.equal(detection.schemaVersion, "project-detection/v1");
-    assert.equal(detection.summary.projectCount, 2);
+    assert.equal(detection.summary.projectCount, 3);
   });
 
   it("audits detected repository projects", () => {
@@ -28,7 +28,7 @@ describe("tool API", () => {
 
     assert.equal(result.schemaVersion, "project-audits/v1");
     assert.equal(result.summary.auditedProjectCount, 1);
-    assert.equal(result.summary.skippedProjectCount, 1);
+    assert.equal(result.summary.skippedProjectCount, 2);
   });
 
   it("summarizes detected repository project audits", () => {

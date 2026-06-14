@@ -15,6 +15,7 @@ describe("CLI", () => {
     });
 
     assert.match(output, /^# Project Detection/);
+    assert.match(output, /apps\/android: java, kotlin \(unsupported; adapters: none available/);
     assert.match(output, /apps\/web: javascript, typescript \(supported; adapters: javascript/);
     assert.match(output, /services\/api: python \(unsupported; adapters: none available/);
   });
@@ -30,10 +31,10 @@ describe("CLI", () => {
     const detection = JSON.parse(output);
 
     assert.equal(detection.schemaVersion, "project-detection/v1");
-    assert.equal(detection.summary.projectCount, 2);
+    assert.equal(detection.summary.projectCount, 3);
     assert.deepEqual(
       detection.projects.map((project) => `${project.root}:${project.supported}`),
-      ["apps/web:true", "services/api:false"]
+      ["apps/android:false", "apps/web:true", "services/api:false"]
     );
   });
 

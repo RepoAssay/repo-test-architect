@@ -9,9 +9,9 @@ describe("project auditor", () => {
 
     assert.equal(result.schemaVersion, "project-audits/v1");
     assert.deepEqual(result.summary, {
-      projectCount: 2,
+      projectCount: 3,
       auditedProjectCount: 1,
-      skippedProjectCount: 1
+      skippedProjectCount: 2
     });
     assert.deepEqual(
       result.audits.map((entry) => ({
@@ -27,11 +27,27 @@ describe("project auditor", () => {
         }
       ]
     );
-    assert.deepEqual(result.skippedProjects[0], {
-      projectId: "services/api",
-      projectRoot: "services/api",
-      reason: "No registered adapter supports this project's detected languages.",
-      languages: ["python"]
-    });
+    assert.deepEqual(
+      result.skippedProjects.map((project) => ({
+        projectId: project.projectId,
+        projectRoot: project.projectRoot,
+        reason: project.reason,
+        languages: project.languages
+      })),
+      [
+        {
+          projectId: "apps/android",
+          projectRoot: "apps/android",
+          reason: "No registered adapter supports this project's detected languages.",
+          languages: ["java", "kotlin"]
+        },
+        {
+          projectId: "services/api",
+          projectRoot: "services/api",
+          reason: "No registered adapter supports this project's detected languages.",
+          languages: ["python"]
+        }
+      ]
+    );
   });
 });

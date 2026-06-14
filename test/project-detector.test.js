@@ -17,9 +17,9 @@ describe("project detector", () => {
   it("detects supported and unsupported projects in one repo", () => {
     const detection = detectProjects(path.resolve("examples/polyglot-workspace"));
 
-    assert.equal(detection.summary.projectCount, 2);
+    assert.equal(detection.summary.projectCount, 3);
     assert.equal(detection.summary.supportedProjectCount, 1);
-    assert.equal(detection.summary.unsupportedProjectCount, 1);
+    assert.equal(detection.summary.unsupportedProjectCount, 2);
     assert.deepEqual(
       detection.projects.map((project) => ({
         root: project.root,
@@ -28,6 +28,12 @@ describe("project detector", () => {
         supported: project.supported
       })),
       [
+        {
+          root: "apps/android",
+          languages: ["java", "kotlin"],
+          adapterIds: [],
+          supported: false
+        },
         {
           root: "apps/web",
           languages: ["javascript", "typescript"],

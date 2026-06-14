@@ -11,16 +11,19 @@ describe("project audit summary", () => {
 
     assert.equal(summary.schemaVersion, "project-audit-summary/v1");
     assert.deepEqual(summary.summary, {
-      projectCount: 2,
+      projectCount: 3,
       auditedProjectCount: 1,
-      unsupportedProjectCount: 1,
+      unsupportedProjectCount: 2,
       untestedCandidateCount: 1,
       coveredButRiskyCount: 0,
       skippedTargetCount: 0,
       riskCount: 1
     });
     assert.deepEqual(summary.projects[0].topCandidateIds, ["src/sessionClient.ts"]);
-    assert.equal(summary.unsupportedProjects[0].projectId, "services/api");
+    assert.deepEqual(
+      summary.unsupportedProjects.map((project) => project.projectId),
+      ["apps/android", "services/api"]
+    );
   });
 
   it("rejects non-project-audits artifacts", () => {

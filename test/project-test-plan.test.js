@@ -11,9 +11,9 @@ describe("project test plan", () => {
 
     assert.equal(plan.schemaVersion, "project-test-plan/v1");
     assert.deepEqual(plan.summary, {
-      projectCount: 2,
+      projectCount: 3,
       plannedProjectCount: 1,
-      unsupportedProjectCount: 1,
+      unsupportedProjectCount: 2,
       addTestCount: 1,
       extendTestCount: 0,
       deferredCount: 0,
@@ -33,7 +33,10 @@ describe("project test plan", () => {
         }
       ]
     );
-    assert.equal(plan.unsupportedProjects[0].projectId, "services/api");
+    assert.deepEqual(
+      plan.unsupportedProjects.map((project) => project.projectId),
+      ["apps/android", "services/api"]
+    );
   });
 
   it("rejects non-project-audits artifacts", () => {

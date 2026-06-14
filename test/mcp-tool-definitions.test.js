@@ -60,7 +60,7 @@ describe("MCP tool definitions", () => {
     assert.equal(adapterRegistry.schemaVersion, "adapter-registry/v1");
     assert.deepEqual(adapterRegistry.adapters.map((adapter) => adapter.id), ["javascript"]);
     assert.equal(projectDetection.schemaVersion, "project-detection/v1");
-    assert.equal(projectDetection.summary.projectCount, 2);
+    assert.equal(projectDetection.summary.projectCount, 3);
     assert.equal(projectAudits.schemaVersion, "project-audits/v1");
     assert.equal(projectAudits.summary.auditedProjectCount, 1);
     assert.equal(projectAuditSummary.schemaVersion, "project-audit-summary/v1");

@@ -95,6 +95,7 @@ Parallel execution should not change artifact shape. Whether three adapters run 
 
 `examples/polyglot-workspace` contains:
 
+- `apps/android`: Kotlin/JVM project, currently detected but unsupported
 - `apps/web`: JavaScript/TypeScript project, currently supported
 - `services/api`: Python project, currently detected but unsupported
 
