@@ -1,4 +1,4 @@
-import { getAdapter } from "./adapter-registry.js";
+import { getAdapter, getAdapterRegistry as readAdapterRegistry } from "./adapter-registry.js";
 import { explainTarget } from "./explain-target.js";
 import { auditDetectedProjects } from "./project-auditor.js";
 import { summarizeProjectAudits } from "./project-audit-summary.js";
@@ -14,6 +14,10 @@ export function detectRepoProjects(repoRoot) {
 
 export function auditRepoProjects(repoRoot) {
   return auditDetectedProjects(repoRoot);
+}
+
+export function getAdapterRegistry() {
+  return readAdapterRegistry();
 }
 
 export function summarizeRepoProjectAudits(projectAudits) {

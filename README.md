@@ -12,6 +12,13 @@ The first milestone is intentionally narrow:
 
 ## Working CLI
 
+List registered adapters:
+
+```powershell
+npm run adapters
+npm run adapters:json
+```
+
 Detect project roots and adapter matches:
 
 ```powershell

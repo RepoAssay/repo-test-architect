@@ -8,6 +8,7 @@ Implemented:
 
 - JavaScript/TypeScript repository profiling
 - runtime adapter registry with the initial `javascript` adapter
+- CLI adapter registry output
 - deterministic project detection for polyglot repository roots
 - unsupported Python and Kotlin/JVM project reporting with ecosystem and language labels
 - fixture-based regression coverage

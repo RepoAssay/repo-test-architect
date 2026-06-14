@@ -8,6 +8,7 @@ import {
   explainAuditTarget,
   generateTestPlan,
   generateRepoProjectTestPlan,
+  getAdapterRegistry,
   rankRepoProjectCandidates,
   getAuditGraph,
   rankAuditTestCandidates,
@@ -16,6 +17,13 @@ import {
 } from "../src/core/tool-api.js";
 
 describe("tool API", () => {
+  it("lists registered adapters", () => {
+    const registry = getAdapterRegistry();
+
+    assert.equal(registry.schemaVersion, "adapter-registry/v1");
+    assert.deepEqual(registry.adapters.map((adapter) => adapter.id), ["javascript"]);
+  });
+
   it("detects repository projects", () => {
     const detection = detectRepoProjects(path.resolve("examples/polyglot-workspace"));
 

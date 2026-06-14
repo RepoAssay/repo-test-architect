@@ -151,6 +151,13 @@ MCP tool:
 list_adapters
 ```
 
+Commands:
+
+```powershell
+node ./src/cli/index.js adapters
+node ./src/cli/index.js adapters --format json
+```
+
 This artifact lists registered language adapters, their ecosystem labels, and their supported language labels.
 Clients should use the adapter `id` when passing `adapterId` to `audit_repo`.
 

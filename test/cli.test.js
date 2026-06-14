@@ -9,6 +9,29 @@ const cliPath = "src/cli/index.js";
 const fixturePath = "examples/node-vitest-basic";
 
 describe("CLI", () => {
+  it("lists adapters in markdown", () => {
+    const output = execFileSync(process.execPath, [cliPath, "adapters"], {
+      encoding: "utf8"
+    });
+
+    assert.match(output, /^# Adapter Registry/);
+    assert.match(output, /javascript: ecosystems javascript; languages javascript, typescript/);
+  });
+
+  it("lists adapters as JSON", () => {
+    const output = execFileSync(process.execPath, [cliPath, "adapters", "--format=json"], {
+      encoding: "utf8"
+    });
+    const registry = JSON.parse(output);
+
+    assert.equal(registry.schemaVersion, "adapter-registry/v1");
+    assert.deepEqual(registry.adapters[0], {
+      id: "javascript",
+      ecosystems: ["javascript"],
+      languages: ["javascript", "typescript"]
+    });
+  });
+
   it("detects project roots in markdown", () => {
     const output = execFileSync(process.execPath, [cliPath, "detect", "examples/polyglot-workspace"], {
       encoding: "utf8"

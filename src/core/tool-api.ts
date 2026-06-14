@@ -169,6 +169,15 @@ export declare function detectRepoProjects(repoRoot: string): ProjectDetection;
 
 export declare function auditRepoProjects(repoRoot: string): ProjectAudits;
 
+export declare function getAdapterRegistry(): {
+  schemaVersion: "adapter-registry/v1";
+  adapters: Array<{
+    id: string;
+    ecosystems: string[];
+    languages: string[];
+  }>;
+};
+
 export declare function summarizeRepoProjectAudits(projectAudits: ProjectAudits): ProjectAuditSummary;
 
 export declare function rankRepoProjectCandidates(projectAudits: ProjectAudits): ProjectCandidateRanking;
