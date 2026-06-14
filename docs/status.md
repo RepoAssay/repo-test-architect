@@ -35,6 +35,7 @@ Current tool names:
 - `audit_projects`
 - `summarize_project_audits`
 - `rank_project_candidates`
+- `generate_project_test_plan`
 - `get_audit_graph`
 - `generate_test_plan`
 - `explain_target`

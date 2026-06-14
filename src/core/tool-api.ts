@@ -55,6 +55,49 @@ export interface ProjectCandidateRanking {
   candidates: ProjectCandidate[];
 }
 
+export interface ProjectTestPlan {
+  schemaVersion: "project-test-plan/v1";
+  root: string;
+  summary: {
+    projectCount: number;
+    plannedProjectCount: number;
+    unsupportedProjectCount: number;
+    addTestCount: number;
+    extendTestCount: number;
+    deferredCount: number;
+    itemCount: number;
+  };
+  unsupportedProjects: SkippedProjectAudit[];
+  projectPlans: ProjectPlanEntry[];
+  items: ProjectPlanItem[];
+}
+
+export interface ProjectPlanEntry {
+  projectId: string;
+  projectRoot: string;
+  adapterId: string;
+  plan: TestPlan;
+}
+
+export interface ProjectPlanItem {
+  projectId: string;
+  projectRoot: string;
+  adapterId: string;
+  projectItemId: string;
+  id: string;
+  action: "add-test" | "extend-test" | "defer";
+  targetId: string;
+  target: string;
+  path: string;
+  testLevel: "unit" | "integration" | "component" | "ui" | "none";
+  priority: number;
+  riskReductionScore: number;
+  maintenanceCost: number;
+  rationale: string[];
+  sourceSignals: string[];
+  existingTestPaths: string[];
+}
+
 export interface ProjectCandidate {
   projectId: string;
   projectRoot: string;
@@ -128,6 +171,8 @@ export declare function auditRepoProjects(repoRoot: string): ProjectAudits;
 export declare function summarizeRepoProjectAudits(projectAudits: ProjectAudits): ProjectAuditSummary;
 
 export declare function rankRepoProjectCandidates(projectAudits: ProjectAudits): ProjectCandidateRanking;
+
+export declare function generateRepoProjectTestPlan(projectAudits: ProjectAudits): ProjectTestPlan;
 
 export function getAuditGraph(audit: AuditResult): AuditResult {
   validateAudit(audit);

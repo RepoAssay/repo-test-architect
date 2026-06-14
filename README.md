@@ -65,6 +65,7 @@ npm run mcp:detect:example
 npm run mcp:audit-projects:example
 npm run mcp:summarize-projects:example
 npm run mcp:rank-projects:example
+npm run mcp:plan-projects:example
 npm run mcp:audit:example
 npm run mcp:audit:envelope
 npm run mcp:stdio

@@ -246,6 +246,22 @@ node ./src/cli/index.js rank-projects ./examples/polyglot-workspace --format jso
 This artifact ranks candidates from a `project-audits/v1` artifact using the same deterministic per-audit priority calculation, while adding project identity to each candidate.
 It preserves unsupported project roots instead of hiding them.
 
+## Project Test Plan Artifact
+
+Schema:
+
+- `schemas/project-test-plan-v1.schema.json`
+- `schemaVersion: "project-test-plan/v1"`
+
+MCP tool:
+
+```txt
+generate_project_test_plan
+```
+
+This artifact generates per-project plan items from a `project-audits/v1` artifact and flattens them with project identity attached.
+It preserves the underlying `plan/v1` artifacts per project for detailed inspection.
+
 ## Changed-Only Flow
 
 For PR-style workflows, use `--changed`:
@@ -297,6 +313,7 @@ Internal tool API:
 - `auditRepoProjects`
 - `summarizeRepoProjectAudits`
 - `rankRepoProjectCandidates`
+- `generateRepoProjectTestPlan`
 - `getAuditGraph`
 - `explainAuditTarget`
 - `rankAuditTestCandidates`

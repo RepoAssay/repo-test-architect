@@ -1,0 +1,127 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "project-test-plan-v1.schema.json",
+  "title": "Project Test Plan Artifact",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "root", "summary", "unsupportedProjects", "projectPlans", "items"],
+  "properties": {
+    "schemaVersion": { "const": "project-test-plan/v1" },
+    "root": { "type": "string", "minLength": 1 },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "projectCount",
+        "plannedProjectCount",
+        "unsupportedProjectCount",
+        "addTestCount",
+        "extendTestCount",
+        "deferredCount",
+        "itemCount"
+      ],
+      "properties": {
+        "projectCount": { "type": "integer", "minimum": 0 },
+        "plannedProjectCount": { "type": "integer", "minimum": 0 },
+        "unsupportedProjectCount": { "type": "integer", "minimum": 0 },
+        "addTestCount": { "type": "integer", "minimum": 0 },
+        "extendTestCount": { "type": "integer", "minimum": 0 },
+        "deferredCount": { "type": "integer", "minimum": 0 },
+        "itemCount": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "unsupportedProjects": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["projectId", "projectRoot", "reason", "languages"],
+        "properties": {
+          "projectId": { "type": "string", "minLength": 1 },
+          "projectRoot": { "type": "string", "minLength": 1 },
+          "reason": { "type": "string", "minLength": 1 },
+          "languages": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    },
+    "projectPlans": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["projectId", "projectRoot", "adapterId", "plan"],
+        "properties": {
+          "projectId": { "type": "string", "minLength": 1 },
+          "projectRoot": { "type": "string", "minLength": 1 },
+          "adapterId": { "type": "string", "minLength": 1 },
+          "plan": {
+            "type": "object",
+            "additionalProperties": true,
+            "required": ["schemaVersion", "summary", "blockers", "items"],
+            "properties": {
+              "schemaVersion": { "const": "plan/v1" },
+              "summary": { "type": "object" },
+              "blockers": { "type": "array" },
+              "items": { "type": "array" }
+            }
+          }
+        }
+      }
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "projectId",
+          "projectRoot",
+          "adapterId",
+          "projectItemId",
+          "id",
+          "action",
+          "targetId",
+          "target",
+          "path",
+          "testLevel",
+          "priority",
+          "riskReductionScore",
+          "maintenanceCost",
+          "rationale",
+          "sourceSignals",
+          "existingTestPaths"
+        ],
+        "properties": {
+          "projectId": { "type": "string", "minLength": 1 },
+          "projectRoot": { "type": "string", "minLength": 1 },
+          "adapterId": { "type": "string", "minLength": 1 },
+          "projectItemId": { "type": "string", "minLength": 1 },
+          "id": { "type": "string", "minLength": 1 },
+          "action": { "enum": ["add-test", "extend-test", "defer"] },
+          "targetId": { "type": "string", "minLength": 1 },
+          "target": { "type": "string", "minLength": 1 },
+          "path": { "type": "string", "minLength": 1 },
+          "testLevel": { "enum": ["unit", "integration", "component", "ui", "none"] },
+          "priority": { "type": "integer" },
+          "riskReductionScore": { "type": "integer", "minimum": 0, "maximum": 10 },
+          "maintenanceCost": { "type": "integer", "minimum": 0, "maximum": 10 },
+          "rationale": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "sourceSignals": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "existingTestPaths": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      }
+    }
+  }
+}

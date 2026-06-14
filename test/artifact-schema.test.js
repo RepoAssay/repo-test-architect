@@ -8,6 +8,7 @@ import { summarizeProjectAudits } from "../src/core/project-audit-summary.js";
 import { auditDetectedProjects } from "../src/core/project-auditor.js";
 import { rankProjectTestCandidates } from "../src/core/project-candidate-ranking.js";
 import { detectProjects } from "../src/core/project-detector.js";
+import { createProjectTestPlan } from "../src/core/project-test-plan.js";
 import { rankTestCandidates } from "../src/core/rank-test-candidates.js";
 import { loadEvalFixtures } from "./support/eval-fixtures.js";
 import { assertMatchesSchema } from "./support/json-schema-validator.js";
@@ -23,6 +24,7 @@ const projectDetectionSchema = readJson("schemas/project-detection-v1.schema.jso
 const projectAuditsSchema = readJson("schemas/project-audits-v1.schema.json");
 const projectAuditSummarySchema = readJson("schemas/project-audit-summary-v1.schema.json");
 const projectCandidateRankingSchema = readJson("schemas/project-candidate-ranking-v1.schema.json");
+const projectTestPlanSchema = readJson("schemas/project-test-plan-v1.schema.json");
 const fixtures = loadEvalFixtures();
 
 describe("artifact schema compatibility", () => {
@@ -107,6 +109,15 @@ describe("project candidate ranking artifact schema compatibility", () => {
     const artifact = rankProjectTestCandidates(projectAudits);
 
     assertMatchesSchema(artifact, projectCandidateRankingSchema, "project-candidate-ranking.json");
+  });
+});
+
+describe("project test plan artifact schema compatibility", () => {
+  it("validates project-test-plan/v1", () => {
+    const projectAudits = auditDetectedProjects(path.resolve("examples/polyglot-workspace"));
+    const artifact = createProjectTestPlan(projectAudits);
+
+    assertMatchesSchema(artifact, projectTestPlanSchema, "project-test-plan.json");
   });
 });
 

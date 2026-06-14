@@ -4,6 +4,7 @@ import {
   detectRepoProjects,
   explainAuditTarget,
   generateTestPlan,
+  generateRepoProjectTestPlan,
   getAuditGraph,
   rankRepoProjectCandidates,
   rankAuditTestCandidates,
@@ -48,6 +49,14 @@ export const mcpTools = [
     name: "rank_project_candidates",
     description: "Rank test candidates across project-audits while preserving project identity.",
     outputArtifact: artifact("project-candidate-ranking/v1", "schemas/project-candidate-ranking-v1.schema.json"),
+    inputSchema: objectSchema({
+      projectAudits: { type: "object", description: "A project-audits/v1 artifact." }
+    }, ["projectAudits"])
+  },
+  {
+    name: "generate_project_test_plan",
+    description: "Generate a project-aware test plan from audited project roots.",
+    outputArtifact: artifact("project-test-plan/v1", "schemas/project-test-plan-v1.schema.json"),
     inputSchema: objectSchema({
       projectAudits: { type: "object", description: "A project-audits/v1 artifact." }
     }, ["projectAudits"])
@@ -131,6 +140,8 @@ export function callTool(name, args = {}) {
       return summarizeRepoProjectAudits(requireObject(args.projectAudits, "projectAudits"));
     case "rank_project_candidates":
       return rankRepoProjectCandidates(requireObject(args.projectAudits, "projectAudits"));
+    case "generate_project_test_plan":
+      return generateRepoProjectTestPlan(requireObject(args.projectAudits, "projectAudits"));
     case "audit_repo":
       return auditRepo(requireString(args.repoRoot, "repoRoot"), {
         adapterId: optionalString(args.adapterId, "adapterId"),
