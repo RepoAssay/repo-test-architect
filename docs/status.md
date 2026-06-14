@@ -9,6 +9,7 @@ Implemented:
 - JavaScript/TypeScript repository profiling
 - runtime adapter registry with the initial `javascript` adapter
 - deterministic project detection for polyglot repository roots
+- unsupported Python and Kotlin/JVM project reporting in the polyglot fixture
 - fixture-based regression coverage
 - audit, plan, explanation, ranking, and deferred-generation artifacts
 - project detection and project audit artifacts for polyglot repository groundwork
@@ -75,6 +76,6 @@ npm run eval:test
 
 1. Add a real local stdio MCP SDK transport wrapper around `src/mcp/tool-definitions.js`.
 2. Add TypeScript/JSDoc typing for the runtime JS modules or consolidate TS reference files.
-3. Add Kotlin/JUnit or Swift adapter discovery as the next language spike.
+3. Add Kotlin/JUnit or Swift adapter discovery as the next supported-language spike.
 4. Add model-consistency eval fixtures that compare generated explanations against the same deterministic audit graph.
 5. Add native test generation only after adapter-specific generation rules and repair-loop tests exist.

@@ -54,11 +54,11 @@ Initial JS/TS fixtures:
 
 Later adapter fixtures:
 
+- Kotlin/JVM + JUnit
 - Swift Package Manager + XCTest
 - Swift Package Manager + Swift Testing
 - Vapor service tests
 - React component tests
-- Kotlin/JUnit service tests
 
 ## MCP Direction
 
