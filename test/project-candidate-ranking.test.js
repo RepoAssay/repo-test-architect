@@ -31,8 +31,11 @@ describe("project candidate ranking", () => {
       ]
     );
     assert.deepEqual(
-      ranking.unsupportedProjects.map((project) => project.projectId),
-      ["apps/android", "services/api"]
+      ranking.unsupportedProjects.map((project) => [project.projectId, project.ecosystems]),
+      [
+        ["apps/android", ["jvm"]],
+        ["services/api", ["python"]]
+      ]
     );
   });
 

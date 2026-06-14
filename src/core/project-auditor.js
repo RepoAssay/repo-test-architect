@@ -13,6 +13,7 @@ export function auditDetectedProjects(repoRoot) {
         projectId: project.id,
         projectRoot: project.root,
         reason: "No registered adapter supports this project's detected languages.",
+        ecosystems: project.ecosystems,
         languages: project.languages
       });
       continue;

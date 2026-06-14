@@ -21,8 +21,11 @@ describe("project audit summary", () => {
     });
     assert.deepEqual(summary.projects[0].topCandidateIds, ["src/sessionClient.ts"]);
     assert.deepEqual(
-      summary.unsupportedProjects.map((project) => project.projectId),
-      ["apps/android", "services/api"]
+      summary.unsupportedProjects.map((project) => [project.projectId, project.ecosystems]),
+      [
+        ["apps/android", ["jvm"]],
+        ["services/api", ["python"]]
+      ]
     );
   });
 

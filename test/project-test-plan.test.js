@@ -34,8 +34,11 @@ describe("project test plan", () => {
       ]
     );
     assert.deepEqual(
-      plan.unsupportedProjects.map((project) => project.projectId),
-      ["apps/android", "services/api"]
+      plan.unsupportedProjects.map((project) => [project.projectId, project.ecosystems]),
+      [
+        ["apps/android", ["jvm"]],
+        ["services/api", ["python"]]
+      ]
     );
   });
 

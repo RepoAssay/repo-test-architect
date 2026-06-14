@@ -38,6 +38,7 @@ export function createProjectTestPlan(projectAudits) {
     projectId: project.projectId,
     projectRoot: project.projectRoot,
     reason: project.reason,
+    ecosystems: project.ecosystems,
     languages: project.languages
   }));
 

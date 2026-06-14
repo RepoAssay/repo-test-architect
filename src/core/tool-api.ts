@@ -141,6 +141,7 @@ export interface SkippedProjectAudit {
   projectId: string;
   projectRoot: string;
   reason: string;
+  ecosystems: string[];
   languages: string[];
 }
 

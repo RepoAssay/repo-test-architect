@@ -86,6 +86,7 @@ describe("schema files", () => {
     assert.ok(schema.required.includes("skippedProjects"));
     assert.ok(schema.properties.audits.items.required.includes("adapterId"));
     assert.ok(schema.properties.skippedProjects.items.required.includes("reason"));
+    assert.ok(schema.properties.skippedProjects.items.required.includes("ecosystems"));
   });
 
   it("documents project-audit-summary/v1", () => {
@@ -95,6 +96,7 @@ describe("schema files", () => {
     assert.ok(schema.required.includes("projects"));
     assert.ok(schema.required.includes("unsupportedProjects"));
     assert.ok(schema.properties.projects.items.required.includes("topCandidateIds"));
+    assert.ok(schema.properties.unsupportedProjects.items.required.includes("ecosystems"));
     assert.ok(schema.properties.unsupportedProjects.items.required.includes("languages"));
   });
 
@@ -106,6 +108,7 @@ describe("schema files", () => {
     assert.ok(schema.required.includes("unsupportedProjects"));
     assert.ok(schema.properties.candidates.items.required.includes("projectTargetId"));
     assert.ok(schema.properties.candidates.items.required.includes("priority"));
+    assert.ok(schema.properties.unsupportedProjects.items.required.includes("ecosystems"));
   });
 
   it("documents project-test-plan/v1", () => {
@@ -116,6 +119,7 @@ describe("schema files", () => {
     assert.ok(schema.required.includes("items"));
     assert.ok(schema.properties.items.items.required.includes("projectItemId"));
     assert.ok(schema.properties.items.items.required.includes("action"));
+    assert.ok(schema.properties.unsupportedProjects.items.required.includes("ecosystems"));
   });
 
   it("documents MCP tool descriptors", () => {

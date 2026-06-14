@@ -84,7 +84,7 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["projectId", "projectRoot", "reason", "languages"],
+        "required": ["projectId", "projectRoot", "reason", "ecosystems", "languages"],
         "properties": {
           "projectId": {
             "type": "string",
@@ -97,6 +97,13 @@
           "reason": {
             "type": "string",
             "minLength": 1
+          },
+          "ecosystems": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
           },
           "languages": {
             "type": "array",
