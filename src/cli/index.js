@@ -423,7 +423,7 @@ function renderMarkdownProjectAudits(projectAudits) {
     lines.push("- No projects skipped.");
   } else {
     for (const project of projectAudits.skippedProjects) {
-      lines.push(`- ${project.projectRoot}: ${project.reason} (${formatList(project.languages)})`);
+      lines.push(formatUnsupportedProject(project));
     }
   }
 
@@ -463,7 +463,7 @@ function renderMarkdownProjectAuditSummary(summary) {
     lines.push("- No unsupported projects.");
   } else {
     for (const project of summary.unsupportedProjects) {
-      lines.push(`- ${project.projectRoot}: ${project.reason} (${formatList(project.languages)})`);
+      lines.push(formatUnsupportedProject(project));
     }
   }
 
@@ -501,7 +501,7 @@ function renderMarkdownProjectCandidateRanking(ranking) {
     lines.push("- No unsupported projects.");
   } else {
     for (const project of ranking.unsupportedProjects) {
-      lines.push(`- ${project.projectRoot}: ${project.reason} (${formatList(project.languages)})`);
+      lines.push(formatUnsupportedProject(project));
     }
   }
 
@@ -541,7 +541,7 @@ function renderMarkdownProjectTestPlan(plan) {
     lines.push("- No unsupported projects.");
   } else {
     for (const project of plan.unsupportedProjects) {
-      lines.push(`- ${project.projectRoot}: ${project.reason} (${formatList(project.languages)})`);
+      lines.push(formatUnsupportedProject(project));
     }
   }
 
@@ -676,4 +676,8 @@ function formatSkippedTarget(target) {
   const preferredPath = target.preferredCoveragePath ? ` Preferred path: ${target.preferredCoveragePath}` : "";
 
   return `- ${target.name}: ${target.reason} (risk reduction ${target.riskReductionScore}/10, maintenance ${target.maintenanceCost}/10).${preferredPath}`;
+}
+
+function formatUnsupportedProject(project) {
+  return `- ${project.projectRoot}: ${project.reason} (ecosystems: ${formatList(project.ecosystems)}; languages: ${formatList(project.languages)})`;
 }
