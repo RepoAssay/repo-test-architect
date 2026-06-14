@@ -35,7 +35,7 @@ node ./src/cli/index.js audit-projects ./examples/polyglot-workspace --format js
 
 This emits `project-audits/v1`.
 
-For every supported project root, the matching adapter produces a normal audit artifact. Unsupported project roots are reported separately with their marker files and likely languages.
+For every supported project root, the matching adapter produces a normal audit artifact. Unsupported project roots are reported separately with their ecosystem and language labels.
 
 The current runtime audits JavaScript and TypeScript project roots through the `javascript` adapter.
 

@@ -9,7 +9,7 @@ Implemented:
 - JavaScript/TypeScript repository profiling
 - runtime adapter registry with the initial `javascript` adapter
 - deterministic project detection for polyglot repository roots
-- unsupported Python and Kotlin/JVM project reporting in the polyglot fixture
+- unsupported Python and Kotlin/JVM project reporting with ecosystem and language labels
 - fixture-based regression coverage
 - audit, plan, explanation, ranking, and deferred-generation artifacts
 - project detection and project audit artifacts for polyglot repository groundwork
