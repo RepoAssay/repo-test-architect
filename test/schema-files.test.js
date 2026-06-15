@@ -174,6 +174,22 @@ describe("schema files", () => {
     assert.ok(schema.properties.summary.required.includes("failureCount"));
     assert.deepEqual(schema.properties.scenarios.items.properties.status.enum, ["passed", "failed"]);
   });
+
+  it("documents model-consistency-comparison/v1", () => {
+    const schema = readSchema("schemas/model-consistency-comparison-v1.schema.json");
+
+    assert.equal(schema.properties.schemaVersion.const, "model-consistency-comparison/v1");
+    assert.ok(schema.required.includes("baselineProfile"));
+    assert.ok(schema.required.includes("candidateProfile"));
+    assert.ok(schema.required.includes("summary"));
+    assert.ok(schema.properties.summary.required.includes("driftedScenarioCount"));
+    assert.deepEqual(schema.properties.scenarios.items.properties.alignment.enum, [
+      "aligned",
+      "drifted",
+      "missing",
+      "unexpected"
+    ]);
+  });
 });
 
 function readSchema(path) {

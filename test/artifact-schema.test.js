@@ -12,6 +12,7 @@ import { analyzeProjectTestPlacement } from "../src/core/project-test-placement-
 import { createProjectTestPlan } from "../src/core/project-test-plan.js";
 import { rankTestCandidates } from "../src/core/rank-test-candidates.js";
 import {
+  compareModelConsistencySummaries,
   readModelConsistencyScenario,
   runModelConsistencyScenario,
   summarizeModelConsistencyResults
@@ -36,6 +37,7 @@ const projectCandidateRankingSchema = readJson("schemas/project-candidate-rankin
 const projectTestPlanSchema = readJson("schemas/project-test-plan-v1.schema.json");
 const modelConsistencyScenarioSchema = readJson("schemas/model-consistency-scenario-v1.schema.json");
 const modelConsistencySummarySchema = readJson("schemas/model-consistency-summary-v1.schema.json");
+const modelConsistencyComparisonSchema = readJson("schemas/model-consistency-comparison-v1.schema.json");
 const fixtures = loadEvalFixtures();
 
 describe("artifact schema compatibility", () => {
@@ -194,6 +196,30 @@ describe("model consistency summary artifact schema compatibility", () => {
   });
 });
 
+describe("model consistency comparison artifact schema compatibility", () => {
+  it("validates model-consistency-comparison/v1", () => {
+    const scenarios = readModelConsistencyScenarios();
+    const results = scenarios.map((scenario) => runModelConsistencyScenario(scenario));
+    const baseline = summarizeModelConsistencyResults(scenarios, results, {
+      profileName: "deterministic-baseline"
+    });
+    const candidate = summarizeModelConsistencyResults(scenarios, results, {
+      profileName: "local-small"
+    });
+    const artifact = compareModelConsistencySummaries(baseline, candidate);
+
+    assertMatchesSchema(artifact, modelConsistencyComparisonSchema, "model-consistency-comparison.json");
+  });
+});
+
 function readJson(filePath) {
   return JSON.parse(fs.readFileSync(filePath, "utf8"));
+}
+
+function readModelConsistencyScenarios() {
+  return fs
+    .readdirSync("evals/model-consistency")
+    .filter((fileName) => fileName.endsWith(".scenario.json"))
+    .sort()
+    .map((fileName) => readModelConsistencyScenario(path.join("evals/model-consistency", fileName)));
 }

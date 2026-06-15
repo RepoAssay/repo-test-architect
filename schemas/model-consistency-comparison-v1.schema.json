@@ -1,0 +1,119 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://repo-test-architect.local/schemas/model-consistency-comparison-v1.schema.json",
+  "title": "Repo Test Architect Model Consistency Comparison",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "baselineProfile",
+    "candidateProfile",
+    "summary",
+    "scenarios"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "model-consistency-comparison/v1"
+    },
+    "baselineProfile": {
+      "type": "string",
+      "minLength": 1
+    },
+    "candidateProfile": {
+      "type": "string",
+      "minLength": 1
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scenarioCount",
+        "alignedScenarioCount",
+        "driftedScenarioCount",
+        "missingScenarioCount",
+        "unexpectedScenarioCount",
+        "checkedFieldDelta",
+        "failureDelta"
+      ],
+      "properties": {
+        "scenarioCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "alignedScenarioCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "driftedScenarioCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "missingScenarioCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unexpectedScenarioCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "checkedFieldDelta": {
+          "type": "integer"
+        },
+        "failureDelta": {
+          "type": "integer"
+        }
+      }
+    },
+    "scenarios": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "scenarioId",
+          "baselineStatus",
+          "candidateStatus",
+          "alignment",
+          "baselineFailureCount",
+          "candidateFailureCount"
+        ],
+        "properties": {
+          "scenarioId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "baselineStatus": {
+            "enum": [
+              "passed",
+              "failed",
+              "missing"
+            ]
+          },
+          "candidateStatus": {
+            "enum": [
+              "passed",
+              "failed",
+              "missing"
+            ]
+          },
+          "alignment": {
+            "enum": [
+              "aligned",
+              "drifted",
+              "missing",
+              "unexpected"
+            ]
+          },
+          "baselineFailureCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "candidateFailureCount": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      }
+    }
+  }
+}

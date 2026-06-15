@@ -145,6 +145,7 @@ Check model-consistency scenario locked fields against deterministic tool result
 npm run model-consistency:check
 npm run model-consistency:json
 npm run model-consistency:json -- --profile local-small
+npm run model-consistency:compare -- baseline-summary.json candidate-summary.json
 ```
 
 Node 20 or newer is required for the CLI. If Node is not available yet, the repository still includes a PowerShell smoke check:

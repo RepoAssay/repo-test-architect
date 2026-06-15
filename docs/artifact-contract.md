@@ -186,6 +186,29 @@ It contains:
 - allowed variation themes
 - unexpected variation themes
 
+## Model Consistency Comparison Artifact
+
+Schema:
+
+- `schemas/model-consistency-comparison-v1.schema.json`
+- `schemaVersion: "model-consistency-comparison/v1"`
+
+Command:
+
+```powershell
+npm run model-consistency:compare -- baseline-summary.json candidate-summary.json
+```
+
+This artifact compares two `model-consistency-summary/v1` artifacts.
+It is intended for future model profile runs where the deterministic baseline is compared against a named model/provider configuration.
+
+It contains:
+
+- baseline and candidate profile names
+- aligned, drifted, missing, and unexpected scenario counts
+- checked-field and failure deltas
+- per-scenario alignment status
+
 ## Test Placement Findings Artifact
 
 Schema:
@@ -481,6 +504,7 @@ npm run eval:test
 npm run eval:update
 npm run model-consistency:check
 npm run model-consistency:json
+npm run model-consistency:compare -- baseline-summary.json candidate-summary.json
 ```
 
 Update snapshots only after intentional behavior changes.

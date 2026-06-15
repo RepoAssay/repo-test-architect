@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { describe, it } from "node:test";
 import {
+  compareModelConsistencySummaries,
   readModelConsistencyScenario,
   runModelConsistencyScenario,
   summarizeModelConsistencyResults
@@ -101,6 +102,81 @@ describe("model consistency runner", () => {
     assert.ok(summary.unexpectedVariationThemes.includes("Generating a direct DTO test recommendation."));
   });
 
+  it("compares aligned model consistency summaries", () => {
+    const baseline = createCurrentSummary("deterministic-baseline");
+    const candidate = createCurrentSummary("local-small");
+    const comparison = compareModelConsistencySummaries(baseline, candidate);
+
+    assert.equal(comparison.schemaVersion, "model-consistency-comparison/v1");
+    assert.equal(comparison.baselineProfile, "deterministic-baseline");
+    assert.equal(comparison.candidateProfile, "local-small");
+    assert.deepEqual(comparison.summary, {
+      scenarioCount: 7,
+      alignedScenarioCount: 7,
+      driftedScenarioCount: 0,
+      missingScenarioCount: 0,
+      unexpectedScenarioCount: 0,
+      checkedFieldDelta: 0,
+      failureDelta: 0
+    });
+    assert.equal(comparison.scenarios[0].alignment, "aligned");
+  });
+
+  it("flags drift, missing scenarios, and unexpected scenarios between summaries", () => {
+    const baseline = createCurrentSummary("deterministic-baseline");
+    const candidate = {
+      ...createCurrentSummary("local-small"),
+      summary: {
+        scenarioCount: 7,
+        passedScenarioCount: 5,
+        failedScenarioCount: 2,
+        checkedFieldCount: 42,
+        failureCount: 3
+      },
+      scenarios: [
+        {
+          ...baseline.scenarios[0],
+          status: "failed",
+          checkedFieldCount: baseline.scenarios[0].checkedFieldCount - 1,
+          failureCount: 1
+        },
+        ...baseline.scenarios.slice(2),
+        {
+          scenarioId: "unexpected-extra-scenario",
+          toolName: "generate_test_plan",
+          checkedFieldCount: 1,
+          status: "passed",
+          failureCount: 0
+        }
+      ]
+    };
+
+    const comparison = compareModelConsistencySummaries(baseline, candidate);
+
+    assert.deepEqual(comparison.summary, {
+      scenarioCount: 8,
+      alignedScenarioCount: 5,
+      driftedScenarioCount: 1,
+      missingScenarioCount: 1,
+      unexpectedScenarioCount: 1,
+      checkedFieldDelta: -3,
+      failureDelta: 3
+    });
+    assert.deepEqual(
+      comparison.scenarios.map((scenario) => [scenario.scenarioId, scenario.alignment]),
+      [
+        ["express-supertest-plan", "drifted"],
+        ["node-jest-service-plan", "missing"],
+        ["node-no-tests-yet-plan", "aligned"],
+        ["node-vitest-basic-auth-explanation", "aligned"],
+        ["node-vitest-basic-plan", "aligned"],
+        ["node-vitest-basic-ranking", "aligned"],
+        ["react-testing-library-plan", "aligned"],
+        ["unexpected-extra-scenario", "unexpected"]
+      ]
+    );
+  });
+
   it("rejects scenarios with the wrong schema version", () => {
     const scenario = readModelConsistencyScenario(scenarioPath);
 
@@ -110,6 +186,13 @@ describe("model consistency runner", () => {
     );
   });
 });
+
+function createCurrentSummary(profileName) {
+  const scenarios = readCheckedInScenarios();
+  const results = scenarios.map((scenario) => runModelConsistencyScenario(scenario));
+
+  return summarizeModelConsistencyResults(scenarios, results, { profileName });
+}
 
 function readCheckedInScenarios() {
   return fs

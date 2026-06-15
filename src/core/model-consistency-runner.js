@@ -32,6 +32,13 @@ import { callTool } from "../mcp/tool-definitions.js";
  * @property {Array<{ scenarioId: string, toolName: string, checkedFieldCount: number, status: "passed" | "failed", failureCount: number }>} scenarios
  * @property {string[]} allowedVariationThemes
  * @property {string[]} unexpectedVariationThemes
+ *
+ * @typedef {object} ModelConsistencyComparison
+ * @property {"model-consistency-comparison/v1"} schemaVersion
+ * @property {string} baselineProfile
+ * @property {string} candidateProfile
+ * @property {{ scenarioCount: number, alignedScenarioCount: number, driftedScenarioCount: number, missingScenarioCount: number, unexpectedScenarioCount: number, checkedFieldDelta: number, failureDelta: number }} summary
+ * @property {Array<{ scenarioId: string, baselineStatus: "passed" | "failed" | "missing", candidateStatus: "passed" | "failed" | "missing", alignment: "aligned" | "drifted" | "missing" | "unexpected", baselineFailureCount: number, candidateFailureCount: number }>} scenarios
  */
 
 /**
@@ -105,6 +112,42 @@ export function summarizeModelConsistencyResults(scenarios, results, options = {
 }
 
 /**
+ * @param {ModelConsistencySummary} baseline
+ * @param {ModelConsistencySummary} candidate
+ * @returns {ModelConsistencyComparison}
+ */
+export function compareModelConsistencySummaries(baseline, candidate) {
+  validateSummary(baseline, "baseline");
+  validateSummary(candidate, "candidate");
+
+  const baselineScenarios = new Map(baseline.scenarios.map((scenario) => [scenario.scenarioId, scenario]));
+  const candidateScenarios = new Map(candidate.scenarios.map((scenario) => [scenario.scenarioId, scenario]));
+  const scenarioIds = uniqueSorted([...baselineScenarios.keys(), ...candidateScenarios.keys()]);
+  const scenarios = scenarioIds.map((scenarioId) => {
+    const baselineScenario = baselineScenarios.get(scenarioId);
+    const candidateScenario = candidateScenarios.get(scenarioId);
+
+    return compareScenario(scenarioId, baselineScenario, candidateScenario);
+  });
+
+  return {
+    schemaVersion: "model-consistency-comparison/v1",
+    baselineProfile: baseline.profileName,
+    candidateProfile: candidate.profileName,
+    summary: {
+      scenarioCount: scenarios.length,
+      alignedScenarioCount: scenarios.filter((scenario) => scenario.alignment === "aligned").length,
+      driftedScenarioCount: scenarios.filter((scenario) => scenario.alignment === "drifted").length,
+      missingScenarioCount: scenarios.filter((scenario) => scenario.alignment === "missing").length,
+      unexpectedScenarioCount: scenarios.filter((scenario) => scenario.alignment === "unexpected").length,
+      checkedFieldDelta: candidate.summary.checkedFieldCount - baseline.summary.checkedFieldCount,
+      failureDelta: candidate.summary.failureCount - baseline.summary.failureCount
+    },
+    scenarios
+  };
+}
+
+/**
  * @param {ModelConsistencyScenario} scenario
  * @returns {void}
  */
@@ -116,6 +159,61 @@ function validateScenario(scenario) {
   if (!Array.isArray(scenario.lockedFields) || scenario.lockedFields.length === 0) {
     throw new Error("Model consistency scenario must define at least one locked field.");
   }
+}
+
+/**
+ * @param {unknown} summary
+ * @param {string} label
+ * @returns {void}
+ */
+function validateSummary(summary, label) {
+  if (summary?.schemaVersion !== "model-consistency-summary/v1") {
+    throw new Error(`Expected ${label} model consistency summary schemaVersion model-consistency-summary/v1.`);
+  }
+}
+
+/**
+ * @param {string} scenarioId
+ * @param {{ status: "passed" | "failed", checkedFieldCount: number, failureCount: number } | undefined} baselineScenario
+ * @param {{ status: "passed" | "failed", checkedFieldCount: number, failureCount: number } | undefined} candidateScenario
+ * @returns {{ scenarioId: string, baselineStatus: "passed" | "failed" | "missing", candidateStatus: "passed" | "failed" | "missing", alignment: "aligned" | "drifted" | "missing" | "unexpected", baselineFailureCount: number, candidateFailureCount: number }}
+ */
+function compareScenario(scenarioId, baselineScenario, candidateScenario) {
+  if (!baselineScenario) {
+    return {
+      scenarioId,
+      baselineStatus: "missing",
+      candidateStatus: candidateScenario.status,
+      alignment: "unexpected",
+      baselineFailureCount: 0,
+      candidateFailureCount: candidateScenario.failureCount
+    };
+  }
+
+  if (!candidateScenario) {
+    return {
+      scenarioId,
+      baselineStatus: baselineScenario.status,
+      candidateStatus: "missing",
+      alignment: "missing",
+      baselineFailureCount: baselineScenario.failureCount,
+      candidateFailureCount: 0
+    };
+  }
+
+  const aligned =
+    baselineScenario.status === candidateScenario.status &&
+    baselineScenario.failureCount === candidateScenario.failureCount &&
+    baselineScenario.checkedFieldCount === candidateScenario.checkedFieldCount;
+
+  return {
+    scenarioId,
+    baselineStatus: baselineScenario.status,
+    candidateStatus: candidateScenario.status,
+    alignment: aligned ? "aligned" : "drifted",
+    baselineFailureCount: baselineScenario.failureCount,
+    candidateFailureCount: candidateScenario.failureCount
+  };
 }
 
 /**
