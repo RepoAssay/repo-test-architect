@@ -145,6 +145,7 @@ The JavaScript adapter is the first proof point. Later adapters should emit the 
 - [Project status](docs/status.md)
 - [Adapter contract](docs/adapter-contract.md)
 - [Artifact contract](docs/artifact-contract.md)
+- [Project detection](docs/project-detection.md)
 - [Polyglot workflow](docs/polyglot-workflow.md)
 - [MCP tool surface](docs/mcp-tools.md)
 - [MCP deployment](docs/mcp-deployment.md)

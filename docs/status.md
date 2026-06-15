@@ -10,7 +10,8 @@ Implemented:
 - runtime adapter registry with the initial `javascript` adapter
 - CLI adapter registry output
 - deterministic project detection for polyglot repository roots
-- unsupported Python and Kotlin/JVM project reporting with ecosystem and language labels
+- unsupported Python, Ruby, PHP, Elixir, Go, Rust, Swift, .NET, and Kotlin/JVM project reporting with ecosystem and language labels
+- documented project detection marker rules
 - fixture-based regression coverage
 - audit, plan, explanation, ranking, and deferred-generation artifacts
 - project detection and project audit artifacts for polyglot repository groundwork
