@@ -32,6 +32,10 @@ Current scaffold:
 - `src/mcp/json-rpc.js`
 - `src/mcp/tool-definitions.js`
 
+Client config examples:
+
+- `docs/mcp-client-config.md`
+
 ## Phase 2: Local HTTP
 
 Optional later target:

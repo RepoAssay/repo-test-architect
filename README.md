@@ -156,4 +156,5 @@ The JavaScript adapter is the first proof point. Later adapters should emit the 
 - [Project detection](docs/project-detection.md)
 - [Polyglot workflow](docs/polyglot-workflow.md)
 - [MCP tool surface](docs/mcp-tools.md)
+- [MCP client config](docs/mcp-client-config.md)
 - [MCP deployment](docs/mcp-deployment.md)
