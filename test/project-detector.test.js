@@ -108,6 +108,31 @@ describe("project detector", () => {
     );
   });
 
+  it("detects Go module projects", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-go-"));
+    fs.mkdirSync(path.join(root, "services", "worker"), { recursive: true });
+    fs.writeFileSync(path.join(root, "services", "worker", "go.mod"), "module example.com/worker\n");
+
+    const detection = detectProjects(root);
+
+    assert.deepEqual(
+      detection.projects.map((project) => ({
+        root: project.root,
+        ecosystems: project.ecosystems,
+        languages: project.languages,
+        supported: project.supported
+      })),
+      [
+        {
+          root: "services/worker",
+          ecosystems: ["go"],
+          languages: ["go"],
+          supported: false
+        }
+      ]
+    );
+  });
+
   it("ignores generated Maven target directories", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-target-"));
     fs.mkdirSync(path.join(root, "target", "generated"), { recursive: true });

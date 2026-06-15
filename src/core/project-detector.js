@@ -21,6 +21,11 @@ const MARKERS = [
     languages: ["python"]
   },
   {
+    fileName: "go.mod",
+    ecosystem: "go",
+    languages: ["go"]
+  },
+  {
     fileName: "Package.swift",
     ecosystem: "swift",
     languages: ["swift"]

@@ -109,6 +109,7 @@ Real repositories often contain more than one language or project shape.
 Examples:
 
 - React frontend plus Python or Node backend
+- Go worker plus React frontend
 - Kotlin Android app plus JavaScript tooling
 - Java or Kotlin Maven service plus JavaScript tooling
 - .NET service plus JavaScript tooling
