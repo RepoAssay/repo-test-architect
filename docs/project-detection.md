@@ -35,14 +35,19 @@ npm run detect-rules:json
 
 The detector skips common dependency and build output directories:
 
+- `.build`
 - `.git`
-- `node_modules`
-- `dist`
+- `.gradle`
+- `.swiftpm`
+- `.venv`
+- `bin`
 - `build`
 - `coverage`
-- `target`
-- `bin`
+- `dist`
+- `node_modules`
 - `obj`
+- `target`
+- `vendor`
 
 This avoids reporting generated or vendored output as independent projects.
 

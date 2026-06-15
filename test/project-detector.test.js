@@ -254,4 +254,30 @@ describe("project detector", () => {
     assert.equal(detection.summary.projectCount, 0);
     assert.deepEqual(detection.projects, []);
   });
+
+  it("ignores Gradle cache directories", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-gradle-cache-"));
+    fs.mkdirSync(path.join(root, ".gradle", "generated"), { recursive: true });
+    fs.writeFileSync(path.join(root, ".gradle", "generated", "build.gradle.kts"), "plugins {}\n");
+
+    const detection = detectProjects(root);
+
+    assert.equal(detection.summary.projectCount, 0);
+    assert.deepEqual(detection.projects, []);
+  });
+
+  it("ignores Swift and vendored dependency directories", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-generated-deps-"));
+    fs.mkdirSync(path.join(root, ".build", "checkouts", "swift-package"), { recursive: true });
+    fs.mkdirSync(path.join(root, ".swiftpm", "generated"), { recursive: true });
+    fs.mkdirSync(path.join(root, "vendor", "bundle"), { recursive: true });
+    fs.writeFileSync(path.join(root, ".build", "checkouts", "swift-package", "Package.swift"), "// swift-tools-version: 6.0\n");
+    fs.writeFileSync(path.join(root, ".swiftpm", "generated", "Package.swift"), "// swift-tools-version: 6.0\n");
+    fs.writeFileSync(path.join(root, "vendor", "bundle", "Gemfile"), "source \"https://rubygems.org\"\n");
+
+    const detection = detectProjects(root);
+
+    assert.equal(detection.summary.projectCount, 0);
+    assert.deepEqual(detection.projects, []);
+  });
 });

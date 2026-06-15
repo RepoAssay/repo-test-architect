@@ -2,7 +2,21 @@ import fs from "node:fs";
 import path from "node:path";
 import { listAdapters } from "./adapter-registry.js";
 
-const IGNORED_DIRECTORIES = new Set([".git", "node_modules", "dist", "build", "coverage", "target", "bin", "obj"]);
+const IGNORED_DIRECTORIES = new Set([
+  ".build",
+  ".git",
+  ".gradle",
+  ".swiftpm",
+  ".venv",
+  "bin",
+  "build",
+  "coverage",
+  "dist",
+  "node_modules",
+  "obj",
+  "target",
+  "vendor"
+]);
 
 const MARKERS = [
   {
