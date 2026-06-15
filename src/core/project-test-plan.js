@@ -1,5 +1,41 @@
 import { createTestPlan } from "./test-plan.js";
 
+/**
+ * @typedef {"add-test" | "extend-test" | "defer"} ProjectPlanAction
+ *
+ * @typedef {object} ProjectAuditEntry
+ * @property {string} projectId
+ * @property {string} projectRoot
+ * @property {string} adapterId
+ * @property {object} audit
+ *
+ * @typedef {object} SkippedProjectAudit
+ * @property {string} projectId
+ * @property {string} projectRoot
+ * @property {string} reason
+ * @property {string[]} ecosystems
+ * @property {string[]} languages
+ *
+ * @typedef {object} ProjectAudits
+ * @property {"project-audits/v1"} schemaVersion
+ * @property {string} root
+ * @property {{ projectCount: number, auditedProjectCount: number, skippedProjectCount: number }} summary
+ * @property {ProjectAuditEntry[]} audits
+ * @property {SkippedProjectAudit[]} skippedProjects
+ *
+ * @typedef {object} ProjectTestPlan
+ * @property {"project-test-plan/v1"} schemaVersion
+ * @property {string} root
+ * @property {object} summary
+ * @property {SkippedProjectAudit[]} unsupportedProjects
+ * @property {object[]} projectPlans
+ * @property {object[]} items
+ */
+
+/**
+ * @param {ProjectAudits} projectAudits
+ * @returns {ProjectTestPlan}
+ */
 export function createProjectTestPlan(projectAudits) {
   if (projectAudits?.schemaVersion !== "project-audits/v1") {
     throw new Error("Expected project audits schemaVersion project-audits/v1.");
@@ -60,6 +96,11 @@ export function createProjectTestPlan(projectAudits) {
   };
 }
 
+/**
+ * @param {Array<{ action: ProjectPlanAction }>} items
+ * @param {ProjectPlanAction} action
+ * @returns {number}
+ */
 function countItems(items, action) {
   return items.filter((item) => item.action === action).length;
 }

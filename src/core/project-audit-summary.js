@@ -1,3 +1,50 @@
+/**
+ * @typedef {object} ProjectAuditEntry
+ * @property {string} projectId
+ * @property {string} projectRoot
+ * @property {string} adapterId
+ * @property {object} audit
+ *
+ * @typedef {object} SkippedProjectAudit
+ * @property {string} projectId
+ * @property {string} projectRoot
+ * @property {string} reason
+ * @property {string[]} ecosystems
+ * @property {string[]} languages
+ *
+ * @typedef {object} ProjectAuditSummaryEntry
+ * @property {string} projectId
+ * @property {string} projectRoot
+ * @property {string} adapterId
+ * @property {string} confidence
+ * @property {string} [testCommand]
+ * @property {number} untestedCandidateCount
+ * @property {number} coveredButRiskyCount
+ * @property {number} skippedTargetCount
+ * @property {number} riskCount
+ * @property {string[]} topCandidateIds
+ *
+ * @typedef {"untestedCandidateCount" | "coveredButRiskyCount" | "skippedTargetCount" | "riskCount"} ProjectAuditSummaryCountKey
+ *
+ * @typedef {object} ProjectAudits
+ * @property {"project-audits/v1"} schemaVersion
+ * @property {string} root
+ * @property {{ projectCount: number, auditedProjectCount: number, skippedProjectCount: number }} summary
+ * @property {ProjectAuditEntry[]} audits
+ * @property {SkippedProjectAudit[]} skippedProjects
+ *
+ * @typedef {object} ProjectAuditSummary
+ * @property {"project-audit-summary/v1"} schemaVersion
+ * @property {string} root
+ * @property {object} summary
+ * @property {ProjectAuditSummaryEntry[]} projects
+ * @property {SkippedProjectAudit[]} unsupportedProjects
+ */
+
+/**
+ * @param {ProjectAudits} projectAudits
+ * @returns {ProjectAuditSummary}
+ */
 export function summarizeProjectAudits(projectAudits) {
   if (projectAudits?.schemaVersion !== "project-audits/v1") {
     throw new Error("Expected project audits schemaVersion project-audits/v1.");
@@ -48,6 +95,11 @@ export function summarizeProjectAudits(projectAudits) {
   };
 }
 
+/**
+ * @param {ProjectAuditSummaryEntry[]} items
+ * @param {ProjectAuditSummaryCountKey} key
+ * @returns {number}
+ */
 function sum(items, key) {
   return items.reduce((total, item) => total + item[key], 0);
 }

@@ -1,5 +1,38 @@
 import { rankTestCandidates } from "./rank-test-candidates.js";
 
+/**
+ * @typedef {object} ProjectAuditEntry
+ * @property {string} projectId
+ * @property {string} projectRoot
+ * @property {string} adapterId
+ * @property {object} audit
+ *
+ * @typedef {object} SkippedProjectAudit
+ * @property {string} projectId
+ * @property {string} projectRoot
+ * @property {string} reason
+ * @property {string[]} ecosystems
+ * @property {string[]} languages
+ *
+ * @typedef {object} ProjectAudits
+ * @property {"project-audits/v1"} schemaVersion
+ * @property {string} root
+ * @property {{ projectCount: number, auditedProjectCount: number, skippedProjectCount: number }} summary
+ * @property {ProjectAuditEntry[]} audits
+ * @property {SkippedProjectAudit[]} skippedProjects
+ *
+ * @typedef {object} ProjectCandidateRanking
+ * @property {"project-candidate-ranking/v1"} schemaVersion
+ * @property {string} root
+ * @property {object} summary
+ * @property {SkippedProjectAudit[]} unsupportedProjects
+ * @property {object[]} candidates
+ */
+
+/**
+ * @param {ProjectAudits} projectAudits
+ * @returns {ProjectCandidateRanking}
+ */
 export function rankProjectTestCandidates(projectAudits) {
   if (projectAudits?.schemaVersion !== "project-audits/v1") {
     throw new Error("Expected project audits schemaVersion project-audits/v1.");
