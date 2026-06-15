@@ -70,6 +70,7 @@ describe("model consistency runner", () => {
     assert.deepEqual(
       results.map((result) => [result.scenarioId, result.failures]),
       [
+        ["node-no-tests-yet-plan", []],
         ["node-vitest-basic-auth-explanation", []],
         ["node-vitest-basic-plan", []],
         ["node-vitest-basic-ranking", []]

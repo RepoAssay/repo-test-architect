@@ -1,0 +1,57 @@
+{
+  "schemaVersion": "model-consistency-scenario/v1",
+  "id": "node-no-tests-yet-plan",
+  "description": "Different model profiles should preserve blockers and avoid inventing a runnable test setup when the repo has no detected test framework.",
+  "sourceArtifact": {
+    "path": "evals/expected/node-no-tests-yet.audit.json",
+    "schemaVersion": "audit/v1"
+  },
+  "toolCall": {
+    "toolName": "generate_test_plan",
+    "arguments": {}
+  },
+  "lockedFields": [
+    {
+      "path": "summary.confidence",
+      "expected": "low",
+      "reason": "Confidence must remain low when no supported test framework or command is detected."
+    },
+    {
+      "path": "summary.blockerCount",
+      "expected": 2,
+      "reason": "Both missing framework and missing runnable command blockers must remain visible."
+    },
+    {
+      "path": "summary.addTestCount",
+      "expected": 2,
+      "reason": "The audit still finds two useful direct test candidates."
+    },
+    {
+      "path": "summary.extendTestCount",
+      "expected": 0,
+      "reason": "There are no existing matching tests to extend in this fixture."
+    },
+    {
+      "path": "items[0].id",
+      "expected": "add-test:src/paymentParser.ts",
+      "reason": "The pure parser remains the highest priority test candidate."
+    },
+    {
+      "path": "items[2].action",
+      "expected": "defer",
+      "reason": "The DTO-only target should stay deferred instead of receiving a direct test recommendation."
+    }
+  ],
+  "allowedVariations": [
+    "summary wording",
+    "setup guidance wording",
+    "optional detail depth"
+  ],
+  "unexpectedVariations": [
+    "invented test framework",
+    "invented verification command",
+    "missing blocker",
+    "direct DTO test recommendation",
+    "different priority order"
+  ]
+}
