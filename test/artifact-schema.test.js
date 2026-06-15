@@ -29,6 +29,7 @@ const projectAuditsSchema = readJson("schemas/project-audits-v1.schema.json");
 const projectAuditSummarySchema = readJson("schemas/project-audit-summary-v1.schema.json");
 const projectCandidateRankingSchema = readJson("schemas/project-candidate-ranking-v1.schema.json");
 const projectTestPlanSchema = readJson("schemas/project-test-plan-v1.schema.json");
+const modelConsistencyScenarioSchema = readJson("schemas/model-consistency-scenario-v1.schema.json");
 const fixtures = loadEvalFixtures();
 
 describe("artifact schema compatibility", () => {
@@ -160,6 +161,14 @@ describe("project test plan artifact schema compatibility", () => {
     const artifact = createProjectTestPlan(projectAudits);
 
     assertMatchesSchema(artifact, projectTestPlanSchema, "project-test-plan.json");
+  });
+});
+
+describe("model consistency scenario schema compatibility", () => {
+  it("validates model-consistency-scenario/v1", () => {
+    const artifact = readJson("evals/model-consistency/node-vitest-basic-auth-explanation.scenario.json");
+
+    assertMatchesSchema(artifact, modelConsistencyScenarioSchema, "node-vitest-basic-auth-explanation.scenario.json");
   });
 });
 

@@ -1,0 +1,49 @@
+{
+  "schemaVersion": "model-consistency-scenario/v1",
+  "id": "node-vitest-basic-auth-explanation",
+  "description": "Different model profiles should explain the same authService target from the same audit graph without changing the deterministic recommendation.",
+  "sourceArtifact": {
+    "path": "evals/expected/node-vitest-basic.audit.json",
+    "schemaVersion": "audit/v1"
+  },
+  "toolCall": {
+    "toolName": "explain_target",
+    "arguments": {
+      "targetId": "src/authService.ts"
+    }
+  },
+  "lockedFields": [
+    {
+      "path": "targetId",
+      "expected": "src/authService.ts",
+      "reason": "The selected audit target must not change across model profiles."
+    },
+    {
+      "path": "recommendation",
+      "expected": "test",
+      "reason": "The deterministic audit classifies authService as directly testable."
+    },
+    {
+      "path": "testLevel",
+      "expected": "unit",
+      "reason": "Service boundary behavior should remain a unit-test recommendation for this fixture."
+    },
+    {
+      "path": "riskReductionScore",
+      "expected": 8,
+      "reason": "Risk scoring comes from the deterministic audit graph, not model wording."
+    }
+  ],
+  "allowedVariations": [
+    "summary wording",
+    "ordering of explanatory prose",
+    "optional detail depth"
+  ],
+  "unexpectedVariations": [
+    "different target id",
+    "different test level",
+    "different recommendation",
+    "different risk or maintenance score",
+    "invented framework or test command"
+  ]
+}

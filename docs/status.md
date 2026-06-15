@@ -22,6 +22,7 @@ Implemented:
 - documented polyglot artifact workflow from project detection through project test planning
 - stable JSON schemas for generated artifacts
 - golden snapshots for fixture audits, plans, and MCP tool descriptors
+- first model-consistency scenario artifact for comparing model output against deterministic locked fields
 - changed-file workflows with `--changed` and `--changed-since`
 - MCP-shaped tool descriptors, local invoke harness, and dependency-free stdio JSON-RPC scaffold
 - release-readiness checklist, npm package dry-run script, and package contents allowlist
@@ -102,6 +103,6 @@ npm run eval:test
 1. Add a real local stdio MCP SDK transport wrapper around `src/mcp/tool-definitions.js`.
 2. Consolidate repeated JSDoc artifact shapes into shared TS reference files when the runtime API stabilizes further.
 3. Add Kotlin/JUnit or Swift adapter discovery as the next supported-language spike.
-4. Add model-consistency eval fixtures that compare generated explanations against the same deterministic audit graph.
+4. Add a deterministic runner for model-consistency scenarios, then add more fixtures and model profile outputs.
 5. Add package-aware test placement analysis that can recommend `move` and `split` findings across app/package boundaries.
 6. Add native test generation only after adapter-specific generation rules and repair-loop tests exist.

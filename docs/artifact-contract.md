@@ -138,6 +138,28 @@ generate_selected_test
 This artifact is returned while native test generation remains intentionally disabled.
 It tells clients that the plan item was understood, but no test code should be produced yet.
 
+## Model Consistency Scenario Artifact
+
+Schema:
+
+- `schemas/model-consistency-scenario-v1.schema.json`
+- `schemaVersion: "model-consistency-scenario/v1"`
+
+Scenario fixtures:
+
+- `evals/model-consistency/*.scenario.json`
+
+This artifact defines a deterministic model-consistency check without invoking a model.
+It points at a source artifact, names the intended tool call, and lists fields that must remain stable across model profiles.
+
+It contains:
+
+- source artifact path and schema version
+- tool name and arguments
+- locked fields with expected deterministic values
+- allowed variation, such as wording or explanation depth
+- unexpected variation, such as changed target, recommendation, test level, score, framework, or test command
+
 ## Test Placement Findings Artifact
 
 Schema:
@@ -419,6 +441,10 @@ Golden snapshots:
 
 - `evals/expected/*.audit.json`
 - `evals/expected/*.plan.json`
+
+Model-consistency scenarios:
+
+- `evals/model-consistency/*.scenario.json`
 
 Commands:
 

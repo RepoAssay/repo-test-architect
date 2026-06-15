@@ -152,6 +152,17 @@ describe("schema files", () => {
     assert.ok(schema.required.includes("outputArtifact"));
     assert.equal(schema.properties.inputSchema.properties.type.const, "object");
   });
+
+  it("documents model-consistency-scenario/v1", () => {
+    const schema = readSchema("schemas/model-consistency-scenario-v1.schema.json");
+
+    assert.equal(schema.properties.schemaVersion.const, "model-consistency-scenario/v1");
+    assert.ok(schema.required.includes("sourceArtifact"));
+    assert.ok(schema.required.includes("toolCall"));
+    assert.ok(schema.required.includes("lockedFields"));
+    assert.ok(schema.properties.lockedFields.items.required.includes("expected"));
+    assert.ok(schema.properties.unexpectedVariations.minItems >= 1);
+  });
 });
 
 function readSchema(path) {
