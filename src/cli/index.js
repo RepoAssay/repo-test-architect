@@ -10,6 +10,7 @@ import {
   generateRepoProjectTestPlan,
   generateTestPlan,
   getAdapterRegistry,
+  getProjectDetectionRules,
   rankRepoProjectCandidates,
   rankAuditTestCandidates,
   summarizeRepoProjectAudits,
@@ -18,8 +19,8 @@ import {
 
 const options = parseArgs(process.argv.slice(2));
 
-if (!["adapters", "detect", "audit-projects", "summarize-projects", "rank-projects", "plan-projects", "audit", "plan", "explain", "rank"].includes(options.command)) {
-  console.error("Usage: repo-test-architect <adapters|detect|audit-projects|summarize-projects|rank-projects|plan-projects|audit|plan|explain|rank> <repo> [--format markdown|json] [--from-audit audit.json] [--from-project-audits project-audits.json] [--item id] [--target id] [--changed] [--changed-since ref]");
+if (!["adapters", "detect-rules", "detect", "audit-projects", "summarize-projects", "rank-projects", "plan-projects", "audit", "plan", "explain", "rank"].includes(options.command)) {
+  console.error("Usage: repo-test-architect <adapters|detect-rules|detect|audit-projects|summarize-projects|rank-projects|plan-projects|audit|plan|explain|rank> <repo> [--format markdown|json] [--from-audit audit.json] [--from-project-audits project-audits.json] [--item id] [--target id] [--changed] [--changed-since ref]");
   process.exit(1);
 }
 
@@ -40,6 +41,7 @@ if (options.fromProjectAuditsPath && !["audit-projects", "summarize-projects", "
 
 const repoRoot = path.resolve(process.cwd(), options.repoPath);
 const adapterRegistry = options.command === "adapters" ? getAdapterRegistry() : undefined;
+const detectionRules = options.command === "detect-rules" ? getProjectDetectionRules() : undefined;
 const detection = options.command === "detect" ? detectRepoProjects(repoRoot) : undefined;
 const projectAudits = options.fromProjectAuditsPath
   ? readProjectAuditsJson(options.fromProjectAuditsPath)
@@ -48,17 +50,19 @@ const projectAudits = options.fromProjectAuditsPath
     : undefined;
 const audit = options.fromAuditPath
   ? readAuditJson(options.fromAuditPath)
-  : adapterRegistry || detection || projectAudits
+  : adapterRegistry || detectionRules || detection || projectAudits
     ? undefined
     : auditRepo(repoRoot, {
       changedPaths: readSelectedChangedPaths(repoRoot, options)
     });
-const output = adapterRegistry ?? detection ?? selectProjectOutput(projectAudits, options) ?? selectOutput(audit, options);
+const output = adapterRegistry ?? detectionRules ?? detection ?? selectProjectOutput(projectAudits, options) ?? selectOutput(audit, options);
 
 if (options.format === "json") {
   console.log(JSON.stringify(output, null, 2));
 } else if (options.command === "adapters") {
   console.log(renderMarkdownAdapterRegistry(output));
+} else if (options.command === "detect-rules") {
+  console.log(renderMarkdownDetectionRules(output));
 } else if (options.command === "detect") {
   console.log(renderMarkdownDetection(output));
 } else if (options.command === "audit-projects") {
@@ -386,6 +390,25 @@ function renderMarkdownAdapterRegistry(registry) {
       lines.push(`- ${adapter.id}: ecosystems ${formatList(adapter.ecosystems)}; languages ${formatList(adapter.languages)}`);
     }
   }
+
+  return lines.join("\n");
+}
+
+function renderMarkdownDetectionRules(rules) {
+  const lines = [];
+
+  lines.push("# Project Detection Rules");
+  lines.push("");
+  lines.push("## Markers");
+
+  for (const marker of rules.markers) {
+    const label = marker.fileName ?? `*${marker.extension}`;
+    lines.push(`- ${label}: ecosystem ${marker.ecosystem}; languages ${formatList(marker.languages)}`);
+  }
+
+  lines.push("");
+  lines.push("## Ignored Directories");
+  lines.push(`- ${rules.ignoredDirectories.join(", ")}`);
 
   return lines.join("\n");
 }

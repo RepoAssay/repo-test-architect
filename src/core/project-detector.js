@@ -84,6 +84,7 @@ const MARKERS = [
 
 export function getProjectDetectionRules() {
   return {
+    schemaVersion: "project-detection-rules/v1",
     markers: MARKERS.map((marker) => ({
       ...marker,
       languages: [...marker.languages]

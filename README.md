@@ -19,6 +19,13 @@ npm run adapters
 npm run adapters:json
 ```
 
+Inspect project detection marker rules:
+
+```powershell
+npm run detect-rules
+npm run detect-rules:json
+```
+
 Detect project roots and adapter matches:
 
 ```powershell

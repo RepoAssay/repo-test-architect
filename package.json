@@ -12,6 +12,8 @@
   "scripts": {
     "adapters": "node ./src/cli/index.js adapters",
     "adapters:json": "node ./src/cli/index.js adapters --format json",
+    "detect-rules": "node ./src/cli/index.js detect-rules",
+    "detect-rules:json": "node ./src/cli/index.js detect-rules --format json",
     "detect:example": "node ./src/cli/index.js detect ./examples/polyglot-workspace",
     "detect:example:json": "node ./src/cli/index.js detect ./examples/polyglot-workspace --format json",
     "audit-projects:example": "node ./src/cli/index.js audit-projects ./examples/polyglot-workspace",

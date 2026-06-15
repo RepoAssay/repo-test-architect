@@ -12,6 +12,7 @@ Implemented:
 - deterministic project detection for polyglot repository roots
 - unsupported Python, Ruby, PHP, Elixir, Go, Rust, Swift, .NET, and Kotlin/JVM project reporting with ecosystem and language labels
 - documented project detection marker rules
+- CLI output for project detection marker rules
 - fixture-based regression coverage
 - audit, plan, explanation, ranking, and deferred-generation artifacts
 - project detection and project audit artifacts for polyglot repository groundwork
@@ -54,6 +55,7 @@ Primary checks:
 
 ```powershell
 npm run adapters:json
+npm run detect-rules:json
 npm run detect:example:json
 npm run audit-projects:example:json
 npm run summarize-projects:example:json

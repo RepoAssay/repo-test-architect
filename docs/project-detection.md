@@ -6,6 +6,13 @@ The detector is intentionally conservative. It recognizes strong project-root ma
 
 ## Marker Rules
 
+Inspect the active rules from the CLI:
+
+```powershell
+npm run detect-rules
+npm run detect-rules:json
+```
+
 | Marker | Ecosystem | Languages | Adapter status |
 | --- | --- | --- | --- |
 | `package.json` | `javascript` | `javascript`, `typescript` | Supported by `javascript` |

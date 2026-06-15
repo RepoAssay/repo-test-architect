@@ -32,6 +32,28 @@ describe("CLI", () => {
     });
   });
 
+  it("lists project detection rules in markdown", () => {
+    const output = execFileSync(process.execPath, [cliPath, "detect-rules"], {
+      encoding: "utf8"
+    });
+
+    assert.match(output, /^# Project Detection Rules/);
+    assert.match(output, /package\.json: ecosystem javascript; languages javascript, typescript/);
+    assert.match(output, /mix\.exs: ecosystem elixir; languages elixir/);
+    assert.match(output, /Ignored Directories/);
+  });
+
+  it("lists project detection rules as JSON", () => {
+    const output = execFileSync(process.execPath, [cliPath, "detect-rules", "--format=json"], {
+      encoding: "utf8"
+    });
+    const rules = JSON.parse(output);
+
+    assert.equal(rules.schemaVersion, "project-detection-rules/v1");
+    assert.ok(rules.markers.some((marker) => marker.fileName === "composer.json" && marker.ecosystem === "php"));
+    assert.ok(rules.ignoredDirectories.includes("node_modules"));
+  });
+
   it("detects project roots in markdown", () => {
     const output = execFileSync(process.execPath, [cliPath, "detect", "examples/polyglot-workspace"], {
       encoding: "utf8"

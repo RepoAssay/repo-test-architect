@@ -2,7 +2,7 @@ import { getAdapter, getAdapterRegistry as readAdapterRegistry } from "./adapter
 import { explainTarget } from "./explain-target.js";
 import { auditDetectedProjects } from "./project-auditor.js";
 import { summarizeProjectAudits } from "./project-audit-summary.js";
-import { detectProjects } from "./project-detector.js";
+import { detectProjects, getProjectDetectionRules as readProjectDetectionRules } from "./project-detector.js";
 import { rankProjectTestCandidates } from "./project-candidate-ranking.js";
 import { createProjectTestPlan } from "./project-test-plan.js";
 import { rankTestCandidates } from "./rank-test-candidates.js";
@@ -10,6 +10,10 @@ import { createTestPlan } from "./test-plan.js";
 
 export function detectRepoProjects(repoRoot) {
   return detectProjects(repoRoot);
+}
+
+export function getProjectDetectionRules() {
+  return readProjectDetectionRules();
 }
 
 export function auditRepoProjects(repoRoot) {

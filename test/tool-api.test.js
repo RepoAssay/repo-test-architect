@@ -9,6 +9,7 @@ import {
   generateTestPlan,
   generateRepoProjectTestPlan,
   getAdapterRegistry,
+  getProjectDetectionRules,
   rankRepoProjectCandidates,
   getAuditGraph,
   rankAuditTestCandidates,
@@ -29,6 +30,14 @@ describe("tool API", () => {
 
     assert.equal(detection.schemaVersion, "project-detection/v1");
     assert.equal(detection.summary.projectCount, 3);
+  });
+
+  it("lists project detection rules", () => {
+    const rules = getProjectDetectionRules();
+
+    assert.equal(rules.schemaVersion, "project-detection-rules/v1");
+    assert.ok(rules.markers.some((marker) => marker.fileName === "package.json"));
+    assert.ok(rules.ignoredDirectories.includes("node_modules"));
   });
 
   it("audits detected repository projects", () => {
