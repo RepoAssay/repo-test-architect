@@ -65,6 +65,11 @@ const MARKERS = [
     languages: ["swift"]
   },
   {
+    directoryExtension: ".xcodeproj",
+    ecosystem: "apple",
+    languages: ["swift", "objective-c"]
+  },
+  {
     extension: ".csproj",
     ecosystem: "dotnet",
     languages: ["csharp"]
@@ -132,6 +137,14 @@ function collectMarkerGroups(root) {
   function visit(current) {
     for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
       if (entry.isDirectory()) {
+        const marker = MARKERS.find((candidate) =>
+          candidate.directoryExtension && entry.name.endsWith(candidate.directoryExtension)
+        );
+        if (marker) {
+          addMarkerGroup(groups, root, current, entry.name, marker);
+          continue;
+        }
+
         if (!IGNORED_DIRECTORIES.has(entry.name)) {
           visit(path.join(current, entry.name));
         }
@@ -144,25 +157,29 @@ function collectMarkerGroups(root) {
       );
       if (!marker) continue;
 
-      const projectRoot = path.relative(root, current).replaceAll(path.sep, "/") || ".";
-      const group = groups.get(projectRoot) ?? {
-        root: projectRoot,
-        markerFiles: [],
-        ecosystems: new Set(),
-        languages: new Set()
-      };
-
-      group.markerFiles.push(path.posix.join(projectRoot, entry.name).replace(/^\.\//, ""));
-      group.ecosystems.add(marker.ecosystem);
-      for (const language of marker.languages) {
-        group.languages.add(language);
-      }
-      groups.set(projectRoot, group);
+      addMarkerGroup(groups, root, current, entry.name, marker);
     }
   }
 
   visit(root);
   return groups;
+}
+
+function addMarkerGroup(groups, root, current, markerName, marker) {
+  const projectRoot = path.relative(root, current).replaceAll(path.sep, "/") || ".";
+  const group = groups.get(projectRoot) ?? {
+    root: projectRoot,
+    markerFiles: [],
+    ecosystems: new Set(),
+    languages: new Set()
+  };
+
+  group.markerFiles.push(path.posix.join(projectRoot, markerName).replace(/^\.\//, ""));
+  group.ecosystems.add(marker.ecosystem);
+  for (const language of marker.languages) {
+    group.languages.add(language);
+  }
+  groups.set(projectRoot, group);
 }
 
 function toDetectedProject(repoRoot, project) {

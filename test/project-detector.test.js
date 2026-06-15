@@ -170,6 +170,49 @@ describe("project detector", () => {
     );
   });
 
+  it("detects Xcode project directories as unsupported Apple projects", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-xcode-"));
+    fs.mkdirSync(path.join(root, "apps", "ios", "Checkout.xcodeproj"), { recursive: true });
+    fs.writeFileSync(path.join(root, "apps", "ios", "Checkout.xcodeproj", "project.pbxproj"), "// !$*UTF8*$!\n");
+
+    const detection = detectProjects(root);
+
+    assert.deepEqual(
+      detection.projects.map((project) => ({
+        root: project.root,
+        ecosystems: project.ecosystems,
+        languages: project.languages,
+        markerFiles: project.markerFiles,
+        supported: project.supported
+      })),
+      [
+        {
+          root: "apps/ios",
+          ecosystems: ["apple"],
+          languages: ["objective-c", "swift"],
+          markerFiles: ["apps/ios/Checkout.xcodeproj"],
+          supported: false
+        }
+      ]
+    );
+  });
+
+  it("keeps mixed Swift and Objective-C sources under one Apple project root", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-mixed-apple-"));
+    fs.mkdirSync(path.join(root, "apps", "ios", "Checkout.xcodeproj"), { recursive: true });
+    fs.mkdirSync(path.join(root, "apps", "ios", "Sources"), { recursive: true });
+    fs.writeFileSync(path.join(root, "apps", "ios", "Checkout.xcodeproj", "project.pbxproj"), "// !$*UTF8*$!\n");
+    fs.writeFileSync(path.join(root, "apps", "ios", "Sources", "CheckoutView.swift"), "import SwiftUI\n");
+    fs.writeFileSync(path.join(root, "apps", "ios", "Sources", "LegacyPaymentClient.m"), "@implementation LegacyPaymentClient\n@end\n");
+
+    const detection = detectProjects(root);
+
+    assert.equal(detection.summary.projectCount, 1);
+    assert.deepEqual(detection.projects[0].root, "apps/ios");
+    assert.deepEqual(detection.projects[0].languages, ["objective-c", "swift"]);
+    assert.deepEqual(detection.projects[0].markerFiles, ["apps/ios/Checkout.xcodeproj"]);
+  });
+
   it("detects Go module projects", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-go-"));
     fs.mkdirSync(path.join(root, "services", "worker"), { recursive: true });

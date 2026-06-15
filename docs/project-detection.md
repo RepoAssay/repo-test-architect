@@ -24,6 +24,7 @@ npm run detect-rules:json
 | `go.mod` | `go` | `go` | Detected, unsupported |
 | `Cargo.toml` | `rust` | `rust` | Detected, unsupported |
 | `Package.swift` | `swift` | `swift` | Detected, unsupported |
+| `*.xcodeproj` | `apple` | `swift`, `objective-c` | Detected, unsupported |
 | `*.csproj` | `dotnet` | `csharp` | Detected, unsupported |
 | `pom.xml` | `jvm` | `java`, `kotlin` | Detected, unsupported |
 | `build.gradle` | `jvm` | `kotlin`, `java` | Detected, unsupported |

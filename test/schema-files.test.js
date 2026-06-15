@@ -86,6 +86,7 @@ describe("schema files", () => {
     assert.ok(schema.required.includes("ignoredDirectories"));
     assert.ok(schema.properties.markers.items.required.includes("ecosystem"));
     assert.ok(schema.properties.markers.items.required.includes("languages"));
+    assert.ok(schema.properties.markers.items.properties.directoryExtension);
   });
 
   it("documents project-audits/v1", () => {

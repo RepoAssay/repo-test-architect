@@ -58,7 +58,7 @@ describe("docs links", () => {
     const rules = getProjectDetectionRules();
 
     for (const marker of rules.markers) {
-      const label = marker.fileName ?? `*${marker.extension}`;
+      const label = marker.fileName ?? `*${marker.extension ?? marker.directoryExtension}`;
       assert.ok(docs.includes(`\`${label}\``), `Missing documented project marker: ${label}`);
       assert.ok(docs.includes(`\`${marker.ecosystem}\``), `Missing documented ecosystem: ${marker.ecosystem}`);
       for (const language of marker.languages) {
