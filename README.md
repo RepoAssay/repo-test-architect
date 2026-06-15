@@ -86,6 +86,14 @@ Rank test candidates without generating tests:
 npm run rank:example
 ```
 
+Analyze existing test placement from audit evidence:
+
+```powershell
+npm run placement:example
+npm run placement:example:json
+npm run placement:from-audit:example
+```
+
 Exercise the MCP-style tool surface:
 
 ```powershell

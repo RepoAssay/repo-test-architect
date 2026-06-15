@@ -145,6 +145,13 @@ Schema:
 - `schemas/test-placement-findings-v1.schema.json`
 - `schemaVersion: "test-placement-findings/v1"`
 
+Commands:
+
+```powershell
+node ./src/cli/index.js placement ./examples/node-vitest-basic --owner node-vitest-basic --format json
+node ./src/cli/index.js placement --from-audit ./evals/expected/node-vitest-basic.audit.json --format json
+```
+
 This advisory artifact reports test placement recommendations. The first deterministic analyzer only emits conservative `keep` findings for tests already matched to audited targets in the same project. Future package-aware analyzers can add `move` and `split` findings once ownership signals and repair loops can safely move files and verify affected test commands.
 
 It contains:

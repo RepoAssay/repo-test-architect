@@ -397,6 +397,29 @@ describe("CLI", () => {
     );
   });
 
+  it("emits markdown test placement findings", () => {
+    const output = execFileSync(process.execPath, [cliPath, "placement", fixturePath, "--owner", "node-vitest-basic"], {
+      encoding: "utf8"
+    });
+
+    assert.match(output, /^# Test Placement Findings/);
+    assert.match(output, /Findings: 1/);
+    assert.match(output, /keep: src\/deckParser\.test\.ts \(node-vitest-basic -> node-vitest-basic\)/);
+  });
+
+  it("emits JSON test placement findings", () => {
+    const output = execFileSync(process.execPath, [cliPath, "placement", fixturePath, "--owner=node-vitest-basic", "--format=json"], {
+      encoding: "utf8"
+    });
+    const placement = JSON.parse(output);
+
+    assert.equal(placement.schemaVersion, "test-placement-findings/v1");
+    assert.deepEqual(
+      placement.findings.map((finding) => `${finding.action}:${finding.testFile}`),
+      ["keep:src/deckParser.test.ts"]
+    );
+  });
+
   it("emits a markdown candidate ranking from an existing audit file", () => {
     const output = execFileSync(
       process.execPath,
@@ -408,6 +431,20 @@ describe("CLI", () => {
 
     assert.match(output, /^# Candidate Ranking/);
     assert.match(output, /deckParser \[src\/deckParser\.ts\]/);
+  });
+
+  it("emits test placement findings from an existing audit file", () => {
+    const output = execFileSync(
+      process.execPath,
+      [cliPath, "placement", "--from-audit", "evals/expected/node-vitest-basic.audit.json", "--format=json"],
+      {
+        encoding: "utf8"
+      }
+    );
+    const placement = JSON.parse(output);
+
+    assert.equal(placement.schemaVersion, "test-placement-findings/v1");
+    assert.equal(placement.findings[0].testFile, "src/deckParser.test.ts");
   });
 
   it("emits a markdown target explanation from an existing audit file", () => {

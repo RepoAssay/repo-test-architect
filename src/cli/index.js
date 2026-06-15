@@ -3,6 +3,7 @@ import fs from "node:fs";
 import { execFileSync } from "node:child_process";
 import path from "node:path";
 import {
+  analyzeRepoTestPlacement,
   auditRepoProjects,
   auditRepo,
   detectRepoProjects,
@@ -19,8 +20,8 @@ import {
 
 const options = parseArgs(process.argv.slice(2));
 
-if (!["adapters", "detect-rules", "detect", "audit-projects", "summarize-projects", "rank-projects", "plan-projects", "audit", "plan", "explain", "rank"].includes(options.command)) {
-  console.error("Usage: repo-test-architect <adapters|detect-rules|detect|audit-projects|summarize-projects|rank-projects|plan-projects|audit|plan|explain|rank> <repo> [--format markdown|json] [--from-audit audit.json] [--from-project-audits project-audits.json] [--item id] [--target id] [--changed] [--changed-since ref]");
+if (!["adapters", "detect-rules", "detect", "audit-projects", "summarize-projects", "rank-projects", "plan-projects", "audit", "plan", "explain", "rank", "placement"].includes(options.command)) {
+  console.error("Usage: repo-test-architect <adapters|detect-rules|detect|audit-projects|summarize-projects|rank-projects|plan-projects|audit|plan|explain|rank|placement> <repo> [--format markdown|json] [--from-audit audit.json] [--from-project-audits project-audits.json] [--item id] [--target id] [--owner label] [--changed] [--changed-since ref]");
   process.exit(1);
 }
 
@@ -29,8 +30,8 @@ if (!["markdown", "json"].includes(options.format)) {
   process.exit(1);
 }
 
-if (options.fromAuditPath && !["plan", "explain", "rank"].includes(options.command)) {
-  console.error("--from-audit is only supported with plan, explain, and rank commands.");
+if (options.fromAuditPath && !["plan", "explain", "rank", "placement"].includes(options.command)) {
+  console.error("--from-audit is only supported with plan, explain, rank, and placement commands.");
   process.exit(1);
 }
 
@@ -79,6 +80,8 @@ if (options.format === "json") {
   console.log(renderMarkdownExplanation(output));
 } else if (options.command === "rank") {
   console.log(renderMarkdownRanking(output));
+} else if (options.command === "placement") {
+  console.log(renderMarkdownPlacement(output));
 } else {
   console.log(renderMarkdownReport(audit));
 }
@@ -91,6 +94,7 @@ function parseArgs(args) {
   let fromProjectAuditsPath;
   let itemId;
   let targetId;
+  let owner;
   let changedOnly = false;
   let changedSinceRef;
 
@@ -152,6 +156,17 @@ function parseArgs(args) {
       continue;
     }
 
+    if (arg === "--owner") {
+      owner = rest[index + 1] ?? "";
+      index += 1;
+      continue;
+    }
+
+    if (arg.startsWith("--owner=")) {
+      owner = arg.slice("--owner=".length);
+      continue;
+    }
+
     if (arg === "--changed") {
       changedOnly = true;
       continue;
@@ -173,7 +188,7 @@ function parseArgs(args) {
     }
   }
 
-  return { command, repoPath, format, fromAuditPath, fromProjectAuditsPath, itemId, targetId, changedOnly, changedSinceRef };
+  return { command, repoPath, format, fromAuditPath, fromProjectAuditsPath, itemId, targetId, owner, changedOnly, changedSinceRef };
 }
 
 function readAuditJson(auditPath) {
@@ -291,6 +306,8 @@ function selectOutput(audit, options) {
   }
 
   if (options.command === "rank") return rankAuditTestCandidates(audit);
+
+  if (options.command === "placement") return analyzeRepoTestPlacement(audit, { owner: options.owner || undefined });
 
   return audit;
 }
@@ -696,6 +713,30 @@ function renderMarkdownRanking(ranking) {
       lines.push(
         `- ${candidate.target} [${candidate.targetId}] (${candidate.category}, ${candidate.testLevel}, priority ${candidate.priority}, risk reduction ${candidate.riskReductionScore}/10, maintenance ${candidate.maintenanceCost}/10). ${rationale}.${existingTests}`
       );
+    }
+  }
+
+  return lines.join("\n");
+}
+
+function renderMarkdownPlacement(placement) {
+  const lines = [];
+
+  lines.push("# Test Placement Findings");
+  lines.push("");
+  lines.push("## Summary");
+  lines.push(`- Findings: ${placement.findings.length}`);
+  lines.push("");
+  lines.push("## Findings");
+
+  if (placement.findings.length === 0) {
+    lines.push("- No test placement findings detected.");
+  } else {
+    for (const finding of placement.findings) {
+      lines.push(
+        `- ${finding.action}: ${finding.testFile} (${finding.currentOwner} -> ${finding.suggestedOwner}). ${finding.reason}`
+      );
+      lines.push(`  Evidence: ${finding.evidence.join("; ")}`);
     }
   }
 
