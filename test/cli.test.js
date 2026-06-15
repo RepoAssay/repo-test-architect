@@ -38,9 +38,9 @@ describe("CLI", () => {
     });
 
     assert.match(output, /^# Project Detection/);
-    assert.match(output, /apps\/android: java, kotlin \(unsupported; adapters: none available/);
-    assert.match(output, /apps\/web: javascript, typescript \(supported; adapters: javascript/);
-    assert.match(output, /services\/api: python \(unsupported; adapters: none available/);
+    assert.match(output, /apps\/android: ecosystems jvm; languages java, kotlin \(unsupported; adapters: none available/);
+    assert.match(output, /apps\/web: ecosystems javascript; languages javascript, typescript \(supported; adapters: javascript/);
+    assert.match(output, /services\/api: ecosystems python; languages python \(unsupported; adapters: none available/);
   });
 
   it("detects project roots as JSON", () => {
