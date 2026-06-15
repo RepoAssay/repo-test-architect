@@ -8,7 +8,7 @@ import {
   summarizeModelConsistencyResults
 } from "../src/core/model-consistency-runner.js";
 
-const outputJson = process.argv.includes("--json");
+const options = parseArgs(process.argv.slice(2));
 const scenarioDir = path.resolve("evals/model-consistency");
 const scenarioPaths = fs
   .readdirSync(scenarioDir)
@@ -22,12 +22,13 @@ const results = scenarioPaths.map((scenarioPath) => {
 });
 const summary = summarizeModelConsistencyResults(
   scenarioPaths.map((scenarioPath) => readModelConsistencyScenario(scenarioPath)),
-  results
+  results,
+  { profileName: options.profileName }
 );
 
 let failureCount = 0;
 
-if (outputJson) {
+if (options.outputJson) {
   console.log(JSON.stringify(summary, null, 2));
 
   if (summary.summary.failureCount > 0) {
@@ -59,4 +60,47 @@ if (failureCount > 0) {
   console.log(
     `${summary.summary.passedScenarioCount} of ${summary.summary.scenarioCount} model-consistency scenario(s) passed.`
   );
+}
+
+function parseArgs(args) {
+  const options = {
+    outputJson: false,
+    profileName: "deterministic-baseline"
+  };
+
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
+
+    if (arg === "--json") {
+      options.outputJson = true;
+      continue;
+    }
+
+    if (arg === "--profile") {
+      const profileName = args[index + 1];
+
+      if (!profileName || profileName.startsWith("--")) {
+        throw new Error("--profile requires a non-empty profile name.");
+      }
+
+      options.profileName = profileName;
+      index += 1;
+      continue;
+    }
+
+    if (arg.startsWith("--profile=")) {
+      const profileName = arg.slice("--profile=".length);
+
+      if (!profileName) {
+        throw new Error("--profile requires a non-empty profile name.");
+      }
+
+      options.profileName = profileName;
+      continue;
+    }
+
+    throw new Error(`Unknown option: ${arg}`);
+  }
+
+  return options;
 }

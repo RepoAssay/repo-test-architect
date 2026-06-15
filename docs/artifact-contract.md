@@ -171,6 +171,7 @@ Command:
 
 ```powershell
 npm run model-consistency:json
+npm run model-consistency:json -- --profile local-small
 ```
 
 This artifact summarizes checked model-consistency scenarios for one profile.

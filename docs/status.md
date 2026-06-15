@@ -86,6 +86,7 @@ npm test
 npm run eval:check
 npm run model-consistency:check
 npm run model-consistency:json
+npm run model-consistency:json -- --profile local-small
 powershell -ExecutionPolicy Bypass -File ./scripts/smoke.ps1
 npm run pack:dry-run
 ```
