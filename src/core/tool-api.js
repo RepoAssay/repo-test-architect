@@ -11,73 +11,172 @@ import { analyzeTestPlacement } from "./test-placement-analysis.js";
 import { createTestPlacementFindings } from "./test-placement-findings.js";
 import { createTestPlan } from "./test-plan.js";
 
+/**
+ * @typedef {import("./adapter-registry.js").AdapterRegistry} AdapterRegistry
+ * @typedef {import("./project-detector.js").ProjectDetection} ProjectDetection
+ * @typedef {import("./project-detector.js").ProjectDetectionRules} ProjectDetectionRules
+ * @typedef {import("./project-auditor.js").ProjectAudits} ProjectAudits
+ * @typedef {import("./project-audit-summary.js").ProjectAuditSummary} ProjectAuditSummary
+ * @typedef {import("./project-candidate-ranking.js").ProjectCandidateRanking} ProjectCandidateRanking
+ * @typedef {import("./project-test-plan.js").ProjectTestPlan} ProjectTestPlan
+ * @typedef {import("./test-placement-findings.js").TestPlacementFindings} TestPlacementFindings
+ * @typedef {import("./test-placement-findings.js").TestPlacementFinding} TestPlacementFinding
+ * @typedef {import("./test-plan.js").TestPlan} TestPlan
+ * @typedef {import("./explain-target.js").TargetExplanation} TargetExplanation
+ * @typedef {import("./rank-test-candidates.js").CandidateRanking} CandidateRanking
+ *
+ * @typedef {object} AuditRepoOptions
+ * @property {string} [adapterId]
+ * @property {string[]} [changedPaths]
+ *
+ * @typedef {object} GenerateTestPlanOptions
+ * @property {string} [itemId]
+ *
+ * @typedef {object} AnalyzeTestPlacementOptions
+ * @property {string} [owner]
+ *
+ * @typedef {object} AuditResult
+ * @property {"audit/v1"} schemaVersion
+ * @property {object} profile
+ * @property {unknown[]} untestedCandidates
+ * @property {unknown[]} coveredButRisky
+ * @property {unknown[]} skipped
+ * @property {string[]} risks
+ */
+
+/**
+ * @param {string} repoRoot
+ * @returns {ProjectDetection}
+ */
 export function detectRepoProjects(repoRoot) {
   return detectProjects(repoRoot);
 }
 
+/**
+ * @returns {ProjectDetectionRules}
+ */
 export function getProjectDetectionRules() {
   return readProjectDetectionRules();
 }
 
+/**
+ * @param {string} repoRoot
+ * @returns {ProjectAudits}
+ */
 export function auditRepoProjects(repoRoot) {
   return auditDetectedProjects(repoRoot);
 }
 
+/**
+ * @returns {AdapterRegistry}
+ */
 export function getAdapterRegistry() {
   return readAdapterRegistry();
 }
 
+/**
+ * @param {ProjectAudits} projectAudits
+ * @returns {ProjectAuditSummary}
+ */
 export function summarizeRepoProjectAudits(projectAudits) {
   return summarizeProjectAudits(projectAudits);
 }
 
+/**
+ * @param {ProjectAudits} projectAudits
+ * @returns {ProjectCandidateRanking}
+ */
 export function rankRepoProjectCandidates(projectAudits) {
   return rankProjectTestCandidates(projectAudits);
 }
 
+/**
+ * @param {ProjectAudits} projectAudits
+ * @returns {ProjectTestPlan}
+ */
 export function generateRepoProjectTestPlan(projectAudits) {
   return createProjectTestPlan(projectAudits);
 }
 
+/**
+ * @param {ProjectAudits} projectAudits
+ * @returns {TestPlacementFindings}
+ */
 export function analyzeRepoProjectTestPlacement(projectAudits) {
   return analyzeProjectTestPlacement(projectAudits);
 }
 
+/**
+ * @param {string} repoRoot
+ * @param {AuditRepoOptions} [options]
+ * @returns {AuditResult}
+ */
 export function auditRepo(repoRoot, options = {}) {
   return getAdapter(options.adapterId).audit(repoRoot, {
     changedPaths: options.changedPaths
   });
 }
 
+/**
+ * @param {AuditResult} audit
+ * @returns {AuditResult}
+ */
 export function getAuditGraph(audit) {
   validateAudit(audit);
   return audit;
 }
 
+/**
+ * @param {AuditResult} audit
+ * @param {GenerateTestPlanOptions} [options]
+ * @returns {TestPlan}
+ */
 export function generateTestPlan(audit, options = {}) {
   validateAudit(audit);
   return filterPlan(createTestPlan(audit), options.itemId);
 }
 
+/**
+ * @param {AuditResult} audit
+ * @param {string} targetId
+ * @returns {TargetExplanation}
+ */
 export function explainAuditTarget(audit, targetId) {
   validateAudit(audit);
   return explainTarget(audit, targetId);
 }
 
+/**
+ * @param {AuditResult} audit
+ * @returns {CandidateRanking}
+ */
 export function rankAuditTestCandidates(audit) {
   validateAudit(audit);
   return rankTestCandidates(audit);
 }
 
+/**
+ * @param {TestPlacementFinding[]} [findings]
+ * @returns {TestPlacementFindings}
+ */
 export function createRepoTestPlacementFindings(findings = []) {
   return createTestPlacementFindings(findings);
 }
 
+/**
+ * @param {AuditResult} audit
+ * @param {AnalyzeTestPlacementOptions} [options]
+ * @returns {TestPlacementFindings}
+ */
 export function analyzeRepoTestPlacement(audit, options = {}) {
   validateAudit(audit);
   return analyzeTestPlacement(audit, options);
 }
 
+/**
+ * @param {AuditResult} audit
+ * @returns {void}
+ */
 export function validateAudit(audit) {
   if (audit?.schemaVersion !== "audit/v1") {
     throw new Error("Expected audit schemaVersion audit/v1.");
@@ -94,6 +193,11 @@ export function validateAudit(audit) {
   }
 }
 
+/**
+ * @param {TestPlan} plan
+ * @param {string} [itemId]
+ * @returns {TestPlan}
+ */
 function filterPlan(plan, itemId) {
   if (!itemId) return plan;
 
