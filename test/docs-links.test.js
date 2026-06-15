@@ -70,4 +70,16 @@ describe("docs links", () => {
       assert.ok(docs.includes(`\`${directory}\``), `Missing documented ignored directory: ${directory}`);
     }
   });
+
+  it("documents future test placement findings", () => {
+    const projectPlan = fs.readFileSync("docs/project-plan.md", "utf8");
+    const adapterContract = fs.readFileSync("docs/adapter-contract.md", "utf8");
+
+    assert.ok(projectPlan.includes("Test Placement Direction"));
+    assert.ok(projectPlan.includes("move or split"));
+    assert.ok(adapterContract.includes("Test Placement Findings"));
+    assert.ok(adapterContract.includes("move"));
+    assert.ok(adapterContract.includes("split"));
+    assert.ok(adapterContract.includes("keep"));
+  });
 });

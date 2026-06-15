@@ -155,6 +155,28 @@ Mixed-language projects inside one build/test root should stay inside one adapte
 
 The core merge layer should handle cross-project recommendations. For example, generated frontend API clients may be skipped directly while backend API contract or route behavior receives the higher-value test recommendation.
 
+## Test Placement Direction
+
+The audit should eventually report tests that exist but appear to live in the wrong owner.
+
+Example:
+
+- a main app test target contains parser tests
+- the parser source belongs to a domain-specific Swift Package Manager package
+- the test imports or exercises that package without app-only integration dependencies
+
+That should become a placement finding, not a missing-test finding. The recommendation should be to move or split the test into the package test target when the coverage is package-owned behavior.
+
+The audit should avoid recommending moves when the test is genuinely app-level integration coverage, such as app lifecycle, dependency injection wiring, navigation, persistence setup, or cross-package behavior. Mixed tests should be reported as split candidates.
+
+Future placement findings should capture:
+
+- test file
+- current owner
+- suggested owner
+- move, split, or keep action
+- rationale based on imports, source ownership, and integration dependencies
+
 ## Model Consistency Goal
 
 When this runs through MCP, different users or companies may choose different models.

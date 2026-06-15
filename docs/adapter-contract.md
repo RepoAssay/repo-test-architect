@@ -6,6 +6,7 @@ An adapter should:
 
 - detect package managers, test frameworks, and architecture signals
 - classify source files by test value
+- identify test placement findings when tests appear to cover code owned by another package or target
 - recommend a test level only when the repository has enough convention signal
 - skip low-value targets with an explicit reason
 - return structured audit data before generating any code
@@ -16,6 +17,7 @@ An adapter should not:
 - generate tests during audit
 - recommend UI/component tests without an existing convention signal
 - treat coverage growth as the main success metric
+- blindly move tests that depend on app-level integration wiring
 
 The core model lives in `src/core/audit-model.ts`.
 
@@ -44,3 +46,17 @@ A future repository detector should be able to find multiple project roots in on
 Independent adapter audits can run in parallel once project roots and adapter matches are known.
 
 The core layer should merge project audit results into one repo-level graph and perform cross-project ranking there. Adapters should not reach across unrelated language roots unless the core passes them explicit boundary information.
+
+## Test Placement Findings
+
+Adapters should distinguish between missing coverage and misplaced coverage.
+
+For package-oriented ecosystems, such as Swift Package Manager, Gradle modules, Maven modules, or workspace packages, tests may exist in a higher-level app or integration target while exercising lower-level package behavior. When the tested source clearly belongs to another package or target and the test has no app-only dependency, the adapter should report a placement finding.
+
+Placement actions:
+
+- `move`: coverage belongs in the package or module test target
+- `split`: one test mixes package-owned behavior with app integration behavior
+- `keep`: the test belongs where it is because it validates integration wiring or cross-package behavior
+
+This should be advisory until a generation or repair loop can safely move files and verify both old and new test commands.
