@@ -1,5 +1,31 @@
 import { createTestPlacementFindings } from "./test-placement-findings.js";
 
+/**
+ * @typedef {import("./test-placement-findings.js").TestPlacementFindings} TestPlacementFindings
+ *
+ * @typedef {object} AuditTarget
+ * @property {string} path
+ * @property {string} kind
+ * @property {string} recommendedTestLevel
+ * @property {string[]} [existingTestPaths]
+ *
+ * @typedef {object} AuditProfile
+ * @property {string} [root]
+ *
+ * @typedef {object} AuditResult
+ * @property {"audit/v1"} schemaVersion
+ * @property {AuditProfile} profile
+ * @property {AuditTarget[]} coveredButRisky
+ *
+ * @typedef {object} AnalyzeTestPlacementOptions
+ * @property {string} [owner]
+ */
+
+/**
+ * @param {AuditResult} audit
+ * @param {AnalyzeTestPlacementOptions} [options]
+ * @returns {TestPlacementFindings}
+ */
 export function analyzeTestPlacement(audit, options = {}) {
   const owner = options.owner ?? audit?.profile?.root ?? "repo";
   const findings = [];
@@ -25,6 +51,10 @@ export function analyzeTestPlacement(audit, options = {}) {
   return createTestPlacementFindings(findings);
 }
 
+/**
+ * @param {string} currentPath
+ * @returns {string}
+ */
 function normalizePath(currentPath) {
   return currentPath.replaceAll("\\", "/");
 }
