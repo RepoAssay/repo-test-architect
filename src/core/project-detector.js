@@ -101,6 +101,45 @@ const MARKERS = [
   }
 ];
 
+/**
+ * @typedef {object} ProjectDetectionMarker
+ * @property {string} [fileName]
+ * @property {string} [extension]
+ * @property {string} [directoryExtension]
+ * @property {string} ecosystem
+ * @property {string[]} languages
+ *
+ * @typedef {object} ProjectMarkerGroup
+ * @property {string} root
+ * @property {string[]} markerFiles
+ * @property {Set<string>} ecosystems
+ * @property {Set<string>} languages
+ *
+ * @typedef {object} DetectedProject
+ * @property {string} id
+ * @property {string} root
+ * @property {string} absoluteRoot
+ * @property {string[]} ecosystems
+ * @property {string[]} languages
+ * @property {string[]} markerFiles
+ * @property {string[]} adapterIds
+ * @property {boolean} supported
+ *
+ * @typedef {object} ProjectDetectionRules
+ * @property {"project-detection-rules/v1"} schemaVersion
+ * @property {ProjectDetectionMarker[]} markers
+ * @property {string[]} ignoredDirectories
+ *
+ * @typedef {object} ProjectDetection
+ * @property {"project-detection/v1"} schemaVersion
+ * @property {string} root
+ * @property {DetectedProject[]} projects
+ * @property {{ projectCount: number, supportedProjectCount: number, unsupportedProjectCount: number }} summary
+ */
+
+/**
+ * @returns {ProjectDetectionRules}
+ */
 export function getProjectDetectionRules() {
   return {
     schemaVersion: "project-detection-rules/v1",
@@ -112,6 +151,10 @@ export function getProjectDetectionRules() {
   };
 }
 
+/**
+ * @param {string} repoRoot
+ * @returns {ProjectDetection}
+ */
 export function detectProjects(repoRoot) {
   const absoluteRoot = path.resolve(repoRoot);
   const markerGroups = collectMarkerGroups(absoluteRoot);
@@ -131,6 +174,10 @@ export function detectProjects(repoRoot) {
   };
 }
 
+/**
+ * @param {string} root
+ * @returns {Map<string, ProjectMarkerGroup>}
+ */
 function collectMarkerGroups(root) {
   const groups = new Map();
 
@@ -165,6 +212,14 @@ function collectMarkerGroups(root) {
   return groups;
 }
 
+/**
+ * @param {Map<string, ProjectMarkerGroup>} groups
+ * @param {string} root
+ * @param {string} current
+ * @param {string} markerName
+ * @param {ProjectDetectionMarker} marker
+ * @returns {void}
+ */
 function addMarkerGroup(groups, root, current, markerName, marker) {
   const projectRoot = path.relative(root, current).replaceAll(path.sep, "/") || ".";
   const group = groups.get(projectRoot) ?? {
@@ -182,6 +237,11 @@ function addMarkerGroup(groups, root, current, markerName, marker) {
   groups.set(projectRoot, group);
 }
 
+/**
+ * @param {string} repoRoot
+ * @param {ProjectMarkerGroup} project
+ * @returns {DetectedProject}
+ */
 function toDetectedProject(repoRoot, project) {
   const ecosystems = [...project.ecosystems].sort();
   const languages = [...project.languages].sort();
@@ -199,6 +259,10 @@ function toDetectedProject(repoRoot, project) {
   };
 }
 
+/**
+ * @param {{ ecosystems: string[], languages: string[] }} project
+ * @returns {string[]}
+ */
 function matchingAdapterIds({ ecosystems, languages }) {
   const ecosystemSet = new Set(ecosystems);
   const languageSet = new Set(languages);

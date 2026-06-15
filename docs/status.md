@@ -17,7 +17,7 @@ Implemented:
 - audit, plan, explanation, ranking, and deferred-generation artifacts
 - test placement findings artifact with a conservative audit-based `keep` analyzer
 - project-audits derived placement analysis that preserves project owner identity
-- JSDoc contract annotations for placement and project-derived runtime modules
+- JSDoc contract annotations for project detection, project audit, placement, and project-derived runtime modules
 - project detection and project audit artifacts for polyglot repository groundwork
 - documented polyglot artifact workflow from project detection through project test planning
 - stable JSON schemas for generated artifacts
