@@ -111,6 +111,7 @@ Examples:
 - React frontend plus Python or Node backend
 - Kotlin Android app plus JavaScript tooling
 - Java or Kotlin Maven service plus JavaScript tooling
+- .NET service plus JavaScript tooling
 - Swift app plus generated TypeScript clients
 - backend service plus OpenAPI/protobuf/schema packages
 - monorepos with multiple package managers and test commands

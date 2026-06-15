@@ -81,6 +81,33 @@ describe("project detector", () => {
     );
   });
 
+  it("detects .NET project files by extension", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-dotnet-"));
+    fs.mkdirSync(path.join(root, "services", "catalog"), { recursive: true });
+    fs.writeFileSync(path.join(root, "services", "catalog", "Catalog.Api.csproj"), "<Project />\n");
+
+    const detection = detectProjects(root);
+
+    assert.deepEqual(
+      detection.projects.map((project) => ({
+        root: project.root,
+        ecosystems: project.ecosystems,
+        languages: project.languages,
+        markerFiles: project.markerFiles,
+        supported: project.supported
+      })),
+      [
+        {
+          root: "services/catalog",
+          ecosystems: ["dotnet"],
+          languages: ["csharp"],
+          markerFiles: ["services/catalog/Catalog.Api.csproj"],
+          supported: false
+        }
+      ]
+    );
+  });
+
   it("ignores generated Maven target directories", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-target-"));
     fs.mkdirSync(path.join(root, "target", "generated"), { recursive: true });

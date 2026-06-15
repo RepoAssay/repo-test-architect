@@ -26,6 +26,11 @@ const MARKERS = [
     languages: ["swift"]
   },
   {
+    extension: ".csproj",
+    ecosystem: "dotnet",
+    languages: ["csharp"]
+  },
+  {
     fileName: "pom.xml",
     ecosystem: "jvm",
     languages: ["java", "kotlin"]
@@ -83,7 +88,10 @@ function collectMarkerGroups(root) {
         continue;
       }
 
-      const marker = MARKERS.find((candidate) => candidate.fileName === entry.name);
+      const marker = MARKERS.find((candidate) =>
+        candidate.fileName === entry.name ||
+        (candidate.extension && entry.name.endsWith(candidate.extension))
+      );
       if (!marker) continue;
 
       const projectRoot = path.relative(root, current).replaceAll(path.sep, "/") || ".";
