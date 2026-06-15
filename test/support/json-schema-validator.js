@@ -26,12 +26,16 @@ function validate(value, schema, rootSchema, path) {
     return errors;
   }
 
-  if (schema.type === "object") {
-    return errors.concat(validateObject(value, schema, rootSchema, path));
+  if (schema.oneOf) {
+    errors.push(...validateOneOf(value, schema.oneOf, rootSchema, path));
+  }
+
+  if (shouldValidateObject(value, schema)) {
+    errors.push(...validateObject(value, schema, rootSchema, path));
   }
 
   if (schema.type === "array") {
-    return errors.concat(validateArray(value, schema, rootSchema, path));
+    errors.push(...validateArray(value, schema, rootSchema, path));
   }
 
   if (schema.type === "integer") {
@@ -45,6 +49,24 @@ function validate(value, schema, rootSchema, path) {
   }
 
   return errors;
+}
+
+function validateOneOf(value, options, rootSchema, path) {
+  const matchCount = options.filter((option) => validate(value, option, rootSchema, path).length === 0).length;
+
+  if (matchCount === 1) return [];
+
+  return [`${path}: expected exactly one matching oneOf schema, matched ${matchCount}`];
+}
+
+function shouldValidateObject(value, schema) {
+  const hasObjectKeywords =
+    schema.type === "object" ||
+    schema.properties !== undefined ||
+    schema.required !== undefined ||
+    schema.additionalProperties !== undefined;
+
+  return hasObjectKeywords && matchesType(value, "object");
 }
 
 function validateObject(value, schema, rootSchema, path) {
