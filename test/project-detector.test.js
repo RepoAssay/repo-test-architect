@@ -133,6 +133,31 @@ describe("project detector", () => {
     );
   });
 
+  it("detects Rust Cargo projects", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-rust-"));
+    fs.mkdirSync(path.join(root, "crates", "worker"), { recursive: true });
+    fs.writeFileSync(path.join(root, "crates", "worker", "Cargo.toml"), "[package]\nname = \"worker\"\n");
+
+    const detection = detectProjects(root);
+
+    assert.deepEqual(
+      detection.projects.map((project) => ({
+        root: project.root,
+        ecosystems: project.ecosystems,
+        languages: project.languages,
+        supported: project.supported
+      })),
+      [
+        {
+          root: "crates/worker",
+          ecosystems: ["rust"],
+          languages: ["rust"],
+          supported: false
+        }
+      ]
+    );
+  });
+
   it("ignores generated Maven target directories", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-target-"));
     fs.mkdirSync(path.join(root, "target", "generated"), { recursive: true });

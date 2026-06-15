@@ -110,6 +110,7 @@ Examples:
 
 - React frontend plus Python or Node backend
 - Go worker plus React frontend
+- Rust service plus JavaScript tooling
 - Kotlin Android app plus JavaScript tooling
 - Java or Kotlin Maven service plus JavaScript tooling
 - .NET service plus JavaScript tooling

@@ -26,6 +26,11 @@ const MARKERS = [
     languages: ["go"]
   },
   {
+    fileName: "Cargo.toml",
+    ecosystem: "rust",
+    languages: ["rust"]
+  },
+  {
     fileName: "Package.swift",
     ecosystem: "swift",
     languages: ["swift"]
