@@ -85,6 +85,10 @@ The first public distribution path should be local-first:
 - include short fixture demos and real audit output examples
 - submit to relevant MCP server directories or registries where available
 
+Release checklist:
+
+- `docs/release-checklist.md`
+
 Positioning should emphasize the differentiated category:
 
 ```txt

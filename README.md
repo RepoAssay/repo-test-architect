@@ -158,3 +158,4 @@ The JavaScript adapter is the first proof point. Later adapters should emit the 
 - [MCP tool surface](docs/mcp-tools.md)
 - [MCP client config](docs/mcp-client-config.md)
 - [MCP deployment](docs/mcp-deployment.md)
+- [Release checklist](docs/release-checklist.md)
