@@ -29,6 +29,45 @@ describe("MCP invoke harness", () => {
     assert.deepEqual(audit.profile.testFrameworks, ["vitest"]);
   });
 
+  it("calls placement tools with JSON args", () => {
+    const audit = {
+      schemaVersion: "audit/v1",
+      profile: {},
+      untestedCandidates: [],
+      coveredButRisky: [],
+      skipped: [],
+      risks: []
+    };
+    const projectAudits = {
+      schemaVersion: "project-audits/v1",
+      root: ".",
+      summary: {
+        projectCount: 0,
+        auditedProjectCount: 0,
+        skippedProjectCount: 0
+      },
+      audits: [],
+      skippedProjects: []
+    };
+    const placementOutput = execFileSync(
+      process.execPath,
+      [invokePath, "call", "analyze_test_placement", JSON.stringify({ audit })],
+      {
+        encoding: "utf8"
+      }
+    );
+    const projectPlacementOutput = execFileSync(
+      process.execPath,
+      [invokePath, "call", "analyze_project_test_placement", JSON.stringify({ projectAudits })],
+      {
+        encoding: "utf8"
+      }
+    );
+
+    assert.equal(JSON.parse(placementOutput).schemaVersion, "test-placement-findings/v1");
+    assert.equal(JSON.parse(projectPlacementOutput).schemaVersion, "test-placement-findings/v1");
+  });
+
   it("calls a tool with an MCP-style response envelope", () => {
     const output = execFileSync(
       process.execPath,

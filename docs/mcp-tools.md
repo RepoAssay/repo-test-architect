@@ -134,6 +134,7 @@ npm run mcp:detect:example
 npm run mcp:audit-projects:example
 npm run mcp:placement-projects:example
 npm run mcp:audit:example
+npm run mcp:placement:example
 npm run mcp:audit:envelope
 ```
 

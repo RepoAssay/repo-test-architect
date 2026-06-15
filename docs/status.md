@@ -77,6 +77,7 @@ npm run plan-projects:example:json
 npm run placement:example:json
 npm run placement-projects:example:json
 npm run mcp:placement-projects:example
+npm run mcp:placement:example
 npm run mcp:adapters
 npm test
 npm run eval:check

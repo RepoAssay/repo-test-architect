@@ -64,6 +64,7 @@
     "mcp:plan-projects:example": "node ./src/mcp/invoke.js call generate_project_test_plan \"{\\\"projectAudits\\\":{\\\"schemaVersion\\\":\\\"project-audits/v1\\\",\\\"root\\\":\\\".\\\",\\\"summary\\\":{\\\"projectCount\\\":0,\\\"auditedProjectCount\\\":0,\\\"skippedProjectCount\\\":0},\\\"audits\\\":[],\\\"skippedProjects\\\":[]}}\"",
     "mcp:placement-projects:example": "node ./src/mcp/invoke.js call analyze_project_test_placement \"{\\\"projectAudits\\\":{\\\"schemaVersion\\\":\\\"project-audits/v1\\\",\\\"root\\\":\\\".\\\",\\\"summary\\\":{\\\"projectCount\\\":0,\\\"auditedProjectCount\\\":0,\\\"skippedProjectCount\\\":0},\\\"audits\\\":[],\\\"skippedProjects\\\":[]}}\"",
     "mcp:audit:example": "node ./src/mcp/invoke.js call audit_repo \"{\\\"repoRoot\\\":\\\"./examples/node-vitest-basic\\\"}\"",
+    "mcp:placement:example": "node ./src/mcp/invoke.js call analyze_test_placement \"{\\\"audit\\\":{\\\"schemaVersion\\\":\\\"audit/v1\\\",\\\"profile\\\":{},\\\"untestedCandidates\\\":[],\\\"coveredButRisky\\\":[],\\\"skipped\\\":[],\\\"risks\\\":[]}}\"",
     "mcp:audit:envelope": "node ./src/mcp/invoke.js call-envelope audit_repo \"{\\\"repoRoot\\\":\\\"./examples/node-vitest-basic\\\"}\"",
     "mcp:stdio": "node ./src/mcp/stdio.js",
     "eval:check": "node ./scripts/check-golden-snapshots.js",
