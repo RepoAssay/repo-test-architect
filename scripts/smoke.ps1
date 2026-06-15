@@ -12,6 +12,12 @@ $required = @(
   "src/adapters/javascript/audit.js",
   "src/adapters/javascript/audit.ts",
   "src/core/audit-model.ts",
+  "src/core/adapter-registry.js",
+  "src/core/project-detector.js",
+  "src/core/project-auditor.js",
+  "src/core/project-audit-summary.js",
+  "src/core/project-candidate-ranking.js",
+  "src/core/project-test-plan.js",
   "examples/node-vitest-basic/package.json",
   "examples/node-vitest-basic/tsconfig.json",
   "examples/node-vitest-basic/vitest.config.ts",
@@ -44,7 +50,13 @@ $required = @(
   "examples/react-testing-library/src/components/LoginForm.test.tsx",
   "examples/react-testing-library/src/components/Avatar.tsx",
   "examples/react-testing-library/src/services/sessionService.ts",
-  "examples/react-testing-library/src/models/sessionDto.ts"
+  "examples/react-testing-library/src/models/sessionDto.ts",
+  "examples/polyglot-workspace/apps/web/package.json",
+  "examples/polyglot-workspace/apps/web/src/sessionClient.ts",
+  "examples/polyglot-workspace/apps/android/build.gradle.kts",
+  "examples/polyglot-workspace/apps/android/src/main/kotlin/CheckoutCalculator.kt",
+  "examples/polyglot-workspace/services/api/pyproject.toml",
+  "examples/polyglot-workspace/services/api/app.py"
 )
 
 foreach ($relative in $required) {
@@ -62,9 +74,23 @@ foreach ($signal in @("vitest", "pure-logic", "auth or permission branches", "te
 }
 
 $mcpTools = Get-Content (Join-Path $root "src/mcp/tool-definitions.js") -Raw
-foreach ($tool in @("audit_repo", "get_audit_graph", "generate_test_plan", "explain_target", "rank_test_candidates", "generate_selected_test")) {
+foreach ($tool in @("list_adapters", "detect_projects", "audit_projects", "summarize_project_audits", "rank_project_candidates", "generate_project_test_plan", "audit_repo", "get_audit_graph", "generate_test_plan", "explain_target", "rank_test_candidates", "generate_selected_test")) {
   if (-not $mcpTools.Contains($tool)) {
     throw "Missing expected MCP tool: $tool"
+  }
+}
+
+$adapterRegistry = Get-Content (Join-Path $root "src/core/adapter-registry.js") -Raw
+foreach ($signal in @("ecosystems", "javascript", "typescript")) {
+  if (-not $adapterRegistry.Contains($signal)) {
+    throw "Missing expected adapter registry signal: $signal"
+  }
+}
+
+$projectDetector = Get-Content (Join-Path $root "src/core/project-detector.js") -Raw
+foreach ($signal in @("Package.swift", "pyproject.toml", "build.gradle.kts", "ecosystem")) {
+  if (-not $projectDetector.Contains($signal)) {
+    throw "Missing expected project detector signal: $signal"
   }
 }
 
