@@ -165,6 +165,25 @@ export interface GenerateTestPlanOptions {
   itemId?: string;
 }
 
+export interface TestPlacementFindings {
+  schemaVersion: "test-placement-findings/v1";
+  findings: TestPlacementFinding[];
+}
+
+export interface TestPlacementFinding {
+  id: string;
+  testFile: string;
+  currentOwner: string;
+  suggestedOwner: string;
+  action: "move" | "split" | "keep";
+  reason: string;
+  evidence: string[];
+}
+
+export interface AnalyzeTestPlacementOptions {
+  owner?: string;
+}
+
 export declare function detectRepoProjects(repoRoot: string): ProjectDetection;
 
 export declare function auditRepoProjects(repoRoot: string): ProjectAudits;
@@ -183,6 +202,10 @@ export declare function summarizeRepoProjectAudits(projectAudits: ProjectAudits)
 export declare function rankRepoProjectCandidates(projectAudits: ProjectAudits): ProjectCandidateRanking;
 
 export declare function generateRepoProjectTestPlan(projectAudits: ProjectAudits): ProjectTestPlan;
+
+export declare function createRepoTestPlacementFindings(findings?: TestPlacementFinding[]): TestPlacementFindings;
+
+export declare function analyzeRepoTestPlacement(audit: AuditResult, options?: AnalyzeTestPlacementOptions): TestPlacementFindings;
 
 export function getAuditGraph(audit: AuditResult): AuditResult {
   validateAudit(audit);

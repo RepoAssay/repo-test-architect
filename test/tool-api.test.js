@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import path from "node:path";
 import { describe, it } from "node:test";
 import {
+  analyzeRepoTestPlacement,
   auditRepoProjects,
   auditRepo,
   createRepoTestPlacementFindings,
@@ -123,6 +124,14 @@ describe("tool API", () => {
 
     assert.equal(artifact.schemaVersion, "test-placement-findings/v1");
     assert.equal(artifact.findings[0].action, "keep");
+  });
+
+  it("analyzes test placement from an audit artifact", () => {
+    const audit = auditRepo(path.resolve("examples/node-vitest-basic"));
+    const artifact = analyzeRepoTestPlacement(audit, { owner: "node-vitest-basic" });
+
+    assert.equal(artifact.schemaVersion, "test-placement-findings/v1");
+    assert.equal(artifact.findings[0].testFile, "src/deckParser.test.ts");
   });
 
   it("rejects invalid audit artifacts", () => {

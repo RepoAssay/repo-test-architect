@@ -6,6 +6,7 @@ import { detectProjects, getProjectDetectionRules as readProjectDetectionRules }
 import { rankProjectTestCandidates } from "./project-candidate-ranking.js";
 import { createProjectTestPlan } from "./project-test-plan.js";
 import { rankTestCandidates } from "./rank-test-candidates.js";
+import { analyzeTestPlacement } from "./test-placement-analysis.js";
 import { createTestPlacementFindings } from "./test-placement-findings.js";
 import { createTestPlan } from "./test-plan.js";
 
@@ -65,6 +66,11 @@ export function rankAuditTestCandidates(audit) {
 
 export function createRepoTestPlacementFindings(findings = []) {
   return createTestPlacementFindings(findings);
+}
+
+export function analyzeRepoTestPlacement(audit, options = {}) {
+  validateAudit(audit);
+  return analyzeTestPlacement(audit, options);
 }
 
 export function validateAudit(audit) {
