@@ -4,7 +4,8 @@ import path from "node:path";
 import { describe, it } from "node:test";
 import {
   readModelConsistencyScenario,
-  runModelConsistencyScenario
+  runModelConsistencyScenario,
+  summarizeModelConsistencyResults
 } from "../src/core/model-consistency-runner.js";
 
 const scenarioPath = "evals/model-consistency/node-vitest-basic-auth-explanation.scenario.json";
@@ -61,11 +62,8 @@ describe("model consistency runner", () => {
   });
 
   it("passes every checked-in model consistency scenario", () => {
-    const results = fs
-      .readdirSync(scenarioDir)
-      .filter((fileName) => fileName.endsWith(".scenario.json"))
-      .map((fileName) => readModelConsistencyScenario(path.join(scenarioDir, fileName)))
-      .map((scenario) => runModelConsistencyScenario(scenario));
+    const scenarios = readCheckedInScenarios();
+    const results = scenarios.map((scenario) => runModelConsistencyScenario(scenario));
 
     assert.deepEqual(
       results.map((result) => [result.scenarioId, result.failures]),
@@ -81,6 +79,28 @@ describe("model consistency runner", () => {
     );
   });
 
+  it("summarizes locked-field results for model profile comparisons", () => {
+    const scenarios = readCheckedInScenarios();
+    const results = scenarios.map((scenario) => runModelConsistencyScenario(scenario));
+    const summary = summarizeModelConsistencyResults(scenarios, results, {
+      profileName: "deterministic-baseline"
+    });
+
+    assert.equal(summary.schemaVersion, "model-consistency-summary/v1");
+    assert.equal(summary.profileName, "deterministic-baseline");
+    assert.deepEqual(summary.summary, {
+      scenarioCount: 7,
+      passedScenarioCount: 7,
+      failedScenarioCount: 0,
+      checkedFieldCount: 45,
+      failureCount: 0
+    });
+    assert.equal(summary.scenarios[1].scenarioId, "node-jest-service-plan");
+    assert.equal(summary.scenarios[1].status, "passed");
+    assert.ok(summary.allowedVariationThemes.includes("Additional non-locked metadata may be added."));
+    assert.ok(summary.unexpectedVariationThemes.includes("Generating a direct DTO test recommendation."));
+  });
+
   it("rejects scenarios with the wrong schema version", () => {
     const scenario = readModelConsistencyScenario(scenarioPath);
 
@@ -90,3 +110,11 @@ describe("model consistency runner", () => {
     );
   });
 });
+
+function readCheckedInScenarios() {
+  return fs
+    .readdirSync(scenarioDir)
+    .filter((fileName) => fileName.endsWith(".scenario.json"))
+    .sort()
+    .map((fileName) => readModelConsistencyScenario(path.join(scenarioDir, fileName)));
+}

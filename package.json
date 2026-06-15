@@ -72,6 +72,7 @@
     "eval:test": "node --test test/golden-snapshots.test.js",
     "eval:update": "node ./scripts/update-golden-snapshots.js",
     "model-consistency:check": "node ./scripts/check-model-consistency-scenarios.js",
+    "model-consistency:json": "node ./scripts/check-model-consistency-scenarios.js --json",
     "test": "node --test \"test/**/*.test.js\"",
     "smoke": "powershell -ExecutionPolicy Bypass -File ./scripts/smoke.ps1",
     "pack:dry-run": "npm pack --dry-run"

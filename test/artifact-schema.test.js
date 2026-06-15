@@ -11,6 +11,11 @@ import { detectProjects, getProjectDetectionRules } from "../src/core/project-de
 import { analyzeProjectTestPlacement } from "../src/core/project-test-placement-analysis.js";
 import { createProjectTestPlan } from "../src/core/project-test-plan.js";
 import { rankTestCandidates } from "../src/core/rank-test-candidates.js";
+import {
+  readModelConsistencyScenario,
+  runModelConsistencyScenario,
+  summarizeModelConsistencyResults
+} from "../src/core/model-consistency-runner.js";
 import { createTestPlacementFindings } from "../src/core/test-placement-findings.js";
 import { loadEvalFixtures } from "./support/eval-fixtures.js";
 import { assertMatchesSchema } from "./support/json-schema-validator.js";
@@ -30,6 +35,7 @@ const projectAuditSummarySchema = readJson("schemas/project-audit-summary-v1.sch
 const projectCandidateRankingSchema = readJson("schemas/project-candidate-ranking-v1.schema.json");
 const projectTestPlanSchema = readJson("schemas/project-test-plan-v1.schema.json");
 const modelConsistencyScenarioSchema = readJson("schemas/model-consistency-scenario-v1.schema.json");
+const modelConsistencySummarySchema = readJson("schemas/model-consistency-summary-v1.schema.json");
 const fixtures = loadEvalFixtures();
 
 describe("artifact schema compatibility", () => {
@@ -172,6 +178,20 @@ describe("model consistency scenario schema compatibility", () => {
       assertMatchesSchema(artifact, modelConsistencyScenarioSchema, scenarioPath);
     });
   }
+});
+
+describe("model consistency summary artifact schema compatibility", () => {
+  it("validates model-consistency-summary/v1", () => {
+    const scenarios = fs
+      .readdirSync("evals/model-consistency")
+      .filter((fileName) => fileName.endsWith(".scenario.json"))
+      .sort()
+      .map((fileName) => readModelConsistencyScenario(path.join("evals/model-consistency", fileName)));
+    const results = scenarios.map((scenario) => runModelConsistencyScenario(scenario));
+    const artifact = summarizeModelConsistencyResults(scenarios, results);
+
+    assertMatchesSchema(artifact, modelConsistencySummarySchema, "model-consistency-summary.json");
+  });
 });
 
 function readJson(filePath) {

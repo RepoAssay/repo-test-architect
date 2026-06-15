@@ -37,6 +37,7 @@ describe("package manifest", () => {
     assert.ok(packageJson.scripts.smoke);
     assert.ok(packageJson.scripts["eval:check"]);
     assert.ok(packageJson.scripts["model-consistency:check"]);
+    assert.ok(packageJson.scripts["model-consistency:json"]);
   });
 
   it("documents package dry-run verification in project status", () => {

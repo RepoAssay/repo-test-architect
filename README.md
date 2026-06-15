@@ -143,6 +143,7 @@ Check model-consistency scenario locked fields against deterministic tool result
 
 ```powershell
 npm run model-consistency:check
+npm run model-consistency:json
 ```
 
 Node 20 or newer is required for the CLI. If Node is not available yet, the repository still includes a PowerShell smoke check:

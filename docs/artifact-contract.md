@@ -160,6 +160,31 @@ It contains:
 - allowed variation, such as wording or explanation depth
 - unexpected variation, such as changed target, recommendation, test level, score, framework, or test command
 
+## Model Consistency Summary Artifact
+
+Schema:
+
+- `schemas/model-consistency-summary-v1.schema.json`
+- `schemaVersion: "model-consistency-summary/v1"`
+
+Command:
+
+```powershell
+npm run model-consistency:json
+```
+
+This artifact summarizes checked model-consistency scenarios for one profile.
+The first profile is the deterministic baseline; later profiles can represent specific model/provider settings.
+
+It contains:
+
+- profile name
+- scenario pass/fail counts
+- total checked locked fields
+- per-scenario status
+- allowed variation themes
+- unexpected variation themes
+
 ## Test Placement Findings Artifact
 
 Schema:
@@ -453,6 +478,8 @@ npm run eval:check
 npm run eval:summary
 npm run eval:test
 npm run eval:update
+npm run model-consistency:check
+npm run model-consistency:json
 ```
 
 Update snapshots only after intentional behavior changes.

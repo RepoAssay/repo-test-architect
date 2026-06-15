@@ -24,6 +24,14 @@ import { callTool } from "../mcp/tool-definitions.js";
  * @property {string} toolName
  * @property {number} checkedFieldCount
  * @property {ModelConsistencyFailure[]} failures
+ *
+ * @typedef {object} ModelConsistencySummary
+ * @property {"model-consistency-summary/v1"} schemaVersion
+ * @property {string} profileName
+ * @property {{ scenarioCount: number, passedScenarioCount: number, failedScenarioCount: number, checkedFieldCount: number, failureCount: number }} summary
+ * @property {Array<{ scenarioId: string, toolName: string, checkedFieldCount: number, status: "passed" | "failed", failureCount: number }>} scenarios
+ * @property {string[]} allowedVariationThemes
+ * @property {string[]} unexpectedVariationThemes
  */
 
 /**
@@ -60,6 +68,39 @@ export function runModelConsistencyScenario(scenario, options = {}) {
     toolName: scenario.toolCall.toolName,
     checkedFieldCount: scenario.lockedFields.length,
     failures
+  };
+}
+
+/**
+ * @param {ModelConsistencyScenario[]} scenarios
+ * @param {ModelConsistencyResult[]} results
+ * @param {{ profileName?: string }} [options]
+ * @returns {ModelConsistencySummary}
+ */
+export function summarizeModelConsistencyResults(scenarios, results, options = {}) {
+  const checkedFieldCount = results.reduce((sum, result) => sum + result.checkedFieldCount, 0);
+  const failureCount = results.reduce((sum, result) => sum + result.failures.length, 0);
+  const failedScenarioCount = results.filter((result) => result.failures.length > 0).length;
+
+  return {
+    schemaVersion: "model-consistency-summary/v1",
+    profileName: options.profileName ?? "deterministic-baseline",
+    summary: {
+      scenarioCount: results.length,
+      passedScenarioCount: results.length - failedScenarioCount,
+      failedScenarioCount,
+      checkedFieldCount,
+      failureCount
+    },
+    scenarios: results.map((result) => ({
+      scenarioId: result.scenarioId,
+      toolName: result.toolName,
+      checkedFieldCount: result.checkedFieldCount,
+      status: result.failures.length === 0 ? "passed" : "failed",
+      failureCount: result.failures.length
+    })),
+    allowedVariationThemes: uniqueSorted(scenarios.flatMap((scenario) => scenario.allowedVariations)),
+    unexpectedVariationThemes: uniqueSorted(scenarios.flatMap((scenario) => scenario.unexpectedVariations))
   };
 }
 
@@ -136,4 +177,12 @@ function parsePath(fieldPath) {
     .replaceAll("]", "")
     .split(".")
     .filter(Boolean);
+}
+
+/**
+ * @param {string[]} values
+ * @returns {string[]}
+ */
+function uniqueSorted(values) {
+  return [...new Set(values)].sort((left, right) => left.localeCompare(right));
 }

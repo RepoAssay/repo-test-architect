@@ -1,0 +1,109 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://repo-test-architect.local/schemas/model-consistency-summary-v1.schema.json",
+  "title": "Repo Test Architect Model Consistency Summary",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "profileName",
+    "summary",
+    "scenarios",
+    "allowedVariationThemes",
+    "unexpectedVariationThemes"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "model-consistency-summary/v1"
+    },
+    "profileName": {
+      "type": "string",
+      "minLength": 1
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scenarioCount",
+        "passedScenarioCount",
+        "failedScenarioCount",
+        "checkedFieldCount",
+        "failureCount"
+      ],
+      "properties": {
+        "scenarioCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "passedScenarioCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "failedScenarioCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "checkedFieldCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "failureCount": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "scenarios": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "scenarioId",
+          "toolName",
+          "checkedFieldCount",
+          "status",
+          "failureCount"
+        ],
+        "properties": {
+          "scenarioId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "toolName": {
+            "type": "string",
+            "minLength": 1
+          },
+          "checkedFieldCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "status": {
+            "enum": [
+              "passed",
+              "failed"
+            ]
+          },
+          "failureCount": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      }
+    },
+    "allowedVariationThemes": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "unexpectedVariationThemes": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  }
+}

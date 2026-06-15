@@ -163,6 +163,17 @@ describe("schema files", () => {
     assert.ok(schema.properties.lockedFields.items.required.includes("expected"));
     assert.ok(schema.properties.unexpectedVariations.minItems >= 1);
   });
+
+  it("documents model-consistency-summary/v1", () => {
+    const schema = readSchema("schemas/model-consistency-summary-v1.schema.json");
+
+    assert.equal(schema.properties.schemaVersion.const, "model-consistency-summary/v1");
+    assert.ok(schema.required.includes("profileName"));
+    assert.ok(schema.required.includes("summary"));
+    assert.ok(schema.required.includes("scenarios"));
+    assert.ok(schema.properties.summary.required.includes("failureCount"));
+    assert.deepEqual(schema.properties.scenarios.items.properties.status.enum, ["passed", "failed"]);
+  });
 });
 
 function readSchema(path) {
