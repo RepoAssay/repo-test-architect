@@ -109,6 +109,37 @@ describe("project detector", () => {
     );
   });
 
+  it("keeps mixed Java and Kotlin sources under one JVM project root", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-mixed-jvm-"));
+    fs.mkdirSync(path.join(root, "services", "checkout", "src", "main", "java"), { recursive: true });
+    fs.mkdirSync(path.join(root, "services", "checkout", "src", "main", "kotlin"), { recursive: true });
+    fs.writeFileSync(path.join(root, "services", "checkout", "build.gradle.kts"), "plugins { kotlin(\"jvm\") }\n");
+    fs.writeFileSync(path.join(root, "services", "checkout", "src", "main", "java", "Money.java"), "class Money {}\n");
+    fs.writeFileSync(path.join(root, "services", "checkout", "src", "main", "kotlin", "Checkout.kt"), "class Checkout\n");
+
+    const detection = detectProjects(root);
+
+    assert.equal(detection.summary.projectCount, 1);
+    assert.deepEqual(
+      detection.projects.map((project) => ({
+        root: project.root,
+        ecosystems: project.ecosystems,
+        languages: project.languages,
+        markerFiles: project.markerFiles,
+        supported: project.supported
+      })),
+      [
+        {
+          root: "services/checkout",
+          ecosystems: ["jvm"],
+          languages: ["java", "kotlin"],
+          markerFiles: ["services/checkout/build.gradle.kts"],
+          supported: false
+        }
+      ]
+    );
+  });
+
   it("detects .NET project files by extension", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-dotnet-"));
     fs.mkdirSync(path.join(root, "services", "catalog"), { recursive: true });

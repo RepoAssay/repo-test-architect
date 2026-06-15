@@ -150,6 +150,8 @@ Parallel responsibilities:
 
 Adapters should remain isolated. A JavaScript adapter should not need to understand Kotlin files elsewhere in the repository. It should audit its assigned project root and emit the shared audit model with project identity attached.
 
+Mixed-language projects inside one build/test root should stay inside one adapter audit. Examples include Java plus Kotlin in one Gradle or Maven module, Swift plus Objective-C in one Apple target, and JavaScript plus TypeScript in one package.
+
 The core merge layer should handle cross-project recommendations. For example, generated frontend API clients may be skipped directly while backend API contract or route behavior receives the higher-value test recommendation.
 
 ## Model Consistency Goal

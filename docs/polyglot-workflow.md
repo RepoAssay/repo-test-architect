@@ -2,6 +2,13 @@
 
 Repo Test Architect treats a multi-language repository as a set of auditable project roots, not as one blended source tree.
 
+There are two different cases:
+
+- multiple build roots in one repository, such as a JavaScript frontend plus a Python API
+- multiple languages under one build root, such as Java plus Kotlin in one Gradle module or Swift plus Objective-C in one Apple target
+
+Project detection splits by build/test root. It should not split Java and Kotlin source folders into separate projects when they share the same Gradle or Maven root. The future ecosystem adapter is responsible for understanding mixed-language source sets inside that root.
+
 The core flow is:
 
 ```txt
@@ -38,6 +45,7 @@ This emits `project-audits/v1`.
 For every supported project root, the matching adapter produces a normal audit artifact. Unsupported project roots are reported separately with their ecosystem and language labels.
 
 The current runtime audits JavaScript and TypeScript project roots through the `javascript` adapter.
+JavaScript and TypeScript already share one adapter domain. Future JVM and Apple adapters should follow the same rule for Java/Kotlin and Swift/Objective-C projects.
 
 ## 3. Reuse Saved Project Audits
 
