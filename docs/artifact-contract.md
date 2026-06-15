@@ -138,6 +138,24 @@ generate_selected_test
 This artifact is returned while native test generation remains intentionally disabled.
 It tells clients that the plan item was understood, but no test code should be produced yet.
 
+## Test Placement Findings Artifact
+
+Schema:
+
+- `schemas/test-placement-findings-v1.schema.json`
+- `schemaVersion: "test-placement-findings/v1"`
+
+This future artifact reports tests that exist but appear to live in the wrong owner. It is advisory until adapters and repair loops can safely move files and verify affected test commands.
+
+It contains:
+
+- test file
+- current owner
+- suggested owner
+- placement action: `move`, `split`, or `keep`
+- human-readable reason
+- evidence strings such as imports, tested symbols, package ownership, or integration dependencies
+
 ## Adapter Registry Artifact
 
 Schema:

@@ -58,6 +58,17 @@ describe("schema files", () => {
     assert.ok(schema.required.includes("nextSteps"));
   });
 
+  it("documents test-placement-findings/v1", () => {
+    const schema = readSchema("schemas/test-placement-findings-v1.schema.json");
+
+    assert.equal(schema.properties.schemaVersion.const, "test-placement-findings/v1");
+    assert.ok(schema.required.includes("findings"));
+    assert.ok(schema.properties.findings.items.required.includes("testFile"));
+    assert.ok(schema.properties.findings.items.required.includes("currentOwner"));
+    assert.ok(schema.properties.findings.items.required.includes("suggestedOwner"));
+    assert.deepEqual(schema.properties.findings.items.properties.action.enum, ["move", "split", "keep"]);
+  });
+
   it("documents adapter-registry/v1", () => {
     const schema = readSchema("schemas/adapter-registry-v1.schema.json");
 
