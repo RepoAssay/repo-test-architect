@@ -41,6 +41,7 @@ Models can explain, prioritize, or generate from this graph, but the graph is th
 5. Improve scoring and skip rationale.
 6. Add selected test-plan generation from the audit graph.
 7. Add native test generation only after audit behavior is trustworthy.
+8. Prepare public MCP distribution: GitHub repo, npm package, install snippets, fixture demos, and directory submissions.
 
 ## Fixture Roadmap
 
@@ -101,6 +102,8 @@ It defines tool names, input schemas, and dispatch behavior without committing t
 
 The default deployment target is local stdio MCP because repository audits need local source, Git, and test execution context.
 Remote hosting is a later option for shared evals, policy packs, team reporting, or model-consistency runs, not the first path for raw repo access.
+
+Public exposure should start as local stdio MCP distributed through GitHub and npm. Remote MCP should come later only with authentication, least-privilege tool access, and a clear split between local repo access and hosted reporting or eval features.
 
 ## Polyglot Repository Direction
 

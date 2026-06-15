@@ -70,3 +70,31 @@ AI client
 ```
 
 The local MCP should remain useful on its own.
+
+## Public Distribution
+
+The first public distribution path should be local-first:
+
+- publish the source on GitHub
+- publish an npm package that exposes the stdio MCP binary
+- document install snippets for MCP-capable clients
+- include short fixture demos and real audit output examples
+- submit to relevant MCP server directories or registries where available
+
+Positioning should emphasize the differentiated category:
+
+```txt
+Audit-first MCP server for repository test strategy.
+```
+
+Avoid positioning it as another generic AI test generator. The useful distinction is repo intelligence, test strategy selection, and avoiding low-value generated tests.
+
+Remote MCP exposure should wait until there is a clear hosted use case and a proper security model:
+
+- authentication
+- least-privilege tool access
+- no unrestricted test execution
+- no raw private repository upload by default
+- clear separation between local repo access and remote reporting/eval features
+
+Remote hosting may make sense later for shared evals, model-consistency comparisons, policy packs, and dashboards.
