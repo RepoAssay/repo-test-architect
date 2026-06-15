@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { listAdapters } from "./adapter-registry.js";
 
-const IGNORED_DIRECTORIES = new Set([".git", "node_modules", "dist", "build", "coverage"]);
+const IGNORED_DIRECTORIES = new Set([".git", "node_modules", "dist", "build", "coverage", "target"]);
 
 const MARKERS = [
   {

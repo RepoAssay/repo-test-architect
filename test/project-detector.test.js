@@ -80,4 +80,15 @@ describe("project detector", () => {
       ]
     );
   });
+
+  it("ignores generated Maven target directories", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-target-"));
+    fs.mkdirSync(path.join(root, "target", "generated"), { recursive: true });
+    fs.writeFileSync(path.join(root, "target", "generated", "package.json"), "{}\n");
+
+    const detection = detectProjects(root);
+
+    assert.equal(detection.summary.projectCount, 0);
+    assert.deepEqual(detection.projects, []);
+  });
 });
