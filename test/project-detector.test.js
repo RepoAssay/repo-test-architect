@@ -83,10 +83,13 @@ describe("project detector", () => {
 
   it("detects the Kotlin JUnit fixture as an unsupported JVM project", () => {
     const detection = detectProjects(path.resolve("examples/kotlin-junit-basic"));
+    const fixtureRoot = path.resolve("examples/kotlin-junit-basic");
 
     assert.equal(detection.summary.projectCount, 1);
     assert.equal(detection.summary.supportedProjectCount, 0);
     assert.equal(detection.summary.unsupportedProjectCount, 1);
+    assert.ok(fs.existsSync(path.join(fixtureRoot, "src", "main", "java")));
+    assert.ok(fs.existsSync(path.join(fixtureRoot, "src", "main", "kotlin")));
     assert.deepEqual(
       detection.projects.map((project) => ({
         root: project.root,

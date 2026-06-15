@@ -33,7 +33,7 @@ Implemented:
 
 ## Adapter-Ready Fixtures
 
-- `kotlin-junit-basic` detects as an unsupported JVM project until a Kotlin/JUnit adapter exists.
+- `kotlin-junit-basic` contains Java and Kotlin sources and detects as one unsupported JVM project until a Kotlin/JUnit adapter exists.
 
 ## MCP Surface
 
