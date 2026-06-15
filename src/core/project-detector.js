@@ -82,6 +82,16 @@ const MARKERS = [
   }
 ];
 
+export function getProjectDetectionRules() {
+  return {
+    markers: MARKERS.map((marker) => ({
+      ...marker,
+      languages: [...marker.languages]
+    })),
+    ignoredDirectories: [...IGNORED_DIRECTORIES].sort()
+  };
+}
+
 export function detectProjects(repoRoot) {
   const absoluteRoot = path.resolve(repoRoot);
   const markerGroups = collectMarkerGroups(absoluteRoot);
