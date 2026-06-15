@@ -8,6 +8,7 @@ import { summarizeProjectAudits } from "../src/core/project-audit-summary.js";
 import { auditDetectedProjects } from "../src/core/project-auditor.js";
 import { rankProjectTestCandidates } from "../src/core/project-candidate-ranking.js";
 import { detectProjects, getProjectDetectionRules } from "../src/core/project-detector.js";
+import { analyzeProjectTestPlacement } from "../src/core/project-test-placement-analysis.js";
 import { createProjectTestPlan } from "../src/core/project-test-plan.js";
 import { rankTestCandidates } from "../src/core/rank-test-candidates.js";
 import { createTestPlacementFindings } from "../src/core/test-placement-findings.js";
@@ -99,6 +100,13 @@ describe("test placement findings artifact schema compatibility", () => {
     ]);
 
     assertMatchesSchema(artifact, testPlacementFindingsSchema, "test-placement-findings.json");
+  });
+
+  it("validates project-derived test-placement-findings/v1", () => {
+    const projectAudits = auditDetectedProjects(path.resolve("examples/polyglot-workspace"));
+    const artifact = analyzeProjectTestPlacement(projectAudits);
+
+    assertMatchesSchema(artifact, testPlacementFindingsSchema, "project-test-placement-findings.json");
   });
 });
 
