@@ -158,6 +158,31 @@ describe("project detector", () => {
     );
   });
 
+  it("detects PHP Composer projects", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-php-"));
+    fs.mkdirSync(path.join(root, "services", "cms"), { recursive: true });
+    fs.writeFileSync(path.join(root, "services", "cms", "composer.json"), "{\"require\":{}}\n");
+
+    const detection = detectProjects(root);
+
+    assert.deepEqual(
+      detection.projects.map((project) => ({
+        root: project.root,
+        ecosystems: project.ecosystems,
+        languages: project.languages,
+        supported: project.supported
+      })),
+      [
+        {
+          root: "services/cms",
+          ecosystems: ["php"],
+          languages: ["php"],
+          supported: false
+        }
+      ]
+    );
+  });
+
   it("detects Rust Cargo projects", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-rust-"));
     fs.mkdirSync(path.join(root, "crates", "worker"), { recursive: true });

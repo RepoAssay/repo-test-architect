@@ -26,6 +26,11 @@ const MARKERS = [
     languages: ["ruby"]
   },
   {
+    fileName: "composer.json",
+    ecosystem: "php",
+    languages: ["php"]
+  },
+  {
     fileName: "go.mod",
     ecosystem: "go",
     languages: ["go"]
