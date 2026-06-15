@@ -31,6 +31,11 @@ const MARKERS = [
     languages: ["php"]
   },
   {
+    fileName: "mix.exs",
+    ecosystem: "elixir",
+    languages: ["elixir"]
+  },
+  {
     fileName: "go.mod",
     ecosystem: "go",
     languages: ["go"]

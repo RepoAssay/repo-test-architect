@@ -113,6 +113,7 @@ Examples:
 - Rust service plus JavaScript tooling
 - Ruby service plus JavaScript tooling
 - PHP service plus JavaScript tooling
+- Elixir service plus JavaScript tooling
 - Kotlin Android app plus JavaScript tooling
 - Java or Kotlin Maven service plus JavaScript tooling
 - .NET service plus JavaScript tooling

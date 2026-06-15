@@ -183,6 +183,31 @@ describe("project detector", () => {
     );
   });
 
+  it("detects Elixir Mix projects", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-elixir-"));
+    fs.mkdirSync(path.join(root, "services", "notifications"), { recursive: true });
+    fs.writeFileSync(path.join(root, "services", "notifications", "mix.exs"), "defmodule Notifications.MixProject do\nend\n");
+
+    const detection = detectProjects(root);
+
+    assert.deepEqual(
+      detection.projects.map((project) => ({
+        root: project.root,
+        ecosystems: project.ecosystems,
+        languages: project.languages,
+        supported: project.supported
+      })),
+      [
+        {
+          root: "services/notifications",
+          ecosystems: ["elixir"],
+          languages: ["elixir"],
+          supported: false
+        }
+      ]
+    );
+  });
+
   it("detects Rust Cargo projects", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-rust-"));
     fs.mkdirSync(path.join(root, "crates", "worker"), { recursive: true });
