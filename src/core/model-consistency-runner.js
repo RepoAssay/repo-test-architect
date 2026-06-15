@@ -117,11 +117,23 @@ function buildToolArgs(scenario, sourceArtifact) {
  * @returns {unknown}
  */
 function readPath(value, fieldPath) {
-  return fieldPath.split(".").reduce((current, segment) => {
+  return parsePath(fieldPath).reduce((current, segment) => {
     if (current && typeof current === "object" && segment in current) {
       return current[segment];
     }
 
     return undefined;
   }, value);
+}
+
+/**
+ * @param {string} fieldPath
+ * @returns {string[]}
+ */
+function parsePath(fieldPath) {
+  return fieldPath
+    .replaceAll("[", ".")
+    .replaceAll("]", "")
+    .split(".")
+    .filter(Boolean);
 }

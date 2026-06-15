@@ -1,0 +1,46 @@
+{
+  "schemaVersion": "model-consistency-scenario/v1",
+  "id": "node-vitest-basic-ranking",
+  "description": "Different model profiles should preserve deterministic candidate ranking order and counts for the same audit graph.",
+  "sourceArtifact": {
+    "path": "evals/expected/node-vitest-basic.audit.json",
+    "schemaVersion": "audit/v1"
+  },
+  "toolCall": {
+    "toolName": "rank_test_candidates",
+    "arguments": {}
+  },
+  "lockedFields": [
+    {
+      "path": "summary.candidateCount",
+      "expected": 2,
+      "reason": "The number of directly ranked test candidates is determined by the audit graph."
+    },
+    {
+      "path": "candidates[0].targetId",
+      "expected": "src/deckParser.ts",
+      "reason": "deckParser has the highest deterministic priority from risk reduction minus maintenance cost."
+    },
+    {
+      "path": "candidates[0].priority",
+      "expected": 7,
+      "reason": "Candidate priority must remain tied to deterministic scoring."
+    },
+    {
+      "path": "candidates[1].targetId",
+      "expected": "src/authService.ts",
+      "reason": "authService remains the next ranked test candidate for this fixture."
+    }
+  ],
+  "allowedVariations": [
+    "summary wording",
+    "candidate explanation wording",
+    "optional detail depth"
+  ],
+  "unexpectedVariations": [
+    "different candidate count",
+    "different ranking order",
+    "different priority score",
+    "invented candidate target"
+  ]
+}

@@ -165,11 +165,13 @@ describe("project test plan artifact schema compatibility", () => {
 });
 
 describe("model consistency scenario schema compatibility", () => {
-  it("validates model-consistency-scenario/v1", () => {
-    const artifact = readJson("evals/model-consistency/node-vitest-basic-auth-explanation.scenario.json");
+  for (const scenarioPath of fs.readdirSync("evals/model-consistency").filter((fileName) => fileName.endsWith(".scenario.json"))) {
+    it(`validates ${scenarioPath}`, () => {
+      const artifact = readJson(path.join("evals/model-consistency", scenarioPath));
 
-    assertMatchesSchema(artifact, modelConsistencyScenarioSchema, "node-vitest-basic-auth-explanation.scenario.json");
-  });
+      assertMatchesSchema(artifact, modelConsistencyScenarioSchema, scenarioPath);
+    });
+  }
 });
 
 function readJson(filePath) {

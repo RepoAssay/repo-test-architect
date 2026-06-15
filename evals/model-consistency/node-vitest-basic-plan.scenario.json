@@ -1,0 +1,56 @@
+{
+  "schemaVersion": "model-consistency-scenario/v1",
+  "id": "node-vitest-basic-plan",
+  "description": "Different model profiles should preserve deterministic plan actions, ordering, and verification command for the same audit graph.",
+  "sourceArtifact": {
+    "path": "evals/expected/node-vitest-basic.audit.json",
+    "schemaVersion": "audit/v1"
+  },
+  "toolCall": {
+    "toolName": "generate_test_plan",
+    "arguments": {}
+  },
+  "lockedFields": [
+    {
+      "path": "summary.verificationCommand",
+      "expected": "npm run test",
+      "reason": "The repo-native verification command comes from deterministic convention detection."
+    },
+    {
+      "path": "summary.addTestCount",
+      "expected": 1,
+      "reason": "The audit graph contains one untested candidate."
+    },
+    {
+      "path": "summary.extendTestCount",
+      "expected": 1,
+      "reason": "The audit graph contains one covered-but-risky candidate."
+    },
+    {
+      "path": "items[0].id",
+      "expected": "extend-test:src/deckParser.ts",
+      "reason": "The highest priority plan item should remain the deckParser edge-case extension."
+    },
+    {
+      "path": "items[1].id",
+      "expected": "add-test:src/authService.ts",
+      "reason": "The authService unit test remains the next highest value plan item."
+    },
+    {
+      "path": "items[2].action",
+      "expected": "defer",
+      "reason": "The DTO-only candidate should remain deferred instead of receiving a direct generated test."
+    }
+  ],
+  "allowedVariations": [
+    "summary wording",
+    "implementation advice wording",
+    "optional explanation depth"
+  ],
+  "unexpectedVariations": [
+    "different verification command",
+    "different plan action counts",
+    "different plan ordering",
+    "direct DTO test recommendation"
+  ]
+}

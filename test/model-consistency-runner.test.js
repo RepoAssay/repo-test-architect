@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
 import { describe, it } from "node:test";
 import {
   readModelConsistencyScenario,
@@ -6,6 +8,7 @@ import {
 } from "../src/core/model-consistency-runner.js";
 
 const scenarioPath = "evals/model-consistency/node-vitest-basic-auth-explanation.scenario.json";
+const scenarioDir = "evals/model-consistency";
 
 describe("model consistency runner", () => {
   it("passes when locked fields match the deterministic tool result", () => {
@@ -39,6 +42,39 @@ describe("model consistency runner", () => {
         reason: "This intentionally differs from the deterministic unit-test recommendation."
       }
     ]);
+  });
+
+  it("supports locked field paths with array indexes", () => {
+    const scenario = readModelConsistencyScenario("evals/model-consistency/node-vitest-basic-plan.scenario.json");
+    const result = runModelConsistencyScenario({
+      ...scenario,
+      lockedFields: [
+        {
+          path: "items[0].id",
+          expected: "extend-test:src/deckParser.ts",
+          reason: "Array index paths should resolve into deterministic tool output."
+        }
+      ]
+    });
+
+    assert.deepEqual(result.failures, []);
+  });
+
+  it("passes every checked-in model consistency scenario", () => {
+    const results = fs
+      .readdirSync(scenarioDir)
+      .filter((fileName) => fileName.endsWith(".scenario.json"))
+      .map((fileName) => readModelConsistencyScenario(path.join(scenarioDir, fileName)))
+      .map((scenario) => runModelConsistencyScenario(scenario));
+
+    assert.deepEqual(
+      results.map((result) => [result.scenarioId, result.failures]),
+      [
+        ["node-vitest-basic-auth-explanation", []],
+        ["node-vitest-basic-plan", []],
+        ["node-vitest-basic-ranking", []]
+      ]
+    );
   });
 
   it("rejects scenarios with the wrong schema version", () => {
