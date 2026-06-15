@@ -10,13 +10,13 @@ This project is not ready to publish yet. Keep `private: true` in `package.json`
   - `repo-test-architect`
   - `repo-test-architect-mcp`
   - `repo-test-architect-mcp-invoke`
+- review the existing `files` allowlist before publishing
 - add the intended npm package name to MCP client config examples
 - verify `npm run pack:dry-run` includes only intended files
 - add package metadata before publishing:
   - `repository`
   - `homepage`
   - `bugs`
-  - `files`
   - final `license`
   - final `keywords`
 
