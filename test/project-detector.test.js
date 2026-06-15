@@ -118,4 +118,15 @@ describe("project detector", () => {
     assert.equal(detection.summary.projectCount, 0);
     assert.deepEqual(detection.projects, []);
   });
+
+  it("ignores generated .NET output directories", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-dotnet-output-"));
+    fs.mkdirSync(path.join(root, "obj", "Debug"), { recursive: true });
+    fs.writeFileSync(path.join(root, "obj", "Debug", "Generated.csproj"), "<Project />\n");
+
+    const detection = detectProjects(root);
+
+    assert.equal(detection.summary.projectCount, 0);
+    assert.deepEqual(detection.projects, []);
+  });
 });
