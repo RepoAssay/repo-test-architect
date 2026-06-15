@@ -122,7 +122,7 @@ npm run eval:test
 npm run eval:update
 ```
 
-Node is required for the CLI. If Node is not available yet, the repository still includes a PowerShell smoke check:
+Node 20 or newer is required for the CLI. If Node is not available yet, the repository still includes a PowerShell smoke check:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File ./scripts/smoke.ps1

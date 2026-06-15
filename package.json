@@ -4,6 +4,9 @@
   "private": true,
   "description": "Audit-first test strategy agent for repository-native test planning.",
   "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
   "bin": {
     "repo-test-architect": "./src/cli/index.js",
     "repo-test-architect-mcp": "./src/mcp/stdio.js",

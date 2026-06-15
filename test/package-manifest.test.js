@@ -9,6 +9,10 @@ describe("package manifest", () => {
     assert.equal(packageJson.private, true);
   });
 
+  it("declares the supported Node runtime floor", () => {
+    assert.equal(packageJson.engines.node, ">=20");
+  });
+
   it("keeps stable CLI and MCP binary entry points", () => {
     assert.deepEqual(Object.keys(packageJson.bin).sort(), [
       "repo-test-architect",
