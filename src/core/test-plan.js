@@ -1,3 +1,57 @@
+/**
+ * @typedef {"unit" | "integration" | "component" | "ui" | "none"} TestLevel
+ * @typedef {"add-test" | "extend-test" | "defer"} PlanAction
+ *
+ * @typedef {object} AuditProfile
+ * @property {string} confidence
+ * @property {string} [testCommand]
+ * @property {string[]} blockers
+ *
+ * @typedef {object} AuditTarget
+ * @property {string} id
+ * @property {string} name
+ * @property {string} path
+ * @property {TestLevel} recommendedTestLevel
+ * @property {number} riskReductionScore
+ * @property {number} maintenanceCost
+ * @property {string[]} signals
+ * @property {string[]} [reasons]
+ * @property {string} [reason]
+ * @property {string} [preferredCoveragePath]
+ * @property {string[]} [existingTestPaths]
+ *
+ * @typedef {object} AuditResult
+ * @property {"audit/v1"} schemaVersion
+ * @property {AuditProfile} profile
+ * @property {AuditTarget[]} untestedCandidates
+ * @property {AuditTarget[]} coveredButRisky
+ * @property {AuditTarget[]} skipped
+ *
+ * @typedef {object} TestPlanItem
+ * @property {string} id
+ * @property {PlanAction} action
+ * @property {string} targetId
+ * @property {string} target
+ * @property {string} path
+ * @property {TestLevel} testLevel
+ * @property {number} priority
+ * @property {number} riskReductionScore
+ * @property {number} maintenanceCost
+ * @property {string[]} rationale
+ * @property {string[]} sourceSignals
+ * @property {string[]} existingTestPaths
+ *
+ * @typedef {object} TestPlan
+ * @property {"plan/v1"} schemaVersion
+ * @property {object} summary
+ * @property {string[]} blockers
+ * @property {TestPlanItem[]} items
+ */
+
+/**
+ * @param {AuditResult} audit
+ * @returns {TestPlan}
+ */
 export function createTestPlan(audit) {
   const addItems = audit.untestedCandidates.map((target) => toPlanItem("add-test", target));
   const extendItems = audit.coveredButRisky.map((target) => toPlanItem("extend-test", target));
@@ -37,6 +91,11 @@ export function createTestPlan(audit) {
   };
 }
 
+/**
+ * @param {"add-test" | "extend-test"} action
+ * @param {AuditTarget} target
+ * @returns {TestPlanItem}
+ */
 function toPlanItem(action, target) {
   return {
     id: `${action}:${target.path}`,

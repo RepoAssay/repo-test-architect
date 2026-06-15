@@ -1,3 +1,56 @@
+/**
+ * @typedef {"untestedCandidates" | "coveredButRisky" | "skipped"} ExplanationCategory
+ * @typedef {"unit" | "integration" | "component" | "ui" | "none"} TestLevel
+ *
+ * @typedef {object} AuditTarget
+ * @property {string} id
+ * @property {string} name
+ * @property {string} path
+ * @property {string} kind
+ * @property {string} [risk]
+ * @property {string} [testability]
+ * @property {TestLevel} [recommendedTestLevel]
+ * @property {number} riskReductionScore
+ * @property {number} maintenanceCost
+ * @property {string[]} signals
+ * @property {string[]} [reasons]
+ * @property {string} [reason]
+ * @property {string} [preferredCoveragePath]
+ * @property {string[]} [existingTestPaths]
+ *
+ * @typedef {object} AuditResult
+ * @property {"audit/v1"} schemaVersion
+ * @property {AuditTarget[]} untestedCandidates
+ * @property {AuditTarget[]} coveredButRisky
+ * @property {AuditTarget[]} skipped
+ *
+ * @typedef {object} TargetMatch
+ * @property {AuditTarget} target
+ * @property {ExplanationCategory} category
+ *
+ * @typedef {object} TargetExplanation
+ * @property {"target-explanation/v1"} schemaVersion
+ * @property {string} targetId
+ * @property {string} target
+ * @property {string} path
+ * @property {ExplanationCategory} category
+ * @property {string} kind
+ * @property {"test" | "defer"} recommendation
+ * @property {TestLevel} testLevel
+ * @property {string} risk
+ * @property {string} testability
+ * @property {number} riskReductionScore
+ * @property {number} maintenanceCost
+ * @property {string[]} signals
+ * @property {string[]} rationale
+ * @property {string[]} existingTestPaths
+ */
+
+/**
+ * @param {AuditResult} audit
+ * @param {string} targetId
+ * @returns {TargetExplanation}
+ */
 export function explainTarget(audit, targetId) {
   if (!targetId) {
     throw new Error("--target requires an audit target id.");
@@ -31,6 +84,11 @@ export function explainTarget(audit, targetId) {
   };
 }
 
+/**
+ * @param {AuditResult} audit
+ * @param {string} targetId
+ * @returns {TargetMatch | undefined}
+ */
 function findTarget(audit, targetId) {
   for (const category of ["untestedCandidates", "coveredButRisky", "skipped"]) {
     const target = audit[category].find((candidate) => candidate.id === targetId);
