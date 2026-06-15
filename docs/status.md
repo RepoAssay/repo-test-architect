@@ -21,6 +21,7 @@ Implemented:
 - golden snapshots for fixture audits, plans, and MCP tool descriptors
 - changed-file workflows with `--changed` and `--changed-since`
 - MCP-shaped tool descriptors, local invoke harness, and dependency-free stdio JSON-RPC scaffold
+- release-readiness checklist, npm package dry-run script, and package contents allowlist
 
 ## Supported Fixtures
 
@@ -67,6 +68,7 @@ npm run mcp:adapters
 npm test
 npm run eval:check
 powershell -ExecutionPolicy Bypass -File ./scripts/smoke.ps1
+npm run pack:dry-run
 ```
 
 The project-derived CLI commands also accept `--from-project-audits` for reusing a saved `project-audits/v1` artifact.

@@ -33,4 +33,10 @@ describe("package manifest", () => {
     assert.ok(packageJson.scripts.smoke);
     assert.ok(packageJson.scripts["eval:check"]);
   });
+
+  it("documents package dry-run verification in project status", () => {
+    const status = fs.readFileSync("docs/status.md", "utf8");
+
+    assert.ok(status.includes("npm run pack:dry-run"));
+  });
 });
