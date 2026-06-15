@@ -4,6 +4,7 @@ import { describe, it } from "node:test";
 import {
   auditRepoProjects,
   auditRepo,
+  createRepoTestPlacementFindings,
   detectRepoProjects,
   explainAuditTarget,
   generateTestPlan,
@@ -105,6 +106,23 @@ describe("tool API", () => {
     assert.equal(explanation.schemaVersion, "target-explanation/v1");
     assert.equal(ranking.schemaVersion, "candidate-ranking/v1");
     assert.equal(ranking.summary.candidateCount, 2);
+  });
+
+  it("creates test placement findings artifacts", () => {
+    const artifact = createRepoTestPlacementFindings([
+      {
+        id: "keep:test/authService.test.ts",
+        testFile: "test/authService.test.ts",
+        currentOwner: "node-vitest-basic",
+        suggestedOwner: "node-vitest-basic",
+        action: "keep",
+        reason: "Test already lives with the project that owns the target behavior.",
+        evidence: ["imports ../src/authService.ts"]
+      }
+    ]);
+
+    assert.equal(artifact.schemaVersion, "test-placement-findings/v1");
+    assert.equal(artifact.findings[0].action, "keep");
   });
 
   it("rejects invalid audit artifacts", () => {

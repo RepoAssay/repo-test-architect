@@ -6,6 +6,7 @@ import { detectProjects, getProjectDetectionRules as readProjectDetectionRules }
 import { rankProjectTestCandidates } from "./project-candidate-ranking.js";
 import { createProjectTestPlan } from "./project-test-plan.js";
 import { rankTestCandidates } from "./rank-test-candidates.js";
+import { createTestPlacementFindings } from "./test-placement-findings.js";
 import { createTestPlan } from "./test-plan.js";
 
 export function detectRepoProjects(repoRoot) {
@@ -60,6 +61,10 @@ export function explainAuditTarget(audit, targetId) {
 export function rankAuditTestCandidates(audit) {
   validateAudit(audit);
   return rankTestCandidates(audit);
+}
+
+export function createRepoTestPlacementFindings(findings = []) {
+  return createTestPlacementFindings(findings);
 }
 
 export function validateAudit(audit) {
