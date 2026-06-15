@@ -73,7 +73,8 @@ describe("model consistency runner", () => {
         ["node-no-tests-yet-plan", []],
         ["node-vitest-basic-auth-explanation", []],
         ["node-vitest-basic-plan", []],
-        ["node-vitest-basic-ranking", []]
+        ["node-vitest-basic-ranking", []],
+        ["react-testing-library-plan", []]
       ]
     );
   });

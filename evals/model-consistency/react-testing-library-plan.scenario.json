@@ -1,0 +1,67 @@
+{
+  "schemaVersion": "model-consistency-scenario/v1",
+  "id": "react-testing-library-plan",
+  "description": "Different model profiles should preserve React Testing Library planning decisions, including component-level extension and presentational-component deferral.",
+  "sourceArtifact": {
+    "path": "evals/expected/react-testing-library.audit.json",
+    "schemaVersion": "audit/v1"
+  },
+  "toolCall": {
+    "toolName": "generate_test_plan",
+    "arguments": {}
+  },
+  "lockedFields": [
+    {
+      "path": "summary.verificationCommand",
+      "expected": "npm run test",
+      "reason": "The repo-native verification command comes from deterministic convention detection."
+    },
+    {
+      "path": "summary.addTestCount",
+      "expected": 1,
+      "reason": "The service layer has one untested candidate."
+    },
+    {
+      "path": "summary.extendTestCount",
+      "expected": 1,
+      "reason": "The interactive LoginForm component has an existing matching React Testing Library test."
+    },
+    {
+      "path": "summary.deferredCount",
+      "expected": 2,
+      "reason": "DTO and presentational component targets should remain indirect/deferred coverage."
+    },
+    {
+      "path": "items[1].id",
+      "expected": "extend-test:src/components/LoginForm.tsx",
+      "reason": "Existing RTL component coverage should be extended rather than treated as a new unit test."
+    },
+    {
+      "path": "items[1].testLevel",
+      "expected": "component",
+      "reason": "React component behavior should remain a component-level recommendation."
+    },
+    {
+      "path": "items[3].id",
+      "expected": "defer:src/components/Avatar.tsx",
+      "reason": "Pure presentational components should stay deferred instead of getting direct generated tests."
+    },
+    {
+      "path": "items[3].testLevel",
+      "expected": "none",
+      "reason": "The presentational Avatar component is best covered through parent or flow tests."
+    }
+  ],
+  "allowedVariations": [
+    "summary wording",
+    "component explanation wording",
+    "optional detail depth"
+  ],
+  "unexpectedVariations": [
+    "direct Avatar test recommendation",
+    "unit-level LoginForm recommendation",
+    "missing React Testing Library convention",
+    "different verification command",
+    "different plan action counts"
+  ]
+}
