@@ -22,7 +22,7 @@ Implemented:
 - documented polyglot artifact workflow from project detection through project test planning
 - stable JSON schemas for generated artifacts
 - golden snapshots for fixture audits, plans, and MCP tool descriptors
-- model-consistency scenario artifacts for comparing explanation, ranking, planning, no-framework blocker, and React component planning output against deterministic locked fields
+- model-consistency scenario artifacts for comparing explanation, ranking, planning, no-framework blocker, React component, and Express/Supertest route output against deterministic locked fields
 - deterministic model-consistency scenario runner for checking locked fields against tool output
 - changed-file workflows with `--changed` and `--changed-since`
 - MCP-shaped tool descriptors, local invoke harness, and dependency-free stdio JSON-RPC scaffold

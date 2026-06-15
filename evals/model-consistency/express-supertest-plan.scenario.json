@@ -1,0 +1,62 @@
+{
+  "schemaVersion": "model-consistency-scenario/v1",
+  "id": "express-supertest-plan",
+  "description": "Different model profiles should preserve Express/Supertest planning decisions, including route integration extension and app wiring deferral.",
+  "sourceArtifact": {
+    "path": "evals/expected/express-supertest.audit.json",
+    "schemaVersion": "audit/v1"
+  },
+  "toolCall": {
+    "toolName": "generate_test_plan",
+    "arguments": {}
+  },
+  "lockedFields": [
+    {
+      "path": "summary.verificationCommand",
+      "expected": "npm run test",
+      "reason": "The repo-native verification command comes from deterministic Jest/Supertest convention detection."
+    },
+    {
+      "path": "summary.addTestCount",
+      "expected": 1,
+      "reason": "The service layer has one untested direct candidate."
+    },
+    {
+      "path": "summary.extendTestCount",
+      "expected": 1,
+      "reason": "The covered route target should be extended for missing integration edge cases."
+    },
+    {
+      "path": "items[1].id",
+      "expected": "extend-test:src/routes/userRoutes.ts",
+      "reason": "Existing Supertest route coverage should be extended rather than replaced with a new unit test."
+    },
+    {
+      "path": "items[1].testLevel",
+      "expected": "integration",
+      "reason": "HTTP route behavior should remain an integration-level recommendation."
+    },
+    {
+      "path": "items[2].id",
+      "expected": "defer:src/app.ts",
+      "reason": "Application wiring should stay deferred to route or integration tests."
+    },
+    {
+      "path": "items[2].testLevel",
+      "expected": "none",
+      "reason": "The app wiring file should not receive a direct generated test recommendation."
+    }
+  ],
+  "allowedVariations": [
+    "summary wording",
+    "route edge-case explanation wording",
+    "optional detail depth"
+  ],
+  "unexpectedVariations": [
+    "unit-level route recommendation",
+    "direct app wiring test recommendation",
+    "missing Supertest/Jest verification command",
+    "different plan action counts",
+    "different route placement in the plan"
+  ]
+}
