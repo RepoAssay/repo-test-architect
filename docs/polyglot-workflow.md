@@ -55,12 +55,13 @@ Project-derived commands can read a saved `project-audits/v1` file:
 node ./src/cli/index.js summarize-projects --from-project-audits ./project-audits.json --format json
 node ./src/cli/index.js rank-projects --from-project-audits ./project-audits.json --format json
 node ./src/cli/index.js plan-projects --from-project-audits ./project-audits.json --format json
+node ./src/cli/index.js placement-projects --from-project-audits ./project-audits.json --format json
 ```
 
 This keeps the deterministic audit boundary clear:
 
 - scanning and classification happen once
-- summaries, rankings, and plans are derived from the saved artifact
+- summaries, rankings, plans, and placement findings are derived from the saved artifact
 - model-assisted layers can consume the same artifact without inventing repo facts
 
 ## 4. Summarize
@@ -92,6 +93,16 @@ node ./src/cli/index.js plan-projects ./examples/polyglot-workspace --format jso
 This emits `project-test-plan/v1`.
 
 The project test plan keeps each underlying `plan/v1` artifact available, but also exposes flattened plan items with project identity attached. Future generation should target stable plan item IDs from this artifact.
+
+## 7. Analyze Test Placement
+
+```powershell
+node ./src/cli/index.js placement-projects ./examples/node-vitest-basic --format json
+```
+
+This emits `test-placement-findings/v1`.
+
+Project placement analysis derives advisory findings from `project-audits/v1` while preserving project owner identity. The first implementation only emits conservative `keep` findings for tests already matched to audited targets in the same project.
 
 ## Adapter Execution Model
 

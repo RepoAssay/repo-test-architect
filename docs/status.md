@@ -74,6 +74,7 @@ npm run summarize-projects:example:json
 npm run rank-projects:example:json
 npm run plan-projects:example:json
 npm run placement:example:json
+npm run placement-projects:example:json
 npm run mcp:adapters
 npm test
 npm run eval:check

@@ -3,6 +3,7 @@ import fs from "node:fs";
 import { execFileSync } from "node:child_process";
 import path from "node:path";
 import {
+  analyzeRepoProjectTestPlacement,
   analyzeRepoTestPlacement,
   auditRepoProjects,
   auditRepo,
@@ -20,8 +21,8 @@ import {
 
 const options = parseArgs(process.argv.slice(2));
 
-if (!["adapters", "detect-rules", "detect", "audit-projects", "summarize-projects", "rank-projects", "plan-projects", "audit", "plan", "explain", "rank", "placement"].includes(options.command)) {
-  console.error("Usage: repo-test-architect <adapters|detect-rules|detect|audit-projects|summarize-projects|rank-projects|plan-projects|audit|plan|explain|rank|placement> <repo> [--format markdown|json] [--from-audit audit.json] [--from-project-audits project-audits.json] [--item id] [--target id] [--owner label] [--changed] [--changed-since ref]");
+if (!["adapters", "detect-rules", "detect", "audit-projects", "summarize-projects", "rank-projects", "plan-projects", "placement-projects", "audit", "plan", "explain", "rank", "placement"].includes(options.command)) {
+  console.error("Usage: repo-test-architect <adapters|detect-rules|detect|audit-projects|summarize-projects|rank-projects|plan-projects|placement-projects|audit|plan|explain|rank|placement> <repo> [--format markdown|json] [--from-audit audit.json] [--from-project-audits project-audits.json] [--item id] [--target id] [--owner label] [--changed] [--changed-since ref]");
   process.exit(1);
 }
 
@@ -35,8 +36,8 @@ if (options.fromAuditPath && !["plan", "explain", "rank", "placement"].includes(
   process.exit(1);
 }
 
-if (options.fromProjectAuditsPath && !["audit-projects", "summarize-projects", "rank-projects", "plan-projects"].includes(options.command)) {
-  console.error("--from-project-audits is only supported with audit-projects, summarize-projects, rank-projects, and plan-projects commands.");
+if (options.fromProjectAuditsPath && !["audit-projects", "summarize-projects", "rank-projects", "plan-projects", "placement-projects"].includes(options.command)) {
+  console.error("--from-project-audits is only supported with audit-projects, summarize-projects, rank-projects, plan-projects, and placement-projects commands.");
   process.exit(1);
 }
 
@@ -46,7 +47,7 @@ const detectionRules = options.command === "detect-rules" ? getProjectDetectionR
 const detection = options.command === "detect" ? detectRepoProjects(repoRoot) : undefined;
 const projectAudits = options.fromProjectAuditsPath
   ? readProjectAuditsJson(options.fromProjectAuditsPath)
-  : ["audit-projects", "summarize-projects", "rank-projects", "plan-projects"].includes(options.command)
+  : ["audit-projects", "summarize-projects", "rank-projects", "plan-projects", "placement-projects"].includes(options.command)
     ? auditRepoProjects(repoRoot)
     : undefined;
 const audit = options.fromAuditPath
@@ -74,6 +75,8 @@ if (options.format === "json") {
   console.log(renderMarkdownProjectCandidateRanking(output));
 } else if (options.command === "plan-projects") {
   console.log(renderMarkdownProjectTestPlan(output));
+} else if (options.command === "placement-projects") {
+  console.log(renderMarkdownPlacement(output));
 } else if (options.command === "plan") {
   console.log(renderMarkdownPlan(output));
 } else if (options.command === "explain") {
@@ -317,6 +320,7 @@ function selectProjectOutput(projectAudits, options) {
   if (options.command === "summarize-projects") return summarizeRepoProjectAudits(projectAudits);
   if (options.command === "rank-projects") return rankRepoProjectCandidates(projectAudits);
   if (options.command === "plan-projects") return generateRepoProjectTestPlan(projectAudits);
+  if (options.command === "placement-projects") return analyzeRepoProjectTestPlacement(projectAudits);
   return projectAudits;
 }
 

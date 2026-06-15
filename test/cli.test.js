@@ -190,7 +190,34 @@ describe("CLI", () => {
     );
   });
 
-  it("summarizes, ranks, and plans from an existing project audits file", () => {
+  it("emits project test placement findings in markdown", () => {
+    const output = execFileSync(process.execPath, [cliPath, "placement-projects", "examples/node-vitest-basic"], {
+      encoding: "utf8"
+    });
+
+    assert.match(output, /^# Test Placement Findings/);
+    assert.match(output, /Findings: 1/);
+    assert.match(output, /keep: src\/deckParser\.test\.ts \(\. -> \.\)/);
+  });
+
+  it("emits project test placement findings as JSON", () => {
+    const output = execFileSync(
+      process.execPath,
+      [cliPath, "placement-projects", "examples/node-vitest-basic", "--format=json"],
+      {
+        encoding: "utf8"
+      }
+    );
+    const placement = JSON.parse(output);
+
+    assert.equal(placement.schemaVersion, "test-placement-findings/v1");
+    assert.deepEqual(
+      placement.findings.map((finding) => `${finding.id}:${finding.testFile}`),
+      [".:keep:src/deckParser.test.ts:src/deckParser.ts:src/deckParser.test.ts"]
+    );
+  });
+
+  it("summarizes, ranks, plans, and analyzes placement from an existing project audits file", () => {
     const projectAuditsPath = writeTempJson(
       JSON.parse(
         execFileSync(process.execPath, [cliPath, "audit-projects", "examples/polyglot-workspace", "--format=json"], {
@@ -219,11 +246,20 @@ describe("CLI", () => {
         { encoding: "utf8" }
       )
     );
+    const placement = JSON.parse(
+      execFileSync(
+        process.execPath,
+        [cliPath, "placement-projects", "--from-project-audits", projectAuditsPath, "--format=json"],
+        { encoding: "utf8" }
+      )
+    );
 
     assert.equal(summary.schemaVersion, "project-audit-summary/v1");
     assert.equal(ranking.schemaVersion, "project-candidate-ranking/v1");
     assert.equal(plan.schemaVersion, "project-test-plan/v1");
     assert.equal(plan.summary.itemCount, 1);
+    assert.equal(placement.schemaVersion, "test-placement-findings/v1");
+    assert.equal(placement.findings.length, 0);
   });
 
   it("emits project audits from an existing project audits file", () => {
