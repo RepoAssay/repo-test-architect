@@ -1,0 +1,75 @@
+{
+  "schemaVersion": "model-consistency-scenario/v1",
+  "id": "node-jest-service-plan",
+  "description": "Jest service fixture should preserve the native test command, extend existing parser tests, add service coverage, and defer DTO-only models.",
+  "sourceArtifact": {
+    "path": "evals/expected/node-jest-service.audit.json",
+    "schemaVersion": "audit/v1"
+  },
+  "toolCall": {
+    "toolName": "generate_test_plan",
+    "arguments": {}
+  },
+  "lockedFields": [
+    {
+      "path": "summary.verificationCommand",
+      "expected": "npm run test",
+      "reason": "The plan should keep the repository's discovered Jest verification command."
+    },
+    {
+      "path": "summary.addTestCount",
+      "expected": 1,
+      "reason": "The untested service boundary should be one add-test candidate."
+    },
+    {
+      "path": "summary.extendTestCount",
+      "expected": 1,
+      "reason": "The existing parser spec should be extended rather than duplicated."
+    },
+    {
+      "path": "summary.deferredCount",
+      "expected": 1,
+      "reason": "DTO-only code should be deferred from direct test generation."
+    },
+    {
+      "path": "items[0].id",
+      "expected": "extend-test:src/invoiceParser.ts",
+      "reason": "Existing parser tests should remain the highest-value first recommendation."
+    },
+    {
+      "path": "items[0].testLevel",
+      "expected": "unit",
+      "reason": "Parser logic should be covered with focused unit tests."
+    },
+    {
+      "path": "items[0].existingTestPaths[0]",
+      "expected": "src/invoiceParser.spec.ts",
+      "reason": "The planner should reuse the existing Jest spec file convention."
+    },
+    {
+      "path": "items[1].id",
+      "expected": "add-test:src/invoiceService.ts",
+      "reason": "The service boundary should be recommended for a new native unit test."
+    },
+    {
+      "path": "items[2].id",
+      "expected": "defer:src/invoiceDto.ts",
+      "reason": "DTO-only models should stay deferred rather than becoming direct test targets."
+    },
+    {
+      "path": "items[2].testLevel",
+      "expected": "none",
+      "reason": "Deferred DTO-only targets should not request a direct test level."
+    }
+  ],
+  "allowedVariations": [
+    "Rationale wording may change if it keeps the same native Jest strategy.",
+    "Additional non-locked metadata may be added."
+  ],
+  "unexpectedVariations": [
+    "Replacing the discovered Jest command with another verification command.",
+    "Generating a direct DTO test recommendation.",
+    "Dropping the existing parser spec path.",
+    "Changing the add, extend, or defer counts for this fixture."
+  ]
+}

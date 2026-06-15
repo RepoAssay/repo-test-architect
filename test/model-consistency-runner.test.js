@@ -71,6 +71,7 @@ describe("model consistency runner", () => {
       results.map((result) => [result.scenarioId, result.failures]),
       [
         ["express-supertest-plan", []],
+        ["node-jest-service-plan", []],
         ["node-no-tests-yet-plan", []],
         ["node-vitest-basic-auth-explanation", []],
         ["node-vitest-basic-plan", []],
