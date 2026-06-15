@@ -21,6 +21,11 @@ const MARKERS = [
     languages: ["python"]
   },
   {
+    fileName: "Gemfile",
+    ecosystem: "ruby",
+    languages: ["ruby"]
+  },
+  {
     fileName: "go.mod",
     ecosystem: "go",
     languages: ["go"]

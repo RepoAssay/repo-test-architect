@@ -133,6 +133,31 @@ describe("project detector", () => {
     );
   });
 
+  it("detects Ruby Bundler projects", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-ruby-"));
+    fs.mkdirSync(path.join(root, "services", "jobs"), { recursive: true });
+    fs.writeFileSync(path.join(root, "services", "jobs", "Gemfile"), "source \"https://rubygems.org\"\n");
+
+    const detection = detectProjects(root);
+
+    assert.deepEqual(
+      detection.projects.map((project) => ({
+        root: project.root,
+        ecosystems: project.ecosystems,
+        languages: project.languages,
+        supported: project.supported
+      })),
+      [
+        {
+          root: "services/jobs",
+          ecosystems: ["ruby"],
+          languages: ["ruby"],
+          supported: false
+        }
+      ]
+    );
+  });
+
   it("detects Rust Cargo projects", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-rust-"));
     fs.mkdirSync(path.join(root, "crates", "worker"), { recursive: true });

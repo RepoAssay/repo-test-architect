@@ -88,7 +88,7 @@ foreach ($signal in @("ecosystems", "javascript", "typescript")) {
 }
 
 $projectDetector = Get-Content (Join-Path $root "src/core/project-detector.js") -Raw
-foreach ($signal in @("Package.swift", "pyproject.toml", "go.mod", "Cargo.toml", ".csproj", "pom.xml", "build.gradle.kts", "ecosystem")) {
+foreach ($signal in @("Package.swift", "pyproject.toml", "Gemfile", "go.mod", "Cargo.toml", ".csproj", "pom.xml", "build.gradle.kts", "ecosystem")) {
   if (-not $projectDetector.Contains($signal)) {
     throw "Missing expected project detector signal: $signal"
   }
