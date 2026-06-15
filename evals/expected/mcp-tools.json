@@ -134,6 +134,27 @@
       }
     },
     {
+      "name": "analyze_project_test_placement",
+      "description": "Analyze project-aware test placement from a project-audits artifact.",
+      "outputArtifact": {
+        "schemaVersion": "test-placement-findings/v1",
+        "schemaPath": "schemas/test-placement-findings-v1.schema.json"
+      },
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "projectAudits"
+        ],
+        "properties": {
+          "projectAudits": {
+            "type": "object",
+            "description": "A project-audits/v1 artifact."
+          }
+        }
+      }
+    },
+    {
       "name": "audit_repo",
       "description": "Audit a repository and return the deterministic audit graph.",
       "outputArtifact": {

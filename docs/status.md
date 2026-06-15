@@ -50,6 +50,7 @@ Current tool names:
 - `summarize_project_audits`
 - `rank_project_candidates`
 - `generate_project_test_plan`
+- `analyze_project_test_placement`
 - `get_audit_graph`
 - `generate_test_plan`
 - `explain_target`
@@ -75,6 +76,7 @@ npm run rank-projects:example:json
 npm run plan-projects:example:json
 npm run placement:example:json
 npm run placement-projects:example:json
+npm run mcp:placement-projects:example
 npm run mcp:adapters
 npm test
 npm run eval:check

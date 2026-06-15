@@ -1,4 +1,5 @@
 import {
+  analyzeRepoProjectTestPlacement,
   analyzeRepoTestPlacement,
   auditRepoProjects,
   auditRepo,
@@ -65,6 +66,14 @@ export const mcpTools = [
     name: "generate_project_test_plan",
     description: "Generate a project-aware test plan from audited project roots.",
     outputArtifact: artifact("project-test-plan/v1", "schemas/project-test-plan-v1.schema.json"),
+    inputSchema: objectSchema({
+      projectAudits: { type: "object", description: "A project-audits/v1 artifact." }
+    }, ["projectAudits"])
+  },
+  {
+    name: "analyze_project_test_placement",
+    description: "Analyze project-aware test placement from a project-audits artifact.",
+    outputArtifact: artifact("test-placement-findings/v1", "schemas/test-placement-findings-v1.schema.json"),
     inputSchema: objectSchema({
       projectAudits: { type: "object", description: "A project-audits/v1 artifact." }
     }, ["projectAudits"])
@@ -161,6 +170,8 @@ export function callTool(name, args = {}) {
       return rankRepoProjectCandidates(requireObject(args.projectAudits, "projectAudits"));
     case "generate_project_test_plan":
       return generateRepoProjectTestPlan(requireObject(args.projectAudits, "projectAudits"));
+    case "analyze_project_test_placement":
+      return analyzeRepoProjectTestPlacement(requireObject(args.projectAudits, "projectAudits"));
     case "audit_repo":
       return auditRepo(requireString(args.repoRoot, "repoRoot"), {
         adapterId: optionalString(args.adapterId, "adapterId"),

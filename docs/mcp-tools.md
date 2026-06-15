@@ -21,6 +21,7 @@ Descriptor schema:
 - `summarize_project_audits`
 - `rank_project_candidates`
 - `generate_project_test_plan`
+- `analyze_project_test_placement`
 - `audit_repo`
 - `get_audit_graph`
 - `generate_test_plan`
@@ -42,6 +43,7 @@ The model should consume these artifacts directly:
 - compact repo-level project audit counts come from `summarize_project_audits`
 - project-aware candidate ordering comes from `rank_project_candidates`
 - project-aware test planning comes from `generate_project_test_plan`
+- project-aware test placement findings come from `analyze_project_test_placement`
 - audit facts come from `audit_repo` or `get_audit_graph`
 - target-level explanation comes from `explain_target`
 - candidate ordering comes from `rank_test_candidates`
@@ -65,6 +67,7 @@ Each tool descriptor includes `outputArtifact` metadata:
 | `summarize_project_audits` | `project-audit-summary/v1` |
 | `rank_project_candidates` | `project-candidate-ranking/v1` |
 | `generate_project_test_plan` | `project-test-plan/v1` |
+| `analyze_project_test_placement` | `test-placement-findings/v1` |
 | `audit_repo` | `audit/v1` |
 | `get_audit_graph` | `audit/v1` |
 | `generate_test_plan` | `plan/v1` |
@@ -80,6 +83,7 @@ Use `audit_projects` to audit detected supported project roots while reporting u
 Use `summarize_project_audits` when a client needs compact counts before asking for detailed per-project audit data.
 Use `rank_project_candidates` when a client needs ordered candidates across audited project roots while preserving project identity.
 Use `generate_project_test_plan` when a client needs project-aware plan items before selecting future generation targets.
+Use `analyze_project_test_placement` when a client needs advisory placement findings derived from audited project roots.
 `audit_repo` accepts an optional `adapterId`. The current registered adapter is `javascript`.
 
 ## Future Transport
@@ -128,6 +132,7 @@ npm run mcp:adapters
 npm run mcp:detect-rules
 npm run mcp:detect:example
 npm run mcp:audit-projects:example
+npm run mcp:placement-projects:example
 npm run mcp:audit:example
 npm run mcp:audit:envelope
 ```

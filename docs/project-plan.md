@@ -73,6 +73,7 @@ The MCP server should expose stable tools around the deterministic audit graph:
 - `summarize_project_audits`
 - `rank_project_candidates`
 - `generate_project_test_plan`
+- `analyze_project_test_placement`
 - `audit_repo`
 - `get_audit_graph`
 - `explain_target`
