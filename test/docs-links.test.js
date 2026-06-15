@@ -26,6 +26,18 @@ describe("docs links", () => {
     }
   });
 
+  it("keeps README CLI script examples complete", () => {
+    const readme = fs.readFileSync("README.md", "utf8");
+    const packageJson = JSON.parse(fs.readFileSync("package.json", "utf8"));
+    const cliScripts = Object.entries(packageJson.scripts)
+      .filter(([, command]) => command.startsWith("node ./src/cli/index.js"))
+      .map(([script]) => script);
+
+    for (const script of cliScripts) {
+      assert.ok(readme.includes(`npm run ${script}`), `Missing README CLI script example: ${script}`);
+    }
+  });
+
   it("keeps project detection docs aligned with detector rules", () => {
     const docs = fs.readFileSync("docs/project-detection.md", "utf8");
     const rules = getProjectDetectionRules();
