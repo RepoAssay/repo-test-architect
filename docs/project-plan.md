@@ -56,6 +56,7 @@ Initial JS/TS fixtures:
 Later adapter fixtures:
 
 - `kotlin-junit-basic`
+- `apple-xcode-mixed`
 - Kotlin/JVM + JUnit
 - Swift Package Manager + XCTest
 - Swift Package Manager + Swift Testing

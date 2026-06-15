@@ -34,6 +34,7 @@ Implemented:
 ## Adapter-Ready Fixtures
 
 - `kotlin-junit-basic` contains Java and Kotlin sources and detects as one unsupported JVM project until a Kotlin/JUnit adapter exists.
+- `apple-xcode-mixed` contains Swift and Objective-C sources and detects as one unsupported Apple project until an Apple adapter exists.
 
 ## MCP Surface
 

@@ -33,6 +33,8 @@ npm run detect:example
 npm run detect:example:json
 npm run detect:kotlin-fixture
 npm run detect:kotlin-fixture:json
+npm run detect:apple-fixture
+npm run detect:apple-fixture:json
 npm run audit-projects:example
 npm run audit-projects:example:json
 npm run summarize-projects:example

@@ -29,6 +29,8 @@
     "detect:example:json": "node ./src/cli/index.js detect ./examples/polyglot-workspace --format json",
     "detect:kotlin-fixture": "node ./src/cli/index.js detect ./examples/kotlin-junit-basic",
     "detect:kotlin-fixture:json": "node ./src/cli/index.js detect ./examples/kotlin-junit-basic --format json",
+    "detect:apple-fixture": "node ./src/cli/index.js detect ./examples/apple-xcode-mixed",
+    "detect:apple-fixture:json": "node ./src/cli/index.js detect ./examples/apple-xcode-mixed --format json",
     "audit-projects:example": "node ./src/cli/index.js audit-projects ./examples/polyglot-workspace",
     "audit-projects:example:json": "node ./src/cli/index.js audit-projects ./examples/polyglot-workspace --format json",
     "summarize-projects:example": "node ./src/cli/index.js summarize-projects ./examples/polyglot-workspace",

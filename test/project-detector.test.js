@@ -213,6 +213,37 @@ describe("project detector", () => {
     assert.deepEqual(detection.projects[0].markerFiles, ["apps/ios/Checkout.xcodeproj"]);
   });
 
+  it("detects the mixed Apple Xcode fixture as one unsupported Apple project", () => {
+    const fixtureRoot = path.resolve("examples/apple-xcode-mixed");
+    const detection = detectProjects(fixtureRoot);
+
+    assert.equal(detection.summary.projectCount, 1);
+    assert.equal(detection.summary.supportedProjectCount, 0);
+    assert.equal(detection.summary.unsupportedProjectCount, 1);
+    assert.ok(fs.existsSync(path.join(fixtureRoot, "Sources", "CheckoutView.swift")));
+    assert.ok(fs.existsSync(path.join(fixtureRoot, "Sources", "LegacyPaymentClient.m")));
+    assert.deepEqual(
+      detection.projects.map((project) => ({
+        root: project.root,
+        ecosystems: project.ecosystems,
+        languages: project.languages,
+        markerFiles: project.markerFiles,
+        adapterIds: project.adapterIds,
+        supported: project.supported
+      })),
+      [
+        {
+          root: ".",
+          ecosystems: ["apple"],
+          languages: ["objective-c", "swift"],
+          markerFiles: ["CheckoutApp.xcodeproj"],
+          adapterIds: [],
+          supported: false
+        }
+      ]
+    );
+  });
+
   it("detects Go module projects", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-go-"));
     fs.mkdirSync(path.join(root, "services", "worker"), { recursive: true });
