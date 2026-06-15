@@ -56,6 +56,7 @@ describe("MCP tool definitions", () => {
     const plan = callTool("generate_test_plan", { audit, itemId: "add-test:src/authService.ts" });
     const explanation = callTool("explain_target", { audit, targetId: "src/authService.ts" });
     const ranking = callTool("rank_test_candidates", { audit });
+    const placement = callTool("analyze_test_placement", { audit, owner: "node-vitest-basic" });
     const deferredGeneration = callTool("generate_selected_test", { planItemId: "add-test:src/authService.ts" });
 
     assert.equal(adapterRegistry.schemaVersion, "adapter-registry/v1");
@@ -77,6 +78,8 @@ describe("MCP tool definitions", () => {
     assert.deepEqual(plan.items.map((item) => item.id), ["add-test:src/authService.ts"]);
     assert.equal(explanation.schemaVersion, "target-explanation/v1");
     assert.equal(ranking.schemaVersion, "candidate-ranking/v1");
+    assert.equal(placement.schemaVersion, "test-placement-findings/v1");
+    assert.equal(placement.findings[0].testFile, "src/deckParser.test.ts");
     assert.equal(deferredGeneration.schemaVersion, "generation-deferred/v1");
     assert.equal(deferredGeneration.status, "deferred");
   });
@@ -126,6 +129,7 @@ function minimalArgsFor(toolName) {
   if (toolName === "generate_project_test_plan") return { projectAudits: { schemaVersion: "project-audits/v1", audits: [], skippedProjects: [], summary: {} } };
   if (toolName === "audit_repo") return { repoRoot: "." };
   if (toolName === "explain_target") return { audit: {}, targetId: "src/example.ts" };
+  if (toolName === "analyze_test_placement") return { audit: {} };
   if (toolName === "generate_selected_test") return { planItemId: "add-test:src/example.ts" };
   return { audit: {} };
 }

@@ -1,4 +1,5 @@
 import {
+  analyzeRepoTestPlacement,
   auditRepoProjects,
   auditRepo,
   detectRepoProjects,
@@ -117,6 +118,15 @@ export const mcpTools = [
     }, ["audit"])
   },
   {
+    name: "analyze_test_placement",
+    description: "Analyze existing test placement from an audit graph and return advisory placement findings.",
+    outputArtifact: artifact("test-placement-findings/v1", "schemas/test-placement-findings-v1.schema.json"),
+    inputSchema: objectSchema({
+      audit: { type: "object", description: "An audit/v1 artifact." },
+      owner: { type: "string", description: "Optional owner label for the audited project. Defaults to audit.profile.root." }
+    }, ["audit"])
+  },
+  {
     name: "generate_selected_test",
     description: "Return a structured deferred result until native test generation is enabled.",
     outputArtifact: artifact("generation-deferred/v1", "schemas/generation-deferred-v1.schema.json"),
@@ -166,6 +176,10 @@ export function callTool(name, args = {}) {
       return explainAuditTarget(requireObject(args.audit, "audit"), requireString(args.targetId, "targetId"));
     case "rank_test_candidates":
       return rankAuditTestCandidates(requireObject(args.audit, "audit"));
+    case "analyze_test_placement":
+      return analyzeRepoTestPlacement(requireObject(args.audit, "audit"), {
+        owner: optionalString(args.owner, "owner")
+      });
     case "generate_selected_test":
       return createGenerationDeferredResult(requireString(args.planItemId, "planItemId"));
     default:

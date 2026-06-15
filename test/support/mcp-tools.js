@@ -11,5 +11,6 @@ export const expectedMcpToolNames = [
   "generate_test_plan",
   "explain_target",
   "rank_test_candidates",
+  "analyze_test_placement",
   "generate_selected_test"
 ];

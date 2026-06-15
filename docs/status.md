@@ -53,9 +53,11 @@ Current tool names:
 - `generate_test_plan`
 - `explain_target`
 - `rank_test_candidates`
+- `analyze_test_placement`
 - `generate_selected_test`
 
 `generate_selected_test` intentionally returns `generation-deferred/v1` until native generation has adapter-specific fixtures and repair-loop coverage.
+`analyze_test_placement` currently returns conservative advisory `keep` findings from existing audit evidence.
 
 ## Verification
 

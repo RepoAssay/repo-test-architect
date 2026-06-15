@@ -26,6 +26,7 @@ Descriptor schema:
 - `generate_test_plan`
 - `explain_target`
 - `rank_test_candidates`
+- `analyze_test_placement`
 - `generate_selected_test`
 
 ## Contract
@@ -44,6 +45,7 @@ The model should consume these artifacts directly:
 - audit facts come from `audit_repo` or `get_audit_graph`
 - target-level explanation comes from `explain_target`
 - candidate ordering comes from `rank_test_candidates`
+- advisory test placement findings come from `analyze_test_placement`
 - actionable plan items come from `generate_test_plan`
 - selected test generation currently returns `generation-deferred/v1`
 
@@ -68,6 +70,7 @@ Each tool descriptor includes `outputArtifact` metadata:
 | `generate_test_plan` | `plan/v1` |
 | `explain_target` | `target-explanation/v1` |
 | `rank_test_candidates` | `candidate-ranking/v1` |
+| `analyze_test_placement` | `test-placement-findings/v1` |
 | `generate_selected_test` | `generation-deferred/v1` |
 
 Use `list_adapters` before `audit_repo` when a client needs to discover supported adapter IDs.

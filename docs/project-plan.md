@@ -78,6 +78,7 @@ The MCP server should expose stable tools around the deterministic audit graph:
 - `explain_target`
 - `rank_test_candidates`
 - `generate_test_plan`
+- `analyze_test_placement`
 - `generate_selected_test`
 
 The model should call tools and act on structured evidence. It should not own repository fact discovery.
@@ -94,6 +95,7 @@ The internal tool API now mirrors the first five MCP-shaped operations:
 - `explainAuditTarget`
 - `rankAuditTestCandidates`
 - `generateTestPlan`
+- `analyzeRepoTestPlacement`
 
 The later MCP server should wrap that API rather than duplicate audit, ranking, or planning logic.
 

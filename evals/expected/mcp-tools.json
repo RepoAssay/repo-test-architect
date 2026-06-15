@@ -259,6 +259,31 @@
       }
     },
     {
+      "name": "analyze_test_placement",
+      "description": "Analyze existing test placement from an audit graph and return advisory placement findings.",
+      "outputArtifact": {
+        "schemaVersion": "test-placement-findings/v1",
+        "schemaPath": "schemas/test-placement-findings-v1.schema.json"
+      },
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "audit"
+        ],
+        "properties": {
+          "audit": {
+            "type": "object",
+            "description": "An audit/v1 artifact."
+          },
+          "owner": {
+            "type": "string",
+            "description": "Optional owner label for the audited project. Defaults to audit.profile.root."
+          }
+        }
+      }
+    },
+    {
       "name": "generate_selected_test",
       "description": "Return a structured deferred result until native test generation is enabled.",
       "outputArtifact": {
