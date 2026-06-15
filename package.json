@@ -27,6 +27,8 @@
     "detect-rules:json": "node ./src/cli/index.js detect-rules --format json",
     "detect:example": "node ./src/cli/index.js detect ./examples/polyglot-workspace",
     "detect:example:json": "node ./src/cli/index.js detect ./examples/polyglot-workspace --format json",
+    "detect:kotlin-fixture": "node ./src/cli/index.js detect ./examples/kotlin-junit-basic",
+    "detect:kotlin-fixture:json": "node ./src/cli/index.js detect ./examples/kotlin-junit-basic --format json",
     "audit-projects:example": "node ./src/cli/index.js audit-projects ./examples/polyglot-workspace",
     "audit-projects:example:json": "node ./src/cli/index.js audit-projects ./examples/polyglot-workspace --format json",
     "summarize-projects:example": "node ./src/cli/index.js summarize-projects ./examples/polyglot-workspace",
