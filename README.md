@@ -79,6 +79,7 @@ Exercise the MCP-style tool surface:
 
 ```powershell
 npm run mcp:tools
+npm run mcp:adapters
 npm run mcp:detect:example
 npm run mcp:audit-projects:example
 npm run mcp:summarize-projects:example

@@ -117,6 +117,7 @@ Until the real transport is added, use the local invoke harness:
 
 ```powershell
 npm run mcp:tools
+npm run mcp:adapters
 npm run mcp:detect:example
 npm run mcp:audit-projects:example
 npm run mcp:audit:example
@@ -127,6 +128,7 @@ Direct form:
 
 ```powershell
 node ./src/mcp/invoke.js tools
+node ./src/mcp/invoke.js call list_adapters "{}"
 node ./src/mcp/invoke.js call audit_repo "{\"repoRoot\":\"./examples/node-vitest-basic\"}"
 node ./src/mcp/invoke.js call-envelope audit_repo "{\"repoRoot\":\"./examples/node-vitest-basic\"}"
 node ./src/mcp/stdio.js
