@@ -36,6 +36,7 @@ Current tool names:
 
 - `audit_repo`
 - `list_adapters`
+- `list_project_detection_rules`
 - `detect_projects`
 - `audit_projects`
 - `summarize_project_audits`
@@ -56,6 +57,7 @@ Primary checks:
 ```powershell
 npm run adapters:json
 npm run detect-rules:json
+npm run mcp:detect-rules
 npm run detect:example:json
 npm run audit-projects:example:json
 npm run summarize-projects:example:json

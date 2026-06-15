@@ -15,6 +15,7 @@ Descriptor schema:
 ## Tools
 
 - `list_adapters`
+- `list_project_detection_rules`
 - `detect_projects`
 - `audit_projects`
 - `summarize_project_audits`
@@ -34,6 +35,7 @@ Each tool returns one of the stable artifacts documented in `docs/artifact-contr
 The model should consume these artifacts directly:
 
 - available language adapters come from `list_adapters`
+- project marker rules and ignored directories come from `list_project_detection_rules`
 - project roots and adapter matches come from `detect_projects`
 - project-level audits for supported roots come from `audit_projects`
 - compact repo-level project audit counts come from `summarize_project_audits`
@@ -55,6 +57,7 @@ Each tool descriptor includes `outputArtifact` metadata:
 | Tool | Output |
 | --- | --- |
 | `list_adapters` | `adapter-registry/v1` |
+| `list_project_detection_rules` | `project-detection-rules/v1` |
 | `detect_projects` | `project-detection/v1` |
 | `audit_projects` | `project-audits/v1` |
 | `summarize_project_audits` | `project-audit-summary/v1` |
@@ -68,6 +71,7 @@ Each tool descriptor includes `outputArtifact` metadata:
 | `generate_selected_test` | `generation-deferred/v1` |
 
 Use `list_adapters` before `audit_repo` when a client needs to discover supported adapter IDs.
+Use `list_project_detection_rules` when a client needs to explain what project markers the deterministic detector recognizes.
 Use `detect_projects` when a repository may contain multiple language or package roots.
 Use `audit_projects` to audit detected supported project roots while reporting unsupported roots separately.
 Use `summarize_project_audits` when a client needs compact counts before asking for detailed per-project audit data.
@@ -118,6 +122,7 @@ Until the real transport is added, use the local invoke harness:
 ```powershell
 npm run mcp:tools
 npm run mcp:adapters
+npm run mcp:detect-rules
 npm run mcp:detect:example
 npm run mcp:audit-projects:example
 npm run mcp:audit:example
@@ -129,6 +134,7 @@ Direct form:
 ```powershell
 node ./src/mcp/invoke.js tools
 node ./src/mcp/invoke.js call list_adapters "{}"
+node ./src/mcp/invoke.js call list_project_detection_rules "{}"
 node ./src/mcp/invoke.js call audit_repo "{\"repoRoot\":\"./examples/node-vitest-basic\"}"
 node ./src/mcp/invoke.js call-envelope audit_repo "{\"repoRoot\":\"./examples/node-vitest-basic\"}"
 node ./src/mcp/stdio.js

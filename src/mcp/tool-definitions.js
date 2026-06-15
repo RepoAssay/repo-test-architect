@@ -6,6 +6,7 @@ import {
   generateTestPlan,
   generateRepoProjectTestPlan,
   getAuditGraph,
+  getProjectDetectionRules,
   rankRepoProjectCandidates,
   rankAuditTestCandidates,
   summarizeRepoProjectAudits
@@ -19,6 +20,12 @@ export const mcpTools = [
     name: "list_adapters",
     description: "List registered language adapters available to audit repositories.",
     outputArtifact: artifact("adapter-registry/v1", "schemas/adapter-registry-v1.schema.json"),
+    inputSchema: objectSchema({}, [])
+  },
+  {
+    name: "list_project_detection_rules",
+    description: "List deterministic project marker rules and ignored directories used during project detection.",
+    outputArtifact: artifact("project-detection-rules/v1", "schemas/project-detection-rules-v1.schema.json"),
     inputSchema: objectSchema({}, [])
   },
   {
@@ -132,6 +139,8 @@ export function callTool(name, args = {}) {
   switch (name) {
     case "list_adapters":
       return getAdapterRegistry();
+    case "list_project_detection_rules":
+      return getProjectDetectionRules();
     case "detect_projects":
       return detectRepoProjects(requireString(args.repoRoot, "repoRoot"));
     case "audit_projects":

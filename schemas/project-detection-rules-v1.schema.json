@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "project-detection-rules-v1.schema.json",
+  "title": "Project Detection Rules Artifact",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "markers", "ignoredDirectories"],
+  "properties": {
+    "schemaVersion": {
+      "const": "project-detection-rules/v1"
+    },
+    "markers": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["ecosystem", "languages"],
+        "properties": {
+          "fileName": {
+            "type": "string",
+            "minLength": 1
+          },
+          "extension": {
+            "type": "string",
+            "minLength": 1
+          },
+          "ecosystem": {
+            "type": "string",
+            "minLength": 1
+          },
+          "languages": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "oneOf": [
+          { "required": ["fileName"] },
+          { "required": ["extension"] }
+        ]
+      }
+    },
+    "ignoredDirectories": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  }
+}

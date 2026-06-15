@@ -161,6 +161,29 @@ node ./src/cli/index.js adapters --format json
 This artifact lists registered language adapters, their ecosystem labels, and their supported language labels.
 Clients should use the adapter `id` when passing `adapterId` to `audit_repo`.
 
+## Project Detection Rules Artifact
+
+Schema:
+
+- `schemas/project-detection-rules-v1.schema.json`
+- `schemaVersion: "project-detection-rules/v1"`
+
+MCP tool:
+
+```txt
+list_project_detection_rules
+```
+
+Commands:
+
+```powershell
+node ./src/cli/index.js detect-rules
+node ./src/cli/index.js detect-rules --format json
+```
+
+This artifact lists deterministic marker rules and ignored directories used by project detection.
+Clients can use it to explain detector behavior before scanning a repository.
+
 ## Project Detection Artifact
 
 Schema:
@@ -327,6 +350,7 @@ Internal tool API:
 
 - `auditRepo`
 - `getAdapterRegistry`
+- `getProjectDetectionRules`
 - `detectRepoProjects`
 - `auditRepoProjects`
 - `summarizeRepoProjectAudits`

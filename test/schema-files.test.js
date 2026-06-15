@@ -78,6 +78,16 @@ describe("schema files", () => {
     assert.ok(schema.properties.projects.items.required.includes("supported"));
   });
 
+  it("documents project-detection-rules/v1", () => {
+    const schema = readSchema("schemas/project-detection-rules-v1.schema.json");
+
+    assert.equal(schema.properties.schemaVersion.const, "project-detection-rules/v1");
+    assert.ok(schema.required.includes("markers"));
+    assert.ok(schema.required.includes("ignoredDirectories"));
+    assert.ok(schema.properties.markers.items.required.includes("ecosystem"));
+    assert.ok(schema.properties.markers.items.required.includes("languages"));
+  });
+
   it("documents project-audits/v1", () => {
     const schema = readSchema("schemas/project-audits-v1.schema.json");
 

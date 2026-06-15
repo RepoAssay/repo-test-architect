@@ -36,8 +36,9 @@ describe("MCP tool definitions", () => {
     }
   });
 
-  it("dispatches adapter registry, project detection, project audits, audit, plan, explanation, and ranking tools", () => {
+  it("dispatches adapter registry, project detection rules, project detection, project audits, audit, plan, explanation, and ranking tools", () => {
     const adapterRegistry = callTool("list_adapters");
+    const projectDetectionRules = callTool("list_project_detection_rules");
     const projectDetection = callTool("detect_projects", {
       repoRoot: path.resolve("examples/polyglot-workspace")
     });
@@ -59,6 +60,8 @@ describe("MCP tool definitions", () => {
 
     assert.equal(adapterRegistry.schemaVersion, "adapter-registry/v1");
     assert.deepEqual(adapterRegistry.adapters.map((adapter) => adapter.id), ["javascript"]);
+    assert.equal(projectDetectionRules.schemaVersion, "project-detection-rules/v1");
+    assert.ok(projectDetectionRules.markers.some((marker) => marker.fileName === "package.json"));
     assert.equal(projectDetection.schemaVersion, "project-detection/v1");
     assert.equal(projectDetection.summary.projectCount, 3);
     assert.equal(projectAudits.schemaVersion, "project-audits/v1");
@@ -115,6 +118,7 @@ describe("MCP tool definitions", () => {
 
 function minimalArgsFor(toolName) {
   if (toolName === "list_adapters") return {};
+  if (toolName === "list_project_detection_rules") return {};
   if (toolName === "detect_projects") return { repoRoot: "." };
   if (toolName === "audit_projects") return { repoRoot: "." };
   if (toolName === "summarize_project_audits") return { projectAudits: { schemaVersion: "project-audits/v1", audits: [], skippedProjects: [], summary: {} } };

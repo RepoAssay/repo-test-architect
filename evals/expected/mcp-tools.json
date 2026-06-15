@@ -15,6 +15,20 @@
       }
     },
     {
+      "name": "list_project_detection_rules",
+      "description": "List deterministic project marker rules and ignored directories used during project detection.",
+      "outputArtifact": {
+        "schemaVersion": "project-detection-rules/v1",
+        "schemaPath": "schemas/project-detection-rules-v1.schema.json"
+      },
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {}
+      }
+    },
+    {
       "name": "detect_projects",
       "description": "Detect project roots and matching adapters inside a repository.",
       "outputArtifact": {

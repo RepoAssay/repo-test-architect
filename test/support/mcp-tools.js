@@ -1,5 +1,6 @@
 export const expectedMcpToolNames = [
   "list_adapters",
+  "list_project_detection_rules",
   "detect_projects",
   "audit_projects",
   "summarize_project_audits",
