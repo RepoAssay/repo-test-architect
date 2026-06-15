@@ -1,3 +1,16 @@
+/**
+ * @typedef {object} GenerationDeferredResult
+ * @property {"generation-deferred/v1"} schemaVersion
+ * @property {string} planItemId
+ * @property {"deferred"} status
+ * @property {string} reason
+ * @property {string[]} nextSteps
+ */
+
+/**
+ * @param {string} planItemId
+ * @returns {GenerationDeferredResult}
+ */
 export function createGenerationDeferredResult(planItemId) {
   if (!planItemId) {
     throw new Error("planItemId must be a non-empty string.");

@@ -17,7 +17,7 @@ Implemented:
 - audit, plan, explanation, ranking, and deferred-generation artifacts
 - test placement findings artifact with a conservative audit-based `keep` analyzer
 - project-audits derived placement analysis that preserves project owner identity
-- JSDoc contract annotations for adapter registry, tool API, project detection, project audit, planning, ranking, explanation, placement, and project-derived runtime modules
+- JSDoc contract annotations for core runtime modules, including adapter registry, tool API, project detection, project audit, planning, ranking, explanation, placement, and deferred generation
 - project detection and project audit artifacts for polyglot repository groundwork
 - documented polyglot artifact workflow from project detection through project test planning
 - stable JSON schemas for generated artifacts
@@ -100,7 +100,7 @@ npm run eval:test
 ## Next Useful Milestones
 
 1. Add a real local stdio MCP SDK transport wrapper around `src/mcp/tool-definitions.js`.
-2. Expand TypeScript/JSDoc typing across the remaining runtime JS modules or consolidate TS reference files.
+2. Consolidate repeated JSDoc artifact shapes into shared TS reference files when the runtime API stabilizes further.
 3. Add Kotlin/JUnit or Swift adapter discovery as the next supported-language spike.
 4. Add model-consistency eval fixtures that compare generated explanations against the same deterministic audit graph.
 5. Add package-aware test placement analysis that can recommend `move` and `split` findings across app/package boundaries.
