@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { describe, it } from "node:test";
 import { detectProjects } from "../src/core/project-detector.js";
@@ -48,6 +50,31 @@ describe("project detector", () => {
           ecosystems: ["python"],
           languages: ["python"],
           adapterIds: [],
+          supported: false
+        }
+      ]
+    );
+  });
+
+  it("detects Maven JVM projects", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-maven-"));
+    fs.mkdirSync(path.join(root, "services", "billing"), { recursive: true });
+    fs.writeFileSync(path.join(root, "services", "billing", "pom.xml"), "<project />\n");
+
+    const detection = detectProjects(root);
+
+    assert.deepEqual(
+      detection.projects.map((project) => ({
+        root: project.root,
+        ecosystems: project.ecosystems,
+        languages: project.languages,
+        supported: project.supported
+      })),
+      [
+        {
+          root: "services/billing",
+          ecosystems: ["jvm"],
+          languages: ["java", "kotlin"],
           supported: false
         }
       ]

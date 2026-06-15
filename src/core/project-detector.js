@@ -26,6 +26,11 @@ const MARKERS = [
     languages: ["swift"]
   },
   {
+    fileName: "pom.xml",
+    ecosystem: "jvm",
+    languages: ["java", "kotlin"]
+  },
+  {
     fileName: "build.gradle",
     ecosystem: "jvm",
     languages: ["kotlin", "java"]
