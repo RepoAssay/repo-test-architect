@@ -203,6 +203,8 @@ export declare function rankRepoProjectCandidates(projectAudits: ProjectAudits):
 
 export declare function generateRepoProjectTestPlan(projectAudits: ProjectAudits): ProjectTestPlan;
 
+export declare function analyzeRepoProjectTestPlacement(projectAudits: ProjectAudits): TestPlacementFindings;
+
 export declare function createRepoTestPlacementFindings(findings?: TestPlacementFinding[]): TestPlacementFindings;
 
 export declare function analyzeRepoTestPlacement(audit: AuditResult, options?: AnalyzeTestPlacementOptions): TestPlacementFindings;

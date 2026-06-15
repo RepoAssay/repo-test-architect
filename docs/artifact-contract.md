@@ -328,6 +328,8 @@ This artifact generates per-project plan items from a `project-audits/v1` artifa
 It preserves the underlying `plan/v1` artifacts per project for detailed inspection.
 It also preserves unsupported project roots with ecosystem and language labels.
 
+`project-audits/v1` can also be used by the internal `analyzeRepoProjectTestPlacement` API to produce repository-relative `test-placement-findings/v1` findings while preserving project owner identity.
+
 ## Changed-Only Flow
 
 For PR-style workflows, use `--changed`:
@@ -381,6 +383,7 @@ Internal tool API:
 - `summarizeRepoProjectAudits`
 - `rankRepoProjectCandidates`
 - `generateRepoProjectTestPlan`
+- `analyzeRepoProjectTestPlacement`
 - `getAuditGraph`
 - `explainAuditTarget`
 - `rankAuditTestCandidates`

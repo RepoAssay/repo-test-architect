@@ -16,6 +16,7 @@ Implemented:
 - fixture-based regression coverage
 - audit, plan, explanation, ranking, and deferred-generation artifacts
 - test placement findings artifact with a conservative audit-based `keep` analyzer
+- project-audits derived placement analysis that preserves project owner identity
 - project detection and project audit artifacts for polyglot repository groundwork
 - documented polyglot artifact workflow from project detection through project test planning
 - stable JSON schemas for generated artifacts

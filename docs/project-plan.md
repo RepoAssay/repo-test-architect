@@ -90,6 +90,7 @@ The internal tool API now mirrors the first five MCP-shaped operations:
 - `summarizeRepoProjectAudits`
 - `rankRepoProjectCandidates`
 - `generateRepoProjectTestPlan`
+- `analyzeRepoProjectTestPlacement`
 - `auditRepo`
 - `getAuditGraph`
 - `explainAuditTarget`

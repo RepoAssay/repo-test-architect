@@ -4,6 +4,7 @@ import { auditDetectedProjects } from "./project-auditor.js";
 import { summarizeProjectAudits } from "./project-audit-summary.js";
 import { detectProjects, getProjectDetectionRules as readProjectDetectionRules } from "./project-detector.js";
 import { rankProjectTestCandidates } from "./project-candidate-ranking.js";
+import { analyzeProjectTestPlacement } from "./project-test-placement-analysis.js";
 import { createProjectTestPlan } from "./project-test-plan.js";
 import { rankTestCandidates } from "./rank-test-candidates.js";
 import { analyzeTestPlacement } from "./test-placement-analysis.js";
@@ -36,6 +37,10 @@ export function rankRepoProjectCandidates(projectAudits) {
 
 export function generateRepoProjectTestPlan(projectAudits) {
   return createProjectTestPlan(projectAudits);
+}
+
+export function analyzeRepoProjectTestPlacement(projectAudits) {
+  return analyzeProjectTestPlacement(projectAudits);
 }
 
 export function auditRepo(repoRoot, options = {}) {

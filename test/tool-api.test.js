@@ -3,6 +3,7 @@ import path from "node:path";
 import { describe, it } from "node:test";
 import {
   analyzeRepoTestPlacement,
+  analyzeRepoProjectTestPlacement,
   auditRepoProjects,
   auditRepo,
   createRepoTestPlacementFindings,
@@ -72,6 +73,14 @@ describe("tool API", () => {
 
     assert.equal(plan.schemaVersion, "project-test-plan/v1");
     assert.equal(plan.summary.itemCount, 1);
+  });
+
+  it("analyzes test placement from detected repository project audits", () => {
+    const projectAudits = auditRepoProjects(path.resolve("examples/node-vitest-basic"));
+    const placement = analyzeRepoProjectTestPlacement(projectAudits);
+
+    assert.equal(placement.schemaVersion, "test-placement-findings/v1");
+    assert.equal(placement.findings[0].id, ".:keep:src/deckParser.test.ts:src/deckParser.ts");
   });
 
   it("audits a repo and exposes the audit graph", () => {
