@@ -58,4 +58,18 @@ describe("JSON schema validator", () => {
       /expected exactly one matching oneOf schema, matched 2/
     );
   });
+
+  it("rejects strings shorter than minLength", () => {
+    assert.throws(
+      () => assertMatchesSchema("", { type: "string", minLength: 1 }, "non-empty-string"),
+      /expected length >= 1/
+    );
+  });
+
+  it("rejects arrays shorter than minItems", () => {
+    assert.throws(
+      () => assertMatchesSchema([], { type: "array", minItems: 1, items: { type: "string" } }, "non-empty-array"),
+      /expected at least 1 item/
+    );
+  });
 });

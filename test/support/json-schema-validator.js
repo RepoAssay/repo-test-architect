@@ -38,6 +38,10 @@ function validate(value, schema, rootSchema, path) {
     errors.push(...validateArray(value, schema, rootSchema, path));
   }
 
+  if (schema.type === "string" && schema.minLength !== undefined && value.length < schema.minLength) {
+    errors.push(`${path}: expected length >= ${schema.minLength}`);
+  }
+
   if (schema.type === "integer") {
     if (schema.minimum !== undefined && value < schema.minimum) {
       errors.push(`${path}: expected >= ${schema.minimum}`);
@@ -95,9 +99,15 @@ function validateObject(value, schema, rootSchema, path) {
 }
 
 function validateArray(value, schema, rootSchema, path) {
-  if (!schema.items) return [];
+  const errors = [];
 
-  return value.flatMap((item, index) => validate(item, schema.items, rootSchema, `${path}[${index}]`));
+  if (schema.minItems !== undefined && value.length < schema.minItems) {
+    errors.push(`${path}: expected at least ${schema.minItems} item(s)`);
+  }
+
+  if (!schema.items) return errors;
+
+  return errors.concat(value.flatMap((item, index) => validate(item, schema.items, rootSchema, `${path}[${index}]`)));
 }
 
 function matchesType(value, type) {
