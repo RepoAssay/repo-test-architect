@@ -50,7 +50,8 @@
     "eval:test": "node --test test/golden-snapshots.test.js",
     "eval:update": "node ./scripts/update-golden-snapshots.js",
     "test": "node --test \"test/**/*.test.js\"",
-    "smoke": "powershell -ExecutionPolicy Bypass -File ./scripts/smoke.ps1"
+    "smoke": "powershell -ExecutionPolicy Bypass -File ./scripts/smoke.ps1",
+    "pack:dry-run": "npm pack --dry-run"
   },
   "keywords": [
     "testing",

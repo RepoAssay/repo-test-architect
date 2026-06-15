@@ -11,7 +11,7 @@ This project is not ready to publish yet. Keep `private: true` in `package.json`
   - `repo-test-architect-mcp`
   - `repo-test-architect-mcp-invoke`
 - add the intended npm package name to MCP client config examples
-- verify `npm pack --dry-run` includes only intended files
+- verify `npm run pack:dry-run` includes only intended files
 - add package metadata before publishing:
   - `repository`
   - `homepage`
@@ -38,6 +38,7 @@ Run:
 npm run eval:check
 npm test
 powershell -ExecutionPolicy Bypass -File ./scripts/smoke.ps1
+npm run pack:dry-run
 ```
 
 Also verify the installed package entry points from a packed tarball before first public release.
