@@ -10,6 +10,7 @@ import { rankProjectTestCandidates } from "../src/core/project-candidate-ranking
 import { detectProjects, getProjectDetectionRules } from "../src/core/project-detector.js";
 import { createProjectTestPlan } from "../src/core/project-test-plan.js";
 import { rankTestCandidates } from "../src/core/rank-test-candidates.js";
+import { createTestPlacementFindings } from "../src/core/test-placement-findings.js";
 import { loadEvalFixtures } from "./support/eval-fixtures.js";
 import { assertMatchesSchema } from "./support/json-schema-validator.js";
 
@@ -76,29 +77,26 @@ describe("deferred generation artifact schema compatibility", () => {
 
 describe("test placement findings artifact schema compatibility", () => {
   it("validates test-placement-findings/v1", () => {
-    const artifact = {
-      schemaVersion: "test-placement-findings/v1",
-      findings: [
-        {
-          id: "move:AppTests/DeckParserTests.swift",
-          testFile: "AppTests/DeckParserTests.swift",
-          currentOwner: "AppTests",
-          suggestedOwner: "DeckCoreTests",
-          action: "move",
-          reason: "Test covers package-owned parser behavior without app integration dependencies.",
-          evidence: ["imports DeckCore", "asserts DeckParser output", "does not touch app lifecycle"]
-        },
-        {
-          id: "split:AppTests/CheckoutFlowTests.swift",
-          testFile: "AppTests/CheckoutFlowTests.swift",
-          currentOwner: "AppTests",
-          suggestedOwner: "CheckoutCoreTests",
-          action: "split",
-          reason: "Test mixes package-owned price calculation with app navigation assertions.",
-          evidence: ["imports CheckoutCore", "asserts CheckoutCalculator output", "also validates app navigation"]
-        }
-      ]
-    };
+    const artifact = createTestPlacementFindings([
+      {
+        id: "move:AppTests/DeckParserTests.swift",
+        testFile: "AppTests/DeckParserTests.swift",
+        currentOwner: "AppTests",
+        suggestedOwner: "DeckCoreTests",
+        action: "move",
+        reason: "Test covers package-owned parser behavior without app integration dependencies.",
+        evidence: ["imports DeckCore", "asserts DeckParser output", "does not touch app lifecycle"]
+      },
+      {
+        id: "split:AppTests/CheckoutFlowTests.swift",
+        testFile: "AppTests/CheckoutFlowTests.swift",
+        currentOwner: "AppTests",
+        suggestedOwner: "CheckoutCoreTests",
+        action: "split",
+        reason: "Test mixes package-owned price calculation with app navigation assertions.",
+        evidence: ["imports CheckoutCore", "asserts CheckoutCalculator output", "also validates app navigation"]
+      }
+    ]);
 
     assertMatchesSchema(artifact, testPlacementFindingsSchema, "test-placement-findings.json");
   });
