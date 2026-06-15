@@ -139,6 +139,12 @@ npm run eval:test
 npm run eval:update
 ```
 
+Check model-consistency scenario locked fields against deterministic tool results:
+
+```powershell
+npm run model-consistency:check
+```
+
 Node 20 or newer is required for the CLI. If Node is not available yet, the repository still includes a PowerShell smoke check:
 
 ```powershell
