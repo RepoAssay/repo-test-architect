@@ -16,6 +16,21 @@ describe("docs links", () => {
     }
   });
 
+  it("keeps docs free of local machine paths", () => {
+    const markdownFiles = fs
+      .readdirSync("docs")
+      .filter((fileName) => fileName.endsWith(".md"))
+      .map((fileName) => path.join("docs", fileName));
+
+    for (const filePath of ["README.md", ...markdownFiles]) {
+      const contents = fs.readFileSync(filePath, "utf8");
+
+      assert.doesNotMatch(contents, /C:\/Users\/[^/\s]+/i, `Local Windows user path leaked in ${filePath}`);
+      assert.doesNotMatch(contents, /C:\\Users\\[^\\\s]+/i, `Local Windows user path leaked in ${filePath}`);
+      assert.doesNotMatch(contents, /\/Users\/[^/\s]+\/(source|repos|projects)/i, `Local Unix user path leaked in ${filePath}`);
+    }
+  });
+
   it("keeps README MCP script examples complete", () => {
     const readme = fs.readFileSync("README.md", "utf8");
     const packageJson = JSON.parse(fs.readFileSync("package.json", "utf8"));

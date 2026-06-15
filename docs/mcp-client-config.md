@@ -16,14 +16,27 @@ Replace the path with the absolute path to this checkout:
     "repo-test-architect": {
       "command": "node",
       "args": [
-        "C:/Users/micke/source/repos/repo-test-architect/src/mcp/stdio.js"
+        "/absolute/path/to/repo-test-architect/src/mcp/stdio.js"
       ]
     }
   }
 }
 ```
 
-On Windows, prefer forward slashes in JSON paths or escape backslashes.
+On Windows, prefer forward slashes in JSON paths or escape backslashes:
+
+```json
+{
+  "mcpServers": {
+    "repo-test-architect": {
+      "command": "node",
+      "args": [
+        "C:/path/to/repo-test-architect/src/mcp/stdio.js"
+      ]
+    }
+  }
+}
+```
 
 ## Future NPM Package
 
