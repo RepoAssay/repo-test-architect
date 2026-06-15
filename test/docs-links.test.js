@@ -16,6 +16,16 @@ describe("docs links", () => {
     }
   });
 
+  it("keeps README MCP script examples complete", () => {
+    const readme = fs.readFileSync("README.md", "utf8");
+    const packageJson = JSON.parse(fs.readFileSync("package.json", "utf8"));
+    const mcpScripts = Object.keys(packageJson.scripts).filter((script) => script.startsWith("mcp:"));
+
+    for (const script of mcpScripts) {
+      assert.ok(readme.includes(`npm run ${script}`), `Missing README MCP script example: ${script}`);
+    }
+  });
+
   it("keeps project detection docs aligned with detector rules", () => {
     const docs = fs.readFileSync("docs/project-detection.md", "utf8");
     const rules = getProjectDetectionRules();
