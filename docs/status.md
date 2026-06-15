@@ -31,6 +31,10 @@ Implemented:
 - `express-supertest`
 - `react-testing-library`
 
+## Adapter-Ready Fixtures
+
+- `kotlin-junit-basic` detects as an unsupported JVM project until a Kotlin/JUnit adapter exists.
+
 ## MCP Surface
 
 Current tool names:

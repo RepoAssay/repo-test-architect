@@ -81,6 +81,34 @@ describe("project detector", () => {
     );
   });
 
+  it("detects the Kotlin JUnit fixture as an unsupported JVM project", () => {
+    const detection = detectProjects(path.resolve("examples/kotlin-junit-basic"));
+
+    assert.equal(detection.summary.projectCount, 1);
+    assert.equal(detection.summary.supportedProjectCount, 0);
+    assert.equal(detection.summary.unsupportedProjectCount, 1);
+    assert.deepEqual(
+      detection.projects.map((project) => ({
+        root: project.root,
+        ecosystems: project.ecosystems,
+        languages: project.languages,
+        markerFiles: project.markerFiles,
+        adapterIds: project.adapterIds,
+        supported: project.supported
+      })),
+      [
+        {
+          root: ".",
+          ecosystems: ["jvm"],
+          languages: ["java", "kotlin"],
+          markerFiles: ["build.gradle.kts", "settings.gradle.kts"],
+          adapterIds: [],
+          supported: false
+        }
+      ]
+    );
+  });
+
   it("detects .NET project files by extension", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-dotnet-"));
     fs.mkdirSync(path.join(root, "services", "catalog"), { recursive: true });
