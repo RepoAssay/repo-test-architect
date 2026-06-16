@@ -44,6 +44,7 @@ Implemented:
 - GitHub bug report issue form for audit, planning, MCP, and release-check defects
 - GitHub feature request issue form for audit-first adapter, MCP, evaluation, and reporting proposals
 - contributor guide for traceable workflow, audit changes, adapter boundaries, generation deferral, and release checks
+- security policy for local-first repo access, vulnerability reports, and sensitive artifact handling
 - repository ignore rules for generated dependency, package, coverage, and local comparison artifacts
 
 ## Supported Fixtures

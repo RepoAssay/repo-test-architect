@@ -192,6 +192,7 @@ The JavaScript adapter is the first proof point. Later adapters should emit the 
 ## Docs
 
 - [Contributing](CONTRIBUTING.md)
+- [Security policy](SECURITY.md)
 - [Project plan](docs/project-plan.md)
 - [Project status](docs/status.md)
 - [Adapter contract](docs/adapter-contract.md)
