@@ -143,6 +143,12 @@ describe("project audits artifact schema compatibility", () => {
 
     assertMatchesSchema(artifact, projectAuditsSchema, "project-audits.json");
   });
+
+  it("validates checked-in MCP project-audits args fixture", () => {
+    const args = readJson("examples/mcp/polyglot-project-audits.args.json");
+
+    assertMatchesSchema(args.projectAudits, projectAuditsSchema, "polyglot-project-audits.args.json.projectAudits");
+  });
 });
 
 describe("project audit summary artifact schema compatibility", () => {
