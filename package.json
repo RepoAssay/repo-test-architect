@@ -81,7 +81,8 @@
     "test": "node --test \"test/**/*.test.js\"",
     "smoke": "powershell -ExecutionPolicy Bypass -File ./scripts/smoke.ps1",
     "pack:dry-run": "npm pack --dry-run",
-    "pack:check": "node ./scripts/check-pack-contents.js"
+    "pack:check": "node ./scripts/check-pack-contents.js",
+    "bin:check": "node ./scripts/check-bin-entrypoints.js"
   },
   "keywords": [
     "testing",
