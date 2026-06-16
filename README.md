@@ -150,6 +150,7 @@ npm run model-consistency:check
 npm run model-consistency:json
 npm run model-consistency:json -- --profile local-small
 npm run model-consistency:compare -- baseline-summary.json candidate-summary.json
+npm run model-consistency:stats
 ```
 
 Node 20 or newer is required for the CLI. If Node is not available yet, the repository still includes a PowerShell smoke check:

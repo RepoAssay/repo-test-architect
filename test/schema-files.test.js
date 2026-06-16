@@ -227,6 +227,17 @@ describe("schema files", () => {
       "unexpected"
     ]);
   });
+
+  it("documents model-consistency-stats/v1", () => {
+    const schema = readSchema("schemas/model-consistency-stats-v1.schema.json");
+
+    assert.equal(schema.properties.schemaVersion.const, "model-consistency-stats/v1");
+    assert.ok(schema.required.includes("source"));
+    assert.ok(schema.required.includes("counts"));
+    assert.ok(schema.required.includes("distributions"));
+    assert.ok(schema.properties.counts.required.includes("driftedScenarioCount"));
+    assert.ok(schema.properties.distributions.required.includes("scenariosByTool"));
+  });
 });
 
 function readSchema(path) {

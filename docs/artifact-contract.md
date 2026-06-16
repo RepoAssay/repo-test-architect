@@ -210,6 +210,33 @@ It contains:
 - checked-field and failure deltas
 - per-scenario alignment status
 
+## Model Consistency Stats Artifact
+
+Schema:
+
+- `schemas/model-consistency-stats-v1.schema.json`
+- `schemaVersion: "model-consistency-stats/v1"`
+
+Command:
+
+```powershell
+npm run model-consistency:stats
+node ./scripts/collect-model-consistency-stats.js --summary baseline-summary.json
+node ./scripts/collect-model-consistency-stats.js --summary baseline-summary.json --candidate-summary candidate-summary.json
+node ./scripts/collect-model-consistency-stats.js --summary baseline-summary.json --comparison comparison.json
+```
+
+This artifact derives local deterministic stats from a `model-consistency-summary/v1` artifact and, optionally, a `model-consistency-comparison/v1` artifact.
+It is intended for model profile reporting without depending on any hosted analytics.
+
+It contains:
+
+- scenario, checked-field, and failure counts
+- drifted, missing, and unexpected scenario counts when comparison data exists
+- scenario status distribution
+- tool distribution
+- comparison alignment distribution
+
 ## Test Placement Findings Artifact
 
 Schema:
@@ -540,6 +567,7 @@ npm run eval:update
 npm run model-consistency:check
 npm run model-consistency:json
 npm run model-consistency:compare -- baseline-summary.json candidate-summary.json
+npm run model-consistency:stats
 ```
 
 Update snapshots only after intentional behavior changes.

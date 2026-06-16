@@ -20,6 +20,7 @@ import {
 } from "../src/core/model-consistency-runner.js";
 import { createTestPlacementFindings } from "../src/core/test-placement-findings.js";
 import { collectProjectStats } from "../src/core/project-stats.js";
+import { collectModelConsistencyStats } from "../src/core/model-consistency-stats.js";
 import { loadEvalFixtures } from "./support/eval-fixtures.js";
 import { assertMatchesSchema } from "./support/json-schema-validator.js";
 
@@ -41,6 +42,7 @@ const projectStatsSchema = readJson("schemas/project-stats-v1.schema.json");
 const modelConsistencyScenarioSchema = readJson("schemas/model-consistency-scenario-v1.schema.json");
 const modelConsistencySummarySchema = readJson("schemas/model-consistency-summary-v1.schema.json");
 const modelConsistencyComparisonSchema = readJson("schemas/model-consistency-comparison-v1.schema.json");
+const modelConsistencyStatsSchema = readJson("schemas/model-consistency-stats-v1.schema.json");
 const fixtures = loadEvalFixtures();
 
 describe("artifact schema compatibility", () => {
@@ -235,6 +237,21 @@ describe("model consistency comparison artifact schema compatibility", () => {
     const artifact = compareModelConsistencySummaries(baseline, candidate);
 
     assertMatchesSchema(artifact, modelConsistencyComparisonSchema, "model-consistency-comparison.json");
+  });
+});
+
+describe("model consistency stats artifact schema compatibility", () => {
+  it("validates model-consistency-stats/v1", () => {
+    const scenarios = fs
+      .readdirSync("evals/model-consistency")
+      .filter((fileName) => fileName.endsWith(".scenario.json"))
+      .sort()
+      .map((fileName) => readModelConsistencyScenario(path.join("evals/model-consistency", fileName)));
+    const results = scenarios.map((scenario) => runModelConsistencyScenario(scenario));
+    const summary = summarizeModelConsistencyResults(scenarios, results);
+    const artifact = collectModelConsistencyStats(summary);
+
+    assertMatchesSchema(artifact, modelConsistencyStatsSchema, "model-consistency-stats.json");
   });
 });
 

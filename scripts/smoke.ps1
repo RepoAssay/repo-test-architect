@@ -20,6 +20,8 @@ $required = @(
   "src/core/project-test-plan.js",
   "src/core/project-test-placement-analysis.js",
   "src/core/project-stats.js",
+  "src/core/model-consistency-stats.js",
+  "scripts/collect-model-consistency-stats.js",
   "examples/mcp/polyglot-project-audits.args.json",
   "examples/node-vitest-basic/package.json",
   "examples/node-vitest-basic/tsconfig.json",

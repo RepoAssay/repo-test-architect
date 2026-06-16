@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://repo-test-architect.local/schemas/model-consistency-stats-v1.schema.json",
+  "title": "Repo Test Architect Model Consistency Stats",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "source", "counts", "distributions"],
+  "properties": {
+    "schemaVersion": {
+      "const": "model-consistency-stats/v1"
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["profileName"],
+      "properties": {
+        "profileName": {
+          "type": "string",
+          "minLength": 1
+        },
+        "comparedProfileName": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scenarioCount",
+        "passedScenarioCount",
+        "failedScenarioCount",
+        "checkedFieldCount",
+        "failureCount",
+        "driftedScenarioCount",
+        "missingScenarioCount",
+        "unexpectedScenarioCount"
+      ],
+      "properties": {
+        "scenarioCount": { "type": "integer", "minimum": 0 },
+        "passedScenarioCount": { "type": "integer", "minimum": 0 },
+        "failedScenarioCount": { "type": "integer", "minimum": 0 },
+        "checkedFieldCount": { "type": "integer", "minimum": 0 },
+        "failureCount": { "type": "integer", "minimum": 0 },
+        "driftedScenarioCount": { "type": "integer", "minimum": 0 },
+        "missingScenarioCount": { "type": "integer", "minimum": 0 },
+        "unexpectedScenarioCount": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "distributions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scenariosByStatus", "scenariosByTool", "scenariosByAlignment"],
+      "properties": {
+        "scenariosByStatus": { "$ref": "#/$defs/countRecord" },
+        "scenariosByTool": { "$ref": "#/$defs/countRecord" },
+        "scenariosByAlignment": { "$ref": "#/$defs/countRecord" }
+      }
+    }
+  },
+  "$defs": {
+    "countRecord": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 0
+      }
+    }
+  }
+}

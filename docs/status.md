@@ -32,7 +32,7 @@ Implemented:
 - stable JSON schemas for generated artifacts
 - golden snapshots for fixture audits, plans, and MCP tool descriptors
 - model-consistency scenario artifacts for comparing explanation, ranking, planning, no-framework blocker, Jest service, React component, Express/Supertest route, and polyglot project-summary/ranking/plan/stats output against deterministic locked fields
-- deterministic model-consistency scenario runner, summary artifact, and comparison artifact for checking locked fields against tool output
+- deterministic model-consistency scenario runner, summary artifact, comparison artifact, and stats artifact for checking locked fields and drift counts against tool output
 - changed-file workflows with `--changed` and `--changed-since`
 - MCP-shaped tool descriptors, local invoke harness, and dependency-free stdio JSON-RPC scaffold
 - release-readiness checklist, npm package dry-run script, and package contents allowlist
@@ -100,6 +100,7 @@ npm run model-consistency:check
 npm run model-consistency:json
 npm run model-consistency:json -- --profile local-small
 npm run model-consistency:compare -- baseline-summary.json candidate-summary.json
+npm run model-consistency:stats
 powershell -ExecutionPolicy Bypass -File ./scripts/smoke.ps1
 npm run pack:dry-run
 ```

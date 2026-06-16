@@ -77,6 +77,7 @@
     "model-consistency:check": "node ./scripts/check-model-consistency-scenarios.js",
     "model-consistency:json": "node ./scripts/check-model-consistency-scenarios.js --json",
     "model-consistency:compare": "node ./scripts/compare-model-consistency-summaries.js",
+    "model-consistency:stats": "node ./scripts/collect-model-consistency-stats.js",
     "test": "node --test \"test/**/*.test.js\"",
     "smoke": "powershell -ExecutionPolicy Bypass -File ./scripts/smoke.ps1",
     "pack:dry-run": "npm pack --dry-run"
