@@ -28,4 +28,19 @@ describe("GitHub templates", () => {
     assert.match(template, /npm run release:check/);
     assert.match(template, /label: Risk Notes/);
   });
+
+  it("keeps the feature request issue form aligned with audit-first product decisions", () => {
+    const template = fs.readFileSync(".github/ISSUE_TEMPLATE/feature_request.yml", "utf8");
+
+    assert.match(template, /name: Feature request/);
+    assert.match(template, /audit, adapter, MCP, evaluation, or reporting improvements/);
+    assert.match(template, /id: repo-shape/);
+    assert.match(template, /label: Target Repository Shape/);
+    assert.match(template, /id: desired-audit-output/);
+    assert.match(template, /audit, ranking, plan, placement, stats, or MCP artifact/);
+    assert.match(template, /id: non-goals/);
+    assert.match(template, /Do not generate direct DTO tests or UI tests without an existing convention/);
+    assert.match(template, /fixture added, golden snapshots updated, model-consistency scenario added, npm run release:check passes/);
+    assert.match(template, /adapter-boundary concerns/);
+  });
 });

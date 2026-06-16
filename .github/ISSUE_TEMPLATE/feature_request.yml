@@ -1,0 +1,52 @@
+name: Feature request
+description: Propose audit, adapter, MCP, evaluation, or reporting improvements.
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What repository testing strategy problem should this solve?
+    validations:
+      required: true
+
+  - type: textarea
+    id: repo-shape
+    attributes:
+      label: Target Repository Shape
+      description: Languages, package managers, frameworks, and test frameworks this should support.
+      placeholder: "Example: Kotlin/JVM Gradle module with JUnit, Swift Package Manager with XCTest, React app with Testing Library."
+    validations:
+      required: true
+
+  - type: textarea
+    id: desired-audit-output
+    attributes:
+      label: Desired Audit Output
+      description: What should the audit, ranking, plan, placement, stats, or MCP artifact report?
+    validations:
+      required: true
+
+  - type: textarea
+    id: non-goals
+    attributes:
+      label: Non-Goals
+      description: What should the tool avoid doing, recommending, or generating?
+      placeholder: "Example: Do not generate direct DTO tests or UI tests without an existing convention."
+
+  - type: textarea
+    id: evaluation
+    attributes:
+      label: Evaluation
+      description: How should we know the feature works?
+      placeholder: "Example: fixture added, golden snapshots updated, model-consistency scenario added, npm run release:check passes."
+    validations:
+      required: true
+
+  - type: textarea
+    id: risk
+    attributes:
+      label: Risk Notes
+      description: Ambiguity, false-positive risk, maintenance cost, or adapter-boundary concerns.

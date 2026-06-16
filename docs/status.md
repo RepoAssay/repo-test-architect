@@ -42,6 +42,7 @@ Implemented:
 - GitHub Actions CI workflow that runs the release-readiness check on pushes and pull requests
 - GitHub pull request template that calls out audit impact, release verification, and risk notes
 - GitHub bug report issue form for audit, planning, MCP, and release-check defects
+- GitHub feature request issue form for audit-first adapter, MCP, evaluation, and reporting proposals
 - repository ignore rules for generated dependency, package, coverage, and local comparison artifacts
 
 ## Supported Fixtures
