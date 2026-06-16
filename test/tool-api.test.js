@@ -34,6 +34,7 @@ describe("tool API", () => {
 
     assert.equal(detection.schemaVersion, "project-detection/v1");
     assert.equal(detection.summary.projectCount, 3);
+    assert.equal(detection.projects[1].adapterMatches[0].adapterId, "javascript");
   });
 
   it("lists project detection rules", () => {

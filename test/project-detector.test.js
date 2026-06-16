@@ -14,6 +14,18 @@ describe("project detector", () => {
     assert.equal(detection.summary.supportedProjectCount, 1);
     assert.deepEqual(detection.projects.map((project) => project.root), ["."]);
     assert.deepEqual(detection.projects[0].adapterIds, ["javascript"]);
+    assert.deepEqual(detection.projects[0].adapterMatches, [
+      {
+        adapterId: "javascript",
+        maturity: "supported",
+        matchedEcosystems: ["javascript"],
+        matchedLanguages: ["javascript", "typescript"]
+      }
+    ]);
+    assert.equal(
+      detection.projects[0].supportStatusReason,
+      "javascript matched ecosystems javascript and languages javascript, typescript"
+    );
   });
 
   it("detects supported and unsupported projects in one repo", () => {
@@ -53,6 +65,16 @@ describe("project detector", () => {
           supported: false
         }
       ]
+    );
+  });
+
+  it("explains unsupported project adapter matching", () => {
+    const detection = detectProjects(path.resolve("examples/kotlin-junit-basic"));
+
+    assert.deepEqual(detection.projects[0].adapterMatches, []);
+    assert.equal(
+      detection.projects[0].supportStatusReason,
+      "No registered adapter supports ecosystems jvm with languages java, kotlin."
     );
   });
 

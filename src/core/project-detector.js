@@ -123,7 +123,9 @@ const MARKERS = [
  * @property {string[]} languages
  * @property {string[]} markerFiles
  * @property {string[]} adapterIds
+ * @property {Array<{ adapterId: string, maturity: string, matchedEcosystems: string[], matchedLanguages: string[] }>} adapterMatches
  * @property {boolean} supported
+ * @property {string} supportStatusReason
  *
  * @typedef {object} ProjectDetectionRules
  * @property {"project-detection-rules/v1"} schemaVersion
@@ -245,7 +247,9 @@ function addMarkerGroup(groups, root, current, markerName, marker) {
 function toDetectedProject(repoRoot, project) {
   const ecosystems = [...project.ecosystems].sort();
   const languages = [...project.languages].sort();
-  const adapterIds = matchingAdapterIds({ ecosystems, languages });
+  const adapterMatches = matchingAdapters({ ecosystems, languages });
+  const adapterIds = adapterMatches.map((adapter) => adapter.adapterId);
+  const supported = adapterIds.length > 0;
 
   return {
     id: project.root,
@@ -255,7 +259,11 @@ function toDetectedProject(repoRoot, project) {
     languages,
     markerFiles: project.markerFiles.sort(),
     adapterIds,
-    supported: adapterIds.length > 0
+    adapterMatches,
+    supported,
+    supportStatusReason: supported
+      ? formatSupportedReason(adapterMatches)
+      : formatUnsupportedReason(ecosystems, languages)
   };
 }
 
@@ -263,15 +271,43 @@ function toDetectedProject(repoRoot, project) {
  * @param {{ ecosystems: string[], languages: string[] }} project
  * @returns {string[]}
  */
-function matchingAdapterIds({ ecosystems, languages }) {
+function matchingAdapters({ ecosystems, languages }) {
   const ecosystemSet = new Set(ecosystems);
   const languageSet = new Set(languages);
 
   return listAdapters()
-    .filter((adapter) =>
-      adapter.ecosystems.some((ecosystem) => ecosystemSet.has(ecosystem)) ||
-      adapter.languages.some((language) => languageSet.has(language))
-    )
-    .map((adapter) => adapter.id)
-    .sort();
+    .map((adapter) => ({
+      adapterId: adapter.id,
+      maturity: adapter.maturity,
+      matchedEcosystems: adapter.ecosystems.filter((ecosystem) => ecosystemSet.has(ecosystem)).sort(),
+      matchedLanguages: adapter.languages.filter((language) => languageSet.has(language)).sort()
+    }))
+    .filter((adapter) => adapter.matchedEcosystems.length > 0 || adapter.matchedLanguages.length > 0)
+    .sort((a, b) => a.adapterId.localeCompare(b.adapterId));
+}
+
+/**
+ * @param {Array<{ adapterId: string, matchedEcosystems: string[], matchedLanguages: string[] }>} adapterMatches
+ * @returns {string}
+ */
+function formatSupportedReason(adapterMatches) {
+  return adapterMatches
+    .map((adapter) => {
+      const matches = [
+        adapter.matchedEcosystems.length > 0 ? `ecosystems ${adapter.matchedEcosystems.join(", ")}` : undefined,
+        adapter.matchedLanguages.length > 0 ? `languages ${adapter.matchedLanguages.join(", ")}` : undefined
+      ].filter(Boolean);
+
+      return `${adapter.adapterId} matched ${matches.join(" and ")}`;
+    })
+    .join("; ");
+}
+
+/**
+ * @param {string[]} ecosystems
+ * @param {string[]} languages
+ * @returns {string}
+ */
+function formatUnsupportedReason(ecosystems, languages) {
+  return `No registered adapter supports ecosystems ${ecosystems.join(", ")} with languages ${languages.join(", ")}.`;
 }

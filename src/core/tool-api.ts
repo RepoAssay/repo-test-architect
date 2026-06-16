@@ -153,7 +153,16 @@ export interface DetectedProject {
   languages: string[];
   markerFiles: string[];
   adapterIds: string[];
+  adapterMatches: AdapterMatch[];
   supported: boolean;
+  supportStatusReason: string;
+}
+
+export interface AdapterMatch {
+  adapterId: string;
+  maturity: "supported" | "experimental" | "planned";
+  matchedEcosystems: string[];
+  matchedLanguages: string[];
 }
 
 export interface AuditRepoOptions {

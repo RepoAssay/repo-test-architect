@@ -26,7 +26,9 @@
           "languages",
           "markerFiles",
           "adapterIds",
-          "supported"
+          "adapterMatches",
+          "supported",
+          "supportStatusReason"
         ],
         "properties": {
           "id": {
@@ -70,8 +72,52 @@
               "minLength": 1
             }
           },
+          "adapterMatches": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "adapterId",
+                "maturity",
+                "matchedEcosystems",
+                "matchedLanguages"
+              ],
+              "properties": {
+                "adapterId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "maturity": {
+                  "enum": [
+                    "supported",
+                    "experimental",
+                    "planned"
+                  ]
+                },
+                "matchedEcosystems": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "matchedLanguages": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          },
           "supported": {
             "type": "boolean"
+          },
+          "supportStatusReason": {
+            "type": "string",
+            "minLength": 1
           }
         }
       }

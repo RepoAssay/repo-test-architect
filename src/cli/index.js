@@ -454,7 +454,7 @@ function renderMarkdownDetection(detection) {
     for (const project of detection.projects) {
       const adapterText = project.adapterIds.length > 0 ? project.adapterIds.join(", ") : "none available";
       lines.push(
-        `- ${project.root}: ecosystems ${formatList(project.ecosystems)}; languages ${formatList(project.languages)} (${project.supported ? "supported" : "unsupported"}; adapters: ${adapterText}; markers: ${project.markerFiles.join(", ")})`
+        `- ${project.root}: ecosystems ${formatList(project.ecosystems)}; languages ${formatList(project.languages)} (${project.supported ? "supported" : "unsupported"}; adapters: ${adapterText}; markers: ${project.markerFiles.join(", ")}). ${project.supportStatusReason}`
       );
     }
   }

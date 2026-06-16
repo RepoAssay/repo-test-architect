@@ -62,6 +62,8 @@ Detection emits `project-detection/v1` with:
 - ecosystem labels
 - language labels
 - matching adapter IDs
+- structured adapter matches with matching ecosystem and language evidence
 - supported or unsupported status
+- support status reason
 
 The next layer can audit supported projects and preserve unsupported projects for summary, ranking, planning, and final risk reporting.

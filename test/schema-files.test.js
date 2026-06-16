@@ -91,7 +91,10 @@ describe("schema files", () => {
     assert.ok(schema.required.includes("projects"));
     assert.ok(schema.required.includes("summary"));
     assert.ok(schema.properties.projects.items.required.includes("adapterIds"));
+    assert.ok(schema.properties.projects.items.required.includes("adapterMatches"));
     assert.ok(schema.properties.projects.items.required.includes("supported"));
+    assert.ok(schema.properties.projects.items.required.includes("supportStatusReason"));
+    assert.ok(schema.properties.projects.items.properties.adapterMatches.items.required.includes("matchedEcosystems"));
   });
 
   it("documents project-detection-rules/v1", () => {

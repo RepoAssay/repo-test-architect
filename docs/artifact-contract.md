@@ -309,7 +309,7 @@ node ./src/cli/index.js detect ./examples/polyglot-workspace
 node ./src/cli/index.js detect ./examples/polyglot-workspace --format json
 ```
 
-This artifact lists project roots found inside a repository, their marker files, likely ecosystems and languages, matching adapter IDs, and whether the current runtime can audit them.
+This artifact lists project roots found inside a repository, their marker files, likely ecosystems and languages, matching adapter IDs, structured adapter match evidence, and whether the current runtime can audit them.
 It is the first deterministic step toward polyglot repo support and future parallel adapter execution.
 
 ## Project Audits Artifact
