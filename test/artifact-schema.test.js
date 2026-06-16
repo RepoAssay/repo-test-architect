@@ -1,3 +1,4 @@
+import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { describe, it } from "node:test";
@@ -149,6 +150,13 @@ describe("project audits artifact schema compatibility", () => {
 
     assertMatchesSchema(args.projectAudits, projectAuditsSchema, "polyglot-project-audits.args.json.projectAudits");
   });
+
+  it("keeps checked-in MCP project-audits args fixture aligned with the polyglot example", () => {
+    const args = readJson("examples/mcp/polyglot-project-audits.args.json");
+    const artifact = auditDetectedProjects(path.resolve("examples/polyglot-workspace"));
+
+    assert.deepEqual(normalizePolyglotProjectAudits(artifact), args.projectAudits);
+  });
 });
 
 describe("project audit summary artifact schema compatibility", () => {
@@ -228,4 +236,21 @@ function readModelConsistencyScenarios() {
     .filter((fileName) => fileName.endsWith(".scenario.json"))
     .sort()
     .map((fileName) => readModelConsistencyScenario(path.join("evals/model-consistency", fileName)));
+}
+
+function normalizePolyglotProjectAudits(projectAudits) {
+  return {
+    ...projectAudits,
+    root: "./examples/polyglot-workspace",
+    audits: projectAudits.audits.map((entry) => ({
+      ...entry,
+      audit: {
+        ...entry.audit,
+        profile: {
+          ...entry.audit.profile,
+          root: `./examples/polyglot-workspace/${entry.projectRoot}`
+        }
+      }
+    }))
+  };
 }
