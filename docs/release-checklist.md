@@ -13,6 +13,7 @@ This project is not ready to publish yet. Keep `private: true` in `package.json`
 - review the existing `files` allowlist before publishing
 - add the intended npm package name to MCP client config examples
 - verify `npm run pack:dry-run` includes only intended files
+- keep `npm run pack:check` passing so package contents stay inside the intended allowlist
 - add package metadata before publishing:
   - `repository`
   - `homepage`
@@ -39,6 +40,7 @@ npm run eval:check
 npm test
 powershell -ExecutionPolicy Bypass -File ./scripts/smoke.ps1
 npm run pack:dry-run
+npm run pack:check
 ```
 
 Also verify the installed package entry points from a packed tarball before first public release.

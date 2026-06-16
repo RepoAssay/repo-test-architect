@@ -80,7 +80,8 @@
     "model-consistency:stats": "node ./scripts/collect-model-consistency-stats.js",
     "test": "node --test \"test/**/*.test.js\"",
     "smoke": "powershell -ExecutionPolicy Bypass -File ./scripts/smoke.ps1",
-    "pack:dry-run": "npm pack --dry-run"
+    "pack:dry-run": "npm pack --dry-run",
+    "pack:check": "node ./scripts/check-pack-contents.js"
   },
   "keywords": [
     "testing",

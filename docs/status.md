@@ -36,6 +36,7 @@ Implemented:
 - changed-file workflows with `--changed` and `--changed-since`
 - MCP-shaped tool descriptors, local invoke harness, and dependency-free stdio JSON-RPC scaffold
 - release-readiness checklist, npm package dry-run script, and package contents allowlist
+- package contents dry-run checker for required runtime files and publish allowlist hygiene
 
 ## Supported Fixtures
 
@@ -103,6 +104,7 @@ npm run model-consistency:compare -- baseline-summary.json candidate-summary.jso
 npm run model-consistency:stats
 powershell -ExecutionPolicy Bypass -File ./scripts/smoke.ps1
 npm run pack:dry-run
+npm run pack:check
 ```
 
 The project-derived CLI commands also accept `--from-project-audits` for reusing a saved `project-audits/v1` artifact.

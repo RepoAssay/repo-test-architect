@@ -40,11 +40,13 @@ describe("package manifest", () => {
     assert.ok(packageJson.scripts["model-consistency:json"]);
     assert.ok(packageJson.scripts["model-consistency:compare"]);
     assert.ok(packageJson.scripts["model-consistency:stats"]);
+    assert.ok(packageJson.scripts["pack:check"]);
   });
 
   it("documents package dry-run verification in project status", () => {
     const status = fs.readFileSync("docs/status.md", "utf8");
 
     assert.ok(status.includes("npm run pack:dry-run"));
+    assert.ok(status.includes("npm run pack:check"));
   });
 });

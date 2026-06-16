@@ -159,6 +159,12 @@ Node 20 or newer is required for the CLI. If Node is not available yet, the repo
 powershell -ExecutionPolicy Bypass -File ./scripts/smoke.ps1
 ```
 
+Check package contents before publishing:
+
+```powershell
+npm run pack:check
+```
+
 ## Shape
 
 ```txt

@@ -22,6 +22,7 @@ $required = @(
   "src/core/project-stats.js",
   "src/core/model-consistency-stats.js",
   "scripts/collect-model-consistency-stats.js",
+  "scripts/check-pack-contents.js",
   "examples/mcp/polyglot-project-audits.args.json",
   "examples/node-vitest-basic/package.json",
   "examples/node-vitest-basic/tsconfig.json",
