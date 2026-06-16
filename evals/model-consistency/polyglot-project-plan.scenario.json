@@ -1,0 +1,72 @@
+{
+  "schemaVersion": "model-consistency-scenario/v1",
+  "id": "polyglot-project-plan",
+  "description": "Different model profiles should preserve project-aware plan item identity and unsupported project reporting for a polyglot repository.",
+  "sourceArtifact": {
+    "path": "examples/mcp/polyglot-project-audits.args.json",
+    "schemaVersion": "project-audits/v1",
+    "argumentName": "projectAudits"
+  },
+  "toolCall": {
+    "toolName": "generate_project_test_plan",
+    "arguments": {}
+  },
+  "lockedFields": [
+    {
+      "path": "summary.auditCoverage",
+      "expected": "partial",
+      "reason": "Project planning must preserve partial audit coverage from the project-audits artifact."
+    },
+    {
+      "path": "summary.itemCount",
+      "expected": 1,
+      "reason": "Only the supported web project contributes a plan item in this fixture."
+    },
+    {
+      "path": "summary.addTestCount",
+      "expected": 1,
+      "reason": "The supported web project has one untested candidate that becomes an add-test item."
+    },
+    {
+      "path": "items[0].projectId",
+      "expected": "apps/web",
+      "reason": "Flattened plan items must preserve their owning project root."
+    },
+    {
+      "path": "items[0].projectItemId",
+      "expected": "apps/web:add-test:src/sessionClient.ts",
+      "reason": "Project item IDs are the stable cross-project reference for future generation."
+    },
+    {
+      "path": "items[0].action",
+      "expected": "add-test",
+      "reason": "The candidate remains an add-test action until test evidence changes."
+    },
+    {
+      "path": "projectPlans[0].plan.summary.verificationCommand",
+      "expected": "npm run test",
+      "reason": "Project plan artifacts must retain the repo-native verification command for the owning project."
+    },
+    {
+      "path": "unsupportedProjects[0].projectId",
+      "expected": "apps/android",
+      "reason": "Unsupported roots must remain visible in project planning output."
+    },
+    {
+      "path": "unsupportedProjects[1].projectId",
+      "expected": "services/api",
+      "reason": "Unsupported roots must remain visible in project planning output."
+    }
+  ],
+  "allowedVariations": [
+    "summary wording",
+    "plan item explanation wording",
+    "optional detail depth"
+  ],
+  "unexpectedVariations": [
+    "missing project item identity",
+    "missing unsupported project roots",
+    "different plan item count",
+    "different verification command"
+  ]
+}
