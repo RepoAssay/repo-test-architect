@@ -226,7 +226,32 @@ describe("CLI", () => {
     );
   });
 
-  it("summarizes, ranks, plans, and analyzes placement from an existing project audits file", () => {
+  it("emits project stats in markdown", () => {
+    const output = execFileSync(process.execPath, [cliPath, "stats-projects", "examples/polyglot-workspace"], {
+      encoding: "utf8"
+    });
+
+    assert.match(output, /^# Project Stats/);
+    assert.match(output, /Audit coverage: partial/);
+    assert.match(output, /Test frameworks: vitest: 1/);
+  });
+
+  it("emits project stats as JSON", () => {
+    const output = execFileSync(
+      process.execPath,
+      [cliPath, "stats-projects", "examples/polyglot-workspace", "--format=json"],
+      {
+        encoding: "utf8"
+      }
+    );
+    const stats = JSON.parse(output);
+
+    assert.equal(stats.schemaVersion, "project-stats/v1");
+    assert.equal(stats.summary.auditCoverage, "partial");
+    assert.deepEqual(stats.distributions.testCommands, { "npm run test": 1 });
+  });
+
+  it("summarizes, ranks, plans, analyzes placement, and collects stats from an existing project audits file", () => {
     const projectAuditsPath = writeTempJson(
       JSON.parse(
         execFileSync(process.execPath, [cliPath, "audit-projects", "examples/polyglot-workspace", "--format=json"], {
@@ -262,6 +287,13 @@ describe("CLI", () => {
         { encoding: "utf8" }
       )
     );
+    const stats = JSON.parse(
+      execFileSync(
+        process.execPath,
+        [cliPath, "stats-projects", "--from-project-audits", projectAuditsPath, "--format=json"],
+        { encoding: "utf8" }
+      )
+    );
 
     assert.equal(summary.schemaVersion, "project-audit-summary/v1");
     assert.equal(ranking.schemaVersion, "project-candidate-ranking/v1");
@@ -269,6 +301,8 @@ describe("CLI", () => {
     assert.equal(plan.summary.itemCount, 1);
     assert.equal(placement.schemaVersion, "test-placement-findings/v1");
     assert.equal(placement.findings.length, 0);
+    assert.equal(stats.schemaVersion, "project-stats/v1");
+    assert.equal(stats.counts.untestedCandidateCount, 1);
   });
 
   it("emits project audits from an existing project audits file", () => {

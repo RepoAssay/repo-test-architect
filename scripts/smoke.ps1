@@ -19,6 +19,7 @@ $required = @(
   "src/core/project-candidate-ranking.js",
   "src/core/project-test-plan.js",
   "src/core/project-test-placement-analysis.js",
+  "src/core/project-stats.js",
   "examples/mcp/polyglot-project-audits.args.json",
   "examples/node-vitest-basic/package.json",
   "examples/node-vitest-basic/tsconfig.json",
@@ -76,7 +77,7 @@ foreach ($signal in @("vitest", "pure-logic", "auth or permission branches", "te
 }
 
 $mcpTools = Get-Content (Join-Path $root "src/mcp/tool-definitions.js") -Raw
-foreach ($tool in @("list_adapters", "list_project_detection_rules", "detect_projects", "audit_projects", "summarize_project_audits", "rank_project_candidates", "generate_project_test_plan", "analyze_project_test_placement", "audit_repo", "get_audit_graph", "generate_test_plan", "explain_target", "rank_test_candidates", "analyze_test_placement", "generate_selected_test")) {
+foreach ($tool in @("list_adapters", "list_project_detection_rules", "detect_projects", "audit_projects", "summarize_project_audits", "rank_project_candidates", "generate_project_test_plan", "analyze_project_test_placement", "collect_project_stats", "audit_repo", "get_audit_graph", "generate_test_plan", "explain_target", "rank_test_candidates", "analyze_test_placement", "generate_selected_test")) {
   if (-not $mcpTools.Contains($tool)) {
     throw "Missing expected MCP tool: $tool"
   }

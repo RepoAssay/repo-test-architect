@@ -78,6 +78,33 @@ export interface ProjectTestPlan {
   items: ProjectPlanItem[];
 }
 
+export interface ProjectStats {
+  schemaVersion: "project-stats/v1";
+  root: string;
+  summary: {
+    projectCount: number;
+    auditedProjectCount: number;
+    unsupportedProjectCount: number;
+    auditCoverage: "complete" | "partial" | "none";
+  };
+  counts: {
+    untestedCandidateCount: number;
+    coveredButRiskyCount: number;
+    skippedTargetCount: number;
+    riskCount: number;
+    blockerCount: number;
+  };
+  distributions: {
+    confidence: Record<string, number>;
+    testFrameworks: Record<string, number>;
+    testCommands: Record<string, number>;
+  };
+  adapters: Array<{
+    adapterId: string;
+    projectCount: number;
+  }>;
+}
+
 export interface ProjectPlanEntry {
   projectId: string;
   projectRoot: string;
@@ -225,6 +252,8 @@ export declare function rankRepoProjectCandidates(projectAudits: ProjectAudits):
 export declare function generateRepoProjectTestPlan(projectAudits: ProjectAudits): ProjectTestPlan;
 
 export declare function analyzeRepoProjectTestPlacement(projectAudits: ProjectAudits): TestPlacementFindings;
+
+export declare function collectRepoProjectStats(projectAudits: ProjectAudits): ProjectStats;
 
 export declare function createRepoTestPlacementFindings(findings?: TestPlacementFinding[]): TestPlacementFindings;
 

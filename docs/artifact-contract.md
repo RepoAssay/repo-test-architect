@@ -411,6 +411,39 @@ It also preserves unsupported project roots with ecosystem labels, language labe
 
 `project-audits/v1` can also be used by the internal `analyzeRepoProjectTestPlacement` API to produce repository-relative `test-placement-findings/v1` findings while preserving project owner identity.
 
+## Project Stats Artifact
+
+Schema:
+
+- `schemas/project-stats-v1.schema.json`
+- `schemaVersion: "project-stats/v1"`
+
+MCP tool:
+
+```txt
+collect_project_stats
+```
+
+Commands:
+
+```powershell
+node ./src/cli/index.js stats-projects ./examples/polyglot-workspace
+node ./src/cli/index.js stats-projects ./examples/polyglot-workspace --format json
+node ./src/cli/index.js stats-projects --from-project-audits ./project-audits.json --format json
+```
+
+This artifact derives local deterministic stats from a `project-audits/v1` artifact.
+It is intended for reporting, trend comparisons, and later model-profile comparisons without collecting source content or external telemetry.
+
+It contains:
+
+- project audit coverage counts
+- candidate, skipped target, risk, and blocker counts
+- confidence distribution
+- detected test framework distribution
+- detected test command distribution
+- audited adapter usage counts
+
 ## Changed-Only Flow
 
 For PR-style workflows, use `--changed`:
@@ -465,6 +498,7 @@ Internal tool API:
 - `rankRepoProjectCandidates`
 - `generateRepoProjectTestPlan`
 - `analyzeRepoProjectTestPlacement`
+- `collectRepoProjectStats`
 - `getAuditGraph`
 - `explainAuditTarget`
 - `rankAuditTestCandidates`

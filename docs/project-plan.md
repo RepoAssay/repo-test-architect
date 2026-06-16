@@ -74,6 +74,7 @@ The MCP server should expose stable tools around the deterministic audit graph:
 - `rank_project_candidates`
 - `generate_project_test_plan`
 - `analyze_project_test_placement`
+- `collect_project_stats`
 - `audit_repo`
 - `get_audit_graph`
 - `explain_target`
@@ -92,6 +93,7 @@ The internal tool API now mirrors the first five MCP-shaped operations:
 - `rankRepoProjectCandidates`
 - `generateRepoProjectTestPlan`
 - `analyzeRepoProjectTestPlacement`
+- `collectRepoProjectStats`
 - `auditRepo`
 - `getAuditGraph`
 - `explainAuditTarget`
@@ -241,6 +243,8 @@ Quality:
 ## Tracking And Stats Direction
 
 Add local-first stats before considering any external telemetry.
+
+The first `project-stats/v1` artifact is now derived from `project-audits/v1` and covers audit coverage, candidate/risk/blocker counts, confidence distribution, test framework detection, test commands, and adapter usage.
 
 Useful deterministic stats should be derived from existing artifacts:
 

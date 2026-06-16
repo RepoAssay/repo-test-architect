@@ -45,6 +45,8 @@ npm run plan-projects:example
 npm run plan-projects:example:json
 npm run placement-projects:example
 npm run placement-projects:example:json
+npm run stats-projects:example
+npm run stats-projects:example:json
 ```
 
 Reuse a saved project audit artifact:
@@ -55,6 +57,7 @@ node ./src/cli/index.js summarize-projects --from-project-audits ./project-audit
 node ./src/cli/index.js rank-projects --from-project-audits ./project-audits.json --format json
 node ./src/cli/index.js plan-projects --from-project-audits ./project-audits.json --format json
 node ./src/cli/index.js placement-projects --from-project-audits ./project-audits.json --format json
+node ./src/cli/index.js stats-projects --from-project-audits ./project-audits.json --format json
 ```
 
 ```powershell
@@ -109,6 +112,7 @@ npm run mcp:summarize-projects:example
 npm run mcp:rank-projects:example
 npm run mcp:plan-projects:example
 npm run mcp:placement-projects:example
+npm run mcp:stats-projects:example
 npm run mcp:audit:example
 npm run mcp:placement:example
 npm run mcp:audit:envelope

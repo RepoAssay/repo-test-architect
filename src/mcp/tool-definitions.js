@@ -3,6 +3,7 @@ import {
   analyzeRepoTestPlacement,
   auditRepoProjects,
   auditRepo,
+  collectRepoProjectStats,
   detectRepoProjects,
   explainAuditTarget,
   generateTestPlan,
@@ -74,6 +75,14 @@ export const mcpTools = [
     name: "analyze_project_test_placement",
     description: "Analyze project-aware test placement from a project-audits artifact.",
     outputArtifact: artifact("test-placement-findings/v1", "schemas/test-placement-findings-v1.schema.json"),
+    inputSchema: objectSchema({
+      projectAudits: { type: "object", description: "A project-audits/v1 artifact." }
+    }, ["projectAudits"])
+  },
+  {
+    name: "collect_project_stats",
+    description: "Collect local deterministic project audit stats for coverage, counts, framework distribution, and adapter usage.",
+    outputArtifact: artifact("project-stats/v1", "schemas/project-stats-v1.schema.json"),
     inputSchema: objectSchema({
       projectAudits: { type: "object", description: "A project-audits/v1 artifact." }
     }, ["projectAudits"])
@@ -172,6 +181,8 @@ export function callTool(name, args = {}) {
       return generateRepoProjectTestPlan(requireObject(args.projectAudits, "projectAudits"));
     case "analyze_project_test_placement":
       return analyzeRepoProjectTestPlacement(requireObject(args.projectAudits, "projectAudits"));
+    case "collect_project_stats":
+      return collectRepoProjectStats(requireObject(args.projectAudits, "projectAudits"));
     case "audit_repo":
       return auditRepo(requireString(args.repoRoot, "repoRoot"), {
         adapterId: optionalString(args.adapterId, "adapterId"),

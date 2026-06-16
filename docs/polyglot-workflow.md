@@ -56,12 +56,14 @@ node ./src/cli/index.js summarize-projects --from-project-audits ./project-audit
 node ./src/cli/index.js rank-projects --from-project-audits ./project-audits.json --format json
 node ./src/cli/index.js plan-projects --from-project-audits ./project-audits.json --format json
 node ./src/cli/index.js placement-projects --from-project-audits ./project-audits.json --format json
+node ./src/cli/index.js stats-projects --from-project-audits ./project-audits.json --format json
 ```
 
 This keeps the deterministic audit boundary clear:
 
 - scanning and classification happen once
 - summaries, rankings, plans, and placement findings are derived from the saved artifact
+- stats and future trend comparisons can be derived from the saved artifact
 - model-assisted layers can consume the same artifact without inventing repo facts
 
 ## 4. Summarize
@@ -103,6 +105,16 @@ node ./src/cli/index.js placement-projects ./examples/node-vitest-basic --format
 This emits `test-placement-findings/v1`.
 
 Project placement analysis derives advisory findings from `project-audits/v1` while preserving project owner identity. The first implementation only emits conservative `keep` findings for tests already matched to audited targets in the same project.
+
+## 8. Collect Project Stats
+
+```powershell
+node ./src/cli/index.js stats-projects ./examples/polyglot-workspace --format json
+```
+
+This emits `project-stats/v1`.
+
+Project stats are derived from `project-audits/v1` and contain local counts and distributions for reporting: audit coverage, candidate counts, skipped targets, risks, blockers, confidence levels, detected test frameworks, test commands, and adapter usage.
 
 ## Adapter Execution Model
 

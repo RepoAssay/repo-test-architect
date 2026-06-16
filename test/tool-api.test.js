@@ -6,6 +6,7 @@ import {
   analyzeRepoProjectTestPlacement,
   auditRepoProjects,
   auditRepo,
+  collectRepoProjectStats,
   createRepoTestPlacementFindings,
   detectRepoProjects,
   explainAuditTarget,
@@ -84,6 +85,16 @@ describe("tool API", () => {
 
     assert.equal(placement.schemaVersion, "test-placement-findings/v1");
     assert.equal(placement.findings[0].id, ".:keep:src/deckParser.test.ts:src/deckParser.ts");
+  });
+
+  it("collects project stats from detected repository project audits", () => {
+    const projectAudits = auditRepoProjects(path.resolve("examples/polyglot-workspace"));
+    const stats = collectRepoProjectStats(projectAudits);
+
+    assert.equal(stats.schemaVersion, "project-stats/v1");
+    assert.equal(stats.summary.auditCoverage, "partial");
+    assert.equal(stats.counts.untestedCandidateCount, 1);
+    assert.deepEqual(stats.distributions.testFrameworks, { vitest: 1 });
   });
 
   it("audits a repo and exposes the audit graph", () => {

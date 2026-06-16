@@ -19,6 +19,7 @@ import {
   summarizeModelConsistencyResults
 } from "../src/core/model-consistency-runner.js";
 import { createTestPlacementFindings } from "../src/core/test-placement-findings.js";
+import { collectProjectStats } from "../src/core/project-stats.js";
 import { loadEvalFixtures } from "./support/eval-fixtures.js";
 import { assertMatchesSchema } from "./support/json-schema-validator.js";
 
@@ -36,6 +37,7 @@ const projectAuditsSchema = readJson("schemas/project-audits-v1.schema.json");
 const projectAuditSummarySchema = readJson("schemas/project-audit-summary-v1.schema.json");
 const projectCandidateRankingSchema = readJson("schemas/project-candidate-ranking-v1.schema.json");
 const projectTestPlanSchema = readJson("schemas/project-test-plan-v1.schema.json");
+const projectStatsSchema = readJson("schemas/project-stats-v1.schema.json");
 const modelConsistencyScenarioSchema = readJson("schemas/model-consistency-scenario-v1.schema.json");
 const modelConsistencySummarySchema = readJson("schemas/model-consistency-summary-v1.schema.json");
 const modelConsistencyComparisonSchema = readJson("schemas/model-consistency-comparison-v1.schema.json");
@@ -184,6 +186,15 @@ describe("project test plan artifact schema compatibility", () => {
     const artifact = createProjectTestPlan(projectAudits);
 
     assertMatchesSchema(artifact, projectTestPlanSchema, "project-test-plan.json");
+  });
+});
+
+describe("project stats artifact schema compatibility", () => {
+  it("validates project-stats/v1", () => {
+    const projectAudits = auditDetectedProjects(path.resolve("examples/polyglot-workspace"));
+    const artifact = collectProjectStats(projectAudits);
+
+    assertMatchesSchema(artifact, projectStatsSchema, "project-stats.json");
   });
 });
 

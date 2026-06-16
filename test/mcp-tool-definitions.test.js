@@ -49,6 +49,7 @@ describe("MCP tool definitions", () => {
     const projectCandidateRanking = callTool("rank_project_candidates", { projectAudits });
     const projectTestPlan = callTool("generate_project_test_plan", { projectAudits });
     const projectPlacement = callTool("analyze_project_test_placement", { projectAudits });
+    const projectStats = callTool("collect_project_stats", { projectAudits });
     const audit = callTool("audit_repo", {
       repoRoot: path.resolve("examples/node-vitest-basic"),
       adapterId: "javascript"
@@ -81,6 +82,8 @@ describe("MCP tool definitions", () => {
     assert.equal(projectTestPlan.summary.itemCount, 1);
     assert.equal(projectPlacement.schemaVersion, "test-placement-findings/v1");
     assert.equal(projectPlacement.findings.length, 0);
+    assert.equal(projectStats.schemaVersion, "project-stats/v1");
+    assert.equal(projectStats.counts.untestedCandidateCount, 1);
     assert.equal(graph, audit);
     assert.equal(plan.schemaVersion, "plan/v1");
     assert.deepEqual(plan.items.map((item) => item.id), ["add-test:src/authService.ts"]);
@@ -136,6 +139,7 @@ function minimalArgsFor(toolName) {
   if (toolName === "rank_project_candidates") return { projectAudits: { schemaVersion: "project-audits/v1", audits: [], skippedProjects: [], summary: {} } };
   if (toolName === "generate_project_test_plan") return { projectAudits: { schemaVersion: "project-audits/v1", audits: [], skippedProjects: [], summary: {} } };
   if (toolName === "analyze_project_test_placement") return { projectAudits: { schemaVersion: "project-audits/v1", audits: [], skippedProjects: [], summary: {} } };
+  if (toolName === "collect_project_stats") return { projectAudits: { schemaVersion: "project-audits/v1", audits: [], skippedProjects: [], summary: {} } };
   if (toolName === "audit_repo") return { repoRoot: "." };
   if (toolName === "explain_target") return { audit: {}, targetId: "src/example.ts" };
   if (toolName === "analyze_test_placement") return { audit: {} };

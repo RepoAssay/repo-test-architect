@@ -22,6 +22,7 @@ Descriptor schema:
 - `rank_project_candidates`
 - `generate_project_test_plan`
 - `analyze_project_test_placement`
+- `collect_project_stats`
 - `audit_repo`
 - `get_audit_graph`
 - `generate_test_plan`
@@ -44,6 +45,7 @@ The model should consume these artifacts directly:
 - project-aware candidate ordering comes from `rank_project_candidates`
 - project-aware test planning comes from `generate_project_test_plan`
 - project-aware test placement findings come from `analyze_project_test_placement`
+- local deterministic project stats come from `collect_project_stats`
 - audit facts come from `audit_repo` or `get_audit_graph`
 - target-level explanation comes from `explain_target`
 - candidate ordering comes from `rank_test_candidates`
@@ -68,6 +70,7 @@ Each tool descriptor includes `outputArtifact` metadata:
 | `rank_project_candidates` | `project-candidate-ranking/v1` |
 | `generate_project_test_plan` | `project-test-plan/v1` |
 | `analyze_project_test_placement` | `test-placement-findings/v1` |
+| `collect_project_stats` | `project-stats/v1` |
 | `audit_repo` | `audit/v1` |
 | `get_audit_graph` | `audit/v1` |
 | `generate_test_plan` | `plan/v1` |
@@ -84,6 +87,7 @@ Use `summarize_project_audits` when a client needs compact audit coverage status
 Use `rank_project_candidates` when a client needs ordered candidates across audited project roots while preserving project identity.
 Use `generate_project_test_plan` when a client needs project-aware plan items before selecting future generation targets.
 Use `analyze_project_test_placement` when a client needs advisory placement findings derived from audited project roots.
+Use `collect_project_stats` when a client needs local artifact-derived counts and distributions for reporting or model-profile comparisons.
 `audit_repo` accepts an optional `adapterId`. The current registered adapter is `javascript`.
 
 ## Future Transport
@@ -136,6 +140,7 @@ npm run mcp:summarize-projects:example
 npm run mcp:rank-projects:example
 npm run mcp:plan-projects:example
 npm run mcp:placement-projects:example
+npm run mcp:stats-projects:example
 npm run mcp:audit:example
 npm run mcp:placement:example
 npm run mcp:audit:envelope
@@ -150,10 +155,11 @@ node ./src/mcp/invoke.js call list_project_detection_rules "{}"
 node ./src/mcp/invoke.js call audit_repo "{\"repoRoot\":\"./examples/node-vitest-basic\"}"
 node ./src/mcp/invoke.js call audit_repo "@./args.json"
 node ./src/mcp/invoke.js call summarize_project_audits "@./examples/mcp/polyglot-project-audits.args.json"
+node ./src/mcp/invoke.js call collect_project_stats "@./examples/mcp/polyglot-project-audits.args.json"
 node ./src/mcp/invoke.js call-envelope audit_repo "{\"repoRoot\":\"./examples/node-vitest-basic\"}"
 node ./src/mcp/stdio.js
 ```
 
 This validates the same tool descriptors and dispatcher the future MCP server should mount.
 Use `call-envelope` to inspect the MCP-style `content` response shape.
-Use `@./args.json` when a tool call needs a saved artifact, such as wrapping a `project-audits/v1` artifact as `{ "projectAudits": ... }` for project summary, ranking, planning, or placement calls.
+Use `@./args.json` when a tool call needs a saved artifact, such as wrapping a `project-audits/v1` artifact as `{ "projectAudits": ... }` for project summary, ranking, planning, placement, or stats calls.

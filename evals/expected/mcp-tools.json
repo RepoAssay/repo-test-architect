@@ -155,6 +155,27 @@
       }
     },
     {
+      "name": "collect_project_stats",
+      "description": "Collect local deterministic project audit stats for coverage, counts, framework distribution, and adapter usage.",
+      "outputArtifact": {
+        "schemaVersion": "project-stats/v1",
+        "schemaPath": "schemas/project-stats-v1.schema.json"
+      },
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "projectAudits"
+        ],
+        "properties": {
+          "projectAudits": {
+            "type": "object",
+            "description": "A project-audits/v1 artifact."
+          }
+        }
+      }
+    },
+    {
       "name": "audit_repo",
       "description": "Audit a repository and return the deterministic audit graph.",
       "outputArtifact": {

@@ -7,6 +7,7 @@ import {
   analyzeRepoTestPlacement,
   auditRepoProjects,
   auditRepo,
+  collectRepoProjectStats,
   detectRepoProjects,
   explainAuditTarget,
   generateRepoProjectTestPlan,
@@ -22,8 +23,8 @@ import {
 
 const options = parseArgs(process.argv.slice(2));
 
-if (!["adapters", "detect-rules", "detect", "audit-projects", "summarize-projects", "rank-projects", "plan-projects", "placement-projects", "audit", "plan", "explain", "rank", "placement"].includes(options.command)) {
-  console.error("Usage: repo-test-architect <adapters|detect-rules|detect|audit-projects|summarize-projects|rank-projects|plan-projects|placement-projects|audit|plan|explain|rank|placement> <repo> [--format markdown|json] [--from-audit audit.json] [--from-project-audits project-audits.json] [--item id] [--target id] [--owner label] [--changed] [--changed-since ref]");
+if (!["adapters", "detect-rules", "detect", "audit-projects", "summarize-projects", "rank-projects", "plan-projects", "placement-projects", "stats-projects", "audit", "plan", "explain", "rank", "placement"].includes(options.command)) {
+  console.error("Usage: repo-test-architect <adapters|detect-rules|detect|audit-projects|summarize-projects|rank-projects|plan-projects|placement-projects|stats-projects|audit|plan|explain|rank|placement> <repo> [--format markdown|json] [--from-audit audit.json] [--from-project-audits project-audits.json] [--item id] [--target id] [--owner label] [--changed] [--changed-since ref]");
   process.exit(1);
 }
 
@@ -37,8 +38,8 @@ if (options.fromAuditPath && !["plan", "explain", "rank", "placement"].includes(
   process.exit(1);
 }
 
-if (options.fromProjectAuditsPath && !["audit-projects", "summarize-projects", "rank-projects", "plan-projects", "placement-projects"].includes(options.command)) {
-  console.error("--from-project-audits is only supported with audit-projects, summarize-projects, rank-projects, plan-projects, and placement-projects commands.");
+if (options.fromProjectAuditsPath && !["audit-projects", "summarize-projects", "rank-projects", "plan-projects", "placement-projects", "stats-projects"].includes(options.command)) {
+  console.error("--from-project-audits is only supported with audit-projects, summarize-projects, rank-projects, plan-projects, placement-projects, and stats-projects commands.");
   process.exit(1);
 }
 
@@ -48,7 +49,7 @@ const detectionRules = options.command === "detect-rules" ? getProjectDetectionR
 const detection = options.command === "detect" ? detectRepoProjects(repoRoot) : undefined;
 const projectAudits = options.fromProjectAuditsPath
   ? readProjectAuditsJson(options.fromProjectAuditsPath)
-  : ["audit-projects", "summarize-projects", "rank-projects", "plan-projects", "placement-projects"].includes(options.command)
+  : ["audit-projects", "summarize-projects", "rank-projects", "plan-projects", "placement-projects", "stats-projects"].includes(options.command)
     ? auditRepoProjects(repoRoot)
     : undefined;
 const audit = options.fromAuditPath
@@ -78,6 +79,8 @@ if (options.format === "json") {
   console.log(renderMarkdownProjectTestPlan(output));
 } else if (options.command === "placement-projects") {
   console.log(renderMarkdownPlacement(output));
+} else if (options.command === "stats-projects") {
+  console.log(renderMarkdownProjectStats(output));
 } else if (options.command === "plan") {
   console.log(renderMarkdownPlan(output));
 } else if (options.command === "explain") {
@@ -306,6 +309,7 @@ function selectProjectOutput(projectAudits, options) {
   if (options.command === "rank-projects") return rankRepoProjectCandidates(projectAudits);
   if (options.command === "plan-projects") return generateRepoProjectTestPlan(projectAudits);
   if (options.command === "placement-projects") return analyzeRepoProjectTestPlacement(projectAudits);
+  if (options.command === "stats-projects") return collectRepoProjectStats(projectAudits);
   return projectAudits;
 }
 
@@ -604,6 +608,35 @@ function renderMarkdownProjectTestPlan(plan) {
   return lines.join("\n");
 }
 
+function renderMarkdownProjectStats(stats) {
+  const lines = [];
+
+  lines.push("# Project Stats");
+  lines.push("");
+  lines.push("## Summary");
+  lines.push(`- Projects: ${stats.summary.projectCount}`);
+  lines.push(`- Audited: ${stats.summary.auditedProjectCount}`);
+  lines.push(`- Unsupported: ${stats.summary.unsupportedProjectCount}`);
+  lines.push(`- Audit coverage: ${stats.summary.auditCoverage}`);
+  lines.push("");
+  lines.push("## Counts");
+  lines.push(`- Untested candidates: ${stats.counts.untestedCandidateCount}`);
+  lines.push(`- Covered but risky: ${stats.counts.coveredButRiskyCount}`);
+  lines.push(`- Skipped targets: ${stats.counts.skippedTargetCount}`);
+  lines.push(`- Risks: ${stats.counts.riskCount}`);
+  lines.push(`- Blockers: ${stats.counts.blockerCount}`);
+  lines.push("");
+  lines.push("## Distributions");
+  lines.push(`- Confidence: ${formatRecord(stats.distributions.confidence)}`);
+  lines.push(`- Test frameworks: ${formatRecord(stats.distributions.testFrameworks)}`);
+  lines.push(`- Test commands: ${formatRecord(stats.distributions.testCommands)}`);
+  lines.push("");
+  lines.push("## Adapters");
+  lines.push(`- ${stats.adapters.map((adapter) => `${adapter.adapterId}: ${adapter.projectCount}`).join(", ") || "none detected"}`);
+
+  return lines.join("\n");
+}
+
 function renderMarkdownPlan(plan) {
   const lines = [];
 
@@ -739,6 +772,11 @@ function renderMarkdownPlacement(placement) {
 
 function formatList(values) {
   return values.length > 0 ? values.join(", ") : "none detected";
+}
+
+function formatRecord(record) {
+  const entries = Object.entries(record);
+  return entries.length > 0 ? entries.map(([key, count]) => `${key}: ${count}`).join(", ") : "none detected";
 }
 
 function trimTrailingPeriod(value) {

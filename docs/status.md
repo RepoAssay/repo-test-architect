@@ -25,6 +25,7 @@ Implemented:
 - audit, plan, explanation, ranking, and deferred-generation artifacts
 - test placement findings artifact with a conservative audit-based `keep` analyzer
 - project-audits derived placement analysis that preserves project owner identity
+- project-audits derived local stats artifact for audit coverage, target counts, framework distribution, test commands, and adapter usage
 - JSDoc contract annotations for core runtime modules, including adapter registry, tool API, project detection, project audit, planning, ranking, explanation, placement, and deferred generation
 - project detection and project audit artifacts for polyglot repository groundwork
 - documented polyglot artifact workflow from project detection through project test planning
@@ -62,6 +63,7 @@ Current tool names:
 - `rank_project_candidates`
 - `generate_project_test_plan`
 - `analyze_project_test_placement`
+- `collect_project_stats`
 - `get_audit_graph`
 - `generate_test_plan`
 - `explain_target`
@@ -87,7 +89,9 @@ npm run rank-projects:example:json
 npm run plan-projects:example:json
 npm run placement:example:json
 npm run placement-projects:example:json
+npm run stats-projects:example:json
 npm run mcp:placement-projects:example
+npm run mcp:stats-projects:example
 npm run mcp:placement:example
 npm run mcp:adapters
 npm test
