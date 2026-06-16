@@ -18,6 +18,12 @@ npm run release:check
 
 Use the checked-in fixtures so the output is deterministic and safe to share.
 
+To verify the demo command path without running the full release suite, run:
+
+```powershell
+npm run demo:check
+```
+
 ## Single-Project Audit
 
 Show the JavaScript adapter proof point:

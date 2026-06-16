@@ -129,6 +129,7 @@ describe("docs links", () => {
     assert.ok(demoScript.includes("npm run audit-projects:example"));
     assert.ok(demoScript.includes("npm run stats-projects:example"));
     assert.ok(demoScript.includes("npm run mcp:tools"));
+    assert.ok(demoScript.includes("npm run demo:check"));
     assert.ok(demoScript.includes("npm run model-consistency:check"));
     assert.ok(demoScript.includes("The tool is useful before it generates a single test"));
     assert.ok(publicReadiness.includes("[Demo Script](demo-script.md)"));
