@@ -133,6 +133,26 @@ describe("docs links", () => {
     assert.ok(status.includes("product positioning note"));
   });
 
+  it("documents near-term milestones before claiming broader adapter support", () => {
+    const readme = fs.readFileSync("README.md", "utf8");
+    const roadmap = fs.readFileSync("docs/near-term-roadmap.md", "utf8");
+    const status = fs.readFileSync("docs/status.md", "utf8");
+
+    assert.ok(readme.includes("[Near-term roadmap](docs/near-term-roadmap.md)"));
+    assert.ok(roadmap.includes("public-demo ready, but not package-release ready"));
+    assert.ok(roadmap.includes("Milestone 1: Public Demo Polish"));
+    assert.ok(roadmap.includes("Milestone 2: Second Adapter Spike"));
+    assert.ok(roadmap.includes("Kotlin/JVM with Gradle and JUnit"));
+    assert.ok(roadmap.includes("Swift Package Manager with XCTest or Swift Testing"));
+    assert.ok(roadmap.includes("Milestone 3: Placement And Boundary Analysis"));
+    assert.ok(roadmap.includes("app-level tests that belong in package-level test targets"));
+    assert.ok(roadmap.includes("Milestone 4: Local MCP Transport"));
+    assert.ok(roadmap.includes("Milestone 5: Generation Readiness Gate"));
+    assert.ok(roadmap.includes("Native generation should remain off until this gate is met"));
+    assert.ok(roadmap.includes("npm run release:check"));
+    assert.ok(status.includes("near-term roadmap"));
+  });
+
   it("documents the first public demo path without claiming generation readiness", () => {
     const readme = fs.readFileSync("README.md", "utf8");
     const demoScript = fs.readFileSync("docs/demo-script.md", "utf8");
