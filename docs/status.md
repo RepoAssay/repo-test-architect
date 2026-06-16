@@ -43,7 +43,7 @@ Implemented:
 - second-adapter spike checklist for adding Kotlin/JVM or Swift without changing the shared audit model or enabling generation early
 - package contents dry-run checker for required runtime files and publish allowlist hygiene
 - package binary entrypoint checker for CLI, MCP invoke, and stdio JSON-RPC boot paths
-- release-readiness check runner for tests, evals, model consistency, smoke, package, and bin checks
+- release-readiness check runner for tests, evals, model consistency, demo path, smoke, package, and bin checks
 - GitHub Actions CI workflow that runs the release-readiness check on pushes and pull requests
 - GitHub pull request template that calls out audit impact, release verification, and risk notes
 - GitHub bug report issue form for audit, planning, MCP, and release-check defects

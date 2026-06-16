@@ -55,6 +55,20 @@ describe("package manifest", () => {
     assert.ok(packageJson.scripts["release:check"]);
   });
 
+  it("keeps release readiness checks aligned with public demo verification", () => {
+    const releaseRunner = fs.readFileSync("scripts/check-release-readiness.js", "utf8");
+    const status = fs.readFileSync("docs/status.md", "utf8");
+
+    assert.match(releaseRunner, /"test"/);
+    assert.match(releaseRunner, /"eval:check"/);
+    assert.match(releaseRunner, /"model-consistency:check"/);
+    assert.match(releaseRunner, /"demo:check"/);
+    assert.match(releaseRunner, /"smoke"/);
+    assert.match(releaseRunner, /"pack:check"/);
+    assert.match(releaseRunner, /"bin:check"/);
+    assert.ok(status.includes("demo path"));
+  });
+
   it("documents package dry-run verification in project status", () => {
     const status = fs.readFileSync("docs/status.md", "utf8");
 
