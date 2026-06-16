@@ -1,0 +1,77 @@
+{
+  "schemaVersion": "model-consistency-scenario/v1",
+  "id": "polyglot-project-stats",
+  "description": "Different model profiles should preserve local project stats derived from the same polyglot project-audits artifact.",
+  "sourceArtifact": {
+    "path": "examples/mcp/polyglot-project-audits.args.json",
+    "schemaVersion": "project-audits/v1",
+    "argumentName": "projectAudits"
+  },
+  "toolCall": {
+    "toolName": "collect_project_stats",
+    "arguments": {}
+  },
+  "lockedFields": [
+    {
+      "path": "summary.projectCount",
+      "expected": 3,
+      "reason": "Stats must preserve the detected project count from the project-audits artifact."
+    },
+    {
+      "path": "summary.auditedProjectCount",
+      "expected": 1,
+      "reason": "Stats must preserve how many projects were audited."
+    },
+    {
+      "path": "summary.unsupportedProjectCount",
+      "expected": 2,
+      "reason": "Stats must preserve unsupported project visibility."
+    },
+    {
+      "path": "summary.auditCoverage",
+      "expected": "partial",
+      "reason": "Stats must preserve partial audit coverage for polyglot repositories with unsupported roots."
+    },
+    {
+      "path": "counts.untestedCandidateCount",
+      "expected": 1,
+      "reason": "Stats must preserve candidate counts derived from audited projects."
+    },
+    {
+      "path": "counts.riskCount",
+      "expected": 1,
+      "reason": "Stats must preserve residual risk counts derived from audited projects."
+    },
+    {
+      "path": "counts.blockerCount",
+      "expected": 0,
+      "reason": "Stats must not invent blockers when the audited project has a runnable test command."
+    },
+    {
+      "path": "distributions.testFrameworks.vitest",
+      "expected": 1,
+      "reason": "Stats must preserve detected test framework distribution."
+    },
+    {
+      "path": "distributions.testCommands.npm run test",
+      "expected": 1,
+      "reason": "Stats must preserve detected repo-native test command distribution."
+    },
+    {
+      "path": "adapters[0].adapterId",
+      "expected": "javascript",
+      "reason": "Stats must preserve audited adapter usage."
+    }
+  ],
+  "allowedVariations": [
+    "summary wording",
+    "optional detail depth",
+    "additional non-locked stats"
+  ],
+  "unexpectedVariations": [
+    "different audit coverage",
+    "different candidate or risk counts",
+    "missing framework distribution",
+    "missing adapter usage"
+  ]
+}

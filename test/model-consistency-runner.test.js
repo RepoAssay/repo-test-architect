@@ -77,6 +77,7 @@ describe("model consistency runner", () => {
         ["node-vitest-basic-ranking", []],
         ["polyglot-project-plan", []],
         ["polyglot-project-ranking", []],
+        ["polyglot-project-stats", []],
         ["polyglot-project-summary", []],
         ["react-testing-library-plan", []]
       ]
@@ -93,10 +94,10 @@ describe("model consistency runner", () => {
     assert.equal(summary.schemaVersion, "model-consistency-summary/v1");
     assert.equal(summary.profileName, "deterministic-baseline");
     assert.deepEqual(summary.summary, {
-      scenarioCount: 10,
-      passedScenarioCount: 10,
+      scenarioCount: 11,
+      passedScenarioCount: 11,
       failedScenarioCount: 0,
-      checkedFieldCount: 68,
+      checkedFieldCount: 78,
       failureCount: 0
     });
     assert.equal(summary.scenarios[1].scenarioId, "node-jest-service-plan");
@@ -114,8 +115,8 @@ describe("model consistency runner", () => {
     assert.equal(comparison.baselineProfile, "deterministic-baseline");
     assert.equal(comparison.candidateProfile, "local-small");
     assert.deepEqual(comparison.summary, {
-      scenarioCount: 10,
-      alignedScenarioCount: 10,
+      scenarioCount: 11,
+      alignedScenarioCount: 11,
       driftedScenarioCount: 0,
       missingScenarioCount: 0,
       unexpectedScenarioCount: 0,
@@ -130,10 +131,10 @@ describe("model consistency runner", () => {
     const candidate = {
       ...createCurrentSummary("local-small"),
       summary: {
-        scenarioCount: 10,
-        passedScenarioCount: 8,
+        scenarioCount: 11,
+        passedScenarioCount: 9,
         failedScenarioCount: 2,
-        checkedFieldCount: 65,
+        checkedFieldCount: 75,
         failureCount: 3
       },
       scenarios: [
@@ -157,8 +158,8 @@ describe("model consistency runner", () => {
     const comparison = compareModelConsistencySummaries(baseline, candidate);
 
     assert.deepEqual(comparison.summary, {
-      scenarioCount: 11,
-      alignedScenarioCount: 8,
+      scenarioCount: 12,
+      alignedScenarioCount: 9,
       driftedScenarioCount: 1,
       missingScenarioCount: 1,
       unexpectedScenarioCount: 1,
@@ -176,6 +177,7 @@ describe("model consistency runner", () => {
         ["node-vitest-basic-ranking", "aligned"],
         ["polyglot-project-plan", "aligned"],
         ["polyglot-project-ranking", "aligned"],
+        ["polyglot-project-stats", "aligned"],
         ["polyglot-project-summary", "aligned"],
         ["react-testing-library-plan", "aligned"],
         ["unexpected-extra-scenario", "unexpected"]
