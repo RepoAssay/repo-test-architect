@@ -157,6 +157,14 @@ describe("project audits artifact schema compatibility", () => {
 
     assert.deepEqual(normalizePolyglotProjectAudits(artifact), args.projectAudits);
   });
+
+  it("keeps model-consistency project-audits fixture aligned with the MCP args fixture", () => {
+    const args = readJson("examples/mcp/polyglot-project-audits.args.json");
+    const artifact = readJson("evals/expected/polyglot-workspace.project-audits.json");
+
+    assertMatchesSchema(artifact, projectAuditsSchema, "polyglot-workspace.project-audits.json");
+    assert.deepEqual(artifact, args.projectAudits);
+  });
 });
 
 describe("project audit summary artifact schema compatibility", () => {
