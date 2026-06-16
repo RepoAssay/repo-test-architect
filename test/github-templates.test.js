@@ -43,4 +43,14 @@ describe("GitHub templates", () => {
     assert.match(template, /fixture added, golden snapshots updated, model-consistency scenario added, npm run release:check passes/);
     assert.match(template, /adapter-boundary concerns/);
   });
+
+  it("keeps issue template routing structured until a public remote is configured", () => {
+    const config = fs.readFileSync(".github/ISSUE_TEMPLATE/config.yml", "utf8");
+    const status = fs.readFileSync("docs/status.md", "utf8");
+
+    assert.match(config, /blank_issues_enabled: false/);
+    assert.doesNotMatch(config, /contact_links:/);
+    assert.match(status, /GitHub issue template config/);
+    assert.match(status, /structured forms/);
+  });
 });
