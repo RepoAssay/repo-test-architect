@@ -16,6 +16,7 @@ This project is not ready to publish yet. Keep `private: true` in `package.json`
 - keep `npm run pack:check` passing so package contents stay inside the intended allowlist
 - keep `npm run bin:check` passing so packaged CLI and MCP entry points keep booting
 - keep `npm run release:check` passing before tagging or publishing
+- keep GitHub Actions CI green for the release-readiness workflow
 - add package metadata before publishing:
   - `repository`
   - `homepage`
