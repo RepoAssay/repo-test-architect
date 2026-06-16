@@ -18,6 +18,14 @@ Use this path when the host can launch a local stdio MCP server.
 
 Published package target:
 
+macOS/Linux terminal:
+
+```sh
+npm install -g repo-test-architect
+```
+
+Windows PowerShell:
+
 ```powershell
 npm install -g repo-test-architect
 ```
@@ -30,8 +38,16 @@ repo-test-architect-mcp
 
 Local checkout target:
 
+macOS/Linux terminal:
+
+```sh
+node ~/source/repo-test-architect/src/mcp/stdio.js
+```
+
+Windows PowerShell:
+
 ```txt
-node /absolute/path/to/repo-test-architect/src/mcp/stdio.js
+node C:/path/to/repo-test-architect/src/mcp/stdio.js
 ```
 
 Expected tools:
@@ -92,6 +108,19 @@ Instruction-only mode is useful for planning, but it does not provide live tool 
 ## Generic CLI Agents
 
 Generic agents can use the CLI without MCP:
+
+macOS/Linux terminal:
+
+```sh
+npm run detect:example:json
+npm run audit-projects:example:json
+npm run rank-projects:example:json
+npm run plan-projects:example:json
+npm run placement-projects:example:json
+npm run stats-projects:example:json
+```
+
+Windows PowerShell:
 
 ```powershell
 npm run detect:example:json

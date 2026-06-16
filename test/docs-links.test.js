@@ -64,6 +64,10 @@ describe("docs links", () => {
     assert.ok(agentInstallPaths.includes(`npm install -g ${packageJson.name}`));
     assert.ok(agentInstallPaths.includes("repo-test-architect-mcp"));
     assert.ok(agentInstallPaths.includes("MCP-Capable Hosts"));
+    assert.ok(agentInstallPaths.includes("macOS/Linux terminal"));
+    assert.ok(agentInstallPaths.includes("Windows PowerShell"));
+    assert.ok(agentInstallPaths.includes("node ~/source/repo-test-architect/src/mcp/stdio.js"));
+    assert.ok(agentInstallPaths.includes("node C:/path/to/repo-test-architect/src/mcp/stdio.js"));
     assert.ok(agentInstallPaths.includes("Instruction-only mode"));
     assert.ok(agentInstallPaths.includes("Node.js must be available"));
     assert.ok(agentInstallPaths.includes("local-first security"));
