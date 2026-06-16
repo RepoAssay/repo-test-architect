@@ -43,6 +43,7 @@ Implemented:
 - GitHub pull request template that calls out audit impact, release verification, and risk notes
 - GitHub bug report issue form for audit, planning, MCP, and release-check defects
 - GitHub feature request issue form for audit-first adapter, MCP, evaluation, and reporting proposals
+- contributor guide for traceable workflow, audit changes, adapter boundaries, generation deferral, and release checks
 - repository ignore rules for generated dependency, package, coverage, and local comparison artifacts
 
 ## Supported Fixtures
