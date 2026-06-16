@@ -53,6 +53,19 @@ describe("docs links", () => {
     }
   });
 
+  it("keeps MCP install docs aligned with package name and binaries", () => {
+    const packageJson = JSON.parse(fs.readFileSync("package.json", "utf8"));
+    const clientConfig = fs.readFileSync("docs/mcp-client-config.md", "utf8");
+    const releaseChecklist = fs.readFileSync("docs/release-checklist.md", "utf8");
+
+    assert.ok(clientConfig.includes(`npm install -g ${packageJson.name}`));
+    assert.ok(clientConfig.includes('"command": "repo-test-architect-mcp"'));
+
+    for (const binName of Object.keys(packageJson.bin)) {
+      assert.ok(releaseChecklist.includes(`\`${binName}\``), `Missing release checklist binary: ${binName}`);
+    }
+  });
+
   it("keeps project detection docs aligned with detector rules", () => {
     const docs = fs.readFileSync("docs/project-detection.md", "utf8");
     const rules = getProjectDetectionRules();
