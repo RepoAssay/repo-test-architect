@@ -44,3 +44,5 @@ The first demo should focus on audit quality, not generated test count:
 - show remaining risks and blockers
 
 Avoid presenting native test generation as available until adapter-specific generation and repair-loop coverage exist.
+
+Use the first demo path in [Demo Script](demo-script.md) so the story stays focused on audit quality.

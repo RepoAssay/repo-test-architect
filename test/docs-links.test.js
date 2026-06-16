@@ -112,4 +112,26 @@ describe("docs links", () => {
     assert.ok(publicReadiness.includes("Avoid presenting native test generation as available"));
     assert.ok(status.includes("public-readiness checklist"));
   });
+
+  it("documents the first public demo path without claiming generation readiness", () => {
+    const readme = fs.readFileSync("README.md", "utf8");
+    const demoScript = fs.readFileSync("docs/demo-script.md", "utf8");
+    const publicReadiness = fs.readFileSync("docs/public-readiness.md", "utf8");
+    const status = fs.readFileSync("docs/status.md", "utf8");
+
+    assert.ok(readme.includes("[Demo script](docs/demo-script.md)"));
+    assert.ok(demoScript.includes("test strategy decisions before writing tests"));
+    assert.ok(demoScript.includes("Native generation is intentionally deferred"));
+    assert.ok(demoScript.includes("npm run audit:example"));
+    assert.ok(demoScript.includes("npm run rank:example"));
+    assert.ok(demoScript.includes("npm run plan:example"));
+    assert.ok(demoScript.includes("npm run detect:example"));
+    assert.ok(demoScript.includes("npm run audit-projects:example"));
+    assert.ok(demoScript.includes("npm run stats-projects:example"));
+    assert.ok(demoScript.includes("npm run mcp:tools"));
+    assert.ok(demoScript.includes("npm run model-consistency:check"));
+    assert.ok(demoScript.includes("The tool is useful before it generates a single test"));
+    assert.ok(publicReadiness.includes("[Demo Script](demo-script.md)"));
+    assert.ok(status.includes("demo script for showing audit quality"));
+  });
 });
