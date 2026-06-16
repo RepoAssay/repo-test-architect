@@ -356,7 +356,7 @@ node ./src/cli/index.js summarize-projects ./examples/polyglot-workspace --forma
 node ./src/cli/index.js summarize-projects --from-project-audits ./project-audits.json --format json
 ```
 
-This artifact summarizes a `project-audits/v1` artifact into project-level counts, top candidate IDs, risk counts, and unsupported project roots with ecosystem labels, language labels, adapter match evidence, and support status reasons.
+This artifact summarizes a `project-audits/v1` artifact into project-level counts, audit coverage status, unsupported status reasons, top candidate IDs, risk counts, and unsupported project roots with ecosystem labels, language labels, adapter match evidence, and support status reasons.
 It is intentionally not a merged audit graph and does not perform cross-project ranking.
 
 ## Project Candidate Ranking Artifact

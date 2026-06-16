@@ -507,6 +507,7 @@ function renderMarkdownProjectAuditSummary(summary) {
   lines.push(`- Projects: ${summary.summary.projectCount}`);
   lines.push(`- Audited: ${summary.summary.auditedProjectCount}`);
   lines.push(`- Unsupported: ${summary.summary.unsupportedProjectCount}`);
+  lines.push(`- Audit coverage: ${summary.summary.auditCoverage}`);
   lines.push(`- Untested candidates: ${summary.summary.untestedCandidateCount}`);
   lines.push(`- Covered but risky: ${summary.summary.coveredButRiskyCount}`);
   lines.push(`- Skipped targets: ${summary.summary.skippedTargetCount}`);

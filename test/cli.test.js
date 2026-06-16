@@ -121,6 +121,7 @@ describe("CLI", () => {
     });
 
     assert.match(output, /^# Project Audit Summary/);
+    assert.match(output, /Audit coverage: partial/);
     assert.match(output, /Untested candidates: 1/);
     assert.match(output, /apps\/web: javascript, medium confidence, 1 untested/);
   });

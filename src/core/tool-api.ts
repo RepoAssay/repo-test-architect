@@ -33,6 +33,8 @@ export interface ProjectAuditSummary {
     projectCount: number;
     auditedProjectCount: number;
     unsupportedProjectCount: number;
+    auditCoverage: "complete" | "partial" | "none";
+    unsupportedReasons: string[];
     untestedCandidateCount: number;
     coveredButRiskyCount: number;
     skippedTargetCount: number;

@@ -72,7 +72,7 @@ node ./src/cli/index.js summarize-projects ./examples/polyglot-workspace --forma
 
 This emits `project-audit-summary/v1`.
 
-The summary is intentionally compact. It answers which projects were audited, how many candidates and risks were found, and which unsupported projects remain.
+The summary is intentionally compact. It answers whether audit coverage is complete, partial, or absent; which projects were audited; how many candidates and risks were found; and which unsupported projects remain.
 
 ## 5. Rank
 

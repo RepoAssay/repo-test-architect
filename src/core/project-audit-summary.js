@@ -26,6 +26,8 @@
  * @property {number} riskCount
  * @property {string[]} topCandidateIds
  *
+ * @typedef {"complete" | "partial" | "none"} ProjectAuditCoverage
+ *
  * @typedef {"untestedCandidateCount" | "coveredButRiskyCount" | "skippedTargetCount" | "riskCount"} ProjectAuditSummaryCountKey
  *
  * @typedef {object} ProjectAudits
@@ -38,7 +40,7 @@
  * @typedef {object} ProjectAuditSummary
  * @property {"project-audit-summary/v1"} schemaVersion
  * @property {string} root
- * @property {object} summary
+ * @property {{ projectCount: number, auditedProjectCount: number, unsupportedProjectCount: number, auditCoverage: ProjectAuditCoverage, unsupportedReasons: string[], untestedCandidateCount: number, coveredButRiskyCount: number, skippedTargetCount: number, riskCount: number }} summary
  * @property {ProjectAuditSummaryEntry[]} projects
  * @property {SkippedProjectAudit[]} unsupportedProjects
  */
@@ -89,6 +91,8 @@ export function summarizeProjectAudits(projectAudits) {
       projectCount: projectAudits.summary.projectCount,
       auditedProjectCount: projectAudits.summary.auditedProjectCount,
       unsupportedProjectCount: projectAudits.summary.skippedProjectCount,
+      auditCoverage: classifyAuditCoverage(projectAudits.summary.auditedProjectCount, projectAudits.summary.skippedProjectCount),
+      unsupportedReasons: [...new Set(unsupportedProjects.map((project) => project.supportStatusReason))],
       untestedCandidateCount: sum(projects, "untestedCandidateCount"),
       coveredButRiskyCount: sum(projects, "coveredButRiskyCount"),
       skippedTargetCount: sum(projects, "skippedTargetCount"),
@@ -106,4 +110,15 @@ export function summarizeProjectAudits(projectAudits) {
  */
 function sum(items, key) {
   return items.reduce((total, item) => total + item[key], 0);
+}
+
+/**
+ * @param {number} auditedProjectCount
+ * @param {number} skippedProjectCount
+ * @returns {ProjectAuditCoverage}
+ */
+function classifyAuditCoverage(auditedProjectCount, skippedProjectCount) {
+  if (auditedProjectCount === 0) return "none";
+  if (skippedProjectCount > 0) return "partial";
+  return "complete";
 }

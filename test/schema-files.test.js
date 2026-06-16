@@ -128,6 +128,8 @@ describe("schema files", () => {
     assert.ok(schema.required.includes("projects"));
     assert.ok(schema.required.includes("unsupportedProjects"));
     assert.ok(schema.properties.projects.items.required.includes("topCandidateIds"));
+    assert.ok(schema.properties.summary.required.includes("auditCoverage"));
+    assert.ok(schema.properties.summary.required.includes("unsupportedReasons"));
     assert.ok(schema.properties.unsupportedProjects.items.required.includes("ecosystems"));
     assert.ok(schema.properties.unsupportedProjects.items.required.includes("languages"));
     assert.ok(schema.properties.unsupportedProjects.items.required.includes("adapterMatches"));

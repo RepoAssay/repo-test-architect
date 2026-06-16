@@ -13,6 +13,7 @@ Implemented:
 - deterministic project detection for polyglot repository roots
 - project detection adapter match evidence and support status reasons
 - project audit artifacts that preserve adapter match evidence and support status reasons for unsupported projects
+- project audit summaries with complete, partial, or none audit coverage status
 - unsupported Python, Ruby, PHP, Elixir, Go, Rust, Swift, .NET, and Kotlin/JVM project reporting with ecosystem and language labels
 - documented project detection marker rules
 - CLI output for project detection marker rules

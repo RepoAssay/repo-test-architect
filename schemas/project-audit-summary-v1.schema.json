@@ -20,6 +20,8 @@
         "projectCount",
         "auditedProjectCount",
         "unsupportedProjectCount",
+        "auditCoverage",
+        "unsupportedReasons",
         "untestedCandidateCount",
         "coveredButRiskyCount",
         "skippedTargetCount",
@@ -29,6 +31,12 @@
         "projectCount": { "type": "integer", "minimum": 0 },
         "auditedProjectCount": { "type": "integer", "minimum": 0 },
         "unsupportedProjectCount": { "type": "integer", "minimum": 0 },
+        "auditCoverage": { "enum": ["complete", "partial", "none"] },
+        "unsupportedReasons": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        },
         "untestedCandidateCount": { "type": "integer", "minimum": 0 },
         "coveredButRiskyCount": { "type": "integer", "minimum": 0 },
         "skippedTargetCount": { "type": "integer", "minimum": 0 },
