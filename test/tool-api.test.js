@@ -17,7 +17,8 @@ import {
   getAuditGraph,
   rankAuditTestCandidates,
   summarizeRepoProjectAudits,
-  validateAudit
+  validateAudit,
+  validateProjectAudits
 } from "../src/core/tool-api.js";
 
 describe("tool API", () => {
@@ -152,6 +153,20 @@ describe("tool API", () => {
           schemaVersion: "audit/v0"
         }),
       /Expected audit schemaVersion audit\/v1/
+    );
+  });
+
+  it("rejects invalid project audits artifacts", () => {
+    assert.throws(
+      () =>
+        validateProjectAudits({
+          schemaVersion: "project-audits/v1",
+          root: ".",
+          summary: {},
+          audits: [],
+          skippedProjects: []
+        }),
+      /Project audits summary\.projectCount must be a non-negative integer/
     );
   });
 });

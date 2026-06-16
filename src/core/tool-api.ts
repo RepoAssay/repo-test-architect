@@ -230,6 +230,8 @@ export declare function createRepoTestPlacementFindings(findings?: TestPlacement
 
 export declare function analyzeRepoTestPlacement(audit: AuditResult, options?: AnalyzeTestPlacementOptions): TestPlacementFindings;
 
+export declare function validateProjectAudits(projectAudits: ProjectAudits): void;
+
 export function getAuditGraph(audit: AuditResult): AuditResult {
   validateAudit(audit);
   return audit;

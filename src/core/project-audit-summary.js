@@ -1,3 +1,4 @@
+import { validateProjectAudits } from "./project-audits-validation.js";
 import { classifyProjectAuditCoverage } from "./project-audit-coverage.js";
 import { collectUnsupportedReasons, normalizeUnsupportedProjects } from "./project-unsupported.js";
 
@@ -53,9 +54,7 @@ import { collectUnsupportedReasons, normalizeUnsupportedProjects } from "./proje
  * @returns {ProjectAuditSummary}
  */
 export function summarizeProjectAudits(projectAudits) {
-  if (projectAudits?.schemaVersion !== "project-audits/v1") {
-    throw new Error("Expected project audits schemaVersion project-audits/v1.");
-  }
+  validateProjectAudits(projectAudits);
 
   const projects = projectAudits.audits.map((entry) => {
     const project = {

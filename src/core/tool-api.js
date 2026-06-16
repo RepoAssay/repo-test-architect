@@ -11,6 +11,8 @@ import { analyzeTestPlacement } from "./test-placement-analysis.js";
 import { createTestPlacementFindings } from "./test-placement-findings.js";
 import { createTestPlan } from "./test-plan.js";
 
+export { validateProjectAudits } from "./project-audits-validation.js";
+
 /**
  * @typedef {import("./adapter-registry.js").AdapterRegistry} AdapterRegistry
  * @typedef {import("./project-detector.js").ProjectDetection} ProjectDetection

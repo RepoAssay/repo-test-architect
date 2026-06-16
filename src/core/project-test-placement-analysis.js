@@ -1,3 +1,4 @@
+import { validateProjectAudits } from "./project-audits-validation.js";
 import { analyzeTestPlacement } from "./test-placement-analysis.js";
 import { createTestPlacementFindings } from "./test-placement-findings.js";
 
@@ -19,9 +20,7 @@ import { createTestPlacementFindings } from "./test-placement-findings.js";
  * @returns {TestPlacementFindings}
  */
 export function analyzeProjectTestPlacement(projectAudits) {
-  if (projectAudits?.schemaVersion !== "project-audits/v1") {
-    throw new Error("Expected project audits schemaVersion project-audits/v1.");
-  }
+  validateProjectAudits(projectAudits);
 
   const findings = projectAudits.audits.flatMap((entry) => {
     const placement = analyzeTestPlacement(entry.audit, { owner: entry.projectRoot });

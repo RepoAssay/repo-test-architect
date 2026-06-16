@@ -16,7 +16,8 @@ import {
   rankRepoProjectCandidates,
   rankAuditTestCandidates,
   summarizeRepoProjectAudits,
-  validateAudit
+  validateAudit,
+  validateProjectAudits
 } from "../core/tool-api.js";
 
 const options = parseArgs(process.argv.slice(2));
@@ -223,22 +224,6 @@ function readProjectAuditsJson(projectAuditsPath) {
   } catch (error) {
     console.error(`Failed to read project audits JSON: ${error.message}`);
     process.exit(1);
-  }
-}
-
-function validateProjectAudits(projectAudits) {
-  if (projectAudits?.schemaVersion !== "project-audits/v1") {
-    throw new Error("Expected project audits schemaVersion project-audits/v1.");
-  }
-
-  if (!projectAudits.summary || typeof projectAudits.summary !== "object") {
-    throw new Error("Project audits summary is missing.");
-  }
-
-  for (const key of ["audits", "skippedProjects"]) {
-    if (!Array.isArray(projectAudits[key])) {
-      throw new Error(`Project audits ${key} must be an array.`);
-    }
   }
 }
 
