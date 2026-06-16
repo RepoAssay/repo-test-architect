@@ -180,6 +180,7 @@ describe("schema files", () => {
 
     assert.equal(schema.properties.schemaVersion.const, "model-consistency-scenario/v1");
     assert.ok(schema.required.includes("sourceArtifact"));
+    assert.ok(schema.properties.sourceArtifact.properties.argumentName);
     assert.ok(schema.required.includes("toolCall"));
     assert.ok(schema.required.includes("lockedFields"));
     assert.ok(schema.properties.lockedFields.items.required.includes("expected"));
