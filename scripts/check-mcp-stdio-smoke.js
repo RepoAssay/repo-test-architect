@@ -4,6 +4,8 @@ import { once } from "node:events";
 import { spawn } from "node:child_process";
 import readline from "node:readline";
 
+const RESPONSE_TIMEOUT_MS = 5_000;
+
 const child = spawn(process.execPath, ["./src/mcp/stdio.js"], {
   stdio: ["pipe", "pipe", "pipe"]
 });
@@ -152,10 +154,34 @@ try {
  * @returns {Promise<object>}
  */
 async function sendRequest(request) {
-  const responseLine = once(output, "line");
+  const responseLine = withTimeout(
+    once(output, "line"),
+    RESPONSE_TIMEOUT_MS,
+    `Timed out waiting for MCP response to ${request.method} request ${request.id}. Stderr: ${stderr || "<empty>"}`
+  );
   child.stdin.write(`${JSON.stringify(request)}\n`);
   const [line] = await responseLine;
   return JSON.parse(line);
+}
+
+/**
+ * @template T
+ * @param {Promise<T>} promise
+ * @param {number} timeoutMs
+ * @param {string} message
+ * @returns {Promise<T>}
+ */
+async function withTimeout(promise, timeoutMs, message) {
+  let timeout;
+  const timeoutPromise = new Promise((_, reject) => {
+    timeout = setTimeout(() => reject(new Error(message)), timeoutMs);
+  });
+
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 /**
