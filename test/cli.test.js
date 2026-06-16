@@ -96,8 +96,8 @@ describe("CLI", () => {
 
     assert.match(output, /^# Project Audits/);
     assert.match(output, /apps\/web: javascript \(1 untested, 0 covered but risky, 1 risks\)/);
-    assert.match(output, /apps\/android: No registered adapter supports this project's detected languages\. \(ecosystems: jvm; languages: java, kotlin\)/);
-    assert.match(output, /services\/api: No registered adapter supports this project's detected languages\. \(ecosystems: python; languages: python\)/);
+    assert.match(output, /apps\/android: No registered adapter supports ecosystems jvm with languages java, kotlin\. \(ecosystems: jvm; languages: java, kotlin\)/);
+    assert.match(output, /services\/api: No registered adapter supports ecosystems python with languages python\. \(ecosystems: python; languages: python\)/);
   });
 
   it("audits detected projects as JSON", () => {
@@ -292,7 +292,7 @@ describe("CLI", () => {
     assert.equal(projectAudits.summary.auditedProjectCount, 1);
     assert.match(markdownOutput, /^# Project Audits/);
     assert.match(markdownOutput, /apps\/web: javascript \(1 untested, 0 covered but risky, 1 risks\)/);
-    assert.match(markdownOutput, /apps\/android: No registered adapter supports this project's detected languages\. \(ecosystems: jvm; languages: java, kotlin\)/);
+    assert.match(markdownOutput, /apps\/android: No registered adapter supports ecosystems jvm with languages java, kotlin\. \(ecosystems: jvm; languages: java, kotlin\)/);
   });
 
   it("rejects project audits JSON with the wrong schema version", () => {

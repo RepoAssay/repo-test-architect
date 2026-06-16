@@ -117,6 +117,8 @@ describe("schema files", () => {
     assert.ok(schema.properties.audits.items.required.includes("adapterId"));
     assert.ok(schema.properties.skippedProjects.items.required.includes("reason"));
     assert.ok(schema.properties.skippedProjects.items.required.includes("ecosystems"));
+    assert.ok(schema.properties.skippedProjects.items.required.includes("adapterMatches"));
+    assert.ok(schema.properties.skippedProjects.items.required.includes("supportStatusReason"));
   });
 
   it("documents project-audit-summary/v1", () => {
@@ -128,6 +130,8 @@ describe("schema files", () => {
     assert.ok(schema.properties.projects.items.required.includes("topCandidateIds"));
     assert.ok(schema.properties.unsupportedProjects.items.required.includes("ecosystems"));
     assert.ok(schema.properties.unsupportedProjects.items.required.includes("languages"));
+    assert.ok(schema.properties.unsupportedProjects.items.required.includes("adapterMatches"));
+    assert.ok(schema.properties.unsupportedProjects.items.required.includes("supportStatusReason"));
   });
 
   it("documents project-candidate-ranking/v1", () => {
@@ -139,6 +143,8 @@ describe("schema files", () => {
     assert.ok(schema.properties.candidates.items.required.includes("projectTargetId"));
     assert.ok(schema.properties.candidates.items.required.includes("priority"));
     assert.ok(schema.properties.unsupportedProjects.items.required.includes("ecosystems"));
+    assert.ok(schema.properties.unsupportedProjects.items.required.includes("adapterMatches"));
+    assert.ok(schema.properties.unsupportedProjects.items.required.includes("supportStatusReason"));
   });
 
   it("documents project-test-plan/v1", () => {
@@ -150,6 +156,8 @@ describe("schema files", () => {
     assert.ok(schema.properties.items.items.required.includes("projectItemId"));
     assert.ok(schema.properties.items.items.required.includes("action"));
     assert.ok(schema.properties.unsupportedProjects.items.required.includes("ecosystems"));
+    assert.ok(schema.properties.unsupportedProjects.items.required.includes("adapterMatches"));
+    assert.ok(schema.properties.unsupportedProjects.items.required.includes("supportStatusReason"));
   });
 
   it("documents MCP tool descriptors", () => {

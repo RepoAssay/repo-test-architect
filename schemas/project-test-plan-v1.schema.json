@@ -35,7 +35,15 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["projectId", "projectRoot", "reason", "ecosystems", "languages"],
+        "required": [
+          "projectId",
+          "projectRoot",
+          "reason",
+          "ecosystems",
+          "languages",
+          "adapterMatches",
+          "supportStatusReason"
+        ],
         "properties": {
           "projectId": { "type": "string", "minLength": 1 },
           "projectRoot": { "type": "string", "minLength": 1 },
@@ -47,6 +55,30 @@
           "languages": {
             "type": "array",
             "items": { "type": "string", "minLength": 1 }
+          },
+          "adapterMatches": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["adapterId", "maturity", "matchedEcosystems", "matchedLanguages"],
+              "properties": {
+                "adapterId": { "type": "string", "minLength": 1 },
+                "maturity": { "enum": ["supported", "experimental", "planned"] },
+                "matchedEcosystems": {
+                  "type": "array",
+                  "items": { "type": "string", "minLength": 1 }
+                },
+                "matchedLanguages": {
+                  "type": "array",
+                  "items": { "type": "string", "minLength": 1 }
+                }
+              }
+            }
+          },
+          "supportStatusReason": {
+            "type": "string",
+            "minLength": 1
           }
         }
       }

@@ -143,6 +143,8 @@ export interface SkippedProjectAudit {
   reason: string;
   ecosystems: string[];
   languages: string[];
+  adapterMatches: AdapterMatch[];
+  supportStatusReason: string;
 }
 
 export interface DetectedProject {

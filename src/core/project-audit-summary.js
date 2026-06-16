@@ -11,6 +11,8 @@
  * @property {string} reason
  * @property {string[]} ecosystems
  * @property {string[]} languages
+ * @property {Array<{ adapterId: string, maturity: string, matchedEcosystems: string[], matchedLanguages: string[] }>} adapterMatches
+ * @property {string} supportStatusReason
  *
  * @typedef {object} ProjectAuditSummaryEntry
  * @property {string} projectId
@@ -75,7 +77,9 @@ export function summarizeProjectAudits(projectAudits) {
     projectRoot: project.projectRoot,
     reason: project.reason,
     ecosystems: project.ecosystems,
-    languages: project.languages
+    languages: project.languages,
+    adapterMatches: project.adapterMatches ?? [],
+    supportStatusReason: project.supportStatusReason ?? project.reason
   }));
 
   return {

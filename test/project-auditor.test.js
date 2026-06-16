@@ -33,22 +33,28 @@ describe("project auditor", () => {
         projectRoot: project.projectRoot,
         reason: project.reason,
         ecosystems: project.ecosystems,
-        languages: project.languages
+        languages: project.languages,
+        adapterMatches: project.adapterMatches,
+        supportStatusReason: project.supportStatusReason
       })),
       [
         {
           projectId: "apps/android",
           projectRoot: "apps/android",
-          reason: "No registered adapter supports this project's detected languages.",
+          reason: "No registered adapter supports ecosystems jvm with languages java, kotlin.",
           ecosystems: ["jvm"],
-          languages: ["java", "kotlin"]
+          languages: ["java", "kotlin"],
+          adapterMatches: [],
+          supportStatusReason: "No registered adapter supports ecosystems jvm with languages java, kotlin."
         },
         {
           projectId: "services/api",
           projectRoot: "services/api",
-          reason: "No registered adapter supports this project's detected languages.",
+          reason: "No registered adapter supports ecosystems python with languages python.",
           ecosystems: ["python"],
-          languages: ["python"]
+          languages: ["python"],
+          adapterMatches: [],
+          supportStatusReason: "No registered adapter supports ecosystems python with languages python."
         }
       ]
     );

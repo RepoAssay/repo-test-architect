@@ -13,6 +13,8 @@ import { rankTestCandidates } from "./rank-test-candidates.js";
  * @property {string} reason
  * @property {string[]} ecosystems
  * @property {string[]} languages
+ * @property {Array<{ adapterId: string, maturity: string, matchedEcosystems: string[], matchedLanguages: string[] }>} adapterMatches
+ * @property {string} supportStatusReason
  *
  * @typedef {object} ProjectAudits
  * @property {"project-audits/v1"} schemaVersion
@@ -61,7 +63,9 @@ export function rankProjectTestCandidates(projectAudits) {
     projectRoot: project.projectRoot,
     reason: project.reason,
     ecosystems: project.ecosystems,
-    languages: project.languages
+    languages: project.languages,
+    adapterMatches: project.adapterMatches ?? [],
+    supportStatusReason: project.supportStatusReason ?? project.reason
   }));
 
   return {

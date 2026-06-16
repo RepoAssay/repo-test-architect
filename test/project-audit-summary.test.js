@@ -21,10 +21,20 @@ describe("project audit summary", () => {
     });
     assert.deepEqual(summary.projects[0].topCandidateIds, ["src/sessionClient.ts"]);
     assert.deepEqual(
-      summary.unsupportedProjects.map((project) => [project.projectId, project.ecosystems]),
+      summary.unsupportedProjects.map((project) => [
+        project.projectId,
+        project.ecosystems,
+        project.adapterMatches,
+        project.supportStatusReason
+      ]),
       [
-        ["apps/android", ["jvm"]],
-        ["services/api", ["python"]]
+        [
+          "apps/android",
+          ["jvm"],
+          [],
+          "No registered adapter supports ecosystems jvm with languages java, kotlin."
+        ],
+        ["services/api", ["python"], [], "No registered adapter supports ecosystems python with languages python."]
       ]
     );
   });

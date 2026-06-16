@@ -332,7 +332,7 @@ node ./src/cli/index.js audit-projects ./examples/polyglot-workspace
 node ./src/cli/index.js audit-projects ./examples/polyglot-workspace --format json
 ```
 
-This artifact runs the matching adapter for each supported detected project root and reports unsupported project roots separately with their ecosystems and languages.
+This artifact runs the matching adapter for each supported detected project root and reports unsupported project roots separately with their ecosystems, languages, adapter match evidence, and support status reason.
 It does not yet merge or rank findings across projects; that belongs in a later core merge layer.
 
 ## Project Audit Summary Artifact
@@ -356,7 +356,7 @@ node ./src/cli/index.js summarize-projects ./examples/polyglot-workspace --forma
 node ./src/cli/index.js summarize-projects --from-project-audits ./project-audits.json --format json
 ```
 
-This artifact summarizes a `project-audits/v1` artifact into project-level counts, top candidate IDs, risk counts, and unsupported project roots with ecosystem and language labels.
+This artifact summarizes a `project-audits/v1` artifact into project-level counts, top candidate IDs, risk counts, and unsupported project roots with ecosystem labels, language labels, adapter match evidence, and support status reasons.
 It is intentionally not a merged audit graph and does not perform cross-project ranking.
 
 ## Project Candidate Ranking Artifact
@@ -381,7 +381,7 @@ node ./src/cli/index.js rank-projects --from-project-audits ./project-audits.jso
 ```
 
 This artifact ranks candidates from a `project-audits/v1` artifact using the same deterministic per-audit priority calculation, while adding project identity to each candidate.
-It preserves unsupported project roots, including ecosystem and language labels, instead of hiding them.
+It preserves unsupported project roots, including ecosystem labels, language labels, adapter match evidence, and support status reasons, instead of hiding them.
 
 ## Project Test Plan Artifact
 
@@ -406,7 +406,7 @@ node ./src/cli/index.js plan-projects --from-project-audits ./project-audits.jso
 
 This artifact generates per-project plan items from a `project-audits/v1` artifact and flattens them with project identity attached.
 It preserves the underlying `plan/v1` artifacts per project for detailed inspection.
-It also preserves unsupported project roots with ecosystem and language labels.
+It also preserves unsupported project roots with ecosystem labels, language labels, adapter match evidence, and support status reasons.
 
 `project-audits/v1` can also be used by the internal `analyzeRepoProjectTestPlacement` API to produce repository-relative `test-placement-findings/v1` findings while preserving project owner identity.
 

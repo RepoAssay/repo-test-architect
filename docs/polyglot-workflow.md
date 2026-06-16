@@ -42,7 +42,7 @@ node ./src/cli/index.js audit-projects ./examples/polyglot-workspace --format js
 
 This emits `project-audits/v1`.
 
-For every supported project root, the matching adapter produces a normal audit artifact. Unsupported project roots are reported separately with their ecosystem and language labels.
+For every supported project root, the matching adapter produces a normal audit artifact. Unsupported project roots are reported separately with their ecosystem and language labels, adapter match evidence, and support status reason.
 
 The current runtime audits JavaScript and TypeScript project roots through the `javascript` adapter.
 JavaScript and TypeScript already share one adapter domain. Future JVM and Apple adapters should follow the same rule for Java/Kotlin and Swift/Objective-C projects.
@@ -108,7 +108,7 @@ Project placement analysis derives advisory findings from `project-audits/v1` wh
 
 The deterministic API currently executes adapters locally and serially. The artifact model is designed so future runtime layers can run independent project audits in parallel when that is worth it.
 
-Parallel execution should not change artifact shape. Whether three adapters run one after another or at the same time, the output should remain a `project-audits/v1` artifact with the same supported and unsupported project lists.
+Parallel execution should not change artifact shape. Whether three adapters run one after another or at the same time, the output should remain a `project-audits/v1` artifact with the same supported and unsupported project lists, including their adapter match evidence.
 
 ## Current Fixture
 

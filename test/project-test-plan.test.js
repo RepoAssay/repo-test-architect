@@ -34,10 +34,20 @@ describe("project test plan", () => {
       ]
     );
     assert.deepEqual(
-      plan.unsupportedProjects.map((project) => [project.projectId, project.ecosystems]),
+      plan.unsupportedProjects.map((project) => [
+        project.projectId,
+        project.ecosystems,
+        project.adapterMatches,
+        project.supportStatusReason
+      ]),
       [
-        ["apps/android", ["jvm"]],
-        ["services/api", ["python"]]
+        [
+          "apps/android",
+          ["jvm"],
+          [],
+          "No registered adapter supports ecosystems jvm with languages java, kotlin."
+        ],
+        ["services/api", ["python"], [], "No registered adapter supports ecosystems python with languages python."]
       ]
     );
   });

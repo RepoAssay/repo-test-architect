@@ -15,6 +15,8 @@ import { detectProjects } from "./project-detector.js";
  * @property {string} reason
  * @property {string[]} ecosystems
  * @property {string[]} languages
+ * @property {Array<{ adapterId: string, maturity: string, matchedEcosystems: string[], matchedLanguages: string[] }>} adapterMatches
+ * @property {string} supportStatusReason
  *
  * @typedef {object} ProjectAudits
  * @property {"project-audits/v1"} schemaVersion
@@ -38,9 +40,11 @@ export function auditDetectedProjects(repoRoot) {
       skippedProjects.push({
         projectId: project.id,
         projectRoot: project.root,
-        reason: "No registered adapter supports this project's detected languages.",
+        reason: project.supportStatusReason,
         ecosystems: project.ecosystems,
-        languages: project.languages
+        languages: project.languages,
+        adapterMatches: project.adapterMatches,
+        supportStatusReason: project.supportStatusReason
       });
       continue;
     }
