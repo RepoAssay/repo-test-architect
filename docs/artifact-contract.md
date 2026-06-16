@@ -263,7 +263,7 @@ node ./src/cli/index.js adapters
 node ./src/cli/index.js adapters --format json
 ```
 
-This artifact lists registered language adapters, their ecosystem labels, and their supported language labels.
+This artifact lists registered language adapters, their maturity, ecosystem labels, supported language labels, recognized test frameworks, supported project types, and emitted artifact schemas.
 Clients should use the adapter `id` when passing `adapterId` to `audit_repo`.
 
 ## Project Detection Rules Artifact

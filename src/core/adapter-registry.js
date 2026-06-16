@@ -8,12 +8,20 @@ import { auditJavaScriptRepo } from "../adapters/javascript/audit.js";
  * @property {string} id
  * @property {string[]} ecosystems
  * @property {string[]} languages
+ * @property {"supported" | "experimental" | "planned"} maturity
+ * @property {string[]} supportedTestFrameworks
+ * @property {string[]} supportedProjectTypes
+ * @property {string[]} emittedArtifacts
  * @property {(repoRoot: string, options?: AuditRepoOptions) => object} audit
  *
  * @typedef {object} AdapterSummary
  * @property {string} id
  * @property {string[]} ecosystems
  * @property {string[]} languages
+ * @property {"supported" | "experimental" | "planned"} maturity
+ * @property {string[]} supportedTestFrameworks
+ * @property {string[]} supportedProjectTypes
+ * @property {string[]} emittedArtifacts
  *
  * @typedef {object} AdapterRegistry
  * @property {"adapter-registry/v1"} schemaVersion
@@ -26,6 +34,10 @@ export const adapters = [
     id: "javascript",
     ecosystems: ["javascript"],
     languages: ["javascript", "typescript"],
+    maturity: "supported",
+    supportedTestFrameworks: ["jest", "react-testing-library", "supertest", "vitest"],
+    supportedProjectTypes: ["node", "express", "react"],
+    emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"],
     audit(repoRoot, options = {}) {
       return auditJavaScriptRepo(repoRoot, {
         changedPaths: options.changedPaths
@@ -54,8 +66,12 @@ export function getAdapter(adapterId = "javascript") {
 export function listAdapters() {
   return adapters.map((adapter) => ({
     id: adapter.id,
-    ecosystems: adapter.ecosystems,
-    languages: adapter.languages
+    ecosystems: [...adapter.ecosystems],
+    languages: [...adapter.languages],
+    maturity: adapter.maturity,
+    supportedTestFrameworks: [...adapter.supportedTestFrameworks],
+    supportedProjectTypes: [...adapter.supportedProjectTypes],
+    emittedArtifacts: [...adapter.emittedArtifacts]
   }));
 }
 

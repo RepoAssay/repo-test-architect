@@ -8,6 +8,7 @@ Implemented:
 
 - JavaScript/TypeScript repository profiling
 - runtime adapter registry with the initial `javascript` adapter
+- adapter registry capability metadata for maturity, framework signals, project types, and emitted artifacts
 - CLI adapter registry output
 - deterministic project detection for polyglot repository roots
 - unsupported Python, Ruby, PHP, Elixir, Go, Rust, Swift, .NET, and Kotlin/JVM project reporting with ecosystem and language labels

@@ -26,6 +26,7 @@ describe("tool API", () => {
 
     assert.equal(registry.schemaVersion, "adapter-registry/v1");
     assert.deepEqual(registry.adapters.map((adapter) => adapter.id), ["javascript"]);
+    assert.deepEqual(registry.adapters[0].supportedProjectTypes, ["node", "express", "react"]);
   });
 
   it("detects repository projects", () => {

@@ -9,7 +9,11 @@ describe("adapter registry", () => {
       {
         id: "javascript",
         ecosystems: ["javascript"],
-        languages: ["javascript", "typescript"]
+        languages: ["javascript", "typescript"],
+        maturity: "supported",
+        supportedTestFrameworks: ["jest", "react-testing-library", "supertest", "vitest"],
+        supportedProjectTypes: ["node", "express", "react"],
+        emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"]
       }
     ]);
   });
@@ -21,7 +25,11 @@ describe("adapter registry", () => {
         {
           id: "javascript",
           ecosystems: ["javascript"],
-          languages: ["javascript", "typescript"]
+          languages: ["javascript", "typescript"],
+          maturity: "supported",
+          supportedTestFrameworks: ["jest", "react-testing-library", "supertest", "vitest"],
+          supportedProjectTypes: ["node", "express", "react"],
+          emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"]
         }
       ]
     });

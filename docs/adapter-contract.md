@@ -32,6 +32,10 @@ Adapter registry entries expose:
 - `id`: stable adapter ID used by CLI and MCP calls
 - `ecosystems`: package/build ecosystem labels the adapter understands
 - `languages`: source language labels the adapter can classify
+- `maturity`: whether the adapter is supported, experimental, or planned
+- `supportedTestFrameworks`: test framework signals the adapter can detect and plan around
+- `supportedProjectTypes`: project shapes the adapter is designed to classify
+- `emittedArtifacts`: artifact schema versions produced by the adapter-backed flow
 
 ## Polyglot Repositories
 

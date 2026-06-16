@@ -194,6 +194,10 @@ export declare function getAdapterRegistry(): {
     id: string;
     ecosystems: string[];
     languages: string[];
+    maturity: "supported" | "experimental" | "planned";
+    supportedTestFrameworks: string[];
+    supportedProjectTypes: string[];
+    emittedArtifacts: string[];
   }>;
 };
 

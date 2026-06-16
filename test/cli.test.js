@@ -15,7 +15,8 @@ describe("CLI", () => {
     });
 
     assert.match(output, /^# Adapter Registry/);
-    assert.match(output, /javascript: ecosystems javascript; languages javascript, typescript/);
+    assert.match(output, /javascript: supported; ecosystems javascript; languages javascript, typescript/);
+    assert.match(output, /frameworks jest, react-testing-library, supertest, vitest/);
   });
 
   it("lists adapters as JSON", () => {
@@ -25,11 +26,14 @@ describe("CLI", () => {
     const registry = JSON.parse(output);
 
     assert.equal(registry.schemaVersion, "adapter-registry/v1");
-    assert.deepEqual(registry.adapters[0], {
-      id: "javascript",
-      ecosystems: ["javascript"],
-      languages: ["javascript", "typescript"]
-    });
+    assert.equal(registry.adapters[0].id, "javascript");
+    assert.equal(registry.adapters[0].maturity, "supported");
+    assert.deepEqual(registry.adapters[0].supportedTestFrameworks, [
+      "jest",
+      "react-testing-library",
+      "supertest",
+      "vitest"
+    ]);
   });
 
   it("lists project detection rules in markdown", () => {

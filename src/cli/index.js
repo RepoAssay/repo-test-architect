@@ -408,7 +408,9 @@ function renderMarkdownAdapterRegistry(registry) {
     lines.push("- No adapters registered.");
   } else {
     for (const adapter of registry.adapters) {
-      lines.push(`- ${adapter.id}: ecosystems ${formatList(adapter.ecosystems)}; languages ${formatList(adapter.languages)}`);
+      lines.push(
+        `- ${adapter.id}: ${adapter.maturity}; ecosystems ${formatList(adapter.ecosystems)}; languages ${formatList(adapter.languages)}; frameworks ${formatList(adapter.supportedTestFrameworks)}; project types ${formatList(adapter.supportedProjectTypes)}`
+      );
     }
   }
 

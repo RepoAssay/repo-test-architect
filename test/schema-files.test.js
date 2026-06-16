@@ -77,6 +77,11 @@ describe("schema files", () => {
     assert.ok(schema.properties.adapters.items.required.includes("id"));
     assert.ok(schema.properties.adapters.items.required.includes("ecosystems"));
     assert.ok(schema.properties.adapters.items.required.includes("languages"));
+    assert.ok(schema.properties.adapters.items.required.includes("maturity"));
+    assert.ok(schema.properties.adapters.items.required.includes("supportedTestFrameworks"));
+    assert.ok(schema.properties.adapters.items.required.includes("supportedProjectTypes"));
+    assert.ok(schema.properties.adapters.items.required.includes("emittedArtifacts"));
+    assert.deepEqual(schema.properties.adapters.items.properties.maturity.enum, ["supported", "experimental", "planned"]);
   });
 
   it("documents project-detection/v1", () => {
