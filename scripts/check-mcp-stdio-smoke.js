@@ -41,6 +41,11 @@ try {
     method: "tools/list"
   });
 
+  await sendNotification({
+    jsonrpc: "2.0",
+    method: "notifications/initialized"
+  });
+
   const detectedProjects = await sendRequest({
     jsonrpc: "2.0",
     id: 3,
@@ -154,8 +159,7 @@ try {
  * @returns {Promise<object>}
  */
 async function sendRequest(request) {
-  const responseLine = withTimeout(
-    once(output, "line"),
+  const responseLine = readLineWithin(
     RESPONSE_TIMEOUT_MS,
     `Timed out waiting for MCP response to ${request.method} request ${request.id}. Stderr: ${stderr || "<empty>"}`
   );
@@ -165,23 +169,59 @@ async function sendRequest(request) {
 }
 
 /**
- * @template T
- * @param {Promise<T>} promise
+ * @param {object} request
+ * @returns {Promise<void>}
+ */
+async function sendNotification(request) {
+  child.stdin.write(`${JSON.stringify(request)}\n`);
+  await expectNoLineWithin(
+    100,
+    `Expected no MCP response to ${request.method} notification.`
+  );
+}
+
+/**
  * @param {number} timeoutMs
  * @param {string} message
- * @returns {Promise<T>}
+ * @returns {Promise<[string]>}
  */
-async function withTimeout(promise, timeoutMs, message) {
-  let timeout;
-  const timeoutPromise = new Promise((_, reject) => {
-    timeout = setTimeout(() => reject(new Error(message)), timeoutMs);
-  });
+function readLineWithin(timeoutMs, message) {
+  return new Promise((resolve, reject) => {
+    let timeout;
+    const onLine = (line) => {
+      clearTimeout(timeout);
+      resolve([line]);
+    };
 
-  try {
-    return await Promise.race([promise, timeoutPromise]);
-  } finally {
-    clearTimeout(timeout);
-  }
+    timeout = setTimeout(() => {
+      output.off("line", onLine);
+      reject(new Error(message));
+    }, timeoutMs);
+
+    output.once("line", onLine);
+  });
+}
+
+/**
+ * @param {number} timeoutMs
+ * @param {string} message
+ * @returns {Promise<void>}
+ */
+function expectNoLineWithin(timeoutMs, message) {
+  return new Promise((resolve, reject) => {
+    let timeout;
+    const onLine = (line) => {
+      clearTimeout(timeout);
+      reject(new Error(`${message} Received: ${line}`));
+    };
+
+    timeout = setTimeout(() => {
+      output.off("line", onLine);
+      resolve();
+    }, timeoutMs);
+
+    output.once("line", onLine);
+  });
 }
 
 /**

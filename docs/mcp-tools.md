@@ -105,6 +105,7 @@ When adding the real MCP server with an SDK:
 It handles:
 
 - `initialize`
+- `notifications/initialized`
 - `tools/list`
 - `tools/call`
 - single JSON-RPC request lines
