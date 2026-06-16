@@ -87,10 +87,14 @@ describe("docs links", () => {
   it("documents future test placement findings", () => {
     const projectPlan = fs.readFileSync("docs/project-plan.md", "utf8");
     const adapterContract = fs.readFileSync("docs/adapter-contract.md", "utf8");
+    const artifactContract = fs.readFileSync("docs/artifact-contract.md", "utf8");
 
     assert.ok(projectPlan.includes("Test Placement Direction"));
     assert.ok(projectPlan.includes("move or split"));
     assert.ok(adapterContract.includes("Test Placement Findings"));
+    assert.match(artifactContract, /single-project\s+analyzer\s+emits\s+conservative/);
+    assert.match(artifactContract, /project-audits\s+analyzer\s+can\s+also\s+emit\s+conservative/);
+    assert.ok(artifactContract.includes("matched test path uses `..` to escape the audited project root"));
     assert.ok(adapterContract.includes("move"));
     assert.ok(adapterContract.includes("split"));
     assert.ok(adapterContract.includes("keep"));

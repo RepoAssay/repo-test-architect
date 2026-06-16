@@ -69,6 +69,72 @@ describe("project test placement analysis", () => {
     ]);
   });
 
+  it("recommends moving tests that escape the audited project root", () => {
+    const placement = analyzeProjectTestPlacement({
+      schemaVersion: "project-audits/v1",
+      root: "/repo",
+      summary: {
+        projectCount: 2,
+        auditedProjectCount: 2,
+        skippedProjectCount: 0
+      },
+      audits: [
+        {
+          projectId: "apps/main",
+          projectRoot: "apps/main",
+          adapterId: "javascript",
+          audit: {
+            schemaVersion: "audit/v1",
+            profile: { root: "/repo/apps/main" },
+            untestedCandidates: [],
+            coveredButRisky: [],
+            skipped: [],
+            risks: []
+          }
+        },
+        {
+          projectId: "packages/deck-core",
+          projectRoot: "packages/deck-core",
+          adapterId: "javascript",
+          audit: {
+            schemaVersion: "audit/v1",
+            profile: { root: "/repo/packages/deck-core" },
+            untestedCandidates: [],
+            coveredButRisky: [
+              {
+                path: "src/deckParser.ts",
+                kind: "pure-logic",
+                recommendedTestLevel: "unit",
+                existingTestPaths: ["../../apps/main/tests/deckParser.test.ts"]
+              }
+            ],
+            skipped: [],
+            risks: []
+          }
+        }
+      ],
+      skippedProjects: []
+    });
+
+    assert.deepEqual(placement.findings[0], {
+      id: "packages/deck-core:move:apps/main/tests/deckParser.test.ts:packages/deck-core/src/deckParser.ts",
+      testFile: "apps/main/tests/deckParser.test.ts",
+      currentOwner: "apps/main",
+      suggestedOwner: "packages/deck-core",
+      action: "move",
+      reason: "Existing test path escapes the audited project root while covering source owned by this project.",
+      evidence: [
+        "project id: packages/deck-core",
+        "current owner: apps/main",
+        "suggested owner: packages/deck-core",
+        "test path escapes audited project root",
+        "matches source target packages/deck-core/src/deckParser.ts",
+        "target kind: pure-logic",
+        "recommended level: unit"
+      ]
+    });
+  });
+
   it("rejects non-project-audits artifacts", () => {
     assert.throws(
       () => analyzeProjectTestPlacement({ schemaVersion: "audit/v1" }),

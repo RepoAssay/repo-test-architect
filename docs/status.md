@@ -24,7 +24,7 @@ Implemented:
 - fixture-based regression coverage
 - audit, plan, explanation, ranking, and deferred-generation artifacts
 - test placement findings artifact with a conservative audit-based `keep` analyzer
-- project-audits derived placement analysis that preserves project owner identity
+- project-audits derived placement analysis that preserves project owner identity and reports conservative cross-owner `move` findings for test paths that escape the audited project root
 - project-audits derived local stats artifact for audit coverage, target counts, framework distribution, test commands, and adapter usage
 - JSDoc contract annotations for core runtime modules, including adapter registry, tool API, project detection, project audit, planning, ranking, explanation, placement, and deferred generation
 - project detection and project audit artifacts for polyglot repository groundwork
@@ -91,7 +91,7 @@ Current tool names:
 - `generate_selected_test`
 
 `generate_selected_test` intentionally returns `generation-deferred/v1` until native generation has adapter-specific fixtures and repair-loop coverage.
-`analyze_test_placement` currently returns conservative advisory `keep` findings from existing audit evidence.
+`analyze_test_placement` currently returns conservative advisory `keep` findings from existing audit evidence. `analyze_project_test_placement` can additionally return conservative `move` findings when project-derived test paths escape the audited project root.
 
 ## Verification
 
@@ -144,6 +144,6 @@ npm run eval:test
 2. Consolidate repeated JSDoc artifact shapes into shared TS reference files when the runtime API stabilizes further.
 3. Add Kotlin/JUnit or Swift adapter discovery as the next supported-language spike.
 4. Add more model-consistency fixtures and model profile output comparisons.
-5. Add package-aware test placement analysis that can recommend `move` and `split` findings across app/package boundaries.
+5. Expand package-aware test placement analysis from explicit path escapes into adapter-owned package boundary signals and future `split` findings.
 6. Add local-first stats artifacts for audit coverage, candidate/risk counts, model-consistency drift, and later repair-loop trends.
 7. Add native test generation only after adapter-specific generation rules and repair-loop tests exist.
