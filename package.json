@@ -13,6 +13,8 @@
     "repo-test-architect-mcp-invoke": "./src/mcp/invoke.js"
   },
   "files": [
+    "SECURITY.md",
+    "SUPPORT.md",
     "docs/",
     "evals/",
     "examples/",

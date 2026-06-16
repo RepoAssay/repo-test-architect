@@ -5,6 +5,8 @@ import path from "node:path";
 
 const allowedTopLevelEntries = new Set([
   "README.md",
+  "SECURITY.md",
+  "SUPPORT.md",
   "docs",
   "evals",
   "examples",
@@ -16,6 +18,8 @@ const allowedTopLevelEntries = new Set([
 
 const requiredFiles = [
   "README.md",
+  "SECURITY.md",
+  "SUPPORT.md",
   "package.json",
   "src/cli/index.js",
   "src/mcp/stdio.js",

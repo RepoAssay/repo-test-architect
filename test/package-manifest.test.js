@@ -27,7 +27,16 @@ describe("package manifest", () => {
   });
 
   it("keeps publish contents focused on runtime, docs, schemas, fixtures, and scripts", () => {
-    assert.deepEqual(packageJson.files, ["docs/", "evals/", "examples/", "schemas/", "scripts/", "src/"]);
+    assert.deepEqual(packageJson.files, [
+      "SECURITY.md",
+      "SUPPORT.md",
+      "docs/",
+      "evals/",
+      "examples/",
+      "schemas/",
+      "scripts/",
+      "src/",
+    ]);
     assert.ok(!packageJson.files.includes("test/"));
   });
 
