@@ -134,4 +134,21 @@ describe("docs links", () => {
     assert.ok(publicReadiness.includes("[Demo Script](demo-script.md)"));
     assert.ok(status.includes("demo script for showing audit quality"));
   });
+
+  it("records architecture and scope decisions for future traceability", () => {
+    const readme = fs.readFileSync("README.md", "utf8");
+    const decisionLog = fs.readFileSync("docs/decision-log.md", "utf8");
+    const status = fs.readFileSync("docs/status.md", "utf8");
+
+    assert.ok(readme.includes("[Decision log](docs/decision-log.md)"));
+    assert.ok(decisionLog.includes("Audit Graph First"));
+    assert.ok(decisionLog.includes("JavaScript And TypeScript First"));
+    assert.ok(decisionLog.includes("Polyglot Detection Before Universal Adapters"));
+    assert.ok(decisionLog.includes("Local Stdio MCP First"));
+    assert.ok(decisionLog.includes("Native Generation Deferred"));
+    assert.ok(decisionLog.includes("Public Demo Before Package Release"));
+    assert.ok(decisionLog.includes("Local-First Stats Before Telemetry"));
+    assert.ok(decisionLog.includes("Revisit when:"));
+    assert.ok(status.includes("decision log for audit-first architecture"));
+  });
 });

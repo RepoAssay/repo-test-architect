@@ -38,6 +38,7 @@ Implemented:
 - release-readiness checklist, npm package dry-run script, and package contents allowlist
 - public-readiness checklist that separates public repository preparation from npm publishing
 - demo script for showing audit quality, polyglot detection, MCP-shaped tools, and verification without implying native generation is ready
+- decision log for audit-first architecture, adapter scope, local-first MCP, deferred generation, public demo readiness, and stats policy
 - package contents dry-run checker for required runtime files and publish allowlist hygiene
 - package binary entrypoint checker for CLI, MCP invoke, and stdio JSON-RPC boot paths
 - release-readiness check runner for tests, evals, model consistency, smoke, package, and bin checks
