@@ -65,8 +65,16 @@ The package should keep this binary stable because client configs will depend on
 
 Before adding it to a client, verify the server can start:
 
+macOS/Linux terminal:
+
+```sh
+npm run mcp:smoke
+```
+
+Windows PowerShell:
+
 ```powershell
-npm run mcp:stdio
+npm run mcp:smoke
 ```
 
 For deterministic tool checks without an MCP client, use the local invoke harness:

@@ -117,6 +117,7 @@ npm run mcp:audit:example
 npm run mcp:placement:example
 npm run mcp:audit:envelope
 npm run mcp:stdio
+npm run mcp:smoke
 ```
 
 Generate a plan from an existing audit JSON file:

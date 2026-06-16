@@ -8,6 +8,7 @@ const releaseChecks = [
   "eval:check",
   "model-consistency:check",
   "demo:check",
+  "mcp:smoke",
   "smoke",
   "pack:check",
   "bin:check"

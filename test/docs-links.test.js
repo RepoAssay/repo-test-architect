@@ -61,6 +61,7 @@ describe("docs links", () => {
 
     assert.ok(clientConfig.includes(`npm install -g ${packageJson.name}`));
     assert.ok(clientConfig.includes('"command": "repo-test-architect-mcp"'));
+    assert.ok(clientConfig.includes("npm run mcp:smoke"));
     assert.ok(agentInstallPaths.includes(`npm install -g ${packageJson.name}`));
     assert.ok(agentInstallPaths.includes("repo-test-architect-mcp"));
     assert.ok(agentInstallPaths.includes("MCP-Capable Hosts"));

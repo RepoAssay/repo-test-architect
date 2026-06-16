@@ -72,6 +72,7 @@
     "mcp:placement:example": "node ./src/mcp/invoke.js call analyze_test_placement \"{\\\"audit\\\":{\\\"schemaVersion\\\":\\\"audit/v1\\\",\\\"profile\\\":{},\\\"untestedCandidates\\\":[],\\\"coveredButRisky\\\":[],\\\"skipped\\\":[],\\\"risks\\\":[]}}\"",
     "mcp:audit:envelope": "node ./src/mcp/invoke.js call-envelope audit_repo \"{\\\"repoRoot\\\":\\\"./examples/node-vitest-basic\\\"}\"",
     "mcp:stdio": "node ./src/mcp/stdio.js",
+    "mcp:smoke": "node ./scripts/check-mcp-stdio-smoke.js",
     "eval:check": "node ./scripts/check-golden-snapshots.js",
     "eval:summary": "node ./scripts/check-golden-snapshots.js",
     "eval:test": "node --test test/golden-snapshots.test.js",

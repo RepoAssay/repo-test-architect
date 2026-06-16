@@ -50,6 +50,7 @@ describe("package manifest", () => {
     assert.ok(packageJson.scripts["model-consistency:compare"]);
     assert.ok(packageJson.scripts["model-consistency:stats"]);
     assert.equal(packageJson.scripts["demo:check"], "node ./scripts/check-demo-script.js");
+    assert.equal(packageJson.scripts["mcp:smoke"], "node ./scripts/check-mcp-stdio-smoke.js");
     assert.ok(packageJson.scripts["pack:check"]);
     assert.ok(packageJson.scripts["bin:check"]);
     assert.ok(packageJson.scripts["release:check"]);
@@ -63,6 +64,7 @@ describe("package manifest", () => {
     assert.match(releaseRunner, /"eval:check"/);
     assert.match(releaseRunner, /"model-consistency:check"/);
     assert.match(releaseRunner, /"demo:check"/);
+    assert.match(releaseRunner, /"mcp:smoke"/);
     assert.match(releaseRunner, /"smoke"/);
     assert.match(releaseRunner, /"pack:check"/);
     assert.match(releaseRunner, /"bin:check"/);
@@ -73,6 +75,7 @@ describe("package manifest", () => {
     const status = fs.readFileSync("docs/status.md", "utf8");
 
     assert.ok(status.includes("npm run pack:dry-run"));
+    assert.ok(status.includes("npm run mcp:smoke"));
     assert.ok(status.includes("npm run pack:check"));
     assert.ok(status.includes("npm run bin:check"));
     assert.ok(status.includes("npm run release:check"));

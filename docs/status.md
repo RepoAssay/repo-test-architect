@@ -36,6 +36,7 @@ Implemented:
 - deterministic model-consistency scenario runner, summary artifact, comparison artifact, and stats artifact for checking locked fields and drift counts against tool output
 - changed-file workflows with `--changed` and `--changed-since`
 - MCP-shaped tool descriptors, local invoke harness, and dependency-free stdio JSON-RPC scaffold
+- MCP stdio smoke check that exercises initialize, tools/list, and tools/call through the server process
 - release-readiness checklist, npm package dry-run script, and package contents allowlist
 - public-readiness checklist that separates public repository preparation from npm publishing
 - product positioning note for audit-first differentiation, initial audience, business paths, proof points, and anti-positioning
@@ -114,6 +115,7 @@ npm run mcp:placement-projects:example
 npm run mcp:stats-projects:example
 npm run mcp:placement:example
 npm run mcp:adapters
+npm run mcp:smoke
 npm test
 npm run eval:check
 npm run model-consistency:check
