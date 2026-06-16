@@ -1,4 +1,5 @@
 import { classifyProjectAuditCoverage } from "./project-audit-coverage.js";
+import { collectUnsupportedReasons, normalizeUnsupportedProjects } from "./project-unsupported.js";
 
 /**
  * @typedef {object} ProjectAuditEntry
@@ -76,15 +77,7 @@ export function summarizeProjectAudits(projectAudits) {
     return project;
   });
 
-  const unsupportedProjects = projectAudits.skippedProjects.map((project) => ({
-    projectId: project.projectId,
-    projectRoot: project.projectRoot,
-    reason: project.reason,
-    ecosystems: project.ecosystems,
-    languages: project.languages,
-    adapterMatches: project.adapterMatches ?? [],
-    supportStatusReason: project.supportStatusReason ?? project.reason
-  }));
+  const unsupportedProjects = normalizeUnsupportedProjects(projectAudits.skippedProjects);
 
   return {
     schemaVersion: "project-audit-summary/v1",
@@ -94,7 +87,7 @@ export function summarizeProjectAudits(projectAudits) {
       auditedProjectCount: projectAudits.summary.auditedProjectCount,
       unsupportedProjectCount: projectAudits.summary.skippedProjectCount,
       auditCoverage: classifyProjectAuditCoverage(projectAudits.summary.auditedProjectCount, projectAudits.summary.skippedProjectCount),
-      unsupportedReasons: [...new Set(unsupportedProjects.map((project) => project.supportStatusReason))],
+      unsupportedReasons: collectUnsupportedReasons(unsupportedProjects),
       untestedCandidateCount: sum(projects, "untestedCandidateCount"),
       coveredButRiskyCount: sum(projects, "coveredButRiskyCount"),
       skippedTargetCount: sum(projects, "skippedTargetCount"),

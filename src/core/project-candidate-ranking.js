@@ -1,4 +1,5 @@
 import { classifyProjectAuditCoverage } from "./project-audit-coverage.js";
+import { collectUnsupportedReasons, normalizeUnsupportedProjects } from "./project-unsupported.js";
 import { rankTestCandidates } from "./rank-test-candidates.js";
 
 /**
@@ -61,15 +62,7 @@ export function rankProjectTestCandidates(projectAudits) {
       a.target.localeCompare(b.target)
   );
 
-  const unsupportedProjects = projectAudits.skippedProjects.map((project) => ({
-    projectId: project.projectId,
-    projectRoot: project.projectRoot,
-    reason: project.reason,
-    ecosystems: project.ecosystems,
-    languages: project.languages,
-    adapterMatches: project.adapterMatches ?? [],
-    supportStatusReason: project.supportStatusReason ?? project.reason
-  }));
+  const unsupportedProjects = normalizeUnsupportedProjects(projectAudits.skippedProjects);
 
   return {
     schemaVersion: "project-candidate-ranking/v1",
@@ -79,7 +72,7 @@ export function rankProjectTestCandidates(projectAudits) {
       auditedProjectCount: projectAudits.summary.auditedProjectCount,
       unsupportedProjectCount: projectAudits.summary.skippedProjectCount,
       auditCoverage: classifyProjectAuditCoverage(projectAudits.summary.auditedProjectCount, projectAudits.summary.skippedProjectCount),
-      unsupportedReasons: [...new Set(unsupportedProjects.map((project) => project.supportStatusReason))],
+      unsupportedReasons: collectUnsupportedReasons(unsupportedProjects),
       candidateCount: candidates.length
     },
     unsupportedProjects,
