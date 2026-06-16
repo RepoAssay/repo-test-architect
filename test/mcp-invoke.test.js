@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { describe, it } from "node:test";
 import { expectedMcpToolNames } from "./support/mcp-tools.js";
 
@@ -27,6 +30,20 @@ describe("MCP invoke harness", () => {
 
     assert.equal(audit.schemaVersion, "audit/v1");
     assert.deepEqual(audit.profile.testFrameworks, ["vitest"]);
+  });
+
+  it("calls a tool with JSON args from a file", () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-mcp-"));
+    const argsPath = path.join(tempDir, "args.json");
+    fs.writeFileSync(argsPath, JSON.stringify({ repoRoot: "./examples/node-vitest-basic" }), "utf8");
+
+    const output = execFileSync(process.execPath, [invokePath, "call", "audit_repo", `@${argsPath}`], {
+      encoding: "utf8"
+    });
+    const audit = JSON.parse(output);
+
+    assert.equal(audit.schemaVersion, "audit/v1");
+    assert.deepEqual(audit.profile.packageManagers, ["npm"]);
   });
 
   it("calls placement tools with JSON args", () => {

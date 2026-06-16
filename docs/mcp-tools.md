@@ -145,9 +145,11 @@ node ./src/mcp/invoke.js tools
 node ./src/mcp/invoke.js call list_adapters "{}"
 node ./src/mcp/invoke.js call list_project_detection_rules "{}"
 node ./src/mcp/invoke.js call audit_repo "{\"repoRoot\":\"./examples/node-vitest-basic\"}"
+node ./src/mcp/invoke.js call audit_repo "@./args.json"
 node ./src/mcp/invoke.js call-envelope audit_repo "{\"repoRoot\":\"./examples/node-vitest-basic\"}"
 node ./src/mcp/stdio.js
 ```
 
 This validates the same tool descriptors and dispatcher the future MCP server should mount.
 Use `call-envelope` to inspect the MCP-style `content` response shape.
+Use `@./args.json` when a tool call needs a saved artifact, such as wrapping a `project-audits/v1` artifact as `{ "projectAudits": ... }` for project summary, ranking, planning, or placement calls.
