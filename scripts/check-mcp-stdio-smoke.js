@@ -105,6 +105,23 @@ try {
     }
   });
 
+  const batchResponse = await sendBatchRequest([
+    {
+      jsonrpc: "2.0",
+      id: 8,
+      method: "tools/list"
+    },
+    {
+      jsonrpc: "2.0",
+      method: "notifications/initialized"
+    },
+    {
+      jsonrpc: "2.0",
+      id: 9,
+      method: "missing/method"
+    }
+  ]);
+
   assert.equal(initialize.id, 1);
   assert.equal(initialize.result.serverInfo.name, "repo-test-architect");
   assert.deepEqual(initialize.result.capabilities.tools, {});
@@ -142,6 +159,12 @@ try {
   assert.equal(statsArtifact.summary.projectCount, 3);
   assert.equal(statsArtifact.summary.auditedProjectCount, 1);
 
+  assert.equal(batchResponse.length, 2);
+  assert.equal(batchResponse[0].id, 8);
+  assert.ok(batchResponse[0].result.tools.some((tool) => tool.name === "detect_projects"));
+  assert.equal(batchResponse[1].id, 9);
+  assert.equal(batchResponse[1].error.code, -32601);
+
   child.stdin.end();
   const [exitCode] = await once(child, "close");
   assert.equal(exitCode, 0, stderr);
@@ -164,6 +187,20 @@ async function sendRequest(request) {
     `Timed out waiting for MCP response to ${request.method} request ${request.id}. Stderr: ${stderr || "<empty>"}`
   );
   child.stdin.write(`${JSON.stringify(request)}\n`);
+  const [line] = await responseLine;
+  return JSON.parse(line);
+}
+
+/**
+ * @param {object[]} requests
+ * @returns {Promise<object[]>}
+ */
+async function sendBatchRequest(requests) {
+  const responseLine = readLineWithin(
+    RESPONSE_TIMEOUT_MS,
+    `Timed out waiting for MCP batch response. Stderr: ${stderr || "<empty>"}`
+  );
+  child.stdin.write(`${JSON.stringify(requests)}\n`);
   const [line] = await responseLine;
   return JSON.parse(line);
 }
