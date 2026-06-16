@@ -2,6 +2,7 @@ import { createTestPlan } from "./test-plan.js";
 
 /**
  * @typedef {"add-test" | "extend-test" | "defer"} ProjectPlanAction
+ * @typedef {"complete" | "partial" | "none"} ProjectAuditCoverage
  *
  * @typedef {object} ProjectAuditEntry
  * @property {string} projectId
@@ -28,7 +29,7 @@ import { createTestPlan } from "./test-plan.js";
  * @typedef {object} ProjectTestPlan
  * @property {"project-test-plan/v1"} schemaVersion
  * @property {string} root
- * @property {object} summary
+ * @property {{ projectCount: number, plannedProjectCount: number, unsupportedProjectCount: number, auditCoverage: ProjectAuditCoverage, unsupportedReasons: string[], addTestCount: number, extendTestCount: number, deferredCount: number, itemCount: number }} summary
  * @property {SkippedProjectAudit[]} unsupportedProjects
  * @property {object[]} projectPlans
  * @property {object[]} items
@@ -89,6 +90,8 @@ export function createProjectTestPlan(projectAudits) {
       projectCount: projectAudits.summary.projectCount,
       plannedProjectCount: projectPlans.length,
       unsupportedProjectCount: unsupportedProjects.length,
+      auditCoverage: classifyAuditCoverage(projectPlans.length, unsupportedProjects.length),
+      unsupportedReasons: [...new Set(unsupportedProjects.map((project) => project.supportStatusReason))],
       addTestCount: countItems(items, "add-test"),
       extendTestCount: countItems(items, "extend-test"),
       deferredCount: countItems(items, "defer"),
@@ -107,4 +110,15 @@ export function createProjectTestPlan(projectAudits) {
  */
 function countItems(items, action) {
   return items.filter((item) => item.action === action).length;
+}
+
+/**
+ * @param {number} auditedProjectCount
+ * @param {number} skippedProjectCount
+ * @returns {ProjectAuditCoverage}
+ */
+function classifyAuditCoverage(auditedProjectCount, skippedProjectCount) {
+  if (auditedProjectCount === 0) return "none";
+  if (skippedProjectCount > 0) return "partial";
+  return "complete";
 }

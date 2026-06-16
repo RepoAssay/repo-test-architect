@@ -16,11 +16,24 @@
     "summary": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["projectCount", "auditedProjectCount", "unsupportedProjectCount", "candidateCount"],
+      "required": [
+        "projectCount",
+        "auditedProjectCount",
+        "unsupportedProjectCount",
+        "auditCoverage",
+        "unsupportedReasons",
+        "candidateCount"
+      ],
       "properties": {
         "projectCount": { "type": "integer", "minimum": 0 },
         "auditedProjectCount": { "type": "integer", "minimum": 0 },
         "unsupportedProjectCount": { "type": "integer", "minimum": 0 },
+        "auditCoverage": { "enum": ["complete", "partial", "none"] },
+        "unsupportedReasons": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        },
         "candidateCount": { "type": "integer", "minimum": 0 }
       }
     },

@@ -548,6 +548,7 @@ function renderMarkdownProjectCandidateRanking(ranking) {
   lines.push(`- Projects: ${ranking.summary.projectCount}`);
   lines.push(`- Audited: ${ranking.summary.auditedProjectCount}`);
   lines.push(`- Unsupported: ${ranking.summary.unsupportedProjectCount}`);
+  lines.push(`- Audit coverage: ${ranking.summary.auditCoverage}`);
   lines.push(`- Candidates: ${ranking.summary.candidateCount}`);
   lines.push("");
   lines.push("## Candidates");
@@ -586,6 +587,7 @@ function renderMarkdownProjectTestPlan(plan) {
   lines.push(`- Projects: ${plan.summary.projectCount}`);
   lines.push(`- Planned: ${plan.summary.plannedProjectCount}`);
   lines.push(`- Unsupported: ${plan.summary.unsupportedProjectCount}`);
+  lines.push(`- Audit coverage: ${plan.summary.auditCoverage}`);
   lines.push(`- Add tests: ${plan.summary.addTestCount}`);
   lines.push(`- Extend tests: ${plan.summary.extendTestCount}`);
   lines.push(`- Deferred: ${plan.summary.deferredCount}`);

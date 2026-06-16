@@ -82,7 +82,7 @@ node ./src/cli/index.js rank-projects ./examples/polyglot-workspace --format jso
 
 This emits `project-candidate-ranking/v1`.
 
-Ranking flattens per-project candidates while preserving project identity. The result is useful for deciding where the next test should be added across the whole repository.
+Ranking flattens per-project candidates while preserving project identity and audit coverage status. The result is useful for deciding where the next test should be added across the audited portion of the repository.
 
 ## 6. Plan
 
@@ -92,7 +92,7 @@ node ./src/cli/index.js plan-projects ./examples/polyglot-workspace --format jso
 
 This emits `project-test-plan/v1`.
 
-The project test plan keeps each underlying `plan/v1` artifact available, but also exposes flattened plan items with project identity attached. Future generation should target stable plan item IDs from this artifact.
+The project test plan keeps each underlying `plan/v1` artifact available, but also exposes flattened plan items with project identity and audit coverage status attached. Future generation should target stable plan item IDs from this artifact.
 
 ## 7. Analyze Test Placement
 

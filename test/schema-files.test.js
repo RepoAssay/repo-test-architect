@@ -144,6 +144,8 @@ describe("schema files", () => {
     assert.ok(schema.required.includes("unsupportedProjects"));
     assert.ok(schema.properties.candidates.items.required.includes("projectTargetId"));
     assert.ok(schema.properties.candidates.items.required.includes("priority"));
+    assert.ok(schema.properties.summary.required.includes("auditCoverage"));
+    assert.ok(schema.properties.summary.required.includes("unsupportedReasons"));
     assert.ok(schema.properties.unsupportedProjects.items.required.includes("ecosystems"));
     assert.ok(schema.properties.unsupportedProjects.items.required.includes("adapterMatches"));
     assert.ok(schema.properties.unsupportedProjects.items.required.includes("supportStatusReason"));
@@ -157,6 +159,8 @@ describe("schema files", () => {
     assert.ok(schema.required.includes("items"));
     assert.ok(schema.properties.items.items.required.includes("projectItemId"));
     assert.ok(schema.properties.items.items.required.includes("action"));
+    assert.ok(schema.properties.summary.required.includes("auditCoverage"));
+    assert.ok(schema.properties.summary.required.includes("unsupportedReasons"));
     assert.ok(schema.properties.unsupportedProjects.items.required.includes("ecosystems"));
     assert.ok(schema.properties.unsupportedProjects.items.required.includes("adapterMatches"));
     assert.ok(schema.properties.unsupportedProjects.items.required.includes("supportStatusReason"));

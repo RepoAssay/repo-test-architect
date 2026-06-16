@@ -14,6 +14,11 @@ describe("project candidate ranking", () => {
       projectCount: 3,
       auditedProjectCount: 1,
       unsupportedProjectCount: 2,
+      auditCoverage: "partial",
+      unsupportedReasons: [
+        "No registered adapter supports ecosystems jvm with languages java, kotlin.",
+        "No registered adapter supports ecosystems python with languages python."
+      ],
       candidateCount: 1
     });
     assert.deepEqual(

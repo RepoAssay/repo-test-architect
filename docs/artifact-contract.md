@@ -380,7 +380,7 @@ node ./src/cli/index.js rank-projects ./examples/polyglot-workspace --format jso
 node ./src/cli/index.js rank-projects --from-project-audits ./project-audits.json --format json
 ```
 
-This artifact ranks candidates from a `project-audits/v1` artifact using the same deterministic per-audit priority calculation, while adding project identity to each candidate.
+This artifact ranks candidates from a `project-audits/v1` artifact using the same deterministic per-audit priority calculation, while adding project identity and audit coverage status to each candidate view.
 It preserves unsupported project roots, including ecosystem labels, language labels, adapter match evidence, and support status reasons, instead of hiding them.
 
 ## Project Test Plan Artifact
@@ -404,7 +404,7 @@ node ./src/cli/index.js plan-projects ./examples/polyglot-workspace --format jso
 node ./src/cli/index.js plan-projects --from-project-audits ./project-audits.json --format json
 ```
 
-This artifact generates per-project plan items from a `project-audits/v1` artifact and flattens them with project identity attached.
+This artifact generates per-project plan items from a `project-audits/v1` artifact and flattens them with project identity and audit coverage status attached.
 It preserves the underlying `plan/v1` artifacts per project for detailed inspection.
 It also preserves unsupported project roots with ecosystem labels, language labels, adapter match evidence, and support status reasons.
 

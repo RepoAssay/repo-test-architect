@@ -147,6 +147,7 @@ describe("CLI", () => {
     });
 
     assert.match(output, /^# Project Candidate Ranking/);
+    assert.match(output, /Audit coverage: partial/);
     assert.match(output, /Candidates: 1/);
     assert.match(output, /apps\/web: sessionClient \[apps\/web:src\/sessionClient\.ts\]/);
   });
@@ -175,6 +176,7 @@ describe("CLI", () => {
     });
 
     assert.match(output, /^# Project Test Plan/);
+    assert.match(output, /Audit coverage: partial/);
     assert.match(output, /Add tests: 1/);
     assert.match(output, /apps\/web: add-test: sessionClient \[apps\/web:add-test:src\/sessionClient\.ts\]/);
   });

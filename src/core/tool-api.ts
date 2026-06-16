@@ -51,6 +51,8 @@ export interface ProjectCandidateRanking {
     projectCount: number;
     auditedProjectCount: number;
     unsupportedProjectCount: number;
+    auditCoverage: "complete" | "partial" | "none";
+    unsupportedReasons: string[];
     candidateCount: number;
   };
   unsupportedProjects: SkippedProjectAudit[];
@@ -64,6 +66,8 @@ export interface ProjectTestPlan {
     projectCount: number;
     plannedProjectCount: number;
     unsupportedProjectCount: number;
+    auditCoverage: "complete" | "partial" | "none";
+    unsupportedReasons: string[];
     addTestCount: number;
     extendTestCount: number;
     deferredCount: number;

@@ -16,6 +16,8 @@ import { rankTestCandidates } from "./rank-test-candidates.js";
  * @property {Array<{ adapterId: string, maturity: string, matchedEcosystems: string[], matchedLanguages: string[] }>} adapterMatches
  * @property {string} supportStatusReason
  *
+ * @typedef {"complete" | "partial" | "none"} ProjectAuditCoverage
+ *
  * @typedef {object} ProjectAudits
  * @property {"project-audits/v1"} schemaVersion
  * @property {string} root
@@ -26,7 +28,7 @@ import { rankTestCandidates } from "./rank-test-candidates.js";
  * @typedef {object} ProjectCandidateRanking
  * @property {"project-candidate-ranking/v1"} schemaVersion
  * @property {string} root
- * @property {object} summary
+ * @property {{ projectCount: number, auditedProjectCount: number, unsupportedProjectCount: number, auditCoverage: ProjectAuditCoverage, unsupportedReasons: string[], candidateCount: number }} summary
  * @property {SkippedProjectAudit[]} unsupportedProjects
  * @property {object[]} candidates
  */
@@ -75,9 +77,22 @@ export function rankProjectTestCandidates(projectAudits) {
       projectCount: projectAudits.summary.projectCount,
       auditedProjectCount: projectAudits.summary.auditedProjectCount,
       unsupportedProjectCount: projectAudits.summary.skippedProjectCount,
+      auditCoverage: classifyAuditCoverage(projectAudits.summary.auditedProjectCount, projectAudits.summary.skippedProjectCount),
+      unsupportedReasons: [...new Set(unsupportedProjects.map((project) => project.supportStatusReason))],
       candidateCount: candidates.length
     },
     unsupportedProjects,
     candidates
   };
+}
+
+/**
+ * @param {number} auditedProjectCount
+ * @param {number} skippedProjectCount
+ * @returns {ProjectAuditCoverage}
+ */
+function classifyAuditCoverage(auditedProjectCount, skippedProjectCount) {
+  if (auditedProjectCount === 0) return "none";
+  if (skippedProjectCount > 0) return "partial";
+  return "complete";
 }

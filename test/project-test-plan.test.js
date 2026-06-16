@@ -14,6 +14,11 @@ describe("project test plan", () => {
       projectCount: 3,
       plannedProjectCount: 1,
       unsupportedProjectCount: 2,
+      auditCoverage: "partial",
+      unsupportedReasons: [
+        "No registered adapter supports ecosystems jvm with languages java, kotlin.",
+        "No registered adapter supports ecosystems python with languages python."
+      ],
       addTestCount: 1,
       extendTestCount: 0,
       deferredCount: 0,
