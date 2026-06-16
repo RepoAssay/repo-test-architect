@@ -76,6 +76,28 @@ try {
     }
   });
 
+  const missingTool = await sendRequest({
+    jsonrpc: "2.0",
+    id: 6,
+    method: "tools/call",
+    params: {
+      name: "missing_tool",
+      arguments: {}
+    }
+  });
+
+  const statsAfterError = await sendRequest({
+    jsonrpc: "2.0",
+    id: 7,
+    method: "tools/call",
+    params: {
+      name: "collect_project_stats",
+      arguments: {
+        projectAudits
+      }
+    }
+  });
+
   assert.equal(initialize.id, 1);
   assert.equal(initialize.result.serverInfo.name, "repo-test-architect");
   assert.deepEqual(initialize.result.capabilities.tools, {});
@@ -101,6 +123,17 @@ try {
   assert.equal(planArtifact.summary.unsupportedProjectCount, 2);
   assert.equal(planArtifact.summary.itemCount, 1);
   assert.equal(planArtifact.items[0].projectId, "apps/web");
+
+  assert.equal(missingTool.id, 6);
+  assert.equal(missingTool.error.code, -32000);
+  assert.equal(missingTool.error.data.kind, "unknown-tool");
+  assert.equal(missingTool.error.data.toolName, "missing_tool");
+
+  const statsArtifact = parseToolArtifact(statsAfterError);
+  assert.equal(statsAfterError.id, 7);
+  assert.equal(statsArtifact.schemaVersion, "project-stats/v1");
+  assert.equal(statsArtifact.summary.projectCount, 3);
+  assert.equal(statsArtifact.summary.auditedProjectCount, 1);
 
   child.stdin.end();
   const [exitCode] = await once(child, "close");

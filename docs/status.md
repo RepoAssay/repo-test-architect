@@ -36,7 +36,7 @@ Implemented:
 - deterministic model-consistency scenario runner, summary artifact, comparison artifact, and stats artifact for checking locked fields and drift counts against tool output
 - changed-file workflows with `--changed` and `--changed-since`
 - MCP-shaped tool descriptors, local invoke harness, and dependency-free stdio JSON-RPC scaffold
-- MCP stdio smoke check that exercises initialize, tools/list, project detection, project audit, and project planning through one server process
+- MCP stdio smoke check that exercises initialize, tools/list, project detection, project audit, project planning, structured tool errors, and recovery through one server process
 - release-readiness checklist, npm package dry-run script, and package contents allowlist
 - public-readiness checklist that separates public repository preparation from npm publishing
 - product positioning note for audit-first differentiation, initial audience, business paths, proof points, and anti-positioning
