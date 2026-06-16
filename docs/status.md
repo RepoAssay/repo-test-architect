@@ -17,6 +17,7 @@ Implemented:
 - project ranking and plan artifacts that preserve audit coverage status before clients act on recommendations
 - shared project-audits validation for saved artifact reuse across CLI and MCP-style flows
 - file-backed MCP invoke arguments for local calls that reuse saved artifacts
+- checked-in MCP args fixture for project-audits derived local examples
 - unsupported Python, Ruby, PHP, Elixir, Go, Rust, Swift, .NET, and Kotlin/JVM project reporting with ecosystem and language labels
 - documented project detection marker rules
 - CLI output for project detection marker rules

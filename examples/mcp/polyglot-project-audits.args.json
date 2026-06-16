@@ -1,0 +1,118 @@
+{
+  "projectAudits": {
+    "schemaVersion": "project-audits/v1",
+    "root": "./examples/polyglot-workspace",
+    "summary": {
+      "projectCount": 3,
+      "auditedProjectCount": 1,
+      "skippedProjectCount": 2
+    },
+    "audits": [
+      {
+        "projectId": "apps/web",
+        "projectRoot": "apps/web",
+        "adapterId": "javascript",
+        "audit": {
+          "schemaVersion": "audit/v1",
+          "profile": {
+            "root": "./examples/polyglot-workspace/apps/web",
+            "languages": [
+              "typescript"
+            ],
+            "packageManagers": [
+              "npm"
+            ],
+            "testFrameworks": [
+              "vitest"
+            ],
+            "architectures": [],
+            "testCommand": "npm run test",
+            "detectedConventions": [],
+            "existingTestLocations": [],
+            "setupSignals": [],
+            "confidence": "medium",
+            "blockers": []
+          },
+          "untestedCandidates": [
+            {
+              "id": "src/sessionClient.ts",
+              "name": "sessionClient",
+              "path": "src/sessionClient.ts",
+              "kind": "service",
+              "signals": [
+                "service-name",
+                "auth-branch"
+              ],
+              "risk": "high",
+              "testability": "medium",
+              "recommendedTestLevel": "unit",
+              "riskReductionScore": 8,
+              "maintenanceCost": 4,
+              "reasons": [
+                "Service boundary",
+                "auth or permission branches"
+              ],
+              "existingTestPaths": []
+            }
+          ],
+          "coveredButRisky": [],
+          "recommended": [
+            {
+              "id": "src/sessionClient.ts",
+              "name": "sessionClient",
+              "path": "src/sessionClient.ts",
+              "kind": "service",
+              "signals": [
+                "service-name",
+                "auth-branch"
+              ],
+              "risk": "high",
+              "testability": "medium",
+              "recommendedTestLevel": "unit",
+              "riskReductionScore": 8,
+              "maintenanceCost": 4,
+              "reasons": [
+                "Service boundary",
+                "auth or permission branches"
+              ],
+              "existingTestPaths": []
+            }
+          ],
+          "skipped": [],
+          "risks": [
+            "sessionClient has service boundary, auth or permission branches and has no matching test file."
+          ]
+        }
+      }
+    ],
+    "skippedProjects": [
+      {
+        "projectId": "apps/android",
+        "projectRoot": "apps/android",
+        "reason": "No registered adapter supports ecosystems jvm with languages java, kotlin.",
+        "ecosystems": [
+          "jvm"
+        ],
+        "languages": [
+          "java",
+          "kotlin"
+        ],
+        "adapterMatches": [],
+        "supportStatusReason": "No registered adapter supports ecosystems jvm with languages java, kotlin."
+      },
+      {
+        "projectId": "services/api",
+        "projectRoot": "services/api",
+        "reason": "No registered adapter supports ecosystems python with languages python.",
+        "ecosystems": [
+          "python"
+        ],
+        "languages": [
+          "python"
+        ],
+        "adapterMatches": [],
+        "supportStatusReason": "No registered adapter supports ecosystems python with languages python."
+      }
+    ]
+  }
+}

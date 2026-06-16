@@ -132,6 +132,9 @@ npm run mcp:adapters
 npm run mcp:detect-rules
 npm run mcp:detect:example
 npm run mcp:audit-projects:example
+npm run mcp:summarize-projects:example
+npm run mcp:rank-projects:example
+npm run mcp:plan-projects:example
 npm run mcp:placement-projects:example
 npm run mcp:audit:example
 npm run mcp:placement:example
@@ -146,6 +149,7 @@ node ./src/mcp/invoke.js call list_adapters "{}"
 node ./src/mcp/invoke.js call list_project_detection_rules "{}"
 node ./src/mcp/invoke.js call audit_repo "{\"repoRoot\":\"./examples/node-vitest-basic\"}"
 node ./src/mcp/invoke.js call audit_repo "@./args.json"
+node ./src/mcp/invoke.js call summarize_project_audits "@./examples/mcp/polyglot-project-audits.args.json"
 node ./src/mcp/invoke.js call-envelope audit_repo "{\"repoRoot\":\"./examples/node-vitest-basic\"}"
 node ./src/mcp/stdio.js
 ```

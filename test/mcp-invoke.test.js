@@ -46,6 +46,21 @@ describe("MCP invoke harness", () => {
     assert.deepEqual(audit.profile.packageManagers, ["npm"]);
   });
 
+  it("calls a project tool with checked-in artifact args", () => {
+    const output = execFileSync(
+      process.execPath,
+      [invokePath, "call", "summarize_project_audits", "@./examples/mcp/polyglot-project-audits.args.json"],
+      {
+        encoding: "utf8"
+      }
+    );
+    const summary = JSON.parse(output);
+
+    assert.equal(summary.schemaVersion, "project-audit-summary/v1");
+    assert.equal(summary.summary.auditCoverage, "partial");
+    assert.equal(summary.summary.projectCount, 3);
+  });
+
   it("calls placement tools with JSON args", () => {
     const audit = {
       schemaVersion: "audit/v1",
