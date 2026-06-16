@@ -56,10 +56,18 @@ describe("docs links", () => {
   it("keeps MCP install docs aligned with package name and binaries", () => {
     const packageJson = JSON.parse(fs.readFileSync("package.json", "utf8"));
     const clientConfig = fs.readFileSync("docs/mcp-client-config.md", "utf8");
+    const agentInstallPaths = fs.readFileSync("docs/agent-install-paths.md", "utf8");
     const releaseChecklist = fs.readFileSync("docs/release-checklist.md", "utf8");
 
     assert.ok(clientConfig.includes(`npm install -g ${packageJson.name}`));
     assert.ok(clientConfig.includes('"command": "repo-test-architect-mcp"'));
+    assert.ok(agentInstallPaths.includes(`npm install -g ${packageJson.name}`));
+    assert.ok(agentInstallPaths.includes("repo-test-architect-mcp"));
+    assert.ok(agentInstallPaths.includes("MCP-Capable Hosts"));
+    assert.ok(agentInstallPaths.includes("Instruction-only mode"));
+    assert.ok(agentInstallPaths.includes("Node.js must be available"));
+    assert.ok(agentInstallPaths.includes("local-first security"));
+    assert.ok(agentInstallPaths.includes("avoid claiming native test generation is ready"));
 
     for (const binName of Object.keys(packageJson.bin)) {
       assert.ok(releaseChecklist.includes(`\`${binName}\``), `Missing release checklist binary: ${binName}`);

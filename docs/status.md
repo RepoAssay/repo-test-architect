@@ -29,6 +29,7 @@ Implemented:
 - JSDoc contract annotations for core runtime modules, including adapter registry, tool API, project detection, project audit, planning, ranking, explanation, placement, and deferred generation
 - project detection and project audit artifacts for polyglot repository groundwork
 - documented polyglot artifact workflow from project detection through project test planning
+- documented agent install paths that separate MCP-capable hosts from instruction-only fallbacks
 - stable JSON schemas for generated artifacts
 - golden snapshots for fixture audits, plans, and MCP tool descriptors
 - model-consistency scenario artifacts for comparing explanation, ranking, planning, no-framework blocker, Jest service, React component, Express/Supertest route, and polyglot project-summary/ranking/plan/stats output against deterministic locked fields
