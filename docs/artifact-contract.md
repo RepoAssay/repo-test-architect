@@ -155,6 +155,7 @@ It points at a source artifact, names the intended tool call, and lists fields t
 It contains:
 
 - source artifact path and schema version
+- optional source argument name when the path points at an MCP-style args wrapper
 - tool name and arguments
 - locked fields with expected deterministic values
 - allowed variation, such as wording or explanation depth

@@ -7,7 +7,7 @@ import { callTool } from "../mcp/tool-definitions.js";
  * @property {"model-consistency-scenario/v1"} schemaVersion
  * @property {string} id
  * @property {string} description
- * @property {{ path: string, schemaVersion: string }} sourceArtifact
+ * @property {{ path: string, schemaVersion: string, argumentName?: string }} sourceArtifact
  * @property {{ toolName: string, arguments: Record<string, unknown> }} toolCall
  * @property {Array<{ path: string, expected: string | number | boolean, reason: string }>} lockedFields
  * @property {string[]} allowedVariations
@@ -218,11 +218,16 @@ function compareScenario(scenarioId, baselineScenario, candidateScenario) {
 
 /**
  * @param {string} baseDir
- * @param {{ path: string, schemaVersion: string }} sourceArtifact
+ * @param {{ path: string, schemaVersion: string, argumentName?: string }} sourceArtifact
  * @returns {object}
  */
 function readSourceArtifact(baseDir, sourceArtifact) {
-  const artifact = JSON.parse(fs.readFileSync(path.resolve(baseDir, sourceArtifact.path), "utf8"));
+  const source = JSON.parse(fs.readFileSync(path.resolve(baseDir, sourceArtifact.path), "utf8"));
+  const artifact = sourceArtifact.argumentName ? source[sourceArtifact.argumentName] : source;
+
+  if (!artifact) {
+    throw new Error(`Expected source artifact argument ${sourceArtifact.argumentName}.`);
+  }
 
   if (artifact.schemaVersion !== sourceArtifact.schemaVersion) {
     throw new Error(`Expected source artifact schemaVersion ${sourceArtifact.schemaVersion}.`);

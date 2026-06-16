@@ -3,8 +3,9 @@
   "id": "polyglot-project-summary",
   "description": "Different model profiles should preserve project-level audit coverage and unsupported project reporting for a polyglot repository.",
   "sourceArtifact": {
-    "path": "evals/expected/polyglot-workspace.project-audits.json",
-    "schemaVersion": "project-audits/v1"
+    "path": "examples/mcp/polyglot-project-audits.args.json",
+    "schemaVersion": "project-audits/v1",
+    "argumentName": "projectAudits"
   },
   "toolCall": {
     "toolName": "summarize_project_audits",

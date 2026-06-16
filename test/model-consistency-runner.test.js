@@ -187,6 +187,22 @@ describe("model consistency runner", () => {
       /Expected model consistency scenario schemaVersion model-consistency-scenario\/v1/
     );
   });
+
+  it("rejects wrapped source artifacts missing the configured argument", () => {
+    const scenario = readModelConsistencyScenario("evals/model-consistency/polyglot-project-summary.scenario.json");
+
+    assert.throws(
+      () =>
+        runModelConsistencyScenario({
+          ...scenario,
+          sourceArtifact: {
+            ...scenario.sourceArtifact,
+            argumentName: "missingProjectAudits"
+          }
+        }),
+      /Expected source artifact argument missingProjectAudits/
+    );
+  });
 });
 
 function createCurrentSummary(profileName) {

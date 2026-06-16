@@ -41,6 +41,10 @@
         "schemaVersion": {
           "type": "string",
           "minLength": 1
+        },
+        "argumentName": {
+          "type": "string",
+          "minLength": 1
         }
       }
     },
