@@ -27,6 +27,8 @@ The initial registered adapter is:
 
 - `javascript` for the JavaScript ecosystem, covering JavaScript and TypeScript repositories
 
+The first non-JavaScript adapter should follow the focused [Second Adapter Spike](second-adapter-spike.md) checklist before expanding framework coverage or native generation.
+
 Adapter registry entries expose:
 
 - `id`: stable adapter ID used by CLI and MCP calls

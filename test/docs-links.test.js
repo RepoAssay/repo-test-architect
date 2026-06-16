@@ -151,4 +151,22 @@ describe("docs links", () => {
     assert.ok(decisionLog.includes("Revisit when:"));
     assert.ok(status.includes("decision log for audit-first architecture"));
   });
+
+  it("documents the acceptance gate for a second adapter spike", () => {
+    const readme = fs.readFileSync("README.md", "utf8");
+    const adapterContract = fs.readFileSync("docs/adapter-contract.md", "utf8");
+    const secondAdapterSpike = fs.readFileSync("docs/second-adapter-spike.md", "utf8");
+    const status = fs.readFileSync("docs/status.md", "utf8");
+
+    assert.ok(readme.includes("[Second adapter spike](docs/second-adapter-spike.md)"));
+    assert.ok(adapterContract.includes("[Second Adapter Spike](second-adapter-spike.md)"));
+    assert.ok(secondAdapterSpike.includes("Kotlin/JVM with Gradle and JUnit"));
+    assert.ok(secondAdapterSpike.includes("Swift Package Manager with XCTest or Swift Testing"));
+    assert.ok(secondAdapterSpike.includes("reuse the shared audit model"));
+    assert.ok(secondAdapterSpike.includes("produce golden audit and plan snapshots"));
+    assert.ok(secondAdapterSpike.includes("model-consistency scenario"));
+    assert.ok(secondAdapterSpike.includes("native test generation"));
+    assert.ok(secondAdapterSpike.includes("npm run release:check"));
+    assert.ok(status.includes("second-adapter spike checklist"));
+  });
 });
