@@ -36,6 +36,7 @@ Implemented:
 - changed-file workflows with `--changed` and `--changed-since`
 - MCP-shaped tool descriptors, local invoke harness, and dependency-free stdio JSON-RPC scaffold
 - release-readiness checklist, npm package dry-run script, and package contents allowlist
+- public-readiness checklist that separates public repository preparation from npm publishing
 - package contents dry-run checker for required runtime files and publish allowlist hygiene
 - package binary entrypoint checker for CLI, MCP invoke, and stdio JSON-RPC boot paths
 - release-readiness check runner for tests, evals, model consistency, smoke, package, and bin checks

@@ -196,6 +196,7 @@ The JavaScript adapter is the first proof point. Later adapters should emit the 
 - [Security policy](SECURITY.md)
 - [Project plan](docs/project-plan.md)
 - [Project status](docs/status.md)
+- [Public readiness](docs/public-readiness.md)
 - [Adapter contract](docs/adapter-contract.md)
 - [Artifact contract](docs/artifact-contract.md)
 - [Project detection](docs/project-detection.md)

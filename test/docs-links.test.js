@@ -95,4 +95,21 @@ describe("docs links", () => {
     assert.ok(adapterContract.includes("split"));
     assert.ok(adapterContract.includes("keep"));
   });
+
+  it("documents public readiness separately from npm publishing", () => {
+    const readme = fs.readFileSync("README.md", "utf8");
+    const publicReadiness = fs.readFileSync("docs/public-readiness.md", "utf8");
+    const status = fs.readFileSync("docs/status.md", "utf8");
+
+    assert.ok(readme.includes("[Public readiness](docs/public-readiness.md)"));
+    assert.ok(publicReadiness.includes("Ready To Show"));
+    assert.ok(publicReadiness.includes("Not Ready To Publish"));
+    assert.ok(publicReadiness.includes("package remains `private: true`"));
+    assert.ok(publicReadiness.includes("final public repository URL is not configured"));
+    assert.ok(publicReadiness.includes("native test generation is still deferred"));
+    assert.ok(publicReadiness.includes("real MCP SDK transport wrapper is still pending"));
+    assert.ok(publicReadiness.includes("confirm the license file and copyright owner"));
+    assert.ok(publicReadiness.includes("Avoid presenting native test generation as available"));
+    assert.ok(status.includes("public-readiness checklist"));
+  });
 });
