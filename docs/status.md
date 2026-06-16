@@ -118,4 +118,5 @@ npm run eval:test
 3. Add Kotlin/JUnit or Swift adapter discovery as the next supported-language spike.
 4. Add more model-consistency fixtures and model profile output comparisons.
 5. Add package-aware test placement analysis that can recommend `move` and `split` findings across app/package boundaries.
-6. Add native test generation only after adapter-specific generation rules and repair-loop tests exist.
+6. Add local-first stats artifacts for audit coverage, candidate/risk counts, model-consistency drift, and later repair-loop trends.
+7. Add native test generation only after adapter-specific generation rules and repair-loop tests exist.

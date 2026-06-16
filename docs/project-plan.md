@@ -237,3 +237,18 @@ Quality:
 - respects existing conventions
 - avoids inventing infrastructure
 - ranks by risk reduction, not test count
+
+## Tracking And Stats Direction
+
+Add local-first stats before considering any external telemetry.
+
+Useful deterministic stats should be derived from existing artifacts:
+
+- project count, audited project count, unsupported project count, and audit coverage
+- candidate, skipped target, blocker, and risk counts
+- confidence distribution and test framework detection results
+- model-consistency scenario count, locked-field count, drift count, and failure count
+- later generation and repair-loop counts, including files touched, test command results, and repair iterations
+- trend comparisons between saved audit artifacts over time
+
+Repository telemetry should be opt-in only. Hosted or product analytics must avoid source content and should default to aggregate metadata only.
