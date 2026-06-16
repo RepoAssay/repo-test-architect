@@ -1,0 +1,18 @@
+# Dependencies
+node_modules/
+
+# Build, coverage, and package outputs
+coverage/
+dist/
+*.tgz
+
+# Local environment and logs
+.env
+.env.*
+*.log
+
+# Local model-consistency comparison artifacts
+baseline-summary.json
+candidate-summary.json
+comparison.json
+model-consistency-stats.json
