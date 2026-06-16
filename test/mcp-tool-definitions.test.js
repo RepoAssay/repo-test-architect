@@ -69,7 +69,12 @@ describe("MCP tool definitions", () => {
     assert.equal(projectAudits.schemaVersion, "project-audits/v1");
     assert.equal(projectAudits.summary.auditedProjectCount, 1);
     assert.equal(projectAuditSummary.schemaVersion, "project-audit-summary/v1");
+    assert.equal(projectAuditSummary.summary.auditCoverage, "partial");
     assert.equal(projectAuditSummary.summary.untestedCandidateCount, 1);
+    assert.deepEqual(projectAuditSummary.summary.unsupportedReasons, [
+      "No registered adapter supports ecosystems jvm with languages java, kotlin.",
+      "No registered adapter supports ecosystems python with languages python."
+    ]);
     assert.equal(projectCandidateRanking.schemaVersion, "project-candidate-ranking/v1");
     assert.equal(projectCandidateRanking.summary.candidateCount, 1);
     assert.equal(projectTestPlan.schemaVersion, "project-test-plan/v1");

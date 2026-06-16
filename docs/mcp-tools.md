@@ -40,7 +40,7 @@ The model should consume these artifacts directly:
 - project marker rules and ignored directories come from `list_project_detection_rules`
 - project roots and adapter matches come from `detect_projects`
 - project-level audits for supported roots come from `audit_projects`
-- compact repo-level project audit counts come from `summarize_project_audits`
+- compact repo-level audit coverage, unsupported reasons, and project audit counts come from `summarize_project_audits`
 - project-aware candidate ordering comes from `rank_project_candidates`
 - project-aware test planning comes from `generate_project_test_plan`
 - project-aware test placement findings come from `analyze_project_test_placement`
@@ -80,7 +80,7 @@ Use `list_adapters` before `audit_repo` when a client needs to discover supporte
 Use `list_project_detection_rules` when a client needs to explain what project markers the deterministic detector recognizes.
 Use `detect_projects` when a repository may contain multiple language or package roots.
 Use `audit_projects` to audit detected supported project roots while reporting unsupported roots separately.
-Use `summarize_project_audits` when a client needs compact counts before asking for detailed per-project audit data.
+Use `summarize_project_audits` when a client needs compact audit coverage status, unsupported reasons, and counts before asking for detailed per-project audit data.
 Use `rank_project_candidates` when a client needs ordered candidates across audited project roots while preserving project identity.
 Use `generate_project_test_plan` when a client needs project-aware plan items before selecting future generation targets.
 Use `analyze_project_test_placement` when a client needs advisory placement findings derived from audited project roots.

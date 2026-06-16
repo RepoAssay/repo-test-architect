@@ -72,7 +72,7 @@
     },
     {
       "name": "summarize_project_audits",
-      "description": "Summarize a project-audits artifact without merging cross-project rankings.",
+      "description": "Summarize project audit coverage, unsupported reasons, and project-level counts without merging cross-project rankings.",
       "outputArtifact": {
         "schemaVersion": "project-audit-summary/v1",
         "schemaPath": "schemas/project-audit-summary-v1.schema.json"

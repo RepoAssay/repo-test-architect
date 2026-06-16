@@ -48,7 +48,7 @@ export const mcpTools = [
   },
   {
     name: "summarize_project_audits",
-    description: "Summarize a project-audits artifact without merging cross-project rankings.",
+    description: "Summarize project audit coverage, unsupported reasons, and project-level counts without merging cross-project rankings.",
     outputArtifact: artifact("project-audit-summary/v1", "schemas/project-audit-summary-v1.schema.json"),
     inputSchema: objectSchema({
       projectAudits: { type: "object", description: "A project-audits/v1 artifact." }
