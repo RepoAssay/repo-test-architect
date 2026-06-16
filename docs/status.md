@@ -41,6 +41,7 @@ Implemented:
 - release-readiness check runner for tests, evals, model consistency, smoke, package, and bin checks
 - GitHub Actions CI workflow that runs the release-readiness check on pushes and pull requests
 - GitHub pull request template that calls out audit impact, release verification, and risk notes
+- GitHub bug report issue form for audit, planning, MCP, and release-check defects
 - repository ignore rules for generated dependency, package, coverage, and local comparison artifacts
 
 ## Supported Fixtures

@@ -1,0 +1,67 @@
+name: Bug report
+description: Report incorrect audit, planning, MCP, or release-check behavior.
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What went wrong?
+    validations:
+      required: true
+
+  - type: textarea
+    id: repo-shape
+    attributes:
+      label: Repository Shape
+      description: Languages, package managers, frameworks, and test frameworks involved.
+      placeholder: "Example: TypeScript package with Vitest, React app with Testing Library, polyglot workspace with unsupported Kotlin project."
+    validations:
+      required: true
+
+  - type: textarea
+    id: command
+    attributes:
+      label: Command
+      description: The CLI, MCP invoke, or release check command that produced the result.
+      placeholder: "npm run audit-projects:example:json"
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What should the audit, plan, MCP call, or check have returned?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+      description: What happened instead?
+    validations:
+      required: true
+
+  - type: textarea
+    id: artifact-excerpt
+    attributes:
+      label: Artifact Excerpt
+      description: Relevant audit, plan, project-audits, model-consistency, or MCP output excerpt. Avoid private source content.
+      render: json
+
+  - type: textarea
+    id: verification
+    attributes:
+      label: Verification
+      description: Which checks were run?
+      placeholder: "npm run release:check"
+
+  - type: textarea
+    id: risk
+    attributes:
+      label: Risk Notes
+      description: Any known impact, skipped checks, or uncertainty.

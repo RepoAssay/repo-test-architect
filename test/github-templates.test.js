@@ -13,4 +13,19 @@ describe("GitHub templates", () => {
     assert.match(template, /`npm run release:check`/);
     assert.match(template, /^## Risk Notes$/m);
   });
+
+  it("keeps the bug report issue form aligned with audit debugging context", () => {
+    const template = fs.readFileSync(".github/ISSUE_TEMPLATE/bug_report.yml", "utf8");
+
+    assert.match(template, /name: Bug report/);
+    assert.match(template, /Report incorrect audit, planning, MCP, or release-check behavior/);
+    assert.match(template, /id: repo-shape/);
+    assert.match(template, /label: Repository Shape/);
+    assert.match(template, /id: command/);
+    assert.match(template, /CLI, MCP invoke, or release check command/);
+    assert.match(template, /id: artifact-excerpt/);
+    assert.match(template, /audit, plan, project-audits, model-consistency, or MCP output excerpt/);
+    assert.match(template, /npm run release:check/);
+    assert.match(template, /label: Risk Notes/);
+  });
 });
