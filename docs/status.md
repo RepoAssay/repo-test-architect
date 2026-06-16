@@ -37,6 +37,7 @@ Implemented:
 - MCP-shaped tool descriptors, local invoke harness, and dependency-free stdio JSON-RPC scaffold
 - release-readiness checklist, npm package dry-run script, and package contents allowlist
 - public-readiness checklist that separates public repository preparation from npm publishing
+- product positioning note for audit-first differentiation, initial audience, business paths, proof points, and anti-positioning
 - demo script for showing audit quality, polyglot detection, MCP-shaped tools, and verification without implying native generation is ready
 - demo command checker that runs the deterministic public demo path without nesting the full release suite
 - decision log for audit-first architecture, adapter scope, local-first MCP, deferred generation, public demo readiness, and stats policy

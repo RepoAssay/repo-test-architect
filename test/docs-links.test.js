@@ -113,6 +113,26 @@ describe("docs links", () => {
     assert.ok(status.includes("public-readiness checklist"));
   });
 
+  it("documents product positioning without overstating generation or acquisition", () => {
+    const readme = fs.readFileSync("README.md", "utf8");
+    const positioning = fs.readFileSync("docs/product-positioning.md", "utf8");
+    const publicReadiness = fs.readFileSync("docs/public-readiness.md", "utf8");
+    const status = fs.readFileSync("docs/status.md", "utf8");
+
+    assert.ok(readme.includes("[Product positioning](docs/product-positioning.md)"));
+    assert.ok(positioning.includes("audit-first test strategy tool"));
+    assert.ok(positioning.includes("not another generic AI test writer"));
+    assert.ok(positioning.includes("The defensible value is the audit graph and strategy layer"));
+    assert.ok(positioning.includes("Acquisition should be treated as optional upside"));
+    assert.ok(positioning.includes("local-first MCP install path"));
+    assert.ok(positioning.includes("Avoid claims that the tool:"));
+    assert.ok(positioning.includes("maximizes coverage"));
+    assert.ok(positioning.includes("supports every language equally"));
+    assert.ok(positioning.includes("fewer, better, repo-native tests"));
+    assert.ok(publicReadiness.includes("product positioning"));
+    assert.ok(status.includes("product positioning note"));
+  });
+
   it("documents the first public demo path without claiming generation readiness", () => {
     const readme = fs.readFileSync("README.md", "utf8");
     const demoScript = fs.readFileSync("docs/demo-script.md", "utf8");

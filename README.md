@@ -197,6 +197,7 @@ The JavaScript adapter is the first proof point. Later adapters should emit the 
 - [Project plan](docs/project-plan.md)
 - [Project status](docs/status.md)
 - [Public readiness](docs/public-readiness.md)
+- [Product positioning](docs/product-positioning.md)
 - [Demo script](docs/demo-script.md)
 - [Decision log](docs/decision-log.md)
 - [Second adapter spike](docs/second-adapter-spike.md)

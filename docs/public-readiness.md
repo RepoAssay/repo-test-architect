@@ -14,6 +14,7 @@ This document tracks what can be shown publicly before the project is ready for 
 - model-consistency locked-field scenarios
 - package, binary, smoke, eval, and release-readiness checks
 - contribution, support, and security policies
+- product positioning for audit-first differentiation and plausible business paths
 
 ## Not Ready To Publish
 
