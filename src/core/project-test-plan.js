@@ -1,3 +1,4 @@
+import { classifyProjectAuditCoverage } from "./project-audit-coverage.js";
 import { createTestPlan } from "./test-plan.js";
 
 /**
@@ -90,7 +91,7 @@ export function createProjectTestPlan(projectAudits) {
       projectCount: projectAudits.summary.projectCount,
       plannedProjectCount: projectPlans.length,
       unsupportedProjectCount: unsupportedProjects.length,
-      auditCoverage: classifyAuditCoverage(projectPlans.length, unsupportedProjects.length),
+      auditCoverage: classifyProjectAuditCoverage(projectPlans.length, unsupportedProjects.length),
       unsupportedReasons: [...new Set(unsupportedProjects.map((project) => project.supportStatusReason))],
       addTestCount: countItems(items, "add-test"),
       extendTestCount: countItems(items, "extend-test"),
@@ -110,15 +111,4 @@ export function createProjectTestPlan(projectAudits) {
  */
 function countItems(items, action) {
   return items.filter((item) => item.action === action).length;
-}
-
-/**
- * @param {number} auditedProjectCount
- * @param {number} skippedProjectCount
- * @returns {ProjectAuditCoverage}
- */
-function classifyAuditCoverage(auditedProjectCount, skippedProjectCount) {
-  if (auditedProjectCount === 0) return "none";
-  if (skippedProjectCount > 0) return "partial";
-  return "complete";
 }

@@ -1,3 +1,5 @@
+import { classifyProjectAuditCoverage } from "./project-audit-coverage.js";
+
 /**
  * @typedef {object} ProjectAuditEntry
  * @property {string} projectId
@@ -91,7 +93,7 @@ export function summarizeProjectAudits(projectAudits) {
       projectCount: projectAudits.summary.projectCount,
       auditedProjectCount: projectAudits.summary.auditedProjectCount,
       unsupportedProjectCount: projectAudits.summary.skippedProjectCount,
-      auditCoverage: classifyAuditCoverage(projectAudits.summary.auditedProjectCount, projectAudits.summary.skippedProjectCount),
+      auditCoverage: classifyProjectAuditCoverage(projectAudits.summary.auditedProjectCount, projectAudits.summary.skippedProjectCount),
       unsupportedReasons: [...new Set(unsupportedProjects.map((project) => project.supportStatusReason))],
       untestedCandidateCount: sum(projects, "untestedCandidateCount"),
       coveredButRiskyCount: sum(projects, "coveredButRiskyCount"),
@@ -110,15 +112,4 @@ export function summarizeProjectAudits(projectAudits) {
  */
 function sum(items, key) {
   return items.reduce((total, item) => total + item[key], 0);
-}
-
-/**
- * @param {number} auditedProjectCount
- * @param {number} skippedProjectCount
- * @returns {ProjectAuditCoverage}
- */
-function classifyAuditCoverage(auditedProjectCount, skippedProjectCount) {
-  if (auditedProjectCount === 0) return "none";
-  if (skippedProjectCount > 0) return "partial";
-  return "complete";
 }

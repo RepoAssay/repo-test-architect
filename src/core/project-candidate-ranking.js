@@ -1,3 +1,4 @@
+import { classifyProjectAuditCoverage } from "./project-audit-coverage.js";
 import { rankTestCandidates } from "./rank-test-candidates.js";
 
 /**
@@ -77,22 +78,11 @@ export function rankProjectTestCandidates(projectAudits) {
       projectCount: projectAudits.summary.projectCount,
       auditedProjectCount: projectAudits.summary.auditedProjectCount,
       unsupportedProjectCount: projectAudits.summary.skippedProjectCount,
-      auditCoverage: classifyAuditCoverage(projectAudits.summary.auditedProjectCount, projectAudits.summary.skippedProjectCount),
+      auditCoverage: classifyProjectAuditCoverage(projectAudits.summary.auditedProjectCount, projectAudits.summary.skippedProjectCount),
       unsupportedReasons: [...new Set(unsupportedProjects.map((project) => project.supportStatusReason))],
       candidateCount: candidates.length
     },
     unsupportedProjects,
     candidates
   };
-}
-
-/**
- * @param {number} auditedProjectCount
- * @param {number} skippedProjectCount
- * @returns {ProjectAuditCoverage}
- */
-function classifyAuditCoverage(auditedProjectCount, skippedProjectCount) {
-  if (auditedProjectCount === 0) return "none";
-  if (skippedProjectCount > 0) return "partial";
-  return "complete";
 }
