@@ -129,6 +129,7 @@ Run the auditor regression tests:
 
 ```powershell
 npm test
+npm run release:check
 ```
 
 The tests include golden audit and plan snapshots under `evals/expected`, driven by `evals/fixtures.json`.
@@ -164,6 +165,7 @@ Check package contents before publishing:
 ```powershell
 npm run pack:check
 npm run bin:check
+npm run release:check
 ```
 
 ## Shape

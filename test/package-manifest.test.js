@@ -42,6 +42,7 @@ describe("package manifest", () => {
     assert.ok(packageJson.scripts["model-consistency:stats"]);
     assert.ok(packageJson.scripts["pack:check"]);
     assert.ok(packageJson.scripts["bin:check"]);
+    assert.ok(packageJson.scripts["release:check"]);
   });
 
   it("documents package dry-run verification in project status", () => {
@@ -50,5 +51,6 @@ describe("package manifest", () => {
     assert.ok(status.includes("npm run pack:dry-run"));
     assert.ok(status.includes("npm run pack:check"));
     assert.ok(status.includes("npm run bin:check"));
+    assert.ok(status.includes("npm run release:check"));
   });
 });

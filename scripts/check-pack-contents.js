@@ -25,7 +25,8 @@ const requiredFiles = [
   "schemas/project-stats-v1.schema.json",
   "schemas/model-consistency-stats-v1.schema.json",
   "scripts/check-pack-contents.js",
-  "scripts/check-bin-entrypoints.js"
+  "scripts/check-bin-entrypoints.js",
+  "scripts/check-release-readiness.js"
 ];
 
 const npm = resolveNpmInvocation();

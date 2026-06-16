@@ -15,6 +15,7 @@ This project is not ready to publish yet. Keep `private: true` in `package.json`
 - verify `npm run pack:dry-run` includes only intended files
 - keep `npm run pack:check` passing so package contents stay inside the intended allowlist
 - keep `npm run bin:check` passing so packaged CLI and MCP entry points keep booting
+- keep `npm run release:check` passing before tagging or publishing
 - add package metadata before publishing:
   - `repository`
   - `homepage`
@@ -43,6 +44,7 @@ powershell -ExecutionPolicy Bypass -File ./scripts/smoke.ps1
 npm run pack:dry-run
 npm run pack:check
 npm run bin:check
+npm run release:check
 ```
 
 Also verify the installed package entry points from a packed tarball before first public release.

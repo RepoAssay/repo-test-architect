@@ -38,6 +38,7 @@ Implemented:
 - release-readiness checklist, npm package dry-run script, and package contents allowlist
 - package contents dry-run checker for required runtime files and publish allowlist hygiene
 - package binary entrypoint checker for CLI, MCP invoke, and stdio JSON-RPC boot paths
+- release-readiness check runner for tests, evals, model consistency, smoke, package, and bin checks
 
 ## Supported Fixtures
 
@@ -107,6 +108,7 @@ powershell -ExecutionPolicy Bypass -File ./scripts/smoke.ps1
 npm run pack:dry-run
 npm run pack:check
 npm run bin:check
+npm run release:check
 ```
 
 The project-derived CLI commands also accept `--from-project-audits` for reusing a saved `project-audits/v1` artifact.
