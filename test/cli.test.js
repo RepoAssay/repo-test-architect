@@ -417,6 +417,43 @@ describe("CLI", () => {
     assert.equal(audit.profile.testCommand, "npm run test");
   });
 
+  it("uses an explicit adapter for non-default audit commands", () => {
+    const output = execFileSync(
+      process.execPath,
+      [cliPath, "audit", "examples/kotlin-junit-basic", "--adapter", "kotlin", "--format=json"],
+      {
+        encoding: "utf8"
+      }
+    );
+    const audit = JSON.parse(output);
+
+    assert.equal(audit.schemaVersion, "audit/v1");
+    assert.deepEqual(audit.profile.languages, ["java", "kotlin"]);
+    assert.equal(audit.profile.testCommand, "gradle test");
+    assert.deepEqual(
+      audit.untestedCandidates.map((target) => target.name),
+      ["MoneyFormatter"]
+    );
+  });
+
+  it("uses an explicit adapter for non-default plan commands", () => {
+    const output = execFileSync(
+      process.execPath,
+      [cliPath, "plan", "examples/kotlin-junit-basic", "--adapter=kotlin", "--format=json"],
+      {
+        encoding: "utf8"
+      }
+    );
+    const plan = JSON.parse(output);
+
+    assert.equal(plan.schemaVersion, "plan/v1");
+    assert.equal(plan.summary.verificationCommand, "gradle test");
+    assert.deepEqual(
+      plan.items.map((item) => `${item.action}:${item.target}`),
+      ["extend-test:CheckoutCalculator", "add-test:MoneyFormatter", "defer:CheckoutRequest"]
+    );
+  });
+
   it("supports changed-only audit mode", () => {
     const output = execFileSync(process.execPath, [cliPath, "audit", ".", "--changed", "--format=json"], {
       encoding: "utf8"

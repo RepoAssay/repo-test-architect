@@ -64,12 +64,14 @@ node ./src/cli/index.js stats-projects --from-project-audits ./project-audits.js
 
 ```powershell
 npm run audit:example
+npm run audit:kotlin-fixture
 ```
 
 Output the structured audit graph:
 
 ```powershell
 npm run audit:example:json
+npm run audit:kotlin-fixture:json
 ```
 
 Generate an actionable test plan from the audit graph:
@@ -77,6 +79,8 @@ Generate an actionable test plan from the audit graph:
 ```powershell
 npm run plan:example
 npm run plan:example:json
+npm run plan:kotlin-fixture
+npm run plan:kotlin-fixture:json
 npm run plan:item:example
 npm run plan:changed
 npm run plan:changed-since

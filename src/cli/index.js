@@ -24,7 +24,7 @@ import {
 const options = parseArgs(process.argv.slice(2));
 
 if (!["adapters", "detect-rules", "detect", "audit-projects", "summarize-projects", "rank-projects", "plan-projects", "placement-projects", "stats-projects", "audit", "plan", "explain", "rank", "placement"].includes(options.command)) {
-  console.error("Usage: repo-test-architect <adapters|detect-rules|detect|audit-projects|summarize-projects|rank-projects|plan-projects|placement-projects|stats-projects|audit|plan|explain|rank|placement> <repo> [--format markdown|json] [--from-audit audit.json] [--from-project-audits project-audits.json] [--item id] [--target id] [--owner label] [--changed] [--changed-since ref]");
+  console.error("Usage: repo-test-architect <adapters|detect-rules|detect|audit-projects|summarize-projects|rank-projects|plan-projects|placement-projects|stats-projects|audit|plan|explain|rank|placement> <repo> [--adapter id] [--format markdown|json] [--from-audit audit.json] [--from-project-audits project-audits.json] [--item id] [--target id] [--owner label] [--changed] [--changed-since ref]");
   process.exit(1);
 }
 
@@ -57,6 +57,7 @@ const audit = options.fromAuditPath
   : adapterRegistry || detectionRules || detection || projectAudits
     ? undefined
     : auditRepo(repoRoot, {
+      adapterId: options.adapterId,
       changedPaths: readSelectedChangedPaths(repoRoot, options)
     });
 const output = adapterRegistry ?? detectionRules ?? detection ?? selectProjectOutput(projectAudits, options) ?? selectOutput(audit, options);
@@ -99,6 +100,7 @@ function parseArgs(args) {
   let format = "markdown";
   let fromAuditPath;
   let fromProjectAuditsPath;
+  let adapterId;
   let itemId;
   let targetId;
   let owner;
@@ -138,6 +140,17 @@ function parseArgs(args) {
 
     if (arg.startsWith("--from-project-audits=")) {
       fromProjectAuditsPath = arg.slice("--from-project-audits=".length);
+      continue;
+    }
+
+    if (arg === "--adapter") {
+      adapterId = rest[index + 1] ?? "";
+      index += 1;
+      continue;
+    }
+
+    if (arg.startsWith("--adapter=")) {
+      adapterId = arg.slice("--adapter=".length);
       continue;
     }
 
@@ -195,7 +208,7 @@ function parseArgs(args) {
     }
   }
 
-  return { command, repoPath, format, fromAuditPath, fromProjectAuditsPath, itemId, targetId, owner, changedOnly, changedSinceRef };
+  return { command, repoPath, format, fromAuditPath, fromProjectAuditsPath, adapterId, itemId, targetId, owner, changedOnly, changedSinceRef };
 }
 
 function readAuditJson(auditPath) {

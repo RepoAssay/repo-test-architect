@@ -180,8 +180,10 @@ describe("docs links", () => {
     assert.ok(demoScript.includes("test strategy decisions before writing tests"));
     assert.ok(demoScript.includes("Native generation is intentionally deferred"));
     assert.ok(demoScript.includes("npm run audit:example"));
+    assert.ok(demoScript.includes("npm run audit:kotlin-fixture"));
     assert.ok(demoScript.includes("npm run rank:example"));
     assert.ok(demoScript.includes("npm run plan:example"));
+    assert.ok(demoScript.includes("npm run plan:kotlin-fixture"));
     assert.ok(demoScript.includes("npm run detect:example"));
     assert.ok(demoScript.includes("npm run audit-projects:example"));
     assert.ok(demoScript.includes("npm run stats-projects:example"));

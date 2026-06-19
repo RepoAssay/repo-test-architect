@@ -9,8 +9,10 @@ describe("demo script checker", () => {
 
     assert.equal(packageJson.scripts["demo:check"], "node ./scripts/check-demo-script.js");
     assert.match(script, /audit:example/);
+    assert.match(script, /audit:kotlin-fixture/);
     assert.match(script, /rank:example/);
     assert.match(script, /plan:example/);
+    assert.match(script, /plan:kotlin-fixture/);
     assert.match(script, /detect:example/);
     assert.match(script, /audit-projects:example/);
     assert.match(script, /placement-projects:split-example:json/);

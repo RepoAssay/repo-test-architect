@@ -42,6 +42,15 @@ Call out:
 - skipped targets with explicit rationale
 - blockers and remaining risk reported instead of hidden
 
+Show the experimental Kotlin/JVM adapter uses the same audit and plan shape:
+
+```powershell
+npm run audit:kotlin-fixture
+npm run plan:kotlin-fixture
+```
+
+Call out that Kotlin is still experimental. The useful point is that the shared audit graph carries another ecosystem without changing the report format.
+
 ## Polyglot Audit
 
 Show that one repository can contain multiple project shapes:

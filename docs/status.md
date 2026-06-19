@@ -104,6 +104,8 @@ npm run adapters:json
 npm run detect-rules:json
 npm run mcp:detect-rules
 npm run detect:example:json
+npm run audit:kotlin-fixture:json
+npm run plan:kotlin-fixture:json
 npm run audit-projects:example:json
 npm run summarize-projects:example:json
 npm run rank-projects:example:json

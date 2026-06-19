@@ -5,8 +5,10 @@ import path from "node:path";
 
 const demoChecks = [
   "audit:example",
+  "audit:kotlin-fixture",
   "rank:example",
   "plan:example",
+  "plan:kotlin-fixture",
   "detect:example",
   "audit-projects:example",
   "summarize-projects:example",
