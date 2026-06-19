@@ -13,11 +13,13 @@ describe("demo script checker", () => {
     assert.match(script, /plan:example/);
     assert.match(script, /detect:example/);
     assert.match(script, /audit-projects:example/);
+    assert.match(script, /placement-projects:split-example:json/);
     assert.match(script, /stats-projects:example/);
     assert.match(script, /mcp:tools/);
     assert.match(script, /mcp:audit-projects:example/);
     assert.match(script, /mcp:rank-projects:example/);
     assert.match(script, /mcp:plan-projects:example/);
+    assert.match(script, /mcp:placement-split:example/);
     assert.match(script, /model-consistency:check/);
     assert.doesNotMatch(script, /release:check/);
     assert.match(script, /Demo script check passed/);

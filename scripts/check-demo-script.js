@@ -12,11 +12,13 @@ const demoChecks = [
   "summarize-projects:example",
   "rank-projects:example",
   "plan-projects:example",
+  "placement-projects:split-example:json",
   "stats-projects:example",
   "mcp:tools",
   "mcp:audit-projects:example",
   "mcp:rank-projects:example",
   "mcp:plan-projects:example",
+  "mcp:placement-split:example",
   "model-consistency:check"
 ];
 

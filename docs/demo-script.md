@@ -62,6 +62,20 @@ Call out:
 - repository-level ranking happens after project detection
 - stats summarize coverage without source telemetry
 
+## Placement Analysis
+
+Show that the audit can report misplaced coverage without rewriting files:
+
+```powershell
+npm run placement-projects:split-example:json
+```
+
+Call out:
+
+- the current owner and suggested owner are both explicit
+- integration-level escaped tests become `split` findings instead of automatic moves
+- placement findings are advisory until a repair loop can verify old and new test commands
+
 ## MCP Surface
 
 Show that the same deterministic operations are exposed through MCP-shaped tools:
@@ -71,6 +85,7 @@ npm run mcp:tools
 npm run mcp:audit-projects:example
 npm run mcp:rank-projects:example
 npm run mcp:plan-projects:example
+npm run mcp:placement-split:example
 ```
 
 Call out that the current MCP surface is dependency-free stdio and invoke scaffolding. A real SDK transport wrapper is still on the public-readiness list.
