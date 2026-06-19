@@ -45,6 +45,7 @@ npm run plan-projects:example
 npm run plan-projects:example:json
 npm run placement-projects:example
 npm run placement-projects:example:json
+npm run placement-projects:split-example:json
 npm run stats-projects:example
 npm run stats-projects:example:json
 ```
@@ -112,6 +113,7 @@ npm run mcp:summarize-projects:example
 npm run mcp:rank-projects:example
 npm run mcp:plan-projects:example
 npm run mcp:placement-projects:example
+npm run mcp:placement-split:example
 npm run mcp:stats-projects:example
 npm run mcp:audit:example
 npm run mcp:placement:example

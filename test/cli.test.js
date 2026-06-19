@@ -226,6 +226,29 @@ describe("CLI", () => {
     );
   });
 
+  it("emits split placement findings from an existing project audits file", () => {
+    const output = execFileSync(
+      process.execPath,
+      [
+        cliPath,
+        "placement-projects",
+        "--from-project-audits",
+        "examples/split-placement-project-audits.json",
+        "--format=json"
+      ],
+      {
+        encoding: "utf8"
+      }
+    );
+    const placement = JSON.parse(output);
+
+    assert.equal(placement.schemaVersion, "test-placement-findings/v1");
+    assert.deepEqual(
+      placement.findings.map((finding) => `${finding.action}:${finding.currentOwner}->${finding.suggestedOwner}:${finding.testFile}`),
+      ["split:apps/main->packages/auth-core:apps/main/tests/authRoute.test.ts"]
+    );
+  });
+
   it("emits project stats in markdown", () => {
     const output = execFileSync(process.execPath, [cliPath, "stats-projects", "examples/polyglot-workspace"], {
       encoding: "utf8"

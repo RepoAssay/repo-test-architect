@@ -95,9 +95,17 @@ describe("MCP invoke harness", () => {
         encoding: "utf8"
       }
     );
+    const splitPlacementOutput = execFileSync(
+      process.execPath,
+      [invokePath, "call", "analyze_project_test_placement", "@./examples/mcp/split-placement-project-audits.args.json"],
+      {
+        encoding: "utf8"
+      }
+    );
 
     assert.equal(JSON.parse(placementOutput).schemaVersion, "test-placement-findings/v1");
     assert.equal(JSON.parse(projectPlacementOutput).schemaVersion, "test-placement-findings/v1");
+    assert.equal(JSON.parse(splitPlacementOutput).findings[0].action, "split");
   });
 
   it("calls a tool with an MCP-style response envelope", () => {

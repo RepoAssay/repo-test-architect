@@ -155,6 +155,15 @@ describe("project audits artifact schema compatibility", () => {
     assertMatchesSchema(args.projectAudits, projectAuditsSchema, "polyglot-project-audits.args.json.projectAudits");
   });
 
+  it("validates checked-in split placement project-audits fixtures", () => {
+    const projectAudits = readJson("examples/split-placement-project-audits.json");
+    const args = readJson("examples/mcp/split-placement-project-audits.args.json");
+
+    assertMatchesSchema(projectAudits, projectAuditsSchema, "split-placement-project-audits.json");
+    assertMatchesSchema(args.projectAudits, projectAuditsSchema, "split-placement-project-audits.args.json.projectAudits");
+    assert.deepEqual(args.projectAudits, projectAudits);
+  });
+
   it("keeps checked-in MCP project-audits args fixture aligned with the polyglot example", () => {
     const args = readJson("examples/mcp/polyglot-project-audits.args.json");
     const artifact = auditDetectedProjects(path.resolve("examples/polyglot-workspace"));
