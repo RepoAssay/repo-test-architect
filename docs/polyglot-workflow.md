@@ -7,7 +7,7 @@ There are two different cases:
 - multiple build roots in one repository, such as a JavaScript frontend plus a Python API
 - multiple languages under one build root, such as Java plus Kotlin in one Gradle module or Swift plus Objective-C in one Apple target
 
-Project detection splits by build/test root. It should not split Java and Kotlin source folders into separate projects when they share the same Gradle or Maven root. The future ecosystem adapter is responsible for understanding mixed-language source sets inside that root.
+Project detection splits by build/test root. It should not split Java and Kotlin source folders into separate projects when they share the same Gradle or Maven root. The matching ecosystem adapter is responsible for understanding mixed-language source sets inside that root; the experimental Kotlin/JVM adapter already handles Java plus Kotlin source ownership this way.
 
 The core flow is:
 

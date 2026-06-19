@@ -217,6 +217,7 @@ describe("docs links", () => {
   it("documents the acceptance gate for a second adapter spike", () => {
     const readme = fs.readFileSync("README.md", "utf8");
     const adapterContract = fs.readFileSync("docs/adapter-contract.md", "utf8");
+    const polyglotWorkflow = fs.readFileSync("docs/polyglot-workflow.md", "utf8");
     const secondAdapterSpike = fs.readFileSync("docs/second-adapter-spike.md", "utf8");
     const status = fs.readFileSync("docs/status.md", "utf8");
 
@@ -225,6 +226,7 @@ describe("docs links", () => {
     assert.ok(adapterContract.includes("Currently registered adapters are:"));
     assert.ok(adapterContract.includes("The repository detector finds multiple project roots"));
     assert.ok(adapterContract.includes("Independent adapter audits are isolated by project root today"));
+    assert.ok(polyglotWorkflow.includes("experimental Kotlin/JVM adapter already handles Java plus Kotlin source ownership"));
     assert.ok(secondAdapterSpike.includes("Kotlin/JVM with Gradle and JUnit"));
     assert.ok(secondAdapterSpike.includes("Swift Package Manager with XCTest or Swift Testing"));
     assert.ok(secondAdapterSpike.includes("reuse the shared audit model"));
