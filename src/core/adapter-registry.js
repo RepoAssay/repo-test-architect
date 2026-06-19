@@ -69,7 +69,7 @@ export function getAdapter(adapterId = "javascript") {
   const adapter = adapters.find((candidate) => candidate.id === adapterId);
 
   if (!adapter) {
-    throw new Error(`Unsupported adapter: ${adapterId}`);
+    throw new Error(`Unsupported adapter: ${adapterId}. Available adapters: ${adapters.map((candidate) => candidate.id).join(", ")}.`);
   }
 
   return adapter;

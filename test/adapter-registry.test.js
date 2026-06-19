@@ -62,7 +62,10 @@ describe("adapter registry", () => {
   });
 
   it("rejects unsupported adapters", () => {
-    assert.throws(() => getAdapter("swift"), /Unsupported adapter: swift/);
+    assert.throws(
+      () => getAdapter("swift"),
+      /Unsupported adapter: swift\. Available adapters: javascript, kotlin\./
+    );
   });
 
   it("audits through the Kotlin adapter", () => {

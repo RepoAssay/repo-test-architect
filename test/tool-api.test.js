@@ -108,7 +108,7 @@ describe("tool API", () => {
   it("rejects unsupported audit adapters", () => {
     assert.throws(
       () => auditRepo(path.resolve("examples/node-vitest-basic"), { adapterId: "swift" }),
-      /Unsupported adapter: swift/
+      /Unsupported adapter: swift\. Available adapters: javascript, kotlin\./
     );
   });
 
