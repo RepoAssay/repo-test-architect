@@ -79,6 +79,7 @@ describe("model consistency runner", () => {
         ["polyglot-project-ranking", []],
         ["polyglot-project-stats", []],
         ["polyglot-project-summary", []],
+        ["project-placement-split", []],
         ["react-testing-library-plan", []]
       ]
     );
@@ -94,10 +95,10 @@ describe("model consistency runner", () => {
     assert.equal(summary.schemaVersion, "model-consistency-summary/v1");
     assert.equal(summary.profileName, "deterministic-baseline");
     assert.deepEqual(summary.summary, {
-      scenarioCount: 11,
-      passedScenarioCount: 11,
+      scenarioCount: 12,
+      passedScenarioCount: 12,
       failedScenarioCount: 0,
-      checkedFieldCount: 78,
+      checkedFieldCount: 84,
       failureCount: 0
     });
     assert.equal(summary.scenarios[1].scenarioId, "node-jest-service-plan");
@@ -115,8 +116,8 @@ describe("model consistency runner", () => {
     assert.equal(comparison.baselineProfile, "deterministic-baseline");
     assert.equal(comparison.candidateProfile, "local-small");
     assert.deepEqual(comparison.summary, {
-      scenarioCount: 11,
-      alignedScenarioCount: 11,
+      scenarioCount: 12,
+      alignedScenarioCount: 12,
       driftedScenarioCount: 0,
       missingScenarioCount: 0,
       unexpectedScenarioCount: 0,
@@ -131,10 +132,10 @@ describe("model consistency runner", () => {
     const candidate = {
       ...createCurrentSummary("local-small"),
       summary: {
-        scenarioCount: 11,
-        passedScenarioCount: 9,
+        scenarioCount: 12,
+        passedScenarioCount: 10,
         failedScenarioCount: 2,
-        checkedFieldCount: 75,
+        checkedFieldCount: 81,
         failureCount: 3
       },
       scenarios: [
@@ -158,8 +159,8 @@ describe("model consistency runner", () => {
     const comparison = compareModelConsistencySummaries(baseline, candidate);
 
     assert.deepEqual(comparison.summary, {
-      scenarioCount: 12,
-      alignedScenarioCount: 9,
+      scenarioCount: 13,
+      alignedScenarioCount: 10,
       driftedScenarioCount: 1,
       missingScenarioCount: 1,
       unexpectedScenarioCount: 1,
@@ -179,6 +180,7 @@ describe("model consistency runner", () => {
         ["polyglot-project-ranking", "aligned"],
         ["polyglot-project-stats", "aligned"],
         ["polyglot-project-summary", "aligned"],
+        ["project-placement-split", "aligned"],
         ["react-testing-library-plan", "aligned"],
         ["unexpected-extra-scenario", "unexpected"]
       ]

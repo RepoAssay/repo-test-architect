@@ -32,7 +32,7 @@ Implemented:
 - documented agent install paths that separate MCP-capable hosts from instruction-only fallbacks
 - stable JSON schemas for generated artifacts
 - golden snapshots for fixture audits, plans, and MCP tool descriptors
-- model-consistency scenario artifacts for comparing explanation, ranking, planning, no-framework blocker, Jest service, React component, Express/Supertest route, and polyglot project-summary/ranking/plan/stats output against deterministic locked fields
+- model-consistency scenario artifacts for comparing explanation, ranking, planning, no-framework blocker, Jest service, React component, Express/Supertest route, polyglot project-summary/ranking/plan/stats, and placement output against deterministic locked fields
 - deterministic model-consistency scenario runner, summary artifact, comparison artifact, and stats artifact for checking locked fields and drift counts against tool output
 - changed-file workflows with `--changed` and `--changed-since`
 - MCP-shaped tool descriptors, local invoke harness, and dependency-free stdio JSON-RPC scaffold
