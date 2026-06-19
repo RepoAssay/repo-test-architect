@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { describe, it } from "node:test";
 import { auditKotlinRepo } from "../src/adapters/kotlin/audit.js";
@@ -61,5 +63,29 @@ describe("Kotlin audit adapter", () => {
     );
     assert.deepEqual(audit.coveredButRisky, []);
     assert.deepEqual(audit.skipped, []);
+  });
+
+  it("prefers Gradle wrapper test commands when wrapper markers exist", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-kotlin-"));
+    fs.mkdirSync(path.join(root, "src", "main", "kotlin"), { recursive: true });
+    fs.mkdirSync(path.join(root, "src", "test", "kotlin"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "build.gradle.kts"),
+      'plugins { kotlin("jvm") version "1.9.0" }\ndependencies { testImplementation(kotlin("test")) }\ntasks.test { useJUnitPlatform() }\n',
+      "utf8"
+    );
+    fs.writeFileSync(path.join(root, "settings.gradle.kts"), 'rootProject.name = "wrapped"\n', "utf8");
+    fs.writeFileSync(path.join(root, "gradlew"), "#!/usr/bin/env sh\n", "utf8");
+    fs.writeFileSync(path.join(root, "src", "main", "kotlin", "TokenParser.kt"), "class TokenParser { fun parse(input: String) = input.trim() }\n", "utf8");
+    fs.writeFileSync(path.join(root, "src", "test", "kotlin", "TokenParserTest.kt"), "class TokenParserTest\n", "utf8");
+
+    const audit = auditKotlinRepo(root);
+
+    assert.equal(audit.profile.testCommand, "./gradlew test");
+    assert.ok(audit.profile.setupSignals.includes("gradle kotlin dsl"));
+    assert.deepEqual(
+      audit.coveredButRisky.map((target) => target.name),
+      ["TokenParser"]
+    );
   });
 });
