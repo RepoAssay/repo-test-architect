@@ -150,7 +150,7 @@ npm run eval:test
 
 1. Add a real local stdio MCP SDK transport wrapper around `src/mcp/tool-definitions.js`.
 2. Consolidate repeated JSDoc artifact shapes into shared TS reference files when the runtime API stabilizes further.
-3. Harden the experimental Kotlin/JVM adapter with more Gradle/JUnit fixture variants, or add Swift as the next adapter spike.
+3. Harden the experimental Kotlin/JVM adapter with more Gradle/Maven/JUnit fixture variants, or add Swift as the next adapter spike.
 4. Add more model-consistency fixtures and model profile output comparisons.
 5. Expand package-aware test placement analysis from explicit path escapes into richer adapter-owned package boundary signals.
 6. Add local-first stats artifacts for audit coverage, candidate/risk counts, model-consistency drift, and later repair-loop trends.

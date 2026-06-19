@@ -31,7 +31,7 @@ Acceptance:
 
 Goal: prove the adapter contract survives a second ecosystem.
 
-Status: started with an experimental Kotlin/JVM with Gradle and JUnit adapter.
+Status: started with an experimental Kotlin/JVM with Gradle/Maven and JUnit adapter.
 
 Preferred candidates:
 

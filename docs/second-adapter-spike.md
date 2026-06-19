@@ -6,7 +6,7 @@ This checklist defines the first non-JavaScript adapter spike. The goal is to pr
 
 Current spike:
 
-- Kotlin/JVM with Gradle and JUnit
+- Kotlin/JVM with Gradle/Maven and JUnit
 
 Future candidate:
 

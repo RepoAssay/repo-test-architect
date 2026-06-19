@@ -164,7 +164,7 @@ describe("docs links", () => {
     assert.ok(roadmap.includes("public-demo ready, but not package-release ready"));
     assert.ok(roadmap.includes("Milestone 1: Public Demo Polish"));
     assert.ok(roadmap.includes("Milestone 2: Second Adapter Spike"));
-    assert.ok(roadmap.includes("Kotlin/JVM with Gradle and JUnit"));
+    assert.ok(roadmap.includes("Kotlin/JVM with Gradle/Maven and JUnit"));
     assert.ok(roadmap.includes("Swift Package Manager with XCTest or Swift Testing"));
     assert.ok(roadmap.includes("Milestone 3: Placement And Boundary Analysis"));
     assert.ok(roadmap.includes("app-level tests that belong in package-level test targets"));
@@ -232,7 +232,7 @@ describe("docs links", () => {
     assert.ok(adapterContract.includes("The repository detector finds multiple project roots"));
     assert.ok(adapterContract.includes("Independent adapter audits are isolated by project root today"));
     assert.ok(polyglotWorkflow.includes("experimental Kotlin/JVM adapter already handles Java plus Kotlin source ownership"));
-    assert.ok(secondAdapterSpike.includes("Kotlin/JVM with Gradle and JUnit"));
+    assert.ok(secondAdapterSpike.includes("Kotlin/JVM with Gradle/Maven and JUnit"));
     assert.ok(secondAdapterSpike.includes("Swift Package Manager with XCTest or Swift Testing"));
     assert.ok(secondAdapterSpike.includes("reuse the shared audit model"));
     assert.ok(secondAdapterSpike.includes("produce golden audit and plan snapshots"));
