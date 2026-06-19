@@ -29,7 +29,7 @@ describe("tool API", () => {
     assert.equal(registry.schemaVersion, "adapter-registry/v1");
     assert.deepEqual(registry.adapters.map((adapter) => adapter.id), ["javascript", "kotlin"]);
     assert.deepEqual(registry.adapters[0].supportedProjectTypes, ["node", "express", "react"]);
-    assert.deepEqual(registry.adapters[1].supportedProjectTypes, ["gradle-jvm"]);
+    assert.deepEqual(registry.adapters[1].supportedProjectTypes, ["gradle-jvm", "maven-jvm"]);
   });
 
   it("detects repository projects", () => {

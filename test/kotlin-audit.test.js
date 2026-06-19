@@ -88,4 +88,37 @@ describe("Kotlin audit adapter", () => {
       ["TokenParser"]
     );
   });
+
+  it("detects Maven JVM projects with JUnit test commands", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-maven-"));
+    fs.mkdirSync(path.join(root, "src", "main", "java", "com", "example"), { recursive: true });
+    fs.mkdirSync(path.join(root, "src", "test", "java", "com", "example"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "pom.xml"),
+      '<project><dependencies><dependency><groupId>org.junit.jupiter</groupId><artifactId>junit-jupiter</artifactId></dependency></dependencies></project>\n',
+      "utf8"
+    );
+    fs.writeFileSync(
+      path.join(root, "src", "main", "java", "com", "example", "InvoiceValidator.java"),
+      "package com.example; public class InvoiceValidator { boolean valid(int amount) { return amount > 0; } }\n",
+      "utf8"
+    );
+    fs.writeFileSync(
+      path.join(root, "src", "test", "java", "com", "example", "InvoiceValidatorTest.java"),
+      "package com.example; public class InvoiceValidatorTest {}\n",
+      "utf8"
+    );
+
+    const audit = auditKotlinRepo(root);
+
+    assert.deepEqual(audit.profile.languages, ["java"]);
+    assert.deepEqual(audit.profile.packageManagers, ["maven"]);
+    assert.deepEqual(audit.profile.testFrameworks, ["junit"]);
+    assert.equal(audit.profile.testCommand, "mvn test");
+    assert.ok(audit.profile.setupSignals.includes("maven"));
+    assert.deepEqual(
+      audit.coveredButRisky.map((target) => target.name),
+      ["InvoiceValidator"]
+    );
+  });
 });

@@ -195,6 +195,7 @@ function detectSetupSignals(paths, buildText) {
   if (paths.includes("build.gradle.kts")) signals.add("gradle kotlin dsl");
   if (paths.includes("build.gradle")) signals.add("gradle");
   if (paths.includes("settings.gradle.kts") || paths.includes("settings.gradle")) signals.add("gradle settings");
+  if (paths.includes("pom.xml")) signals.add("maven");
   if (buildText.includes("useJUnitPlatform")) signals.add("junit platform");
   return [...signals];
 }

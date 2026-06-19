@@ -26,7 +26,7 @@ Runtime adapter registration lives in `src/core/adapter-registry.js`.
 Currently registered adapters are:
 
 - `javascript` for the JavaScript ecosystem, covering JavaScript and TypeScript repositories
-- `kotlin` for the JVM ecosystem, covering Kotlin and Java Gradle roots, currently experimental
+- `kotlin` for the JVM ecosystem, covering Kotlin and Java Gradle or Maven roots, currently experimental
 
 Non-JavaScript adapters should follow the focused [Second Adapter Spike](second-adapter-spike.md) checklist before expanding framework coverage or native generation.
 
