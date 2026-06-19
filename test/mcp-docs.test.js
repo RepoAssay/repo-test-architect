@@ -15,6 +15,8 @@ describe("MCP docs", () => {
     for (const kind of mcpToolErrorKinds) {
       assert.match(docs, new RegExp(`\\b${kind}\\b`));
     }
+
+    assert.ok(docs.includes("current registered adapters are `javascript` and experimental `kotlin`"));
   });
 
   it("keeps project status aligned with MCP tool names", () => {

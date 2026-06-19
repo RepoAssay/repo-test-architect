@@ -207,6 +207,7 @@ describe("docs links", () => {
     assert.ok(decisionLog.includes("Public Demo Before Package Release"));
     assert.ok(decisionLog.includes("Local-First Stats Before Telemetry"));
     assert.ok(decisionLog.includes("Revisit when:"));
+    assert.ok(fs.readFileSync("docs/project-plan.md", "utf8").includes("the Kotlin/JVM adapter spike"));
     assert.ok(status.includes("decision log for audit-first architecture"));
   });
 

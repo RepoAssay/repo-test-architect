@@ -53,11 +53,13 @@ Initial JS/TS fixtures:
 - `express-supertest`
 - `react-testing-library`
 
-Later adapter fixtures:
+Current non-JavaScript adapter fixture:
 
 - `kotlin-junit-basic`
+
+Later adapter fixtures:
+
 - `apple-xcode-mixed`
-- Kotlin/JVM + JUnit
 - Swift Package Manager + XCTest
 - Swift Package Manager + Swift Testing
 - Vapor service tests
@@ -210,7 +212,7 @@ Unexpected variation:
 
 Longer term, add model-consistency evaluations that run the same audit graph through multiple model profiles and compare whether recommendations stay aligned.
 
-Current deterministic scenarios lock selected fields for single-project planning, ranking, target explanation, no-framework blocker handling, route/component/service fixtures, and polyglot project-summary/ranking/plan/stats coverage.
+Current deterministic scenarios lock selected fields for single-project planning, ranking, target explanation, no-framework blocker handling, route/component/service fixtures, the Kotlin/JVM adapter spike, and polyglot project-summary/ranking/plan/stats coverage.
 
 ## Evaluation Metrics
 
