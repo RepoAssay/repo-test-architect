@@ -260,7 +260,7 @@ analyze_test_placement
 analyze_project_test_placement
 ```
 
-This advisory artifact reports test placement recommendations. The single-project analyzer emits conservative `keep` findings for tests already matched to audited targets in the same project. The project-audits analyzer can also emit conservative `move` findings when an existing test path explicitly escapes the audited project root and points at another detected project owner. Future package-aware analyzers can add richer `move` and `split` findings once ownership signals and repair loops can safely move files and verify affected test commands.
+This advisory artifact reports test placement recommendations. The single-project analyzer emits conservative `keep` findings for tests already matched to audited targets in the same project. The project-audits analyzer can also emit conservative `move` findings when an existing test path explicitly escapes the audited project root and points at another detected project owner. It emits `split` instead when the escaped match is integration-level, because that usually means the test should be separated rather than blindly moved. Future package-aware analyzers can add richer ownership signals once repair loops can safely move files and verify affected test commands.
 
 It contains:
 
@@ -436,7 +436,7 @@ This artifact generates per-project plan items from a `project-audits/v1` artifa
 It preserves the underlying `plan/v1` artifacts per project for detailed inspection.
 It also preserves unsupported project roots with ecosystem labels, language labels, adapter match evidence, and support status reasons.
 
-`project-audits/v1` can also be used by the internal `analyzeRepoProjectTestPlacement` API to produce repository-relative `test-placement-findings/v1` findings while preserving project owner identity. When a matched test path uses `..` to escape the audited project root, the analyzer resolves the repository-relative test path and reports a `move` finding instead of silently treating the test as colocated.
+`project-audits/v1` can also be used by the internal `analyzeRepoProjectTestPlacement` API to produce repository-relative `test-placement-findings/v1` findings while preserving project owner identity. When a matched test path uses `..` to escape the audited project root, the analyzer resolves the repository-relative test path and reports a `move` finding instead of silently treating the test as colocated. Escaped integration-level matches are reported as `split` findings.
 
 ## Project Stats Artifact
 

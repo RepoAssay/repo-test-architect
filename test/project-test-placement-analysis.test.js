@@ -135,6 +135,72 @@ describe("project test placement analysis", () => {
     });
   });
 
+  it("recommends splitting integration tests that escape into another project", () => {
+    const placement = analyzeProjectTestPlacement({
+      schemaVersion: "project-audits/v1",
+      root: "/repo",
+      summary: {
+        projectCount: 2,
+        auditedProjectCount: 2,
+        skippedProjectCount: 0
+      },
+      audits: [
+        {
+          projectId: "apps/main",
+          projectRoot: "apps/main",
+          adapterId: "javascript",
+          audit: {
+            schemaVersion: "audit/v1",
+            profile: { root: "/repo/apps/main" },
+            untestedCandidates: [],
+            coveredButRisky: [],
+            skipped: [],
+            risks: []
+          }
+        },
+        {
+          projectId: "packages/auth-core",
+          projectRoot: "packages/auth-core",
+          adapterId: "javascript",
+          audit: {
+            schemaVersion: "audit/v1",
+            profile: { root: "/repo/packages/auth-core" },
+            untestedCandidates: [],
+            coveredButRisky: [
+              {
+                path: "src/authRoute.ts",
+                kind: "http-route",
+                recommendedTestLevel: "integration",
+                existingTestPaths: ["../../apps/main/tests/authRoute.test.ts"]
+              }
+            ],
+            skipped: [],
+            risks: []
+          }
+        }
+      ],
+      skippedProjects: []
+    });
+
+    assert.deepEqual(placement.findings[0], {
+      id: "packages/auth-core:split:apps/main/tests/authRoute.test.ts:packages/auth-core/src/authRoute.ts",
+      testFile: "apps/main/tests/authRoute.test.ts",
+      currentOwner: "apps/main",
+      suggestedOwner: "packages/auth-core",
+      action: "split",
+      reason: "Existing integration-level test escapes the audited project root while covering source owned by this project.",
+      evidence: [
+        "project id: packages/auth-core",
+        "current owner: apps/main",
+        "suggested owner: packages/auth-core",
+        "test path escapes audited project root",
+        "matches source target packages/auth-core/src/authRoute.ts",
+        "target kind: http-route",
+        "recommended level: integration"
+      ]
+    });
+  });
+
   it("rejects non-project-audits artifacts", () => {
     assert.throws(
       () => analyzeProjectTestPlacement({ schemaVersion: "audit/v1" }),

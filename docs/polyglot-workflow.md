@@ -104,7 +104,7 @@ node ./src/cli/index.js placement-projects ./examples/node-vitest-basic --format
 
 This emits `test-placement-findings/v1`.
 
-Project placement analysis derives advisory findings from `project-audits/v1` while preserving project owner identity. It emits conservative `keep` findings for tests already matched to audited targets in the same project. It can also emit `move` findings when a matched test path explicitly escapes the audited project root and resolves into another detected project owner.
+Project placement analysis derives advisory findings from `project-audits/v1` while preserving project owner identity. It emits conservative `keep` findings for tests already matched to audited targets in the same project. It can also emit `move` findings when a matched test path explicitly escapes the audited project root and resolves into another detected project owner. If that escaped match is integration-level, it emits `split` instead, because the test likely mixes package-owned behavior with app or integration wiring.
 
 ## 8. Collect Project Stats
 

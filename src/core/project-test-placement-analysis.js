@@ -31,15 +31,18 @@ export function analyzeProjectTestPlacement(projectAudits) {
         const repoTestFile = resolveProjectPath(entry.projectRoot, finding.testFile);
         const repoSourcePath = joinProjectPath(entry.projectRoot, sourcePath);
         const currentOwner = inferProjectOwner(projectAudits.audits, repoTestFile, entry.projectRoot);
+        const action = hasRecommendedLevel(finding.evidence, "integration") ? "split" : "move";
 
         return {
           ...finding,
-          id: `${entry.projectId}:move:${repoTestFile}:${repoSourcePath}`,
+          id: `${entry.projectId}:${action}:${repoTestFile}:${repoSourcePath}`,
           testFile: repoTestFile,
           currentOwner,
           suggestedOwner: entry.projectRoot,
-          action: "move",
-          reason: "Existing test path escapes the audited project root while covering source owned by this project.",
+          action,
+          reason: action === "split"
+            ? "Existing integration-level test escapes the audited project root while covering source owned by this project."
+            : "Existing test path escapes the audited project root while covering source owned by this project.",
           evidence: [
             `project id: ${entry.projectId}`,
             `current owner: ${currentOwner}`,
@@ -77,6 +80,15 @@ function prefixSourceEvidence(item, projectRoot) {
   if (!item.startsWith(prefix)) return item;
 
   return `${prefix}${joinProjectPath(projectRoot, item.slice(prefix.length))}`;
+}
+
+/**
+ * @param {string[]} evidence
+ * @param {string} level
+ * @returns {boolean}
+ */
+function hasRecommendedLevel(evidence, level) {
+  return evidence.includes(`recommended level: ${level}`);
 }
 
 /**
