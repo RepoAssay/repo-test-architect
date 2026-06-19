@@ -121,4 +121,23 @@ describe("Kotlin audit adapter", () => {
       ["InvoiceValidator"]
     );
   });
+
+  it("reports blockers when a JVM repo has no supported test framework", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-kotlin-no-tests-"));
+    fs.mkdirSync(path.join(root, "src", "main", "kotlin"), { recursive: true });
+    fs.writeFileSync(path.join(root, "build.gradle.kts"), 'plugins { kotlin("jvm") version "1.9.0" }\n', "utf8");
+    fs.writeFileSync(path.join(root, "src", "main", "kotlin", "TokenParser.kt"), "class TokenParser { fun parse(input: String) = input.trim() }\n", "utf8");
+
+    const audit = auditKotlinRepo(root);
+
+    assert.deepEqual(audit.profile.testFrameworks, []);
+    assert.equal(audit.profile.testCommand, undefined);
+    assert.equal(audit.profile.confidence, "low");
+    assert.ok(audit.profile.blockers.includes("No supported JVM test framework detected."));
+    assert.ok(audit.profile.blockers.includes("No runnable JVM test command detected from Gradle or Maven markers."));
+    assert.deepEqual(
+      audit.untestedCandidates.map((target) => target.name),
+      ["TokenParser"]
+    );
+  });
 });
