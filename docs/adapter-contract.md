@@ -23,7 +23,7 @@ The core model lives in `src/core/audit-model.ts`.
 
 Runtime adapter registration lives in `src/core/adapter-registry.js`.
 
-The initial registered adapter is:
+Currently registered adapters are:
 
 - `javascript` for the JavaScript ecosystem, covering JavaScript and TypeScript repositories
 - `kotlin` for the JVM ecosystem, covering Kotlin and Java Gradle roots, currently experimental
@@ -44,13 +44,13 @@ Adapter registry entries expose:
 
 Adapters are project-level units, not necessarily repository-level units.
 
-A future repository detector should be able to find multiple project roots in one checkout and run the matching adapters independently. For example:
+The repository detector finds multiple project roots in one checkout and matches adapters independently. For example:
 
 - `apps/web` -> `javascript`
 - `services/api` -> `python`
 - `apps/android` -> `kotlin`
 
-Independent adapter audits can run in parallel once project roots and adapter matches are known.
+Independent adapter audits are isolated by project root today. They can run in parallel later once project roots and adapter matches are known and the runner has concurrency controls.
 
 The core layer should merge project audit results into one repo-level graph and perform cross-project ranking there. Adapters should not reach across unrelated language roots unless the core passes them explicit boundary information.
 

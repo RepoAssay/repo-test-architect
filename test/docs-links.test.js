@@ -222,6 +222,9 @@ describe("docs links", () => {
 
     assert.ok(readme.includes("[Second adapter spike](docs/second-adapter-spike.md)"));
     assert.ok(adapterContract.includes("[Second Adapter Spike](second-adapter-spike.md)"));
+    assert.ok(adapterContract.includes("Currently registered adapters are:"));
+    assert.ok(adapterContract.includes("The repository detector finds multiple project roots"));
+    assert.ok(adapterContract.includes("Independent adapter audits are isolated by project root today"));
     assert.ok(secondAdapterSpike.includes("Kotlin/JVM with Gradle and JUnit"));
     assert.ok(secondAdapterSpike.includes("Swift Package Manager with XCTest or Swift Testing"));
     assert.ok(secondAdapterSpike.includes("reuse the shared audit model"));
