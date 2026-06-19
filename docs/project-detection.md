@@ -26,11 +26,11 @@ npm run detect-rules:json
 | `Package.swift` | `swift` | `swift` | Detected, unsupported |
 | `*.xcodeproj` | `apple` | `swift`, `objective-c` | Detected, unsupported |
 | `*.csproj` | `dotnet` | `csharp` | Detected, unsupported |
-| `pom.xml` | `jvm` | `java`, `kotlin` | Detected, unsupported |
-| `build.gradle` | `jvm` | `kotlin`, `java` | Detected, unsupported |
-| `build.gradle.kts` | `jvm` | `kotlin`, `java` | Detected, unsupported |
-| `settings.gradle` | `jvm` | `kotlin`, `java` | Detected, unsupported |
-| `settings.gradle.kts` | `jvm` | `kotlin`, `java` | Detected, unsupported |
+| `pom.xml` | `jvm` | `java`, `kotlin` | Supported by experimental `kotlin` |
+| `build.gradle` | `jvm` | `kotlin`, `java` | Supported by experimental `kotlin` |
+| `build.gradle.kts` | `jvm` | `kotlin`, `java` | Supported by experimental `kotlin` |
+| `settings.gradle` | `jvm` | `kotlin`, `java` | Supported by experimental `kotlin` |
+| `settings.gradle.kts` | `jvm` | `kotlin`, `java` | Supported by experimental `kotlin` |
 
 ## Ignored Directories
 
