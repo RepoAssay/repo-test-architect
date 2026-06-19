@@ -122,6 +122,34 @@ describe("Kotlin audit adapter", () => {
     );
   });
 
+  it("detects Gradle Groovy JVM projects with Java test conventions", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-gradle-groovy-"));
+    fs.mkdirSync(path.join(root, "src", "main", "java"), { recursive: true });
+    fs.mkdirSync(path.join(root, "src", "test", "java"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "build.gradle"),
+      "plugins { id 'java' }\ndependencies { testImplementation 'org.junit.jupiter:junit-jupiter:5.10.0' }\ntest { useJUnitPlatform() }\n",
+      "utf8"
+    );
+    fs.writeFileSync(path.join(root, "src", "main", "java", "InvoiceValidator.java"), "class InvoiceValidator { boolean valid(int amount) { return amount > 0; } }\n", "utf8");
+    fs.writeFileSync(path.join(root, "src", "test", "java", "InvoiceValidatorTest.java"), "class InvoiceValidatorTest {}\n", "utf8");
+
+    const audit = auditKotlinRepo(root);
+
+    assert.deepEqual(audit.profile.languages, ["java"]);
+    assert.deepEqual(audit.profile.packageManagers, ["gradle"]);
+    assert.deepEqual(audit.profile.testFrameworks, ["junit"]);
+    assert.equal(audit.profile.testCommand, "gradle test");
+    assert.equal(audit.profile.confidence, "high");
+    assert.ok(audit.profile.detectedConventions.includes("src/test/java"));
+    assert.ok(audit.profile.setupSignals.includes("gradle"));
+    assert.ok(audit.profile.setupSignals.includes("junit platform"));
+    assert.deepEqual(
+      audit.coveredButRisky.map((target) => target.name),
+      ["InvoiceValidator"]
+    );
+  });
+
   it("reports blockers when a JVM repo has no supported test framework", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-kotlin-no-tests-"));
     fs.mkdirSync(path.join(root, "src", "main", "kotlin"), { recursive: true });
