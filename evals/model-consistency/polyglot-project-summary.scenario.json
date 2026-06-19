@@ -15,17 +15,17 @@
     {
       "path": "summary.projectCount",
       "expected": 3,
-      "reason": "The polyglot fixture has one supported JS project and two unsupported project roots."
+      "reason": "The polyglot fixture has one experimental Kotlin project, one supported JS project, and one unsupported Python root."
     },
     {
       "path": "summary.auditedProjectCount",
-      "expected": 1,
-      "reason": "Only the JavaScript project is currently supported by an adapter."
+      "expected": 2,
+      "reason": "The Kotlin and JavaScript projects are currently audited by registered adapters."
     },
     {
       "path": "summary.unsupportedProjectCount",
-      "expected": 2,
-      "reason": "Unsupported JVM and Python roots must remain visible in model-facing summaries."
+      "expected": 1,
+      "reason": "The unsupported Python root must remain visible in model-facing summaries."
     },
     {
       "path": "summary.auditCoverage",
@@ -34,16 +34,11 @@
     },
     {
       "path": "summary.untestedCandidateCount",
-      "expected": 1,
-      "reason": "The supported web project exposes one deterministic test candidate."
+      "expected": 2,
+      "reason": "The Kotlin and web projects each expose one deterministic test candidate."
     },
     {
       "path": "unsupportedProjects[0].projectId",
-      "expected": "apps/android",
-      "reason": "The JVM project root should stay explicitly reported as unsupported."
-    },
-    {
-      "path": "unsupportedProjects[1].projectId",
       "expected": "services/api",
       "reason": "The Python service root should stay explicitly reported as unsupported."
     }

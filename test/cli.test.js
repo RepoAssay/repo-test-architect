@@ -17,6 +17,7 @@ describe("CLI", () => {
     assert.match(output, /^# Adapter Registry/);
     assert.match(output, /javascript: supported; ecosystems javascript; languages javascript, typescript/);
     assert.match(output, /frameworks jest, react-testing-library, supertest, vitest/);
+    assert.match(output, /kotlin: experimental; ecosystems jvm; languages kotlin, java/);
   });
 
   it("lists adapters as JSON", () => {
@@ -28,6 +29,8 @@ describe("CLI", () => {
     assert.equal(registry.schemaVersion, "adapter-registry/v1");
     assert.equal(registry.adapters[0].id, "javascript");
     assert.equal(registry.adapters[0].maturity, "supported");
+    assert.equal(registry.adapters[1].id, "kotlin");
+    assert.equal(registry.adapters[1].maturity, "experimental");
     assert.deepEqual(registry.adapters[0].supportedTestFrameworks, [
       "jest",
       "react-testing-library",
@@ -64,7 +67,8 @@ describe("CLI", () => {
     });
 
     assert.match(output, /^# Project Detection/);
-    assert.match(output, /apps\/android: ecosystems jvm; languages java, kotlin \(unsupported; adapters: none available/);
+    assert.match(output, /apps\/android: ecosystems jvm; languages java, kotlin \(supported; adapters: kotlin/);
+    assert.match(output, /kotlin matched ecosystems jvm and languages java, kotlin/);
     assert.match(output, /apps\/web: ecosystems javascript; languages javascript, typescript \(supported; adapters: javascript/);
     assert.match(output, /javascript matched ecosystems javascript and languages javascript, typescript/);
     assert.match(output, /services\/api: ecosystems python; languages python \(unsupported; adapters: none available/);
@@ -85,7 +89,7 @@ describe("CLI", () => {
     assert.equal(detection.summary.projectCount, 3);
     assert.deepEqual(
       detection.projects.map((project) => `${project.root}:${project.supported}`),
-      ["apps/android:false", "apps/web:true", "services/api:false"]
+      ["apps/android:true", "apps/web:true", "services/api:false"]
     );
   });
 
@@ -95,8 +99,8 @@ describe("CLI", () => {
     });
 
     assert.match(output, /^# Project Audits/);
+    assert.match(output, /apps\/android: kotlin \(1 untested, 0 covered but risky, 1 risks\)/);
     assert.match(output, /apps\/web: javascript \(1 untested, 0 covered but risky, 1 risks\)/);
-    assert.match(output, /apps\/android: No registered adapter supports ecosystems jvm with languages java, kotlin\. \(ecosystems: jvm; languages: java, kotlin\)/);
     assert.match(output, /services\/api: No registered adapter supports ecosystems python with languages python\. \(ecosystems: python; languages: python\)/);
   });
 
@@ -111,7 +115,7 @@ describe("CLI", () => {
     const projectAudits = JSON.parse(output);
 
     assert.equal(projectAudits.schemaVersion, "project-audits/v1");
-    assert.equal(projectAudits.summary.auditedProjectCount, 1);
+    assert.equal(projectAudits.summary.auditedProjectCount, 2);
     assert.equal(projectAudits.audits[0].audit.schemaVersion, "audit/v1");
   });
 
@@ -122,7 +126,8 @@ describe("CLI", () => {
 
     assert.match(output, /^# Project Audit Summary/);
     assert.match(output, /Audit coverage: partial/);
-    assert.match(output, /Untested candidates: 1/);
+    assert.match(output, /Untested candidates: 2/);
+    assert.match(output, /apps\/android: kotlin, medium confidence, 1 untested/);
     assert.match(output, /apps\/web: javascript, medium confidence, 1 untested/);
   });
 
@@ -137,8 +142,9 @@ describe("CLI", () => {
     const summary = JSON.parse(output);
 
     assert.equal(summary.schemaVersion, "project-audit-summary/v1");
-    assert.equal(summary.summary.untestedCandidateCount, 1);
-    assert.deepEqual(summary.projects[0].topCandidateIds, ["src/sessionClient.ts"]);
+    assert.equal(summary.summary.untestedCandidateCount, 2);
+    assert.deepEqual(summary.projects[0].topCandidateIds, ["src/main/kotlin/CheckoutCalculator.kt"]);
+    assert.deepEqual(summary.projects[1].topCandidateIds, ["src/sessionClient.ts"]);
   });
 
   it("ranks detected project candidates in markdown", () => {
@@ -148,7 +154,8 @@ describe("CLI", () => {
 
     assert.match(output, /^# Project Candidate Ranking/);
     assert.match(output, /Audit coverage: partial/);
-    assert.match(output, /Candidates: 1/);
+    assert.match(output, /Candidates: 2/);
+    assert.match(output, /apps\/android: CheckoutCalculator \[apps\/android:src\/main\/kotlin\/CheckoutCalculator\.kt\]/);
     assert.match(output, /apps\/web: sessionClient \[apps\/web:src\/sessionClient\.ts\]/);
   });
 
@@ -163,10 +170,10 @@ describe("CLI", () => {
     const ranking = JSON.parse(output);
 
     assert.equal(ranking.schemaVersion, "project-candidate-ranking/v1");
-    assert.equal(ranking.summary.candidateCount, 1);
+    assert.equal(ranking.summary.candidateCount, 2);
     assert.deepEqual(
       ranking.candidates.map((candidate) => candidate.projectTargetId),
-      ["apps/web:src/sessionClient.ts"]
+      ["apps/android:src/main/kotlin/CheckoutCalculator.kt", "apps/web:src/sessionClient.ts"]
     );
   });
 
@@ -177,7 +184,8 @@ describe("CLI", () => {
 
     assert.match(output, /^# Project Test Plan/);
     assert.match(output, /Audit coverage: partial/);
-    assert.match(output, /Add tests: 1/);
+    assert.match(output, /Add tests: 2/);
+    assert.match(output, /apps\/android: add-test: CheckoutCalculator \[apps\/android:add-test:src\/main\/kotlin\/CheckoutCalculator\.kt\]/);
     assert.match(output, /apps\/web: add-test: sessionClient \[apps\/web:add-test:src\/sessionClient\.ts\]/);
   });
 
@@ -192,10 +200,10 @@ describe("CLI", () => {
     const plan = JSON.parse(output);
 
     assert.equal(plan.schemaVersion, "project-test-plan/v1");
-    assert.equal(plan.summary.itemCount, 1);
+    assert.equal(plan.summary.itemCount, 2);
     assert.deepEqual(
       plan.items.map((item) => item.projectItemId),
-      ["apps/web:add-test:src/sessionClient.ts"]
+      ["apps/android:add-test:src/main/kotlin/CheckoutCalculator.kt", "apps/web:add-test:src/sessionClient.ts"]
     );
   });
 
@@ -256,7 +264,7 @@ describe("CLI", () => {
 
     assert.match(output, /^# Project Stats/);
     assert.match(output, /Audit coverage: partial/);
-    assert.match(output, /Test frameworks: vitest: 1/);
+    assert.match(output, /Test frameworks: kotlin-test: 1, vitest: 1/);
   });
 
   it("emits project stats as JSON", () => {
@@ -271,7 +279,7 @@ describe("CLI", () => {
 
     assert.equal(stats.schemaVersion, "project-stats/v1");
     assert.equal(stats.summary.auditCoverage, "partial");
-    assert.deepEqual(stats.distributions.testCommands, { "npm run test": 1 });
+    assert.deepEqual(stats.distributions.testCommands, { "gradle test": 1, "npm run test": 1 });
   });
 
   it("summarizes, ranks, plans, analyzes placement, and collects stats from an existing project audits file", () => {
@@ -321,11 +329,11 @@ describe("CLI", () => {
     assert.equal(summary.schemaVersion, "project-audit-summary/v1");
     assert.equal(ranking.schemaVersion, "project-candidate-ranking/v1");
     assert.equal(plan.schemaVersion, "project-test-plan/v1");
-    assert.equal(plan.summary.itemCount, 1);
+    assert.equal(plan.summary.itemCount, 2);
     assert.equal(placement.schemaVersion, "test-placement-findings/v1");
     assert.equal(placement.findings.length, 0);
     assert.equal(stats.schemaVersion, "project-stats/v1");
-    assert.equal(stats.counts.untestedCandidateCount, 1);
+    assert.equal(stats.counts.untestedCandidateCount, 2);
   });
 
   it("emits project audits from an existing project audits file", () => {
@@ -349,10 +357,10 @@ describe("CLI", () => {
     const projectAudits = JSON.parse(jsonOutput);
 
     assert.equal(projectAudits.schemaVersion, "project-audits/v1");
-    assert.equal(projectAudits.summary.auditedProjectCount, 1);
+    assert.equal(projectAudits.summary.auditedProjectCount, 2);
     assert.match(markdownOutput, /^# Project Audits/);
+    assert.match(markdownOutput, /apps\/android: kotlin \(1 untested, 0 covered but risky, 1 risks\)/);
     assert.match(markdownOutput, /apps\/web: javascript \(1 untested, 0 covered but risky, 1 risks\)/);
-    assert.match(markdownOutput, /apps\/android: No registered adapter supports ecosystems jvm with languages java, kotlin\. \(ecosystems: jvm; languages: java, kotlin\)/);
   });
 
   it("rejects project audits JSON with the wrong schema version", () => {

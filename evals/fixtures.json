@@ -23,5 +23,10 @@
     "name": "react-testing-library",
     "adapter": "javascript",
     "path": "examples/react-testing-library"
+  },
+  {
+    "name": "kotlin-junit-basic",
+    "adapter": "kotlin",
+    "path": "examples/kotlin-junit-basic"
   }
 ]

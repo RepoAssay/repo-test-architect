@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { describe, it } from "node:test";
-import { auditJavaScriptRepo } from "../src/adapters/javascript/audit.js";
+import { getAdapter } from "../src/core/adapter-registry.js";
 import { createTestPlan } from "../src/core/test-plan.js";
 import { mcpTools } from "../src/mcp/tool-definitions.js";
 import { loadEvalFixtures } from "./support/eval-fixtures.js";
@@ -16,7 +16,7 @@ describe("golden audit snapshots", () => {
     it(`matches ${fixture.name}`, () => {
       const fileName = `${fixture.name}.audit.json`;
       const expected = JSON.parse(fs.readFileSync(path.join(expectedDir, fileName), "utf8"));
-      const actual = normalizeAuditForSnapshot(auditJavaScriptRepo(fixture.root));
+      const actual = normalizeAuditForSnapshot(getAdapter(fixture.adapter).audit(fixture.root));
 
       assert.deepEqual(actual, expected);
     });
@@ -28,7 +28,7 @@ describe("golden plan snapshots", () => {
     it(`matches ${fixture.name}`, () => {
       const fileName = `${fixture.name}.plan.json`;
       const expected = JSON.parse(fs.readFileSync(path.join(expectedDir, fileName), "utf8"));
-      const audit = normalizeAuditForSnapshot(auditJavaScriptRepo(fixture.root));
+      const audit = normalizeAuditForSnapshot(getAdapter(fixture.adapter).audit(fixture.root));
       const actual = normalizeJsonForSnapshot(createTestPlan(audit));
 
       assert.deepEqual(actual, expected);

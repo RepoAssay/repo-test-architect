@@ -32,8 +32,8 @@ describe("project detector", () => {
     const detection = detectProjects(path.resolve("examples/polyglot-workspace"));
 
     assert.equal(detection.summary.projectCount, 3);
-    assert.equal(detection.summary.supportedProjectCount, 1);
-    assert.equal(detection.summary.unsupportedProjectCount, 2);
+    assert.equal(detection.summary.supportedProjectCount, 2);
+    assert.equal(detection.summary.unsupportedProjectCount, 1);
     assert.deepEqual(
       detection.projects.map((project) => ({
         root: project.root,
@@ -47,8 +47,8 @@ describe("project detector", () => {
           root: "apps/android",
           ecosystems: ["jvm"],
           languages: ["java", "kotlin"],
-          adapterIds: [],
-          supported: false
+          adapterIds: ["kotlin"],
+          supported: true
         },
         {
           root: "apps/web",
@@ -68,13 +68,20 @@ describe("project detector", () => {
     );
   });
 
-  it("explains unsupported project adapter matching", () => {
+  it("explains experimental JVM adapter matching", () => {
     const detection = detectProjects(path.resolve("examples/kotlin-junit-basic"));
 
-    assert.deepEqual(detection.projects[0].adapterMatches, []);
+    assert.deepEqual(detection.projects[0].adapterMatches, [
+      {
+        adapterId: "kotlin",
+        maturity: "experimental",
+        matchedEcosystems: ["jvm"],
+        matchedLanguages: ["java", "kotlin"]
+      }
+    ]);
     assert.equal(
       detection.projects[0].supportStatusReason,
-      "No registered adapter supports ecosystems jvm with languages java, kotlin."
+      "kotlin matched ecosystems jvm and languages java, kotlin"
     );
   });
 
@@ -97,19 +104,19 @@ describe("project detector", () => {
           root: "services/billing",
           ecosystems: ["jvm"],
           languages: ["java", "kotlin"],
-          supported: false
+          supported: true
         }
       ]
     );
   });
 
-  it("detects the Kotlin JUnit fixture as an unsupported JVM project", () => {
+  it("detects the Kotlin JUnit fixture as an experimental JVM project", () => {
     const detection = detectProjects(path.resolve("examples/kotlin-junit-basic"));
     const fixtureRoot = path.resolve("examples/kotlin-junit-basic");
 
     assert.equal(detection.summary.projectCount, 1);
-    assert.equal(detection.summary.supportedProjectCount, 0);
-    assert.equal(detection.summary.unsupportedProjectCount, 1);
+    assert.equal(detection.summary.supportedProjectCount, 1);
+    assert.equal(detection.summary.unsupportedProjectCount, 0);
     assert.ok(fs.existsSync(path.join(fixtureRoot, "src", "main", "java")));
     assert.ok(fs.existsSync(path.join(fixtureRoot, "src", "main", "kotlin")));
     assert.deepEqual(
@@ -127,8 +134,8 @@ describe("project detector", () => {
           ecosystems: ["jvm"],
           languages: ["java", "kotlin"],
           markerFiles: ["build.gradle.kts", "settings.gradle.kts"],
-          adapterIds: [],
-          supported: false
+          adapterIds: ["kotlin"],
+          supported: true
         }
       ]
     );
@@ -159,7 +166,7 @@ describe("project detector", () => {
           ecosystems: ["jvm"],
           languages: ["java", "kotlin"],
           markerFiles: ["services/checkout/build.gradle.kts"],
-          supported: false
+          supported: true
         }
       ]
     );

@@ -9,6 +9,7 @@ The repository is public-demo ready, but not package-release ready.
 The useful baseline is:
 
 - deterministic JavaScript/TypeScript audit pipeline
+- experimental Kotlin/JVM adapter spike
 - polyglot project detection with unsupported-project reporting
 - project-level ranking, planning, placement, stats, and MCP-shaped tool calls
 - model-consistency scenarios for stable audit and plan outputs
@@ -30,9 +31,10 @@ Acceptance:
 
 Goal: prove the adapter contract survives a second ecosystem.
 
+Status: started with an experimental Kotlin/JVM with Gradle and JUnit adapter.
+
 Preferred candidates:
 
-- Kotlin/JVM with Gradle and JUnit
 - Swift Package Manager with XCTest or Swift Testing
 
 Acceptance:

@@ -19,12 +19,12 @@
     },
     {
       "path": "summary.auditedProjectCount",
-      "expected": 1,
+      "expected": 2,
       "reason": "Stats must preserve how many projects were audited."
     },
     {
       "path": "summary.unsupportedProjectCount",
-      "expected": 2,
+      "expected": 1,
       "reason": "Stats must preserve unsupported project visibility."
     },
     {
@@ -34,12 +34,12 @@
     },
     {
       "path": "counts.untestedCandidateCount",
-      "expected": 1,
+      "expected": 2,
       "reason": "Stats must preserve candidate counts derived from audited projects."
     },
     {
       "path": "counts.riskCount",
-      "expected": 1,
+      "expected": 2,
       "reason": "Stats must preserve residual risk counts derived from audited projects."
     },
     {
@@ -53,6 +53,16 @@
       "reason": "Stats must preserve detected test framework distribution."
     },
     {
+      "path": "distributions.testFrameworks.kotlin-test",
+      "expected": 1,
+      "reason": "Stats must preserve detected Kotlin test framework distribution."
+    },
+    {
+      "path": "distributions.testCommands.gradle test",
+      "expected": 1,
+      "reason": "Stats must preserve detected JVM test command distribution."
+    },
+    {
       "path": "distributions.testCommands.npm run test",
       "expected": 1,
       "reason": "Stats must preserve detected repo-native test command distribution."
@@ -61,6 +71,11 @@
       "path": "adapters[0].adapterId",
       "expected": "javascript",
       "reason": "Stats must preserve audited adapter usage."
+    },
+    {
+      "path": "adapters[1].adapterId",
+      "expected": "kotlin",
+      "reason": "Stats must preserve experimental Kotlin adapter usage."
     }
   ],
   "allowedVariations": [

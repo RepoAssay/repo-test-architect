@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { auditJavaScriptRepo } from "../src/adapters/javascript/audit.js";
+import { getAdapter } from "../src/core/adapter-registry.js";
 import { createTestPlan } from "../src/core/test-plan.js";
 import { mcpTools } from "../src/mcp/tool-definitions.js";
 import { loadEvalFixtures } from "../test/support/eval-fixtures.js";
@@ -10,7 +10,7 @@ const expectedDir = path.resolve("evals/expected");
 fs.mkdirSync(expectedDir, { recursive: true });
 
 for (const fixture of loadEvalFixtures()) {
-  const audit = normalizeAuditForSnapshot(auditJavaScriptRepo(fixture.root));
+  const audit = normalizeAuditForSnapshot(getAdapter(fixture.adapter).audit(fixture.root));
   const plan = createTestPlan(audit);
   const auditOutputPath = path.join(expectedDir, `${fixture.name}.audit.json`);
   const planOutputPath = path.join(expectedDir, `${fixture.name}.plan.json`);

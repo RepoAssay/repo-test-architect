@@ -19,31 +19,26 @@
     },
     {
       "path": "summary.candidateCount",
-      "expected": 1,
-      "reason": "Only the supported web project contributes a ranked candidate in this fixture."
+      "expected": 2,
+      "reason": "The experimental Kotlin project and supported web project each contribute one ranked candidate in this fixture."
     },
     {
       "path": "candidates[0].projectId",
-      "expected": "apps/web",
+      "expected": "apps/android",
       "reason": "Ranked candidates must preserve their owning project root."
     },
     {
       "path": "candidates[0].projectTargetId",
-      "expected": "apps/web:src/sessionClient.ts",
+      "expected": "apps/android:src/main/kotlin/CheckoutCalculator.kt",
       "reason": "Project target IDs are the stable cross-project reference for model and MCP layers."
     },
     {
       "path": "candidates[0].priority",
-      "expected": 4,
+      "expected": 7,
       "reason": "Project candidate priority must remain tied to deterministic per-audit scoring."
     },
     {
       "path": "unsupportedProjects[0].projectId",
-      "expected": "apps/android",
-      "reason": "Unsupported roots must remain visible in project ranking output."
-    },
-    {
-      "path": "unsupportedProjects[1].projectId",
       "expected": "services/api",
       "reason": "Unsupported roots must remain visible in project ranking output."
     }

@@ -14,6 +14,15 @@ describe("adapter registry", () => {
         supportedTestFrameworks: ["jest", "react-testing-library", "supertest", "vitest"],
         supportedProjectTypes: ["node", "express", "react"],
         emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"]
+      },
+      {
+        id: "kotlin",
+        ecosystems: ["jvm"],
+        languages: ["kotlin", "java"],
+        maturity: "experimental",
+        supportedTestFrameworks: ["junit", "kotlin-test"],
+        supportedProjectTypes: ["gradle-jvm"],
+        emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"]
       }
     ]);
   });
@@ -30,6 +39,15 @@ describe("adapter registry", () => {
           supportedTestFrameworks: ["jest", "react-testing-library", "supertest", "vitest"],
           supportedProjectTypes: ["node", "express", "react"],
           emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"]
+        },
+        {
+          id: "kotlin",
+          ecosystems: ["jvm"],
+          languages: ["kotlin", "java"],
+          maturity: "experimental",
+          supportedTestFrameworks: ["junit", "kotlin-test"],
+          supportedProjectTypes: ["gradle-jvm"],
+          emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"]
         }
       ]
     });
@@ -45,5 +63,13 @@ describe("adapter registry", () => {
 
   it("rejects unsupported adapters", () => {
     assert.throws(() => getAdapter("swift"), /Unsupported adapter: swift/);
+  });
+
+  it("audits through the Kotlin adapter", () => {
+    const adapter = getAdapter("kotlin");
+    const audit = adapter.audit(path.resolve("examples/kotlin-junit-basic"));
+
+    assert.equal(audit.schemaVersion, "audit/v1");
+    assert.deepEqual(audit.profile.testFrameworks, ["junit", "kotlin-test"]);
   });
 });

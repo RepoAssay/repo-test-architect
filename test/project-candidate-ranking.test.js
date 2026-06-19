@@ -12,14 +12,13 @@ describe("project candidate ranking", () => {
     assert.equal(ranking.schemaVersion, "project-candidate-ranking/v1");
     assert.deepEqual(ranking.summary, {
       projectCount: 3,
-      auditedProjectCount: 1,
-      unsupportedProjectCount: 2,
+      auditedProjectCount: 2,
+      unsupportedProjectCount: 1,
       auditCoverage: "partial",
       unsupportedReasons: [
-        "No registered adapter supports ecosystems jvm with languages java, kotlin.",
         "No registered adapter supports ecosystems python with languages python."
       ],
-      candidateCount: 1
+      candidateCount: 2
     });
     assert.deepEqual(
       ranking.candidates.map((candidate) => ({
@@ -28,6 +27,11 @@ describe("project candidate ranking", () => {
         priority: candidate.priority
       })),
       [
+        {
+          projectTargetId: "apps/android:src/main/kotlin/CheckoutCalculator.kt",
+          projectRoot: "apps/android",
+          priority: 7
+        },
         {
           projectTargetId: "apps/web:src/sessionClient.ts",
           projectRoot: "apps/web",
@@ -43,12 +47,6 @@ describe("project candidate ranking", () => {
         project.supportStatusReason
       ]),
       [
-        [
-          "apps/android",
-          ["jvm"],
-          [],
-          "No registered adapter supports ecosystems jvm with languages java, kotlin."
-        ],
         ["services/api", ["python"], [], "No registered adapter supports ecosystems python with languages python."]
       ]
     );

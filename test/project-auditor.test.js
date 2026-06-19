@@ -10,8 +10,8 @@ describe("project auditor", () => {
     assert.equal(result.schemaVersion, "project-audits/v1");
     assert.deepEqual(result.summary, {
       projectCount: 3,
-      auditedProjectCount: 1,
-      skippedProjectCount: 2
+      auditedProjectCount: 2,
+      skippedProjectCount: 1
     });
     assert.deepEqual(
       result.audits.map((entry) => ({
@@ -20,6 +20,11 @@ describe("project auditor", () => {
         schemaVersion: entry.audit.schemaVersion
       })),
       [
+        {
+          projectId: "apps/android",
+          adapterId: "kotlin",
+          schemaVersion: "audit/v1"
+        },
         {
           projectId: "apps/web",
           adapterId: "javascript",
@@ -38,15 +43,6 @@ describe("project auditor", () => {
         supportStatusReason: project.supportStatusReason
       })),
       [
-        {
-          projectId: "apps/android",
-          projectRoot: "apps/android",
-          reason: "No registered adapter supports ecosystems jvm with languages java, kotlin.",
-          ecosystems: ["jvm"],
-          languages: ["java", "kotlin"],
-          adapterMatches: [],
-          supportStatusReason: "No registered adapter supports ecosystems jvm with languages java, kotlin."
-        },
         {
           projectId: "services/api",
           projectRoot: "services/api",

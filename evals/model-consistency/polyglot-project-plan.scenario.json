@@ -19,22 +19,22 @@
     },
     {
       "path": "summary.itemCount",
-      "expected": 1,
-      "reason": "Only the supported web project contributes a plan item in this fixture."
+      "expected": 2,
+      "reason": "The experimental Kotlin project and supported web project each contribute one plan item in this fixture."
     },
     {
       "path": "summary.addTestCount",
-      "expected": 1,
-      "reason": "The supported web project has one untested candidate that becomes an add-test item."
+      "expected": 2,
+      "reason": "The Kotlin calculator and web session client are both untested candidates that become add-test items."
     },
     {
       "path": "items[0].projectId",
-      "expected": "apps/web",
+      "expected": "apps/android",
       "reason": "Flattened plan items must preserve their owning project root."
     },
     {
       "path": "items[0].projectItemId",
-      "expected": "apps/web:add-test:src/sessionClient.ts",
+      "expected": "apps/android:add-test:src/main/kotlin/CheckoutCalculator.kt",
       "reason": "Project item IDs are the stable cross-project reference for future generation."
     },
     {
@@ -44,16 +44,11 @@
     },
     {
       "path": "projectPlans[0].plan.summary.verificationCommand",
-      "expected": "npm run test",
+      "expected": "gradle test",
       "reason": "Project plan artifacts must retain the repo-native verification command for the owning project."
     },
     {
       "path": "unsupportedProjects[0].projectId",
-      "expected": "apps/android",
-      "reason": "Unsupported roots must remain visible in project planning output."
-    },
-    {
-      "path": "unsupportedProjects[1].projectId",
       "expected": "services/api",
       "reason": "Unsupported roots must remain visible in project planning output."
     }

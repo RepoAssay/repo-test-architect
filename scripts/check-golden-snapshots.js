@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
-import { auditJavaScriptRepo } from "../src/adapters/javascript/audit.js";
+import { getAdapter } from "../src/core/adapter-registry.js";
 import { createTestPlan } from "../src/core/test-plan.js";
 import { mcpTools } from "../src/mcp/tool-definitions.js";
 import { loadEvalFixtures } from "../test/support/eval-fixtures.js";
@@ -12,7 +12,7 @@ let failures = 0;
 let matches = 0;
 
 for (const fixture of loadEvalFixtures()) {
-  const audit = normalizeAuditForSnapshot(auditJavaScriptRepo(fixture.root));
+  const audit = normalizeAuditForSnapshot(getAdapter(fixture.adapter).audit(fixture.root));
   const plan = normalizeJsonForSnapshot(createTestPlan(audit));
 
   const auditMatched = compareSnapshot(fixture.name, "audit", audit);

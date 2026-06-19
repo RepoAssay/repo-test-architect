@@ -2,8 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { describe, it } from "node:test";
-import { auditJavaScriptRepo } from "../src/adapters/javascript/audit.js";
-import { getAdapterRegistry } from "../src/core/adapter-registry.js";
+import { getAdapter, getAdapterRegistry } from "../src/core/adapter-registry.js";
 import { explainTarget } from "../src/core/explain-target.js";
 import { summarizeProjectAudits } from "../src/core/project-audit-summary.js";
 import { auditDetectedProjects } from "../src/core/project-auditor.js";
@@ -60,7 +59,7 @@ describe("artifact schema compatibility", () => {
     });
 
     it(`validates ${fixture.name} target explanation artifact`, () => {
-      const audit = auditJavaScriptRepo(fixture.root);
+      const audit = getAdapter(fixture.adapter).audit(fixture.root);
       const target = [...audit.untestedCandidates, ...audit.coveredButRisky, ...audit.skipped][0];
       const artifact = explainTarget(audit, target.id);
 
@@ -68,7 +67,7 @@ describe("artifact schema compatibility", () => {
     });
 
     it(`validates ${fixture.name} candidate ranking artifact`, () => {
-      const audit = auditJavaScriptRepo(fixture.root);
+      const audit = getAdapter(fixture.adapter).audit(fixture.root);
       const artifact = rankTestCandidates(audit);
 
       assertMatchesSchema(artifact, rankingSchema, `${fixture.name}.candidate-ranking.json`);

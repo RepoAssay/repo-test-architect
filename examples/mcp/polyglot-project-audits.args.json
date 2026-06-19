@@ -4,10 +4,90 @@
     "root": "./examples/polyglot-workspace",
     "summary": {
       "projectCount": 3,
-      "auditedProjectCount": 1,
-      "skippedProjectCount": 2
+      "auditedProjectCount": 2,
+      "skippedProjectCount": 1
     },
     "audits": [
+      {
+        "projectId": "apps/android",
+        "projectRoot": "apps/android",
+        "adapterId": "kotlin",
+        "audit": {
+          "schemaVersion": "audit/v1",
+          "profile": {
+            "root": "./examples/polyglot-workspace/apps/android",
+            "languages": [
+              "kotlin"
+            ],
+            "packageManagers": [
+              "gradle"
+            ],
+            "testFrameworks": [
+              "kotlin-test"
+            ],
+            "architectures": [
+              "jvm"
+            ],
+            "testCommand": "gradle test",
+            "detectedConventions": [],
+            "existingTestLocations": [],
+            "setupSignals": [
+              "gradle kotlin dsl"
+            ],
+            "confidence": "medium",
+            "blockers": []
+          },
+          "untestedCandidates": [
+            {
+              "id": "src/main/kotlin/CheckoutCalculator.kt",
+              "name": "CheckoutCalculator",
+              "path": "src/main/kotlin/CheckoutCalculator.kt",
+              "kind": "pure-logic",
+              "signals": [
+                "pure-logic",
+                "edge-case-surface"
+              ],
+              "risk": "high",
+              "testability": "high",
+              "recommendedTestLevel": "unit",
+              "riskReductionScore": 9,
+              "maintenanceCost": 2,
+              "reasons": [
+                "Pure transformation logic",
+                "edge-case surface"
+              ],
+              "existingTestPaths": []
+            }
+          ],
+          "coveredButRisky": [],
+          "recommended": [
+            {
+              "id": "src/main/kotlin/CheckoutCalculator.kt",
+              "name": "CheckoutCalculator",
+              "path": "src/main/kotlin/CheckoutCalculator.kt",
+              "kind": "pure-logic",
+              "signals": [
+                "pure-logic",
+                "edge-case-surface"
+              ],
+              "risk": "high",
+              "testability": "high",
+              "recommendedTestLevel": "unit",
+              "riskReductionScore": 9,
+              "maintenanceCost": 2,
+              "reasons": [
+                "Pure transformation logic",
+                "edge-case surface"
+              ],
+              "existingTestPaths": []
+            }
+          ],
+          "skipped": [],
+          "risks": [
+            "CheckoutCalculator has pure transformation logic, edge-case surface and has no matching test file."
+          ]
+        }
+      },
       {
         "projectId": "apps/web",
         "projectRoot": "apps/web",
@@ -86,20 +166,6 @@
       }
     ],
     "skippedProjects": [
-      {
-        "projectId": "apps/android",
-        "projectRoot": "apps/android",
-        "reason": "No registered adapter supports ecosystems jvm with languages java, kotlin.",
-        "ecosystems": [
-          "jvm"
-        ],
-        "languages": [
-          "java",
-          "kotlin"
-        ],
-        "adapterMatches": [],
-        "supportStatusReason": "No registered adapter supports ecosystems jvm with languages java, kotlin."
-      },
       {
         "projectId": "services/api",
         "projectRoot": "services/api",

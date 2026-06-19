@@ -1,4 +1,5 @@
 import { auditJavaScriptRepo } from "../adapters/javascript/audit.js";
+import { auditKotlinRepo } from "../adapters/kotlin/audit.js";
 
 /**
  * @typedef {object} AuditRepoOptions
@@ -40,6 +41,20 @@ export const adapters = [
     emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"],
     audit(repoRoot, options = {}) {
       return auditJavaScriptRepo(repoRoot, {
+        changedPaths: options.changedPaths
+      });
+    }
+  },
+  {
+    id: "kotlin",
+    ecosystems: ["jvm"],
+    languages: ["kotlin", "java"],
+    maturity: "experimental",
+    supportedTestFrameworks: ["junit", "kotlin-test"],
+    supportedProjectTypes: ["gradle-jvm"],
+    emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"],
+    audit(repoRoot, options = {}) {
+      return auditKotlinRepo(repoRoot, {
         changedPaths: options.changedPaths
       });
     }

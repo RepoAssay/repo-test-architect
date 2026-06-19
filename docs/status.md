@@ -2,12 +2,12 @@
 
 ## Current State
 
-Repo Test Architect currently has a deterministic JavaScript/TypeScript audit pipeline.
+Repo Test Architect currently has a deterministic JavaScript/TypeScript audit pipeline plus an experimental Kotlin/JVM adapter spike.
 
 Implemented:
 
 - JavaScript/TypeScript repository profiling
-- runtime adapter registry with the initial `javascript` adapter
+- runtime adapter registry with the supported `javascript` adapter and experimental `kotlin` adapter
 - adapter registry capability metadata for maturity, framework signals, project types, and emitted artifacts
 - CLI adapter registry output
 - deterministic project detection for polyglot repository roots
@@ -18,7 +18,7 @@ Implemented:
 - shared project-audits validation for saved artifact reuse across CLI and MCP-style flows
 - file-backed MCP invoke arguments for local calls that reuse saved artifacts
 - checked-in MCP args fixture for project-audits derived local examples
-- unsupported Python, Ruby, PHP, Elixir, Go, Rust, Swift, .NET, and Kotlin/JVM project reporting with ecosystem and language labels
+- unsupported Python, Ruby, PHP, Elixir, Go, Rust, Swift, .NET, and Apple project reporting with ecosystem and language labels
 - documented project detection marker rules
 - CLI output for project detection marker rules
 - fixture-based regression coverage
@@ -65,10 +65,10 @@ Implemented:
 - `node-jest-service`
 - `express-supertest`
 - `react-testing-library`
+- `kotlin-junit-basic`
 
 ## Adapter-Ready Fixtures
 
-- `kotlin-junit-basic` contains Java and Kotlin sources and detects as one unsupported JVM project until a Kotlin/JUnit adapter exists.
 - `apple-xcode-mixed` contains Swift and Objective-C sources and detects as one unsupported Apple project until an Apple adapter exists.
 
 ## MCP Surface
@@ -147,7 +147,7 @@ npm run eval:test
 
 1. Add a real local stdio MCP SDK transport wrapper around `src/mcp/tool-definitions.js`.
 2. Consolidate repeated JSDoc artifact shapes into shared TS reference files when the runtime API stabilizes further.
-3. Add Kotlin/JUnit or Swift adapter discovery as the next supported-language spike.
+3. Harden the experimental Kotlin/JVM adapter with more Gradle/JUnit fixture variants, or add Swift as the next adapter spike.
 4. Add more model-consistency fixtures and model profile output comparisons.
 5. Expand package-aware test placement analysis from explicit path escapes into richer adapter-owned package boundary signals.
 6. Add local-first stats artifacts for audit coverage, candidate/risk counts, model-consistency drift, and later repair-loop trends.

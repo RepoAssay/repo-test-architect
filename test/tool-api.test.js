@@ -27,8 +27,9 @@ describe("tool API", () => {
     const registry = getAdapterRegistry();
 
     assert.equal(registry.schemaVersion, "adapter-registry/v1");
-    assert.deepEqual(registry.adapters.map((adapter) => adapter.id), ["javascript"]);
+    assert.deepEqual(registry.adapters.map((adapter) => adapter.id), ["javascript", "kotlin"]);
     assert.deepEqual(registry.adapters[0].supportedProjectTypes, ["node", "express", "react"]);
+    assert.deepEqual(registry.adapters[1].supportedProjectTypes, ["gradle-jvm"]);
   });
 
   it("detects repository projects", () => {
@@ -51,8 +52,8 @@ describe("tool API", () => {
     const result = auditRepoProjects(path.resolve("examples/polyglot-workspace"));
 
     assert.equal(result.schemaVersion, "project-audits/v1");
-    assert.equal(result.summary.auditedProjectCount, 1);
-    assert.equal(result.summary.skippedProjectCount, 2);
+    assert.equal(result.summary.auditedProjectCount, 2);
+    assert.equal(result.summary.skippedProjectCount, 1);
   });
 
   it("summarizes detected repository project audits", () => {
@@ -60,7 +61,7 @@ describe("tool API", () => {
     const summary = summarizeRepoProjectAudits(projectAudits);
 
     assert.equal(summary.schemaVersion, "project-audit-summary/v1");
-    assert.equal(summary.summary.untestedCandidateCount, 1);
+    assert.equal(summary.summary.untestedCandidateCount, 2);
   });
 
   it("ranks detected repository project candidates", () => {
@@ -68,7 +69,7 @@ describe("tool API", () => {
     const ranking = rankRepoProjectCandidates(projectAudits);
 
     assert.equal(ranking.schemaVersion, "project-candidate-ranking/v1");
-    assert.equal(ranking.summary.candidateCount, 1);
+    assert.equal(ranking.summary.candidateCount, 2);
   });
 
   it("generates detected repository project test plans", () => {
@@ -76,7 +77,7 @@ describe("tool API", () => {
     const plan = generateRepoProjectTestPlan(projectAudits);
 
     assert.equal(plan.schemaVersion, "project-test-plan/v1");
-    assert.equal(plan.summary.itemCount, 1);
+    assert.equal(plan.summary.itemCount, 2);
   });
 
   it("analyzes test placement from detected repository project audits", () => {
@@ -93,8 +94,8 @@ describe("tool API", () => {
 
     assert.equal(stats.schemaVersion, "project-stats/v1");
     assert.equal(stats.summary.auditCoverage, "partial");
-    assert.equal(stats.counts.untestedCandidateCount, 1);
-    assert.deepEqual(stats.distributions.testFrameworks, { vitest: 1 });
+    assert.equal(stats.counts.untestedCandidateCount, 2);
+    assert.deepEqual(stats.distributions.testFrameworks, { "kotlin-test": 1, vitest: 1 });
   });
 
   it("audits a repo and exposes the audit graph", () => {

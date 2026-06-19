@@ -70,6 +70,7 @@ describe("model consistency runner", () => {
       results.map((result) => [result.scenarioId, result.failures]),
       [
         ["express-supertest-plan", []],
+        ["kotlin-junit-basic-plan", []],
         ["node-jest-service-plan", []],
         ["node-no-tests-yet-plan", []],
         ["node-vitest-basic-auth-explanation", []],
@@ -95,14 +96,14 @@ describe("model consistency runner", () => {
     assert.equal(summary.schemaVersion, "model-consistency-summary/v1");
     assert.equal(summary.profileName, "deterministic-baseline");
     assert.deepEqual(summary.summary, {
-      scenarioCount: 12,
-      passedScenarioCount: 12,
+      scenarioCount: 13,
+      passedScenarioCount: 13,
       failedScenarioCount: 0,
-      checkedFieldCount: 84,
+      checkedFieldCount: 92,
       failureCount: 0
     });
-    assert.equal(summary.scenarios[1].scenarioId, "node-jest-service-plan");
-    assert.equal(summary.scenarios[1].status, "passed");
+    assert.equal(summary.scenarios[2].scenarioId, "node-jest-service-plan");
+    assert.equal(summary.scenarios[2].status, "passed");
     assert.ok(summary.allowedVariationThemes.includes("Additional non-locked metadata may be added."));
     assert.ok(summary.unexpectedVariationThemes.includes("Generating a direct DTO test recommendation."));
   });
@@ -116,8 +117,8 @@ describe("model consistency runner", () => {
     assert.equal(comparison.baselineProfile, "deterministic-baseline");
     assert.equal(comparison.candidateProfile, "local-small");
     assert.deepEqual(comparison.summary, {
-      scenarioCount: 12,
-      alignedScenarioCount: 12,
+      scenarioCount: 13,
+      alignedScenarioCount: 13,
       driftedScenarioCount: 0,
       missingScenarioCount: 0,
       unexpectedScenarioCount: 0,
@@ -132,8 +133,8 @@ describe("model consistency runner", () => {
     const candidate = {
       ...createCurrentSummary("local-small"),
       summary: {
-        scenarioCount: 12,
-        passedScenarioCount: 10,
+        scenarioCount: 13,
+        passedScenarioCount: 11,
         failedScenarioCount: 2,
         checkedFieldCount: 81,
         failureCount: 3
@@ -159,19 +160,20 @@ describe("model consistency runner", () => {
     const comparison = compareModelConsistencySummaries(baseline, candidate);
 
     assert.deepEqual(comparison.summary, {
-      scenarioCount: 13,
-      alignedScenarioCount: 10,
+      scenarioCount: 14,
+      alignedScenarioCount: 11,
       driftedScenarioCount: 1,
       missingScenarioCount: 1,
       unexpectedScenarioCount: 1,
-      checkedFieldDelta: -3,
+      checkedFieldDelta: -11,
       failureDelta: 3
     });
     assert.deepEqual(
       comparison.scenarios.map((scenario) => [scenario.scenarioId, scenario.alignment]),
       [
         ["express-supertest-plan", "drifted"],
-        ["node-jest-service-plan", "missing"],
+        ["kotlin-junit-basic-plan", "missing"],
+        ["node-jest-service-plan", "aligned"],
         ["node-no-tests-yet-plan", "aligned"],
         ["node-vitest-basic-auth-explanation", "aligned"],
         ["node-vitest-basic-plan", "aligned"],

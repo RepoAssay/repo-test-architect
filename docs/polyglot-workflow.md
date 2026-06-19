@@ -44,8 +44,8 @@ This emits `project-audits/v1`.
 
 For every supported project root, the matching adapter produces a normal audit artifact. Unsupported project roots are reported separately with their ecosystem and language labels, adapter match evidence, and support status reason.
 
-The current runtime audits JavaScript and TypeScript project roots through the `javascript` adapter.
-JavaScript and TypeScript already share one adapter domain. Future JVM and Apple adapters should follow the same rule for Java/Kotlin and Swift/Objective-C projects.
+The current runtime audits JavaScript and TypeScript project roots through the supported `javascript` adapter, and Kotlin/JVM Gradle roots through the experimental `kotlin` adapter.
+JavaScript and TypeScript share one adapter domain. Java and Kotlin share one experimental JVM adapter domain. Future Apple adapters should follow the same rule for Swift/Objective-C projects.
 
 ## 3. Reuse Saved Project Audits
 
@@ -126,8 +126,8 @@ Parallel execution should not change artifact shape. Whether three adapters run 
 
 `examples/polyglot-workspace` contains:
 
-- `apps/android`: Kotlin/JVM project, currently detected but unsupported
+- `apps/android`: Kotlin/JVM project audited by the experimental `kotlin` adapter
 - `apps/web`: JavaScript/TypeScript project, currently supported
 - `services/api`: Python project, currently detected but unsupported
 
-That fixture exists to keep unsupported language reporting visible while the first adapter remains JavaScript/TypeScript.
+That fixture keeps mixed supported and unsupported project reporting visible while additional adapters mature.

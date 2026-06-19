@@ -12,17 +12,16 @@ describe("project test plan", () => {
     assert.equal(plan.schemaVersion, "project-test-plan/v1");
     assert.deepEqual(plan.summary, {
       projectCount: 3,
-      plannedProjectCount: 1,
-      unsupportedProjectCount: 2,
+      plannedProjectCount: 2,
+      unsupportedProjectCount: 1,
       auditCoverage: "partial",
       unsupportedReasons: [
-        "No registered adapter supports ecosystems jvm with languages java, kotlin.",
         "No registered adapter supports ecosystems python with languages python."
       ],
-      addTestCount: 1,
+      addTestCount: 2,
       extendTestCount: 0,
       deferredCount: 0,
-      itemCount: 1
+      itemCount: 2
     });
     assert.deepEqual(
       plan.items.map((item) => ({
@@ -31,6 +30,11 @@ describe("project test plan", () => {
         targetId: item.targetId
       })),
       [
+        {
+          projectItemId: "apps/android:add-test:src/main/kotlin/CheckoutCalculator.kt",
+          action: "add-test",
+          targetId: "src/main/kotlin/CheckoutCalculator.kt"
+        },
         {
           projectItemId: "apps/web:add-test:src/sessionClient.ts",
           action: "add-test",
@@ -46,12 +50,6 @@ describe("project test plan", () => {
         project.supportStatusReason
       ]),
       [
-        [
-          "apps/android",
-          ["jvm"],
-          [],
-          "No registered adapter supports ecosystems jvm with languages java, kotlin."
-        ],
         ["services/api", ["python"], [], "No registered adapter supports ecosystems python with languages python."]
       ]
     );

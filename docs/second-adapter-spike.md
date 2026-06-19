@@ -4,9 +4,12 @@ This checklist defines the first non-JavaScript adapter spike. The goal is to pr
 
 ## Candidate Order
 
-Prefer one of:
+Current spike:
 
 - Kotlin/JVM with Gradle and JUnit
+
+Future candidate:
+
 - Swift Package Manager with XCTest or Swift Testing
 
 Choose the ecosystem with the lowest local setup cost and the clearest fixture coverage. The spike should validate adapter shape, not solve every framework variant.
@@ -36,6 +39,16 @@ The adapter must:
 - produce golden audit and plan snapshots
 - add at least one model-consistency scenario for a locked plan, ranking, or explanation field
 - keep `npm run release:check` passing
+
+Current Kotlin/JVM status:
+
+- registered as experimental `kotlin`
+- audits the `kotlin-junit-basic` fixture through the shared audit model
+- preserves mixed Java/Kotlin source ownership inside one JVM project root
+- classifies calculator/formatter logic as useful and DTO-style data classes as deferred
+- has golden audit and plan snapshots
+- has a Kotlin-specific model-consistency plan scenario
+- native generation remains deferred
 
 ## Out Of Scope
 

@@ -10,10 +10,6 @@ export function loadEvalFixtures() {
       throw new Error(`Invalid eval fixture entry: ${JSON.stringify(fixture)}`);
     }
 
-    if (fixture.adapter !== "javascript") {
-      throw new Error(`Unsupported eval fixture adapter: ${fixture.adapter}`);
-    }
-
     return {
       ...fixture,
       root: path.resolve(fixture.path)
