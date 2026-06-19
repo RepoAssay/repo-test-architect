@@ -122,6 +122,13 @@ try {
     }
   ]);
 
+  const parseError = await sendRawLine("{");
+  const toolsAfterParseError = await sendRequest({
+    jsonrpc: "2.0",
+    id: 10,
+    method: "tools/list"
+  });
+
   assert.equal(initialize.id, 1);
   assert.equal(initialize.result.serverInfo.name, "repo-test-architect");
   assert.deepEqual(initialize.result.capabilities.tools, {});
@@ -165,6 +172,12 @@ try {
   assert.equal(batchResponse[1].id, 9);
   assert.equal(batchResponse[1].error.code, -32601);
 
+  assert.equal(parseError.id, null);
+  assert.equal(parseError.error.code, -32700);
+  assert.match(parseError.error.message, /Parse error/);
+  assert.equal(toolsAfterParseError.id, 10);
+  assert.ok(toolsAfterParseError.result.tools.some((tool) => tool.name === "detect_projects"));
+
   child.stdin.end();
   const [exitCode] = await once(child, "close");
   assert.equal(exitCode, 0, stderr);
@@ -203,6 +216,20 @@ async function sendBatchRequest(requests) {
   child.stdin.write(`${JSON.stringify(requests)}\n`);
   const [line] = await responseLine;
   return JSON.parse(line);
+}
+
+/**
+ * @param {string} line
+ * @returns {Promise<object>}
+ */
+async function sendRawLine(line) {
+  const responseLine = readLineWithin(
+    RESPONSE_TIMEOUT_MS,
+    `Timed out waiting for MCP response to raw input. Stderr: ${stderr || "<empty>"}`
+  );
+  child.stdin.write(`${line}\n`);
+  const [responseLineText] = await responseLine;
+  return JSON.parse(responseLineText);
 }
 
 /**
