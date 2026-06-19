@@ -65,6 +65,18 @@ describe("Kotlin audit adapter", () => {
     assert.deepEqual(audit.skipped, []);
   });
 
+  it("ignores changed test files for source target selection", () => {
+    const audit = auditKotlinRepo(exampleRoot, {
+      changedPaths: ["src/test/kotlin/com/example/checkout/CheckoutCalculatorTest.kt"]
+    });
+
+    assert.deepEqual(audit.profile.testFrameworks, ["junit", "kotlin-test"]);
+    assert.deepEqual(audit.untestedCandidates, []);
+    assert.deepEqual(audit.coveredButRisky, []);
+    assert.deepEqual(audit.skipped, []);
+    assert.deepEqual(audit.recommended, []);
+  });
+
   it("prefers Gradle wrapper test commands when wrapper markers exist", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-kotlin-"));
     fs.mkdirSync(path.join(root, "src", "main", "kotlin"), { recursive: true });
