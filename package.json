@@ -75,6 +75,7 @@
     "mcp:placement-split:example": "node ./src/mcp/invoke.js call analyze_project_test_placement @./examples/mcp/split-placement-project-audits.args.json",
     "mcp:stats-projects:example": "node ./src/mcp/invoke.js call collect_project_stats @./examples/mcp/polyglot-project-audits.args.json",
     "mcp:audit:example": "node ./src/mcp/invoke.js call audit_repo \"{\\\"repoRoot\\\":\\\"./examples/node-vitest-basic\\\"}\"",
+    "mcp:audit:kotlin-fixture": "node ./src/mcp/invoke.js call audit_repo @./examples/mcp/kotlin-audit.args.json",
     "mcp:placement:example": "node ./src/mcp/invoke.js call analyze_test_placement \"{\\\"audit\\\":{\\\"schemaVersion\\\":\\\"audit/v1\\\",\\\"profile\\\":{},\\\"untestedCandidates\\\":[],\\\"coveredButRisky\\\":[],\\\"skipped\\\":[],\\\"risks\\\":[]}}\"",
     "mcp:audit:envelope": "node ./src/mcp/invoke.js call-envelope audit_repo \"{\\\"repoRoot\\\":\\\"./examples/node-vitest-basic\\\"}\"",
     "mcp:stdio": "node ./src/mcp/stdio.js",

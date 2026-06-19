@@ -19,6 +19,7 @@ describe("demo script checker", () => {
     assert.match(script, /stats-projects:example/);
     assert.match(script, /mcp:tools/);
     assert.match(script, /mcp:audit-projects:example/);
+    assert.match(script, /mcp:audit:kotlin-fixture/);
     assert.match(script, /mcp:rank-projects:example/);
     assert.match(script, /mcp:plan-projects:example/);
     assert.match(script, /mcp:placement-split:example/);

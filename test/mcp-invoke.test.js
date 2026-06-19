@@ -46,6 +46,25 @@ describe("MCP invoke harness", () => {
     assert.deepEqual(audit.profile.packageManagers, ["npm"]);
   });
 
+  it("calls the Kotlin adapter with checked-in MCP args", () => {
+    const output = execFileSync(
+      process.execPath,
+      [invokePath, "call", "audit_repo", "@./examples/mcp/kotlin-audit.args.json"],
+      {
+        encoding: "utf8"
+      }
+    );
+    const audit = JSON.parse(output);
+
+    assert.equal(audit.schemaVersion, "audit/v1");
+    assert.deepEqual(audit.profile.languages, ["java", "kotlin"]);
+    assert.equal(audit.profile.testCommand, "gradle test");
+    assert.deepEqual(
+      audit.untestedCandidates.map((target) => target.name),
+      ["MoneyFormatter"]
+    );
+  });
+
   it("calls a project tool with checked-in artifact args", () => {
     const output = execFileSync(
       process.execPath,

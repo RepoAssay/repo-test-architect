@@ -18,6 +18,7 @@ const demoChecks = [
   "stats-projects:example",
   "mcp:tools",
   "mcp:audit-projects:example",
+  "mcp:audit:kotlin-fixture",
   "mcp:rank-projects:example",
   "mcp:plan-projects:example",
   "mcp:placement-split:example",

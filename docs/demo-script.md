@@ -92,6 +92,7 @@ Show that the same deterministic operations are exposed through MCP-shaped tools
 ```powershell
 npm run mcp:tools
 npm run mcp:audit-projects:example
+npm run mcp:audit:kotlin-fixture
 npm run mcp:rank-projects:example
 npm run mcp:plan-projects:example
 npm run mcp:placement-split:example

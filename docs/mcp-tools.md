@@ -143,6 +143,7 @@ npm run mcp:plan-projects:example
 npm run mcp:placement-projects:example
 npm run mcp:stats-projects:example
 npm run mcp:audit:example
+npm run mcp:audit:kotlin-fixture
 npm run mcp:placement:example
 npm run mcp:audit:envelope
 ```
@@ -154,6 +155,7 @@ node ./src/mcp/invoke.js tools
 node ./src/mcp/invoke.js call list_adapters "{}"
 node ./src/mcp/invoke.js call list_project_detection_rules "{}"
 node ./src/mcp/invoke.js call audit_repo "{\"repoRoot\":\"./examples/node-vitest-basic\"}"
+node ./src/mcp/invoke.js call audit_repo "@./examples/mcp/kotlin-audit.args.json"
 node ./src/mcp/invoke.js call audit_repo "@./args.json"
 node ./src/mcp/invoke.js call summarize_project_audits "@./examples/mcp/polyglot-project-audits.args.json"
 node ./src/mcp/invoke.js call collect_project_stats "@./examples/mcp/polyglot-project-audits.args.json"

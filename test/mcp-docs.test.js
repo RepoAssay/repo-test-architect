@@ -17,6 +17,7 @@ describe("MCP docs", () => {
     }
 
     assert.ok(docs.includes("current registered adapters are `javascript` and experimental `kotlin`"));
+    assert.ok(docs.includes("@./examples/mcp/kotlin-audit.args.json"));
   });
 
   it("keeps project status aligned with MCP tool names", () => {

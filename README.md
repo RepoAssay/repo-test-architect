@@ -121,6 +121,7 @@ npm run mcp:placement-projects:example
 npm run mcp:placement-split:example
 npm run mcp:stats-projects:example
 npm run mcp:audit:example
+npm run mcp:audit:kotlin-fixture
 npm run mcp:placement:example
 npm run mcp:audit:envelope
 npm run mcp:stdio
