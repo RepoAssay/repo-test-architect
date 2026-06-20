@@ -65,6 +65,20 @@ describe("Kotlin audit adapter", () => {
     assert.deepEqual(audit.skipped, []);
   });
 
+  it("normalizes Windows-style changed source paths", () => {
+    const audit = auditKotlinRepo(exampleRoot, {
+      changedPaths: ["src\\main\\java\\com\\example\\checkout\\MoneyFormatter.java"]
+    });
+
+    assert.deepEqual(audit.profile.testFrameworks, ["junit", "kotlin-test"]);
+    assert.deepEqual(
+      audit.untestedCandidates.map((target) => target.name),
+      ["MoneyFormatter"]
+    );
+    assert.deepEqual(audit.coveredButRisky, []);
+    assert.deepEqual(audit.skipped, []);
+  });
+
   it("ignores changed test files for source target selection", () => {
     const audit = auditKotlinRepo(exampleRoot, {
       changedPaths: ["src/test/kotlin/com/example/checkout/CheckoutCalculatorTest.kt"]
