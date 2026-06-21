@@ -1,0 +1,96 @@
+{
+  "schemaVersion": "plan/v1",
+  "summary": {
+    "confidence": "high",
+    "verificationCommand": "swift test",
+    "blockerCount": 0,
+    "addTestCount": 1,
+    "extendTestCount": 1,
+    "deferredCount": 2
+  },
+  "blockers": [],
+  "items": [
+    {
+      "id": "extend-test:Sources/CheckoutCore/CheckoutParser.swift",
+      "action": "extend-test",
+      "targetId": "Sources/CheckoutCore/CheckoutParser.swift",
+      "target": "CheckoutParser",
+      "path": "Sources/CheckoutCore/CheckoutParser.swift",
+      "testLevel": "unit",
+      "priority": 7,
+      "riskReductionScore": 9,
+      "maintenanceCost": 2,
+      "rationale": [
+        "Pure transformation logic",
+        "edge-case surface",
+        "Existing test file detected; review missing edge cases"
+      ],
+      "sourceSignals": [
+        "pure-logic",
+        "edge-case-surface",
+        "matching-test"
+      ],
+      "existingTestPaths": [
+        "Tests/CheckoutCoreTests/CheckoutParserTests.swift"
+      ]
+    },
+    {
+      "id": "add-test:Sources/CheckoutCore/PaymentClient.swift",
+      "action": "add-test",
+      "targetId": "Sources/CheckoutCore/PaymentClient.swift",
+      "target": "PaymentClient",
+      "path": "Sources/CheckoutCore/PaymentClient.swift",
+      "testLevel": "unit",
+      "priority": 4,
+      "riskReductionScore": 8,
+      "maintenanceCost": 4,
+      "rationale": [
+        "Service boundary",
+        "async or concurrency behavior"
+      ],
+      "sourceSignals": [
+        "service-boundary",
+        "async-or-concurrency"
+      ],
+      "existingTestPaths": []
+    },
+    {
+      "id": "defer:Sources/CheckoutCore/PaymentResponseDTO.swift",
+      "action": "defer",
+      "targetId": "Sources/CheckoutCore/PaymentResponseDTO.swift",
+      "target": "PaymentResponseDTO",
+      "path": "Sources/CheckoutCore/PaymentResponseDTO.swift",
+      "testLevel": "none",
+      "priority": -2,
+      "riskReductionScore": 2,
+      "maintenanceCost": 4,
+      "rationale": [
+        "DTO-only models are usually better covered through decoding, mapper, or boundary tests.",
+        "Cover through parser, mapper, networking, repository, or route integration tests that consume the model."
+      ],
+      "sourceSignals": [
+        "dto-only"
+      ],
+      "existingTestPaths": []
+    },
+    {
+      "id": "defer:Sources/CheckoutCore/CheckoutView.swift",
+      "action": "defer",
+      "targetId": "Sources/CheckoutCore/CheckoutView.swift",
+      "target": "CheckoutView",
+      "path": "Sources/CheckoutCore/CheckoutView.swift",
+      "testLevel": "none",
+      "priority": -3,
+      "riskReductionScore": 2,
+      "maintenanceCost": 5,
+      "rationale": [
+        "SwiftUI views should only get direct tests when the repo already has UI or snapshot conventions.",
+        "Cover through view model, reducer, service, or UI/snapshot tests when a convention exists."
+      ],
+      "sourceSignals": [
+        "swiftui-view"
+      ],
+      "existingTestPaths": []
+    }
+  ]
+}

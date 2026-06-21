@@ -5,6 +5,11 @@
     "description": "Application composition or framework setup that should usually be covered through integration tests."
   },
   {
+    "id": "async-or-concurrency",
+    "category": "risk",
+    "description": "Async, actor, or concurrency-sensitive behavior was detected."
+  },
+  {
     "id": "auth-branch",
     "category": "risk",
     "description": "Authentication, authorization, token, session, role, or permission logic was detected."
@@ -90,9 +95,19 @@
     "description": "Service, client, repository, or similar boundary naming was detected."
   },
   {
+    "id": "service-boundary",
+    "category": "architecture",
+    "description": "Service, client, repository, or similar boundary behavior was detected."
+  },
+  {
     "id": "status-handling",
     "category": "risk",
     "description": "HTTP status code or request/response error handling is likely relevant."
+  },
+  {
+    "id": "swiftui-view",
+    "category": "architecture",
+    "description": "SwiftUI view code was detected."
   },
   {
     "id": "type-only",

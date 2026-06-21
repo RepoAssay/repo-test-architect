@@ -28,5 +28,10 @@
     "name": "kotlin-junit-basic",
     "adapter": "kotlin",
     "path": "examples/kotlin-junit-basic"
+  },
+  {
+    "name": "swift-spm-xctest",
+    "adapter": "swift",
+    "path": "examples/swift-spm-xctest"
   }
 ]
