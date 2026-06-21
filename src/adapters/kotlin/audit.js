@@ -285,10 +285,14 @@ function normalizePath(currentPath) {
 
 function normalizeChangedPath(root, currentPath) {
   if (path.isAbsolute(currentPath)) {
-    return normalizePath(path.relative(root, currentPath));
+    return stripCurrentDirectoryPrefix(normalizePath(path.relative(root, currentPath)));
   }
 
-  return normalizePath(currentPath);
+  return stripCurrentDirectoryPrefix(normalizePath(currentPath));
+}
+
+function stripCurrentDirectoryPrefix(currentPath) {
+  return currentPath.replace(/^\.\//, "");
 }
 
 function basenameWithoutExtension(currentPath) {

@@ -91,10 +91,10 @@ function selectProjectChangedPaths(repoRoot, projectRoot, changedPaths) {
 
 function normalizeRepoRelativePath(repoRoot, currentPath) {
   if (path.isAbsolute(currentPath)) {
-    return normalizePath(path.relative(repoRoot, currentPath));
+    return stripCurrentDirectoryPrefix(normalizePath(path.relative(repoRoot, currentPath)));
   }
 
-  return normalizePath(currentPath);
+  return stripCurrentDirectoryPrefix(normalizePath(currentPath));
 }
 
 function isInsideProject(projectRoot, currentPath) {
@@ -109,4 +109,8 @@ function toProjectRelativePath(projectRoot, currentPath) {
 
 function normalizePath(currentPath) {
   return currentPath.replaceAll("\\", "/");
+}
+
+function stripCurrentDirectoryPrefix(currentPath) {
+  return currentPath.replace(/^\.\//, "");
 }

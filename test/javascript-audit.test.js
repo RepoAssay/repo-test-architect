@@ -72,6 +72,20 @@ describe("JavaScript audit adapter", () => {
     assert.deepEqual(audit.skipped, []);
   });
 
+  it("normalizes current-directory changed source paths", () => {
+    const audit = auditJavaScriptRepo(exampleRoot, {
+      changedPaths: ["./src/authService.ts"]
+    });
+
+    assert.deepEqual(audit.profile.testFrameworks, ["vitest"]);
+    assert.deepEqual(
+      audit.untestedCandidates.map((target) => target.name),
+      ["authService"]
+    );
+    assert.deepEqual(audit.coveredButRisky, []);
+    assert.deepEqual(audit.skipped, []);
+  });
+
   it("ignores changed test files for source target selection", () => {
     const audit = auditJavaScriptRepo(exampleRoot, {
       changedPaths: ["src/deckParser.test.ts"]
