@@ -73,7 +73,7 @@ export function getProjectDetectionRules() {
  */
 export function auditRepoProjects(repoRoot, options = {}) {
   return auditDetectedProjects(repoRoot, {
-    changedPaths: options.changedPaths
+    changedPaths: validateChangedPaths(options.changedPaths)
   });
 }
 
@@ -131,7 +131,7 @@ export function collectRepoProjectStats(projectAudits) {
  */
 export function auditRepo(repoRoot, options = {}) {
   return getAdapter(options.adapterId).audit(repoRoot, {
-    changedPaths: options.changedPaths
+    changedPaths: validateChangedPaths(options.changedPaths)
   });
 }
 
@@ -209,6 +209,20 @@ export function validateAudit(audit) {
       throw new Error(`Audit ${key} must be an array.`);
     }
   }
+}
+
+/**
+ * @param {string[]} [changedPaths]
+ * @returns {string[] | undefined}
+ */
+function validateChangedPaths(changedPaths) {
+  if (changedPaths === undefined) return undefined;
+
+  if (!Array.isArray(changedPaths) || changedPaths.some((changedPath) => typeof changedPath !== "string" || changedPath.length === 0)) {
+    throw new Error("changedPaths must be an array of non-empty strings.");
+  }
+
+  return changedPaths;
 }
 
 /**

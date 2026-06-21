@@ -80,6 +80,13 @@ describe("tool API", () => {
     );
   });
 
+  it("rejects invalid project audit changed paths", () => {
+    assert.throws(
+      () => auditRepoProjects(path.resolve("examples/polyglot-workspace"), { changedPaths: [""] }),
+      /changedPaths must be an array of non-empty strings/
+    );
+  });
+
   it("summarizes detected repository project audits", () => {
     const projectAudits = auditRepoProjects(path.resolve("examples/polyglot-workspace"));
     const summary = summarizeRepoProjectAudits(projectAudits);
@@ -142,6 +149,13 @@ describe("tool API", () => {
     );
     assert.deepEqual(audit.coveredButRisky, []);
     assert.deepEqual(audit.skipped, []);
+  });
+
+  it("rejects invalid explicit adapter changed paths", () => {
+    assert.throws(
+      () => auditRepo(path.resolve("examples/kotlin-junit-basic"), { adapterId: "kotlin", changedPaths: [""] }),
+      /changedPaths must be an array of non-empty strings/
+    );
   });
 
   it("rejects unsupported audit adapters", () => {
