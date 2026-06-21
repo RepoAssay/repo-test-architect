@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import fs from "node:fs";
 import { describe, it } from "node:test";
+import { allowedTopLevelEntries, requiredFiles } from "../scripts/check-pack-contents.js";
 
 describe("package contents", () => {
   it("keeps npm pack dry-run contents within the runtime allowlist", () => {
@@ -13,17 +13,13 @@ describe("package contents", () => {
   });
 
   it("allows the future top-level license file without requiring it yet", () => {
-    const checker = fs.readFileSync("scripts/check-pack-contents.js", "utf8");
-
-    assert.match(checker, /"LICENSE"/);
-    assert.doesNotMatch(checker, /requiredFiles = \[[\s\S]*"LICENSE"/);
+    assert.ok(allowedTopLevelEntries.has("LICENSE"));
+    assert.ok(!requiredFiles.includes("LICENSE"));
   });
 
   it("requires check script dependencies needed by packaged release verification", () => {
-    const checker = fs.readFileSync("scripts/check-pack-contents.js", "utf8");
-
-    assert.match(checker, /"scripts\/check-demo-script\.js"/);
-    assert.match(checker, /"scripts\/check-release-readiness\.js"/);
-    assert.match(checker, /"scripts\/support\/npm-runner\.js"/);
+    assert.ok(requiredFiles.includes("scripts/check-demo-script.js"));
+    assert.ok(requiredFiles.includes("scripts/check-release-readiness.js"));
+    assert.ok(requiredFiles.includes("scripts/support/npm-runner.js"));
   });
 });

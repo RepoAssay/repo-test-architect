@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 import { execFileSync } from "node:child_process";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { resolveNpmInvocation } from "./support/npm-runner.js";
 
-const allowedTopLevelEntries = new Set([
+export const allowedTopLevelEntries = new Set([
   "LICENSE",
   "README.md",
   "SECURITY.md",
@@ -16,7 +18,7 @@ const allowedTopLevelEntries = new Set([
   "src"
 ]);
 
-const requiredFiles = [
+export const requiredFiles = [
   "README.md",
   "SECURITY.md",
   "SUPPORT.md",
@@ -35,36 +37,46 @@ const requiredFiles = [
   "scripts/support/npm-runner.js"
 ];
 
-const npm = resolveNpmInvocation();
-const output = execFileSync(npm.command, [...npm.args, "pack", "--dry-run", "--json"], {
-  encoding: "utf8",
-  stdio: ["ignore", "pipe", "pipe"]
-});
-const [pack] = JSON.parse(output);
-const paths = pack.files.map((file) => normalizePath(file.path));
-const topLevelEntries = new Set(paths.map((filePath) => filePath.split("/")[0]));
-const unexpectedTopLevelEntries = [...topLevelEntries].filter((entry) => !allowedTopLevelEntries.has(entry)).sort();
-const missingRequiredFiles = requiredFiles.filter((filePath) => !paths.includes(filePath));
-const leakedTestFiles = paths.filter((filePath) => filePath === "test" || filePath.startsWith("test/")).sort();
-
-if (unexpectedTopLevelEntries.length > 0 || missingRequiredFiles.length > 0 || leakedTestFiles.length > 0) {
-  if (unexpectedTopLevelEntries.length > 0) {
-    console.error(`Unexpected packed top-level entries: ${unexpectedTopLevelEntries.join(", ")}`);
-  }
-
-  if (missingRequiredFiles.length > 0) {
-    console.error(`Missing required packed files: ${missingRequiredFiles.join(", ")}`);
-  }
-
-  if (leakedTestFiles.length > 0) {
-    console.error(`Test files should not be packed: ${leakedTestFiles.join(", ")}`);
-  }
-
-  process.exit(1);
+if (isMainModule()) {
+  runPackContentsCheck();
 }
 
-console.log(`Pack contents check passed (${paths.length} files).`);
+export function runPackContentsCheck() {
+  const npm = resolveNpmInvocation();
+  const output = execFileSync(npm.command, [...npm.args, "pack", "--dry-run", "--json"], {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"]
+  });
+  const [pack] = JSON.parse(output);
+  const paths = pack.files.map((file) => normalizePath(file.path));
+  const topLevelEntries = new Set(paths.map((filePath) => filePath.split("/")[0]));
+  const unexpectedTopLevelEntries = [...topLevelEntries].filter((entry) => !allowedTopLevelEntries.has(entry)).sort();
+  const missingRequiredFiles = requiredFiles.filter((filePath) => !paths.includes(filePath));
+  const leakedTestFiles = paths.filter((filePath) => filePath === "test" || filePath.startsWith("test/")).sort();
+
+  if (unexpectedTopLevelEntries.length > 0 || missingRequiredFiles.length > 0 || leakedTestFiles.length > 0) {
+    if (unexpectedTopLevelEntries.length > 0) {
+      console.error(`Unexpected packed top-level entries: ${unexpectedTopLevelEntries.join(", ")}`);
+    }
+
+    if (missingRequiredFiles.length > 0) {
+      console.error(`Missing required packed files: ${missingRequiredFiles.join(", ")}`);
+    }
+
+    if (leakedTestFiles.length > 0) {
+      console.error(`Test files should not be packed: ${leakedTestFiles.join(", ")}`);
+    }
+
+    process.exit(1);
+  }
+
+  console.log(`Pack contents check passed (${paths.length} files).`);
+}
 
 function normalizePath(filePath) {
   return filePath.replaceAll("\\", "/");
+}
+
+function isMainModule() {
+  return process.argv[1] ? path.resolve(process.argv[1]) === fileURLToPath(import.meta.url) : false;
 }
