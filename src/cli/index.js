@@ -50,7 +50,9 @@ const detection = options.command === "detect" ? detectRepoProjects(repoRoot) : 
 const projectAudits = options.fromProjectAuditsPath
   ? readProjectAuditsJson(options.fromProjectAuditsPath)
   : ["audit-projects", "summarize-projects", "rank-projects", "plan-projects", "placement-projects", "stats-projects"].includes(options.command)
-    ? auditRepoProjects(repoRoot)
+    ? auditRepoProjects(repoRoot, {
+      changedPaths: readSelectedChangedPaths(repoRoot, options)
+    })
     : undefined;
 const audit = options.fromAuditPath
   ? readAuditJson(options.fromAuditPath)

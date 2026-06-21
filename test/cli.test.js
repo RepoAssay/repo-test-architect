@@ -119,6 +119,42 @@ describe("CLI", () => {
     assert.equal(projectAudits.audits[0].audit.schemaVersion, "audit/v1");
   });
 
+  it("supports changed-since project audit mode", () => {
+    const output = execFileSync(
+      process.execPath,
+      [cliPath, "audit-projects", "examples/polyglot-workspace", "--changed-since=HEAD", "--format=json"],
+      {
+        encoding: "utf8"
+      }
+    );
+    const projectAudits = JSON.parse(output);
+
+    assert.equal(projectAudits.schemaVersion, "project-audits/v1");
+    assert.equal(projectAudits.summary.auditedProjectCount, 2);
+    assert.deepEqual(
+      projectAudits.audits.map((entry) => ({
+        projectId: entry.projectId,
+        untested: entry.audit.untestedCandidates,
+        coveredButRisky: entry.audit.coveredButRisky,
+        skipped: entry.audit.skipped
+      })),
+      [
+        {
+          projectId: "apps/android",
+          untested: [],
+          coveredButRisky: [],
+          skipped: []
+        },
+        {
+          projectId: "apps/web",
+          untested: [],
+          coveredButRisky: [],
+          skipped: []
+        }
+      ]
+    );
+  });
+
   it("summarizes detected project audits in markdown", () => {
     const output = execFileSync(process.execPath, [cliPath, "summarize-projects", "examples/polyglot-workspace"], {
       encoding: "utf8"
