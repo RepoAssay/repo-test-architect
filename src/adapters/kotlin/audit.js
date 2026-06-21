@@ -6,7 +6,7 @@ const SOURCE_EXTENSIONS = [".kt", ".java"];
 export function auditKotlinRepo(root, options = {}) {
   const files = readRepoFiles(root);
   const profile = buildProfile(root, files);
-  const changedPaths = options.changedPaths ? new Set(options.changedPaths.map(normalizePath)) : undefined;
+  const changedPaths = options.changedPaths ? new Set(options.changedPaths.map((currentPath) => normalizeChangedPath(root, currentPath))) : undefined;
   const testFiles = files.filter((file) => isTestFile(file.path)).map((file) => normalizePath(file.path));
   const untestedCandidates = [];
   const coveredButRisky = [];
@@ -281,6 +281,14 @@ function findExistingTests(sourcePath, testPaths) {
 
 function normalizePath(currentPath) {
   return currentPath.replaceAll("\\", "/");
+}
+
+function normalizeChangedPath(root, currentPath) {
+  if (path.isAbsolute(currentPath)) {
+    return normalizePath(path.relative(root, currentPath));
+  }
+
+  return normalizePath(currentPath);
 }
 
 function basenameWithoutExtension(currentPath) {
