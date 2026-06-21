@@ -127,6 +127,9 @@ Known tool errors may also include:
 - `toolName`
 - `argument`
 
+`toolName` identifies the tool that failed. `argument` identifies the missing, unsupported, or invalid argument when the failure is argument-specific.
+For example, `changedPaths: [""]` on `audit_repo` returns `kind: "invalid-arguments"`, `toolName: "audit_repo"`, and `argument: "changedPaths"`.
+
 ## Local Harness
 
 Until the real transport is added, use the local invoke harness:

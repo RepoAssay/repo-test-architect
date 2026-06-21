@@ -18,6 +18,8 @@ describe("MCP docs", () => {
 
     assert.ok(docs.includes("current registered adapters are `javascript` and experimental `kotlin`"));
     assert.ok(docs.includes("@./examples/mcp/kotlin-audit.args.json"));
+    assert.ok(docs.includes('`changedPaths: [""]` on `audit_repo` returns `kind: "invalid-arguments"`'));
+    assert.ok(docs.includes('`argument: "changedPaths"`'));
   });
 
   it("keeps project status aligned with MCP tool names", () => {
