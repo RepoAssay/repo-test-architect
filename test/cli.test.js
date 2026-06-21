@@ -243,6 +243,21 @@ describe("CLI", () => {
     );
   });
 
+  it("supports changed-since project plan mode", () => {
+    const output = execFileSync(
+      process.execPath,
+      [cliPath, "plan-projects", "examples/polyglot-workspace", "--changed-since=HEAD", "--format=json"],
+      {
+        encoding: "utf8"
+      }
+    );
+    const plan = JSON.parse(output);
+
+    assert.equal(plan.schemaVersion, "project-test-plan/v1");
+    assert.equal(plan.summary.itemCount, 0);
+    assert.deepEqual(plan.items, []);
+  });
+
   it("emits project test placement findings in markdown", () => {
     const output = execFileSync(process.execPath, [cliPath, "placement-projects", "examples/node-vitest-basic"], {
       encoding: "utf8"
@@ -316,6 +331,22 @@ describe("CLI", () => {
     assert.equal(stats.schemaVersion, "project-stats/v1");
     assert.equal(stats.summary.auditCoverage, "partial");
     assert.deepEqual(stats.distributions.testCommands, { "gradle test": 1, "npm run test": 1 });
+  });
+
+  it("supports changed-since project stats mode", () => {
+    const output = execFileSync(
+      process.execPath,
+      [cliPath, "stats-projects", "examples/polyglot-workspace", "--changed-since=HEAD", "--format=json"],
+      {
+        encoding: "utf8"
+      }
+    );
+    const stats = JSON.parse(output);
+
+    assert.equal(stats.schemaVersion, "project-stats/v1");
+    assert.equal(stats.counts.untestedCandidateCount, 0);
+    assert.equal(stats.counts.coveredButRiskyCount, 0);
+    assert.equal(stats.counts.skippedTargetCount, 0);
   });
 
   it("summarizes, ranks, plans, analyzes placement, and collects stats from an existing project audits file", () => {
