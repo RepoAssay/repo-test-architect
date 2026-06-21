@@ -263,10 +263,20 @@ The first `model-consistency-stats/v1` artifact is derived from model-consistenc
 Useful deterministic stats should be derived from existing artifacts:
 
 - project count, audited project count, unsupported project count, and audit coverage
+- source file counts by detected language and audited versus unsupported language coverage
+- supported file ratio, reported as audit coverage rather than correctness confidence
 - candidate, skipped target, blocker, and risk counts
 - confidence distribution and test framework detection results
 - model-consistency scenario count, locked-field count, drift count, and failure count
 - later generation and repair-loop counts, including files touched, test command results, and repair iterations
 - trend comparisons between saved audit artifacts over time
+
+Coverage reporting should avoid claims like "X% correct." A safer first report is:
+
+- detected source files by language
+- audited source files by adapter/language
+- unsupported source files by language
+- qualitative audit coverage: complete, partial, or none
+- qualitative confidence distribution from adapter evidence
 
 Repository telemetry should be opt-in only. Hosted or product analytics must avoid source content and should default to aggregate metadata only.
