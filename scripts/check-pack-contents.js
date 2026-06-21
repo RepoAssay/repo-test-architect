@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 import { execFileSync } from "node:child_process";
-import fs from "node:fs";
-import path from "node:path";
+import { resolveNpmInvocation } from "./support/npm-runner.js";
 
 const allowedTopLevelEntries = new Set([
   "LICENSE",
@@ -68,20 +67,4 @@ console.log(`Pack contents check passed (${paths.length} files).`);
 
 function normalizePath(filePath) {
   return filePath.replaceAll("\\", "/");
-}
-
-function resolveNpmInvocation() {
-  if (process.env.npm_execpath) {
-    return { command: process.execPath, args: [process.env.npm_execpath] };
-  }
-
-  if (process.platform === "win32") {
-    const npmCliPath = path.join(path.dirname(process.execPath), "node_modules", "npm", "bin", "npm-cli.js");
-
-    if (fs.existsSync(npmCliPath)) {
-      return { command: process.execPath, args: [npmCliPath] };
-    }
-  }
-
-  return { command: "npm", args: [] };
 }
