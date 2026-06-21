@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
+import fs from "node:fs";
 import { describe, it } from "node:test";
 
 describe("package contents", () => {
@@ -9,5 +10,12 @@ describe("package contents", () => {
     });
 
     assert.match(output, /^Pack contents check passed \(\d+ files\)\./);
+  });
+
+  it("allows the future top-level license file without requiring it yet", () => {
+    const checker = fs.readFileSync("scripts/check-pack-contents.js", "utf8");
+
+    assert.match(checker, /"LICENSE"/);
+    assert.doesNotMatch(checker, /requiredFiles = \[[\s\S]*"LICENSE"/);
   });
 });

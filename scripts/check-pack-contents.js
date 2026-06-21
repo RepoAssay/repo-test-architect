@@ -4,6 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 const allowedTopLevelEntries = new Set([
+  "LICENSE",
   "README.md",
   "SECURITY.md",
   "SUPPORT.md",
