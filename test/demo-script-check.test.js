@@ -5,25 +5,37 @@ import { describe, it } from "node:test";
 describe("demo script checker", () => {
   it("runs the documented demo path without nesting the full release suite", () => {
     const script = fs.readFileSync("scripts/check-demo-script.js", "utf8");
+    const docs = fs.readFileSync("docs/demo-script.md", "utf8");
     const packageJson = JSON.parse(fs.readFileSync("package.json", "utf8"));
+    const documentedChecks = [
+      "audit:example",
+      "audit:kotlin-fixture",
+      "rank:example",
+      "plan:example",
+      "plan:kotlin-fixture",
+      "detect:example",
+      "audit-projects:example",
+      "summarize-projects:example",
+      "rank-projects:example",
+      "plan-projects:example",
+      "placement-projects:split-example:json",
+      "stats-projects:example",
+      "mcp:tools",
+      "mcp:audit-projects:example",
+      "mcp:audit:kotlin-fixture",
+      "mcp:rank-projects:example",
+      "mcp:plan-projects:example",
+      "mcp:placement-split:example",
+      "model-consistency:check",
+    ];
 
     assert.equal(packageJson.scripts["demo:check"], "node ./scripts/check-demo-script.js");
-    assert.match(script, /audit:example/);
-    assert.match(script, /audit:kotlin-fixture/);
-    assert.match(script, /rank:example/);
-    assert.match(script, /plan:example/);
-    assert.match(script, /plan:kotlin-fixture/);
-    assert.match(script, /detect:example/);
-    assert.match(script, /audit-projects:example/);
-    assert.match(script, /placement-projects:split-example:json/);
-    assert.match(script, /stats-projects:example/);
-    assert.match(script, /mcp:tools/);
-    assert.match(script, /mcp:audit-projects:example/);
-    assert.match(script, /mcp:audit:kotlin-fixture/);
-    assert.match(script, /mcp:rank-projects:example/);
-    assert.match(script, /mcp:plan-projects:example/);
-    assert.match(script, /mcp:placement-split:example/);
-    assert.match(script, /model-consistency:check/);
+
+    for (const check of documentedChecks) {
+      assert.ok(script.includes(`"${check}"`), `Missing demo checker command: ${check}`);
+      assert.ok(docs.includes(`npm run ${check}`), `Missing documented demo command: ${check}`);
+    }
+
     assert.doesNotMatch(script, /release:check/);
     assert.match(script, /Demo script check passed/);
   });
