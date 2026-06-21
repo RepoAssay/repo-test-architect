@@ -33,6 +33,9 @@ export { validateProjectAudits } from "./project-audits-validation.js";
  * @property {string} [adapterId]
  * @property {string[]} [changedPaths]
  *
+ * @typedef {object} AuditRepoProjectsOptions
+ * @property {string[]} [changedPaths]
+ *
  * @typedef {object} GenerateTestPlanOptions
  * @property {string} [itemId]
  *
@@ -65,10 +68,13 @@ export function getProjectDetectionRules() {
 
 /**
  * @param {string} repoRoot
+ * @param {AuditRepoProjectsOptions} [options]
  * @returns {ProjectAudits}
  */
-export function auditRepoProjects(repoRoot) {
-  return auditDetectedProjects(repoRoot);
+export function auditRepoProjects(repoRoot, options = {}) {
+  return auditDetectedProjects(repoRoot, {
+    changedPaths: options.changedPaths
+  });
 }
 
 /**

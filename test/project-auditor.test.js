@@ -55,4 +55,55 @@ describe("project auditor", () => {
       ]
     );
   });
+
+  it("passes project-relative changed paths into matching project adapters", () => {
+    const result = auditDetectedProjects(path.resolve("examples/polyglot-workspace"), {
+      changedPaths: [
+        "apps/android/src/main/kotlin/CheckoutCalculator.kt",
+        "apps/web/src/sessionClient.ts",
+        "services/api/app.py"
+      ]
+    });
+
+    assert.deepEqual(
+      result.audits.map((entry) => ({
+        projectId: entry.projectId,
+        untested: entry.audit.untestedCandidates.map((target) => target.path)
+      })),
+      [
+        {
+          projectId: "apps/android",
+          untested: ["src/main/kotlin/CheckoutCalculator.kt"]
+        },
+        {
+          projectId: "apps/web",
+          untested: ["src/sessionClient.ts"]
+        }
+      ]
+    );
+  });
+
+  it("normalizes absolute changed paths before project adapter dispatch", () => {
+    const repoRoot = path.resolve("examples/polyglot-workspace");
+    const result = auditDetectedProjects(repoRoot, {
+      changedPaths: [path.join(repoRoot, "apps", "web", "src", "sessionClient.ts")]
+    });
+
+    assert.deepEqual(
+      result.audits.map((entry) => ({
+        projectId: entry.projectId,
+        untested: entry.audit.untestedCandidates.map((target) => target.path)
+      })),
+      [
+        {
+          projectId: "apps/android",
+          untested: []
+        },
+        {
+          projectId: "apps/web",
+          untested: ["src/sessionClient.ts"]
+        }
+      ]
+    );
+  });
 });

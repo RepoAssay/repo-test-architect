@@ -56,6 +56,30 @@ describe("tool API", () => {
     assert.equal(result.summary.skippedProjectCount, 1);
   });
 
+  it("passes changed paths into detected repository project audits", () => {
+    const result = auditRepoProjects(path.resolve("examples/polyglot-workspace"), {
+      changedPaths: ["apps/web/src/sessionClient.ts"]
+    });
+
+    assert.equal(result.schemaVersion, "project-audits/v1");
+    assert.deepEqual(
+      result.audits.map((entry) => ({
+        projectId: entry.projectId,
+        untested: entry.audit.untestedCandidates.map((target) => target.path)
+      })),
+      [
+        {
+          projectId: "apps/android",
+          untested: []
+        },
+        {
+          projectId: "apps/web",
+          untested: ["src/sessionClient.ts"]
+        }
+      ]
+    );
+  });
+
   it("summarizes detected repository project audits", () => {
     const projectAudits = auditRepoProjects(path.resolve("examples/polyglot-workspace"));
     const summary = summarizeRepoProjectAudits(projectAudits);

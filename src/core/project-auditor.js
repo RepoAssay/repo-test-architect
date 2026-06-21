@@ -24,13 +24,17 @@ import { detectProjects } from "./project-detector.js";
  * @property {{ projectCount: number, auditedProjectCount: number, skippedProjectCount: number }} summary
  * @property {ProjectAuditEntry[]} audits
  * @property {SkippedProjectAudit[]} skippedProjects
+ *
+ * @typedef {object} AuditDetectedProjectsOptions
+ * @property {string[]} [changedPaths]
  */
 
 /**
  * @param {string} repoRoot
+ * @param {AuditDetectedProjectsOptions} [options]
  * @returns {ProjectAudits}
  */
-export function auditDetectedProjects(repoRoot) {
+export function auditDetectedProjects(repoRoot, options = {}) {
   const detection = detectProjects(repoRoot);
   const audits = [];
   const skippedProjects = [];
@@ -50,7 +54,10 @@ export function auditDetectedProjects(repoRoot) {
     }
 
     const adapterId = project.adapterIds[0];
-    const audit = getAdapter(adapterId).audit(path.resolve(detection.root, project.root));
+    const projectRoot = path.resolve(detection.root, project.root);
+    const audit = getAdapter(adapterId).audit(projectRoot, {
+      changedPaths: selectProjectChangedPaths(detection.root, project.root, options.changedPaths)
+    });
 
     audits.push({
       projectId: project.id,
@@ -71,4 +78,35 @@ export function auditDetectedProjects(repoRoot) {
     audits,
     skippedProjects
   };
+}
+
+function selectProjectChangedPaths(repoRoot, projectRoot, changedPaths) {
+  if (!changedPaths) return undefined;
+
+  return changedPaths
+    .map((currentPath) => normalizeRepoRelativePath(repoRoot, currentPath))
+    .filter((currentPath) => isInsideProject(projectRoot, currentPath))
+    .map((currentPath) => toProjectRelativePath(projectRoot, currentPath));
+}
+
+function normalizeRepoRelativePath(repoRoot, currentPath) {
+  if (path.isAbsolute(currentPath)) {
+    return normalizePath(path.relative(repoRoot, currentPath));
+  }
+
+  return normalizePath(currentPath);
+}
+
+function isInsideProject(projectRoot, currentPath) {
+  return projectRoot === "." || currentPath === projectRoot || currentPath.startsWith(`${projectRoot}/`);
+}
+
+function toProjectRelativePath(projectRoot, currentPath) {
+  if (projectRoot === ".") return currentPath;
+  if (currentPath === projectRoot) return ".";
+  return currentPath.slice(projectRoot.length + 1);
+}
+
+function normalizePath(currentPath) {
+  return currentPath.replaceAll("\\", "/");
 }
