@@ -2,12 +2,15 @@ import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
-export function runNpmScripts(scriptNames, successMessage) {
-  const npm = resolveNpmInvocation();
+export function runNpmScripts(scriptNames, successMessage, options = {}) {
+  const npm = options.npm ?? resolveNpmInvocation();
+  const spawn = options.spawn ?? spawnSync;
+  const log = options.log ?? console.log;
+  const exit = options.exit ?? process.exit;
 
   for (const scriptName of scriptNames) {
-    console.log(`\n==> npm run ${scriptName}`);
-    const result = spawnSync(npm.command, [...npm.args, "run", scriptName], {
+    log(`\n==> npm run ${scriptName}`);
+    const result = spawn(npm.command, [...npm.args, "run", scriptName], {
       stdio: "inherit"
     });
 
@@ -16,11 +19,11 @@ export function runNpmScripts(scriptNames, successMessage) {
     }
 
     if (result.status !== 0) {
-      process.exit(result.status ?? 1);
+      exit(result.status ?? 1);
     }
   }
 
-  console.log(`\n${successMessage}`);
+  log(`\n${successMessage}`);
 }
 
 export function resolveNpmInvocation() {
