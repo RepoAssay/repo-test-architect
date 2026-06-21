@@ -94,6 +94,23 @@ describe("MCP tool definitions", () => {
     assert.equal(deferredGeneration.status, "deferred");
   });
 
+  it("passes Kotlin changed paths through audit_repo", () => {
+    const audit = callTool("audit_repo", {
+      repoRoot: path.resolve("examples/kotlin-junit-basic"),
+      adapterId: "kotlin",
+      changedPaths: ["src/main/java/com/example/checkout/MoneyFormatter.java"]
+    });
+
+    assert.equal(audit.schemaVersion, "audit/v1");
+    assert.deepEqual(audit.profile.testFrameworks, ["junit", "kotlin-test"]);
+    assert.deepEqual(
+      audit.untestedCandidates.map((target) => target.name),
+      ["MoneyFormatter"]
+    );
+    assert.deepEqual(audit.coveredButRisky, []);
+    assert.deepEqual(audit.skipped, []);
+  });
+
   it("validates tool input before dispatch", () => {
     assert.throws(
       () => callTool("audit_repo", {}),
