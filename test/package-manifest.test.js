@@ -100,4 +100,14 @@ describe("package manifest", () => {
     assert.ok(status.includes("npm run bin:check"));
     assert.ok(status.includes("npm run release:check"));
   });
+
+  it("keeps smoke checks aligned with packaged release verification scripts", () => {
+    const smoke = fs.readFileSync("scripts/smoke.ps1", "utf8");
+
+    assert.ok(smoke.includes("scripts/check-pack-contents.js"));
+    assert.ok(smoke.includes("scripts/check-bin-entrypoints.js"));
+    assert.ok(smoke.includes("scripts/check-demo-script.js"));
+    assert.ok(smoke.includes("scripts/check-release-readiness.js"));
+    assert.ok(smoke.includes("scripts/support/npm-runner.js"));
+  });
 });
