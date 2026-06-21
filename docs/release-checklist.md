@@ -14,6 +14,7 @@ This project is not ready to publish yet. Keep `private: true` in `package.json`
 - add the intended npm package name to MCP client config examples
 - verify `npm run pack:dry-run` includes only intended files
 - keep `npm run pack:check` passing so package contents stay inside the intended allowlist
+- keep `npm run mcp:smoke` passing so the stdio MCP flow keeps booting
 - keep `npm run bin:check` passing so packaged CLI and MCP entry points keep booting
 - keep `npm run release:check` passing before tagging or publishing
 - keep GitHub Actions CI green for the release-readiness workflow
@@ -42,6 +43,7 @@ Run:
 npm run eval:check
 npm test
 powershell -ExecutionPolicy Bypass -File ./scripts/smoke.ps1
+npm run mcp:smoke
 npm run pack:dry-run
 npm run pack:check
 npm run bin:check

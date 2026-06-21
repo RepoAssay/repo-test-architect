@@ -93,12 +93,14 @@ describe("package manifest", () => {
 
   it("documents package dry-run verification in project status", () => {
     const status = fs.readFileSync("docs/status.md", "utf8");
+    const releaseChecklist = fs.readFileSync("docs/release-checklist.md", "utf8");
 
     assert.ok(status.includes("npm run pack:dry-run"));
     assert.ok(status.includes("npm run mcp:smoke"));
     assert.ok(status.includes("npm run pack:check"));
     assert.ok(status.includes("npm run bin:check"));
     assert.ok(status.includes("npm run release:check"));
+    assert.ok(releaseChecklist.includes("npm run mcp:smoke"));
   });
 
   it("keeps smoke checks aligned with packaged release verification scripts", () => {
