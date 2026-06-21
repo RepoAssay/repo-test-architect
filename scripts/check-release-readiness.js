@@ -2,8 +2,9 @@
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-const releaseChecks = [
+export const releaseChecks = [
   "test",
   "eval:check",
   "model-consistency:check",
@@ -14,26 +15,32 @@ const releaseChecks = [
   "bin:check"
 ];
 
-const npm = resolveNpmInvocation();
-
-for (const check of releaseChecks) {
-  console.log(`\n==> npm run ${check}`);
-  const result = spawnSync(npm.command, [...npm.args, "run", check], {
-    stdio: "inherit"
-  });
-
-  if (result.error) {
-    throw result.error;
-  }
-
-  if (result.status !== 0) {
-    process.exit(result.status ?? 1);
-  }
+if (isMainModule()) {
+  runReleaseChecks();
 }
 
-console.log("\nRelease readiness check passed.");
+export function runReleaseChecks() {
+  const npm = resolveNpmInvocation();
 
-function resolveNpmInvocation() {
+  for (const check of releaseChecks) {
+    console.log(`\n==> npm run ${check}`);
+    const result = spawnSync(npm.command, [...npm.args, "run", check], {
+      stdio: "inherit"
+    });
+
+    if (result.error) {
+      throw result.error;
+    }
+
+    if (result.status !== 0) {
+      process.exit(result.status ?? 1);
+    }
+  }
+
+  console.log("\nRelease readiness check passed.");
+}
+
+export function resolveNpmInvocation() {
   if (process.env.npm_execpath) {
     return { command: process.execPath, args: [process.env.npm_execpath] };
   }
@@ -47,4 +54,8 @@ function resolveNpmInvocation() {
   }
 
   return { command: "npm", args: [] };
+}
+
+function isMainModule() {
+  return process.argv[1] ? path.resolve(process.argv[1]) === fileURLToPath(import.meta.url) : false;
 }

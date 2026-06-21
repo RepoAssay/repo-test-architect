@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import { describe, it } from "node:test";
+import { releaseChecks } from "../scripts/check-release-readiness.js";
 
 const packageJson = JSON.parse(fs.readFileSync("package.json", "utf8"));
 
@@ -74,15 +75,19 @@ describe("package manifest", () => {
   it("keeps release readiness checks aligned with public demo verification", () => {
     const releaseRunner = fs.readFileSync("scripts/check-release-readiness.js", "utf8");
     const status = fs.readFileSync("docs/status.md", "utf8");
+    const expectedChecks = [
+      "test",
+      "eval:check",
+      "model-consistency:check",
+      "demo:check",
+      "mcp:smoke",
+      "smoke",
+      "pack:check",
+      "bin:check",
+    ];
 
-    assert.match(releaseRunner, /"test"/);
-    assert.match(releaseRunner, /"eval:check"/);
-    assert.match(releaseRunner, /"model-consistency:check"/);
-    assert.match(releaseRunner, /"demo:check"/);
-    assert.match(releaseRunner, /"mcp:smoke"/);
-    assert.match(releaseRunner, /"smoke"/);
-    assert.match(releaseRunner, /"pack:check"/);
-    assert.match(releaseRunner, /"bin:check"/);
+    assert.deepEqual(releaseChecks, expectedChecks);
+    assert.match(releaseRunner, /Release readiness check passed/);
     assert.ok(status.includes("demo path"));
   });
 
