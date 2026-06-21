@@ -43,6 +43,17 @@ Models can explain, prioritize, or generate from this graph, but the graph is th
 7. Add native test generation only after audit behavior is trustworthy.
 8. Prepare public MCP distribution: GitHub repo, npm package, install snippets, fixture demos, and directory submissions.
 
+## General Backlog
+
+These are useful foundation items, but they should not block adapter work:
+
+- richer project boundary ownership for package, module, and app test-placement findings
+- better report formatting for human audit review
+- local stats and history tracking from saved audit artifacts
+- real MCP SDK transport wrapper after the dependency-free protocol surface stabilizes
+- installed-package tarball smoke checks before a first public npm release
+- CI matrix coverage for Windows, macOS, and Linux once the public repo is configured
+
 ## Fixture Roadmap
 
 Initial JS/TS fixtures:
