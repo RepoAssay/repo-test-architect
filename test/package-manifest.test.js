@@ -15,6 +15,15 @@ describe("package manifest", () => {
     assert.equal(packageJson.bugs, undefined);
   });
 
+  it("keeps pre-release keywords generic until package positioning is finalized", () => {
+    assert.deepEqual(packageJson.keywords, ["testing", "audit", "agent", "strategy"]);
+    assert.ok(!packageJson.keywords.includes("mcp"));
+    assert.ok(!packageJson.keywords.includes("swift"));
+    assert.ok(!packageJson.keywords.includes("kotlin"));
+    assert.ok(!packageJson.keywords.includes("jest"));
+    assert.ok(!packageJson.keywords.includes("vitest"));
+  });
+
   it("declares the supported Node runtime floor", () => {
     assert.equal(packageJson.engines.node, ">=20");
   });
