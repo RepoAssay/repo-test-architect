@@ -169,50 +169,58 @@ export function callTool(name, args = {}) {
 
   validateToolArgs(tool, args);
 
-  switch (name) {
-    case "list_adapters":
-      return getAdapterRegistry();
-    case "list_project_detection_rules":
-      return getProjectDetectionRules();
-    case "detect_projects":
-      return detectRepoProjects(requireString(args.repoRoot, "repoRoot"));
-    case "audit_projects":
-      return auditRepoProjects(requireString(args.repoRoot, "repoRoot"), {
-        changedPaths: optionalStringArray(args.changedPaths, "changedPaths")
-      });
-    case "summarize_project_audits":
-      return summarizeRepoProjectAudits(requireObject(args.projectAudits, "projectAudits"));
-    case "rank_project_candidates":
-      return rankRepoProjectCandidates(requireObject(args.projectAudits, "projectAudits"));
-    case "generate_project_test_plan":
-      return generateRepoProjectTestPlan(requireObject(args.projectAudits, "projectAudits"));
-    case "analyze_project_test_placement":
-      return analyzeRepoProjectTestPlacement(requireObject(args.projectAudits, "projectAudits"));
-    case "collect_project_stats":
-      return collectRepoProjectStats(requireObject(args.projectAudits, "projectAudits"));
-    case "audit_repo":
-      return auditRepo(requireString(args.repoRoot, "repoRoot"), {
-        adapterId: optionalString(args.adapterId, "adapterId"),
-        changedPaths: optionalStringArray(args.changedPaths, "changedPaths")
-      });
-    case "get_audit_graph":
-      return getAuditGraph(requireObject(args.audit, "audit"));
-    case "generate_test_plan":
-      return generateTestPlan(requireObject(args.audit, "audit"), {
-        itemId: optionalString(args.itemId, "itemId")
-      });
-    case "explain_target":
-      return explainAuditTarget(requireObject(args.audit, "audit"), requireString(args.targetId, "targetId"));
-    case "rank_test_candidates":
-      return rankAuditTestCandidates(requireObject(args.audit, "audit"));
-    case "analyze_test_placement":
-      return analyzeRepoTestPlacement(requireObject(args.audit, "audit"), {
-        owner: optionalString(args.owner, "owner")
-      });
-    case "generate_selected_test":
-      return createGenerationDeferredResult(requireString(args.planItemId, "planItemId"));
-    default:
-      throw new Error(`Unhandled MCP tool: ${name}`);
+  try {
+    switch (name) {
+      case "list_adapters":
+        return getAdapterRegistry();
+      case "list_project_detection_rules":
+        return getProjectDetectionRules();
+      case "detect_projects":
+        return detectRepoProjects(requireString(args.repoRoot, "repoRoot"));
+      case "audit_projects":
+        return auditRepoProjects(requireString(args.repoRoot, "repoRoot"), {
+          changedPaths: optionalStringArray(args.changedPaths, "changedPaths")
+        });
+      case "summarize_project_audits":
+        return summarizeRepoProjectAudits(requireObject(args.projectAudits, "projectAudits"));
+      case "rank_project_candidates":
+        return rankRepoProjectCandidates(requireObject(args.projectAudits, "projectAudits"));
+      case "generate_project_test_plan":
+        return generateRepoProjectTestPlan(requireObject(args.projectAudits, "projectAudits"));
+      case "analyze_project_test_placement":
+        return analyzeRepoProjectTestPlacement(requireObject(args.projectAudits, "projectAudits"));
+      case "collect_project_stats":
+        return collectRepoProjectStats(requireObject(args.projectAudits, "projectAudits"));
+      case "audit_repo":
+        return auditRepo(requireString(args.repoRoot, "repoRoot"), {
+          adapterId: optionalString(args.adapterId, "adapterId"),
+          changedPaths: optionalStringArray(args.changedPaths, "changedPaths")
+        });
+      case "get_audit_graph":
+        return getAuditGraph(requireObject(args.audit, "audit"));
+      case "generate_test_plan":
+        return generateTestPlan(requireObject(args.audit, "audit"), {
+          itemId: optionalString(args.itemId, "itemId")
+        });
+      case "explain_target":
+        return explainAuditTarget(requireObject(args.audit, "audit"), requireString(args.targetId, "targetId"));
+      case "rank_test_candidates":
+        return rankAuditTestCandidates(requireObject(args.audit, "audit"));
+      case "analyze_test_placement":
+        return analyzeRepoTestPlacement(requireObject(args.audit, "audit"), {
+          owner: optionalString(args.owner, "owner")
+        });
+      case "generate_selected_test":
+        return createGenerationDeferredResult(requireString(args.planItemId, "planItemId"));
+      default:
+        throw new Error(`Unhandled MCP tool: ${name}`);
+    }
+  } catch (error) {
+    if (error instanceof McpToolError && !error.details.toolName) {
+      throw new McpToolError(error.kind, error.message, { toolName: name, ...error.details });
+    }
+
+    throw error;
   }
 }
 
@@ -234,7 +242,7 @@ function artifact(schemaVersion, schemaPath) {
 
 function requireString(value, name) {
   if (typeof value !== "string" || value.length === 0) {
-    throw new Error(`${name} must be a non-empty string.`);
+    throw new McpToolError("invalid-arguments", `${name} must be a non-empty string.`, { argument: name });
   }
 
   return value;
@@ -247,7 +255,7 @@ function optionalString(value, name) {
 
 function requireObject(value, name) {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
-    throw new Error(`${name} must be an object.`);
+    throw new McpToolError("invalid-arguments", `${name} must be an object.`, { argument: name });
   }
 
   return value;
@@ -257,7 +265,7 @@ function optionalStringArray(value, name) {
   if (value === undefined) return undefined;
 
   if (!Array.isArray(value) || value.some((item) => typeof item !== "string" || item.length === 0)) {
-    throw new Error(`${name} must be an array of non-empty strings.`);
+    throw new McpToolError("invalid-arguments", `${name} must be an array of non-empty strings.`, { argument: name });
   }
 
   return value;

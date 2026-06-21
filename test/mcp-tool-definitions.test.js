@@ -157,11 +157,19 @@ describe("MCP tool definitions", () => {
     );
     assert.throws(
       () => callTool("audit_repo", { repoRoot: ".", changedPaths: [""] }),
-      /changedPaths must be an array of non-empty strings/
+      (error) =>
+        error.kind === "invalid-arguments" &&
+        error.details.toolName === "audit_repo" &&
+        error.details.argument === "changedPaths" &&
+        /changedPaths must be an array of non-empty strings/.test(error.message)
     );
     assert.throws(
       () => callTool("audit_projects", { repoRoot: ".", changedPaths: [""] }),
-      /changedPaths must be an array of non-empty strings/
+      (error) =>
+        error.kind === "invalid-arguments" &&
+        error.details.toolName === "audit_projects" &&
+        error.details.argument === "changedPaths" &&
+        /changedPaths must be an array of non-empty strings/.test(error.message)
     );
   });
 
