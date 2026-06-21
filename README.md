@@ -38,6 +38,7 @@ npm run detect:apple-fixture
 npm run detect:apple-fixture:json
 npm run audit-projects:example
 npm run audit-projects:example:json
+npm run audit-projects:changed-since
 npm run summarize-projects:example
 npm run summarize-projects:example:json
 npm run rank-projects:example

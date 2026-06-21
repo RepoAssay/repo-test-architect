@@ -35,6 +35,7 @@
     "detect:apple-fixture:json": "node ./src/cli/index.js detect ./examples/apple-xcode-mixed --format json",
     "audit-projects:example": "node ./src/cli/index.js audit-projects ./examples/polyglot-workspace",
     "audit-projects:example:json": "node ./src/cli/index.js audit-projects ./examples/polyglot-workspace --format json",
+    "audit-projects:changed-since": "node ./src/cli/index.js audit-projects . --changed-since HEAD --format json",
     "summarize-projects:example": "node ./src/cli/index.js summarize-projects ./examples/polyglot-workspace",
     "summarize-projects:example:json": "node ./src/cli/index.js summarize-projects ./examples/polyglot-workspace --format json",
     "rank-projects:example": "node ./src/cli/index.js rank-projects ./examples/polyglot-workspace",

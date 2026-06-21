@@ -478,10 +478,13 @@ For PR-style workflows, use `--changed`:
 ```powershell
 node ./src/cli/index.js audit . --changed --format json
 node ./src/cli/index.js plan . --changed --format json
+node ./src/cli/index.js audit-projects . --changed --format json
 node ./src/cli/index.js plan . --changed-since main --format json
+node ./src/cli/index.js audit-projects . --changed-since main --format json
 ```
 
 The repository profile still uses the full repo. Candidate targets are limited to changed source files reported by Git.
+For project-aware commands, repository-level changed paths are partitioned by detected project root before each adapter runs, so JavaScript, Kotlin/JVM, and later adapters receive project-relative changed paths.
 
 ## Signals
 
