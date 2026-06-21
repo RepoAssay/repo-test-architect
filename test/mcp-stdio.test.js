@@ -61,4 +61,32 @@ describe("MCP stdio scaffold", () => {
     assert.equal(response[0].id, 2);
     assert.equal(response[1].error.code, -32601);
   });
+
+  it("returns structured tool errors over stdio", () => {
+    const request = {
+      jsonrpc: "2.0",
+      id: 4,
+      method: "tools/call",
+      params: {
+        name: "audit_repo",
+        arguments: {
+          repoRoot: ".",
+          changedPaths: [""]
+        }
+      }
+    };
+    const result = spawnSync(process.execPath, [stdioPath], {
+      input: `${JSON.stringify(request)}\n`,
+      encoding: "utf8"
+    });
+
+    assert.equal(result.status, 0);
+
+    const response = JSON.parse(result.stdout.trim());
+    assert.equal(response.id, 4);
+    assert.equal(response.error.code, -32000);
+    assert.equal(response.error.data.kind, "invalid-arguments");
+    assert.equal(response.error.data.toolName, "audit_repo");
+    assert.equal(response.error.data.argument, "changedPaths");
+  });
 });

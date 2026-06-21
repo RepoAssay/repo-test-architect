@@ -93,6 +93,19 @@ try {
     }
   });
 
+  const invalidChangedPaths = await sendRequest({
+    jsonrpc: "2.0",
+    id: 11,
+    method: "tools/call",
+    params: {
+      name: "audit_repo",
+      arguments: {
+        repoRoot: ".",
+        changedPaths: [""]
+      }
+    }
+  });
+
   const statsAfterError = await sendRequest({
     jsonrpc: "2.0",
     id: 7,
@@ -159,6 +172,12 @@ try {
   assert.equal(missingTool.error.code, -32000);
   assert.equal(missingTool.error.data.kind, "unknown-tool");
   assert.equal(missingTool.error.data.toolName, "missing_tool");
+
+  assert.equal(invalidChangedPaths.id, 11);
+  assert.equal(invalidChangedPaths.error.code, -32000);
+  assert.equal(invalidChangedPaths.error.data.kind, "invalid-arguments");
+  assert.equal(invalidChangedPaths.error.data.toolName, "audit_repo");
+  assert.equal(invalidChangedPaths.error.data.argument, "changedPaths");
 
   const statsArtifact = parseToolArtifact(statsAfterError);
   assert.equal(statsAfterError.id, 7);
