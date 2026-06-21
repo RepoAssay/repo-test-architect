@@ -48,7 +48,7 @@ export const mcpTools = [
       changedPaths: {
         type: "array",
         description: "Optional repository-relative source paths to limit target selection inside detected projects.",
-        items: { type: "string" }
+        items: { type: "string", minLength: 1 }
       }
     }, ["repoRoot"])
   },
@@ -102,7 +102,7 @@ export const mcpTools = [
       changedPaths: {
         type: "array",
         description: "Optional repository-relative source paths to limit target selection.",
-        items: { type: "string" }
+        items: { type: "string", minLength: 1 }
       }
     }, ["repoRoot"])
   },

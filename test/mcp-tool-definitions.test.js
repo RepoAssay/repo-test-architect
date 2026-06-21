@@ -36,6 +36,16 @@ describe("MCP tool definitions", () => {
     }
   });
 
+  it("declares non-empty changed path items", () => {
+    const changedPathTools = ["audit_projects", "audit_repo"];
+
+    for (const toolName of changedPathTools) {
+      const tool = mcpTools.find((candidate) => candidate.name === toolName);
+
+      assert.equal(tool.inputSchema.properties.changedPaths.items.minLength, 1);
+    }
+  });
+
   it("dispatches adapter registry, project detection rules, project detection, project audits, audit, plan, explanation, and ranking tools", () => {
     const adapterRegistry = callTool("list_adapters");
     const projectDetectionRules = callTool("list_project_detection_rules");

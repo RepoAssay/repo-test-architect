@@ -71,7 +71,8 @@
             "type": "array",
             "description": "Optional repository-relative source paths to limit target selection inside detected projects.",
             "items": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             }
           }
         }
@@ -208,7 +209,8 @@
             "type": "array",
             "description": "Optional repository-relative source paths to limit target selection.",
             "items": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             }
           }
         }
