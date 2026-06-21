@@ -119,7 +119,7 @@ function shouldRead(relative) {
 function buildProfile(root, files) {
   const paths = files.map((file) => normalizePath(file.path));
   const packageText = files.find((file) => normalizePath(file.path) === "Package.swift")?.content ?? "";
-  const testFrameworks = detectTestFrameworks(paths, packageText);
+  const testFrameworks = detectTestFrameworks(files, packageText);
   const testCommand = detectTestCommand(paths, testFrameworks);
   const existingTestLocations = detectExistingTestLocations(paths);
   const blockers = detectBlockers(testCommand, testFrameworks);
@@ -153,10 +153,19 @@ function detectPackageManagers(paths) {
   return [...managers].sort();
 }
 
-function detectTestFrameworks(paths, packageText) {
+function detectTestFrameworks(files, packageText) {
   const frameworks = new Set();
   const testText = packageText.toLowerCase();
-  if (paths.some((item) => item.startsWith("Tests/") && item.endsWith(".swift"))) frameworks.add("XCTest");
+  const sourceText = files.map((file) => file.content).join("\n");
+
+  if (/^\s*import\s+XCTest\b/m.test(sourceText)) {
+    frameworks.add("XCTest");
+  }
+
+  if (/^\s*import\s+Testing\b/m.test(sourceText)) {
+    frameworks.add("Swift Testing");
+  }
+
   if (testText.includes("swift-testing") || testText.includes("package(url: \"https://github.com/apple/swift-testing")) {
     frameworks.add("Swift Testing");
   }

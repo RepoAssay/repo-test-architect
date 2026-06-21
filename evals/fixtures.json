@@ -33,5 +33,10 @@
     "name": "swift-spm-xctest",
     "adapter": "swift",
     "path": "examples/swift-spm-xctest"
+  },
+  {
+    "name": "swift-spm-swift-testing",
+    "adapter": "swift",
+    "path": "examples/swift-spm-swift-testing"
   }
 ]

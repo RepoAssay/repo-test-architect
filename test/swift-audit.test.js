@@ -4,6 +4,7 @@ import { describe, it } from "node:test";
 import { auditSwiftRepo } from "../src/adapters/swift/audit.js";
 
 const exampleRoot = path.resolve("examples/swift-spm-xctest");
+const swiftTestingRoot = path.resolve("examples/swift-spm-swift-testing");
 
 describe("Swift audit adapter", () => {
   it("detects SwiftPM, XCTest, and static Swift conventions", () => {
@@ -110,6 +111,26 @@ describe("Swift audit adapter", () => {
     assert.deepEqual(
       audit.skipped.map((target) => target.name),
       ["CheckoutView", "LegacyPaymentClient"]
+    );
+  });
+
+  it("detects Swift Testing package conventions", () => {
+    const audit = auditSwiftRepo(swiftTestingRoot);
+
+    assert.deepEqual(audit.profile.languages, ["swift"]);
+    assert.deepEqual(audit.profile.packageManagers, ["swiftpm"]);
+    assert.deepEqual(audit.profile.testFrameworks, ["Swift Testing"]);
+    assert.equal(audit.profile.testCommand, "swift test");
+    assert.equal(audit.profile.confidence, "high");
+    assert.ok(audit.profile.setupSignals.includes("swift package manager"));
+    assert.ok(audit.profile.setupSignals.includes("swiftpm test target"));
+    assert.deepEqual(
+      audit.coveredButRisky.map((target) => target.name),
+      ["DiscountValidator"]
+    );
+    assert.deepEqual(
+      audit.skipped.map((target) => target.name),
+      ["PriceResponseDTO"]
     );
   });
 });

@@ -1,0 +1,61 @@
+{
+  "schemaVersion": "model-consistency-scenario/v1",
+  "id": "swift-spm-swift-testing-plan",
+  "description": "Different model profiles should preserve Swift Testing planning decisions, including SwiftPM verification, existing test evidence, and DTO deferral.",
+  "sourceArtifact": {
+    "path": "evals/expected/swift-spm-swift-testing.audit.json",
+    "schemaVersion": "audit/v1"
+  },
+  "toolCall": {
+    "toolName": "generate_test_plan",
+    "arguments": {}
+  },
+  "lockedFields": [
+    {
+      "path": "summary.verificationCommand",
+      "expected": "swift test",
+      "reason": "Swift Testing plans must preserve the repo-native SwiftPM test command."
+    },
+    {
+      "path": "summary.addTestCount",
+      "expected": 0,
+      "reason": "The fixture has existing Swift Testing coverage for the validator."
+    },
+    {
+      "path": "summary.extendTestCount",
+      "expected": 1,
+      "reason": "The existing DiscountValidator test should be extended for missing edge cases."
+    },
+    {
+      "path": "summary.deferredCount",
+      "expected": 1,
+      "reason": "The DTO should remain deferred from direct testing."
+    },
+    {
+      "path": "items[0].id",
+      "expected": "extend-test:Sources/PriceRules/DiscountValidator.swift",
+      "reason": "Covered risky Swift validator logic should keep a stable extend-test item id."
+    },
+    {
+      "path": "items[0].existingTestPaths[0]",
+      "expected": "Tests/PriceRulesTests/DiscountValidatorTests.swift",
+      "reason": "The adapter must preserve matching Swift Testing evidence."
+    },
+    {
+      "path": "items[1].id",
+      "expected": "defer:Sources/PriceRules/PriceResponseDTO.swift",
+      "reason": "DTO-style Swift models should not become direct test targets."
+    }
+  ],
+  "allowedVariations": [
+    "summary wording",
+    "Swift Testing explanation wording",
+    "optional detail depth"
+  ],
+  "unexpectedVariations": [
+    "missing SwiftPM verification command",
+    "direct DTO test recommendation",
+    "missing existing Swift Testing evidence",
+    "different plan action counts"
+  ]
+}

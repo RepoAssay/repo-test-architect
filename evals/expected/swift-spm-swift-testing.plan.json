@@ -1,0 +1,57 @@
+{
+  "schemaVersion": "plan/v1",
+  "summary": {
+    "confidence": "high",
+    "verificationCommand": "swift test",
+    "blockerCount": 0,
+    "addTestCount": 0,
+    "extendTestCount": 1,
+    "deferredCount": 1
+  },
+  "blockers": [],
+  "items": [
+    {
+      "id": "extend-test:Sources/PriceRules/DiscountValidator.swift",
+      "action": "extend-test",
+      "targetId": "Sources/PriceRules/DiscountValidator.swift",
+      "target": "DiscountValidator",
+      "path": "Sources/PriceRules/DiscountValidator.swift",
+      "testLevel": "unit",
+      "priority": 7,
+      "riskReductionScore": 9,
+      "maintenanceCost": 2,
+      "rationale": [
+        "Pure transformation logic",
+        "edge-case surface",
+        "Existing test file detected; review missing edge cases"
+      ],
+      "sourceSignals": [
+        "pure-logic",
+        "edge-case-surface",
+        "matching-test"
+      ],
+      "existingTestPaths": [
+        "Tests/PriceRulesTests/DiscountValidatorTests.swift"
+      ]
+    },
+    {
+      "id": "defer:Sources/PriceRules/PriceResponseDTO.swift",
+      "action": "defer",
+      "targetId": "Sources/PriceRules/PriceResponseDTO.swift",
+      "target": "PriceResponseDTO",
+      "path": "Sources/PriceRules/PriceResponseDTO.swift",
+      "testLevel": "none",
+      "priority": -2,
+      "riskReductionScore": 2,
+      "maintenanceCost": 4,
+      "rationale": [
+        "DTO-only models are usually better covered through decoding, mapper, or boundary tests.",
+        "Cover through parser, mapper, networking, repository, or route integration tests that consume the model."
+      ],
+      "sourceSignals": [
+        "dto-only"
+      ],
+      "existingTestPaths": []
+    }
+  ]
+}
