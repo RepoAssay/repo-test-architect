@@ -105,6 +105,21 @@ describe("tool API", () => {
     assert.equal(getAuditGraph(audit), audit);
   });
 
+  it("passes changed paths to explicit adapters", () => {
+    const audit = auditRepo(path.resolve("examples/kotlin-junit-basic"), {
+      adapterId: "kotlin",
+      changedPaths: ["src/main/java/com/example/checkout/MoneyFormatter.java"]
+    });
+
+    assert.equal(audit.schemaVersion, "audit/v1");
+    assert.deepEqual(
+      audit.untestedCandidates.map((target) => target.name),
+      ["MoneyFormatter"]
+    );
+    assert.deepEqual(audit.coveredButRisky, []);
+    assert.deepEqual(audit.skipped, []);
+  });
+
   it("rejects unsupported audit adapters", () => {
     assert.throws(
       () => auditRepo(path.resolve("examples/node-vitest-basic"), { adapterId: "swift" }),
