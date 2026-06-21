@@ -107,6 +107,7 @@ describe("package manifest", () => {
     assert.ok(smoke.includes("scripts/check-pack-contents.js"));
     assert.ok(smoke.includes("scripts/check-bin-entrypoints.js"));
     assert.ok(smoke.includes("scripts/check-demo-script.js"));
+    assert.ok(smoke.includes("scripts/check-mcp-stdio-smoke.js"));
     assert.ok(smoke.includes("scripts/check-release-readiness.js"));
     assert.ok(smoke.includes("scripts/support/npm-runner.js"));
   });
