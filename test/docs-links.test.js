@@ -128,6 +128,8 @@ describe("docs links", () => {
     assert.ok(publicReadiness.includes("Not Ready To Publish"));
     assert.ok(publicReadiness.includes("package remains `private: true`"));
     assert.ok(publicReadiness.includes("final public repository URL is not configured"));
+    assert.ok(publicReadiness.includes("package metadata still needs final repository, homepage, bugs, and keyword decisions"));
+    assert.ok(publicReadiness.includes("package manifest currently declares MIT"));
     assert.ok(publicReadiness.includes("native test generation is still deferred"));
     assert.ok(publicReadiness.includes("real MCP SDK transport wrapper is still pending"));
     assert.ok(publicReadiness.includes("confirm the license file and copyright owner"));

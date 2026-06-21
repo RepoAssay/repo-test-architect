@@ -21,7 +21,8 @@ This document tracks what can be shown publicly before the project is ready for 
 
 - package remains `private: true`
 - final public repository URL is not configured
-- package metadata still needs final repository, homepage, bugs, license, and keyword decisions
+- package metadata still needs final repository, homepage, bugs, and keyword decisions
+- package manifest currently declares MIT, but the license file and copyright owner still need confirmation before publishing
 - native test generation is still deferred
 - real MCP SDK transport wrapper is still pending
 - remote MCP hosting is out of scope for the first release

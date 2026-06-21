@@ -21,8 +21,8 @@ This project is not ready to publish yet. Keep `private: true` in `package.json`
   - `repository`
   - `homepage`
   - `bugs`
-  - final `license`
   - final `keywords`
+- confirm the package manifest license, add the matching license file, and verify the copyright owner
 
 ## Public Docs
 
