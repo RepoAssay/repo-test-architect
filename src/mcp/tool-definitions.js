@@ -256,8 +256,8 @@ function requireObject(value, name) {
 function optionalStringArray(value, name) {
   if (value === undefined) return undefined;
 
-  if (!Array.isArray(value) || value.some((item) => typeof item !== "string")) {
-    throw new Error(`${name} must be an array of strings.`);
+  if (!Array.isArray(value) || value.some((item) => typeof item !== "string" || item.length === 0)) {
+    throw new Error(`${name} must be an array of non-empty strings.`);
   }
 
   return value;

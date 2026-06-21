@@ -145,6 +145,14 @@ describe("MCP tool definitions", () => {
       () => callTool("missing_tool", {}),
       (error) => error.kind === "unknown-tool" && /Unknown MCP tool/.test(error.message)
     );
+    assert.throws(
+      () => callTool("audit_repo", { repoRoot: ".", changedPaths: [""] }),
+      /changedPaths must be an array of non-empty strings/
+    );
+    assert.throws(
+      () => callTool("audit_projects", { repoRoot: ".", changedPaths: [""] }),
+      /changedPaths must be an array of non-empty strings/
+    );
   });
 
   it("enforces declared required and allowed arguments", () => {
