@@ -18,4 +18,12 @@ describe("package contents", () => {
     assert.match(checker, /"LICENSE"/);
     assert.doesNotMatch(checker, /requiredFiles = \[[\s\S]*"LICENSE"/);
   });
+
+  it("requires check script dependencies needed by packaged release verification", () => {
+    const checker = fs.readFileSync("scripts/check-pack-contents.js", "utf8");
+
+    assert.match(checker, /"scripts\/check-demo-script\.js"/);
+    assert.match(checker, /"scripts\/check-release-readiness\.js"/);
+    assert.match(checker, /"scripts\/support\/npm-runner\.js"/);
+  });
 });
