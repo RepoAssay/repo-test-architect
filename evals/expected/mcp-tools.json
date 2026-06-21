@@ -66,6 +66,13 @@
           "repoRoot": {
             "type": "string",
             "description": "Repository root path."
+          },
+          "changedPaths": {
+            "type": "array",
+            "description": "Optional repository-relative source paths to limit target selection inside detected projects.",
+            "items": {
+              "type": "string"
+            }
           }
         }
       }

@@ -111,6 +111,31 @@ describe("MCP tool definitions", () => {
     assert.deepEqual(audit.skipped, []);
   });
 
+  it("passes changed paths through audit_projects", () => {
+    const projectAudits = callTool("audit_projects", {
+      repoRoot: path.resolve("examples/polyglot-workspace"),
+      changedPaths: ["apps/web/src/sessionClient.ts"]
+    });
+
+    assert.equal(projectAudits.schemaVersion, "project-audits/v1");
+    assert.deepEqual(
+      projectAudits.audits.map((entry) => ({
+        projectId: entry.projectId,
+        untested: entry.audit.untestedCandidates.map((target) => target.path)
+      })),
+      [
+        {
+          projectId: "apps/android",
+          untested: []
+        },
+        {
+          projectId: "apps/web",
+          untested: ["src/sessionClient.ts"]
+        }
+      ]
+    );
+  });
+
   it("validates tool input before dispatch", () => {
     assert.throws(
       () => callTool("audit_repo", {}),

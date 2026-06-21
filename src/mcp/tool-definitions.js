@@ -44,7 +44,12 @@ export const mcpTools = [
     description: "Audit detected supported projects and report unsupported project roots.",
     outputArtifact: artifact("project-audits/v1", "schemas/project-audits-v1.schema.json"),
     inputSchema: objectSchema({
-      repoRoot: { type: "string", description: "Repository root path." }
+      repoRoot: { type: "string", description: "Repository root path." },
+      changedPaths: {
+        type: "array",
+        description: "Optional repository-relative source paths to limit target selection inside detected projects.",
+        items: { type: "string" }
+      }
     }, ["repoRoot"])
   },
   {
@@ -172,7 +177,9 @@ export function callTool(name, args = {}) {
     case "detect_projects":
       return detectRepoProjects(requireString(args.repoRoot, "repoRoot"));
     case "audit_projects":
-      return auditRepoProjects(requireString(args.repoRoot, "repoRoot"));
+      return auditRepoProjects(requireString(args.repoRoot, "repoRoot"), {
+        changedPaths: optionalStringArray(args.changedPaths, "changedPaths")
+      });
     case "summarize_project_audits":
       return summarizeRepoProjectAudits(requireObject(args.projectAudits, "projectAudits"));
     case "rank_project_candidates":
