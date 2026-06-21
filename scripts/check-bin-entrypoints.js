@@ -1,29 +1,37 @@
 #!/usr/bin/env node
 import { execFileSync, spawnSync } from "node:child_process";
 import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 const packageJson = JSON.parse(fs.readFileSync("package.json", "utf8"));
 
-const checks = {
+export const binChecks = {
   "repo-test-architect": checkCli,
   "repo-test-architect-mcp": checkMcpStdio,
   "repo-test-architect-mcp-invoke": checkMcpInvoke
 };
 
-const binNames = Object.keys(packageJson.bin ?? {});
-const missingChecks = binNames.filter((binName) => !checks[binName]);
-
-if (missingChecks.length > 0) {
-  console.error(`Missing bin entrypoint checks: ${missingChecks.join(", ")}`);
-  process.exit(1);
+if (isMainModule()) {
+  runBinEntrypointChecks();
 }
 
-for (const binName of binNames) {
-  const binPath = packageJson.bin[binName];
-  checks[binName](binPath);
-}
+export function runBinEntrypointChecks() {
+  const binNames = Object.keys(packageJson.bin ?? {});
+  const missingChecks = binNames.filter((binName) => !binChecks[binName]);
 
-console.log(`Bin entrypoint check passed (${binNames.length} binaries).`);
+  if (missingChecks.length > 0) {
+    console.error(`Missing bin entrypoint checks: ${missingChecks.join(", ")}`);
+    process.exit(1);
+  }
+
+  for (const binName of binNames) {
+    const binPath = packageJson.bin[binName];
+    binChecks[binName](binPath);
+  }
+
+  console.log(`Bin entrypoint check passed (${binNames.length} binaries).`);
+}
 
 function checkCli(binPath) {
   const output = execNode(binPath, ["adapters", "--format", "json"]);
@@ -91,4 +99,8 @@ function assertTrue(condition, message) {
   if (!condition) {
     throw new Error(message);
   }
+}
+
+function isMainModule() {
+  return process.argv[1] ? path.resolve(process.argv[1]) === fileURLToPath(import.meta.url) : false;
 }
