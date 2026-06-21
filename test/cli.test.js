@@ -524,11 +524,11 @@ describe("CLI", () => {
   it("reports available adapters when an explicit adapter is unsupported", () => {
     assert.throws(
       () =>
-        execFileSync(process.execPath, [cliPath, "audit", fixturePath, "--adapter", "swift"], {
+        execFileSync(process.execPath, [cliPath, "audit", fixturePath, "--adapter", "ruby"], {
           encoding: "utf8",
           stdio: "pipe"
         }),
-      /Unsupported adapter: swift\. Available adapters: javascript, kotlin\./
+      /Unsupported adapter: ruby\. Available adapters: javascript, kotlin, swift\./
     );
   });
 

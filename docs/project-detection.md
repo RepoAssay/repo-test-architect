@@ -23,8 +23,8 @@ npm run detect-rules:json
 | `mix.exs` | `elixir` | `elixir` | Detected, unsupported |
 | `go.mod` | `go` | `go` | Detected, unsupported |
 | `Cargo.toml` | `rust` | `rust` | Detected, unsupported |
-| `Package.swift` | `swift` | `swift` | Detected, unsupported |
-| `*.xcodeproj` | `apple` | `swift`, `objective-c` | Detected, unsupported |
+| `Package.swift` | `swift` | `swift` | Supported by experimental `swift` |
+| `*.xcodeproj` | `apple` | `swift`, `objective-c` | Supported by experimental `swift` |
 | `*.csproj` | `dotnet` | `csharp` | Detected, unsupported |
 | `pom.xml` | `jvm` | `java`, `kotlin` | Supported by experimental `kotlin` |
 | `build.gradle` | `jvm` | `kotlin`, `java` | Supported by experimental `kotlin` |

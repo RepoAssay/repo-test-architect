@@ -199,7 +199,7 @@ describe("project detector", () => {
     );
   });
 
-  it("detects Xcode project directories as unsupported Apple projects", () => {
+  it("detects Xcode project directories as experimental Swift adapter projects", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-xcode-"));
     fs.mkdirSync(path.join(root, "apps", "ios", "Checkout.xcodeproj"), { recursive: true });
     fs.writeFileSync(path.join(root, "apps", "ios", "Checkout.xcodeproj", "project.pbxproj"), "// !$*UTF8*$!\n");
@@ -212,6 +212,7 @@ describe("project detector", () => {
         ecosystems: project.ecosystems,
         languages: project.languages,
         markerFiles: project.markerFiles,
+        adapterIds: project.adapterIds,
         supported: project.supported
       })),
       [
@@ -220,7 +221,8 @@ describe("project detector", () => {
           ecosystems: ["apple"],
           languages: ["objective-c", "swift"],
           markerFiles: ["apps/ios/Checkout.xcodeproj"],
-          supported: false
+          adapterIds: ["swift"],
+          supported: true
         }
       ]
     );
@@ -242,13 +244,13 @@ describe("project detector", () => {
     assert.deepEqual(detection.projects[0].markerFiles, ["apps/ios/Checkout.xcodeproj"]);
   });
 
-  it("detects the mixed Apple Xcode fixture as one unsupported Apple project", () => {
+  it("detects the mixed Apple Xcode fixture as one experimental Swift adapter project", () => {
     const fixtureRoot = path.resolve("examples/apple-xcode-mixed");
     const detection = detectProjects(fixtureRoot);
 
     assert.equal(detection.summary.projectCount, 1);
-    assert.equal(detection.summary.supportedProjectCount, 0);
-    assert.equal(detection.summary.unsupportedProjectCount, 1);
+    assert.equal(detection.summary.supportedProjectCount, 1);
+    assert.equal(detection.summary.unsupportedProjectCount, 0);
     assert.ok(fs.existsSync(path.join(fixtureRoot, "Sources", "CheckoutView.swift")));
     assert.ok(fs.existsSync(path.join(fixtureRoot, "Sources", "LegacyPaymentClient.m")));
     assert.deepEqual(
@@ -266,8 +268,8 @@ describe("project detector", () => {
           ecosystems: ["apple"],
           languages: ["objective-c", "swift"],
           markerFiles: ["CheckoutApp.xcodeproj"],
-          adapterIds: [],
-          supported: false
+          adapterIds: ["swift"],
+          supported: true
         }
       ]
     );

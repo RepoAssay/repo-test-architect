@@ -27,9 +27,10 @@ describe("tool API", () => {
     const registry = getAdapterRegistry();
 
     assert.equal(registry.schemaVersion, "adapter-registry/v1");
-    assert.deepEqual(registry.adapters.map((adapter) => adapter.id), ["javascript", "kotlin"]);
+    assert.deepEqual(registry.adapters.map((adapter) => adapter.id), ["javascript", "kotlin", "swift"]);
     assert.deepEqual(registry.adapters[0].supportedProjectTypes, ["node", "express", "react"]);
     assert.deepEqual(registry.adapters[1].supportedProjectTypes, ["gradle-jvm", "maven-jvm"]);
+    assert.deepEqual(registry.adapters[2].supportedProjectTypes, ["swift-package", "apple-xcode"]);
   });
 
   it("detects repository projects", () => {
@@ -160,8 +161,8 @@ describe("tool API", () => {
 
   it("rejects unsupported audit adapters", () => {
     assert.throws(
-      () => auditRepo(path.resolve("examples/node-vitest-basic"), { adapterId: "swift" }),
-      /Unsupported adapter: swift\. Available adapters: javascript, kotlin\./
+      () => auditRepo(path.resolve("examples/node-vitest-basic"), { adapterId: "ruby" }),
+      /Unsupported adapter: ruby\. Available adapters: javascript, kotlin, swift\./
     );
   });
 

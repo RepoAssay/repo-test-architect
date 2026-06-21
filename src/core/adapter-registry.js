@@ -1,5 +1,6 @@
 import { auditJavaScriptRepo } from "../adapters/javascript/audit.js";
 import { auditKotlinRepo } from "../adapters/kotlin/audit.js";
+import { auditSwiftRepo } from "../adapters/swift/audit.js";
 
 /**
  * @typedef {object} AuditRepoOptions
@@ -55,6 +56,20 @@ export const adapters = [
     emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"],
     audit(repoRoot, options = {}) {
       return auditKotlinRepo(repoRoot, {
+        changedPaths: options.changedPaths
+      });
+    }
+  },
+  {
+    id: "swift",
+    ecosystems: ["apple", "swift"],
+    languages: ["objective-c", "swift"],
+    maturity: "experimental",
+    supportedTestFrameworks: ["Swift Testing", "XCTest"],
+    supportedProjectTypes: ["swift-package", "apple-xcode"],
+    emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"],
+    audit(repoRoot, options = {}) {
+      return auditSwiftRepo(repoRoot, {
         changedPaths: options.changedPaths
       });
     }

@@ -23,6 +23,15 @@ describe("adapter registry", () => {
         supportedTestFrameworks: ["junit", "kotlin-test"],
         supportedProjectTypes: ["gradle-jvm", "maven-jvm"],
         emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"]
+      },
+      {
+        id: "swift",
+        ecosystems: ["apple", "swift"],
+        languages: ["objective-c", "swift"],
+        maturity: "experimental",
+        supportedTestFrameworks: ["Swift Testing", "XCTest"],
+        supportedProjectTypes: ["swift-package", "apple-xcode"],
+        emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"]
       }
     ]);
   });
@@ -48,6 +57,15 @@ describe("adapter registry", () => {
           supportedTestFrameworks: ["junit", "kotlin-test"],
           supportedProjectTypes: ["gradle-jvm", "maven-jvm"],
           emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"]
+        },
+        {
+          id: "swift",
+          ecosystems: ["apple", "swift"],
+          languages: ["objective-c", "swift"],
+          maturity: "experimental",
+          supportedTestFrameworks: ["Swift Testing", "XCTest"],
+          supportedProjectTypes: ["swift-package", "apple-xcode"],
+          emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"]
         }
       ]
     });
@@ -63,8 +81,8 @@ describe("adapter registry", () => {
 
   it("rejects unsupported adapters", () => {
     assert.throws(
-      () => getAdapter("swift"),
-      /Unsupported adapter: swift\. Available adapters: javascript, kotlin\./
+      () => getAdapter("ruby"),
+      /Unsupported adapter: ruby\. Available adapters: javascript, kotlin, swift\./
     );
   });
 
@@ -74,5 +92,13 @@ describe("adapter registry", () => {
 
     assert.equal(audit.schemaVersion, "audit/v1");
     assert.deepEqual(audit.profile.testFrameworks, ["junit", "kotlin-test"]);
+  });
+
+  it("audits through the Swift adapter", () => {
+    const adapter = getAdapter("swift");
+    const audit = adapter.audit(path.resolve("examples/swift-spm-xctest"));
+
+    assert.equal(audit.schemaVersion, "audit/v1");
+    assert.deepEqual(audit.profile.testFrameworks, ["XCTest"]);
   });
 });

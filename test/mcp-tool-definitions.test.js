@@ -72,7 +72,7 @@ describe("MCP tool definitions", () => {
     const deferredGeneration = callTool("generate_selected_test", { planItemId: "add-test:src/authService.ts" });
 
     assert.equal(adapterRegistry.schemaVersion, "adapter-registry/v1");
-    assert.deepEqual(adapterRegistry.adapters.map((adapter) => adapter.id), ["javascript", "kotlin"]);
+    assert.deepEqual(adapterRegistry.adapters.map((adapter) => adapter.id), ["javascript", "kotlin", "swift"]);
     assert.equal(projectDetectionRules.schemaVersion, "project-detection-rules/v1");
     assert.ok(projectDetectionRules.markers.some((marker) => marker.fileName === "package.json"));
     assert.equal(projectDetection.schemaVersion, "project-detection/v1");
