@@ -1,8 +1,7 @@
 #!/usr/bin/env node
-import { spawnSync } from "node:child_process";
-import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { runNpmScripts } from "./support/npm-runner.js";
 
 export const demoChecks = [
   "audit:example",
@@ -31,40 +30,7 @@ if (isMainModule()) {
 }
 
 export function runDemoChecks() {
-  const npm = resolveNpmInvocation();
-
-  for (const check of demoChecks) {
-    console.log(`\n==> npm run ${check}`);
-    const result = spawnSync(npm.command, [...npm.args, "run", check], {
-      stdio: "inherit"
-    });
-
-    if (result.error) {
-      throw result.error;
-    }
-
-    if (result.status !== 0) {
-      process.exit(result.status ?? 1);
-    }
-  }
-
-  console.log("\nDemo script check passed.");
-}
-
-export function resolveNpmInvocation() {
-  if (process.env.npm_execpath) {
-    return { command: process.execPath, args: [process.env.npm_execpath] };
-  }
-
-  if (process.platform === "win32") {
-    const npmCliPath = path.join(path.dirname(process.execPath), "node_modules", "npm", "bin", "npm-cli.js");
-
-    if (fs.existsSync(npmCliPath)) {
-      return { command: process.execPath, args: [npmCliPath] };
-    }
-  }
-
-  return { command: "npm", args: [] };
+  runNpmScripts(demoChecks, "Demo script check passed.");
 }
 
 function isMainModule() {
