@@ -9,6 +9,12 @@ describe("package manifest", () => {
     assert.equal(packageJson.private, true);
   });
 
+  it("does not declare public repository metadata before the final remote is configured", () => {
+    assert.equal(packageJson.repository, undefined);
+    assert.equal(packageJson.homepage, undefined);
+    assert.equal(packageJson.bugs, undefined);
+  });
+
   it("declares the supported Node runtime floor", () => {
     assert.equal(packageJson.engines.node, ">=20");
   });
