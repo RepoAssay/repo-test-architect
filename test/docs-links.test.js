@@ -120,7 +120,9 @@ describe("docs links", () => {
 
   it("documents public readiness separately from npm publishing", () => {
     const readme = fs.readFileSync("README.md", "utf8");
+    const packageJson = JSON.parse(fs.readFileSync("package.json", "utf8"));
     const publicReadiness = fs.readFileSync("docs/public-readiness.md", "utf8");
+    const releaseChecklist = fs.readFileSync("docs/release-checklist.md", "utf8");
     const status = fs.readFileSync("docs/status.md", "utf8");
 
     assert.ok(readme.includes("[Public readiness](docs/public-readiness.md)"));
@@ -134,6 +136,14 @@ describe("docs links", () => {
     assert.ok(publicReadiness.includes("real MCP SDK transport wrapper is still pending"));
     assert.ok(publicReadiness.includes("confirm the license file and copyright owner"));
     assert.ok(publicReadiness.includes("Avoid presenting native test generation as available"));
+    assert.ok(releaseChecklist.includes("add package metadata before publishing"));
+    assert.ok(releaseChecklist.includes("final `keywords`"));
+
+    for (const field of ["repository", "homepage", "bugs"]) {
+      assert.equal(packageJson[field], undefined);
+      assert.ok(releaseChecklist.includes(`\`${field}\``), `Missing release checklist metadata field: ${field}`);
+    }
+
     assert.ok(status.includes("public-readiness checklist"));
   });
 
