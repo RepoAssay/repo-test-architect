@@ -76,6 +76,10 @@ Later adapter fixtures:
 - Vapor service tests
 - React component tests
 
+Live validation candidates:
+
+- `https://github.com/m-stenbe/cf-bff` for a real Vapor project with little or no existing test coverage
+
 ## MCP Direction
 
 The MCP server should expose stable tools around the deterministic audit graph:
