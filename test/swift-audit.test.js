@@ -264,6 +264,7 @@ func helloRoute() async throws {}
   it("audits Xcode app source folders outside SwiftPM Sources roots", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-xcode-"));
     fs.mkdirSync(path.join(root, "SampleApp.xcodeproj"), { recursive: true });
+    fs.mkdirSync(path.join(root, "SampleApp.xcodeproj", "xcshareddata", "xcschemes"), { recursive: true });
     fs.mkdirSync(path.join(root, "SampleApp", "Services"), { recursive: true });
     fs.mkdirSync(path.join(root, "SampleApp", "Views"), { recursive: true });
     fs.mkdirSync(path.join(root, "SampleAppTests"), { recursive: true });
@@ -276,6 +277,12 @@ func helloRoute() async throws {}
   archiveVersion = 1;
   objectVersion = 77;
 }
+`
+    );
+    fs.writeFileSync(
+      path.join(root, "SampleApp.xcodeproj", "xcshareddata", "xcschemes", "SampleApp.xcscheme"),
+      `<?xml version="1.0" encoding="UTF-8"?>
+<Scheme LastUpgradeVersion="1610" version="1.7"></Scheme>
 `
     );
     fs.writeFileSync(
@@ -323,7 +330,8 @@ final class SampleAppUITests: XCTestCase {
 
     assert.deepEqual(audit.profile.packageManagers, ["xcodebuild"]);
     assert.deepEqual(audit.profile.testFrameworks, ["XCTest"]);
-    assert.equal(audit.profile.testCommand, "xcodebuild test");
+    assert.equal(audit.profile.testCommand, "xcodebuild test -scheme SampleApp");
+    assert.ok(audit.profile.setupSignals.includes("xcode shared scheme"));
     assert.ok(audit.profile.detectedConventions.includes("*UITests folders"));
     assert.ok(audit.profile.existingTestLocations.includes("SampleAppTests"));
     assert.ok(audit.profile.existingTestLocations.includes("SampleAppUITests"));
@@ -335,5 +343,29 @@ final class SampleAppUITests: XCTestCase {
       audit.skipped.map((target) => `${target.name}:${target.kind}`),
       ["LoginView:ui-view"]
     );
+  });
+
+  it("prefers an Xcode scheme matching the project name when multiple shared schemes exist", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-xcode-scheme-"));
+    fs.mkdirSync(path.join(root, "Collector's Grimoire.xcodeproj", "xcshareddata", "xcschemes"), { recursive: true });
+    fs.mkdirSync(path.join(root, "Collector's GrimoireTests"), { recursive: true });
+
+    fs.writeFileSync(path.join(root, "Collector's Grimoire.xcodeproj", "project.pbxproj"), "{}\n");
+    fs.writeFileSync(path.join(root, "Collector's Grimoire.xcodeproj", "xcshareddata", "xcschemes", "Collector's Grimoire Beta.xcscheme"), "<Scheme></Scheme>\n");
+    fs.writeFileSync(path.join(root, "Collector's Grimoire.xcodeproj", "xcshareddata", "xcschemes", "Collector's Grimoire.xcscheme"), "<Scheme></Scheme>\n");
+    fs.writeFileSync(
+      path.join(root, "Collector's GrimoireTests", "CollectorTests.swift"),
+      `import XCTest
+
+final class CollectorTests: XCTestCase {
+    func testExample() {}
+}
+`
+    );
+
+    const audit = auditSwiftRepo(root);
+
+    assert.equal(audit.profile.testCommand, `xcodebuild test -scheme "Collector's Grimoire"`);
+    assert.ok(audit.profile.setupSignals.includes("xcode shared scheme"));
   });
 });

@@ -112,7 +112,8 @@ function shouldRead(relative) {
   return (
     SOURCE_EXTENSIONS.some((extension) => relative.endsWith(extension)) ||
     relative === "Package.swift" ||
-    relative.endsWith(".xcodeproj/project.pbxproj")
+    relative.endsWith(".xcodeproj/project.pbxproj") ||
+    relative.endsWith(".xcscheme")
   );
 }
 
@@ -179,7 +180,10 @@ function detectTestFrameworks(files, packageText) {
 function detectTestCommand(paths, frameworks) {
   if (frameworks.length === 0) return undefined;
   if (paths.includes("Package.swift")) return "swift test";
-  if (paths.some((item) => item.endsWith(".xcodeproj/project.pbxproj"))) return "xcodebuild test";
+  if (paths.some((item) => item.endsWith(".xcodeproj/project.pbxproj"))) {
+    const scheme = detectXcodeScheme(paths);
+    return scheme ? `xcodebuild test -scheme ${quoteShellArgument(scheme)}` : "xcodebuild test";
+  }
   return undefined;
 }
 
@@ -205,6 +209,7 @@ function detectSetupSignals(paths, packageText) {
   const signals = new Set();
   if (paths.includes("Package.swift")) signals.add("swift package manager");
   if (paths.some((item) => item.endsWith(".xcodeproj/project.pbxproj"))) signals.add("xcode project");
+  if (detectXcodeScheme(paths)) signals.add("xcode shared scheme");
   if (packageText.includes("Vapor") || packageText.includes("vapor.git")) signals.add("vapor dependency");
   if (packageText.includes(".product(name: \"XCTVapor\"")) signals.add("xctvapor test support");
   if (packageText.includes(".testTarget")) signals.add("swiftpm test target");
@@ -395,6 +400,29 @@ function isTestPath(currentPath) {
 
 function firstTestDirectory(currentPath) {
   return normalizePath(currentPath).split("/").find((segment) => /Tests?$|UITests?$/.test(segment));
+}
+
+function detectXcodeScheme(paths) {
+  const schemeNames = paths
+    .filter((item) => item.endsWith(".xcscheme"))
+    .map((item) => basenameWithoutExtension(item))
+    .sort();
+  if (schemeNames.length === 0) return undefined;
+
+  const projectNames = paths
+    .filter((item) => item.endsWith(".xcodeproj/project.pbxproj"))
+    .map((item) => item.split("/").at(-2)?.replace(/\.xcodeproj$/, ""))
+    .filter(Boolean)
+    .sort();
+
+  const projectScheme = schemeNames.find((schemeName) => projectNames.includes(schemeName));
+  if (projectScheme) return projectScheme;
+  if (schemeNames.length === 1) return schemeNames[0];
+  return undefined;
+}
+
+function quoteShellArgument(value) {
+  return /^[A-Za-z0-9_./:-]+$/.test(value) ? value : `"${value.replaceAll("\\", "\\\\").replaceAll("\"", "\\\"")}"`;
 }
 
 function hasBranching(content) {
