@@ -165,6 +165,7 @@ describe("Swift audit adapter", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-vapor-"));
     fs.mkdirSync(path.join(root, "Sources", "App", "Controllers"), { recursive: true });
     fs.mkdirSync(path.join(root, "Sources", "App", "Middleware"), { recursive: true });
+    fs.mkdirSync(path.join(root, "Sources", "App", "Models"), { recursive: true });
     fs.mkdirSync(path.join(root, "Tests", "AppTests"), { recursive: true });
 
     fs.writeFileSync(
@@ -222,6 +223,47 @@ struct AuthMiddleware: AsyncMiddleware {
 `
     );
     fs.writeFileSync(
+      path.join(root, "Sources", "App", "Models", "User.swift"),
+      `import Fluent
+import Vapor
+
+final class User: Model, Content, @unchecked Sendable {
+    static let schema = "users"
+
+    @ID(key: .id)
+    var id: UUID?
+
+    @Field(key: "email")
+    var email: String
+
+    init() {}
+}
+
+extension User {
+    struct Migration: AsyncMigration {
+        func prepare(on database: Database) async throws {
+            try await database.schema("users").id().field("email", .string, .required).create()
+        }
+
+        func revert(on database: Database) async throws {
+            try await database.schema("users").delete()
+        }
+    }
+}
+`
+    );
+    fs.writeFileSync(
+      path.join(root, "Sources", "App", "Models", "UserResponseDTO.swift"),
+      `import Vapor
+
+struct UserResponseDTO: Content {
+    var id: UUID?
+    var email: String?
+    var displayName: String?
+}
+`
+    );
+    fs.writeFileSync(
       path.join(root, "Sources", "App", "configure.swift"),
       `import Vapor
 
@@ -259,6 +301,13 @@ func helloRoute() async throws {}
     const lifecycle = audit.skipped.find((target) => target.name === "configure");
     assert.equal(lifecycle.kind, "vapor-lifecycle");
     assert.ok(lifecycle.signals.includes("vapor-lifecycle"));
+
+    assert.deepEqual(
+      audit.skipped
+        .filter((target) => target.name === "User" || target.name === "UserResponseDTO")
+        .map((target) => `${target.name}:${target.kind}:${target.signals.join(",")}`),
+      ["User:persistence-model:fluent-model", "UserResponseDTO:dto:dto-only"]
+    );
   });
 
   it("audits Xcode app source folders outside SwiftPM Sources roots", () => {

@@ -289,6 +289,17 @@ function classifySourceFile(file) {
     );
   }
 
+  if (isFluentPersistenceModel(content)) {
+    return skipped(
+      "persistence-model",
+      ["fluent-model"],
+      3,
+      5,
+      "Fluent persistence models are usually better covered through repository, route, migration, or integration tests.",
+      "Cover through XCTVapor or repository tests that exercise persistence behavior and schema migrations."
+    );
+  }
+
   if (isDtoLike(lowerPath, content)) {
     return skipped(
       "dto",
@@ -455,7 +466,7 @@ function quoteShellArgument(value) {
 }
 
 function hasBranching(content) {
-  return /\b(if|switch|guard|do|catch)\b|\?\s*[^:]+:/.test(content);
+  return /\b(if|switch|guard|do|catch)\b|\?[ \t]*[^:\n]+:/.test(content);
 }
 
 function isSwiftUIView(content) {
@@ -502,6 +513,17 @@ function isVaporRoute(currentPath, content) {
       /\bRouteCollection\b/.test(content) ||
       /\bRoutesBuilder\b/.test(content) ||
       /\b(app|routes|router|grouped)\s*\.\s*(get|post|put|patch|delete|on|group|grouped|webSocket)\s*\(/.test(content)
+    )
+  );
+}
+
+function isFluentPersistenceModel(content) {
+  return (
+    (content.includes("import Fluent") || content.includes("FluentKit")) &&
+    (
+      /\b(class|struct)\s+\w+\s*:\s*[^{}]*\bModel\b/.test(content) ||
+      /\bAsyncMigration\b|\bMigration\b/.test(content) ||
+      /@(ID|Field|Parent|Children|Siblings|OptionalField|Timestamp)\b/.test(content)
     )
   );
 }
