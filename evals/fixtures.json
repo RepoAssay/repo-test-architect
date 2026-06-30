@@ -38,5 +38,10 @@
     "name": "swift-spm-swift-testing",
     "adapter": "swift",
     "path": "examples/swift-spm-swift-testing"
+  },
+  {
+    "name": "vapor-service-tests",
+    "adapter": "swift",
+    "path": "examples/vapor-service-tests"
   }
 ]

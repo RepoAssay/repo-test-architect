@@ -1,0 +1,72 @@
+{
+  "schemaVersion": "model-consistency-scenario/v1",
+  "id": "vapor-service-tests-plan",
+  "description": "Different model profiles should preserve Vapor planning decisions, including missing test setup blockers, route integration coverage, service unit coverage, and DTO deferral.",
+  "sourceArtifact": {
+    "path": "evals/expected/vapor-service-tests.audit.json",
+    "schemaVersion": "audit/v1"
+  },
+  "toolCall": {
+    "toolName": "generate_test_plan",
+    "arguments": {}
+  },
+  "lockedFields": [
+    {
+      "path": "summary.confidence",
+      "expected": "low",
+      "reason": "Repos without a detected Swift test framework or runnable test command should remain low confidence."
+    },
+    {
+      "path": "summary.blockerCount",
+      "expected": 2,
+      "reason": "The plan must preserve both missing Swift test setup blockers."
+    },
+    {
+      "path": "summary.addTestCount",
+      "expected": 2,
+      "reason": "The Vapor route and service should both remain add-test candidates."
+    },
+    {
+      "path": "summary.deferredCount",
+      "expected": 1,
+      "reason": "The DTO should stay deferred from direct unit testing."
+    },
+    {
+      "path": "blockers[0]",
+      "expected": "No supported Swift test framework detected.",
+      "reason": "The strategy must surface the missing native Swift test framework before generation."
+    },
+    {
+      "path": "items[0].id",
+      "expected": "add-test:Sources/App/Services/UserService.swift",
+      "reason": "The async service boundary should remain a direct unit-test candidate."
+    },
+    {
+      "path": "items[1].id",
+      "expected": "add-test:Sources/App/Routes/UserRoutes.swift",
+      "reason": "The Vapor route should remain a direct integration-test candidate."
+    },
+    {
+      "path": "items[1].testLevel",
+      "expected": "integration",
+      "reason": "Vapor route behavior should be planned as integration coverage rather than isolated unit tests."
+    },
+    {
+      "path": "items[2].id",
+      "expected": "defer:Sources/App/Models/UserResponseDTO.swift",
+      "reason": "DTO-only models should stay covered through consuming boundary tests instead of direct DTO assertions."
+    }
+  ],
+  "allowedVariations": [
+    "summary wording",
+    "Vapor explanation wording",
+    "optional detail depth"
+  ],
+  "unexpectedVariations": [
+    "direct DTO test recommendation",
+    "missing Vapor route integration candidate",
+    "missing async service candidate",
+    "missing no-framework blocker",
+    "invented Swift test command"
+  ]
+}

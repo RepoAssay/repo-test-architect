@@ -196,6 +196,7 @@ function detectSetupSignals(paths, packageText) {
   const signals = new Set();
   if (paths.includes("Package.swift")) signals.add("swift package manager");
   if (paths.some((item) => item.endsWith(".xcodeproj/project.pbxproj"))) signals.add("xcode project");
+  if (packageText.includes("Vapor") || packageText.includes("vapor.git")) signals.add("vapor dependency");
   if (packageText.includes(".testTarget")) signals.add("swiftpm test target");
   if (packageText.includes(".executableTarget")) signals.add("swiftpm executable target");
   if (packageText.includes(".target")) signals.add("swiftpm target");
@@ -262,6 +263,10 @@ function classifySourceFile(file) {
       "DTO-only models are usually better covered through decoding, mapper, or boundary tests.",
       "Cover through parser, mapper, networking, repository, or route integration tests that consume the model."
     );
+  }
+
+  if (isVaporRoute(lowerPath, content)) {
+    return recommended("http-route", ["http-route", "vapor-route"], "high", "medium", "integration", 8, 5, ["HTTP route behavior", "Vapor request handling"]);
   }
 
   if (matchesAny(lowerPath, ["parser", "mapper", "validator", "formatter", "calculator"])) {
@@ -371,6 +376,18 @@ function isDtoLike(currentPath, content) {
     /(dto|model|request|response)/i.test(currentPath) &&
     /\b(struct|class)\s+\w+/.test(content) &&
     !hasBranching(content)
+  );
+}
+
+function isVaporRoute(currentPath, content) {
+  return (
+    content.includes("import Vapor") &&
+    (
+      currentPath.includes("/routes/") ||
+      /\bRouteCollection\b/.test(content) ||
+      /\bRoutesBuilder\b/.test(content) ||
+      /\bRequest\b/.test(content)
+    )
   );
 }
 

@@ -1,0 +1,75 @@
+{
+  "schemaVersion": "plan/v1",
+  "summary": {
+    "confidence": "low",
+    "blockerCount": 2,
+    "addTestCount": 2,
+    "extendTestCount": 0,
+    "deferredCount": 1
+  },
+  "blockers": [
+    "No supported Swift test framework detected.",
+    "No runnable Swift test command detected from Package.swift or Xcode project markers."
+  ],
+  "items": [
+    {
+      "id": "add-test:Sources/App/Services/UserService.swift",
+      "action": "add-test",
+      "targetId": "Sources/App/Services/UserService.swift",
+      "target": "UserService",
+      "path": "Sources/App/Services/UserService.swift",
+      "testLevel": "unit",
+      "priority": 4,
+      "riskReductionScore": 8,
+      "maintenanceCost": 4,
+      "rationale": [
+        "Service boundary",
+        "async or concurrency behavior"
+      ],
+      "sourceSignals": [
+        "service-boundary",
+        "async-or-concurrency"
+      ],
+      "existingTestPaths": []
+    },
+    {
+      "id": "add-test:Sources/App/Routes/UserRoutes.swift",
+      "action": "add-test",
+      "targetId": "Sources/App/Routes/UserRoutes.swift",
+      "target": "UserRoutes",
+      "path": "Sources/App/Routes/UserRoutes.swift",
+      "testLevel": "integration",
+      "priority": 3,
+      "riskReductionScore": 8,
+      "maintenanceCost": 5,
+      "rationale": [
+        "HTTP route behavior",
+        "Vapor request handling"
+      ],
+      "sourceSignals": [
+        "http-route",
+        "vapor-route"
+      ],
+      "existingTestPaths": []
+    },
+    {
+      "id": "defer:Sources/App/Models/UserResponseDTO.swift",
+      "action": "defer",
+      "targetId": "Sources/App/Models/UserResponseDTO.swift",
+      "target": "UserResponseDTO",
+      "path": "Sources/App/Models/UserResponseDTO.swift",
+      "testLevel": "none",
+      "priority": -2,
+      "riskReductionScore": 2,
+      "maintenanceCost": 4,
+      "rationale": [
+        "DTO-only models are usually better covered through decoding, mapper, or boundary tests.",
+        "Cover through parser, mapper, networking, repository, or route integration tests that consume the model."
+      ],
+      "sourceSignals": [
+        "dto-only"
+      ],
+      "existingTestPaths": []
+    }
+  ]
+}

@@ -1,0 +1,157 @@
+{
+  "schemaVersion": "audit/v1",
+  "profile": {
+    "root": "<fixture>",
+    "languages": [
+      "swift"
+    ],
+    "packageManagers": [
+      "swiftpm"
+    ],
+    "testFrameworks": [],
+    "architectures": [
+      "swift-package",
+      "vapor"
+    ],
+    "detectedConventions": [],
+    "existingTestLocations": [],
+    "setupSignals": [
+      "swift package manager",
+      "vapor dependency",
+      "swiftpm executable target"
+    ],
+    "confidence": "low",
+    "blockers": [
+      "No supported Swift test framework detected.",
+      "No runnable Swift test command detected from Package.swift or Xcode project markers."
+    ]
+  },
+  "untestedCandidates": [
+    {
+      "id": "Sources/App/Routes/UserRoutes.swift",
+      "name": "UserRoutes",
+      "path": "Sources/App/Routes/UserRoutes.swift",
+      "kind": "http-route",
+      "signals": [
+        "http-route",
+        "vapor-route"
+      ],
+      "risk": "high",
+      "testability": "medium",
+      "recommendedTestLevel": "integration",
+      "riskReductionScore": 8,
+      "maintenanceCost": 5,
+      "reasons": [
+        "HTTP route behavior",
+        "Vapor request handling"
+      ],
+      "existingTestPaths": []
+    },
+    {
+      "id": "Sources/App/Services/UserService.swift",
+      "name": "UserService",
+      "path": "Sources/App/Services/UserService.swift",
+      "kind": "service",
+      "signals": [
+        "service-boundary",
+        "async-or-concurrency"
+      ],
+      "risk": "high",
+      "testability": "medium",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 8,
+      "maintenanceCost": 4,
+      "reasons": [
+        "Service boundary",
+        "async or concurrency behavior"
+      ],
+      "existingTestPaths": []
+    }
+  ],
+  "coveredButRisky": [],
+  "recommended": [
+    {
+      "id": "Sources/App/Routes/UserRoutes.swift",
+      "name": "UserRoutes",
+      "path": "Sources/App/Routes/UserRoutes.swift",
+      "kind": "http-route",
+      "signals": [
+        "http-route",
+        "vapor-route"
+      ],
+      "risk": "high",
+      "testability": "medium",
+      "recommendedTestLevel": "integration",
+      "riskReductionScore": 8,
+      "maintenanceCost": 5,
+      "reasons": [
+        "HTTP route behavior",
+        "Vapor request handling"
+      ],
+      "existingTestPaths": []
+    },
+    {
+      "id": "Sources/App/Services/UserService.swift",
+      "name": "UserService",
+      "path": "Sources/App/Services/UserService.swift",
+      "kind": "service",
+      "signals": [
+        "service-boundary",
+        "async-or-concurrency"
+      ],
+      "risk": "high",
+      "testability": "medium",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 8,
+      "maintenanceCost": 4,
+      "reasons": [
+        "Service boundary",
+        "async or concurrency behavior"
+      ],
+      "existingTestPaths": []
+    }
+  ],
+  "skipped": [
+    {
+      "id": "Sources/App/configure.swift",
+      "name": "configure",
+      "path": "Sources/App/configure.swift",
+      "kind": "low-value",
+      "signals": [
+        "low-runtime-behavior"
+      ],
+      "riskReductionScore": 1,
+      "maintenanceCost": 3,
+      "reason": "No meaningful runtime behavior detected by current Swift heuristics."
+    },
+    {
+      "id": "Sources/App/routes.swift",
+      "name": "routes",
+      "path": "Sources/App/routes.swift",
+      "kind": "low-value",
+      "signals": [
+        "low-runtime-behavior"
+      ],
+      "riskReductionScore": 1,
+      "maintenanceCost": 3,
+      "reason": "No meaningful runtime behavior detected by current Swift heuristics."
+    },
+    {
+      "id": "Sources/App/Models/UserResponseDTO.swift",
+      "name": "UserResponseDTO",
+      "path": "Sources/App/Models/UserResponseDTO.swift",
+      "kind": "dto",
+      "signals": [
+        "dto-only"
+      ],
+      "riskReductionScore": 2,
+      "maintenanceCost": 4,
+      "reason": "DTO-only models are usually better covered through decoding, mapper, or boundary tests.",
+      "preferredCoveragePath": "Cover through parser, mapper, networking, repository, or route integration tests that consume the model."
+    }
+  ],
+  "risks": [
+    "UserRoutes has http route behavior, vapor request handling and has no matching test file.",
+    "UserService has service boundary, async or concurrency behavior and has no matching test file."
+  ]
+}

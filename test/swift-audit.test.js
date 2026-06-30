@@ -5,6 +5,7 @@ import { auditSwiftRepo } from "../src/adapters/swift/audit.js";
 
 const exampleRoot = path.resolve("examples/swift-spm-xctest");
 const swiftTestingRoot = path.resolve("examples/swift-spm-swift-testing");
+const vaporRoot = path.resolve("examples/vapor-service-tests");
 
 describe("Swift audit adapter", () => {
   it("detects SwiftPM, XCTest, and static Swift conventions", () => {
@@ -131,6 +132,30 @@ describe("Swift audit adapter", () => {
     assert.deepEqual(
       audit.skipped.map((target) => target.name),
       ["PriceResponseDTO"]
+    );
+  });
+
+  it("detects Vapor service routes without inventing missing test conventions", () => {
+    const audit = auditSwiftRepo(vaporRoot);
+
+    assert.deepEqual(audit.profile.languages, ["swift"]);
+    assert.deepEqual(audit.profile.packageManagers, ["swiftpm"]);
+    assert.deepEqual(audit.profile.testFrameworks, []);
+    assert.equal(audit.profile.testCommand, undefined);
+    assert.equal(audit.profile.confidence, "low");
+    assert.ok(audit.profile.architectures.includes("swift-package"));
+    assert.ok(audit.profile.architectures.includes("vapor"));
+    assert.ok(audit.profile.setupSignals.includes("vapor dependency"));
+    assert.ok(audit.profile.setupSignals.includes("swiftpm executable target"));
+    assert.ok(audit.profile.blockers.includes("No supported Swift test framework detected."));
+    assert.ok(audit.profile.blockers.includes("No runnable Swift test command detected from Package.swift or Xcode project markers."));
+    assert.deepEqual(
+      audit.untestedCandidates.map((target) => `${target.name}:${target.kind}:${target.recommendedTestLevel}`),
+      ["UserRoutes:http-route:integration", "UserService:service:unit"]
+    );
+    assert.deepEqual(
+      audit.skipped.map((target) => target.name),
+      ["configure", "routes", "UserResponseDTO"]
     );
   });
 });

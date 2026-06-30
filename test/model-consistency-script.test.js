@@ -17,7 +17,7 @@ describe("model consistency script", () => {
 
     assert.equal(summary.schemaVersion, "model-consistency-summary/v1");
     assert.equal(summary.profileName, "local-small");
-    assert.equal(summary.summary.scenarioCount, 15);
+    assert.equal(summary.summary.scenarioCount, 16);
     assert.equal(summary.summary.failureCount, 0);
   });
 
@@ -40,7 +40,7 @@ describe("model consistency script", () => {
     const comparison = JSON.parse(output);
 
     assert.equal(comparison.schemaVersion, "model-consistency-comparison/v1");
-    assert.equal(comparison.summary.alignedScenarioCount, 15);
+    assert.equal(comparison.summary.alignedScenarioCount, 16);
     assert.equal(comparison.summary.driftedScenarioCount, 0);
   });
 

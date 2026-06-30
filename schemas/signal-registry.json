@@ -113,5 +113,10 @@
     "id": "type-only",
     "category": "low-value",
     "description": "Type-only declaration file was detected."
+  },
+  {
+    "id": "vapor-route",
+    "category": "architecture",
+    "description": "Vapor route, route collection, request handler, or route builder behavior was detected."
   }
 ]
