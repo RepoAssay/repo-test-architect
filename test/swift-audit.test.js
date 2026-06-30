@@ -368,4 +368,116 @@ final class CollectorTests: XCTestCase {
     assert.equal(audit.profile.testCommand, `xcodebuild test -scheme "Collector's Grimoire"`);
     assert.ok(audit.profile.setupSignals.includes("xcode shared scheme"));
   });
+
+  it("detects popular SwiftPM test support libraries", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-swift-frameworks-"));
+    fs.mkdirSync(path.join(root, "Sources", "Feature"), { recursive: true });
+    fs.mkdirSync(path.join(root, "Tests", "FeatureTests"), { recursive: true });
+
+    fs.writeFileSync(
+      path.join(root, "Package.swift"),
+      `// swift-tools-version: 5.10
+import PackageDescription
+
+let package = Package(
+    name: "Feature",
+    dependencies: [
+        .package(url: "https://github.com/Quick/Quick.git", from: "7.0.0"),
+        .package(url: "https://github.com/Quick/Nimble.git", from: "13.0.0"),
+        .package(url: "https://github.com/pointfreeco/swift-snapshot-testing", from: "1.17.0")
+    ],
+    targets: [
+        .target(name: "Feature"),
+        .testTarget(
+            name: "FeatureTests",
+            dependencies: [
+                "Feature",
+                .product(name: "Quick", package: "Quick"),
+                .product(name: "Nimble", package: "Nimble"),
+                .product(name: "SnapshotTesting", package: "swift-snapshot-testing")
+            ]
+        )
+    ]
+)
+`
+    );
+    fs.writeFileSync(
+      path.join(root, "Sources", "Feature", "FeatureFlags.swift"),
+      `struct FeatureFlags {
+    func isEnabled(_ key: String) -> Bool {
+        key == "checkout"
+    }
+}
+`
+    );
+    fs.writeFileSync(
+      path.join(root, "Tests", "FeatureTests", "FeatureFlagsSpec.swift"),
+      `import Quick
+import Nimble
+import SnapshotTesting
+@testable import Feature
+
+final class FeatureFlagsSpec: QuickSpec {
+    override class func spec() {}
+}
+`
+    );
+
+    const audit = auditSwiftRepo(root);
+
+    assert.deepEqual(audit.profile.testFrameworks, ["Nimble", "Quick", "SnapshotTesting"]);
+    assert.equal(audit.profile.testCommand, "swift test");
+    assert.ok(audit.profile.setupSignals.includes("quick test support"));
+    assert.ok(audit.profile.setupSignals.includes("nimble assertion support"));
+    assert.ok(audit.profile.setupSignals.includes("snapshot testing support"));
+  });
+
+  it("detects Objective-C XCTest imports in mixed Apple projects", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-objc-xctest-"));
+    fs.mkdirSync(path.join(root, "LegacyApp.xcodeproj"), { recursive: true });
+    fs.mkdirSync(path.join(root, "LegacyAppTests"), { recursive: true });
+    fs.writeFileSync(path.join(root, "LegacyApp.xcodeproj", "project.pbxproj"), "{}\n");
+    fs.writeFileSync(
+      path.join(root, "LegacyAppTests", "LegacyPaymentClientTests.m"),
+      `#import <XCTest/XCTest.h>
+
+@interface LegacyPaymentClientTests : XCTestCase
+@end
+
+@implementation LegacyPaymentClientTests
+- (void)testPayment {}
+@end
+`
+    );
+
+    const audit = auditSwiftRepo(root);
+
+    assert.deepEqual(audit.profile.testFrameworks, ["XCTest"]);
+    assert.equal(audit.profile.testCommand, "xcodebuild test");
+    assert.deepEqual(audit.profile.blockers, []);
+  });
+
+  it("includes a single Xcode test plan in scheme-based test commands", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-xctestplan-"));
+    fs.mkdirSync(path.join(root, "SampleApp.xcodeproj", "xcshareddata", "xcschemes"), { recursive: true });
+    fs.mkdirSync(path.join(root, "SampleAppTests"), { recursive: true });
+
+    fs.writeFileSync(path.join(root, "SampleApp.xcodeproj", "project.pbxproj"), "{}\n");
+    fs.writeFileSync(path.join(root, "SampleApp.xcodeproj", "xcshareddata", "xcschemes", "SampleApp.xcscheme"), "<Scheme></Scheme>\n");
+    fs.writeFileSync(path.join(root, "SampleApp.xctestplan"), "{}\n");
+    fs.writeFileSync(
+      path.join(root, "SampleAppTests", "SampleAppTests.swift"),
+      `import XCTest
+
+final class SampleAppTests: XCTestCase {
+    func testExample() {}
+}
+`
+    );
+
+    const audit = auditSwiftRepo(root);
+
+    assert.equal(audit.profile.testCommand, "xcodebuild test -scheme SampleApp -testPlan SampleApp");
+    assert.ok(audit.profile.setupSignals.includes("xcode test plan"));
+  });
 });

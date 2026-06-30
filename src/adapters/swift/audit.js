@@ -113,7 +113,8 @@ function shouldRead(relative) {
     SOURCE_EXTENSIONS.some((extension) => relative.endsWith(extension)) ||
     relative === "Package.swift" ||
     relative.endsWith(".xcodeproj/project.pbxproj") ||
-    relative.endsWith(".xcscheme")
+    relative.endsWith(".xcscheme") ||
+    relative.endsWith(".xctestplan")
   );
 }
 
@@ -159,7 +160,7 @@ function detectTestFrameworks(files, packageText) {
   const testText = packageText.toLowerCase();
   const sourceText = files.map((file) => file.content).join("\n");
 
-  if (/^\s*import\s+XCTest\b/m.test(sourceText)) {
+  if (/^\s*import\s+XCTest\b/m.test(sourceText) || /^\s*#import\s+[<"]XCTest\/XCTest\.h[>"]/m.test(sourceText)) {
     frameworks.add("XCTest");
   }
 
@@ -174,6 +175,19 @@ function detectTestFrameworks(files, packageText) {
   if (testText.includes("swift-testing") || testText.includes("package(url: \"https://github.com/apple/swift-testing")) {
     frameworks.add("Swift Testing");
   }
+
+  if (/^\s*import\s+Quick\b/m.test(sourceText) || /quick\.git|Quick\/Quick|product\(name:\s*"Quick"/i.test(packageText)) {
+    frameworks.add("Quick");
+  }
+
+  if (/^\s*import\s+Nimble\b/m.test(sourceText) || /nimble\.git|Quick\/Nimble|product\(name:\s*"Nimble"/i.test(packageText)) {
+    frameworks.add("Nimble");
+  }
+
+  if (/^\s*import\s+SnapshotTesting\b/m.test(sourceText) || /swift-snapshot-testing|pointfreeco\/swift-snapshot-testing|product\(name:\s*"SnapshotTesting"/i.test(packageText)) {
+    frameworks.add("SnapshotTesting");
+  }
+
   return [...frameworks].sort();
 }
 
@@ -182,6 +196,8 @@ function detectTestCommand(paths, frameworks) {
   if (paths.includes("Package.swift")) return "swift test";
   if (paths.some((item) => item.endsWith(".xcodeproj/project.pbxproj"))) {
     const scheme = detectXcodeScheme(paths);
+    const testPlan = detectXcodeTestPlan(paths);
+    if (scheme && testPlan) return `xcodebuild test -scheme ${quoteShellArgument(scheme)} -testPlan ${quoteShellArgument(testPlan)}`;
     return scheme ? `xcodebuild test -scheme ${quoteShellArgument(scheme)}` : "xcodebuild test";
   }
   return undefined;
@@ -210,8 +226,12 @@ function detectSetupSignals(paths, packageText) {
   if (paths.includes("Package.swift")) signals.add("swift package manager");
   if (paths.some((item) => item.endsWith(".xcodeproj/project.pbxproj"))) signals.add("xcode project");
   if (detectXcodeScheme(paths)) signals.add("xcode shared scheme");
+  if (detectXcodeTestPlan(paths)) signals.add("xcode test plan");
   if (packageText.includes("Vapor") || packageText.includes("vapor.git")) signals.add("vapor dependency");
   if (packageText.includes(".product(name: \"XCTVapor\"")) signals.add("xctvapor test support");
+  if (/quick\.git|Quick\/Quick|product\(name:\s*"Quick"/i.test(packageText)) signals.add("quick test support");
+  if (/nimble\.git|Quick\/Nimble|product\(name:\s*"Nimble"/i.test(packageText)) signals.add("nimble assertion support");
+  if (/swift-snapshot-testing|pointfreeco\/swift-snapshot-testing|product\(name:\s*"SnapshotTesting"/i.test(packageText)) signals.add("snapshot testing support");
   if (packageText.includes(".testTarget")) signals.add("swiftpm test target");
   if (packageText.includes(".executableTarget")) signals.add("swiftpm executable target");
   if (packageText.includes(".target")) signals.add("swiftpm target");
@@ -418,6 +438,15 @@ function detectXcodeScheme(paths) {
   const projectScheme = schemeNames.find((schemeName) => projectNames.includes(schemeName));
   if (projectScheme) return projectScheme;
   if (schemeNames.length === 1) return schemeNames[0];
+  return undefined;
+}
+
+function detectXcodeTestPlan(paths) {
+  const testPlanNames = paths
+    .filter((item) => item.endsWith(".xctestplan"))
+    .map((item) => basenameWithoutExtension(item))
+    .sort();
+  if (testPlanNames.length === 1) return testPlanNames[0];
   return undefined;
 }
 
