@@ -1,0 +1,128 @@
+{
+  "schemaVersion": "audit/v1",
+  "profile": {
+    "root": "<fixture>",
+    "languages": [
+      "python"
+    ],
+    "packageManagers": [
+      "pyproject"
+    ],
+    "testFrameworks": [],
+    "architectures": [],
+    "detectedConventions": [],
+    "existingTestLocations": [],
+    "setupSignals": [
+      "pyproject"
+    ],
+    "confidence": "low",
+    "blockers": [
+      "No supported Python test framework detected.",
+      "No runnable Python test command detected from project markers."
+    ]
+  },
+  "untestedCandidates": [
+    {
+      "id": "src/billing_parser.py",
+      "name": "billing_parser",
+      "path": "src/billing_parser.py",
+      "kind": "pure-logic",
+      "signals": [
+        "pure-logic",
+        "edge-case-surface"
+      ],
+      "risk": "high",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 9,
+      "maintenanceCost": 2,
+      "reasons": [
+        "Pure transformation logic",
+        "edge-case surface"
+      ],
+      "existingTestPaths": []
+    },
+    {
+      "id": "src/payment_service.py",
+      "name": "payment_service",
+      "path": "src/payment_service.py",
+      "kind": "service",
+      "signals": [
+        "service-boundary",
+        "async-or-concurrency"
+      ],
+      "risk": "high",
+      "testability": "medium",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 8,
+      "maintenanceCost": 4,
+      "reasons": [
+        "Service boundary",
+        "async or concurrency behavior"
+      ],
+      "existingTestPaths": []
+    }
+  ],
+  "coveredButRisky": [],
+  "recommended": [
+    {
+      "id": "src/billing_parser.py",
+      "name": "billing_parser",
+      "path": "src/billing_parser.py",
+      "kind": "pure-logic",
+      "signals": [
+        "pure-logic",
+        "edge-case-surface"
+      ],
+      "risk": "high",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 9,
+      "maintenanceCost": 2,
+      "reasons": [
+        "Pure transformation logic",
+        "edge-case surface"
+      ],
+      "existingTestPaths": []
+    },
+    {
+      "id": "src/payment_service.py",
+      "name": "payment_service",
+      "path": "src/payment_service.py",
+      "kind": "service",
+      "signals": [
+        "service-boundary",
+        "async-or-concurrency"
+      ],
+      "risk": "high",
+      "testability": "medium",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 8,
+      "maintenanceCost": 4,
+      "reasons": [
+        "Service boundary",
+        "async or concurrency behavior"
+      ],
+      "existingTestPaths": []
+    }
+  ],
+  "skipped": [
+    {
+      "id": "src/payment_response.py",
+      "name": "payment_response",
+      "path": "src/payment_response.py",
+      "kind": "dto",
+      "signals": [
+        "dto-only"
+      ],
+      "riskReductionScore": 2,
+      "maintenanceCost": 4,
+      "reason": "DTO-only models are usually better covered through route, parser, or service tests.",
+      "preferredCoveragePath": "Cover through parser, mapper, repository, or route integration tests that consume the model."
+    }
+  ],
+  "risks": [
+    "billing_parser has pure transformation logic, edge-case surface and has no matching test file.",
+    "payment_service has service boundary, async or concurrency behavior and has no matching test file."
+  ]
+}

@@ -4,6 +4,7 @@ import { describe, it } from "node:test";
 import { auditPythonRepo } from "../src/adapters/python/audit.js";
 
 const exampleRoot = path.resolve("examples/python-pytest-service");
+const noTestsRoot = path.resolve("examples/python-no-tests-yet");
 
 describe("Python audit adapter", () => {
   it("detects pyproject, pytest, FastAPI, and existing test conventions", () => {
@@ -88,5 +89,25 @@ describe("Python audit adapter", () => {
     assert.deepEqual(audit.coveredButRisky, []);
     assert.deepEqual(audit.skipped, []);
     assert.deepEqual(audit.recommended, []);
+  });
+
+  it("reports blockers while still finding candidates when no Python tests exist yet", () => {
+    const audit = auditPythonRepo(noTestsRoot);
+
+    assert.deepEqual(audit.profile.languages, ["python"]);
+    assert.deepEqual(audit.profile.packageManagers, ["pyproject"]);
+    assert.deepEqual(audit.profile.testFrameworks, []);
+    assert.equal(audit.profile.testCommand, undefined);
+    assert.equal(audit.profile.confidence, "low");
+    assert.ok(audit.profile.blockers.includes("No supported Python test framework detected."));
+    assert.ok(audit.profile.blockers.includes("No runnable Python test command detected from project markers."));
+    assert.deepEqual(
+      audit.untestedCandidates.map((target) => `${target.name}:${target.kind}:${target.recommendedTestLevel}`),
+      ["billing_parser:pure-logic:unit", "payment_service:service:unit"]
+    );
+    assert.deepEqual(
+      audit.skipped.map((target) => `${target.name}:${target.kind}`),
+      ["payment_response:dto"]
+    );
   });
 });
