@@ -310,6 +310,139 @@ func helloRoute() async throws {}
     );
   });
 
+  it("prioritizes MongoDB query and write boundaries in Vapor apps", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-mongo-"));
+    fs.mkdirSync(path.join(root, "Sources", "App", "Controllers"), { recursive: true });
+    fs.mkdirSync(path.join(root, "Sources", "App", "Jobs"), { recursive: true });
+    fs.mkdirSync(path.join(root, "Tests", "AppTests"), { recursive: true });
+
+    fs.writeFileSync(
+      path.join(root, "Package.swift"),
+      `// swift-tools-version: 6.0
+import PackageDescription
+
+let package = Package(
+    name: "App",
+    dependencies: [
+        .package(url: "https://github.com/vapor/vapor.git", from: "4.100.0"),
+        .package(url: "https://github.com/vapor/fluent-mongo-driver.git", from: "1.4.0")
+    ],
+    targets: [
+        .executableTarget(
+            name: "App",
+            dependencies: [
+                .product(name: "Vapor", package: "vapor"),
+                .product(name: "FluentMongoDriver", package: "fluent-mongo-driver")
+            ]
+        ),
+        .testTarget(name: "AppTests", dependencies: [.target(name: "App")])
+    ]
+)
+`
+    );
+    fs.writeFileSync(
+      path.join(root, "Sources", "App", "Controllers", "PriceController.swift"),
+      `import Vapor
+import MongoKitten
+import BSON
+import FluentMongoDriver
+
+struct PriceController: RouteCollection {
+    func boot(routes: RoutesBuilder) throws {
+        routes.get("prices") { req async throws -> [PriceChange] in
+            let database = req.db(.mongo)
+            guard let database = database as? MongoDatabaseRepresentable else { throw Abort(.internalServerError) }
+            let collection = database.raw["price_changes"]
+            let pipeline: [Document] = [
+                ["$group": Document(dictionaryLiteral: ("_id", "$card_id"), ("latestPrice", Document(dictionaryLiteral: ("$push", "$price"))))],
+                ["$project": Document(dictionaryLiteral: ("_id", 0), ("top10", Document(dictionaryLiteral: ("$slice", ["$latestPrice", 10] as Document)))]
+            ]
+            return try await collection.aggregate([.init(documents: pipeline)]).decode(PriceChange.self).allResults()
+        }
+    }
+}
+
+struct PriceChange: Content {
+    let cardId: String
+}
+`
+    );
+    fs.writeFileSync(
+      path.join(root, "Sources", "App", "Controllers", "SearchController.swift"),
+      `import Vapor
+import Fluent
+import FluentMongoDriver
+
+struct SearchController: RouteCollection {
+    func boot(routes: RoutesBuilder) throws {
+        routes.get("search") { req async throws -> [Card] in
+            let query = try req.query.get(String.self, at: "query")
+            let regexPattern = ".*\\(NSRegularExpression.escapedPattern(for: query)).*"
+            var queryDocument = Document()
+            queryDocument["name"]["$regex"] = regexPattern
+            return try await Card.query(on: req.db(.mongo))
+                .filter(.custom(queryDocument))
+                .sort(\\.$name, .ascending)
+                .limit(25)
+                .all()
+        }
+    }
+}
+
+struct Card: Content {
+    let name: String
+}
+`
+    );
+    fs.writeFileSync(
+      path.join(root, "Sources", "App", "Jobs", "PriceHistoryJob.swift"),
+      `import Vapor
+import FluentMongoDriver
+
+struct PriceHistoryJob {
+    func run(app: Application, history: CardPriceHistory) async throws {
+        if let existing = try await CardPriceHistory.query(on: app.db(.mongo)).first() {
+            try await existing.update(on: app.db(.mongo))
+        } else {
+            try await history.create(on: app.db(.mongo))
+        }
+    }
+}
+
+final class CardPriceHistory {}
+`
+    );
+    fs.writeFileSync(
+      path.join(root, "Tests", "AppTests", "AppTests.swift"),
+      `import Testing
+@testable import App
+
+@Test func smoke() {}
+`
+    );
+
+    const audit = auditSwiftRepo(root);
+
+    assert.ok(audit.profile.architectures.includes("mongodb"));
+    assert.ok(audit.profile.setupSignals.includes("mongodb dependency"));
+
+    const price = audit.recommended.find((target) => target.name === "PriceController");
+    assert.equal(price.kind, "http-route");
+    assert.equal(price.riskReductionScore, 9);
+    assert.ok(price.signals.includes("mongodb-aggregation"));
+    assert.ok(price.reasons.includes("aggregation pipeline semantics"));
+
+    const search = audit.recommended.find((target) => target.name === "SearchController");
+    assert.equal(search.kind, "http-route");
+    assert.ok(search.signals.includes("mongodb-dynamic-filter"));
+    assert.ok(search.signals.includes("pagination-or-sort"));
+
+    const job = audit.recommended.find((target) => target.name === "PriceHistoryJob");
+    assert.equal(job.kind, "data-access");
+    assert.equal(job.recommendedTestLevel, "integration");
+    assert.ok(job.signals.includes("mongodb-write"));
+  });
+
   it("audits Xcode app source folders outside SwiftPM Sources roots", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-xcode-"));
     fs.mkdirSync(path.join(root, "SampleApp.xcodeproj"), { recursive: true });
