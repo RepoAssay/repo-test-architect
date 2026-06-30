@@ -162,6 +162,10 @@ function detectTestFrameworks(files, packageText) {
     frameworks.add("XCTest");
   }
 
+  if (/^\s*import\s+XCTVapor\b/m.test(sourceText) || packageText.includes(".product(name: \"XCTVapor\"")) {
+    frameworks.add("XCTVapor");
+  }
+
   if (/^\s*import\s+Testing\b/m.test(sourceText)) {
     frameworks.add("Swift Testing");
   }
@@ -182,6 +186,10 @@ function detectTestCommand(paths, frameworks) {
 function detectExistingTestLocations(paths) {
   const locations = new Set();
   if (paths.some((item) => item.startsWith("Tests/"))) locations.add("Tests");
+  for (const currentPath of paths) {
+    const testDirectory = firstTestDirectory(currentPath);
+    if (testDirectory) locations.add(testDirectory);
+  }
   return [...locations];
 }
 
@@ -189,6 +197,7 @@ function detectConventions(paths) {
   const conventions = new Set();
   if (paths.some((item) => /Tests?\.swift$/.test(item))) conventions.add("*Tests.swift files");
   if (paths.some((item) => item.startsWith("Tests/"))) conventions.add("Tests");
+  if (paths.some((item) => firstTestDirectory(item)?.endsWith("UITests"))) conventions.add("*UITests folders");
   return [...conventions];
 }
 
@@ -197,6 +206,7 @@ function detectSetupSignals(paths, packageText) {
   if (paths.includes("Package.swift")) signals.add("swift package manager");
   if (paths.some((item) => item.endsWith(".xcodeproj/project.pbxproj"))) signals.add("xcode project");
   if (packageText.includes("Vapor") || packageText.includes("vapor.git")) signals.add("vapor dependency");
+  if (packageText.includes(".product(name: \"XCTVapor\"")) signals.add("xctvapor test support");
   if (packageText.includes(".testTarget")) signals.add("swiftpm test target");
   if (packageText.includes(".executableTarget")) signals.add("swiftpm executable target");
   if (packageText.includes(".target")) signals.add("swiftpm target");
@@ -265,6 +275,21 @@ function classifySourceFile(file) {
     );
   }
 
+  if (isVaporLifecycleFile(lowerPath, content)) {
+    return skipped(
+      "vapor-lifecycle",
+      ["vapor-lifecycle"],
+      1,
+      3,
+      "Vapor bootstrap and route registration files should be covered through endpoint or application integration tests.",
+      "Cover through XCTVapor request tests that exercise registered routes and application configuration."
+    );
+  }
+
+  if (isVaporMiddleware(lowerPath, content)) {
+    return recommended("http-middleware", ["http-middleware", "vapor-middleware"], "high", "medium", "integration", 7, 4, ["HTTP middleware behavior", "Vapor request handling"]);
+  }
+
   if (isVaporRoute(lowerPath, content)) {
     return recommended("http-route", ["http-route", "vapor-route"], "high", "medium", "integration", 8, 5, ["HTTP route behavior", "Vapor request handling"]);
   }
@@ -323,14 +348,15 @@ function isIncludedByChangedPaths(currentPath, changedPaths) {
 function isSourceFile(currentPath) {
   const normalized = normalizePath(currentPath);
   return (
-    (normalized.startsWith("Sources/") || normalized.startsWith("Source/")) &&
+    normalized !== "Package.swift" &&
+    !isTestPath(normalized) &&
     SOURCE_EXTENSIONS.some((extension) => normalized.endsWith(extension))
   );
 }
 
 function isTestFile(currentPath) {
   const normalized = normalizePath(currentPath);
-  return normalized.startsWith("Tests/") && /Tests?\.swift$/.test(normalized);
+  return isTestPath(normalized) && normalized.endsWith(".swift");
 }
 
 function findExistingTests(sourcePath, testPaths) {
@@ -363,6 +389,14 @@ function matchesAny(value, fragments) {
   return fragments.some((fragment) => value.includes(fragment));
 }
 
+function isTestPath(currentPath) {
+  return normalizePath(currentPath).split("/").some((segment) => /Tests?$|UITests?$/.test(segment));
+}
+
+function firstTestDirectory(currentPath) {
+  return normalizePath(currentPath).split("/").find((segment) => /Tests?$|UITests?$/.test(segment));
+}
+
 function hasBranching(content) {
   return /\b(if|switch|guard|do|catch)\b|\?\s*[^:]+:/.test(content);
 }
@@ -379,14 +413,38 @@ function isDtoLike(currentPath, content) {
   );
 }
 
+function isVaporLifecycleFile(currentPath, content) {
+  return (
+    content.includes("import Vapor") &&
+    (
+      currentPath.endsWith("/configure.swift") ||
+      currentPath.endsWith("/entrypoint.swift") ||
+      currentPath.endsWith("/routes.swift")
+    )
+  );
+}
+
+function isVaporMiddleware(currentPath, content) {
+  return (
+    content.includes("import Vapor") &&
+    (
+      currentPath.includes("/middleware/") ||
+      /\bAsyncMiddleware\b/.test(content) ||
+      /\bMiddleware\b/.test(content) ||
+      /\bAuthenticator\b/.test(content)
+    )
+  );
+}
+
 function isVaporRoute(currentPath, content) {
   return (
     content.includes("import Vapor") &&
     (
       currentPath.includes("/routes/") ||
+      currentPath.includes("/controllers/") ||
       /\bRouteCollection\b/.test(content) ||
       /\bRoutesBuilder\b/.test(content) ||
-      /\bRequest\b/.test(content)
+      /\b(app|routes|router|grouped)\s*\.\s*(get|post|put|patch|delete|on|group|grouped|webSocket)\s*\(/.test(content)
     )
   );
 }

@@ -116,25 +116,27 @@
       "id": "Sources/App/configure.swift",
       "name": "configure",
       "path": "Sources/App/configure.swift",
-      "kind": "low-value",
+      "kind": "vapor-lifecycle",
       "signals": [
-        "low-runtime-behavior"
+        "vapor-lifecycle"
       ],
       "riskReductionScore": 1,
       "maintenanceCost": 3,
-      "reason": "No meaningful runtime behavior detected by current Swift heuristics."
+      "reason": "Vapor bootstrap and route registration files should be covered through endpoint or application integration tests.",
+      "preferredCoveragePath": "Cover through XCTVapor request tests that exercise registered routes and application configuration."
     },
     {
       "id": "Sources/App/routes.swift",
       "name": "routes",
       "path": "Sources/App/routes.swift",
-      "kind": "low-value",
+      "kind": "vapor-lifecycle",
       "signals": [
-        "low-runtime-behavior"
+        "vapor-lifecycle"
       ],
       "riskReductionScore": 1,
       "maintenanceCost": 3,
-      "reason": "No meaningful runtime behavior detected by current Swift heuristics."
+      "reason": "Vapor bootstrap and route registration files should be covered through endpoint or application integration tests.",
+      "preferredCoveragePath": "Cover through XCTVapor request tests that exercise registered routes and application configuration."
     },
     {
       "id": "Sources/App/Models/UserResponseDTO.swift",

@@ -6,8 +6,35 @@ Repo Test Architect is audit-first. Contributions should preserve deterministic 
 
 - Keep changes small and traceable.
 - Prefer focused commits that explain one product or engineering step.
-- Run `npm run release:check` before opening or updating a pull request.
+- Start each independent workstream from the current default branch.
+- Create a focused branch before editing, for example `git switch -c swift-vapor-xcode-validation`.
+- Keep unrelated local files out of commits. Prefer explicit `git add <path>` over `git add -A` when the working tree is mixed.
+- Run the relevant focused checks while iterating, then run `npm run release:check` before opening or updating a pull request.
+- Commit with a terse imperative message that names the product or engineering step.
+- Push with upstream tracking, for example `git push -u origin <branch>`.
+- Open a draft pull request for review and CI unless the change is explicitly ready for final review.
 - Use the pull request template to call out audit impact, verification, and remaining risk.
+
+Typical branch flow:
+
+```bash
+git switch master
+git pull --ff-only
+git switch -c <focused-branch>
+
+# edit and verify
+git status --short
+git add <intended files>
+git commit -m "<terse change summary>"
+git push -u origin <focused-branch>
+gh pr create --draft --fill
+```
+
+If `npm test` or package checks fail because the user-level npm cache contains files owned by another user, rerun with a temporary cache:
+
+```bash
+NPM_CONFIG_CACHE=/private/tmp/repo-test-architect-npm-cache npm test
+```
 
 ## Audit Changes
 
