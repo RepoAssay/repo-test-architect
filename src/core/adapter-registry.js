@@ -1,5 +1,6 @@
 import { auditJavaScriptRepo } from "../adapters/javascript/audit.js";
 import { auditKotlinRepo } from "../adapters/kotlin/audit.js";
+import { auditPythonRepo } from "../adapters/python/audit.js";
 import { auditSwiftRepo } from "../adapters/swift/audit.js";
 
 /**
@@ -56,6 +57,20 @@ export const adapters = [
     emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"],
     audit(repoRoot, options = {}) {
       return auditKotlinRepo(repoRoot, {
+        changedPaths: options.changedPaths
+      });
+    }
+  },
+  {
+    id: "python",
+    ecosystems: ["python"],
+    languages: ["python"],
+    maturity: "experimental",
+    supportedTestFrameworks: ["pytest", "unittest"],
+    supportedProjectTypes: ["fastapi", "python-package"],
+    emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"],
+    audit(repoRoot, options = {}) {
+      return auditPythonRepo(repoRoot, {
         changedPaths: options.changedPaths
       });
     }

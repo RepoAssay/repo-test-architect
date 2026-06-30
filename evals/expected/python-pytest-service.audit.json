@@ -1,0 +1,204 @@
+{
+  "schemaVersion": "audit/v1",
+  "profile": {
+    "root": "<fixture>",
+    "languages": [
+      "python"
+    ],
+    "packageManagers": [
+      "pyproject"
+    ],
+    "testFrameworks": [
+      "pytest"
+    ],
+    "architectures": [
+      "fastapi",
+      "service-layer"
+    ],
+    "testCommand": "pytest",
+    "detectedConventions": [
+      "tests/test_*.py"
+    ],
+    "existingTestLocations": [
+      "tests"
+    ],
+    "setupSignals": [
+      "pyproject",
+      "pytest dependency",
+      "fastapi dependency"
+    ],
+    "confidence": "high",
+    "blockers": []
+  },
+  "untestedCandidates": [
+    {
+      "id": "app/services/user_service.py",
+      "name": "user_service",
+      "path": "app/services/user_service.py",
+      "kind": "service",
+      "signals": [
+        "service-boundary",
+        "async-or-concurrency",
+        "external-boundary"
+      ],
+      "risk": "high",
+      "testability": "medium",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 8,
+      "maintenanceCost": 4,
+      "reasons": [
+        "Service boundary",
+        "async or concurrency behavior",
+        "external boundary"
+      ],
+      "existingTestPaths": []
+    },
+    {
+      "id": "app/routes/users.py",
+      "name": "users",
+      "path": "app/routes/users.py",
+      "kind": "http-route",
+      "signals": [
+        "http-route",
+        "status-handling"
+      ],
+      "risk": "high",
+      "testability": "medium",
+      "recommendedTestLevel": "integration",
+      "riskReductionScore": 8,
+      "maintenanceCost": 5,
+      "reasons": [
+        "HTTP route behavior",
+        "request or status handling"
+      ],
+      "existingTestPaths": []
+    }
+  ],
+  "coveredButRisky": [
+    {
+      "id": "app/parsers.py",
+      "name": "parsers",
+      "path": "app/parsers.py",
+      "kind": "pure-logic",
+      "signals": [
+        "pure-logic",
+        "edge-case-surface",
+        "matching-test"
+      ],
+      "risk": "high",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 9,
+      "maintenanceCost": 2,
+      "reasons": [
+        "Pure transformation logic",
+        "edge-case surface",
+        "Existing test file detected; review missing edge cases"
+      ],
+      "existingTestPaths": [
+        "tests/test_parsers.py"
+      ]
+    }
+  ],
+  "recommended": [
+    {
+      "id": "app/parsers.py",
+      "name": "parsers",
+      "path": "app/parsers.py",
+      "kind": "pure-logic",
+      "signals": [
+        "pure-logic",
+        "edge-case-surface",
+        "matching-test"
+      ],
+      "risk": "high",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 9,
+      "maintenanceCost": 2,
+      "reasons": [
+        "Pure transformation logic",
+        "edge-case surface",
+        "Existing test file detected; review missing edge cases"
+      ],
+      "existingTestPaths": [
+        "tests/test_parsers.py"
+      ]
+    },
+    {
+      "id": "app/services/user_service.py",
+      "name": "user_service",
+      "path": "app/services/user_service.py",
+      "kind": "service",
+      "signals": [
+        "service-boundary",
+        "async-or-concurrency",
+        "external-boundary"
+      ],
+      "risk": "high",
+      "testability": "medium",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 8,
+      "maintenanceCost": 4,
+      "reasons": [
+        "Service boundary",
+        "async or concurrency behavior",
+        "external boundary"
+      ],
+      "existingTestPaths": []
+    },
+    {
+      "id": "app/routes/users.py",
+      "name": "users",
+      "path": "app/routes/users.py",
+      "kind": "http-route",
+      "signals": [
+        "http-route",
+        "status-handling"
+      ],
+      "risk": "high",
+      "testability": "medium",
+      "recommendedTestLevel": "integration",
+      "riskReductionScore": 8,
+      "maintenanceCost": 5,
+      "reasons": [
+        "HTTP route behavior",
+        "request or status handling"
+      ],
+      "existingTestPaths": []
+    }
+  ],
+  "skipped": [
+    {
+      "id": "app/main.py",
+      "name": "main",
+      "path": "app/main.py",
+      "kind": "app-wiring",
+      "signals": [
+        "app-wiring"
+      ],
+      "riskReductionScore": 3,
+      "maintenanceCost": 5,
+      "reason": "Application wiring is usually better covered through route or integration tests.",
+      "preferredCoveragePath": "Cover through FastAPI route tests or service integration tests that boot the app."
+    },
+    {
+      "id": "app/models.py",
+      "name": "models",
+      "path": "app/models.py",
+      "kind": "dto",
+      "signals": [
+        "dto-only"
+      ],
+      "riskReductionScore": 2,
+      "maintenanceCost": 4,
+      "reason": "DTO-only models are usually better covered through route, parser, or service tests.",
+      "preferredCoveragePath": "Cover through parser, mapper, repository, or route integration tests that consume the model."
+    }
+  ],
+  "risks": [
+    "parsers has pure transformation logic, edge-case surface and needs edge-case review.",
+    "users has http route behavior, request or status handling and has no matching test file.",
+    "user_service has service boundary, async or concurrency behavior, external boundary and has no matching test file."
+  ]
+}

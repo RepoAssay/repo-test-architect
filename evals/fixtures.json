@@ -43,5 +43,10 @@
     "name": "vapor-service-tests",
     "adapter": "swift",
     "path": "examples/vapor-service-tests"
+  },
+  {
+    "name": "python-pytest-service",
+    "adapter": "python",
+    "path": "examples/python-pytest-service"
   }
 ]

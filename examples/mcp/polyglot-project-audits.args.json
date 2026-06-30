@@ -4,8 +4,8 @@
     "root": "./examples/polyglot-workspace",
     "summary": {
       "projectCount": 3,
-      "auditedProjectCount": 2,
-      "skippedProjectCount": 1
+      "auditedProjectCount": 3,
+      "skippedProjectCount": 0
     },
     "audits": [
       {
@@ -163,22 +163,86 @@
             "sessionClient has service boundary, auth or permission branches and has no matching test file."
           ]
         }
-      }
-    ],
-    "skippedProjects": [
+      },
       {
         "projectId": "services/api",
         "projectRoot": "services/api",
-        "reason": "No registered adapter supports ecosystems python with languages python.",
-        "ecosystems": [
-          "python"
-        ],
-        "languages": [
-          "python"
-        ],
-        "adapterMatches": [],
-        "supportStatusReason": "No registered adapter supports ecosystems python with languages python."
+        "adapterId": "python",
+        "audit": {
+          "schemaVersion": "audit/v1",
+          "profile": {
+            "root": "./examples/polyglot-workspace/services/api",
+            "languages": [
+              "python"
+            ],
+            "packageManagers": [
+              "pyproject"
+            ],
+            "testFrameworks": [],
+            "architectures": [],
+            "detectedConventions": [],
+            "existingTestLocations": [],
+            "setupSignals": [
+              "pyproject"
+            ],
+            "confidence": "low",
+            "blockers": [
+              "No supported Python test framework detected.",
+              "No runnable Python test command detected from project markers."
+            ]
+          },
+          "untestedCandidates": [
+            {
+              "id": "app.py",
+              "name": "app",
+              "path": "app.py",
+              "kind": "pure-logic",
+              "signals": [
+                "pure-logic",
+                "edge-case-surface"
+              ],
+              "risk": "high",
+              "testability": "high",
+              "recommendedTestLevel": "unit",
+              "riskReductionScore": 9,
+              "maintenanceCost": 2,
+              "reasons": [
+                "Pure transformation logic",
+                "edge-case surface"
+              ],
+              "existingTestPaths": []
+            }
+          ],
+          "coveredButRisky": [],
+          "recommended": [
+            {
+              "id": "app.py",
+              "name": "app",
+              "path": "app.py",
+              "kind": "pure-logic",
+              "signals": [
+                "pure-logic",
+                "edge-case-surface"
+              ],
+              "risk": "high",
+              "testability": "high",
+              "recommendedTestLevel": "unit",
+              "riskReductionScore": 9,
+              "maintenanceCost": 2,
+              "reasons": [
+                "Pure transformation logic",
+                "edge-case surface"
+              ],
+              "existingTestPaths": []
+            }
+          ],
+          "skipped": [],
+          "risks": [
+            "app has pure transformation logic, edge-case surface and has no matching test file."
+          ]
+        }
       }
-    ]
+    ],
+    "skippedProjects": []
   }
 }

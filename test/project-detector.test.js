@@ -32,8 +32,8 @@ describe("project detector", () => {
     const detection = detectProjects(path.resolve("examples/polyglot-workspace"));
 
     assert.equal(detection.summary.projectCount, 3);
-    assert.equal(detection.summary.supportedProjectCount, 2);
-    assert.equal(detection.summary.unsupportedProjectCount, 1);
+    assert.equal(detection.summary.supportedProjectCount, 3);
+    assert.equal(detection.summary.unsupportedProjectCount, 0);
     assert.deepEqual(
       detection.projects.map((project) => ({
         root: project.root,
@@ -61,8 +61,8 @@ describe("project detector", () => {
           root: "services/api",
           ecosystems: ["python"],
           languages: ["python"],
-          adapterIds: [],
-          supported: false
+          adapterIds: ["python"],
+          supported: true
         }
       ]
     );

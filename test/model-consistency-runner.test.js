@@ -102,7 +102,7 @@ describe("model consistency runner", () => {
       scenarioCount: 16,
       passedScenarioCount: 16,
       failedScenarioCount: 0,
-      checkedFieldCount: 116,
+      checkedFieldCount: 117,
       failureCount: 0
     });
     assert.equal(summary.scenarios[2].scenarioId, "node-jest-service-plan");
@@ -168,7 +168,7 @@ describe("model consistency runner", () => {
       driftedScenarioCount: 1,
       missingScenarioCount: 1,
       unexpectedScenarioCount: 1,
-      checkedFieldDelta: -11,
+      checkedFieldDelta: -12,
       failureDelta: 3
     });
     assert.deepEqual(

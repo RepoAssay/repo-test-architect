@@ -276,7 +276,7 @@ function readModelConsistencyScenarios() {
 }
 
 function normalizePolyglotProjectAudits(projectAudits) {
-  return {
+  return JSON.parse(JSON.stringify({
     ...projectAudits,
     root: "./examples/polyglot-workspace",
     audits: projectAudits.audits.map((entry) => ({
@@ -289,5 +289,5 @@ function normalizePolyglotProjectAudits(projectAudits) {
         }
       }
     }))
-  };
+  }));
 }

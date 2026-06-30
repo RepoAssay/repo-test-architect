@@ -1,7 +1,7 @@
 {
   "schemaVersion": "model-consistency-scenario/v1",
   "id": "polyglot-project-ranking",
-  "description": "Different model profiles should preserve project-aware candidate identity and unsupported project reporting for a polyglot repository.",
+  "description": "Different model profiles should preserve project-aware candidate identity and complete adapter coverage for a polyglot repository.",
   "sourceArtifact": {
     "path": "examples/mcp/polyglot-project-audits.args.json",
     "schemaVersion": "project-audits/v1",
@@ -14,13 +14,13 @@
   "lockedFields": [
     {
       "path": "summary.auditCoverage",
-      "expected": "partial",
-      "reason": "Project ranking must preserve partial audit coverage from the project-audits artifact."
+      "expected": "complete",
+      "reason": "Project ranking must preserve complete audit coverage once all fixture roots have registered adapters."
     },
     {
       "path": "summary.candidateCount",
-      "expected": 2,
-      "reason": "The experimental Kotlin project and supported web project each contribute one ranked candidate in this fixture."
+      "expected": 3,
+      "reason": "The Kotlin, Python, and web projects each contribute one ranked candidate in this fixture."
     },
     {
       "path": "candidates[0].projectId",
@@ -38,9 +38,9 @@
       "reason": "Project candidate priority must remain tied to deterministic per-audit scoring."
     },
     {
-      "path": "unsupportedProjects[0].projectId",
+      "path": "candidates[1].projectId",
       "expected": "services/api",
-      "reason": "Unsupported roots must remain visible in project ranking output."
+      "reason": "The Python project candidate must remain visible in project ranking output."
     }
   ],
   "allowedVariations": [
@@ -50,7 +50,7 @@
   ],
   "unexpectedVariations": [
     "missing project target identity",
-    "missing unsupported project roots",
+    "missing Python project candidate",
     "different candidate count",
     "different project-aware ranking priority"
   ]

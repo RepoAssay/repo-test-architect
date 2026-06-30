@@ -155,17 +155,17 @@ try {
   assert.equal(detectionArtifact.schemaVersion, "project-detection/v1");
   assert.equal(detectionArtifact.summary.projectCount, 3);
   assert.ok(detectionArtifact.projects.some((project) => project.root === "apps/web" && project.supported));
-  assert.ok(detectionArtifact.projects.some((project) => project.root === "services/api" && !project.supported));
+  assert.ok(detectionArtifact.projects.some((project) => project.root === "services/api" && project.supported && project.adapterIds.includes("python")));
 
   assert.equal(projectAudits.schemaVersion, "project-audits/v1");
-  assert.equal(projectAudits.summary.auditedProjectCount, 2);
-  assert.equal(projectAudits.summary.skippedProjectCount, 1);
+  assert.equal(projectAudits.summary.auditedProjectCount, 3);
+  assert.equal(projectAudits.summary.skippedProjectCount, 0);
 
   const planArtifact = parseToolArtifact(projectPlan);
   assert.equal(planArtifact.schemaVersion, "project-test-plan/v1");
-  assert.equal(planArtifact.summary.plannedProjectCount, 2);
-  assert.equal(planArtifact.summary.unsupportedProjectCount, 1);
-  assert.equal(planArtifact.summary.itemCount, 2);
+  assert.equal(planArtifact.summary.plannedProjectCount, 3);
+  assert.equal(planArtifact.summary.unsupportedProjectCount, 0);
+  assert.equal(planArtifact.summary.itemCount, 3);
   assert.equal(planArtifact.items[0].projectId, "apps/android");
 
   assert.equal(missingTool.id, 6);
@@ -183,7 +183,7 @@ try {
   assert.equal(statsAfterError.id, 7);
   assert.equal(statsArtifact.schemaVersion, "project-stats/v1");
   assert.equal(statsArtifact.summary.projectCount, 3);
-  assert.equal(statsArtifact.summary.auditedProjectCount, 2);
+  assert.equal(statsArtifact.summary.auditedProjectCount, 3);
 
   assert.equal(batchResponse.length, 2);
   assert.equal(batchResponse[0].id, 8);
