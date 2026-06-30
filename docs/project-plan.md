@@ -78,7 +78,9 @@ Later adapter fixtures:
 
 Live validation candidates:
 
-- `https://github.com/m-stenbe/cf-bff` for a real Vapor project with little or no existing test coverage
+- `https://github.com/m-stenbe/cg-bff` for a real Vapor project with XCTVapor setup, many route/middleware candidates, and stale service dependencies
+- sibling `cg-*` SwiftPM packages for small Swift Testing/XCTest packages with placeholder tests and useful service/utility candidates
+- `https://github.com/m-stenbe/Collectors-Grimoire` for the main Xcode/SwiftUI app that consumes the `cg-*` packages and validates non-`Sources/` app-folder auditing
 
 ## MCP Direction
 

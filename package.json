@@ -90,7 +90,7 @@
     "model-consistency:compare": "node ./scripts/compare-model-consistency-summaries.js",
     "model-consistency:stats": "node ./scripts/collect-model-consistency-stats.js",
     "demo:check": "node ./scripts/check-demo-script.js",
-    "test": "node --test \"test/**/*.test.js\"",
+    "test": "node ./scripts/run-tests.js",
     "smoke": "powershell -ExecutionPolicy Bypass -File ./scripts/smoke.ps1",
     "pack:dry-run": "npm pack --dry-run",
     "pack:check": "node ./scripts/check-pack-contents.js",

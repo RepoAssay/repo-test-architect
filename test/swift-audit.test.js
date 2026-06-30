@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { describe, it } from "node:test";
 import { auditSwiftRepo } from "../src/adapters/swift/audit.js";
@@ -156,6 +158,182 @@ describe("Swift audit adapter", () => {
     assert.deepEqual(
       audit.skipped.map((target) => target.name),
       ["configure", "routes", "UserResponseDTO"]
+    );
+  });
+
+  it("detects XCTVapor test support and separates middleware from routes", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-vapor-"));
+    fs.mkdirSync(path.join(root, "Sources", "App", "Controllers"), { recursive: true });
+    fs.mkdirSync(path.join(root, "Sources", "App", "Middleware"), { recursive: true });
+    fs.mkdirSync(path.join(root, "Tests", "AppTests"), { recursive: true });
+
+    fs.writeFileSync(
+      path.join(root, "Package.swift"),
+      `// swift-tools-version: 6.0
+import PackageDescription
+
+let package = Package(
+    name: "App",
+    dependencies: [
+        .package(url: "https://github.com/vapor/vapor.git", from: "4.100.0")
+    ],
+    targets: [
+        .executableTarget(
+            name: "App",
+            dependencies: [
+                .product(name: "Vapor", package: "vapor")
+            ]
+        ),
+        .testTarget(
+            name: "AppTests",
+            dependencies: [
+                .target(name: "App"),
+                .product(name: "XCTVapor", package: "vapor")
+            ]
+        )
+    ]
+)
+`
+    );
+    fs.writeFileSync(
+      path.join(root, "Sources", "App", "Controllers", "HomeController.swift"),
+      `import Vapor
+
+struct HomeController: RouteCollection {
+    func boot(routes: RoutesBuilder) throws {
+        routes.get("hello", use: hello)
+    }
+
+    func hello(_ req: Request) async throws -> String {
+        "Hello"
+    }
+}
+`
+    );
+    fs.writeFileSync(
+      path.join(root, "Sources", "App", "Middleware", "AuthMiddleware.swift"),
+      `import Vapor
+
+struct AuthMiddleware: AsyncMiddleware {
+    func respond(to request: Request, chainingTo next: AsyncResponder) async throws -> Response {
+        try await next.respond(to: request)
+    }
+}
+`
+    );
+    fs.writeFileSync(
+      path.join(root, "Sources", "App", "configure.swift"),
+      `import Vapor
+
+public func configure(_ app: Application) throws {
+    if Environment.get("PORT") != nil {
+        app.http.server.configuration.hostname = "0.0.0.0"
+    }
+}
+`
+    );
+    fs.writeFileSync(
+      path.join(root, "Tests", "AppTests", "AppTests.swift"),
+      `@testable import App
+import XCTVapor
+import Testing
+
+@Test("hello route")
+func helloRoute() async throws {}
+`
+    );
+
+    const audit = auditSwiftRepo(root);
+
+    assert.deepEqual(audit.profile.testFrameworks, ["Swift Testing", "XCTVapor"]);
+    assert.equal(audit.profile.testCommand, "swift test");
+    assert.equal(audit.profile.confidence, "high");
+    assert.ok(audit.profile.setupSignals.includes("vapor dependency"));
+    assert.ok(audit.profile.setupSignals.includes("xctvapor test support"));
+
+    assert.deepEqual(
+      audit.untestedCandidates.map((target) => `${target.name}:${target.kind}:${target.recommendedTestLevel}`),
+      ["AuthMiddleware:http-middleware:integration", "HomeController:http-route:integration"]
+    );
+
+    const lifecycle = audit.skipped.find((target) => target.name === "configure");
+    assert.equal(lifecycle.kind, "vapor-lifecycle");
+    assert.ok(lifecycle.signals.includes("vapor-lifecycle"));
+  });
+
+  it("audits Xcode app source folders outside SwiftPM Sources roots", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-xcode-"));
+    fs.mkdirSync(path.join(root, "SampleApp.xcodeproj"), { recursive: true });
+    fs.mkdirSync(path.join(root, "SampleApp", "Services"), { recursive: true });
+    fs.mkdirSync(path.join(root, "SampleApp", "Views"), { recursive: true });
+    fs.mkdirSync(path.join(root, "SampleAppTests"), { recursive: true });
+    fs.mkdirSync(path.join(root, "SampleAppUITests"), { recursive: true });
+
+    fs.writeFileSync(
+      path.join(root, "SampleApp.xcodeproj", "project.pbxproj"),
+      `// !$*UTF8*$!
+{
+  archiveVersion = 1;
+  objectVersion = 77;
+}
+`
+    );
+    fs.writeFileSync(
+      path.join(root, "SampleApp", "Services", "SessionService.swift"),
+      `import Foundation
+
+struct SessionService {
+    func isExpired(_ date: Date, now: Date) -> Bool {
+        date < now
+    }
+}
+`
+    );
+    fs.writeFileSync(
+      path.join(root, "SampleApp", "Views", "LoginView.swift"),
+      `import SwiftUI
+
+struct LoginView: View {
+    var body: some View {
+        Text("Login")
+    }
+}
+`
+    );
+    fs.writeFileSync(
+      path.join(root, "SampleAppTests", "SessionServiceTests.swift"),
+      `import XCTest
+
+final class SessionServiceTests: XCTestCase {
+    func testExpired() {}
+}
+`
+    );
+    fs.writeFileSync(
+      path.join(root, "SampleAppUITests", "SampleAppUITests.swift"),
+      `import XCTest
+
+final class SampleAppUITests: XCTestCase {
+    func testLaunch() {}
+}
+`
+    );
+
+    const audit = auditSwiftRepo(root);
+
+    assert.deepEqual(audit.profile.packageManagers, ["xcodebuild"]);
+    assert.deepEqual(audit.profile.testFrameworks, ["XCTest"]);
+    assert.equal(audit.profile.testCommand, "xcodebuild test");
+    assert.ok(audit.profile.detectedConventions.includes("*UITests folders"));
+    assert.ok(audit.profile.existingTestLocations.includes("SampleAppTests"));
+    assert.ok(audit.profile.existingTestLocations.includes("SampleAppUITests"));
+    assert.deepEqual(
+      audit.coveredButRisky.map((target) => `${target.name}:${target.kind}:${target.existingTestPaths.join(",")}`),
+      ["SessionService:service:SampleAppTests/SessionServiceTests.swift"]
+    );
+    assert.deepEqual(
+      audit.skipped.map((target) => `${target.name}:${target.kind}`),
+      ["LoginView:ui-view"]
     );
   });
 });

@@ -55,6 +55,11 @@
     "description": "HTTP route, controller, or route-like behavior was detected."
   },
   {
+    "id": "http-middleware",
+    "category": "architecture",
+    "description": "HTTP middleware behavior was detected."
+  },
+  {
     "id": "low-runtime-behavior",
     "category": "low-value",
     "description": "No meaningful runtime behavior was detected by current heuristics."
@@ -113,6 +118,16 @@
     "id": "type-only",
     "category": "low-value",
     "description": "Type-only declaration file was detected."
+  },
+  {
+    "id": "vapor-lifecycle",
+    "category": "low-value",
+    "description": "Vapor bootstrap, entrypoint, or route registration code was detected and should usually be covered indirectly."
+  },
+  {
+    "id": "vapor-middleware",
+    "category": "architecture",
+    "description": "Vapor middleware, authenticator, or request pipeline behavior was detected."
   },
   {
     "id": "vapor-route",
