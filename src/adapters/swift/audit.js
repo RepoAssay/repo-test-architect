@@ -112,7 +112,9 @@ function shouldRead(relative) {
   return (
     SOURCE_EXTENSIONS.some((extension) => relative.endsWith(extension)) ||
     relative === "Package.swift" ||
-    relative.endsWith(".xcodeproj/project.pbxproj")
+    relative.endsWith(".xcodeproj/project.pbxproj") ||
+    relative.endsWith(".xcscheme") ||
+    relative.endsWith(".xctestplan")
   );
 }
 
@@ -158,7 +160,7 @@ function detectTestFrameworks(files, packageText) {
   const testText = packageText.toLowerCase();
   const sourceText = files.map((file) => file.content).join("\n");
 
-  if (/^\s*import\s+XCTest\b/m.test(sourceText)) {
+  if (/^\s*import\s+XCTest\b/m.test(sourceText) || /^\s*#import\s+[<"]XCTest\/XCTest\.h[>"]/m.test(sourceText)) {
     frameworks.add("XCTest");
   }
 
@@ -173,13 +175,31 @@ function detectTestFrameworks(files, packageText) {
   if (testText.includes("swift-testing") || testText.includes("package(url: \"https://github.com/apple/swift-testing")) {
     frameworks.add("Swift Testing");
   }
+
+  if (/^\s*import\s+Quick\b/m.test(sourceText) || /quick\.git|Quick\/Quick|product\(name:\s*"Quick"/i.test(packageText)) {
+    frameworks.add("Quick");
+  }
+
+  if (/^\s*import\s+Nimble\b/m.test(sourceText) || /nimble\.git|Quick\/Nimble|product\(name:\s*"Nimble"/i.test(packageText)) {
+    frameworks.add("Nimble");
+  }
+
+  if (/^\s*import\s+SnapshotTesting\b/m.test(sourceText) || /swift-snapshot-testing|pointfreeco\/swift-snapshot-testing|product\(name:\s*"SnapshotTesting"/i.test(packageText)) {
+    frameworks.add("SnapshotTesting");
+  }
+
   return [...frameworks].sort();
 }
 
 function detectTestCommand(paths, frameworks) {
   if (frameworks.length === 0) return undefined;
   if (paths.includes("Package.swift")) return "swift test";
-  if (paths.some((item) => item.endsWith(".xcodeproj/project.pbxproj"))) return "xcodebuild test";
+  if (paths.some((item) => item.endsWith(".xcodeproj/project.pbxproj"))) {
+    const scheme = detectXcodeScheme(paths);
+    const testPlan = detectXcodeTestPlan(paths);
+    if (scheme && testPlan) return `xcodebuild test -scheme ${quoteShellArgument(scheme)} -testPlan ${quoteShellArgument(testPlan)}`;
+    return scheme ? `xcodebuild test -scheme ${quoteShellArgument(scheme)}` : "xcodebuild test";
+  }
   return undefined;
 }
 
@@ -205,8 +225,14 @@ function detectSetupSignals(paths, packageText) {
   const signals = new Set();
   if (paths.includes("Package.swift")) signals.add("swift package manager");
   if (paths.some((item) => item.endsWith(".xcodeproj/project.pbxproj"))) signals.add("xcode project");
+  if (detectXcodeScheme(paths)) signals.add("xcode shared scheme");
+  if (detectXcodeTestPlan(paths)) signals.add("xcode test plan");
   if (packageText.includes("Vapor") || packageText.includes("vapor.git")) signals.add("vapor dependency");
+  if (/MongoKitten|FluentMongoDriver|MongoSwift|mongodb|mongo-driver/i.test(packageText)) signals.add("mongodb dependency");
   if (packageText.includes(".product(name: \"XCTVapor\"")) signals.add("xctvapor test support");
+  if (/quick\.git|Quick\/Quick|product\(name:\s*"Quick"/i.test(packageText)) signals.add("quick test support");
+  if (/nimble\.git|Quick\/Nimble|product\(name:\s*"Nimble"/i.test(packageText)) signals.add("nimble assertion support");
+  if (/swift-snapshot-testing|pointfreeco\/swift-snapshot-testing|product\(name:\s*"SnapshotTesting"/i.test(packageText)) signals.add("snapshot testing support");
   if (packageText.includes(".testTarget")) signals.add("swiftpm test target");
   if (packageText.includes(".executableTarget")) signals.add("swiftpm executable target");
   if (packageText.includes(".target")) signals.add("swiftpm target");
@@ -219,6 +245,7 @@ function detectArchitectures(paths, files) {
   if (paths.some((item) => item.endsWith(".xcodeproj/project.pbxproj"))) architectures.add("apple-xcode");
   if (files.some((file) => file.content.includes("import SwiftUI") || /\bView\b/.test(file.content))) architectures.add("swiftui");
   if (files.some((file) => file.content.includes("Vapor"))) architectures.add("vapor");
+  if (files.some((file) => isMongoDataAccess(file.content))) architectures.add("mongodb");
   if (files.some((file) => /\bactor\s+\w+/.test(file.content))) architectures.add("concurrency");
   return [...architectures].sort();
 }
@@ -241,6 +268,7 @@ function classifySourceFile(file) {
   const currentPath = normalizePath(file.path);
   const content = file.content;
   const lowerPath = currentPath.toLowerCase();
+  const mongoSignals = detectMongoSignals(content);
 
   if (!currentPath.endsWith(".swift")) {
     return skipped(
@@ -261,6 +289,17 @@ function classifySourceFile(file) {
       5,
       "SwiftUI views should only get direct tests when the repo already has UI or snapshot conventions.",
       "Cover through view model, reducer, service, or UI/snapshot tests when a convention exists."
+    );
+  }
+
+  if (isFluentPersistenceModel(content)) {
+    return skipped(
+      "persistence-model",
+      ["fluent-model"],
+      3,
+      5,
+      "Fluent persistence models are usually better covered through repository, route, migration, or integration tests.",
+      "Cover through XCTVapor or repository tests that exercise persistence behavior and schema migrations."
     );
   }
 
@@ -287,11 +326,42 @@ function classifySourceFile(file) {
   }
 
   if (isVaporMiddleware(lowerPath, content)) {
-    return recommended("http-middleware", ["http-middleware", "vapor-middleware"], "high", "medium", "integration", 7, 4, ["HTTP middleware behavior", "Vapor request handling"]);
+    return recommended(
+      "http-middleware",
+      ["http-middleware", "vapor-middleware", ...mongoSignals],
+      "high",
+      "medium",
+      "integration",
+      mongoSignals.length > 0 ? 8 : 7,
+      4,
+      ["HTTP middleware behavior", "Vapor request handling", ...mongoReasons(mongoSignals)]
+    );
   }
 
   if (isVaporRoute(lowerPath, content)) {
-    return recommended("http-route", ["http-route", "vapor-route"], "high", "medium", "integration", 8, 5, ["HTTP route behavior", "Vapor request handling"]);
+    return recommended(
+      "http-route",
+      ["http-route", "vapor-route", ...mongoSignals],
+      "high",
+      "medium",
+      "integration",
+      mongoSignals.length > 0 ? 9 : 8,
+      5,
+      ["HTTP route behavior", "Vapor request handling", ...mongoReasons(mongoSignals)]
+    );
+  }
+
+  if (mongoSignals.length > 0) {
+    return recommended(
+      "data-access",
+      ["data-access", ...mongoSignals],
+      "high",
+      "medium",
+      "integration",
+      mongoSignals.includes("mongodb-aggregation") || mongoSignals.includes("mongodb-write") ? 8 : 7,
+      5,
+      ["MongoDB data access", ...mongoReasons(mongoSignals)]
+    );
   }
 
   if (matchesAny(lowerPath, ["parser", "mapper", "validator", "formatter", "calculator"])) {
@@ -397,8 +467,40 @@ function firstTestDirectory(currentPath) {
   return normalizePath(currentPath).split("/").find((segment) => /Tests?$|UITests?$/.test(segment));
 }
 
+function detectXcodeScheme(paths) {
+  const schemeNames = paths
+    .filter((item) => item.endsWith(".xcscheme"))
+    .map((item) => basenameWithoutExtension(item))
+    .sort();
+  if (schemeNames.length === 0) return undefined;
+
+  const projectNames = paths
+    .filter((item) => item.endsWith(".xcodeproj/project.pbxproj"))
+    .map((item) => item.split("/").at(-2)?.replace(/\.xcodeproj$/, ""))
+    .filter(Boolean)
+    .sort();
+
+  const projectScheme = schemeNames.find((schemeName) => projectNames.includes(schemeName));
+  if (projectScheme) return projectScheme;
+  if (schemeNames.length === 1) return schemeNames[0];
+  return undefined;
+}
+
+function detectXcodeTestPlan(paths) {
+  const testPlanNames = paths
+    .filter((item) => item.endsWith(".xctestplan"))
+    .map((item) => basenameWithoutExtension(item))
+    .sort();
+  if (testPlanNames.length === 1) return testPlanNames[0];
+  return undefined;
+}
+
+function quoteShellArgument(value) {
+  return /^[A-Za-z0-9_./:-]+$/.test(value) ? value : `"${value.replaceAll("\\", "\\\\").replaceAll("\"", "\\\"")}"`;
+}
+
 function hasBranching(content) {
-  return /\b(if|switch|guard|do|catch)\b|\?\s*[^:]+:/.test(content);
+  return /\b(if|switch|guard|do|catch)\b|\?[ \t]*[^:\n]+:/.test(content);
 }
 
 function isSwiftUIView(content) {
@@ -445,6 +547,45 @@ function isVaporRoute(currentPath, content) {
       /\bRouteCollection\b/.test(content) ||
       /\bRoutesBuilder\b/.test(content) ||
       /\b(app|routes|router|grouped)\s*\.\s*(get|post|put|patch|delete|on|group|grouped|webSocket)\s*\(/.test(content)
+    )
+  );
+}
+
+function isMongoDataAccess(content) {
+  return detectMongoSignals(content).length > 0;
+}
+
+function detectMongoSignals(content) {
+  const signals = new Set();
+  const hasMongoImport = /(?:^|\n)\s*(?:@preconcurrency\s+)?import\s+(MongoKitten|BSON|MongoSwift|FluentMongoDriver)\b/.test(content);
+  const hasMongoDbHandle = /\bdb\s*\(\s*\.mongo\s*\)|\bMongoDatabaseRepresentable\b|\bMongoConnection\b|\.raw\s*\[/.test(content);
+  const hasMongoQueryDocument = /\bDocument\s*\(|\bDocument\s*\[|\bqueryDocument\b|"\$(match|lookup|group|unwind|project|sort|slice|regex|push|set|in|and|or)"/.test(content);
+
+  if (hasMongoImport || hasMongoDbHandle || hasMongoQueryDocument) signals.add("mongodb-query");
+  if (/\baggregate\s*\(|"\$(match|lookup|group|unwind|project|sortArray|slice|push)"/.test(content)) signals.add("mongodb-aggregation");
+  if (/\bfilter\s*\(\s*\.custom\b|\$regex|NSRegularExpression|queryDocument/.test(content)) signals.add("mongodb-dynamic-filter");
+  if (/\.(limit|offset|skip|sort)\s*\(/.test(content)) signals.add("pagination-or-sort");
+  if (/\b(create|update|save|delete)\s*\(\s*on:\s*[^)]*\.mongo\b|\b(insertOne|updateOne|updateMany|deleteOne|deleteMany|bulkWrite)\s*\(/.test(content)) signals.add("mongodb-write");
+  return [...signals].sort();
+}
+
+function mongoReasons(signals) {
+  const reasons = [];
+  if (signals.includes("mongodb-query")) reasons.push("MongoDB query boundary");
+  if (signals.includes("mongodb-aggregation")) reasons.push("aggregation pipeline semantics");
+  if (signals.includes("mongodb-dynamic-filter")) reasons.push("dynamic BSON filter construction");
+  if (signals.includes("pagination-or-sort")) reasons.push("pagination or sorting behavior");
+  if (signals.includes("mongodb-write")) reasons.push("MongoDB write/update behavior");
+  return reasons;
+}
+
+function isFluentPersistenceModel(content) {
+  return (
+    (content.includes("import Fluent") || content.includes("FluentKit")) &&
+    (
+      /\b(class|struct)\s+\w+\s*:\s*[^{}]*\bModel\b/.test(content) ||
+      /\bAsyncMigration\b|\bMigration\b/.test(content) ||
+      /@(ID|Field|Parent|Children|Siblings|OptionalField|Timestamp)\b/.test(content)
     )
   );
 }

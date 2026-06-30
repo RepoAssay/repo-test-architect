@@ -165,6 +165,7 @@ describe("Swift audit adapter", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-vapor-"));
     fs.mkdirSync(path.join(root, "Sources", "App", "Controllers"), { recursive: true });
     fs.mkdirSync(path.join(root, "Sources", "App", "Middleware"), { recursive: true });
+    fs.mkdirSync(path.join(root, "Sources", "App", "Models"), { recursive: true });
     fs.mkdirSync(path.join(root, "Tests", "AppTests"), { recursive: true });
 
     fs.writeFileSync(
@@ -222,6 +223,47 @@ struct AuthMiddleware: AsyncMiddleware {
 `
     );
     fs.writeFileSync(
+      path.join(root, "Sources", "App", "Models", "User.swift"),
+      `import Fluent
+import Vapor
+
+final class User: Model, Content, @unchecked Sendable {
+    static let schema = "users"
+
+    @ID(key: .id)
+    var id: UUID?
+
+    @Field(key: "email")
+    var email: String
+
+    init() {}
+}
+
+extension User {
+    struct Migration: AsyncMigration {
+        func prepare(on database: Database) async throws {
+            try await database.schema("users").id().field("email", .string, .required).create()
+        }
+
+        func revert(on database: Database) async throws {
+            try await database.schema("users").delete()
+        }
+    }
+}
+`
+    );
+    fs.writeFileSync(
+      path.join(root, "Sources", "App", "Models", "UserResponseDTO.swift"),
+      `import Vapor
+
+struct UserResponseDTO: Content {
+    var id: UUID?
+    var email: String?
+    var displayName: String?
+}
+`
+    );
+    fs.writeFileSync(
       path.join(root, "Sources", "App", "configure.swift"),
       `import Vapor
 
@@ -259,11 +301,152 @@ func helloRoute() async throws {}
     const lifecycle = audit.skipped.find((target) => target.name === "configure");
     assert.equal(lifecycle.kind, "vapor-lifecycle");
     assert.ok(lifecycle.signals.includes("vapor-lifecycle"));
+
+    assert.deepEqual(
+      audit.skipped
+        .filter((target) => target.name === "User" || target.name === "UserResponseDTO")
+        .map((target) => `${target.name}:${target.kind}:${target.signals.join(",")}`),
+      ["User:persistence-model:fluent-model", "UserResponseDTO:dto:dto-only"]
+    );
+  });
+
+  it("prioritizes MongoDB query and write boundaries in Vapor apps", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-mongo-"));
+    fs.mkdirSync(path.join(root, "Sources", "App", "Controllers"), { recursive: true });
+    fs.mkdirSync(path.join(root, "Sources", "App", "Jobs"), { recursive: true });
+    fs.mkdirSync(path.join(root, "Tests", "AppTests"), { recursive: true });
+
+    fs.writeFileSync(
+      path.join(root, "Package.swift"),
+      `// swift-tools-version: 6.0
+import PackageDescription
+
+let package = Package(
+    name: "App",
+    dependencies: [
+        .package(url: "https://github.com/vapor/vapor.git", from: "4.100.0"),
+        .package(url: "https://github.com/vapor/fluent-mongo-driver.git", from: "1.4.0")
+    ],
+    targets: [
+        .executableTarget(
+            name: "App",
+            dependencies: [
+                .product(name: "Vapor", package: "vapor"),
+                .product(name: "FluentMongoDriver", package: "fluent-mongo-driver")
+            ]
+        ),
+        .testTarget(name: "AppTests", dependencies: [.target(name: "App")])
+    ]
+)
+`
+    );
+    fs.writeFileSync(
+      path.join(root, "Sources", "App", "Controllers", "PriceController.swift"),
+      `import Vapor
+import MongoKitten
+import BSON
+import FluentMongoDriver
+
+struct PriceController: RouteCollection {
+    func boot(routes: RoutesBuilder) throws {
+        routes.get("prices") { req async throws -> [PriceChange] in
+            let database = req.db(.mongo)
+            guard let database = database as? MongoDatabaseRepresentable else { throw Abort(.internalServerError) }
+            let collection = database.raw["price_changes"]
+            let pipeline: [Document] = [
+                ["$group": Document(dictionaryLiteral: ("_id", "$card_id"), ("latestPrice", Document(dictionaryLiteral: ("$push", "$price"))))],
+                ["$project": Document(dictionaryLiteral: ("_id", 0), ("top10", Document(dictionaryLiteral: ("$slice", ["$latestPrice", 10] as Document)))]
+            ]
+            return try await collection.aggregate([.init(documents: pipeline)]).decode(PriceChange.self).allResults()
+        }
+    }
+}
+
+struct PriceChange: Content {
+    let cardId: String
+}
+`
+    );
+    fs.writeFileSync(
+      path.join(root, "Sources", "App", "Controllers", "SearchController.swift"),
+      `import Vapor
+import Fluent
+import FluentMongoDriver
+
+struct SearchController: RouteCollection {
+    func boot(routes: RoutesBuilder) throws {
+        routes.get("search") { req async throws -> [Card] in
+            let query = try req.query.get(String.self, at: "query")
+            let regexPattern = ".*\\(NSRegularExpression.escapedPattern(for: query)).*"
+            var queryDocument = Document()
+            queryDocument["name"]["$regex"] = regexPattern
+            return try await Card.query(on: req.db(.mongo))
+                .filter(.custom(queryDocument))
+                .sort(\\.$name, .ascending)
+                .limit(25)
+                .all()
+        }
+    }
+}
+
+struct Card: Content {
+    let name: String
+}
+`
+    );
+    fs.writeFileSync(
+      path.join(root, "Sources", "App", "Jobs", "PriceHistoryJob.swift"),
+      `import Vapor
+import FluentMongoDriver
+
+struct PriceHistoryJob {
+    func run(app: Application, history: CardPriceHistory) async throws {
+        if let existing = try await CardPriceHistory.query(on: app.db(.mongo)).first() {
+            try await existing.update(on: app.db(.mongo))
+        } else {
+            try await history.create(on: app.db(.mongo))
+        }
+    }
+}
+
+final class CardPriceHistory {}
+`
+    );
+    fs.writeFileSync(
+      path.join(root, "Tests", "AppTests", "AppTests.swift"),
+      `import Testing
+@testable import App
+
+@Test func smoke() {}
+`
+    );
+
+    const audit = auditSwiftRepo(root);
+
+    assert.ok(audit.profile.architectures.includes("mongodb"));
+    assert.ok(audit.profile.setupSignals.includes("mongodb dependency"));
+
+    const price = audit.recommended.find((target) => target.name === "PriceController");
+    assert.equal(price.kind, "http-route");
+    assert.equal(price.riskReductionScore, 9);
+    assert.ok(price.signals.includes("mongodb-aggregation"));
+    assert.ok(price.reasons.includes("aggregation pipeline semantics"));
+
+    const search = audit.recommended.find((target) => target.name === "SearchController");
+    assert.equal(search.kind, "http-route");
+    assert.ok(search.signals.includes("mongodb-dynamic-filter"));
+    assert.ok(search.signals.includes("pagination-or-sort"));
+
+    const job = audit.recommended.find((target) => target.name === "PriceHistoryJob");
+    assert.equal(job.kind, "data-access");
+    assert.equal(job.recommendedTestLevel, "integration");
+    assert.ok(job.signals.includes("mongodb-write"));
   });
 
   it("audits Xcode app source folders outside SwiftPM Sources roots", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-xcode-"));
     fs.mkdirSync(path.join(root, "SampleApp.xcodeproj"), { recursive: true });
+    fs.mkdirSync(path.join(root, "SampleApp.xcodeproj", "xcshareddata", "xcschemes"), { recursive: true });
     fs.mkdirSync(path.join(root, "SampleApp", "Services"), { recursive: true });
     fs.mkdirSync(path.join(root, "SampleApp", "Views"), { recursive: true });
     fs.mkdirSync(path.join(root, "SampleAppTests"), { recursive: true });
@@ -276,6 +459,12 @@ func helloRoute() async throws {}
   archiveVersion = 1;
   objectVersion = 77;
 }
+`
+    );
+    fs.writeFileSync(
+      path.join(root, "SampleApp.xcodeproj", "xcshareddata", "xcschemes", "SampleApp.xcscheme"),
+      `<?xml version="1.0" encoding="UTF-8"?>
+<Scheme LastUpgradeVersion="1610" version="1.7"></Scheme>
 `
     );
     fs.writeFileSync(
@@ -323,7 +512,8 @@ final class SampleAppUITests: XCTestCase {
 
     assert.deepEqual(audit.profile.packageManagers, ["xcodebuild"]);
     assert.deepEqual(audit.profile.testFrameworks, ["XCTest"]);
-    assert.equal(audit.profile.testCommand, "xcodebuild test");
+    assert.equal(audit.profile.testCommand, "xcodebuild test -scheme SampleApp");
+    assert.ok(audit.profile.setupSignals.includes("xcode shared scheme"));
     assert.ok(audit.profile.detectedConventions.includes("*UITests folders"));
     assert.ok(audit.profile.existingTestLocations.includes("SampleAppTests"));
     assert.ok(audit.profile.existingTestLocations.includes("SampleAppUITests"));
@@ -335,5 +525,141 @@ final class SampleAppUITests: XCTestCase {
       audit.skipped.map((target) => `${target.name}:${target.kind}`),
       ["LoginView:ui-view"]
     );
+  });
+
+  it("prefers an Xcode scheme matching the project name when multiple shared schemes exist", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-xcode-scheme-"));
+    fs.mkdirSync(path.join(root, "Collector's Grimoire.xcodeproj", "xcshareddata", "xcschemes"), { recursive: true });
+    fs.mkdirSync(path.join(root, "Collector's GrimoireTests"), { recursive: true });
+
+    fs.writeFileSync(path.join(root, "Collector's Grimoire.xcodeproj", "project.pbxproj"), "{}\n");
+    fs.writeFileSync(path.join(root, "Collector's Grimoire.xcodeproj", "xcshareddata", "xcschemes", "Collector's Grimoire Beta.xcscheme"), "<Scheme></Scheme>\n");
+    fs.writeFileSync(path.join(root, "Collector's Grimoire.xcodeproj", "xcshareddata", "xcschemes", "Collector's Grimoire.xcscheme"), "<Scheme></Scheme>\n");
+    fs.writeFileSync(
+      path.join(root, "Collector's GrimoireTests", "CollectorTests.swift"),
+      `import XCTest
+
+final class CollectorTests: XCTestCase {
+    func testExample() {}
+}
+`
+    );
+
+    const audit = auditSwiftRepo(root);
+
+    assert.equal(audit.profile.testCommand, `xcodebuild test -scheme "Collector's Grimoire"`);
+    assert.ok(audit.profile.setupSignals.includes("xcode shared scheme"));
+  });
+
+  it("detects popular SwiftPM test support libraries", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-swift-frameworks-"));
+    fs.mkdirSync(path.join(root, "Sources", "Feature"), { recursive: true });
+    fs.mkdirSync(path.join(root, "Tests", "FeatureTests"), { recursive: true });
+
+    fs.writeFileSync(
+      path.join(root, "Package.swift"),
+      `// swift-tools-version: 5.10
+import PackageDescription
+
+let package = Package(
+    name: "Feature",
+    dependencies: [
+        .package(url: "https://github.com/Quick/Quick.git", from: "7.0.0"),
+        .package(url: "https://github.com/Quick/Nimble.git", from: "13.0.0"),
+        .package(url: "https://github.com/pointfreeco/swift-snapshot-testing", from: "1.17.0")
+    ],
+    targets: [
+        .target(name: "Feature"),
+        .testTarget(
+            name: "FeatureTests",
+            dependencies: [
+                "Feature",
+                .product(name: "Quick", package: "Quick"),
+                .product(name: "Nimble", package: "Nimble"),
+                .product(name: "SnapshotTesting", package: "swift-snapshot-testing")
+            ]
+        )
+    ]
+)
+`
+    );
+    fs.writeFileSync(
+      path.join(root, "Sources", "Feature", "FeatureFlags.swift"),
+      `struct FeatureFlags {
+    func isEnabled(_ key: String) -> Bool {
+        key == "checkout"
+    }
+}
+`
+    );
+    fs.writeFileSync(
+      path.join(root, "Tests", "FeatureTests", "FeatureFlagsSpec.swift"),
+      `import Quick
+import Nimble
+import SnapshotTesting
+@testable import Feature
+
+final class FeatureFlagsSpec: QuickSpec {
+    override class func spec() {}
+}
+`
+    );
+
+    const audit = auditSwiftRepo(root);
+
+    assert.deepEqual(audit.profile.testFrameworks, ["Nimble", "Quick", "SnapshotTesting"]);
+    assert.equal(audit.profile.testCommand, "swift test");
+    assert.ok(audit.profile.setupSignals.includes("quick test support"));
+    assert.ok(audit.profile.setupSignals.includes("nimble assertion support"));
+    assert.ok(audit.profile.setupSignals.includes("snapshot testing support"));
+  });
+
+  it("detects Objective-C XCTest imports in mixed Apple projects", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-objc-xctest-"));
+    fs.mkdirSync(path.join(root, "LegacyApp.xcodeproj"), { recursive: true });
+    fs.mkdirSync(path.join(root, "LegacyAppTests"), { recursive: true });
+    fs.writeFileSync(path.join(root, "LegacyApp.xcodeproj", "project.pbxproj"), "{}\n");
+    fs.writeFileSync(
+      path.join(root, "LegacyAppTests", "LegacyPaymentClientTests.m"),
+      `#import <XCTest/XCTest.h>
+
+@interface LegacyPaymentClientTests : XCTestCase
+@end
+
+@implementation LegacyPaymentClientTests
+- (void)testPayment {}
+@end
+`
+    );
+
+    const audit = auditSwiftRepo(root);
+
+    assert.deepEqual(audit.profile.testFrameworks, ["XCTest"]);
+    assert.equal(audit.profile.testCommand, "xcodebuild test");
+    assert.deepEqual(audit.profile.blockers, []);
+  });
+
+  it("includes a single Xcode test plan in scheme-based test commands", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-xctestplan-"));
+    fs.mkdirSync(path.join(root, "SampleApp.xcodeproj", "xcshareddata", "xcschemes"), { recursive: true });
+    fs.mkdirSync(path.join(root, "SampleAppTests"), { recursive: true });
+
+    fs.writeFileSync(path.join(root, "SampleApp.xcodeproj", "project.pbxproj"), "{}\n");
+    fs.writeFileSync(path.join(root, "SampleApp.xcodeproj", "xcshareddata", "xcschemes", "SampleApp.xcscheme"), "<Scheme></Scheme>\n");
+    fs.writeFileSync(path.join(root, "SampleApp.xctestplan"), "{}\n");
+    fs.writeFileSync(
+      path.join(root, "SampleAppTests", "SampleAppTests.swift"),
+      `import XCTest
+
+final class SampleAppTests: XCTestCase {
+    func testExample() {}
+}
+`
+    );
+
+    const audit = auditSwiftRepo(root);
+
+    assert.equal(audit.profile.testCommand, "xcodebuild test -scheme SampleApp -testPlan SampleApp");
+    assert.ok(audit.profile.setupSignals.includes("xcode test plan"));
   });
 });
