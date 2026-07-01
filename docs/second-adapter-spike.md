@@ -4,13 +4,14 @@ This checklist defines the first non-JavaScript adapter spike. The goal is to pr
 
 ## Candidate Order
 
-Current spike:
+Completed spike:
 
 - Kotlin/JVM with Gradle/Maven and JUnit
 
-Future candidate:
+Follow-up spikes now underway:
 
 - Swift Package Manager with XCTest or Swift Testing
+- Python package roots with pytest or unittest
 
 Choose the ecosystem with the lowest local setup cost and the clearest fixture coverage. The spike should validate adapter shape, not solve every framework variant.
 
@@ -48,6 +49,15 @@ Current Kotlin/JVM status:
 - classifies calculator/formatter logic as useful and DTO-style data classes as deferred
 - has golden audit and plan snapshots
 - has a Kotlin-specific model-consistency plan scenario
+- native generation remains deferred
+
+Current Python status:
+
+- registered as experimental `python`
+- audits pytest and no-tests-yet fixtures through the shared audit model
+- classifies parser/service logic as useful and dataclass DTOs as deferred
+- reports no-framework and no-command blockers honestly
+- has golden audit and plan snapshots
 - native generation remains deferred
 
 ## Out Of Scope

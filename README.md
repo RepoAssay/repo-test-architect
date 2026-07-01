@@ -5,7 +5,7 @@ Audit-first test strategy tooling for codebases.
 The first milestone is intentionally narrow:
 
 - detect JavaScript and TypeScript repository conventions
-- include an experimental Kotlin/JVM adapter spike
+- include experimental Kotlin/JVM, Swift, and Python adapter spikes
 - identify existing test framework signals
 - classify source files by likely test value
 - recommend useful tests before generating any code
@@ -193,14 +193,20 @@ src/
       audit.ts
     kotlin/
       audit.js
+    python/
+      audit.js
+    swift/
+      audit.js
   cli/
     index.js
 examples/
   node-vitest-basic/
   kotlin-junit-basic/
+  python-pytest-service/
+  swift-spm-xctest/
 ```
 
-The JavaScript adapter is the supported proof point. The Kotlin/JVM adapter is experimental and exists to prove that later adapters can emit the same core audit model instead of inventing language-specific report formats.
+The JavaScript adapter is the supported proof point. The Kotlin/JVM, Swift, and Python adapters are experimental and exist to prove that later adapters can emit the same core audit model instead of inventing language-specific report formats.
 
 ## Docs
 

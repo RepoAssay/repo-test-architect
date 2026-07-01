@@ -9,7 +9,7 @@ The repository is public-demo ready, but not package-release ready.
 The useful baseline is:
 
 - deterministic JavaScript/TypeScript audit pipeline
-- experimental Kotlin/JVM adapter spike
+- experimental Kotlin/JVM, Swift, and Python adapter spikes
 - polyglot project detection with unsupported-project reporting
 - project-level ranking, planning, placement, stats, and MCP-shaped tool calls
 - model-consistency scenarios for stable audit and plan outputs
@@ -27,15 +27,17 @@ Acceptance:
 - README points to the demo path, product positioning, and release gate
 - package remains private until license, ownership, and publish targets are confirmed
 
-## Milestone 2: Second Adapter Spike
+## Milestone 2: Adapter Spike Hardening
 
-Goal: prove the adapter contract survives a second ecosystem.
+Goal: prove the adapter contract keeps holding as additional ecosystems move from detection-only to audited fixtures.
 
-Status: started with an experimental Kotlin/JVM with Gradle/Maven and JUnit adapter.
+Status: started with experimental Kotlin/JVM, Swift, and Python adapters.
 
-Preferred candidates:
+Useful hardening targets:
 
+- Kotlin/JVM with Gradle/Maven and JUnit variants
 - Swift Package Manager with XCTest or Swift Testing
+- Python package layouts, pytest/unittest detection, and no-tests-yet blocker behavior
 
 Acceptance:
 
