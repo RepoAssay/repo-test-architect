@@ -12,17 +12,17 @@ All audited packages were detected as runnable with `swift test`, and all had hi
 
 | Repository | Frameworks | Architectures | Recommended | Main kinds | Mongo targets |
 | --- | --- | --- | ---: | --- | ---: |
-| `cg-account` | Swift Testing | concurrency, SwiftPM | 2 | service, utility | 0 |
+| `cg-account` | Swift Testing | concurrency, SwiftPM | 2 | service, command-or-worker | 0 |
 | `cg-apienvironment` | Swift Testing | SwiftPM | 0 | none | 0 |
 | `cg-bff` | Swift Testing, XCTVapor | concurrency, MongoDB, SwiftPM, Vapor | 24 | routes, data-access, middleware, utilities | 12 |
-| `cg-chat` | Swift Testing | concurrency, SwiftPM | 2 | service, utility | 0 |
+| `cg-chat` | Swift Testing | concurrency, SwiftPM | 2 | service, command-or-worker | 0 |
 | `cg-configuration` | Swift Testing | concurrency, SwiftPM, SwiftUI | 1 | utility | 0 |
 | `cg-finance` | Swift Testing | concurrency, SwiftPM, SwiftUI | 1 | service | 0 |
 | `cg-magicthegathering` | Swift Testing | concurrency, SwiftPM, SwiftUI | 2 | service, utility | 0 |
 | `cg-magicthegathering-ml` | Swift Testing | SwiftPM | 0 | none | 0 |
-| `cg-networking` | XCTest | concurrency, SwiftPM, SwiftUI | 5 | service, utilities | 0 |
-| `cg-persistence` | Swift Testing | SwiftPM | 3 | utilities | 0 |
-| `cg-pod` | Swift Testing | concurrency, SwiftPM, SwiftUI | 1 | service | 0 |
+| `cg-networking` | XCTest | concurrency, SwiftPM, SwiftUI | 5 | service, query-builder, error-mapping, utilities | 0 |
+| `cg-persistence` | Swift Testing | SwiftPM | 4 | storage | 0 |
+| `cg-pod` | Swift Testing | concurrency, SwiftPM, SwiftUI | 2 | service, command-or-worker | 0 |
 | `cg-tcg-ml` | Swift Testing | SwiftPM | 0 | none | 0 |
 
 ## Highest-Value Targets
@@ -57,9 +57,9 @@ The smaller packages mostly surface focused service or utility candidates:
 | `cg-chat` | `ChatService` | async service boundary |
 | `cg-finance` | `FinanceService` | async service boundary |
 | `cg-magicthegathering` | `MTGService` | async service boundary |
-| `cg-networking` | `DefaultNetworkingClient` | async service boundary |
+| `cg-networking` | `DefaultNetworkingClient`, `URLBuilder`, `APIError` | async service boundary, URL/query construction, error mapping |
 | `cg-pod` | `PodService` | async service boundary |
-| `cg-persistence` | `KeychainStorage`, `UserDefaultsStorage` | branching storage behavior |
+| `cg-persistence` | `KeychainStorage`, `UserDefaultsStorage` | persistence boundary, encoding/decoding behavior |
 
 These are good candidates for package-level Swift Testing or XCTest coverage before broadening into generation work.
 
@@ -71,10 +71,11 @@ The latest Swift adapter improvements are useful on these repositories:
 - XCTVapor detection correctly makes `cg-bff` runnable through `swift test`.
 - Fluent persistence models no longer dominate recommendations.
 - MongoDB data-access signals make the route/query risks visible without hiding route classification.
+- Swift utility sub-kinds split storage, worker/command, URL/query-building, and error-mapping targets out of the generic utility bucket.
 
 Remaining heuristic gaps:
 
-- Several `utility` recommendations are still broad. The adapter could split storage, command, worker, and URL/query-building utilities into more precise kinds.
+- Some `utility` recommendations are still broad, especially generic helper and extension files.
 - SwiftUI architecture detection is sometimes triggered by source-level `View` references, even when UI coverage is not the main concern.
 - The audit does not yet distinguish package APIs from app-only implementation details across the `cg-*` package family.
 - MongoDB guidance is still signal-based. It flags aggregation, dynamic filters, pagination, and writes, but it does not validate query semantics.
@@ -82,6 +83,5 @@ Remaining heuristic gaps:
 ## Suggested Next Work
 
 1. Improve generated plan text for `mongodb-*` signals so plans recommend seeded data, aggregation result ordering, pagination boundaries, and idempotent write/update cases.
-2. Add Swift utility sub-kinds for storage, command, worker, URL/query building, and error mapping.
-3. Add a project-level report command that can summarize a local workspace without checking local-only sibling paths into stable fixtures.
-4. Use `cg-bff` as the manual reference repo for future Vapor/Mongo heuristic checks, but keep deterministic tests synthetic.
+2. Add a project-level report command that can summarize a local workspace without checking local-only sibling paths into stable fixtures.
+3. Use `cg-bff` as the manual reference repo for future Vapor/Mongo heuristic checks, but keep deterministic tests synthetic.

@@ -384,6 +384,43 @@ function classifySourceFile(file) {
     return recommended("service", signals, risk, "medium", "unit", score, 4, reasons);
   }
 
+  if (isStorageBoundary(lowerPath, content)) {
+    return recommended(
+      "storage",
+      ["storage-boundary", ...encodingSignals(content)],
+      "medium",
+      "medium",
+      "unit",
+      6,
+      4,
+      ["Persistence boundary", ...encodingReasons(content)]
+    );
+  }
+
+  if (isCommandOrWorker(lowerPath, content)) {
+    const signals = ["command-or-worker"];
+    const reasons = ["Command or worker orchestration"];
+    let risk = "medium";
+    let score = 6;
+
+    if (/\basync\b|\bawait\b|\bactor\s+\w+/.test(content)) {
+      signals.push("async-or-concurrency");
+      reasons.push("async or concurrency behavior");
+      risk = "high";
+      score = 8;
+    }
+
+    return recommended("command-or-worker", signals, risk, "medium", "unit", score, 4, reasons);
+  }
+
+  if (isUrlOrQueryBuilder(lowerPath, content)) {
+    return recommended("query-builder", ["query-builder", "edge-case-surface"], "high", "high", "unit", 8, 2, ["URL or query construction", "edge-case surface"]);
+  }
+
+  if (isErrorMapping(lowerPath, content)) {
+    return recommended("error-mapping", ["error-mapping", "branching-logic"], "medium", "high", "unit", 6, 2, ["Error mapping behavior", "branching logic"]);
+  }
+
   if (hasBranching(content)) {
     return recommended("utility", ["branching-logic"], "medium", "high", "unit", 5, 2, ["Branching logic"]);
   }
@@ -553,6 +590,44 @@ function isVaporRoute(currentPath, content) {
 
 function isMongoDataAccess(content) {
   return detectMongoSignals(content).length > 0;
+}
+
+function isStorageBoundary(currentPath, content) {
+  return (
+    matchesAny(currentPath, ["storage", "persistence", "keychain", "userdefaults"]) ||
+    /\bUserDefaults\b|\bSecItem(Add|CopyMatching|Delete|Update)\b|\bPersistence\b/.test(content)
+  );
+}
+
+function encodingSignals(content) {
+  return /\bJSON(Encoder|Decoder)\b|\bCodable\b/.test(content) ? ["encoding-or-decoding"] : [];
+}
+
+function encodingReasons(content) {
+  return /\bJSON(Encoder|Decoder)\b|\bCodable\b/.test(content) ? ["encoding or decoding behavior"] : [];
+}
+
+function isCommandOrWorker(currentPath, content) {
+  return (
+    matchesAny(currentPath, ["/commands/", "/jobs/", "/worker/"]) ||
+    /\b(actor|struct|class)\s+\w*(Command|Job|Worker)\b/.test(content) ||
+    /\bAsyncCommand\b|\bCommandSignature\b/.test(content)
+  );
+}
+
+function isUrlOrQueryBuilder(currentPath, content) {
+  return (
+    matchesAny(currentPath, ["urlbuilder", "querybuilder"]) ||
+    /\bURLComponents\b|\bqueryString\b|\bURLQueryItem\b/.test(content)
+  );
+}
+
+function isErrorMapping(currentPath, content) {
+  return (
+    matchesAny(currentPath, ["error"]) &&
+    /\benum\s+\w*Error\b/.test(content) &&
+    /\bswitch\s+self\b|\blocalizedDescription\b/.test(content)
+  );
 }
 
 function detectMongoSignals(content) {

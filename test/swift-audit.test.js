@@ -443,6 +443,106 @@ final class CardPriceHistory {}
     assert.ok(job.signals.includes("mongodb-write"));
   });
 
+  it("classifies common Swift utility sub-kinds", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-swift-subkinds-"));
+    fs.mkdirSync(path.join(root, "Sources", "Core", "Worker"), { recursive: true });
+    fs.mkdirSync(path.join(root, "Sources", "Core", "Persistence"), { recursive: true });
+    fs.mkdirSync(path.join(root, "Sources", "Core", "Networking"), { recursive: true });
+    fs.mkdirSync(path.join(root, "Tests", "CoreTests"), { recursive: true });
+
+    fs.writeFileSync(
+      path.join(root, "Package.swift"),
+      `// swift-tools-version: 6.0
+import PackageDescription
+
+let package = Package(
+    name: "Core",
+    targets: [
+        .target(name: "Core"),
+        .testTarget(name: "CoreTests", dependencies: ["Core"])
+    ]
+)
+`
+    );
+    fs.writeFileSync(
+      path.join(root, "Sources", "Core", "Persistence", "KeychainStorage.swift"),
+      `import Foundation
+import Security
+
+public class KeychainStorage {
+    public func save<T: Codable>(_ value: T, forKey key: String) throws {
+        let data = try JSONEncoder().encode(value)
+        let query: [String: Any] = [kSecAttrAccount as String: key, kSecValueData as String: data]
+        let status = SecItemAdd(query as CFDictionary, nil)
+        guard status == errSecSuccess else { throw StorageError.failed }
+    }
+}
+
+enum StorageError: Error { case failed }
+`
+    );
+    fs.writeFileSync(
+      path.join(root, "Sources", "Core", "Worker", "AccountWorker.swift"),
+      `public actor AccountWorker {
+    func login(username: String, password: String) async -> String {
+        await Task.yield()
+        return username + password
+    }
+}
+`
+    );
+    fs.writeFileSync(
+      path.join(root, "Sources", "Core", "Networking", "URLBuilder.swift"),
+      `import Foundation
+
+struct URLBuilder {
+    func buildURL(baseURI: String, path: String) -> URL {
+        guard var components = URLComponents(string: baseURI) else { preconditionFailure("bad base") }
+        let formattedPath = path.hasPrefix("/") ? path : "/\\(path)"
+        components.path = components.path.appending(formattedPath)
+        guard let url = components.url else { preconditionFailure("bad url") }
+        return url
+    }
+}
+`
+    );
+    fs.writeFileSync(
+      path.join(root, "Sources", "Core", "Networking", "APIError.swift"),
+      `public enum APIError: Error {
+    case serverError(statusCode: Int)
+    case notFound
+
+    var localizedDescription: String {
+        switch self {
+        case .serverError(let statusCode):
+            return "Server error \\(statusCode)"
+        case .notFound:
+            return "Not found"
+        }
+    }
+}
+`
+    );
+    fs.writeFileSync(
+      path.join(root, "Tests", "CoreTests", "CoreTests.swift"),
+      `import Testing
+@testable import Core
+
+@Test func smoke() {}
+`
+    );
+
+    const audit = auditSwiftRepo(root);
+    const byName = new Map(audit.recommended.map((target) => [target.name, target]));
+
+    assert.equal(byName.get("KeychainStorage").kind, "storage");
+    assert.ok(byName.get("KeychainStorage").signals.includes("encoding-or-decoding"));
+    assert.equal(byName.get("AccountWorker").kind, "command-or-worker");
+    assert.ok(byName.get("AccountWorker").signals.includes("async-or-concurrency"));
+    assert.equal(byName.get("URLBuilder").kind, "query-builder");
+    assert.equal(byName.get("APIError").kind, "error-mapping");
+  });
+
   it("audits Xcode app source folders outside SwiftPM Sources roots", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-xcode-"));
     fs.mkdirSync(path.join(root, "SampleApp.xcodeproj"), { recursive: true });
