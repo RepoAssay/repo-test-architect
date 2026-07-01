@@ -107,8 +107,24 @@ function toPlanItem(action, target) {
     priority: target.riskReductionScore - target.maintenanceCost,
     riskReductionScore: target.riskReductionScore,
     maintenanceCost: target.maintenanceCost,
-    rationale: target.reasons,
+    rationale: enrichRationale(target.reasons, target.signals),
     sourceSignals: target.signals,
     existingTestPaths: target.existingTestPaths
   };
+}
+
+function enrichRationale(reasons = [], signals = []) {
+  const rationale = [...reasons];
+  const guidance = [
+    ["mongodb-aggregation", "Seed representative MongoDB fixture data and assert aggregation grouping, ordering, and edge-case result shape."],
+    ["mongodb-dynamic-filter", "Cover dynamic BSON filter construction with escaped user input, empty results, and malformed query boundaries."],
+    ["pagination-or-sort", "Assert pagination and sorting boundaries, including limits, offsets, stable ordering, and has-next-page behavior."],
+    ["mongodb-write", "Exercise MongoDB create/update paths for idempotency, duplicate data, and existing-record updates."]
+  ];
+
+  for (const [signal, text] of guidance) {
+    if (signals.includes(signal)) rationale.push(text);
+  }
+
+  return [...new Set(rationale)];
 }
