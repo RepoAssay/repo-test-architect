@@ -42,4 +42,40 @@ describe("test plan generator", () => {
     assert.equal(plan.summary.blockerCount, 2);
     assert.ok(plan.blockers.includes("No supported JS test framework detected."));
   });
+
+  it("adds concrete MongoDB coverage guidance from source signals", () => {
+    const plan = createTestPlan({
+      schemaVersion: "audit/v1",
+      profile: {
+        confidence: "high",
+        testCommand: "swift test",
+        blockers: []
+      },
+      untestedCandidates: [
+        {
+          id: "Sources/App/Controllers/PriceController.swift",
+          name: "PriceController",
+          path: "Sources/App/Controllers/PriceController.swift",
+          kind: "http-route",
+          signals: ["http-route", "vapor-route", "mongodb-aggregation", "mongodb-dynamic-filter", "pagination-or-sort", "mongodb-write"],
+          risk: "high",
+          testability: "medium",
+          recommendedTestLevel: "integration",
+          riskReductionScore: 9,
+          maintenanceCost: 5,
+          reasons: ["HTTP route behavior", "Vapor request handling", "MongoDB query boundary"],
+          existingTestPaths: []
+        }
+      ],
+      coveredButRisky: [],
+      skipped: []
+    });
+
+    const item = plan.items[0];
+    assert.equal(item.target, "PriceController");
+    assert.ok(item.rationale.includes("Seed representative MongoDB fixture data and assert aggregation grouping, ordering, and edge-case result shape."));
+    assert.ok(item.rationale.includes("Cover dynamic BSON filter construction with escaped user input, empty results, and malformed query boundaries."));
+    assert.ok(item.rationale.includes("Assert pagination and sorting boundaries, including limits, offsets, stable ordering, and has-next-page behavior."));
+    assert.ok(item.rationale.includes("Exercise MongoDB create/update paths for idempotency, duplicate data, and existing-record updates."));
+  });
 });
