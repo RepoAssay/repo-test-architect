@@ -70,6 +70,8 @@ Implemented:
 - `swift-spm-swift-testing`
 - `vapor-service-tests`
 - `python-pytest-service`
+- `python-unittest-service`
+- `python-requirements-pytest`
 - `python-no-tests-yet`
 
 ## MCP Surface

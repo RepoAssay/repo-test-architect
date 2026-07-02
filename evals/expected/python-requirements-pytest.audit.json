@@ -1,0 +1,129 @@
+{
+  "schemaVersion": "audit/v1",
+  "profile": {
+    "root": "<fixture>",
+    "languages": [
+      "python"
+    ],
+    "packageManagers": [
+      "pip"
+    ],
+    "testFrameworks": [
+      "pytest"
+    ],
+    "architectures": [],
+    "testCommand": "pytest",
+    "detectedConventions": [],
+    "existingTestLocations": [],
+    "setupSignals": [
+      "requirements",
+      "pytest dependency"
+    ],
+    "confidence": "medium",
+    "blockers": []
+  },
+  "untestedCandidates": [
+    {
+      "id": "src/shipping_client.py",
+      "name": "shipping_client",
+      "path": "src/shipping_client.py",
+      "kind": "service",
+      "signals": [
+        "service-boundary",
+        "external-boundary"
+      ],
+      "risk": "high",
+      "testability": "medium",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 8,
+      "maintenanceCost": 4,
+      "reasons": [
+        "Service boundary",
+        "external boundary"
+      ],
+      "existingTestPaths": []
+    },
+    {
+      "id": "src/shipping_mapper.py",
+      "name": "shipping_mapper",
+      "path": "src/shipping_mapper.py",
+      "kind": "pure-logic",
+      "signals": [
+        "pure-logic",
+        "edge-case-surface"
+      ],
+      "risk": "high",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 9,
+      "maintenanceCost": 2,
+      "reasons": [
+        "Pure transformation logic",
+        "edge-case surface"
+      ],
+      "existingTestPaths": []
+    }
+  ],
+  "coveredButRisky": [],
+  "recommended": [
+    {
+      "id": "src/shipping_client.py",
+      "name": "shipping_client",
+      "path": "src/shipping_client.py",
+      "kind": "service",
+      "signals": [
+        "service-boundary",
+        "external-boundary"
+      ],
+      "risk": "high",
+      "testability": "medium",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 8,
+      "maintenanceCost": 4,
+      "reasons": [
+        "Service boundary",
+        "external boundary"
+      ],
+      "existingTestPaths": []
+    },
+    {
+      "id": "src/shipping_mapper.py",
+      "name": "shipping_mapper",
+      "path": "src/shipping_mapper.py",
+      "kind": "pure-logic",
+      "signals": [
+        "pure-logic",
+        "edge-case-surface"
+      ],
+      "risk": "high",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 9,
+      "maintenanceCost": 2,
+      "reasons": [
+        "Pure transformation logic",
+        "edge-case surface"
+      ],
+      "existingTestPaths": []
+    }
+  ],
+  "skipped": [
+    {
+      "id": "src/shipping_response.py",
+      "name": "shipping_response",
+      "path": "src/shipping_response.py",
+      "kind": "dto",
+      "signals": [
+        "dto-only"
+      ],
+      "riskReductionScore": 2,
+      "maintenanceCost": 4,
+      "reason": "DTO-only models are usually better covered through route, parser, or service tests.",
+      "preferredCoveragePath": "Cover through parser, mapper, repository, or route integration tests that consume the model."
+    }
+  ],
+  "risks": [
+    "shipping_client has service boundary, external boundary and has no matching test file.",
+    "shipping_mapper has pure transformation logic, edge-case surface and has no matching test file."
+  ]
+}

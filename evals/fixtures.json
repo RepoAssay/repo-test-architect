@@ -50,6 +50,16 @@
     "path": "examples/python-pytest-service"
   },
   {
+    "name": "python-unittest-service",
+    "adapter": "python",
+    "path": "examples/python-unittest-service"
+  },
+  {
+    "name": "python-requirements-pytest",
+    "adapter": "python",
+    "path": "examples/python-requirements-pytest"
+  },
+  {
     "name": "python-no-tests-yet",
     "adapter": "python",
     "path": "examples/python-no-tests-yet"

@@ -1,0 +1,75 @@
+{
+  "schemaVersion": "plan/v1",
+  "summary": {
+    "confidence": "high",
+    "verificationCommand": "python -m unittest",
+    "blockerCount": 0,
+    "addTestCount": 1,
+    "extendTestCount": 1,
+    "deferredCount": 1
+  },
+  "blockers": [],
+  "items": [
+    {
+      "id": "extend-test:src/inventory_parser.py",
+      "action": "extend-test",
+      "targetId": "src/inventory_parser.py",
+      "target": "inventory_parser",
+      "path": "src/inventory_parser.py",
+      "testLevel": "unit",
+      "priority": 7,
+      "riskReductionScore": 9,
+      "maintenanceCost": 2,
+      "rationale": [
+        "Pure transformation logic",
+        "edge-case surface",
+        "Existing test file detected; review missing edge cases"
+      ],
+      "sourceSignals": [
+        "pure-logic",
+        "edge-case-surface",
+        "matching-test"
+      ],
+      "existingTestPaths": [
+        "tests/inventory_parser_test.py"
+      ]
+    },
+    {
+      "id": "add-test:src/inventory_service.py",
+      "action": "add-test",
+      "targetId": "src/inventory_service.py",
+      "target": "inventory_service",
+      "path": "src/inventory_service.py",
+      "testLevel": "unit",
+      "priority": 2,
+      "riskReductionScore": 6,
+      "maintenanceCost": 4,
+      "rationale": [
+        "Service boundary"
+      ],
+      "sourceSignals": [
+        "service-boundary"
+      ],
+      "existingTestPaths": []
+    },
+    {
+      "id": "defer:src/inventory_response.py",
+      "action": "defer",
+      "targetId": "src/inventory_response.py",
+      "target": "inventory_response",
+      "path": "src/inventory_response.py",
+      "testLevel": "none",
+      "priority": -2,
+      "riskReductionScore": 2,
+      "maintenanceCost": 4,
+      "rationale": [
+        "DTO-only models are usually better covered through route, parser, or service tests.",
+        "Cover through parser, mapper, repository, or route integration tests that consume the model."
+      ],
+      "sourceSignals": [
+        "dto-only"
+      ],
+      "existingTestPaths": []
+    }
+  ]
+}

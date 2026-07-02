@@ -1,0 +1,136 @@
+{
+  "schemaVersion": "audit/v1",
+  "profile": {
+    "root": "<fixture>",
+    "languages": [
+      "python"
+    ],
+    "packageManagers": [
+      "pyproject"
+    ],
+    "testFrameworks": [
+      "unittest"
+    ],
+    "architectures": [],
+    "testCommand": "python -m unittest",
+    "detectedConventions": [
+      "*_test.py"
+    ],
+    "existingTestLocations": [
+      "tests"
+    ],
+    "setupSignals": [
+      "pyproject"
+    ],
+    "confidence": "high",
+    "blockers": []
+  },
+  "untestedCandidates": [
+    {
+      "id": "src/inventory_service.py",
+      "name": "inventory_service",
+      "path": "src/inventory_service.py",
+      "kind": "service",
+      "signals": [
+        "service-boundary"
+      ],
+      "risk": "medium",
+      "testability": "medium",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 6,
+      "maintenanceCost": 4,
+      "reasons": [
+        "Service boundary"
+      ],
+      "existingTestPaths": []
+    }
+  ],
+  "coveredButRisky": [
+    {
+      "id": "src/inventory_parser.py",
+      "name": "inventory_parser",
+      "path": "src/inventory_parser.py",
+      "kind": "pure-logic",
+      "signals": [
+        "pure-logic",
+        "edge-case-surface",
+        "matching-test"
+      ],
+      "risk": "high",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 9,
+      "maintenanceCost": 2,
+      "reasons": [
+        "Pure transformation logic",
+        "edge-case surface",
+        "Existing test file detected; review missing edge cases"
+      ],
+      "existingTestPaths": [
+        "tests/inventory_parser_test.py"
+      ]
+    }
+  ],
+  "recommended": [
+    {
+      "id": "src/inventory_parser.py",
+      "name": "inventory_parser",
+      "path": "src/inventory_parser.py",
+      "kind": "pure-logic",
+      "signals": [
+        "pure-logic",
+        "edge-case-surface",
+        "matching-test"
+      ],
+      "risk": "high",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 9,
+      "maintenanceCost": 2,
+      "reasons": [
+        "Pure transformation logic",
+        "edge-case surface",
+        "Existing test file detected; review missing edge cases"
+      ],
+      "existingTestPaths": [
+        "tests/inventory_parser_test.py"
+      ]
+    },
+    {
+      "id": "src/inventory_service.py",
+      "name": "inventory_service",
+      "path": "src/inventory_service.py",
+      "kind": "service",
+      "signals": [
+        "service-boundary"
+      ],
+      "risk": "medium",
+      "testability": "medium",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 6,
+      "maintenanceCost": 4,
+      "reasons": [
+        "Service boundary"
+      ],
+      "existingTestPaths": []
+    }
+  ],
+  "skipped": [
+    {
+      "id": "src/inventory_response.py",
+      "name": "inventory_response",
+      "path": "src/inventory_response.py",
+      "kind": "dto",
+      "signals": [
+        "dto-only"
+      ],
+      "riskReductionScore": 2,
+      "maintenanceCost": 4,
+      "reason": "DTO-only models are usually better covered through route, parser, or service tests.",
+      "preferredCoveragePath": "Cover through parser, mapper, repository, or route integration tests that consume the model."
+    }
+  ],
+  "risks": [
+    "inventory_parser has pure transformation logic, edge-case surface and needs edge-case review."
+  ]
+}
