@@ -73,6 +73,7 @@ Implemented:
 - `python-unittest-service`
 - `python-requirements-pytest`
 - `python-package-local-tests`
+- `python-setuptools-pytest`
 - `python-no-tests-yet`
 
 ## MCP Surface

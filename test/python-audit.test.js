@@ -7,6 +7,7 @@ const exampleRoot = path.resolve("examples/python-pytest-service");
 const unittestRoot = path.resolve("examples/python-unittest-service");
 const requirementsRoot = path.resolve("examples/python-requirements-pytest");
 const packageLocalTestsRoot = path.resolve("examples/python-package-local-tests");
+const setuptoolsRoot = path.resolve("examples/python-setuptools-pytest");
 const noTestsRoot = path.resolve("examples/python-no-tests-yet");
 
 describe("Python audit adapter", () => {
@@ -175,6 +176,30 @@ describe("Python audit adapter", () => {
     assert.deepEqual(
       audit.skipped.map((target) => `${target.name}:${target.kind}`),
       ["checkout_response:dto"]
+    );
+  });
+
+  it("detects setuptools pytest projects", () => {
+    const audit = auditPythonRepo(setuptoolsRoot);
+
+    assert.deepEqual(audit.profile.packageManagers, ["setuptools"]);
+    assert.deepEqual(audit.profile.testFrameworks, ["pytest"]);
+    assert.equal(audit.profile.testCommand, "pytest");
+    assert.equal(audit.profile.confidence, "high");
+    assert.ok(audit.profile.existingTestLocations.includes("tests"));
+    assert.ok(audit.profile.detectedConventions.includes("tests/test_*.py"));
+    assert.ok(audit.profile.setupSignals.includes("pytest dependency"));
+    assert.deepEqual(
+      audit.coveredButRisky.map((target) => `${target.name}:${target.kind}:${target.existingTestPaths.join(",")}`),
+      ["order_validator:pure-logic:tests/test_order_validator.py"]
+    );
+    assert.deepEqual(
+      audit.untestedCandidates.map((target) => `${target.name}:${target.kind}:${target.recommendedTestLevel}`),
+      ["order_repository:service:unit"]
+    );
+    assert.deepEqual(
+      audit.skipped.map((target) => `${target.name}:${target.kind}`),
+      ["order_response:dto"]
     );
   });
 });

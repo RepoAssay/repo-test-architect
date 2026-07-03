@@ -65,6 +65,11 @@
     "path": "examples/python-package-local-tests"
   },
   {
+    "name": "python-setuptools-pytest",
+    "adapter": "python",
+    "path": "examples/python-setuptools-pytest"
+  },
+  {
     "name": "python-no-tests-yet",
     "adapter": "python",
     "path": "examples/python-no-tests-yet"

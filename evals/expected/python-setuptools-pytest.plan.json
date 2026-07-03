@@ -1,0 +1,77 @@
+{
+  "schemaVersion": "plan/v1",
+  "summary": {
+    "confidence": "high",
+    "verificationCommand": "pytest",
+    "blockerCount": 0,
+    "addTestCount": 1,
+    "extendTestCount": 1,
+    "deferredCount": 1
+  },
+  "blockers": [],
+  "items": [
+    {
+      "id": "extend-test:orders/order_validator.py",
+      "action": "extend-test",
+      "targetId": "orders/order_validator.py",
+      "target": "order_validator",
+      "path": "orders/order_validator.py",
+      "testLevel": "unit",
+      "priority": 7,
+      "riskReductionScore": 9,
+      "maintenanceCost": 2,
+      "rationale": [
+        "Pure transformation logic",
+        "edge-case surface",
+        "Existing test file detected; review missing edge cases"
+      ],
+      "sourceSignals": [
+        "pure-logic",
+        "edge-case-surface",
+        "matching-test"
+      ],
+      "existingTestPaths": [
+        "tests/test_order_validator.py"
+      ]
+    },
+    {
+      "id": "add-test:orders/order_repository.py",
+      "action": "add-test",
+      "targetId": "orders/order_repository.py",
+      "target": "order_repository",
+      "path": "orders/order_repository.py",
+      "testLevel": "unit",
+      "priority": 4,
+      "riskReductionScore": 8,
+      "maintenanceCost": 4,
+      "rationale": [
+        "Service boundary",
+        "external boundary"
+      ],
+      "sourceSignals": [
+        "service-boundary",
+        "external-boundary"
+      ],
+      "existingTestPaths": []
+    },
+    {
+      "id": "defer:orders/order_response.py",
+      "action": "defer",
+      "targetId": "orders/order_response.py",
+      "target": "order_response",
+      "path": "orders/order_response.py",
+      "testLevel": "none",
+      "priority": -2,
+      "riskReductionScore": 2,
+      "maintenanceCost": 4,
+      "rationale": [
+        "DTO-only models are usually better covered through route, parser, or service tests.",
+        "Cover through parser, mapper, repository, or route integration tests that consume the model."
+      ],
+      "sourceSignals": [
+        "dto-only"
+      ],
+      "existingTestPaths": []
+    }
+  ]
+}
