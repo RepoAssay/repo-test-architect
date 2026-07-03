@@ -156,7 +156,7 @@ function detectPackageManagers(paths) {
 
 function detectTestFrameworks(paths, configText) {
   const frameworks = new Set();
-  if (/\bpytest\b/i.test(configText) || paths.some((item) => isTestFile(item) && /^tests\/test_.*\.py$/.test(item))) frameworks.add("pytest");
+  if (/\bpytest\b/i.test(configText) || paths.some((item) => isTestFile(item) && fileNameOf(item).startsWith("test_"))) frameworks.add("pytest");
   if (/\bunittest\b/i.test(configText) || paths.some((item) => isTestFile(item) && /_test\.py$/.test(item))) frameworks.add("unittest");
   return [...frameworks].sort();
 }
@@ -184,6 +184,7 @@ function detectArchitectures(paths, files) {
 function detectConventions(paths) {
   const conventions = new Set();
   if (paths.some((item) => /^tests\/test_.*\.py$/.test(item))) conventions.add("tests/test_*.py");
+  if (paths.some((item) => item.includes("/tests/test_"))) conventions.add("package-local tests/test_*.py");
   if (paths.some((item) => /_test\.py$/.test(item))) conventions.add("*_test.py");
   return [...conventions];
 }
@@ -242,7 +243,7 @@ function classifySourceFile(file) {
     return recommended("http-route", ["http-route", "status-handling"], "high", "medium", "integration", 8, 5, ["HTTP route behavior", "request or status handling"]);
   }
 
-  if (matchesAny(lowerPath, ["parser", "mapper", "validator", "formatter"]) || /\bdef\s+(parse|map|validate|format)_/.test(content)) {
+  if (matchesAny(lowerPath, ["parser", "mapper", "validator", "formatter", "calculator"]) || /\bdef\s+(parse|map|validate|format|calculate)_/.test(content)) {
     return recommended("pure-logic", ["pure-logic", "edge-case-surface"], "high", "high", "unit", 9, 2, ["Pure transformation logic", "edge-case surface"]);
   }
 
@@ -301,7 +302,8 @@ function isSourceFile(currentPath) {
 
 function isTestFile(currentPath) {
   const normalized = normalizePath(currentPath);
-  return normalized.startsWith("tests/") && (normalized.split("/").at(-1)?.startsWith("test_") || normalized.endsWith("_test.py"));
+  const fileName = fileNameOf(normalized);
+  return isInTestsDirectory(normalized) && (fileName.startsWith("test_") || fileName.endsWith("_test.py"));
 }
 
 function findExistingTests(sourcePath, testPaths) {
@@ -347,8 +349,16 @@ function stripCurrentDirectoryPrefix(currentPath) {
 }
 
 function basenameWithoutExtension(currentPath) {
-  const fileName = normalizePath(currentPath).split("/").at(-1) ?? currentPath;
-  return fileName.replace(/\.[^.]+$/, "");
+  return fileNameOf(currentPath).replace(/\.[^.]+$/, "");
+}
+
+function fileNameOf(currentPath) {
+  return normalizePath(currentPath).split("/").at(-1) ?? currentPath;
+}
+
+function isInTestsDirectory(currentPath) {
+  const normalized = normalizePath(currentPath);
+  return normalized.startsWith("tests/") || normalized.includes("/tests/");
 }
 
 function matchesAny(value, fragments) {

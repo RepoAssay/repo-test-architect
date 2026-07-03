@@ -60,6 +60,11 @@
     "path": "examples/python-requirements-pytest"
   },
   {
+    "name": "python-package-local-tests",
+    "adapter": "python",
+    "path": "examples/python-package-local-tests"
+  },
+  {
     "name": "python-no-tests-yet",
     "adapter": "python",
     "path": "examples/python-no-tests-yet"

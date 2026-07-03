@@ -6,6 +6,7 @@ import { auditPythonRepo } from "../src/adapters/python/audit.js";
 const exampleRoot = path.resolve("examples/python-pytest-service");
 const unittestRoot = path.resolve("examples/python-unittest-service");
 const requirementsRoot = path.resolve("examples/python-requirements-pytest");
+const packageLocalTestsRoot = path.resolve("examples/python-package-local-tests");
 const noTestsRoot = path.resolve("examples/python-no-tests-yet");
 
 describe("Python audit adapter", () => {
@@ -151,6 +152,29 @@ describe("Python audit adapter", () => {
     assert.deepEqual(
       audit.skipped.map((target) => `${target.name}:${target.kind}`),
       ["shipping_response:dto"]
+    );
+  });
+
+  it("detects package-local pytest conventions and matching tests", () => {
+    const audit = auditPythonRepo(packageLocalTestsRoot);
+
+    assert.deepEqual(audit.profile.packageManagers, ["pyproject"]);
+    assert.deepEqual(audit.profile.testFrameworks, ["pytest"]);
+    assert.equal(audit.profile.testCommand, "pytest");
+    assert.equal(audit.profile.confidence, "high");
+    assert.ok(audit.profile.existingTestLocations.includes("package-local tests"));
+    assert.ok(audit.profile.detectedConventions.includes("package-local tests/test_*.py"));
+    assert.deepEqual(
+      audit.coveredButRisky.map((target) => `${target.name}:${target.kind}:${target.existingTestPaths.join(",")}`),
+      ["calculator:pure-logic:src/checkout/tests/test_calculator.py"]
+    );
+    assert.deepEqual(
+      audit.untestedCandidates.map((target) => `${target.name}:${target.kind}:${target.recommendedTestLevel}`),
+      ["discount_service:service:unit"]
+    );
+    assert.deepEqual(
+      audit.skipped.map((target) => `${target.name}:${target.kind}`),
+      ["checkout_response:dto"]
     );
   });
 });
