@@ -251,6 +251,15 @@ export interface AuditRepoOptions {
   changedPaths?: string[];
 }
 
+export interface DetectRepoProjectsOptions {
+  excludeProjectRoots?: string[];
+}
+
+export interface AuditRepoProjectsOptions {
+  changedPaths?: string[];
+  excludeProjectRoots?: string[];
+}
+
 export interface GenerateTestPlanOptions {
   itemId?: string;
 }
@@ -274,9 +283,9 @@ export interface AnalyzeTestPlacementOptions {
   owner?: string;
 }
 
-export declare function detectRepoProjects(repoRoot: string): ProjectDetection;
+export declare function detectRepoProjects(repoRoot: string, options?: DetectRepoProjectsOptions): ProjectDetection;
 
-export declare function auditRepoProjects(repoRoot: string): ProjectAudits;
+export declare function auditRepoProjects(repoRoot: string, options?: AuditRepoProjectsOptions): ProjectAudits;
 
 export declare function getAdapterRegistry(): {
   schemaVersion: "adapter-registry/v1";

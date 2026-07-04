@@ -50,7 +50,7 @@ Heuristic follow-up:
 
 - add ownership or package-role signals for adapter modules, CLI entrypoints, MCP transport, and core scoring modules
 - reduce duplicate JS/TS recommendations when TypeScript files are reference declarations or mirrors of runtime JavaScript
-- allow a report mode that can exclude checked-in example fixtures from a self-audit
+- use `--exclude-project "examples/**"` when generating self-audit reports that should ignore checked-in example fixtures
 
 ## Collectors Grimoire App Audit
 
@@ -107,4 +107,4 @@ The real-repo report gate is now partially satisfied:
 Remaining gap:
 
 - add at least one non-owned JavaScript/TypeScript repository report before public alpha messaging
-- make report generation repeatable without depending on local sibling checkout names
+- make local sibling package report generation independent of local checkout names

@@ -27,6 +27,7 @@ import { detectProjects } from "./project-detector.js";
  *
  * @typedef {object} AuditDetectedProjectsOptions
  * @property {string[]} [changedPaths]
+ * @property {string[]} [excludeProjectRoots]
  */
 
 /**
@@ -35,7 +36,9 @@ import { detectProjects } from "./project-detector.js";
  * @returns {ProjectAudits}
  */
 export function auditDetectedProjects(repoRoot, options = {}) {
-  const detection = detectProjects(repoRoot);
+  const detection = detectProjects(repoRoot, {
+    excludeProjectRoots: options.excludeProjectRoots
+  });
   const audits = [];
   const skippedProjects = [];
 

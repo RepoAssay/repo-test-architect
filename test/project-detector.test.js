@@ -68,6 +68,34 @@ describe("project detector", () => {
     );
   });
 
+  it("can exclude exact project roots and subtree patterns", () => {
+    const exact = detectProjects(path.resolve("examples/polyglot-workspace"), {
+      excludeProjectRoots: ["apps/web"]
+    });
+    const subtree = detectProjects(path.resolve("examples/polyglot-workspace"), {
+      excludeProjectRoots: ["apps/**"]
+    });
+
+    assert.deepEqual(
+      exact.projects.map((project) => project.root),
+      ["apps/android", "services/api"]
+    );
+    assert.deepEqual(exact.summary, {
+      projectCount: 2,
+      supportedProjectCount: 2,
+      unsupportedProjectCount: 0
+    });
+    assert.deepEqual(
+      subtree.projects.map((project) => project.root),
+      ["services/api"]
+    );
+    assert.deepEqual(subtree.summary, {
+      projectCount: 1,
+      supportedProjectCount: 1,
+      unsupportedProjectCount: 0
+    });
+  });
+
   it("explains experimental JVM adapter matching", () => {
     const detection = detectProjects(path.resolve("examples/kotlin-junit-basic"));
 

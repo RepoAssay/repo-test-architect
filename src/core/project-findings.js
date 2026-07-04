@@ -28,7 +28,9 @@ export function createProjectFindings(projectAudits, options = {}) {
   const maxFindings = normalizeMaxFindings(options.maxFindings);
   const unsupportedProjects = normalizeUnsupportedProjects(projectAudits.skippedProjects);
   const coverageFindings = projectAudits.audits.flatMap(toAuditFindings);
-  const placementFindings = analyzeProjectTestPlacement(projectAudits).findings.map(toPlacementFinding);
+  const placementFindings = analyzeProjectTestPlacement(projectAudits).findings
+    .filter((finding) => finding.action !== "keep")
+    .map(toPlacementFinding);
   const findings = [...coverageFindings, ...placementFindings].sort(bySeverityThenPriority);
   const displayedFindings = findings.slice(0, maxFindings);
 

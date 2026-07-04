@@ -37,6 +37,10 @@ export { validateProjectAudits } from "./project-audits-validation.js";
  *
  * @typedef {object} AuditRepoProjectsOptions
  * @property {string[]} [changedPaths]
+ * @property {string[]} [excludeProjectRoots]
+ *
+ * @typedef {object} DetectRepoProjectsOptions
+ * @property {string[]} [excludeProjectRoots]
  *
  * @typedef {object} GenerateTestPlanOptions
  * @property {string} [itemId]
@@ -55,10 +59,13 @@ export { validateProjectAudits } from "./project-audits-validation.js";
 
 /**
  * @param {string} repoRoot
+ * @param {DetectRepoProjectsOptions} [options]
  * @returns {ProjectDetection}
  */
-export function detectRepoProjects(repoRoot) {
-  return detectProjects(repoRoot);
+export function detectRepoProjects(repoRoot, options = {}) {
+  return detectProjects(repoRoot, {
+    excludeProjectRoots: validateProjectRootPatterns(options.excludeProjectRoots)
+  });
 }
 
 /**
@@ -75,7 +82,8 @@ export function getProjectDetectionRules() {
  */
 export function auditRepoProjects(repoRoot, options = {}) {
   return auditDetectedProjects(repoRoot, {
-    changedPaths: validateChangedPaths(options.changedPaths)
+    changedPaths: validateChangedPaths(options.changedPaths),
+    excludeProjectRoots: validateProjectRootPatterns(options.excludeProjectRoots)
   });
 }
 
@@ -233,6 +241,16 @@ function validateChangedPaths(changedPaths) {
   }
 
   return changedPaths;
+}
+
+function validateProjectRootPatterns(projectRoots) {
+  if (projectRoots === undefined) return undefined;
+
+  if (!Array.isArray(projectRoots) || projectRoots.some((projectRoot) => typeof projectRoot !== "string" || projectRoot.length === 0)) {
+    throw new Error("excludeProjectRoots must be an array of non-empty strings.");
+  }
+
+  return projectRoots;
 }
 
 /**

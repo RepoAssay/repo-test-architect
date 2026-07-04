@@ -43,6 +43,18 @@ describe("tool API", () => {
     assert.equal(detection.projects[1].adapterMatches[0].adapterId, "javascript");
   });
 
+  it("detects repository projects with excluded roots", () => {
+    const detection = detectRepoProjects(path.resolve("examples/polyglot-workspace"), {
+      excludeProjectRoots: ["apps/**"]
+    });
+
+    assert.equal(detection.schemaVersion, "project-detection/v1");
+    assert.deepEqual(
+      detection.projects.map((project) => project.root),
+      ["services/api"]
+    );
+  });
+
   it("lists project detection rules", () => {
     const rules = getProjectDetectionRules();
 
@@ -57,6 +69,16 @@ describe("tool API", () => {
     assert.equal(result.schemaVersion, "project-audits/v1");
     assert.equal(result.summary.auditedProjectCount, 3);
     assert.equal(result.summary.skippedProjectCount, 0);
+  });
+
+  it("audits detected repository projects with excluded roots", () => {
+    const result = auditRepoProjects(path.resolve("examples/polyglot-workspace"), {
+      excludeProjectRoots: ["apps/**"]
+    });
+
+    assert.equal(result.schemaVersion, "project-audits/v1");
+    assert.deepEqual(result.audits.map((entry) => entry.projectId), ["services/api"]);
+    assert.equal(result.summary.projectCount, 1);
   });
 
   it("passes changed paths into detected repository project audits", () => {
@@ -91,6 +113,13 @@ describe("tool API", () => {
     assert.throws(
       () => auditRepoProjects(path.resolve("examples/polyglot-workspace"), { changedPaths: [""] }),
       /changedPaths must be an array of non-empty strings/
+    );
+  });
+
+  it("rejects invalid project exclusion roots", () => {
+    assert.throws(
+      () => auditRepoProjects(path.resolve("examples/polyglot-workspace"), { excludeProjectRoots: [""] }),
+      /excludeProjectRoots must be an array of non-empty strings/
     );
   });
 
