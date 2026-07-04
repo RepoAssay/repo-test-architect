@@ -71,6 +71,22 @@ describe("project auditor", () => {
     );
   });
 
+  it("can exclude project roots before auditing", () => {
+    const result = auditDetectedProjects(path.resolve("examples/polyglot-workspace"), {
+      excludeProjectRoots: ["apps/**"]
+    });
+
+    assert.deepEqual(result.summary, {
+      projectCount: 1,
+      auditedProjectCount: 1,
+      skippedProjectCount: 0
+    });
+    assert.deepEqual(
+      result.audits.map((entry) => entry.projectId),
+      ["services/api"]
+    );
+  });
+
   it("normalizes absolute changed paths before project adapter dispatch", () => {
     const repoRoot = path.resolve("examples/polyglot-workspace");
     const result = auditDetectedProjects(repoRoot, {

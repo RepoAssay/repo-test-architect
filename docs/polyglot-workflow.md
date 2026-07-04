@@ -47,6 +47,15 @@ For every supported project root, the matching adapter produces a normal audit a
 The current runtime audits JavaScript and TypeScript project roots through the supported `javascript` adapter, Kotlin/JVM Gradle or Maven roots through the experimental `kotlin` adapter, Python package roots through the experimental `python` adapter, and Swift Package Manager or Apple Xcode roots through the experimental `swift` adapter.
 JavaScript and TypeScript share one adapter domain. Java and Kotlin share one experimental JVM adapter domain. Swift and Objective-C are kept inside the experimental Apple adapter domain when they share one Xcode root.
 
+For report-style self-audits, project-aware commands can exclude exact roots or subtrees before auditing:
+
+```powershell
+node ./src/cli/index.js detect . --exclude-project "examples/**" --format json
+node ./src/cli/index.js findings-projects . --exclude-project "examples/**"
+```
+
+Quote `**` patterns in shells that expand globs.
+
 ## 3. Reuse Saved Project Audits
 
 Project-derived commands can read a saved `project-audits/v1` file:

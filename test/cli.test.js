@@ -93,6 +93,23 @@ describe("CLI", () => {
     );
   });
 
+  it("detects project roots with excluded roots", () => {
+    const output = execFileSync(
+      process.execPath,
+      [cliPath, "detect", "examples/polyglot-workspace", "--exclude-project=apps/**", "--format=json"],
+      {
+        encoding: "utf8"
+      }
+    );
+    const detection = JSON.parse(output);
+
+    assert.deepEqual(
+      detection.projects.map((project) => project.root),
+      ["services/api"]
+    );
+    assert.equal(detection.summary.projectCount, 1);
+  });
+
   it("audits detected projects in markdown", () => {
     const output = execFileSync(process.execPath, [cliPath, "audit-projects", "examples/polyglot-workspace"], {
       encoding: "utf8"
@@ -117,6 +134,21 @@ describe("CLI", () => {
     assert.equal(projectAudits.schemaVersion, "project-audits/v1");
     assert.equal(projectAudits.summary.auditedProjectCount, 3);
     assert.equal(projectAudits.audits[0].audit.schemaVersion, "audit/v1");
+  });
+
+  it("audits detected projects with excluded roots", () => {
+    const output = execFileSync(
+      process.execPath,
+      [cliPath, "audit-projects", "examples/polyglot-workspace", "--exclude-project", "apps/**", "--format=json"],
+      {
+        encoding: "utf8"
+      }
+    );
+    const projectAudits = JSON.parse(output);
+
+    assert.equal(projectAudits.schemaVersion, "project-audits/v1");
+    assert.equal(projectAudits.summary.projectCount, 1);
+    assert.deepEqual(projectAudits.audits.map((entry) => entry.projectId), ["services/api"]);
   });
 
   it("supports changed-since project audit mode", () => {

@@ -25,7 +25,7 @@ import {
 const options = parseArgs(process.argv.slice(2));
 
 if (!["adapters", "detect-rules", "detect", "audit-projects", "summarize-projects", "rank-projects", "plan-projects", "findings-projects", "placement-projects", "stats-projects", "audit", "plan", "explain", "rank", "placement"].includes(options.command)) {
-  console.error("Usage: repo-test-architect <adapters|detect-rules|detect|audit-projects|summarize-projects|rank-projects|plan-projects|findings-projects|placement-projects|stats-projects|audit|plan|explain|rank|placement> <repo> [--adapter id] [--format markdown|json] [--from-audit audit.json] [--from-project-audits project-audits.json] [--item id] [--target id] [--owner label] [--changed] [--changed-since ref]");
+  console.error("Usage: repo-test-architect <adapters|detect-rules|detect|audit-projects|summarize-projects|rank-projects|plan-projects|findings-projects|placement-projects|stats-projects|audit|plan|explain|rank|placement> <repo> [--adapter id] [--format markdown|json] [--from-audit audit.json] [--from-project-audits project-audits.json] [--item id] [--target id] [--owner label] [--changed] [--changed-since ref] [--exclude-project root-or-pattern]");
   process.exit(1);
 }
 
@@ -47,12 +47,15 @@ if (options.fromProjectAuditsPath && !["audit-projects", "summarize-projects", "
 const repoRoot = path.resolve(process.cwd(), options.repoPath);
 const adapterRegistry = options.command === "adapters" ? getAdapterRegistry() : undefined;
 const detectionRules = options.command === "detect-rules" ? getProjectDetectionRules() : undefined;
-const detection = options.command === "detect" ? detectRepoProjects(repoRoot) : undefined;
+const detection = options.command === "detect" ? detectRepoProjects(repoRoot, {
+  excludeProjectRoots: options.excludeProjectRoots
+}) : undefined;
 const projectAudits = options.fromProjectAuditsPath
   ? readProjectAuditsJson(options.fromProjectAuditsPath)
   : ["audit-projects", "summarize-projects", "rank-projects", "plan-projects", "findings-projects", "placement-projects", "stats-projects"].includes(options.command)
     ? auditRepoProjects(repoRoot, {
-      changedPaths: readSelectedChangedPaths(repoRoot, options)
+      changedPaths: readSelectedChangedPaths(repoRoot, options),
+      excludeProjectRoots: options.excludeProjectRoots
     })
     : undefined;
 const audit = options.fromAuditPath
@@ -111,6 +114,7 @@ function parseArgs(args) {
   let owner;
   let changedOnly = false;
   let changedSinceRef;
+  const excludeProjectRoots = [];
 
   for (let index = 0; index < rest.length; index += 1) {
     const arg = rest[index];
@@ -208,12 +212,23 @@ function parseArgs(args) {
       continue;
     }
 
+    if (arg === "--exclude-project") {
+      excludeProjectRoots.push(rest[index + 1] ?? "");
+      index += 1;
+      continue;
+    }
+
+    if (arg.startsWith("--exclude-project=")) {
+      excludeProjectRoots.push(arg.slice("--exclude-project=".length));
+      continue;
+    }
+
     if (!arg.startsWith("-")) {
       repoPath = arg;
     }
   }
 
-  return { command, repoPath, format, fromAuditPath, fromProjectAuditsPath, adapterId, itemId, targetId, owner, changedOnly, changedSinceRef };
+  return { command, repoPath, format, fromAuditPath, fromProjectAuditsPath, adapterId, itemId, targetId, owner, changedOnly, changedSinceRef, excludeProjectRoots };
 }
 
 function readAuditJson(auditPath) {

@@ -77,6 +77,12 @@ npm run stats-projects:example
 npm run stats-projects:example:json
 ```
 
+For project-aware self-audits, exclude checked-in fixture or sample roots with a quoted subtree pattern:
+
+```powershell
+node ./src/cli/index.js findings-projects . --exclude-project "examples/**"
+```
+
 Reuse a saved project audit artifact:
 
 ```powershell

@@ -137,6 +137,9 @@ const MARKERS = [
  * @property {string} root
  * @property {DetectedProject[]} projects
  * @property {{ projectCount: number, supportedProjectCount: number, unsupportedProjectCount: number }} summary
+ *
+ * @typedef {object} DetectProjectsOptions
+ * @property {string[]} [excludeProjectRoots]
  */
 
 /**
@@ -155,13 +158,15 @@ export function getProjectDetectionRules() {
 
 /**
  * @param {string} repoRoot
+ * @param {DetectProjectsOptions} [options]
  * @returns {ProjectDetection}
  */
-export function detectProjects(repoRoot) {
+export function detectProjects(repoRoot, options = {}) {
   const absoluteRoot = path.resolve(repoRoot);
   const markerGroups = collectMarkerGroups(absoluteRoot);
   const projects = [...markerGroups.values()]
     .map((project) => toDetectedProject(absoluteRoot, project))
+    .filter((project) => !isExcludedProjectRoot(project.root, options.excludeProjectRoots))
     .sort((a, b) => a.root.localeCompare(b.root));
 
   return {
@@ -174,6 +179,25 @@ export function detectProjects(repoRoot) {
       unsupportedProjectCount: projects.filter((project) => !project.supported).length
     }
   };
+}
+
+function isExcludedProjectRoot(projectRoot, excludeProjectRoots = []) {
+  return excludeProjectRoots
+    .map(normalizeProjectPattern)
+    .some((pattern) => matchesProjectPattern(projectRoot, pattern));
+}
+
+function matchesProjectPattern(projectRoot, pattern) {
+  if (pattern.endsWith("/**")) {
+    const prefix = pattern.slice(0, -3);
+    return projectRoot === prefix || projectRoot.startsWith(`${prefix}/`);
+  }
+
+  return projectRoot === pattern;
+}
+
+function normalizeProjectPattern(pattern) {
+  return pattern.replaceAll("\\", "/").replace(/^\.\//, "").replace(/\/$/, "") || ".";
 }
 
 /**

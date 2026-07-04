@@ -57,6 +57,15 @@ describe("project findings", () => {
     assert.equal(findings.findings[0].testFile, "apps/main/tests/authRoute.test.ts");
   });
 
+  it("does not promote correctly placed keep findings as misplaced coverage", () => {
+    const projectAudits = auditDetectedProjects(path.resolve("examples/node-vitest-basic"));
+    const findings = createProjectFindings(projectAudits);
+
+    assert.equal(findings.summary.placementFindingCount, 0);
+    assert.ok(findings.findings.every((finding) => finding.category !== "misplaced-coverage"));
+    assert.ok(findings.findings.some((finding) => finding.category === "weak-existing-coverage"));
+  });
+
   it("rejects invalid max findings", () => {
     const projectAudits = auditDetectedProjects(path.resolve("examples/polyglot-workspace"));
 
