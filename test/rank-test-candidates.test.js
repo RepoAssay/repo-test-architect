@@ -26,4 +26,30 @@ describe("test candidate ranking", () => {
     assert.equal(ranking.summary.verificationCommand, undefined);
     assert.ok(ranking.blockers.includes("No supported JS test framework detected."));
   });
+
+  it("defaults optional target arrays in ranked candidates", () => {
+    const ranking = rankTestCandidates({
+      schemaVersion: "audit/v1",
+      profile: {
+        confidence: "medium",
+        blockers: []
+      },
+      untestedCandidates: [
+        {
+          id: "src/paymentClient.ts",
+          name: "paymentClient",
+          path: "src/paymentClient.ts",
+          kind: "service",
+          recommendedTestLevel: "unit",
+          riskReductionScore: 8,
+          maintenanceCost: 4,
+          signals: ["service-name"]
+        }
+      ],
+      coveredButRisky: []
+    });
+
+    assert.deepEqual(ranking.candidates[0].rationale, []);
+    assert.deepEqual(ranking.candidates[0].existingTestPaths, []);
+  });
 });
