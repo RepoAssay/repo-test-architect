@@ -273,6 +273,7 @@ Important runtime surfaces:
 - [Project status](docs/status.md)
 - [Public readiness](docs/public-readiness.md)
 - [Alpha readiness](docs/alpha-readiness.md)
+- [Real repository audit reports](docs/real-repo-audit-reports.md)
 - [Product positioning](docs/product-positioning.md)
 - [Near-term roadmap](docs/near-term-roadmap.md)
 - [Demo script](docs/demo-script.md)

@@ -41,6 +41,7 @@ Implemented:
 - release-readiness checklist, npm package dry-run script, and package contents allowlist
 - public-readiness checklist that separates public repository preparation from npm publishing
 - alpha-readiness checklist for the test architecture audit milestone before native generation
+- real-repo audit reports for owned JavaScript/TypeScript and Swift repositories, including Collectors Grimoire and `cg-*` sibling packages
 - product positioning note for audit-first differentiation, initial audience, business paths, proof points, and anti-positioning
 - near-term roadmap for public demo polish, second adapter proof, placement analysis, MCP transport, and generation readiness gates
 - demo script for showing audit quality, polyglot detection, MCP tools, and verification without implying native generation is ready
