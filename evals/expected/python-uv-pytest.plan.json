@@ -1,0 +1,79 @@
+{
+  "schemaVersion": "plan/v1",
+  "summary": {
+    "confidence": "high",
+    "verificationCommand": "uv run pytest",
+    "blockerCount": 0,
+    "addTestCount": 1,
+    "extendTestCount": 1,
+    "deferredCount": 1
+  },
+  "blockers": [],
+  "items": [
+    {
+      "id": "extend-test:src/pricing/calculator.py",
+      "action": "extend-test",
+      "targetId": "src/pricing/calculator.py",
+      "target": "calculator",
+      "path": "src/pricing/calculator.py",
+      "testLevel": "unit",
+      "priority": 7,
+      "riskReductionScore": 9,
+      "maintenanceCost": 2,
+      "rationale": [
+        "Pure transformation logic",
+        "edge-case surface",
+        "Existing test file detected; review missing edge cases"
+      ],
+      "sourceSignals": [
+        "pure-logic",
+        "edge-case-surface",
+        "matching-test"
+      ],
+      "existingTestPaths": [
+        "tests/test_calculator.py"
+      ]
+    },
+    {
+      "id": "add-test:src/pricing/payment_service.py",
+      "action": "add-test",
+      "targetId": "src/pricing/payment_service.py",
+      "target": "payment_service",
+      "path": "src/pricing/payment_service.py",
+      "testLevel": "unit",
+      "priority": 4,
+      "riskReductionScore": 8,
+      "maintenanceCost": 4,
+      "rationale": [
+        "Service boundary",
+        "async or concurrency behavior",
+        "external boundary"
+      ],
+      "sourceSignals": [
+        "service-boundary",
+        "async-or-concurrency",
+        "external-boundary"
+      ],
+      "existingTestPaths": []
+    },
+    {
+      "id": "defer:src/pricing/payment_response.py",
+      "action": "defer",
+      "targetId": "src/pricing/payment_response.py",
+      "target": "payment_response",
+      "path": "src/pricing/payment_response.py",
+      "testLevel": "none",
+      "priority": -2,
+      "riskReductionScore": 2,
+      "maintenanceCost": 4,
+      "rationale": [
+        "DTO-only models are usually better covered through route, parser, or service tests.",
+        "Cover through parser, mapper, repository, or route integration tests that consume the model."
+      ],
+      "sourceSignals": [
+        "dto-only"
+      ],
+      "existingTestPaths": []
+    }
+  ]
+}

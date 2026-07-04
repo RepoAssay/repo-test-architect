@@ -180,7 +180,7 @@ describe("docs links", () => {
     assert.ok(roadmap.includes("Milestone 2: Adapter Spike Hardening"));
     assert.ok(roadmap.includes("Kotlin/JVM with Gradle/Maven and JUnit"));
     assert.ok(roadmap.includes("Swift Package Manager with XCTest or Swift Testing"));
-    assert.ok(roadmap.includes("Python package layouts, pytest/unittest detection, and no-tests-yet blocker behavior"));
+    assert.ok(roadmap.includes("Python package layouts, pytest/unittest detection, uv/Poetry/Hatch command markers, and no-tests-yet blocker behavior"));
     assert.ok(roadmap.includes("Milestone 3: Placement And Boundary Analysis"));
     assert.ok(roadmap.includes("app-level tests that belong in package-level test targets"));
     assert.ok(roadmap.includes("Milestone 4: Local MCP Transport"));

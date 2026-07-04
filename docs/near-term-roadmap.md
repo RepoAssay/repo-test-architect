@@ -37,7 +37,7 @@ Useful hardening targets:
 
 - Kotlin/JVM with Gradle/Maven and JUnit variants
 - Swift Package Manager with XCTest or Swift Testing
-- Python package layouts, pytest/unittest detection, and no-tests-yet blocker behavior
+- Python package layouts, pytest/unittest detection, uv/Poetry/Hatch command markers, and no-tests-yet blocker behavior
 
 Acceptance:
 

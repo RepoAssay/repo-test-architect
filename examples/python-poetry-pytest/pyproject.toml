@@ -1,0 +1,15 @@
+[tool.poetry]
+name = "python-poetry-pytest"
+version = "0.1.0"
+description = "Poetry pytest fixture"
+authors = ["Repo Test Architect <dev@example.test>"]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

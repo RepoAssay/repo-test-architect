@@ -74,6 +74,8 @@ Implemented:
 - `python-requirements-pytest`
 - `python-package-local-tests`
 - `python-setuptools-pytest`
+- `python-uv-pytest`
+- `python-poetry-pytest`
 - `python-no-tests-yet`
 
 ## MCP Surface

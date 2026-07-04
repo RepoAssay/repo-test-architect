@@ -116,7 +116,7 @@ function readRepoFiles(root) {
 function shouldRead(relative) {
   return (
     SOURCE_EXTENSIONS.some((extension) => relative.endsWith(extension)) ||
-    ["pyproject.toml", "requirements.txt", "setup.cfg", "setup.py", "tox.ini"].includes(relative)
+    ["pyproject.toml", "requirements.txt", "setup.cfg", "setup.py", "tox.ini", "uv.lock", "poetry.lock"].includes(relative)
   );
 }
 
@@ -127,14 +127,14 @@ function buildProfile(root, files) {
     .map((file) => file.content)
     .join("\n");
   const testFrameworks = detectTestFrameworks(paths, configText);
-  const testCommand = detectTestCommand(testFrameworks);
+  const testCommand = detectTestCommand(paths, configText, testFrameworks);
   const existingTestLocations = detectExistingTestLocations(paths);
   const blockers = detectBlockers(testCommand, testFrameworks);
 
   return {
     root,
     languages: ["python"],
-    packageManagers: detectPackageManagers(paths),
+    packageManagers: detectPackageManagers(paths, configText),
     testFrameworks,
     architectures: detectArchitectures(paths, files),
     testCommand,
@@ -146,11 +146,15 @@ function buildProfile(root, files) {
   };
 }
 
-function detectPackageManagers(paths) {
+function detectPackageManagers(paths, configText) {
   const managers = new Set();
   if (paths.includes("pyproject.toml")) managers.add("pyproject");
   if (paths.includes("requirements.txt")) managers.add("pip");
   if (paths.includes("setup.py") || paths.includes("setup.cfg")) managers.add("setuptools");
+  const tool = detectPythonTool(paths, configText);
+  if (tool === "uv") managers.add("uv");
+  if (tool === "poetry") managers.add("poetry");
+  if (tool === "hatch") managers.add("hatch");
   return [...managers].sort();
 }
 
@@ -161,9 +165,20 @@ function detectTestFrameworks(paths, configText) {
   return [...frameworks].sort();
 }
 
-function detectTestCommand(frameworks) {
-  if (frameworks.includes("pytest")) return "pytest";
-  if (frameworks.includes("unittest")) return "python -m unittest";
+function detectTestCommand(paths, configText, frameworks) {
+  const tool = detectPythonTool(paths, configText);
+  if (frameworks.includes("pytest")) {
+    if (tool === "uv") return "uv run pytest";
+    if (tool === "poetry") return "poetry run pytest";
+    if (tool === "hatch") return "hatch test";
+    return "pytest";
+  }
+  if (frameworks.includes("unittest")) {
+    if (tool === "uv") return "uv run python -m unittest";
+    if (tool === "poetry") return "poetry run python -m unittest";
+    if (tool === "hatch") return "hatch test";
+    return "python -m unittest";
+  }
   return undefined;
 }
 
@@ -191,11 +206,22 @@ function detectConventions(paths) {
 
 function detectSetupSignals(paths, configText) {
   const signals = new Set();
+  const tool = detectPythonTool(paths, configText);
   if (paths.includes("pyproject.toml")) signals.add("pyproject");
   if (paths.includes("requirements.txt")) signals.add("requirements");
+  if (tool === "uv") signals.add("uv project");
+  if (tool === "poetry") signals.add("poetry project");
+  if (tool === "hatch") signals.add("hatch project");
   if (/\bpytest\b/i.test(configText)) signals.add("pytest dependency");
   if (/\bfastapi\b/i.test(configText)) signals.add("fastapi dependency");
   return [...signals];
+}
+
+function detectPythonTool(paths, configText) {
+  if (paths.includes("uv.lock") || /^\s*\[tool\.uv\]/m.test(configText)) return "uv";
+  if (paths.includes("poetry.lock") || /^\s*\[tool\.poetry\]/m.test(configText) || /\bpoetry-core\b/i.test(configText)) return "poetry";
+  if (/^\s*\[tool\.hatch\]/m.test(configText) || /\bhatchling\b|\bhatch\b/i.test(configText)) return "hatch";
+  return undefined;
 }
 
 function detectBlockers(testCommand, frameworks) {
