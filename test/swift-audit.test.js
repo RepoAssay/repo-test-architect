@@ -7,6 +7,7 @@ import { auditSwiftRepo } from "../src/adapters/swift/audit.js";
 
 const exampleRoot = path.resolve("examples/swift-spm-xctest");
 const swiftTestingRoot = path.resolve("examples/swift-spm-swift-testing");
+const quickNimbleRoot = path.resolve("examples/swift-spm-quick-nimble");
 const vaporRoot = path.resolve("examples/vapor-service-tests");
 const vaporMongoRoot = path.resolve("examples/vapor-mongodb-boundaries");
 
@@ -136,6 +137,37 @@ describe("Swift audit adapter", () => {
       audit.skipped.map((target) => target.name),
       ["PriceResponseDTO"]
     );
+  });
+
+  it("audits the checked-in Quick and Nimble SwiftPM fixture", () => {
+    const audit = auditSwiftRepo(quickNimbleRoot);
+
+    assert.deepEqual(audit.profile.languages, ["swift"]);
+    assert.deepEqual(audit.profile.packageManagers, ["swiftpm"]);
+    assert.deepEqual(audit.profile.testFrameworks, ["Nimble", "Quick"]);
+    assert.equal(audit.profile.testCommand, "swift test");
+    assert.equal(audit.profile.confidence, "high");
+    assert.deepEqual(audit.profile.blockers, []);
+    assert.ok(audit.profile.setupSignals.includes("quick test support"));
+    assert.ok(audit.profile.setupSignals.includes("nimble assertion support"));
+    assert.ok(audit.profile.setupSignals.includes("swiftpm test target"));
+
+    assert.deepEqual(
+      audit.coveredButRisky.map((target) => `${target.name}:${target.kind}:${target.recommendedTestLevel}`),
+      ["StockValidator:pure-logic:unit"]
+    );
+    assert.deepEqual(
+      audit.untestedCandidates.map((target) => `${target.name}:${target.kind}:${target.recommendedTestLevel}`),
+      ["StockFormatter:pure-logic:unit"]
+    );
+    assert.deepEqual(
+      audit.skipped.map((target) => `${target.name}:${target.kind}`),
+      ["StockResponseDTO:dto"]
+    );
+
+    const validator = audit.coveredButRisky[0];
+    assert.ok(validator.signals.includes("matching-test"));
+    assert.deepEqual(validator.existingTestPaths, ["Tests/InventoryRulesTests/StockValidatorTests.swift"]);
   });
 
   it("detects Vapor service routes without inventing missing test conventions", () => {

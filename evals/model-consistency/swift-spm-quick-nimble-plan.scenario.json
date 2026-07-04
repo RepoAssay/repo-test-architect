@@ -1,0 +1,66 @@
+{
+  "schemaVersion": "model-consistency-scenario/v1",
+  "id": "swift-spm-quick-nimble-plan",
+  "description": "Different model profiles should preserve Quick/Nimble planning decisions, including SwiftPM verification, existing spec evidence, and DTO deferral.",
+  "sourceArtifact": {
+    "path": "evals/expected/swift-spm-quick-nimble.audit.json",
+    "schemaVersion": "audit/v1"
+  },
+  "toolCall": {
+    "toolName": "generate_test_plan",
+    "arguments": {}
+  },
+  "lockedFields": [
+    {
+      "path": "summary.verificationCommand",
+      "expected": "swift test",
+      "reason": "Quick/Nimble SwiftPM plans must preserve the repo-native Swift test command."
+    },
+    {
+      "path": "summary.addTestCount",
+      "expected": 1,
+      "reason": "The untested StockFormatter pure logic should become one add-test item."
+    },
+    {
+      "path": "summary.extendTestCount",
+      "expected": 1,
+      "reason": "The existing StockValidator spec should be extended for missing edge cases."
+    },
+    {
+      "path": "summary.deferredCount",
+      "expected": 1,
+      "reason": "The DTO should remain deferred from direct testing."
+    },
+    {
+      "path": "items[0].id",
+      "expected": "add-test:Sources/InventoryRules/StockFormatter.swift",
+      "reason": "Untested Swift formatter logic should keep a stable add-test item id."
+    },
+    {
+      "path": "items[1].id",
+      "expected": "extend-test:Sources/InventoryRules/StockValidator.swift",
+      "reason": "Covered risky Swift validator logic should keep a stable extend-test item id."
+    },
+    {
+      "path": "items[1].existingTestPaths[0]",
+      "expected": "Tests/InventoryRulesTests/StockValidatorTests.swift",
+      "reason": "The adapter must preserve matching Quick/Nimble spec evidence."
+    },
+    {
+      "path": "items[2].id",
+      "expected": "defer:Sources/InventoryRules/StockResponseDTO.swift",
+      "reason": "DTO-style Swift models should not become direct test targets."
+    }
+  ],
+  "allowedVariations": [
+    "summary wording",
+    "Quick/Nimble explanation wording",
+    "optional detail depth"
+  ],
+  "unexpectedVariations": [
+    "missing SwiftPM verification command",
+    "direct DTO test recommendation",
+    "missing existing Quick/Nimble spec evidence",
+    "different plan action counts"
+  ]
+}

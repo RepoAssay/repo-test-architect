@@ -10,7 +10,7 @@ Completed spike:
 
 Follow-up spikes now underway:
 
-- Swift Package Manager with XCTest or Swift Testing
+- Swift Package Manager with XCTest, Swift Testing, Quick/Nimble, and SnapshotTesting signals
 - Python package roots with pytest or unittest
 
 Choose the ecosystem with the lowest local setup cost and the clearest fixture coverage. The spike should validate adapter shape, not solve every framework variant.

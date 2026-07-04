@@ -27,7 +27,7 @@ Supported proof point:
 Experimental adapter spikes:
 
 - `kotlin`: Gradle/Maven JVM projects with JUnit and Kotlin test signals
-- `swift`: Swift Package Manager, Xcode-style source layouts, Swift Testing, XCTest, XCTVapor, Vapor, and MongoDB boundary signals
+- `swift`: Swift Package Manager, Xcode-style source layouts, Swift Testing, XCTest, Quick/Nimble, SnapshotTesting, XCTVapor, Vapor, and MongoDB boundary signals
 - `python`: pytest, unittest, requirements, setuptools, uv, Poetry, Hatch command markers, and no-tests-yet blocker behavior
 
 Project detection also reports unsupported Ruby, PHP, Elixir, Go, Rust, and .NET roots so clients can distinguish "not audited yet" from "not present."
@@ -241,6 +241,7 @@ examples/
   python-poetry-pytest/
   swift-spm-xctest/
   swift-spm-swift-testing/
+  swift-spm-quick-nimble/
   vapor-service-tests/
   vapor-mongodb-boundaries/
 evals/

@@ -50,6 +50,11 @@
     "path": "examples/swift-spm-swift-testing"
   },
   {
+    "name": "swift-spm-quick-nimble",
+    "adapter": "swift",
+    "path": "examples/swift-spm-quick-nimble"
+  },
+  {
     "name": "vapor-service-tests",
     "adapter": "swift",
     "path": "examples/vapor-service-tests"

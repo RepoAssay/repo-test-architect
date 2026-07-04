@@ -36,7 +36,7 @@ Status: started with experimental Kotlin/JVM, Swift, and Python adapters.
 Useful hardening targets:
 
 - Kotlin/JVM with Gradle/Maven and JUnit variants
-- Swift Package Manager with XCTest or Swift Testing
+- Swift Package Manager with XCTest, Swift Testing, Quick/Nimble, and SnapshotTesting signals
 - Python package layouts, pytest/unittest detection, uv/Poetry/Hatch command markers, and no-tests-yet blocker behavior
 
 Acceptance:
