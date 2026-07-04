@@ -24,10 +24,15 @@ export function analyzeProjectTestPlacement(projectAudits) {
 
   const findings = projectAudits.audits.flatMap((entry) => {
     const placement = analyzeTestPlacement(entry.audit, { owner: entry.projectRoot });
+    const targetsByPath = new Map(
+      (entry.audit?.coveredButRisky ?? []).map((target) => [normalizePath(target.path), target])
+    );
 
     return placement.findings.map((finding) => {
+      const sourcePath = extractMatchedSourcePath(finding.evidence) ?? "unknown source target";
+      const target = targetsByPath.get(normalizePath(sourcePath));
+
       if (escapesProjectRoot(finding.testFile)) {
-        const sourcePath = extractMatchedSourcePath(finding.evidence) ?? "unknown source target";
         const repoTestFile = resolveProjectPath(entry.projectRoot, finding.testFile);
         const repoSourcePath = joinProjectPath(entry.projectRoot, sourcePath);
         const currentOwner = inferProjectOwner(projectAudits.audits, repoTestFile, entry.projectRoot);
@@ -53,6 +58,16 @@ export function analyzeProjectTestPlacement(projectAudits) {
         };
       }
 
+      const packageBoundaryFinding = createPackageBoundaryFinding({
+        entry,
+        entries: projectAudits.audits,
+        finding,
+        sourcePath,
+        target
+      });
+
+      if (packageBoundaryFinding) return packageBoundaryFinding;
+
       return {
         ...finding,
         id: `${entry.projectId}:${finding.id}`,
@@ -68,6 +83,50 @@ export function analyzeProjectTestPlacement(projectAudits) {
   });
 
   return createTestPlacementFindings(findings);
+}
+
+/**
+ * @param {object} input
+ * @param {ProjectAuditEntry} input.entry
+ * @param {ProjectAuditEntry[]} input.entries
+ * @param {import("./test-placement-findings.js").TestPlacementFinding} input.finding
+ * @param {string} input.sourcePath
+ * @param {object | undefined} input.target
+ * @returns {import("./test-placement-findings.js").TestPlacementFinding | undefined}
+ */
+function createPackageBoundaryFinding({ entry, entries, finding, sourcePath, target }) {
+  const signals = target?.signals ?? [];
+  if (!signals.includes("package-owned-behavior")) return undefined;
+
+  const repoTestFile = normalizePath(finding.testFile);
+  const currentOwner = inferProjectOwner(entries, repoTestFile, entry.projectRoot);
+  if (currentOwner === entry.projectRoot || currentOwner === "outside audited project root") return undefined;
+
+  const repoSourcePath = joinProjectPath(entry.projectRoot, sourcePath);
+  const action = hasRecommendedLevel(finding.evidence, "integration") || signals.includes("app-integration-dependency")
+    ? "split"
+    : "move";
+
+  return {
+    ...finding,
+    id: `${entry.projectId}:${action}:${repoTestFile}:${repoSourcePath}`,
+    testFile: repoTestFile,
+    currentOwner,
+    suggestedOwner: entry.projectRoot,
+    action,
+    reason: action === "split"
+      ? "Existing test is owned by another project and mixes app integration behavior with package-owned behavior from this project."
+      : "Existing test is owned by another project while covering package-owned behavior from this project.",
+    evidence: [
+      `project id: ${entry.projectId}`,
+      `current owner: ${currentOwner}`,
+      `suggested owner: ${entry.projectRoot}`,
+      "test path belongs to another detected project",
+      "package boundary signal: package-owned-behavior",
+      ...(signals.includes("app-integration-dependency") ? ["package boundary signal: app-integration-dependency"] : []),
+      ...finding.evidence.map((item) => prefixSourceEvidence(item, entry.projectRoot))
+    ]
+  };
 }
 
 /**

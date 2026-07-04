@@ -201,6 +201,143 @@ describe("project test placement analysis", () => {
     });
   });
 
+  it("recommends moving package-owned tests reported with repo-relative cross-owner paths", () => {
+    const placement = analyzeProjectTestPlacement({
+      schemaVersion: "project-audits/v1",
+      root: "/repo",
+      summary: {
+        projectCount: 2,
+        auditedProjectCount: 2,
+        skippedProjectCount: 0
+      },
+      audits: [
+        {
+          projectId: "apps/main",
+          projectRoot: "apps/main",
+          adapterId: "javascript",
+          audit: {
+            schemaVersion: "audit/v1",
+            profile: { root: "/repo/apps/main" },
+            untestedCandidates: [],
+            coveredButRisky: [],
+            skipped: [],
+            risks: []
+          }
+        },
+        {
+          projectId: "packages/deck-core",
+          projectRoot: "packages/deck-core",
+          adapterId: "javascript",
+          audit: {
+            schemaVersion: "audit/v1",
+            profile: { root: "/repo/packages/deck-core" },
+            untestedCandidates: [],
+            coveredButRisky: [
+              {
+                path: "src/deckParser.ts",
+                kind: "pure-logic",
+                signals: ["pure-logic", "package-owned-behavior"],
+                recommendedTestLevel: "unit",
+                existingTestPaths: ["apps/main/tests/deckParser.test.ts"]
+              }
+            ],
+            skipped: [],
+            risks: []
+          }
+        }
+      ],
+      skippedProjects: []
+    });
+
+    assert.deepEqual(placement.findings[0], {
+      id: "packages/deck-core:move:apps/main/tests/deckParser.test.ts:packages/deck-core/src/deckParser.ts",
+      testFile: "apps/main/tests/deckParser.test.ts",
+      currentOwner: "apps/main",
+      suggestedOwner: "packages/deck-core",
+      action: "move",
+      reason: "Existing test is owned by another project while covering package-owned behavior from this project.",
+      evidence: [
+        "project id: packages/deck-core",
+        "current owner: apps/main",
+        "suggested owner: packages/deck-core",
+        "test path belongs to another detected project",
+        "package boundary signal: package-owned-behavior",
+        "matches source target packages/deck-core/src/deckParser.ts",
+        "target kind: pure-logic",
+        "recommended level: unit"
+      ]
+    });
+  });
+
+  it("recommends splitting repo-relative package tests that include app integration dependencies", () => {
+    const placement = analyzeProjectTestPlacement({
+      schemaVersion: "project-audits/v1",
+      root: "/repo",
+      summary: {
+        projectCount: 2,
+        auditedProjectCount: 2,
+        skippedProjectCount: 0
+      },
+      audits: [
+        {
+          projectId: "apps/main",
+          projectRoot: "apps/main",
+          adapterId: "javascript",
+          audit: {
+            schemaVersion: "audit/v1",
+            profile: { root: "/repo/apps/main" },
+            untestedCandidates: [],
+            coveredButRisky: [],
+            skipped: [],
+            risks: []
+          }
+        },
+        {
+          projectId: "packages/auth-core",
+          projectRoot: "packages/auth-core",
+          adapterId: "javascript",
+          audit: {
+            schemaVersion: "audit/v1",
+            profile: { root: "/repo/packages/auth-core" },
+            untestedCandidates: [],
+            coveredButRisky: [
+              {
+                path: "src/authPolicy.ts",
+                kind: "service",
+                signals: ["service-name", "package-owned-behavior", "app-integration-dependency"],
+                recommendedTestLevel: "unit",
+                existingTestPaths: ["apps/main/tests/authPolicy.test.ts"]
+              }
+            ],
+            skipped: [],
+            risks: []
+          }
+        }
+      ],
+      skippedProjects: []
+    });
+
+    assert.deepEqual(placement.findings[0], {
+      id: "packages/auth-core:split:apps/main/tests/authPolicy.test.ts:packages/auth-core/src/authPolicy.ts",
+      testFile: "apps/main/tests/authPolicy.test.ts",
+      currentOwner: "apps/main",
+      suggestedOwner: "packages/auth-core",
+      action: "split",
+      reason: "Existing test is owned by another project and mixes app integration behavior with package-owned behavior from this project.",
+      evidence: [
+        "project id: packages/auth-core",
+        "current owner: apps/main",
+        "suggested owner: packages/auth-core",
+        "test path belongs to another detected project",
+        "package boundary signal: package-owned-behavior",
+        "package boundary signal: app-integration-dependency",
+        "matches source target packages/auth-core/src/authPolicy.ts",
+        "target kind: service",
+        "recommended level: unit"
+      ]
+    });
+  });
+
   it("rejects non-project-audits artifacts", () => {
     assert.throws(
       () => analyzeProjectTestPlacement({ schemaVersion: "audit/v1" }),

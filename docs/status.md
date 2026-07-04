@@ -103,7 +103,7 @@ Current tool names:
 - `generate_selected_test`
 
 `generate_selected_test` intentionally returns `generation-deferred/v1` until native generation has adapter-specific fixtures and repair-loop coverage.
-`analyze_test_placement` currently returns conservative advisory `keep` findings from existing audit evidence. `analyze_project_test_placement` can additionally return conservative `move` findings when project-derived test paths escape the audited project root, or `split` findings when the escaped match is integration-level.
+`analyze_test_placement` currently returns conservative advisory `keep` findings from existing audit evidence. `analyze_project_test_placement` can additionally return conservative `move` findings when project-derived test paths escape the audited project root, or `split` findings when the escaped match is integration-level. Package-aware adapters can also emit `package-owned-behavior` and `app-integration-dependency` signals so repo-relative cross-owner test paths become advisory `move` or `split` findings.
 
 ## Verification
 

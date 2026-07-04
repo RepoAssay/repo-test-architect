@@ -62,6 +62,11 @@ Adapters should distinguish between missing coverage and misplaced coverage.
 
 For package-oriented ecosystems, such as Swift Package Manager, Gradle modules, Maven modules, or workspace packages, tests may exist in a higher-level app or integration target while exercising lower-level package behavior. When the tested source clearly belongs to another package or target and the test has no app-only dependency, the adapter should report a placement finding.
 
+When the shared audit model only has a covered target and `existingTestPaths`, adapters can still expose conservative package ownership to the project placement analyzer:
+
+- `package-owned-behavior`: the source target belongs to a package or module owner even if its matched test path is repo-relative elsewhere
+- `app-integration-dependency`: the matched test also depends on app-level wiring, so the analyzer should prefer `split` over `move`
+
 Placement actions:
 
 - `move`: coverage belongs in the package or module test target
