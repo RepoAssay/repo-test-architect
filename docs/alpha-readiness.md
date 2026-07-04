@@ -25,7 +25,7 @@ The output should be useful even when the user disagrees with a recommendation. 
 
 ### Real Repo Audit Reports
 
-- at least three real repositories are audited and summarized in checked-in reports
+- at least three real repositories are audited and summarized in checked-in reports; current progress is tracked in [Real Repository Audit Reports](real-repo-audit-reports.md)
 - reports include what the tool found, what it missed, and what heuristics need adjustment
 - reports cover at least one JavaScript/TypeScript repo and one Swift or JVM repo
 - reports do not require remote services or source upload
@@ -82,7 +82,7 @@ The key message is: this is a test architecture audit layer that makes test gene
 ## Next Implementation Priorities
 
 1. Add a concise repo-level top findings report for project audits.
-2. Run and document real-repo audits for Collectors Grimoire and sibling packages.
+2. Expand real-repo audit reports beyond owned/local repositories, especially one non-owned JavaScript/TypeScript repo.
 3. Tighten placement findings with more package-boundary signals.
 4. Add model-consistency scenarios for top findings and placement summaries.
 5. Keep adapter hardening focused on common stack variants that improve real-repo audit trust.

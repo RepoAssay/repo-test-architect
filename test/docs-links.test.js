@@ -123,6 +123,7 @@ describe("docs links", () => {
   it("documents public readiness separately from npm publishing", () => {
     const readme = fs.readFileSync("README.md", "utf8");
     const alphaReadiness = fs.readFileSync("docs/alpha-readiness.md", "utf8");
+    const realRepoReports = fs.readFileSync("docs/real-repo-audit-reports.md", "utf8");
     const packageJson = JSON.parse(fs.readFileSync("package.json", "utf8"));
     const publicReadiness = fs.readFileSync("docs/public-readiness.md", "utf8");
     const releaseChecklist = fs.readFileSync("docs/release-checklist.md", "utf8");
@@ -130,10 +131,16 @@ describe("docs links", () => {
 
     assert.ok(readme.includes("[Public readiness](docs/public-readiness.md)"));
     assert.ok(readme.includes("[Alpha readiness](docs/alpha-readiness.md)"));
+    assert.ok(readme.includes("[Real repository audit reports](docs/real-repo-audit-reports.md)"));
     assert.ok(alphaReadiness.includes("test architecture audit"));
+    assert.ok(alphaReadiness.includes("[Real Repository Audit Reports](real-repo-audit-reports.md)"));
     assert.ok(alphaReadiness.includes("Which important behavior lacks meaningful test coverage?"));
     assert.ok(alphaReadiness.includes("Which tests appear misplaced for the project or package structure?"));
     assert.ok(alphaReadiness.includes("native test generation"));
+    assert.ok(realRepoReports.includes("Repo Test Architect self-audit"));
+    assert.ok(realRepoReports.includes("Collectors Grimoire app audit"));
+    assert.ok(realRepoReports.includes("cg-bff"));
+    assert.ok(realRepoReports.includes("one JavaScript/TypeScript codebase"));
     assert.ok(publicReadiness.includes("Ready To Show"));
     assert.ok(publicReadiness.includes("Not Ready To Publish"));
     assert.ok(publicReadiness.includes("package remains `private: true`"));
@@ -156,6 +163,7 @@ describe("docs links", () => {
 
     assert.ok(status.includes("public-readiness checklist"));
     assert.ok(status.includes("alpha-readiness checklist"));
+    assert.ok(status.includes("real-repo audit reports"));
   });
 
   it("documents product positioning without overstating generation or acquisition", () => {

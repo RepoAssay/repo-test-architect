@@ -1,6 +1,6 @@
 # Collectors Grimoire Swift Audit Report
 
-This report records a local audit pass across sibling `cg-*` Swift Package Manager repositories. The source repositories are not fixtures in this repository, so the results are evidence for adapter direction rather than stable regression snapshots.
+This report records local audit passes across sibling `cg-*` Swift Package Manager repositories. The source repositories are not fixtures in this repository, so the results are evidence for adapter direction rather than stable regression snapshots.
 
 ## Method
 
@@ -24,6 +24,26 @@ All audited packages were detected as runnable with `swift test`, and all had hi
 | `cg-persistence` | Swift Testing | SwiftPM | 4 | storage | 0 |
 | `cg-pod` | Swift Testing | concurrency, SwiftPM, SwiftUI | 2 | service, command-or-worker | 0 |
 | `cg-tcg-ml` | Swift Testing | SwiftPM | 0 | none | 0 |
+
+## Top Findings Pass
+
+The latest pass used the project-level top findings command:
+
+```powershell
+node ./src/cli/index.js findings-projects ../cg-bff
+node ./src/cli/index.js findings-projects ../cg-networking
+node ./src/cli/index.js findings-projects ../cg-persistence
+```
+
+Top-findings results:
+
+| Repository | Findings | High severity | Placement | Blockers | Strongest examples |
+| --- | ---: | ---: | ---: | ---: | --- |
+| `cg-bff` | 24 | 20 | 0 | 0 | `CardsController`, `PriceController`, `SearchController`, `PodController`, `UserAuthenticator` |
+| `cg-networking` | 5 | 2 | 0 | 0 | `URLBuilder`, `DefaultNetworkingClient`, `APIError` |
+| `cg-persistence` | 4 | 0 | 0 | 0 | `KeychainStorage`, `UserDefaultsStorage`, `Persistence` |
+
+This confirms the new repo-level findings artifact is useful on real Swift package repos: it surfaces the highest-risk Vapor/MongoDB boundaries first, keeps focused package utilities visible, and does not invent blockers for packages with runnable Swift test commands.
 
 ## Highest-Value Targets
 
@@ -79,6 +99,7 @@ Remaining heuristic gaps:
 - SwiftUI architecture detection is sometimes triggered by source-level `View` references, even when UI coverage is not the main concern.
 - The audit does not yet distinguish package APIs from app-only implementation details across the `cg-*` package family.
 - MongoDB guidance is still signal-based. It flags aggregation, dynamic filters, pagination, and writes, but it does not validate query semantics.
+- Top-findings output currently has no placement findings for these packages, so package-boundary advice still needs richer cross-repository ownership evidence.
 
 ## Suggested Next Work
 
