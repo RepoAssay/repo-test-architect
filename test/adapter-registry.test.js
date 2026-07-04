@@ -89,6 +89,40 @@ describe("adapter registry", () => {
     });
   });
 
+  it("returns adapter summary snapshots that callers can mutate safely", () => {
+    const listed = listAdapters();
+    listed[0].id = "mutated";
+    listed[0].ecosystems.push("mutated");
+    listed[0].languages.push("mutated");
+    listed[0].supportedTestFrameworks.push("mutated");
+    listed[0].supportedProjectTypes.push("mutated");
+    listed[0].emittedArtifacts.push("mutated");
+
+    const relisted = listAdapters();
+    assert.equal(relisted[0].id, "javascript");
+    assert.deepEqual(relisted[0].ecosystems, ["javascript"]);
+    assert.deepEqual(relisted[0].languages, ["javascript", "typescript"]);
+    assert.deepEqual(relisted[0].supportedTestFrameworks, ["jest", "react-testing-library", "supertest", "vitest"]);
+    assert.deepEqual(relisted[0].supportedProjectTypes, ["node", "express", "react"]);
+    assert.deepEqual(relisted[0].emittedArtifacts, ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"]);
+  });
+
+  it("returns registry artifact snapshots that callers can mutate safely", () => {
+    const registry = getAdapterRegistry();
+    registry.schemaVersion = "mutated";
+    registry.adapters[0].id = "mutated";
+    registry.adapters[0].languages.push("mutated");
+
+    const freshRegistry = getAdapterRegistry();
+    assert.equal(freshRegistry.schemaVersion, "adapter-registry/v1");
+    assert.equal(freshRegistry.adapters[0].id, "javascript");
+    assert.deepEqual(freshRegistry.adapters[0].languages, ["javascript", "typescript"]);
+  });
+
+  it("defaults to the JavaScript adapter", () => {
+    assert.equal(getAdapter().id, "javascript");
+  });
+
   it("audits through the JavaScript adapter", () => {
     const adapter = getAdapter("javascript");
     const audit = adapter.audit(path.resolve("examples/node-vitest-basic"));
