@@ -160,6 +160,11 @@
     "description": "Type-only declaration file was detected."
   },
   {
+    "id": "type-reference-mirror",
+    "category": "low-value",
+    "description": "TypeScript reference declarations mirror a matching runtime JavaScript module and should be covered through that runtime module."
+  },
+  {
     "id": "vapor-lifecycle",
     "category": "low-value",
     "description": "Vapor bootstrap, entrypoint, or route registration code was detected and should usually be covered indirectly."
