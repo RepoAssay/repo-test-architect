@@ -6,6 +6,7 @@ import { describe, it } from "node:test";
 import { auditKotlinRepo } from "../src/adapters/kotlin/audit.js";
 
 const exampleRoot = path.resolve("examples/kotlin-junit-basic");
+const gradleGroovyRoot = path.resolve("examples/kotlin-gradle-groovy-junit");
 const mavenRoot = path.resolve("examples/kotlin-maven-junit");
 
 describe("Kotlin audit adapter", () => {
@@ -227,6 +228,33 @@ describe("Kotlin audit adapter", () => {
     assert.deepEqual(
       audit.coveredButRisky.map((target) => target.name),
       ["InvoiceValidator"]
+    );
+  });
+
+  it("audits the checked-in Gradle Groovy JUnit fixture", () => {
+    const audit = auditKotlinRepo(gradleGroovyRoot);
+
+    assert.deepEqual(audit.profile.languages, ["java"]);
+    assert.deepEqual(audit.profile.packageManagers, ["gradle"]);
+    assert.deepEqual(audit.profile.testFrameworks, ["junit"]);
+    assert.equal(audit.profile.testCommand, "gradle test");
+    assert.equal(audit.profile.confidence, "high");
+    assert.deepEqual(audit.profile.blockers, []);
+    assert.ok(audit.profile.detectedConventions.includes("src/test/java"));
+    assert.ok(audit.profile.setupSignals.includes("gradle"));
+    assert.ok(audit.profile.setupSignals.includes("gradle settings"));
+    assert.ok(audit.profile.setupSignals.includes("junit platform"));
+    assert.deepEqual(
+      audit.coveredButRisky.map((target) => `${target.name}:${target.kind}:${target.recommendedTestLevel}`),
+      ["ShipmentValidator:pure-logic:unit"]
+    );
+    assert.deepEqual(
+      audit.untestedCandidates.map((target) => `${target.name}:${target.kind}:${target.recommendedTestLevel}`),
+      ["WeightFormatter:pure-logic:unit"]
+    );
+    assert.deepEqual(
+      audit.skipped.map((target) => `${target.name}:${target.kind}`),
+      ["ShipmentRequest:dto"]
     );
   });
 

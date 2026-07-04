@@ -35,31 +35,30 @@ if (options.outputJson) {
     process.exitCode = 1;
   }
 
-  process.exit();
-}
-
-for (const result of results) {
-  if (result.failures.length === 0) {
-    console.log(`PASS ${result.scenarioId} (${result.checkedFieldCount} locked field(s))`);
-    continue;
-  }
-
-  failureCount += result.failures.length;
-  console.log(`FAIL ${result.scenarioId}`);
-
-  for (const failure of result.failures) {
-    console.log(`  ${failure.path}: expected ${JSON.stringify(failure.expected)}, got ${JSON.stringify(failure.actual)}`);
-    console.log(`    ${failure.reason}`);
-  }
-}
-
-if (failureCount > 0) {
-  console.error(`${failureCount} locked model-consistency field(s) drifted.`);
-  process.exitCode = 1;
 } else {
-  console.log(
-    `${summary.summary.passedScenarioCount} of ${summary.summary.scenarioCount} model-consistency scenario(s) passed.`
-  );
+  for (const result of results) {
+    if (result.failures.length === 0) {
+      console.log(`PASS ${result.scenarioId} (${result.checkedFieldCount} locked field(s))`);
+      continue;
+    }
+
+    failureCount += result.failures.length;
+    console.log(`FAIL ${result.scenarioId}`);
+
+    for (const failure of result.failures) {
+      console.log(`  ${failure.path}: expected ${JSON.stringify(failure.expected)}, got ${JSON.stringify(failure.actual)}`);
+      console.log(`    ${failure.reason}`);
+    }
+  }
+
+  if (failureCount > 0) {
+    console.error(`${failureCount} locked model-consistency field(s) drifted.`);
+    process.exitCode = 1;
+  } else {
+    console.log(
+      `${summary.summary.passedScenarioCount} of ${summary.summary.scenarioCount} model-consistency scenario(s) passed.`
+    );
+  }
 }
 
 function parseArgs(args) {
