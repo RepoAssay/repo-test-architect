@@ -12,7 +12,7 @@
  * @returns {GenerationDeferredResult}
  */
 export function createGenerationDeferredResult(planItemId) {
-  if (!planItemId) {
+  if (typeof planItemId !== "string" || planItemId.trim().length === 0) {
     throw new Error("planItemId must be a non-empty string.");
   }
 

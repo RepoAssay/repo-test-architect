@@ -15,5 +15,7 @@ describe("generation deferred result", () => {
 
   it("rejects missing plan item ids", () => {
     assert.throws(() => createGenerationDeferredResult(""), /planItemId must be a non-empty string/);
+    assert.throws(() => createGenerationDeferredResult("   "), /planItemId must be a non-empty string/);
+    assert.throws(() => createGenerationDeferredResult(undefined), /planItemId must be a non-empty string/);
   });
 });
