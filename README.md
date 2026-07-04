@@ -13,7 +13,7 @@ The current implementation can:
 - rank candidates and generate test plans from the audit graph
 - analyze conservative test placement findings across project boundaries
 - collect project-level stats for coverage, candidate counts, frameworks, commands, and adapter usage
-- expose the same deterministic behavior through CLI commands and a local stdio MCP-shaped tool surface
+- expose the same deterministic behavior through CLI commands, a local invoke harness, and a stdio MCP SDK server
 - lock behavior with golden snapshots, model-consistency scenarios, package checks, and cross-OS CI
 
 Native test generation is intentionally deferred. `generate_selected_test` returns a structured deferred artifact until adapter-specific generation policy and repair-loop fixtures exist.
@@ -32,7 +32,7 @@ Experimental adapter spikes:
 
 Project detection also reports unsupported Ruby, PHP, Elixir, Go, Rust, and .NET roots so clients can distinguish "not audited yet" from "not present."
 
-The package remains private while public repository metadata, publish targets, and the real MCP SDK wrapper are finalized.
+The package remains private while public repository metadata and publish targets are finalized.
 
 ## Working CLI
 
@@ -252,7 +252,7 @@ Important runtime surfaces:
 
 - CLI: `src/cli/index.js`
 - MCP tool definitions: `src/mcp/tool-definitions.js`
-- stdio JSON-RPC scaffold: `src/mcp/stdio.js`
+- stdio MCP SDK server: `src/mcp/stdio.js`
 - local invoke harness: `src/mcp/invoke.js`
 - release gate: `scripts/check-release-readiness.js`
 

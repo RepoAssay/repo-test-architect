@@ -29,6 +29,10 @@ describe("package manifest", () => {
     assert.equal(packageJson.engines.node, ">=20");
   });
 
+  it("declares the official MCP SDK runtime dependency for stdio transport", () => {
+    assert.match(packageJson.dependencies["@modelcontextprotocol/sdk"], /^\^1\./);
+  });
+
   it("keeps stable CLI and MCP binary entry points", () => {
     assert.deepEqual(Object.keys(packageJson.bin).sort(), [
       "repo-test-architect",

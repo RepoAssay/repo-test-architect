@@ -34,6 +34,14 @@ Rationale: repository audit needs local source, Git, and test execution context.
 
 Revisit when: hosted features are limited to aggregate reporting, evals, policy packs, or model-consistency comparisons with authentication and least-privilege tool access.
 
+## SDK Stdio Wrapper Over Deterministic Tools
+
+Decision: mount the existing dependency-free tool descriptors and dispatcher through `@modelcontextprotocol/sdk` for local stdio transport.
+
+Rationale: the deterministic tool surface should remain testable without transport dependencies, while the shipped MCP binary should use the official SDK protocol implementation.
+
+Revisit when: SDK transport behavior conflicts with required client compatibility or a hosted transport is added.
+
 ## Native Generation Deferred
 
 Decision: keep `generate_selected_test` as a deferred artifact until adapter-specific generation rules and repair-loop coverage exist.
@@ -46,7 +54,7 @@ Revisit when: a fixture proves generation, exact test command execution, failure
 
 Decision: prepare a public demo path before publishing an npm package.
 
-Rationale: the tool can be useful as an audit and planning prototype before package metadata, final repository links, ownership confirmation, and a real MCP SDK wrapper are ready.
+Rationale: the tool can be useful as an audit and planning prototype before package metadata, final repository links, and ownership confirmation are ready.
 
 Revisit when: the public repository URL, package metadata, install docs, and release-readiness checks are all final.
 

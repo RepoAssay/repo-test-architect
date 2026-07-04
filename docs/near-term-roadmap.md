@@ -11,7 +11,7 @@ The useful baseline is:
 - deterministic JavaScript/TypeScript audit pipeline
 - experimental Kotlin/JVM, Swift, and Python adapter spikes
 - polyglot project detection with unsupported-project reporting
-- project-level ranking, planning, placement, stats, and MCP-shaped tool calls
+- project-level ranking, planning, placement, stats, and local MCP tool calls
 - model-consistency scenarios for stable audit and plan outputs
 - release gate through `npm run release:check`
 - native test generation intentionally deferred
@@ -61,7 +61,9 @@ Acceptance:
 
 ## Milestone 4: Local MCP Transport
 
-Goal: replace the current MCP-shaped local harness with a real local stdio MCP transport wrapper.
+Goal: keep the local stdio MCP SDK wrapper aligned with the deterministic tool dispatcher.
+
+Status: wired for local stdio through `@modelcontextprotocol/sdk`.
 
 Acceptance:
 

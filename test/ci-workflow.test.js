@@ -12,6 +12,7 @@ describe("CI workflow", () => {
     assert.match(workflow, /fail-fast: false/);
     assert.match(workflow, /os:\s*\n\s*- ubuntu-latest\s*\n\s*- macos-latest\s*\n\s*- windows-latest/);
     assert.match(workflow, /node-version: "20"/);
+    assert.match(workflow, /run: npm install/);
     assert.match(workflow, /run: npm run release:check/);
   });
 });

@@ -87,7 +87,7 @@ Call out:
 
 ## MCP Surface
 
-Show that the same deterministic operations are exposed through MCP-shaped tools:
+Show that the same deterministic operations are exposed through MCP tools:
 
 ```powershell
 npm run mcp:tools
@@ -98,7 +98,7 @@ npm run mcp:plan-projects:example
 npm run mcp:placement-split:example
 ```
 
-Call out that the current MCP surface is dependency-free stdio and invoke scaffolding. A real SDK transport wrapper is still on the public-readiness list.
+Call out that the current MCP surface has a real local stdio SDK wrapper plus a dependency-free invoke harness for deterministic checks.
 
 ## Close
 
