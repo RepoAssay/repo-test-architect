@@ -95,6 +95,7 @@
     "pack:dry-run": "npm pack --dry-run",
     "pack:check": "node ./scripts/check-pack-contents.js",
     "bin:check": "node ./scripts/check-bin-entrypoints.js",
+    "installed-package:check": "node ./scripts/check-installed-package.js",
     "release:check": "node ./scripts/check-release-readiness.js"
   },
   "keywords": [

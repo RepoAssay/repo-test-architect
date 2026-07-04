@@ -69,6 +69,7 @@ describe("package manifest", () => {
     assert.equal(packageJson.scripts["mcp:smoke"], "node ./scripts/check-mcp-stdio-smoke.js");
     assert.ok(packageJson.scripts["pack:check"]);
     assert.ok(packageJson.scripts["bin:check"]);
+    assert.equal(packageJson.scripts["installed-package:check"], "node ./scripts/check-installed-package.js");
     assert.ok(packageJson.scripts["release:check"]);
   });
 
@@ -84,6 +85,7 @@ describe("package manifest", () => {
       "smoke",
       "pack:check",
       "bin:check",
+      "installed-package:check",
     ];
 
     assert.deepEqual(releaseChecks, expectedChecks);
@@ -99,8 +101,10 @@ describe("package manifest", () => {
     assert.ok(status.includes("npm run mcp:smoke"));
     assert.ok(status.includes("npm run pack:check"));
     assert.ok(status.includes("npm run bin:check"));
+    assert.ok(status.includes("npm run installed-package:check"));
     assert.ok(status.includes("npm run release:check"));
     assert.ok(releaseChecklist.includes("npm run mcp:smoke"));
+    assert.ok(releaseChecklist.includes("npm run installed-package:check"));
   });
 
   it("keeps smoke checks aligned with packaged release verification scripts", () => {
@@ -110,12 +114,14 @@ describe("package manifest", () => {
     assert.ok(smoke.includes("scripts/check-pack-contents.js"));
     assert.ok(smoke.includes("scripts/check-bin-entrypoints.js"));
     assert.ok(smoke.includes("scripts/check-demo-script.js"));
+    assert.ok(smoke.includes("scripts/check-installed-package.js"));
     assert.ok(smoke.includes("scripts/check-mcp-stdio-smoke.js"));
     assert.ok(smoke.includes("scripts/check-release-readiness.js"));
     assert.ok(smoke.includes("scripts/support/npm-runner.js"));
     assert.ok(nodeSmoke.includes("scripts/check-pack-contents.js"));
     assert.ok(nodeSmoke.includes("scripts/check-bin-entrypoints.js"));
     assert.ok(nodeSmoke.includes("scripts/check-demo-script.js"));
+    assert.ok(nodeSmoke.includes("scripts/check-installed-package.js"));
     assert.ok(nodeSmoke.includes("scripts/check-mcp-stdio-smoke.js"));
     assert.ok(nodeSmoke.includes("scripts/check-release-readiness.js"));
     assert.ok(nodeSmoke.includes("scripts/support/npm-runner.js"));

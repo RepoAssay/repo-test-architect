@@ -16,6 +16,7 @@ This project is not ready to publish yet. Keep `private: true` in `package.json`
 - keep `npm run pack:check` passing so package contents stay inside the intended allowlist
 - keep `npm run mcp:smoke` passing so the stdio MCP flow keeps booting
 - keep `npm run bin:check` passing so packaged CLI and MCP entry points keep booting
+- keep `npm run installed-package:check` passing so the packed tarball installs and exposes working binaries
 - keep `npm run release:check` passing before tagging or publishing
 - keep GitHub Actions CI green for the release-readiness workflow on Ubuntu, macOS, and Windows
 - add package metadata before publishing:
@@ -47,12 +48,13 @@ npm run mcp:smoke
 npm run pack:dry-run
 npm run pack:check
 npm run bin:check
+npm run installed-package:check
 npm run release:check
 ```
 
 The repository also keeps `scripts/smoke.ps1` as a manual PowerShell fallback for environments that need it.
 
-Also verify the installed package entry points from a packed tarball before first public release.
+Also verify the installed package entry points from a packed tarball before first public release with `npm run installed-package:check`.
 
 ## Distribution
 

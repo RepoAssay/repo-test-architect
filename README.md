@@ -183,6 +183,7 @@ Check package contents before publishing:
 ```powershell
 npm run pack:check
 npm run bin:check
+npm run installed-package:check
 npm run release:check
 ```
 
