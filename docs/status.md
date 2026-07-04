@@ -48,7 +48,7 @@ Implemented:
 - package contents dry-run checker for required runtime files and publish allowlist hygiene
 - package binary entrypoint checker for CLI, MCP invoke, and stdio JSON-RPC boot paths
 - release-readiness check runner for tests, evals, model consistency, demo path, smoke, package, and bin checks
-- GitHub Actions CI workflow that runs the release-readiness check on pushes and pull requests
+- GitHub Actions CI workflow that runs the release-readiness check on Ubuntu, macOS, and Windows for pushes and pull requests
 - GitHub pull request template that calls out audit impact, release verification, and risk notes
 - GitHub bug report issue form for audit, planning, MCP, and release-check defects
 - GitHub feature request issue form for audit-first adapter, MCP, evaluation, and reporting proposals
