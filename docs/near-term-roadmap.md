@@ -25,7 +25,7 @@ Acceptance:
 - demo commands stay covered by `npm run demo:check`
 - docs explain that generation is deferred
 - README points to the demo path, product positioning, and release gate
-- package remains private until license, ownership, and publish targets are confirmed
+- package remains private until ownership and publish targets are confirmed
 
 ## Milestone 2: Adapter Spike Hardening
 

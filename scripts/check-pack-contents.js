@@ -19,6 +19,7 @@ export const allowedTopLevelEntries = new Set([
 ]);
 
 export const requiredFiles = [
+  "LICENSE",
   "README.md",
   "SECURITY.md",
   "SUPPORT.md",

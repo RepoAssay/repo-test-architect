@@ -12,9 +12,9 @@ describe("package contents", () => {
     assert.match(output, /^Pack contents check passed \(\d+ files\)\./);
   });
 
-  it("allows the future top-level license file without requiring it yet", () => {
+  it("requires the top-level license file", () => {
     assert.ok(allowedTopLevelEntries.has("LICENSE"));
-    assert.ok(!requiredFiles.includes("LICENSE"));
+    assert.ok(requiredFiles.includes("LICENSE"));
   });
 
   it("requires check script dependencies needed by packaged release verification", () => {

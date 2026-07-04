@@ -46,9 +46,9 @@ Revisit when: a fixture proves generation, exact test command execution, failure
 
 Decision: prepare a public demo path before publishing an npm package.
 
-Rationale: the tool can be useful as an audit and planning prototype before package metadata, final repository links, license confirmation, and a real MCP SDK wrapper are ready.
+Rationale: the tool can be useful as an audit and planning prototype before package metadata, final repository links, ownership confirmation, and a real MCP SDK wrapper are ready.
 
-Revisit when: the public repository URL, package metadata, license file, install docs, and release-readiness checks are all final.
+Revisit when: the public repository URL, package metadata, install docs, and release-readiness checks are all final.
 
 ## Local-First Stats Before Telemetry
 

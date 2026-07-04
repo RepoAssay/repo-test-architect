@@ -22,7 +22,7 @@ This document tracks what can be shown publicly before the project is ready for 
 - package remains `private: true`
 - final public repository URL is not configured
 - package metadata still needs final repository, homepage, bugs, and keyword decisions
-- package manifest currently declares MIT, but the license file and copyright owner still need confirmation before publishing
+- package manifest declares MIT and the repository includes the matching license file
 - native test generation is still deferred
 - real MCP SDK transport wrapper is still pending
 - remote MCP hosting is out of scope for the first release
@@ -33,7 +33,7 @@ This document tracks what can be shown publicly before the project is ready for 
 - add the remote URL
 - update package metadata with public repository links
 - decide whether issue template contact links should point to support and security docs
-- confirm the license file and copyright owner
+- verify the copyright owner before publishing
 - run `npm run release:check`
 
 ## First Public Demo
