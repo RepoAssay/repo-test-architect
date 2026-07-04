@@ -71,6 +71,7 @@ Implemented:
 - `swift-spm-xctest`
 - `swift-spm-swift-testing`
 - `vapor-service-tests`
+- `vapor-mongodb-boundaries`
 - `python-pytest-service`
 - `python-unittest-service`
 - `python-requirements-pytest`

@@ -1,0 +1,90 @@
+{
+  "schemaVersion": "plan/v1",
+  "summary": {
+    "confidence": "high",
+    "verificationCommand": "swift test",
+    "blockerCount": 0,
+    "addTestCount": 3,
+    "extendTestCount": 0,
+    "deferredCount": 0
+  },
+  "blockers": [],
+  "items": [
+    {
+      "id": "add-test:Sources/App/Controllers/PriceController.swift",
+      "action": "add-test",
+      "targetId": "Sources/App/Controllers/PriceController.swift",
+      "target": "PriceController",
+      "path": "Sources/App/Controllers/PriceController.swift",
+      "testLevel": "integration",
+      "priority": 4,
+      "riskReductionScore": 9,
+      "maintenanceCost": 5,
+      "rationale": [
+        "HTTP route behavior",
+        "Vapor request handling",
+        "MongoDB query boundary",
+        "aggregation pipeline semantics",
+        "Seed representative MongoDB fixture data and assert aggregation grouping, ordering, and edge-case result shape."
+      ],
+      "sourceSignals": [
+        "http-route",
+        "vapor-route",
+        "mongodb-aggregation",
+        "mongodb-query"
+      ],
+      "existingTestPaths": []
+    },
+    {
+      "id": "add-test:Sources/App/Controllers/SearchController.swift",
+      "action": "add-test",
+      "targetId": "Sources/App/Controllers/SearchController.swift",
+      "target": "SearchController",
+      "path": "Sources/App/Controllers/SearchController.swift",
+      "testLevel": "integration",
+      "priority": 4,
+      "riskReductionScore": 9,
+      "maintenanceCost": 5,
+      "rationale": [
+        "HTTP route behavior",
+        "Vapor request handling",
+        "MongoDB query boundary",
+        "dynamic BSON filter construction",
+        "pagination or sorting behavior",
+        "Cover dynamic BSON filter construction with escaped user input, empty results, and malformed query boundaries.",
+        "Assert pagination and sorting boundaries, including limits, offsets, stable ordering, and has-next-page behavior."
+      ],
+      "sourceSignals": [
+        "http-route",
+        "vapor-route",
+        "mongodb-dynamic-filter",
+        "mongodb-query",
+        "pagination-or-sort"
+      ],
+      "existingTestPaths": []
+    },
+    {
+      "id": "add-test:Sources/App/Jobs/PriceHistoryJob.swift",
+      "action": "add-test",
+      "targetId": "Sources/App/Jobs/PriceHistoryJob.swift",
+      "target": "PriceHistoryJob",
+      "path": "Sources/App/Jobs/PriceHistoryJob.swift",
+      "testLevel": "integration",
+      "priority": 3,
+      "riskReductionScore": 8,
+      "maintenanceCost": 5,
+      "rationale": [
+        "MongoDB data access",
+        "MongoDB query boundary",
+        "MongoDB write/update behavior",
+        "Exercise MongoDB create/update paths for idempotency, duplicate data, and existing-record updates."
+      ],
+      "sourceSignals": [
+        "data-access",
+        "mongodb-query",
+        "mongodb-write"
+      ],
+      "existingTestPaths": []
+    }
+  ]
+}

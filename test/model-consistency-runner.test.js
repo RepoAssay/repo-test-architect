@@ -88,6 +88,7 @@ describe("model consistency runner", () => {
         ["react-testing-library-plan", []],
         ["swift-spm-swift-testing-plan", []],
         ["swift-spm-xctest-plan", []],
+        ["vapor-mongodb-boundaries-plan", []],
         ["vapor-service-tests-plan", []]
       ]
     );
@@ -103,10 +104,10 @@ describe("model consistency runner", () => {
     assert.equal(summary.schemaVersion, "model-consistency-summary/v1");
     assert.equal(summary.profileName, "deterministic-baseline");
     assert.deepEqual(summary.summary, {
-      scenarioCount: 20,
-      passedScenarioCount: 20,
+      scenarioCount: 21,
+      passedScenarioCount: 21,
       failedScenarioCount: 0,
-      checkedFieldCount: 151,
+      checkedFieldCount: 162,
       failureCount: 0
     });
     assert.equal(summary.scenarios[2].scenarioId, "node-jest-service-plan");
@@ -124,8 +125,8 @@ describe("model consistency runner", () => {
     assert.equal(comparison.baselineProfile, "deterministic-baseline");
     assert.equal(comparison.candidateProfile, "local-small");
     assert.deepEqual(comparison.summary, {
-      scenarioCount: 20,
-      alignedScenarioCount: 20,
+      scenarioCount: 21,
+      alignedScenarioCount: 21,
       driftedScenarioCount: 0,
       missingScenarioCount: 0,
       unexpectedScenarioCount: 0,
@@ -140,8 +141,8 @@ describe("model consistency runner", () => {
     const candidate = {
       ...createCurrentSummary("local-small"),
       summary: {
-        scenarioCount: 20,
-        passedScenarioCount: 17,
+        scenarioCount: 21,
+        passedScenarioCount: 18,
         failedScenarioCount: 2,
         checkedFieldCount: 131,
         failureCount: 3
@@ -167,12 +168,12 @@ describe("model consistency runner", () => {
     const comparison = compareModelConsistencySummaries(baseline, candidate);
 
     assert.deepEqual(comparison.summary, {
-      scenarioCount: 21,
-      alignedScenarioCount: 18,
+      scenarioCount: 22,
+      alignedScenarioCount: 19,
       driftedScenarioCount: 1,
       missingScenarioCount: 1,
       unexpectedScenarioCount: 1,
-      checkedFieldDelta: -20,
+      checkedFieldDelta: -31,
       failureDelta: 3
     });
     assert.deepEqual(
@@ -198,6 +199,7 @@ describe("model consistency runner", () => {
         ["swift-spm-swift-testing-plan", "aligned"],
         ["swift-spm-xctest-plan", "aligned"],
         ["unexpected-extra-scenario", "unexpected"],
+        ["vapor-mongodb-boundaries-plan", "aligned"],
         ["vapor-service-tests-plan", "aligned"]
       ]
     );

@@ -240,6 +240,7 @@ examples/
   swift-spm-xctest/
   swift-spm-swift-testing/
   vapor-service-tests/
+  vapor-mongodb-boundaries/
 evals/
   expected/
   model-consistency/

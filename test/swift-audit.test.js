@@ -8,6 +8,7 @@ import { auditSwiftRepo } from "../src/adapters/swift/audit.js";
 const exampleRoot = path.resolve("examples/swift-spm-xctest");
 const swiftTestingRoot = path.resolve("examples/swift-spm-swift-testing");
 const vaporRoot = path.resolve("examples/vapor-service-tests");
+const vaporMongoRoot = path.resolve("examples/vapor-mongodb-boundaries");
 
 describe("Swift audit adapter", () => {
   it("detects SwiftPM, XCTest, and static Swift conventions", () => {
@@ -441,6 +442,39 @@ final class CardPriceHistory {}
     assert.equal(job.kind, "data-access");
     assert.equal(job.recommendedTestLevel, "integration");
     assert.ok(job.signals.includes("mongodb-write"));
+  });
+
+  it("audits the checked-in Vapor MongoDB boundary fixture", () => {
+    const audit = auditSwiftRepo(vaporMongoRoot);
+
+    assert.deepEqual(audit.profile.testFrameworks, ["Swift Testing", "XCTVapor"]);
+    assert.equal(audit.profile.testCommand, "swift test");
+    assert.equal(audit.profile.confidence, "high");
+    assert.ok(audit.profile.architectures.includes("mongodb"));
+    assert.ok(audit.profile.architectures.includes("vapor"));
+    assert.ok(audit.profile.setupSignals.includes("mongodb dependency"));
+    assert.ok(audit.profile.setupSignals.includes("xctvapor test support"));
+
+    assert.deepEqual(
+      audit.recommended.map((target) => `${target.name}:${target.kind}:${target.recommendedTestLevel}`),
+      [
+        "PriceController:http-route:integration",
+        "PriceHistoryJob:data-access:integration",
+        "SearchController:http-route:integration"
+      ]
+    );
+
+    const price = audit.recommended.find((target) => target.name === "PriceController");
+    assert.ok(price.signals.includes("mongodb-aggregation"));
+    assert.ok(price.reasons.includes("aggregation pipeline semantics"));
+
+    const search = audit.recommended.find((target) => target.name === "SearchController");
+    assert.ok(search.signals.includes("mongodb-dynamic-filter"));
+    assert.ok(search.signals.includes("pagination-or-sort"));
+
+    const job = audit.recommended.find((target) => target.name === "PriceHistoryJob");
+    assert.ok(job.signals.includes("mongodb-write"));
+    assert.deepEqual(audit.skipped, []);
   });
 
   it("classifies common Swift utility sub-kinds", () => {
