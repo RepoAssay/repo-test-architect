@@ -7,6 +7,7 @@ import {
   analyzeRepoTestPlacement,
   auditRepoProjects,
   auditRepo,
+  collectRepoProjectFindings,
   collectRepoProjectStats,
   detectRepoProjects,
   explainAuditTarget,
@@ -23,8 +24,8 @@ import {
 
 const options = parseArgs(process.argv.slice(2));
 
-if (!["adapters", "detect-rules", "detect", "audit-projects", "summarize-projects", "rank-projects", "plan-projects", "placement-projects", "stats-projects", "audit", "plan", "explain", "rank", "placement"].includes(options.command)) {
-  console.error("Usage: repo-test-architect <adapters|detect-rules|detect|audit-projects|summarize-projects|rank-projects|plan-projects|placement-projects|stats-projects|audit|plan|explain|rank|placement> <repo> [--adapter id] [--format markdown|json] [--from-audit audit.json] [--from-project-audits project-audits.json] [--item id] [--target id] [--owner label] [--changed] [--changed-since ref]");
+if (!["adapters", "detect-rules", "detect", "audit-projects", "summarize-projects", "rank-projects", "plan-projects", "findings-projects", "placement-projects", "stats-projects", "audit", "plan", "explain", "rank", "placement"].includes(options.command)) {
+  console.error("Usage: repo-test-architect <adapters|detect-rules|detect|audit-projects|summarize-projects|rank-projects|plan-projects|findings-projects|placement-projects|stats-projects|audit|plan|explain|rank|placement> <repo> [--adapter id] [--format markdown|json] [--from-audit audit.json] [--from-project-audits project-audits.json] [--item id] [--target id] [--owner label] [--changed] [--changed-since ref]");
   process.exit(1);
 }
 
@@ -38,8 +39,8 @@ if (options.fromAuditPath && !["plan", "explain", "rank", "placement"].includes(
   process.exit(1);
 }
 
-if (options.fromProjectAuditsPath && !["audit-projects", "summarize-projects", "rank-projects", "plan-projects", "placement-projects", "stats-projects"].includes(options.command)) {
-  console.error("--from-project-audits is only supported with audit-projects, summarize-projects, rank-projects, plan-projects, placement-projects, and stats-projects commands.");
+if (options.fromProjectAuditsPath && !["audit-projects", "summarize-projects", "rank-projects", "plan-projects", "findings-projects", "placement-projects", "stats-projects"].includes(options.command)) {
+  console.error("--from-project-audits is only supported with audit-projects, summarize-projects, rank-projects, plan-projects, findings-projects, placement-projects, and stats-projects commands.");
   process.exit(1);
 }
 
@@ -49,7 +50,7 @@ const detectionRules = options.command === "detect-rules" ? getProjectDetectionR
 const detection = options.command === "detect" ? detectRepoProjects(repoRoot) : undefined;
 const projectAudits = options.fromProjectAuditsPath
   ? readProjectAuditsJson(options.fromProjectAuditsPath)
-  : ["audit-projects", "summarize-projects", "rank-projects", "plan-projects", "placement-projects", "stats-projects"].includes(options.command)
+  : ["audit-projects", "summarize-projects", "rank-projects", "plan-projects", "findings-projects", "placement-projects", "stats-projects"].includes(options.command)
     ? auditRepoProjects(repoRoot, {
       changedPaths: readSelectedChangedPaths(repoRoot, options)
     })
@@ -80,6 +81,8 @@ if (options.format === "json") {
   console.log(renderMarkdownProjectCandidateRanking(output));
 } else if (options.command === "plan-projects") {
   console.log(renderMarkdownProjectTestPlan(output));
+} else if (options.command === "findings-projects") {
+  console.log(renderMarkdownProjectFindings(output));
 } else if (options.command === "placement-projects") {
   console.log(renderMarkdownPlacement(output));
 } else if (options.command === "stats-projects") {
@@ -323,6 +326,7 @@ function selectProjectOutput(projectAudits, options) {
   if (options.command === "summarize-projects") return summarizeRepoProjectAudits(projectAudits);
   if (options.command === "rank-projects") return rankRepoProjectCandidates(projectAudits);
   if (options.command === "plan-projects") return generateRepoProjectTestPlan(projectAudits);
+  if (options.command === "findings-projects") return collectRepoProjectFindings(projectAudits);
   if (options.command === "placement-projects") return analyzeRepoProjectTestPlacement(projectAudits);
   if (options.command === "stats-projects") return collectRepoProjectStats(projectAudits);
   return projectAudits;
@@ -616,6 +620,50 @@ function renderMarkdownProjectTestPlan(plan) {
     lines.push("- No unsupported projects.");
   } else {
     for (const project of plan.unsupportedProjects) {
+      lines.push(formatUnsupportedProject(project));
+    }
+  }
+
+  return lines.join("\n");
+}
+
+function renderMarkdownProjectFindings(findings) {
+  const lines = [];
+
+  lines.push("# Project Findings");
+  lines.push("");
+  lines.push("## Summary");
+  lines.push(`- Projects: ${findings.summary.projectCount}`);
+  lines.push(`- Audited: ${findings.summary.auditedProjectCount}`);
+  lines.push(`- Unsupported: ${findings.summary.unsupportedProjectCount}`);
+  lines.push(`- Audit coverage: ${findings.summary.auditCoverage}`);
+  lines.push(`- Findings: ${findings.summary.displayedFindingCount} of ${findings.summary.findingCount}`);
+  lines.push(`- High severity: ${findings.summary.highSeverityCount}`);
+  lines.push(`- Placement findings: ${findings.summary.placementFindingCount}`);
+  lines.push(`- Blocked projects: ${findings.summary.blockedProjectCount}`);
+  lines.push("");
+  lines.push("## Top Findings");
+
+  if (findings.findings.length === 0) {
+    lines.push("- No project findings detected.");
+  } else {
+    for (const finding of findings.findings) {
+      const subject = finding.target ? `${finding.target} [${finding.targetId}]` : finding.title;
+      const rationale = finding.rationale.map(trimTrailingPeriod).join(". ");
+      const evidence = finding.evidence.length > 0 ? ` Evidence: ${finding.evidence.join("; ")}.` : "";
+      lines.push(
+        `- ${finding.projectRoot}: ${finding.category}, ${finding.severity}, priority ${finding.priority}: ${subject}. ${rationale}.${evidence}`
+      );
+    }
+  }
+
+  lines.push("");
+  lines.push("## Unsupported Projects");
+
+  if (findings.unsupportedProjects.length === 0) {
+    lines.push("- No unsupported projects.");
+  } else {
+    for (const project of findings.unsupportedProjects) {
       lines.push(formatUnsupportedProject(project));
     }
   }

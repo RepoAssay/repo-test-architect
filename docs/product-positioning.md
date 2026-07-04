@@ -4,7 +4,7 @@ Repo Test Architect should be positioned as an audit-first test strategy tool, n
 
 ## Core Claim
 
-The tool audits a repository, detects existing test conventions, ranks high-value native test opportunities, explains skipped areas, and reports remaining risk before any generation happens.
+The tool audits a repository, detects existing test conventions, ranks high-value native test opportunities, explains skipped areas, reports misplaced coverage, and reports remaining risk before any generation happens.
 
 ## Differentiation
 
@@ -21,11 +21,13 @@ Repo Test Architect starts one layer earlier:
 - what should be tested directly
 - what should be tested indirectly
 - what should not get direct tests
+- whether existing tests look valuable or weak
+- whether tests are in the right project layer
 - what conventions already exist
 - what command verifies the work
 - what risk remains
 
-The defensible value is the audit graph and strategy layer. Native generation is one future action, not the product thesis.
+The defensible value is the audit graph and strategy layer: knowing what should be tested, what should be skipped, whether existing tests are valuable, whether tests are in the right project layer, and what risks remain. Native generation is one future action, not the product thesis.
 
 ## Initial Audience
 

@@ -4,7 +4,7 @@ This is the first public demo path. It should show that the tool makes test stra
 
 ## Message
 
-Repo Test Architect audits a repository, detects existing conventions, ranks useful test targets, skips low-value direct tests, and reports remaining risk.
+Repo Test Architect audits a repository, detects existing conventions, ranks useful test targets, skips low-value direct tests, reports misplaced coverage, and reports remaining risk.
 
 Do not frame the demo as test generation. Native generation is intentionally deferred until adapter-specific generation rules and repair-loop coverage exist.
 
@@ -61,6 +61,7 @@ npm run audit-projects:example
 npm run summarize-projects:example
 npm run rank-projects:example
 npm run plan-projects:example
+npm run findings-projects:example
 npm run stats-projects:example
 ```
 
@@ -95,6 +96,7 @@ npm run mcp:audit-projects:example
 npm run mcp:audit:kotlin-fixture
 npm run mcp:rank-projects:example
 npm run mcp:plan-projects:example
+npm run mcp:findings-projects:example
 npm run mcp:placement-split:example
 ```
 

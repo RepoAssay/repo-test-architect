@@ -6,6 +6,7 @@ import {
   analyzeRepoProjectTestPlacement,
   auditRepoProjects,
   auditRepo,
+  collectRepoProjectFindings,
   collectRepoProjectStats,
   createRepoTestPlacementFindings,
   detectRepoProjects,
@@ -115,6 +116,15 @@ describe("tool API", () => {
 
     assert.equal(plan.schemaVersion, "project-test-plan/v1");
     assert.equal(plan.summary.itemCount, 3);
+  });
+
+  it("collects top findings from detected repository project audits", () => {
+    const projectAudits = auditRepoProjects(path.resolve("examples/polyglot-workspace"));
+    const findings = collectRepoProjectFindings(projectAudits);
+
+    assert.equal(findings.schemaVersion, "project-findings/v1");
+    assert.equal(findings.summary.findingCount, 5);
+    assert.equal(findings.findings[0].category, "blocked-project");
   });
 
   it("analyzes test placement from detected repository project audits", () => {

@@ -142,6 +142,27 @@
       }
     },
     {
+      "name": "collect_project_findings",
+      "description": "Collect concise top test architecture findings across project-audits.",
+      "outputArtifact": {
+        "schemaVersion": "project-findings/v1",
+        "schemaPath": "schemas/project-findings-v1.schema.json"
+      },
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "projectAudits"
+        ],
+        "properties": {
+          "projectAudits": {
+            "type": "object",
+            "description": "A project-audits/v1 artifact."
+          }
+        }
+      }
+    },
+    {
       "name": "analyze_project_test_placement",
       "description": "Analyze project-aware test placement from a project-audits artifact.",
       "outputArtifact": {

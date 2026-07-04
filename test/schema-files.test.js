@@ -166,6 +166,20 @@ describe("schema files", () => {
     assert.ok(schema.properties.unsupportedProjects.items.required.includes("supportStatusReason"));
   });
 
+  it("documents project-findings/v1", () => {
+    const schema = readSchema("schemas/project-findings-v1.schema.json");
+
+    assert.equal(schema.properties.schemaVersion.const, "project-findings/v1");
+    assert.ok(schema.required.includes("summary"));
+    assert.ok(schema.required.includes("findings"));
+    assert.ok(schema.required.includes("unsupportedProjects"));
+    assert.ok(schema.properties.summary.required.includes("auditCoverage"));
+    assert.ok(schema.properties.summary.required.includes("findingCount"));
+    assert.ok(schema.properties.findings.items.required.includes("category"));
+    assert.ok(schema.properties.findings.items.required.includes("severity"));
+    assert.ok(schema.properties.findings.items.required.includes("evidence"));
+  });
+
   it("documents project-stats/v1", () => {
     const schema = readSchema("schemas/project-stats-v1.schema.json");
 

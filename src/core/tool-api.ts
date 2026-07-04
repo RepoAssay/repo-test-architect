@@ -78,6 +78,49 @@ export interface ProjectTestPlan {
   items: ProjectPlanItem[];
 }
 
+export interface ProjectFindings {
+  schemaVersion: "project-findings/v1";
+  root: string;
+  summary: {
+    projectCount: number;
+    auditedProjectCount: number;
+    unsupportedProjectCount: number;
+    auditCoverage: "complete" | "partial" | "none";
+    unsupportedReasons: string[];
+    findingCount: number;
+    displayedFindingCount: number;
+    maxFindings: number;
+    highSeverityCount: number;
+    placementFindingCount: number;
+    blockedProjectCount: number;
+  };
+  findings: ProjectFinding[];
+  unsupportedProjects: SkippedProjectAudit[];
+}
+
+export interface ProjectFinding {
+  id: string;
+  category: "missing-coverage" | "weak-existing-coverage" | "misplaced-coverage" | "low-value-direct-test" | "blocked-project";
+  severity: "high" | "medium" | "low";
+  priority: number;
+  projectId: string;
+  projectRoot: string;
+  adapterId?: string;
+  targetId?: string;
+  target?: string;
+  path?: string;
+  kind?: string;
+  testLevel?: "unit" | "integration" | "component" | "ui" | "none";
+  title: string;
+  testFile?: string;
+  currentOwner?: string;
+  suggestedOwner?: string;
+  action?: "move" | "split" | "keep";
+  rationale: string[];
+  evidence: string[];
+  existingTestPaths: string[];
+}
+
 export interface ProjectStats {
   schemaVersion: "project-stats/v1";
   root: string;
@@ -253,6 +296,8 @@ export declare function summarizeRepoProjectAudits(projectAudits: ProjectAudits)
 export declare function rankRepoProjectCandidates(projectAudits: ProjectAudits): ProjectCandidateRanking;
 
 export declare function generateRepoProjectTestPlan(projectAudits: ProjectAudits): ProjectTestPlan;
+
+export declare function collectRepoProjectFindings(projectAudits: ProjectAudits): ProjectFindings;
 
 export declare function analyzeRepoProjectTestPlacement(projectAudits: ProjectAudits): TestPlacementFindings;
 

@@ -40,6 +40,7 @@ Implemented:
 - deterministic JSON-RPC harness tests that keep parser, batch request, and local dispatcher behavior covered separately from the SDK transport
 - release-readiness checklist, npm package dry-run script, and package contents allowlist
 - public-readiness checklist that separates public repository preparation from npm publishing
+- alpha-readiness checklist for the test architecture audit milestone before native generation
 - product positioning note for audit-first differentiation, initial audience, business paths, proof points, and anti-positioning
 - near-term roadmap for public demo polish, second adapter proof, placement analysis, MCP transport, and generation readiness gates
 - demo script for showing audit quality, polyglot detection, MCP tools, and verification without implying native generation is ready
@@ -96,6 +97,7 @@ Current tool names:
 - `summarize_project_audits`
 - `rank_project_candidates`
 - `generate_project_test_plan`
+- `collect_project_findings`
 - `analyze_project_test_placement`
 - `collect_project_stats`
 - `get_audit_graph`
@@ -123,11 +125,13 @@ npm run audit-projects:example:json
 npm run summarize-projects:example:json
 npm run rank-projects:example:json
 npm run plan-projects:example:json
+npm run findings-projects:example:json
 npm run placement:example:json
 npm run placement-projects:example:json
 npm run placement-projects:split-example:json
 npm run stats-projects:example:json
 npm run mcp:placement-projects:example
+npm run mcp:findings-projects:example
 npm run mcp:placement-split:example
 npm run mcp:stats-projects:example
 npm run mcp:audit:kotlin-fixture
