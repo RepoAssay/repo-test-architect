@@ -2,14 +2,37 @@
 
 Audit-first test strategy tooling for codebases.
 
-The first milestone is intentionally narrow:
+Repo Test Architect builds a deterministic audit graph before asking any model or agent to reason about tests. The goal is to identify repo-native, high-value test work from facts the tool can inspect locally: project roots, framework signals, existing tests, source classifications, blockers, and remaining risk.
 
-- detect JavaScript and TypeScript repository conventions
-- include experimental Kotlin/JVM, Swift, and Python adapter spikes
-- identify existing test framework signals
-- classify source files by likely test value
-- recommend useful tests before generating any code
-- report skipped areas and remaining risk honestly
+The current implementation can:
+
+- audit JavaScript and TypeScript projects through the supported adapter
+- audit experimental Kotlin/JVM, Swift, and Python fixtures through the same shared artifact model
+- detect polyglot project roots and report unsupported ecosystems without hiding them
+- classify source files by likely test value and defer low-value direct tests
+- rank candidates and generate test plans from the audit graph
+- analyze conservative test placement findings across project boundaries
+- collect project-level stats for coverage, candidate counts, frameworks, commands, and adapter usage
+- expose the same deterministic behavior through CLI commands and a local stdio MCP-shaped tool surface
+- lock behavior with golden snapshots, model-consistency scenarios, package checks, and cross-OS CI
+
+Native test generation is intentionally deferred. `generate_selected_test` returns a structured deferred artifact until adapter-specific generation policy and repair-loop fixtures exist.
+
+## Current Scope
+
+Supported proof point:
+
+- `javascript`: JavaScript/TypeScript repositories with Vitest, Jest, Express/Supertest, and React Testing Library fixture coverage
+
+Experimental adapter spikes:
+
+- `kotlin`: Gradle/Maven JVM projects with JUnit and Kotlin test signals
+- `swift`: Swift Package Manager, Xcode-style source layouts, Swift Testing, XCTest, XCTVapor, Vapor, and MongoDB boundary signals
+- `python`: pytest, unittest, requirements, setuptools, uv, Poetry, Hatch command markers, and no-tests-yet blocker behavior
+
+Project detection also reports unsupported Ruby, PHP, Elixir, Go, Rust, and .NET roots so clients can distinguish "not audited yet" from "not present."
+
+The package remains private while public repository metadata, publish targets, and the real MCP SDK wrapper are finalized.
 
 ## Working CLI
 
@@ -208,12 +231,30 @@ src/
     index.js
 examples/
   node-vitest-basic/
+  express-supertest/
+  react-testing-library/
   kotlin-junit-basic/
   python-pytest-service/
+  python-uv-pytest/
+  python-poetry-pytest/
   swift-spm-xctest/
+  swift-spm-swift-testing/
+  vapor-service-tests/
+evals/
+  expected/
+  model-consistency/
+schemas/
 ```
 
 The JavaScript adapter is the supported proof point. The Kotlin/JVM, Swift, and Python adapters are experimental and exist to prove that later adapters can emit the same core audit model instead of inventing language-specific report formats.
+
+Important runtime surfaces:
+
+- CLI: `src/cli/index.js`
+- MCP tool definitions: `src/mcp/tool-definitions.js`
+- stdio JSON-RPC scaffold: `src/mcp/stdio.js`
+- local invoke harness: `src/mcp/invoke.js`
+- release gate: `scripts/check-release-readiness.js`
 
 ## Docs
 
