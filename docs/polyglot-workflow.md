@@ -114,7 +114,7 @@ node ./src/cli/index.js stats-projects ./examples/polyglot-workspace --format js
 
 This emits `project-stats/v1`.
 
-Project stats are derived from `project-audits/v1` and contain local counts and distributions for reporting: audit coverage, candidate counts, skipped targets, risks, blockers, confidence levels, detected test frameworks, test commands, and adapter usage.
+Project stats are derived from `project-audits/v1` and contain local counts and distributions for reporting: audit coverage, candidate counts, skipped targets, risks, blockers, confidence levels, target kinds, risk levels, emitted signals, detected test frameworks, test commands, and adapter usage.
 
 ## Adapter Execution Model
 

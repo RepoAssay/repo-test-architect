@@ -86,7 +86,7 @@ export const mcpTools = [
   },
   {
     name: "collect_project_stats",
-    description: "Collect local deterministic project audit stats for coverage, counts, framework distribution, and adapter usage.",
+    description: "Collect local deterministic project audit stats for coverage, counts, risk and signal distributions, framework distribution, and adapter usage.",
     outputArtifact: artifact("project-stats/v1", "schemas/project-stats-v1.schema.json"),
     inputSchema: objectSchema({
       projectAudits: { type: "object", description: "A project-audits/v1 artifact." }

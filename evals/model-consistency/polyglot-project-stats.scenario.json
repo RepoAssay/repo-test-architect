@@ -68,6 +68,21 @@
       "reason": "Stats must preserve detected repo-native test command distribution."
     },
     {
+      "path": "distributions.targetKinds.pure-logic",
+      "expected": 2,
+      "reason": "Stats must preserve which source target kinds dominate the audited workspace."
+    },
+    {
+      "path": "distributions.riskLevels.high",
+      "expected": 3,
+      "reason": "Stats must preserve candidate risk level distribution for local reporting."
+    },
+    {
+      "path": "distributions.signals.edge-case-surface",
+      "expected": 2,
+      "reason": "Stats must preserve emitted signal distribution for audit quality comparisons."
+    },
+    {
       "path": "adapters[0].adapterId",
       "expected": "javascript",
       "reason": "Stats must preserve audited adapter usage."

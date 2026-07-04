@@ -98,6 +98,9 @@ export interface ProjectStats {
     confidence: Record<string, number>;
     testFrameworks: Record<string, number>;
     testCommands: Record<string, number>;
+    targetKinds: Record<string, number>;
+    riskLevels: Record<string, number>;
+    signals: Record<string, number>;
   };
   adapters: Array<{
     adapterId: string;
