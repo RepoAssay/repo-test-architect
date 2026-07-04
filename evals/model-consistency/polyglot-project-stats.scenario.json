@@ -19,33 +19,33 @@
     },
     {
       "path": "summary.auditedProjectCount",
-      "expected": 2,
+      "expected": 3,
       "reason": "Stats must preserve how many projects were audited."
     },
     {
       "path": "summary.unsupportedProjectCount",
-      "expected": 1,
-      "reason": "Stats must preserve unsupported project visibility."
+      "expected": 0,
+      "reason": "Stats must preserve that every fixture project has a registered adapter."
     },
     {
       "path": "summary.auditCoverage",
-      "expected": "partial",
-      "reason": "Stats must preserve partial audit coverage for polyglot repositories with unsupported roots."
+      "expected": "complete",
+      "reason": "Stats must preserve complete audit coverage for this polyglot fixture."
     },
     {
       "path": "counts.untestedCandidateCount",
-      "expected": 2,
+      "expected": 3,
       "reason": "Stats must preserve candidate counts derived from audited projects."
     },
     {
       "path": "counts.riskCount",
-      "expected": 2,
+      "expected": 3,
       "reason": "Stats must preserve residual risk counts derived from audited projects."
     },
     {
       "path": "counts.blockerCount",
-      "expected": 0,
-      "reason": "Stats must not invent blockers when the audited project has a runnable test command."
+      "expected": 2,
+      "reason": "Stats must preserve blockers from audited projects that lack a runnable test command."
     },
     {
       "path": "distributions.testFrameworks.vitest",
@@ -76,6 +76,11 @@
       "path": "adapters[1].adapterId",
       "expected": "kotlin",
       "reason": "Stats must preserve experimental Kotlin adapter usage."
+    },
+    {
+      "path": "adapters[2].adapterId",
+      "expected": "python",
+      "reason": "Stats must preserve experimental Python adapter usage."
     }
   ],
   "allowedVariations": [

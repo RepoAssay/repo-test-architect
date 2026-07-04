@@ -15,43 +15,43 @@
     {
       "path": "summary.projectCount",
       "expected": 3,
-      "reason": "The polyglot fixture has one experimental Kotlin project, one supported JS project, and one unsupported Python root."
+      "reason": "The polyglot fixture has one experimental Kotlin project, one supported JS project, and one experimental Python root."
     },
     {
       "path": "summary.auditedProjectCount",
-      "expected": 2,
-      "reason": "The Kotlin and JavaScript projects are currently audited by registered adapters."
+      "expected": 3,
+      "reason": "The Kotlin, JavaScript, and Python projects are currently audited by registered adapters."
     },
     {
       "path": "summary.unsupportedProjectCount",
-      "expected": 1,
-      "reason": "The unsupported Python root must remain visible in model-facing summaries."
+      "expected": 0,
+      "reason": "The Python root should no longer be reported as unsupported once the adapter is registered."
     },
     {
       "path": "summary.auditCoverage",
-      "expected": "partial",
-      "reason": "The repo must not be reported as fully audited while unsupported roots remain."
+      "expected": "complete",
+      "reason": "The repo should be reported as fully audited when all fixture roots have registered adapters."
     },
     {
       "path": "summary.untestedCandidateCount",
-      "expected": 2,
-      "reason": "The Kotlin and web projects each expose one deterministic test candidate."
+      "expected": 3,
+      "reason": "The Kotlin, Python, and web projects each expose one deterministic test candidate."
     },
     {
-      "path": "unsupportedProjects[0].projectId",
+      "path": "projects[2].projectId",
       "expected": "services/api",
-      "reason": "The Python service root should stay explicitly reported as unsupported."
+      "reason": "The Python service root should stay explicitly reported as an audited project."
     }
   ],
   "allowedVariations": [
     "summary wording",
-    "unsupported reason explanation wording",
+    "project explanation wording",
     "optional detail depth"
   ],
   "unexpectedVariations": [
-    "full audit coverage when unsupported roots exist",
-    "missing unsupported project roots",
+    "partial audit coverage when all roots are supported",
+    "missing Python project root",
     "different project count",
-    "invented supported adapter coverage"
+    "missing supported adapter coverage"
   ]
 }

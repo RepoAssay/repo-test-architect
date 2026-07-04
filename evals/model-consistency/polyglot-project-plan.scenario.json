@@ -1,7 +1,7 @@
 {
   "schemaVersion": "model-consistency-scenario/v1",
   "id": "polyglot-project-plan",
-  "description": "Different model profiles should preserve project-aware plan item identity and unsupported project reporting for a polyglot repository.",
+  "description": "Different model profiles should preserve project-aware plan item identity and complete adapter coverage for a polyglot repository.",
   "sourceArtifact": {
     "path": "examples/mcp/polyglot-project-audits.args.json",
     "schemaVersion": "project-audits/v1",
@@ -14,18 +14,18 @@
   "lockedFields": [
     {
       "path": "summary.auditCoverage",
-      "expected": "partial",
-      "reason": "Project planning must preserve partial audit coverage from the project-audits artifact."
+      "expected": "complete",
+      "reason": "Project planning must preserve complete audit coverage once all fixture roots have registered adapters."
     },
     {
       "path": "summary.itemCount",
-      "expected": 2,
-      "reason": "The experimental Kotlin project and supported web project each contribute one plan item in this fixture."
+      "expected": 3,
+      "reason": "The Kotlin, Python, and web projects each contribute one plan item in this fixture."
     },
     {
       "path": "summary.addTestCount",
-      "expected": 2,
-      "reason": "The Kotlin calculator and web session client are both untested candidates that become add-test items."
+      "expected": 3,
+      "reason": "The Kotlin calculator, Python parser, and web session client are untested candidates that become add-test items."
     },
     {
       "path": "items[0].projectId",
@@ -48,9 +48,9 @@
       "reason": "Project plan artifacts must retain the repo-native verification command for the owning project."
     },
     {
-      "path": "unsupportedProjects[0].projectId",
+      "path": "items[1].projectId",
       "expected": "services/api",
-      "reason": "Unsupported roots must remain visible in project planning output."
+      "reason": "The Python project item must remain visible in project planning output."
     }
   ],
   "allowedVariations": [
@@ -60,7 +60,7 @@
   ],
   "unexpectedVariations": [
     "missing project item identity",
-    "missing unsupported project roots",
+    "missing Python project item",
     "different plan item count",
     "different verification command"
   ]

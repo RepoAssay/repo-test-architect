@@ -10,8 +10,8 @@ describe("project auditor", () => {
     assert.equal(result.schemaVersion, "project-audits/v1");
     assert.deepEqual(result.summary, {
       projectCount: 3,
-      auditedProjectCount: 2,
-      skippedProjectCount: 1
+      auditedProjectCount: 3,
+      skippedProjectCount: 0
     });
     assert.deepEqual(
       result.audits.map((entry) => ({
@@ -29,31 +29,15 @@ describe("project auditor", () => {
           projectId: "apps/web",
           adapterId: "javascript",
           schemaVersion: "audit/v1"
-        }
-      ]
-    );
-    assert.deepEqual(
-      result.skippedProjects.map((project) => ({
-        projectId: project.projectId,
-        projectRoot: project.projectRoot,
-        reason: project.reason,
-        ecosystems: project.ecosystems,
-        languages: project.languages,
-        adapterMatches: project.adapterMatches,
-        supportStatusReason: project.supportStatusReason
-      })),
-      [
+        },
         {
           projectId: "services/api",
-          projectRoot: "services/api",
-          reason: "No registered adapter supports ecosystems python with languages python.",
-          ecosystems: ["python"],
-          languages: ["python"],
-          adapterMatches: [],
-          supportStatusReason: "No registered adapter supports ecosystems python with languages python."
+          adapterId: "python",
+          schemaVersion: "audit/v1"
         }
       ]
     );
+    assert.deepEqual(result.skippedProjects, []);
   });
 
   it("passes project-relative changed paths into matching project adapters", () => {
@@ -78,6 +62,10 @@ describe("project auditor", () => {
         {
           projectId: "apps/web",
           untested: ["src/sessionClient.ts"]
+        },
+        {
+          projectId: "services/api",
+          untested: ["app.py"]
         }
       ]
     );
@@ -102,6 +90,10 @@ describe("project auditor", () => {
         {
           projectId: "apps/web",
           untested: ["src/sessionClient.ts"]
+        },
+        {
+          projectId: "services/api",
+          untested: []
         }
       ]
     );
@@ -125,6 +117,10 @@ describe("project auditor", () => {
         {
           projectId: "apps/web",
           untested: ["src/sessionClient.ts"]
+        },
+        {
+          projectId: "services/api",
+          untested: []
         }
       ]
     );

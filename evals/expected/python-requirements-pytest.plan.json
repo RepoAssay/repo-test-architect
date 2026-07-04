@@ -1,0 +1,73 @@
+{
+  "schemaVersion": "plan/v1",
+  "summary": {
+    "confidence": "medium",
+    "verificationCommand": "pytest",
+    "blockerCount": 0,
+    "addTestCount": 2,
+    "extendTestCount": 0,
+    "deferredCount": 1
+  },
+  "blockers": [],
+  "items": [
+    {
+      "id": "add-test:src/shipping_mapper.py",
+      "action": "add-test",
+      "targetId": "src/shipping_mapper.py",
+      "target": "shipping_mapper",
+      "path": "src/shipping_mapper.py",
+      "testLevel": "unit",
+      "priority": 7,
+      "riskReductionScore": 9,
+      "maintenanceCost": 2,
+      "rationale": [
+        "Pure transformation logic",
+        "edge-case surface"
+      ],
+      "sourceSignals": [
+        "pure-logic",
+        "edge-case-surface"
+      ],
+      "existingTestPaths": []
+    },
+    {
+      "id": "add-test:src/shipping_client.py",
+      "action": "add-test",
+      "targetId": "src/shipping_client.py",
+      "target": "shipping_client",
+      "path": "src/shipping_client.py",
+      "testLevel": "unit",
+      "priority": 4,
+      "riskReductionScore": 8,
+      "maintenanceCost": 4,
+      "rationale": [
+        "Service boundary",
+        "external boundary"
+      ],
+      "sourceSignals": [
+        "service-boundary",
+        "external-boundary"
+      ],
+      "existingTestPaths": []
+    },
+    {
+      "id": "defer:src/shipping_response.py",
+      "action": "defer",
+      "targetId": "src/shipping_response.py",
+      "target": "shipping_response",
+      "path": "src/shipping_response.py",
+      "testLevel": "none",
+      "priority": -2,
+      "riskReductionScore": 2,
+      "maintenanceCost": 4,
+      "rationale": [
+        "DTO-only models are usually better covered through route, parser, or service tests.",
+        "Cover through parser, mapper, repository, or route integration tests that consume the model."
+      ],
+      "sourceSignals": [
+        "dto-only"
+      ],
+      "existingTestPaths": []
+    }
+  ]
+}

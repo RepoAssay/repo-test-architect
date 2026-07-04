@@ -81,6 +81,8 @@ describe("model consistency runner", () => {
         ["polyglot-project-stats", []],
         ["polyglot-project-summary", []],
         ["project-placement-split", []],
+        ["python-package-local-tests-plan", []],
+        ["python-pytest-service-plan", []],
         ["react-testing-library-plan", []],
         ["swift-spm-swift-testing-plan", []],
         ["swift-spm-xctest-plan", []],
@@ -99,10 +101,10 @@ describe("model consistency runner", () => {
     assert.equal(summary.schemaVersion, "model-consistency-summary/v1");
     assert.equal(summary.profileName, "deterministic-baseline");
     assert.deepEqual(summary.summary, {
-      scenarioCount: 16,
-      passedScenarioCount: 16,
+      scenarioCount: 18,
+      passedScenarioCount: 18,
       failedScenarioCount: 0,
-      checkedFieldCount: 116,
+      checkedFieldCount: 135,
       failureCount: 0
     });
     assert.equal(summary.scenarios[2].scenarioId, "node-jest-service-plan");
@@ -120,8 +122,8 @@ describe("model consistency runner", () => {
     assert.equal(comparison.baselineProfile, "deterministic-baseline");
     assert.equal(comparison.candidateProfile, "local-small");
     assert.deepEqual(comparison.summary, {
-      scenarioCount: 16,
-      alignedScenarioCount: 16,
+      scenarioCount: 18,
+      alignedScenarioCount: 18,
       driftedScenarioCount: 0,
       missingScenarioCount: 0,
       unexpectedScenarioCount: 0,
@@ -136,10 +138,10 @@ describe("model consistency runner", () => {
     const candidate = {
       ...createCurrentSummary("local-small"),
       summary: {
-        scenarioCount: 16,
-        passedScenarioCount: 14,
+        scenarioCount: 18,
+        passedScenarioCount: 15,
         failedScenarioCount: 2,
-        checkedFieldCount: 105,
+        checkedFieldCount: 115,
         failureCount: 3
       },
       scenarios: [
@@ -163,12 +165,12 @@ describe("model consistency runner", () => {
     const comparison = compareModelConsistencySummaries(baseline, candidate);
 
     assert.deepEqual(comparison.summary, {
-      scenarioCount: 17,
-      alignedScenarioCount: 14,
+      scenarioCount: 19,
+      alignedScenarioCount: 16,
       driftedScenarioCount: 1,
       missingScenarioCount: 1,
       unexpectedScenarioCount: 1,
-      checkedFieldDelta: -11,
+      checkedFieldDelta: -20,
       failureDelta: 3
     });
     assert.deepEqual(
@@ -186,6 +188,8 @@ describe("model consistency runner", () => {
         ["polyglot-project-stats", "aligned"],
         ["polyglot-project-summary", "aligned"],
         ["project-placement-split", "aligned"],
+        ["python-package-local-tests-plan", "aligned"],
+        ["python-pytest-service-plan", "aligned"],
         ["react-testing-library-plan", "aligned"],
         ["swift-spm-swift-testing-plan", "aligned"],
         ["swift-spm-xctest-plan", "aligned"],

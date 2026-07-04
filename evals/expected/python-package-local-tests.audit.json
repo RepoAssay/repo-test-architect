@@ -1,0 +1,137 @@
+{
+  "schemaVersion": "audit/v1",
+  "profile": {
+    "root": "<fixture>",
+    "languages": [
+      "python"
+    ],
+    "packageManagers": [
+      "pyproject"
+    ],
+    "testFrameworks": [
+      "pytest"
+    ],
+    "architectures": [],
+    "testCommand": "pytest",
+    "detectedConventions": [
+      "package-local tests/test_*.py"
+    ],
+    "existingTestLocations": [
+      "package-local tests"
+    ],
+    "setupSignals": [
+      "pyproject",
+      "pytest dependency"
+    ],
+    "confidence": "high",
+    "blockers": []
+  },
+  "untestedCandidates": [
+    {
+      "id": "src/checkout/discount_service.py",
+      "name": "discount_service",
+      "path": "src/checkout/discount_service.py",
+      "kind": "service",
+      "signals": [
+        "service-boundary"
+      ],
+      "risk": "medium",
+      "testability": "medium",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 6,
+      "maintenanceCost": 4,
+      "reasons": [
+        "Service boundary"
+      ],
+      "existingTestPaths": []
+    }
+  ],
+  "coveredButRisky": [
+    {
+      "id": "src/checkout/calculator.py",
+      "name": "calculator",
+      "path": "src/checkout/calculator.py",
+      "kind": "pure-logic",
+      "signals": [
+        "pure-logic",
+        "edge-case-surface",
+        "matching-test"
+      ],
+      "risk": "high",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 9,
+      "maintenanceCost": 2,
+      "reasons": [
+        "Pure transformation logic",
+        "edge-case surface",
+        "Existing test file detected; review missing edge cases"
+      ],
+      "existingTestPaths": [
+        "src/checkout/tests/test_calculator.py"
+      ]
+    }
+  ],
+  "recommended": [
+    {
+      "id": "src/checkout/calculator.py",
+      "name": "calculator",
+      "path": "src/checkout/calculator.py",
+      "kind": "pure-logic",
+      "signals": [
+        "pure-logic",
+        "edge-case-surface",
+        "matching-test"
+      ],
+      "risk": "high",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 9,
+      "maintenanceCost": 2,
+      "reasons": [
+        "Pure transformation logic",
+        "edge-case surface",
+        "Existing test file detected; review missing edge cases"
+      ],
+      "existingTestPaths": [
+        "src/checkout/tests/test_calculator.py"
+      ]
+    },
+    {
+      "id": "src/checkout/discount_service.py",
+      "name": "discount_service",
+      "path": "src/checkout/discount_service.py",
+      "kind": "service",
+      "signals": [
+        "service-boundary"
+      ],
+      "risk": "medium",
+      "testability": "medium",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 6,
+      "maintenanceCost": 4,
+      "reasons": [
+        "Service boundary"
+      ],
+      "existingTestPaths": []
+    }
+  ],
+  "skipped": [
+    {
+      "id": "src/checkout/checkout_response.py",
+      "name": "checkout_response",
+      "path": "src/checkout/checkout_response.py",
+      "kind": "dto",
+      "signals": [
+        "dto-only"
+      ],
+      "riskReductionScore": 2,
+      "maintenanceCost": 4,
+      "reason": "DTO-only models are usually better covered through route, parser, or service tests.",
+      "preferredCoveragePath": "Cover through parser, mapper, repository, or route integration tests that consume the model."
+    }
+  ],
+  "risks": [
+    "calculator has pure transformation logic, edge-case surface and needs edge-case review."
+  ]
+}

@@ -1,0 +1,118 @@
+{
+  "schemaVersion": "plan/v1",
+  "summary": {
+    "confidence": "high",
+    "verificationCommand": "pytest",
+    "blockerCount": 0,
+    "addTestCount": 2,
+    "extendTestCount": 1,
+    "deferredCount": 2
+  },
+  "blockers": [],
+  "items": [
+    {
+      "id": "extend-test:app/parsers.py",
+      "action": "extend-test",
+      "targetId": "app/parsers.py",
+      "target": "parsers",
+      "path": "app/parsers.py",
+      "testLevel": "unit",
+      "priority": 7,
+      "riskReductionScore": 9,
+      "maintenanceCost": 2,
+      "rationale": [
+        "Pure transformation logic",
+        "edge-case surface",
+        "Existing test file detected; review missing edge cases"
+      ],
+      "sourceSignals": [
+        "pure-logic",
+        "edge-case-surface",
+        "matching-test"
+      ],
+      "existingTestPaths": [
+        "tests/test_parsers.py"
+      ]
+    },
+    {
+      "id": "add-test:app/services/user_service.py",
+      "action": "add-test",
+      "targetId": "app/services/user_service.py",
+      "target": "user_service",
+      "path": "app/services/user_service.py",
+      "testLevel": "unit",
+      "priority": 4,
+      "riskReductionScore": 8,
+      "maintenanceCost": 4,
+      "rationale": [
+        "Service boundary",
+        "async or concurrency behavior",
+        "external boundary"
+      ],
+      "sourceSignals": [
+        "service-boundary",
+        "async-or-concurrency",
+        "external-boundary"
+      ],
+      "existingTestPaths": []
+    },
+    {
+      "id": "add-test:app/routes/users.py",
+      "action": "add-test",
+      "targetId": "app/routes/users.py",
+      "target": "users",
+      "path": "app/routes/users.py",
+      "testLevel": "integration",
+      "priority": 3,
+      "riskReductionScore": 8,
+      "maintenanceCost": 5,
+      "rationale": [
+        "HTTP route behavior",
+        "request or status handling"
+      ],
+      "sourceSignals": [
+        "http-route",
+        "status-handling"
+      ],
+      "existingTestPaths": []
+    },
+    {
+      "id": "defer:app/main.py",
+      "action": "defer",
+      "targetId": "app/main.py",
+      "target": "main",
+      "path": "app/main.py",
+      "testLevel": "none",
+      "priority": -2,
+      "riskReductionScore": 3,
+      "maintenanceCost": 5,
+      "rationale": [
+        "Application wiring is usually better covered through route or integration tests.",
+        "Cover through FastAPI route tests or service integration tests that boot the app."
+      ],
+      "sourceSignals": [
+        "app-wiring"
+      ],
+      "existingTestPaths": []
+    },
+    {
+      "id": "defer:app/models.py",
+      "action": "defer",
+      "targetId": "app/models.py",
+      "target": "models",
+      "path": "app/models.py",
+      "testLevel": "none",
+      "priority": -2,
+      "riskReductionScore": 2,
+      "maintenanceCost": 4,
+      "rationale": [
+        "DTO-only models are usually better covered through route, parser, or service tests.",
+        "Cover through parser, mapper, repository, or route integration tests that consume the model."
+      ],
+      "sourceSignals": [
+        "dto-only"
+      ],
+      "existingTestPaths": []
+    }
+  ]
+}

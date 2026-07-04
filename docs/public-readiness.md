@@ -6,7 +6,7 @@ This document tracks what can be shown publicly before the project is ready for 
 
 - audit-first product thesis
 - deterministic JavaScript and TypeScript adapter proof point
-- experimental Kotlin/JVM adapter spike
+- experimental Kotlin/JVM, Swift, and Python adapter spikes
 - polyglot project detection with unsupported-project reporting
 - local CLI examples
 - dependency-free MCP-shaped stdio and invoke scaffolding

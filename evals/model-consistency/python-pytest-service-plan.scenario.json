@@ -1,0 +1,78 @@
+{
+  "schemaVersion": "model-consistency-scenario/v1",
+  "id": "python-pytest-service-plan",
+  "description": "Different model profiles should preserve Python pytest planning decisions, including parser extension, async service unit coverage, FastAPI route integration coverage, and DTO/app wiring deferral.",
+  "sourceArtifact": {
+    "path": "evals/expected/python-pytest-service.audit.json",
+    "schemaVersion": "audit/v1"
+  },
+  "toolCall": {
+    "toolName": "generate_test_plan",
+    "arguments": {}
+  },
+  "lockedFields": [
+    {
+      "path": "summary.verificationCommand",
+      "expected": "pytest",
+      "reason": "Python pytest fixtures must preserve the repo-native verification command."
+    },
+    {
+      "path": "summary.addTestCount",
+      "expected": 2,
+      "reason": "The async service and FastAPI route should remain add-test items."
+    },
+    {
+      "path": "summary.extendTestCount",
+      "expected": 1,
+      "reason": "The existing parser test should be extended for missing edge cases."
+    },
+    {
+      "path": "summary.deferredCount",
+      "expected": 2,
+      "reason": "The DTO model and app wiring should stay deferred from direct unit testing."
+    },
+    {
+      "path": "items[0].id",
+      "expected": "extend-test:app/parsers.py",
+      "reason": "Covered parser logic should keep a stable extend-test item id."
+    },
+    {
+      "path": "items[0].existingTestPaths[0]",
+      "expected": "tests/test_parsers.py",
+      "reason": "The adapter must preserve matching pytest evidence."
+    },
+    {
+      "path": "items[1].id",
+      "expected": "add-test:app/services/user_service.py",
+      "reason": "Untested async service code should stay a direct unit-test candidate."
+    },
+    {
+      "path": "items[2].testLevel",
+      "expected": "integration",
+      "reason": "FastAPI route behavior should be planned as integration coverage."
+    },
+    {
+      "path": "items[3].id",
+      "expected": "defer:app/main.py",
+      "reason": "FastAPI app wiring should stay deferred in favor of route or integration tests."
+    },
+    {
+      "path": "items[4].id",
+      "expected": "defer:app/models.py",
+      "reason": "DTO-only Pydantic models should stay covered through consuming boundary tests."
+    }
+  ],
+  "allowedVariations": [
+    "summary wording",
+    "Python explanation wording",
+    "optional detail depth"
+  ],
+  "unexpectedVariations": [
+    "missing pytest verification command",
+    "direct DTO test recommendation",
+    "direct app wiring test recommendation",
+    "unit-level FastAPI route recommendation",
+    "missing async service candidate",
+    "missing existing pytest evidence"
+  ]
+}

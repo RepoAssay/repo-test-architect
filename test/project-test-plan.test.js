@@ -12,16 +12,14 @@ describe("project test plan", () => {
     assert.equal(plan.schemaVersion, "project-test-plan/v1");
     assert.deepEqual(plan.summary, {
       projectCount: 3,
-      plannedProjectCount: 2,
-      unsupportedProjectCount: 1,
-      auditCoverage: "partial",
-      unsupportedReasons: [
-        "No registered adapter supports ecosystems python with languages python."
-      ],
-      addTestCount: 2,
+      plannedProjectCount: 3,
+      unsupportedProjectCount: 0,
+      auditCoverage: "complete",
+      unsupportedReasons: [],
+      addTestCount: 3,
       extendTestCount: 0,
       deferredCount: 0,
-      itemCount: 2
+      itemCount: 3
     });
     assert.deepEqual(
       plan.items.map((item) => ({
@@ -36,23 +34,18 @@ describe("project test plan", () => {
           targetId: "src/main/kotlin/CheckoutCalculator.kt"
         },
         {
+          projectItemId: "services/api:add-test:app.py",
+          action: "add-test",
+          targetId: "app.py"
+        },
+        {
           projectItemId: "apps/web:add-test:src/sessionClient.ts",
           action: "add-test",
           targetId: "src/sessionClient.ts"
         }
       ]
     );
-    assert.deepEqual(
-      plan.unsupportedProjects.map((project) => [
-        project.projectId,
-        project.ecosystems,
-        project.adapterMatches,
-        project.supportStatusReason
-      ]),
-      [
-        ["services/api", ["python"], [], "No registered adapter supports ecosystems python with languages python."]
-      ]
-    );
+    assert.deepEqual(plan.unsupportedProjects, []);
   });
 
   it("rejects non-project-audits artifacts", () => {

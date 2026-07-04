@@ -101,7 +101,7 @@ describe("docs links", () => {
     assert.ok(docs.includes("| `*.xcodeproj` | `apple` | `swift`, `objective-c` | Supported by experimental `swift` |"));
     assert.ok(docs.includes("| `pom.xml` | `jvm` | `java`, `kotlin` | Supported by experimental `kotlin` |"));
     assert.ok(docs.includes("| `build.gradle.kts` | `jvm` | `kotlin`, `java` | Supported by experimental `kotlin` |"));
-    assert.ok(docs.includes("| `pyproject.toml` | `python` | `python` | Detected, unsupported |"));
+    assert.ok(docs.includes("| `pyproject.toml` | `python` | `python` | Supported by experimental `python` |"));
   });
 
   it("documents future test placement findings", () => {
@@ -177,9 +177,10 @@ describe("docs links", () => {
     assert.ok(readme.includes("[Near-term roadmap](docs/near-term-roadmap.md)"));
     assert.ok(roadmap.includes("public-demo ready, but not package-release ready"));
     assert.ok(roadmap.includes("Milestone 1: Public Demo Polish"));
-    assert.ok(roadmap.includes("Milestone 2: Second Adapter Spike"));
+    assert.ok(roadmap.includes("Milestone 2: Adapter Spike Hardening"));
     assert.ok(roadmap.includes("Kotlin/JVM with Gradle/Maven and JUnit"));
     assert.ok(roadmap.includes("Swift Package Manager with XCTest or Swift Testing"));
+    assert.ok(roadmap.includes("Python package layouts, pytest/unittest detection, and no-tests-yet blocker behavior"));
     assert.ok(roadmap.includes("Milestone 3: Placement And Boundary Analysis"));
     assert.ok(roadmap.includes("app-level tests that belong in package-level test targets"));
     assert.ok(roadmap.includes("Milestone 4: Local MCP Transport"));
@@ -248,11 +249,12 @@ describe("docs links", () => {
     assert.ok(polyglotWorkflow.includes("experimental Kotlin/JVM adapter already handles Java plus Kotlin source ownership"));
     assert.ok(secondAdapterSpike.includes("Kotlin/JVM with Gradle/Maven and JUnit"));
     assert.ok(secondAdapterSpike.includes("Swift Package Manager with XCTest or Swift Testing"));
+    assert.ok(secondAdapterSpike.includes("Python package roots with pytest or unittest"));
     assert.ok(secondAdapterSpike.includes("reuse the shared audit model"));
     assert.ok(secondAdapterSpike.includes("produce golden audit and plan snapshots"));
     assert.ok(secondAdapterSpike.includes("model-consistency scenario"));
     assert.ok(secondAdapterSpike.includes("native test generation"));
     assert.ok(secondAdapterSpike.includes("npm run release:check"));
-    assert.ok(status.includes("second-adapter spike checklist"));
+    assert.ok(status.includes("adapter spike checklist"));
   });
 });

@@ -2,12 +2,12 @@
 
 ## Current State
 
-Repo Test Architect currently has a deterministic JavaScript/TypeScript audit pipeline plus an experimental Kotlin/JVM adapter spike.
+Repo Test Architect currently has a deterministic JavaScript/TypeScript audit pipeline plus experimental Kotlin/JVM, Swift, and Python adapter spikes.
 
 Implemented:
 
 - JavaScript/TypeScript repository profiling
-- runtime adapter registry with the supported `javascript` adapter and experimental `kotlin` adapter
+- runtime adapter registry with the supported `javascript` adapter and experimental `kotlin`, `swift`, and `python` adapters
 - adapter registry capability metadata for maturity, framework signals, project types, and emitted artifacts
 - CLI adapter registry output
 - deterministic project detection for polyglot repository roots
@@ -18,7 +18,7 @@ Implemented:
 - shared project-audits validation for saved artifact reuse across CLI and MCP-style flows
 - file-backed MCP invoke arguments for local calls that reuse saved artifacts
 - checked-in MCP args fixture for project-audits derived local examples
-- unsupported Python, Ruby, PHP, Elixir, Go, Rust, Swift, .NET, and Apple project reporting with ecosystem and language labels
+- unsupported Ruby, PHP, Elixir, Go, Rust, and .NET project reporting with ecosystem and language labels
 - documented project detection marker rules
 - CLI output for project detection marker rules
 - fixture-based regression coverage
@@ -44,7 +44,7 @@ Implemented:
 - demo script for showing audit quality, polyglot detection, MCP-shaped tools, and verification without implying native generation is ready
 - demo command checker that runs the deterministic public demo path without nesting the full release suite
 - decision log for audit-first architecture, adapter scope, local-first MCP, deferred generation, public demo readiness, and stats policy
-- second-adapter spike checklist for adding Kotlin/JVM or Swift without changing the shared audit model or enabling generation early
+- adapter spike checklist for adding ecosystems without changing the shared audit model or enabling generation early
 - package contents dry-run checker for required runtime files and publish allowlist hygiene
 - package binary entrypoint checker for CLI, MCP invoke, and stdio JSON-RPC boot paths
 - release-readiness check runner for tests, evals, model consistency, demo path, smoke, package, and bin checks
@@ -66,10 +66,15 @@ Implemented:
 - `express-supertest`
 - `react-testing-library`
 - `kotlin-junit-basic`
-
-## Adapter-Ready Fixtures
-
-- `apple-xcode-mixed` contains Swift and Objective-C sources and detects as one unsupported Apple project until an Apple adapter exists.
+- `swift-spm-xctest`
+- `swift-spm-swift-testing`
+- `vapor-service-tests`
+- `python-pytest-service`
+- `python-unittest-service`
+- `python-requirements-pytest`
+- `python-package-local-tests`
+- `python-setuptools-pytest`
+- `python-no-tests-yet`
 
 ## MCP Surface
 
@@ -150,7 +155,7 @@ npm run eval:test
 
 1. Add a real local stdio MCP SDK transport wrapper around `src/mcp/tool-definitions.js`.
 2. Consolidate repeated JSDoc artifact shapes into shared TS reference files when the runtime API stabilizes further.
-3. Harden the experimental Kotlin/JVM adapter with more Gradle/Maven/JUnit fixture variants, or add Swift as the next adapter spike.
+3. Harden experimental adapters with more fixture variants, starting with Python packaging/test-command variants and Swift/Vapor edge cases.
 4. Add more model-consistency fixtures and model profile output comparisons.
 5. Expand package-aware test placement analysis from explicit path escapes into richer adapter-owned package boundary signals.
 6. Add local-first stats artifacts for audit coverage, candidate/risk counts, model-consistency drift, and later repair-loop trends.

@@ -44,8 +44,8 @@ This emits `project-audits/v1`.
 
 For every supported project root, the matching adapter produces a normal audit artifact. Unsupported project roots are reported separately with their ecosystem and language labels, adapter match evidence, and support status reason.
 
-The current runtime audits JavaScript and TypeScript project roots through the supported `javascript` adapter, and Kotlin/JVM Gradle or Maven roots through the experimental `kotlin` adapter.
-JavaScript and TypeScript share one adapter domain. Java and Kotlin share one experimental JVM adapter domain. Future Apple adapters should follow the same rule for Swift/Objective-C projects.
+The current runtime audits JavaScript and TypeScript project roots through the supported `javascript` adapter, Kotlin/JVM Gradle or Maven roots through the experimental `kotlin` adapter, Python package roots through the experimental `python` adapter, and Swift Package Manager or Apple Xcode roots through the experimental `swift` adapter.
+JavaScript and TypeScript share one adapter domain. Java and Kotlin share one experimental JVM adapter domain. Swift and Objective-C are kept inside the experimental Apple adapter domain when they share one Xcode root.
 
 ## 3. Reuse Saved Project Audits
 
@@ -127,7 +127,7 @@ Parallel execution should not change artifact shape. Whether three adapters run 
 `examples/polyglot-workspace` contains:
 
 - `apps/android`: Kotlin/JVM project audited by the experimental `kotlin` adapter
-- `apps/web`: JavaScript/TypeScript project, currently supported
-- `services/api`: Python project, currently detected but unsupported
+- `apps/web`: JavaScript/TypeScript project audited by the supported `javascript` adapter
+- `services/api`: Python project audited by the experimental `python` adapter
 
-That fixture keeps mixed supported and unsupported project reporting visible while additional adapters mature.
+That fixture now demonstrates complete adapter coverage across multiple project roots. Unsupported project reporting remains part of the artifact contract for ecosystems without registered adapters.

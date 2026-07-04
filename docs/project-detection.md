@@ -16,8 +16,8 @@ npm run detect-rules:json
 | Marker | Ecosystem | Languages | Adapter status |
 | --- | --- | --- | --- |
 | `package.json` | `javascript` | `javascript`, `typescript` | Supported by `javascript` |
-| `pyproject.toml` | `python` | `python` | Detected, unsupported |
-| `requirements.txt` | `python` | `python` | Detected, unsupported |
+| `pyproject.toml` | `python` | `python` | Supported by experimental `python` |
+| `requirements.txt` | `python` | `python` | Supported by experimental `python` |
 | `Gemfile` | `ruby` | `ruby` | Detected, unsupported |
 | `composer.json` | `php` | `php` | Detected, unsupported |
 | `mix.exs` | `elixir` | `elixir` | Detected, unsupported |

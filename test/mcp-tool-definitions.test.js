@@ -72,27 +72,25 @@ describe("MCP tool definitions", () => {
     const deferredGeneration = callTool("generate_selected_test", { planItemId: "add-test:src/authService.ts" });
 
     assert.equal(adapterRegistry.schemaVersion, "adapter-registry/v1");
-    assert.deepEqual(adapterRegistry.adapters.map((adapter) => adapter.id), ["javascript", "kotlin", "swift"]);
+    assert.deepEqual(adapterRegistry.adapters.map((adapter) => adapter.id), ["javascript", "kotlin", "python", "swift"]);
     assert.equal(projectDetectionRules.schemaVersion, "project-detection-rules/v1");
     assert.ok(projectDetectionRules.markers.some((marker) => marker.fileName === "package.json"));
     assert.equal(projectDetection.schemaVersion, "project-detection/v1");
     assert.equal(projectDetection.summary.projectCount, 3);
     assert.equal(projectAudits.schemaVersion, "project-audits/v1");
-    assert.equal(projectAudits.summary.auditedProjectCount, 2);
+    assert.equal(projectAudits.summary.auditedProjectCount, 3);
     assert.equal(projectAuditSummary.schemaVersion, "project-audit-summary/v1");
-    assert.equal(projectAuditSummary.summary.auditCoverage, "partial");
-    assert.equal(projectAuditSummary.summary.untestedCandidateCount, 2);
-    assert.deepEqual(projectAuditSummary.summary.unsupportedReasons, [
-      "No registered adapter supports ecosystems python with languages python."
-    ]);
+    assert.equal(projectAuditSummary.summary.auditCoverage, "complete");
+    assert.equal(projectAuditSummary.summary.untestedCandidateCount, 3);
+    assert.deepEqual(projectAuditSummary.summary.unsupportedReasons, []);
     assert.equal(projectCandidateRanking.schemaVersion, "project-candidate-ranking/v1");
-    assert.equal(projectCandidateRanking.summary.candidateCount, 2);
+    assert.equal(projectCandidateRanking.summary.candidateCount, 3);
     assert.equal(projectTestPlan.schemaVersion, "project-test-plan/v1");
-    assert.equal(projectTestPlan.summary.itemCount, 2);
+    assert.equal(projectTestPlan.summary.itemCount, 3);
     assert.equal(projectPlacement.schemaVersion, "test-placement-findings/v1");
     assert.equal(projectPlacement.findings.length, 0);
     assert.equal(projectStats.schemaVersion, "project-stats/v1");
-    assert.equal(projectStats.counts.untestedCandidateCount, 2);
+    assert.equal(projectStats.counts.untestedCandidateCount, 3);
     assert.equal(graph, audit);
     assert.equal(plan.schemaVersion, "plan/v1");
     assert.deepEqual(plan.items.map((item) => item.id), ["add-test:src/authService.ts"]);
@@ -141,6 +139,10 @@ describe("MCP tool definitions", () => {
         {
           projectId: "apps/web",
           untested: ["src/sessionClient.ts"]
+        },
+        {
+          projectId: "services/api",
+          untested: []
         }
       ]
     );

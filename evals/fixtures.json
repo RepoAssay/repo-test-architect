@@ -43,5 +43,35 @@
     "name": "vapor-service-tests",
     "adapter": "swift",
     "path": "examples/vapor-service-tests"
+  },
+  {
+    "name": "python-pytest-service",
+    "adapter": "python",
+    "path": "examples/python-pytest-service"
+  },
+  {
+    "name": "python-unittest-service",
+    "adapter": "python",
+    "path": "examples/python-unittest-service"
+  },
+  {
+    "name": "python-requirements-pytest",
+    "adapter": "python",
+    "path": "examples/python-requirements-pytest"
+  },
+  {
+    "name": "python-package-local-tests",
+    "adapter": "python",
+    "path": "examples/python-package-local-tests"
+  },
+  {
+    "name": "python-setuptools-pytest",
+    "adapter": "python",
+    "path": "examples/python-setuptools-pytest"
+  },
+  {
+    "name": "python-no-tests-yet",
+    "adapter": "python",
+    "path": "examples/python-no-tests-yet"
   }
 ]

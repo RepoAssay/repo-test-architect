@@ -12,25 +12,26 @@ describe("project stats", () => {
     assert.equal(stats.schemaVersion, "project-stats/v1");
     assert.deepEqual(stats.summary, {
       projectCount: 3,
-      auditedProjectCount: 2,
-      unsupportedProjectCount: 1,
-      auditCoverage: "partial"
+      auditedProjectCount: 3,
+      unsupportedProjectCount: 0,
+      auditCoverage: "complete"
     });
     assert.deepEqual(stats.counts, {
-      untestedCandidateCount: 2,
+      untestedCandidateCount: 3,
       coveredButRiskyCount: 0,
       skippedTargetCount: 0,
-      riskCount: 2,
-      blockerCount: 0
+      riskCount: 3,
+      blockerCount: 2
     });
     assert.deepEqual(stats.distributions, {
-      confidence: { medium: 2 },
+      confidence: { low: 1, medium: 2 },
       testFrameworks: { "kotlin-test": 1, vitest: 1 },
       testCommands: { "gradle test": 1, "npm run test": 1 }
     });
     assert.deepEqual(stats.adapters, [
       { adapterId: "javascript", projectCount: 1 },
-      { adapterId: "kotlin", projectCount: 1 }
+      { adapterId: "kotlin", projectCount: 1 },
+      { adapterId: "python", projectCount: 1 }
     ]);
   });
 

@@ -12,30 +12,19 @@ describe("project audit summary", () => {
     assert.equal(summary.schemaVersion, "project-audit-summary/v1");
     assert.deepEqual(summary.summary, {
       projectCount: 3,
-      auditedProjectCount: 2,
-      unsupportedProjectCount: 1,
-      auditCoverage: "partial",
-      unsupportedReasons: [
-        "No registered adapter supports ecosystems python with languages python."
-      ],
-      untestedCandidateCount: 2,
+      auditedProjectCount: 3,
+      unsupportedProjectCount: 0,
+      auditCoverage: "complete",
+      unsupportedReasons: [],
+      untestedCandidateCount: 3,
       coveredButRiskyCount: 0,
       skippedTargetCount: 0,
-      riskCount: 2
+      riskCount: 3
     });
     assert.deepEqual(summary.projects[0].topCandidateIds, ["src/main/kotlin/CheckoutCalculator.kt"]);
     assert.deepEqual(summary.projects[1].topCandidateIds, ["src/sessionClient.ts"]);
-    assert.deepEqual(
-      summary.unsupportedProjects.map((project) => [
-        project.projectId,
-        project.ecosystems,
-        project.adapterMatches,
-        project.supportStatusReason
-      ]),
-      [
-        ["services/api", ["python"], [], "No registered adapter supports ecosystems python with languages python."]
-      ]
-    );
+    assert.deepEqual(summary.projects[2].topCandidateIds, ["app.py"]);
+    assert.deepEqual(summary.unsupportedProjects, []);
   });
 
   it("classifies complete and empty audit coverage", () => {

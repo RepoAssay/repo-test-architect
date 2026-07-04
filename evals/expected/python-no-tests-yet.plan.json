@@ -1,0 +1,75 @@
+{
+  "schemaVersion": "plan/v1",
+  "summary": {
+    "confidence": "low",
+    "blockerCount": 2,
+    "addTestCount": 2,
+    "extendTestCount": 0,
+    "deferredCount": 1
+  },
+  "blockers": [
+    "No supported Python test framework detected.",
+    "No runnable Python test command detected from project markers."
+  ],
+  "items": [
+    {
+      "id": "add-test:src/billing_parser.py",
+      "action": "add-test",
+      "targetId": "src/billing_parser.py",
+      "target": "billing_parser",
+      "path": "src/billing_parser.py",
+      "testLevel": "unit",
+      "priority": 7,
+      "riskReductionScore": 9,
+      "maintenanceCost": 2,
+      "rationale": [
+        "Pure transformation logic",
+        "edge-case surface"
+      ],
+      "sourceSignals": [
+        "pure-logic",
+        "edge-case-surface"
+      ],
+      "existingTestPaths": []
+    },
+    {
+      "id": "add-test:src/payment_service.py",
+      "action": "add-test",
+      "targetId": "src/payment_service.py",
+      "target": "payment_service",
+      "path": "src/payment_service.py",
+      "testLevel": "unit",
+      "priority": 4,
+      "riskReductionScore": 8,
+      "maintenanceCost": 4,
+      "rationale": [
+        "Service boundary",
+        "async or concurrency behavior"
+      ],
+      "sourceSignals": [
+        "service-boundary",
+        "async-or-concurrency"
+      ],
+      "existingTestPaths": []
+    },
+    {
+      "id": "defer:src/payment_response.py",
+      "action": "defer",
+      "targetId": "src/payment_response.py",
+      "target": "payment_response",
+      "path": "src/payment_response.py",
+      "testLevel": "none",
+      "priority": -2,
+      "riskReductionScore": 2,
+      "maintenanceCost": 4,
+      "rationale": [
+        "DTO-only models are usually better covered through route, parser, or service tests.",
+        "Cover through parser, mapper, repository, or route integration tests that consume the model."
+      ],
+      "sourceSignals": [
+        "dto-only"
+      ],
+      "existingTestPaths": []
+    }
+  ]
+}

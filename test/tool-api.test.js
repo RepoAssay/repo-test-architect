@@ -27,10 +27,11 @@ describe("tool API", () => {
     const registry = getAdapterRegistry();
 
     assert.equal(registry.schemaVersion, "adapter-registry/v1");
-    assert.deepEqual(registry.adapters.map((adapter) => adapter.id), ["javascript", "kotlin", "swift"]);
+    assert.deepEqual(registry.adapters.map((adapter) => adapter.id), ["javascript", "kotlin", "python", "swift"]);
     assert.deepEqual(registry.adapters[0].supportedProjectTypes, ["node", "express", "react"]);
     assert.deepEqual(registry.adapters[1].supportedProjectTypes, ["gradle-jvm", "maven-jvm"]);
-    assert.deepEqual(registry.adapters[2].supportedProjectTypes, ["swift-package", "apple-xcode"]);
+    assert.deepEqual(registry.adapters[2].supportedProjectTypes, ["fastapi", "python-package"]);
+    assert.deepEqual(registry.adapters[3].supportedProjectTypes, ["swift-package", "apple-xcode"]);
   });
 
   it("detects repository projects", () => {
@@ -53,8 +54,8 @@ describe("tool API", () => {
     const result = auditRepoProjects(path.resolve("examples/polyglot-workspace"));
 
     assert.equal(result.schemaVersion, "project-audits/v1");
-    assert.equal(result.summary.auditedProjectCount, 2);
-    assert.equal(result.summary.skippedProjectCount, 1);
+    assert.equal(result.summary.auditedProjectCount, 3);
+    assert.equal(result.summary.skippedProjectCount, 0);
   });
 
   it("passes changed paths into detected repository project audits", () => {
@@ -76,6 +77,10 @@ describe("tool API", () => {
         {
           projectId: "apps/web",
           untested: ["src/sessionClient.ts"]
+        },
+        {
+          projectId: "services/api",
+          untested: []
         }
       ]
     );
@@ -93,7 +98,7 @@ describe("tool API", () => {
     const summary = summarizeRepoProjectAudits(projectAudits);
 
     assert.equal(summary.schemaVersion, "project-audit-summary/v1");
-    assert.equal(summary.summary.untestedCandidateCount, 2);
+    assert.equal(summary.summary.untestedCandidateCount, 3);
   });
 
   it("ranks detected repository project candidates", () => {
@@ -101,7 +106,7 @@ describe("tool API", () => {
     const ranking = rankRepoProjectCandidates(projectAudits);
 
     assert.equal(ranking.schemaVersion, "project-candidate-ranking/v1");
-    assert.equal(ranking.summary.candidateCount, 2);
+    assert.equal(ranking.summary.candidateCount, 3);
   });
 
   it("generates detected repository project test plans", () => {
@@ -109,7 +114,7 @@ describe("tool API", () => {
     const plan = generateRepoProjectTestPlan(projectAudits);
 
     assert.equal(plan.schemaVersion, "project-test-plan/v1");
-    assert.equal(plan.summary.itemCount, 2);
+    assert.equal(plan.summary.itemCount, 3);
   });
 
   it("analyzes test placement from detected repository project audits", () => {
@@ -125,8 +130,8 @@ describe("tool API", () => {
     const stats = collectRepoProjectStats(projectAudits);
 
     assert.equal(stats.schemaVersion, "project-stats/v1");
-    assert.equal(stats.summary.auditCoverage, "partial");
-    assert.equal(stats.counts.untestedCandidateCount, 2);
+    assert.equal(stats.summary.auditCoverage, "complete");
+    assert.equal(stats.counts.untestedCandidateCount, 3);
     assert.deepEqual(stats.distributions.testFrameworks, { "kotlin-test": 1, vitest: 1 });
   });
 
@@ -162,7 +167,7 @@ describe("tool API", () => {
   it("rejects unsupported audit adapters", () => {
     assert.throws(
       () => auditRepo(path.resolve("examples/node-vitest-basic"), { adapterId: "ruby" }),
-      /Unsupported adapter: ruby\. Available adapters: javascript, kotlin, swift\./
+      /Unsupported adapter: ruby\. Available adapters: javascript, kotlin, python, swift\./
     );
   });
 

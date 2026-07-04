@@ -12,13 +12,11 @@ describe("project candidate ranking", () => {
     assert.equal(ranking.schemaVersion, "project-candidate-ranking/v1");
     assert.deepEqual(ranking.summary, {
       projectCount: 3,
-      auditedProjectCount: 2,
-      unsupportedProjectCount: 1,
-      auditCoverage: "partial",
-      unsupportedReasons: [
-        "No registered adapter supports ecosystems python with languages python."
-      ],
-      candidateCount: 2
+      auditedProjectCount: 3,
+      unsupportedProjectCount: 0,
+      auditCoverage: "complete",
+      unsupportedReasons: [],
+      candidateCount: 3
     });
     assert.deepEqual(
       ranking.candidates.map((candidate) => ({
@@ -33,23 +31,18 @@ describe("project candidate ranking", () => {
           priority: 7
         },
         {
+          projectTargetId: "services/api:app.py",
+          projectRoot: "services/api",
+          priority: 7
+        },
+        {
           projectTargetId: "apps/web:src/sessionClient.ts",
           projectRoot: "apps/web",
           priority: 4
         }
       ]
     );
-    assert.deepEqual(
-      ranking.unsupportedProjects.map((project) => [
-        project.projectId,
-        project.ecosystems,
-        project.adapterMatches,
-        project.supportStatusReason
-      ]),
-      [
-        ["services/api", ["python"], [], "No registered adapter supports ecosystems python with languages python."]
-      ]
-    );
+    assert.deepEqual(ranking.unsupportedProjects, []);
   });
 
   it("rejects non-project-audits artifacts", () => {

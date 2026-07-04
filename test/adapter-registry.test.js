@@ -25,6 +25,15 @@ describe("adapter registry", () => {
         emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"]
       },
       {
+        id: "python",
+        ecosystems: ["python"],
+        languages: ["python"],
+        maturity: "experimental",
+        supportedTestFrameworks: ["pytest", "unittest"],
+        supportedProjectTypes: ["fastapi", "python-package"],
+        emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"]
+      },
+      {
         id: "swift",
         ecosystems: ["apple", "swift"],
         languages: ["objective-c", "swift"],
@@ -58,8 +67,17 @@ describe("adapter registry", () => {
           supportedProjectTypes: ["gradle-jvm", "maven-jvm"],
           emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"]
         },
-        {
-          id: "swift",
+      {
+        id: "python",
+        ecosystems: ["python"],
+        languages: ["python"],
+        maturity: "experimental",
+        supportedTestFrameworks: ["pytest", "unittest"],
+        supportedProjectTypes: ["fastapi", "python-package"],
+        emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"]
+      },
+      {
+        id: "swift",
           ecosystems: ["apple", "swift"],
           languages: ["objective-c", "swift"],
           maturity: "experimental",
@@ -82,7 +100,7 @@ describe("adapter registry", () => {
   it("rejects unsupported adapters", () => {
     assert.throws(
       () => getAdapter("ruby"),
-      /Unsupported adapter: ruby\. Available adapters: javascript, kotlin, swift\./
+      /Unsupported adapter: ruby\. Available adapters: javascript, kotlin, python, swift\./
     );
   });
 
@@ -100,5 +118,13 @@ describe("adapter registry", () => {
 
     assert.equal(audit.schemaVersion, "audit/v1");
     assert.deepEqual(audit.profile.testFrameworks, ["XCTest"]);
+  });
+
+  it("audits through the Python adapter", () => {
+    const adapter = getAdapter("python");
+    const audit = adapter.audit(path.resolve("examples/python-pytest-service"));
+
+    assert.equal(audit.schemaVersion, "audit/v1");
+    assert.deepEqual(audit.profile.testFrameworks, ["pytest"]);
   });
 });

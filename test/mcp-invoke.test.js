@@ -76,7 +76,7 @@ describe("MCP invoke harness", () => {
     const summary = JSON.parse(output);
 
     assert.equal(summary.schemaVersion, "project-audit-summary/v1");
-    assert.equal(summary.summary.auditCoverage, "partial");
+    assert.equal(summary.summary.auditCoverage, "complete");
     assert.equal(summary.summary.projectCount, 3);
   });
 
