@@ -142,7 +142,7 @@ npm test
 npm run release:check
 ```
 
-The CI workflow runs `npm run release:check` on pushes to `master` and `main`, and on pull requests.
+The CI workflow runs `npm run release:check` on Ubuntu, macOS, and Windows for pushes to `master` and `main`, and on pull requests.
 
 The tests include golden audit and plan snapshots under `evals/expected`, driven by `evals/fixtures.json`.
 JSON schemas and the signal registry for versioned artifacts live under `schemas/`.

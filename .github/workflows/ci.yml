@@ -9,7 +9,16 @@ on:
 
 jobs:
   release-check:
-    runs-on: windows-latest
+    name: release-check (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
 
     steps:
       - name: Checkout
