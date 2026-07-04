@@ -166,7 +166,13 @@ npm run model-consistency:compare -- baseline-summary.json candidate-summary.jso
 npm run model-consistency:stats
 ```
 
-Node 20 or newer is required for the CLI. If Node is not available yet, the repository still includes a PowerShell smoke check:
+Node 20 or newer is required for the CLI. The default smoke check is portable across platforms:
+
+```powershell
+npm run smoke
+```
+
+If Node is not available yet, the repository still includes a PowerShell smoke check:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File ./scripts/smoke.ps1

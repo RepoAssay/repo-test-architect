@@ -135,7 +135,7 @@ npm run model-consistency:json
 npm run model-consistency:json -- --profile local-small
 npm run model-consistency:compare -- baseline-summary.json candidate-summary.json
 npm run model-consistency:stats
-powershell -ExecutionPolicy Bypass -File ./scripts/smoke.ps1
+npm run smoke
 npm run pack:dry-run
 npm run pack:check
 npm run bin:check

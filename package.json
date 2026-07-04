@@ -91,7 +91,7 @@
     "model-consistency:stats": "node ./scripts/collect-model-consistency-stats.js",
     "demo:check": "node ./scripts/check-demo-script.js",
     "test": "node ./scripts/run-tests.js",
-    "smoke": "powershell -ExecutionPolicy Bypass -File ./scripts/smoke.ps1",
+    "smoke": "node ./scripts/check-smoke.js",
     "pack:dry-run": "npm pack --dry-run",
     "pack:check": "node ./scripts/check-pack-contents.js",
     "bin:check": "node ./scripts/check-bin-entrypoints.js",

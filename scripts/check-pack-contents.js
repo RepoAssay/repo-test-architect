@@ -34,6 +34,7 @@ export const requiredFiles = [
   "scripts/check-bin-entrypoints.js",
   "scripts/check-demo-script.js",
   "scripts/check-mcp-stdio-smoke.js",
+  "scripts/check-smoke.js",
   "scripts/check-release-readiness.js",
   "scripts/support/npm-runner.js"
 ];

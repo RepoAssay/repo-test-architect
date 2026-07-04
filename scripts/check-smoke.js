@@ -1,7 +1,11 @@
-$ErrorActionPreference = "Stop"
+#!/usr/bin/env node
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-$root = Split-Path -Parent $PSScriptRoot
-$required = @(
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+
+export const smokeRequiredFiles = [
   "package.json",
   "src/cli/index.js",
   "src/mcp/tool-definitions.js",
@@ -21,12 +25,13 @@ $required = @(
   "src/core/project-test-placement-analysis.js",
   "src/core/project-stats.js",
   "src/core/model-consistency-stats.js",
+  "scripts/check-smoke.js",
+  "scripts/smoke.ps1",
   "scripts/collect-model-consistency-stats.js",
   "scripts/check-pack-contents.js",
   "scripts/check-bin-entrypoints.js",
   "scripts/check-demo-script.js",
   "scripts/check-mcp-stdio-smoke.js",
-  "scripts/check-smoke.js",
   "scripts/check-release-readiness.js",
   "scripts/support/npm-runner.js",
   "examples/mcp/polyglot-project-audits.args.json",
@@ -69,41 +74,79 @@ $required = @(
   "examples/polyglot-workspace/apps/android/src/main/kotlin/CheckoutCalculator.kt",
   "examples/polyglot-workspace/services/api/pyproject.toml",
   "examples/polyglot-workspace/services/api/app.py"
-)
+];
 
-foreach ($relative in $required) {
-  $path = Join-Path $root $relative
-  if (-not (Test-Path $path)) {
-    throw "Missing required file: $relative"
+const smokeSignalChecks = [
+  {
+    file: "src/adapters/javascript/audit.js",
+    signals: ["vitest", "pure-logic", "auth or permission branches", "testCommand", "existingTestLocations"]
+  },
+  {
+    file: "src/mcp/tool-definitions.js",
+    signals: [
+      "list_adapters",
+      "list_project_detection_rules",
+      "detect_projects",
+      "audit_projects",
+      "summarize_project_audits",
+      "rank_project_candidates",
+      "generate_project_test_plan",
+      "analyze_project_test_placement",
+      "collect_project_stats",
+      "audit_repo",
+      "get_audit_graph",
+      "generate_test_plan",
+      "explain_target",
+      "rank_test_candidates",
+      "analyze_test_placement",
+      "generate_selected_test"
+    ]
+  },
+  {
+    file: "src/core/adapter-registry.js",
+    signals: ["ecosystems", "javascript", "typescript"]
+  },
+  {
+    file: "src/core/project-detector.js",
+    signals: [
+      "Package.swift",
+      "pyproject.toml",
+      "Gemfile",
+      "composer.json",
+      "mix.exs",
+      "go.mod",
+      "Cargo.toml",
+      ".csproj",
+      "pom.xml",
+      "build.gradle.kts",
+      "ecosystem"
+    ]
   }
+];
+
+if (isMainModule()) {
+  runSmokeCheck();
 }
 
-$adapter = Get-Content (Join-Path $root "src/adapters/javascript/audit.js") -Raw
-foreach ($signal in @("vitest", "pure-logic", "auth or permission branches", "testCommand", "existingTestLocations")) {
-  if (-not $adapter.Contains($signal)) {
-    throw "Missing expected adapter signal: $signal"
+export function runSmokeCheck() {
+  const missingFiles = smokeRequiredFiles.filter((relative) => !fs.existsSync(path.join(root, relative)));
+
+  if (missingFiles.length > 0) {
+    throw new Error(`Missing required file(s): ${missingFiles.join(", ")}`);
   }
+
+  for (const check of smokeSignalChecks) {
+    const content = fs.readFileSync(path.join(root, check.file), "utf8");
+    const missingSignals = check.signals.filter((signal) => !content.includes(signal));
+
+    if (missingSignals.length > 0) {
+      throw new Error(`Missing expected signal(s) in ${check.file}: ${missingSignals.join(", ")}`);
+    }
+  }
+
+  console.log("Smoke check passed.");
 }
 
-$mcpTools = Get-Content (Join-Path $root "src/mcp/tool-definitions.js") -Raw
-foreach ($tool in @("list_adapters", "list_project_detection_rules", "detect_projects", "audit_projects", "summarize_project_audits", "rank_project_candidates", "generate_project_test_plan", "analyze_project_test_placement", "collect_project_stats", "audit_repo", "get_audit_graph", "generate_test_plan", "explain_target", "rank_test_candidates", "analyze_test_placement", "generate_selected_test")) {
-  if (-not $mcpTools.Contains($tool)) {
-    throw "Missing expected MCP tool: $tool"
-  }
+function isMainModule() {
+  return process.argv[1] ? path.resolve(process.argv[1]) === fileURLToPath(import.meta.url) : false;
 }
-
-$adapterRegistry = Get-Content (Join-Path $root "src/core/adapter-registry.js") -Raw
-foreach ($signal in @("ecosystems", "javascript", "typescript")) {
-  if (-not $adapterRegistry.Contains($signal)) {
-    throw "Missing expected adapter registry signal: $signal"
-  }
-}
-
-$projectDetector = Get-Content (Join-Path $root "src/core/project-detector.js") -Raw
-foreach ($signal in @("Package.swift", "pyproject.toml", "Gemfile", "composer.json", "mix.exs", "go.mod", "Cargo.toml", ".csproj", "pom.xml", "build.gradle.kts", "ecosystem")) {
-  if (-not $projectDetector.Contains($signal)) {
-    throw "Missing expected project detector signal: $signal"
-  }
-}
-
-Write-Host "Smoke check passed."
