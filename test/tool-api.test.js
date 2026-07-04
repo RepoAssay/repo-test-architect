@@ -133,6 +133,12 @@ describe("tool API", () => {
     assert.equal(stats.summary.auditCoverage, "complete");
     assert.equal(stats.counts.untestedCandidateCount, 3);
     assert.deepEqual(stats.distributions.testFrameworks, { "kotlin-test": 1, vitest: 1 });
+    assert.deepEqual(stats.distributions.signals, {
+      "auth-branch": 1,
+      "edge-case-surface": 2,
+      "pure-logic": 2,
+      "service-name": 1
+    });
   });
 
   it("audits a repo and exposes the audit graph", () => {

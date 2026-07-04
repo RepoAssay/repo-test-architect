@@ -469,6 +469,9 @@ It contains:
 - confidence distribution
 - detected test framework distribution
 - detected test command distribution
+- target kind distribution
+- risk level distribution
+- emitted signal distribution
 - audited adapter usage counts
 
 ## Changed-Only Flow

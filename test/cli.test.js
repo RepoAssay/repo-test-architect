@@ -326,6 +326,8 @@ describe("CLI", () => {
     assert.match(output, /^# Project Stats/);
     assert.match(output, /Audit coverage: complete/);
     assert.match(output, /Test frameworks: kotlin-test: 1, vitest: 1/);
+    assert.match(output, /Target kinds: pure-logic: 2, service: 1/);
+    assert.match(output, /Risk levels: high: 3/);
   });
 
   it("emits project stats as JSON", () => {
@@ -341,6 +343,8 @@ describe("CLI", () => {
     assert.equal(stats.schemaVersion, "project-stats/v1");
     assert.equal(stats.summary.auditCoverage, "complete");
     assert.deepEqual(stats.distributions.testCommands, { "gradle test": 1, "npm run test": 1 });
+    assert.deepEqual(stats.distributions.targetKinds, { "pure-logic": 2, service: 1 });
+    assert.deepEqual(stats.distributions.riskLevels, { high: 3 });
   });
 
   it("supports changed-since project stats mode", () => {

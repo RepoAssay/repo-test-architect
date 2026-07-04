@@ -645,6 +645,9 @@ function renderMarkdownProjectStats(stats) {
   lines.push(`- Confidence: ${formatRecord(stats.distributions.confidence)}`);
   lines.push(`- Test frameworks: ${formatRecord(stats.distributions.testFrameworks)}`);
   lines.push(`- Test commands: ${formatRecord(stats.distributions.testCommands)}`);
+  lines.push(`- Target kinds: ${formatRecord(stats.distributions.targetKinds)}`);
+  lines.push(`- Risk levels: ${formatRecord(stats.distributions.riskLevels)}`);
+  lines.push(`- Signals: ${formatRecord(stats.distributions.signals)}`);
   lines.push("");
   lines.push("## Adapters");
   lines.push(`- ${stats.adapters.map((adapter) => `${adapter.adapterId}: ${adapter.projectCount}`).join(", ") || "none detected"}`);

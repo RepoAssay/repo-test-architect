@@ -26,7 +26,15 @@ describe("project stats", () => {
     assert.deepEqual(stats.distributions, {
       confidence: { low: 1, medium: 2 },
       testFrameworks: { "kotlin-test": 1, vitest: 1 },
-      testCommands: { "gradle test": 1, "npm run test": 1 }
+      testCommands: { "gradle test": 1, "npm run test": 1 },
+      targetKinds: { "pure-logic": 2, service: 1 },
+      riskLevels: { high: 3 },
+      signals: {
+        "auth-branch": 1,
+        "edge-case-surface": 2,
+        "pure-logic": 2,
+        "service-name": 1
+      }
     });
     assert.deepEqual(stats.adapters, [
       { adapterId: "javascript", projectCount: 1 },

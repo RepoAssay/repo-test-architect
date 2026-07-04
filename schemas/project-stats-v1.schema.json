@@ -45,11 +45,14 @@
     "distributions": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["confidence", "testFrameworks", "testCommands"],
+      "required": ["confidence", "testFrameworks", "testCommands", "targetKinds", "riskLevels", "signals"],
       "properties": {
         "confidence": { "$ref": "#/$defs/countRecord" },
         "testFrameworks": { "$ref": "#/$defs/countRecord" },
-        "testCommands": { "$ref": "#/$defs/countRecord" }
+        "testCommands": { "$ref": "#/$defs/countRecord" },
+        "targetKinds": { "$ref": "#/$defs/countRecord" },
+        "riskLevels": { "$ref": "#/$defs/countRecord" },
+        "signals": { "$ref": "#/$defs/countRecord" }
       }
     },
     "adapters": {
