@@ -12,10 +12,11 @@ export function auditJavaScriptRepo(root, options = {}) {
   const coveredButRisky = [];
   const skipped = [];
   const risks = [];
+  const runtimeSourcePaths = new Set(files.map((file) => normalizePath(file.path)).filter(isRuntimeJavaScriptSource));
 
   for (const file of files.filter((candidate) => isSourceFile(candidate.path) && isIncludedByChangedPaths(candidate.path, changedPaths))) {
     const name = basenameWithoutExtension(file.path);
-    const classification = classifySourceFile(file, profile);
+    const classification = classifySourceFile(file, profile, runtimeSourcePaths);
     const existingTestPaths = findExistingTests(file.path, testFiles);
 
     if (classification.skipReason) {
@@ -305,7 +306,7 @@ function detectArchitectures(paths, packageText) {
   return [...architectures];
 }
 
-function classifySourceFile(file, profile) {
+function classifySourceFile(file, profile, runtimeSourcePaths = new Set()) {
   const currentPath = normalizePath(file.path);
   const content = file.content;
   const lowerPath = currentPath.toLowerCase();
@@ -316,6 +317,17 @@ function classifySourceFile(file, profile) {
 
   if (lowerPath.endsWith(".d.ts") || lowerPath.includes("/types/")) {
     return skipped("types", ["type-only"], 1, 2, "Type-only files do not need runtime tests.");
+  }
+
+  if (isReferenceTypeScriptMirror(currentPath, content, runtimeSourcePaths)) {
+    return skipped(
+      "reference-mirror",
+      ["type-reference-mirror"],
+      1,
+      2,
+      "Reference TypeScript mirrors a runtime JavaScript module and should not be test-authored directly.",
+      "Cover through tests for the matching runtime JavaScript module."
+    );
   }
 
   if (lowerPath.includes("index.") && /export\s+\*/.test(content)) {
@@ -447,6 +459,11 @@ function isSourceFile(currentPath) {
   );
 }
 
+function isRuntimeJavaScriptSource(currentPath) {
+  const normalized = normalizePath(currentPath);
+  return normalized.startsWith("src/") && /\.(cjs|mjs|js|jsx)$/.test(normalized) && !isTestFile(normalized);
+}
+
 function isTestFile(currentPath) {
   const normalized = normalizePath(currentPath);
   return (
@@ -507,6 +524,30 @@ function isDtoLike(currentPath, content) {
   const hasDtoName = /(dto|model|schema|response|request)/i.test(currentPath);
   const typeOnlyShape = /^\s*(export\s+)?(interface|type)\s+/m.test(content) && !/\bfunction\b|=>|\bclass\b/.test(content);
   return hasDtoName && typeOnlyShape;
+}
+
+function isReferenceTypeScriptMirror(currentPath, content, runtimeSourcePaths) {
+  if (!currentPath.endsWith(".ts") || currentPath.endsWith(".d.ts")) return false;
+  if (!isTypeOnlyContent(content)) return false;
+
+  const runtimePath = currentPath.replace(/\.ts$/, ".js");
+  const modulePath = currentPath.replace(/\.ts$/, ".mjs");
+  const commonJsPath = currentPath.replace(/\.ts$/, ".cjs");
+  return runtimeSourcePaths.has(runtimePath) || runtimeSourcePaths.has(modulePath) || runtimeSourcePaths.has(commonJsPath);
+}
+
+function isTypeOnlyContent(content) {
+  const withoutComments = content
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/\/\/.*$/gm, "")
+    .trim();
+
+  if (!withoutComments) return false;
+
+  const withoutInterfaces = withoutComments.replace(/(?:export\s+)?interface\s+\w+\s*\{[\s\S]*?\}/g, "");
+  const withoutObjectTypes = withoutInterfaces.replace(/(?:export\s+)?type\s+\w+\s*=\s*\{[\s\S]*?\};?/g, "");
+  const withoutTypes = withoutObjectTypes.replace(/(?:export\s+)?type\s+\w+\s*=\s*[^;]+;/g, "");
+  return withoutTypes.trim().length === 0;
 }
 
 function isConstantsOnly(content) {

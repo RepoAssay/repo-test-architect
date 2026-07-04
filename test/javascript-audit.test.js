@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { describe, it } from "node:test";
 import { auditJavaScriptRepo } from "../src/adapters/javascript/audit.js";
@@ -275,5 +277,58 @@ describe("JavaScript audit adapter", () => {
     const avatar = audit.skipped.find((target) => target.name === "Avatar");
     assert.equal(avatar.kind, "presentational-component");
     assert.match(avatar.reason, /Presentational components/);
+  });
+
+  it("skips TypeScript reference mirrors when a matching runtime JavaScript module exists", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-js-mirror-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "src"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "package.json"),
+      JSON.stringify({
+        scripts: { test: "vitest run" },
+        devDependencies: { vitest: "^1.0.0" }
+      })
+    );
+    fs.writeFileSync(
+      path.join(root, "src", "paymentClient.js"),
+      `
+export async function loadPayment(token) {
+  if (!token) {
+    throw new Error("missing token");
+  }
+
+  return fetch("/payments", { headers: { Authorization: token } });
+}
+`
+    );
+    fs.writeFileSync(
+      path.join(root, "src", "paymentClient.ts"),
+      `
+export interface PaymentClientRequest {
+  token: string;
+}
+
+export type PaymentClientResult = {
+  ok: boolean;
+};
+`
+    );
+
+    const audit = auditJavaScriptRepo(root);
+
+    assert.deepEqual(
+      audit.untestedCandidates.map((target) => target.path),
+      ["src/paymentClient.js"]
+    );
+    assert.deepEqual(
+      audit.skipped.map((target) => `${target.path}:${target.kind}`),
+      ["src/paymentClient.ts:reference-mirror"]
+    );
+
+    const mirror = audit.skipped[0];
+    assert.deepEqual(mirror.signals, ["type-reference-mirror"]);
+    assert.match(mirror.reason, /mirrors a runtime JavaScript module/);
+    assert.match(mirror.preferredCoveragePath, /runtime JavaScript module/);
   });
 });
