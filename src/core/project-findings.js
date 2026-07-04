@@ -75,15 +75,15 @@ function toAuditFindings(entry) {
     });
   }
 
-  for (const target of entry.audit.untestedCandidates) {
+  for (const target of entry.audit.untestedCandidates.filter(isReportableCoverageTarget)) {
     findings.push(toTargetFinding(entry, target, "missing-coverage"));
   }
 
-  for (const target of entry.audit.coveredButRisky) {
+  for (const target of entry.audit.coveredButRisky.filter(isReportableCoverageTarget)) {
     findings.push(toTargetFinding(entry, target, "weak-existing-coverage"));
   }
 
-  for (const target of entry.audit.skipped.filter((candidate) => candidate.riskReductionScore >= 2)) {
+  for (const target of entry.audit.skipped.filter((candidate) => isReportableCoverageTarget(candidate) && candidate.riskReductionScore >= 2)) {
     findings.push(toSkippedFinding(entry, target));
   }
 
@@ -160,6 +160,21 @@ function toPlacementFinding(finding) {
     evidence: finding.evidence,
     existingTestPaths: [finding.testFile]
   };
+}
+
+function isReportableCoverageTarget(target) {
+  return (
+    typeof target?.id === "string" &&
+    target.id.length > 0 &&
+    typeof target.name === "string" &&
+    target.name.length > 0 &&
+    typeof target.path === "string" &&
+    target.path.length > 0 &&
+    Number.isInteger(target.riskReductionScore) &&
+    Number.isInteger(target.maintenanceCost) &&
+    Array.isArray(target.signals) &&
+    Array.isArray(target.existingTestPaths)
+  );
 }
 
 function normalizeMaxFindings(maxFindings) {

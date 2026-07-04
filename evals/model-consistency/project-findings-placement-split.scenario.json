@@ -1,0 +1,67 @@
+{
+  "schemaVersion": "model-consistency-scenario/v1",
+  "id": "project-findings-placement-split",
+  "description": "Different model profiles should preserve misplaced coverage findings when a split placement recommendation is surfaced in top project findings.",
+  "sourceArtifact": {
+    "path": "examples/mcp/split-placement-project-audits.args.json",
+    "schemaVersion": "project-audits/v1",
+    "argumentName": "projectAudits"
+  },
+  "toolCall": {
+    "toolName": "collect_project_findings",
+    "arguments": {}
+  },
+  "lockedFields": [
+    {
+      "path": "summary.findingCount",
+      "expected": 1,
+      "reason": "The placement-only fixture should surface one finding instead of inventing weak coverage findings from minimal targets."
+    },
+    {
+      "path": "summary.placementFindingCount",
+      "expected": 1,
+      "reason": "The split recommendation must be counted as a placement finding in the repo-level report."
+    },
+    {
+      "path": "findings[0].category",
+      "expected": "misplaced-coverage",
+      "reason": "Escaped integration coverage should be reported as misplaced coverage, not missing coverage."
+    },
+    {
+      "path": "findings[0].action",
+      "expected": "split",
+      "reason": "Integration-level cross-owner tests should stay split recommendations."
+    },
+    {
+      "path": "findings[0].currentOwner",
+      "expected": "apps/main",
+      "reason": "The current app-level owner must remain visible for review."
+    },
+    {
+      "path": "findings[0].suggestedOwner",
+      "expected": "packages/auth-core",
+      "reason": "The package owner of the exercised behavior must remain visible for review."
+    },
+    {
+      "path": "findings[0].testFile",
+      "expected": "apps/main/tests/authRoute.test.ts",
+      "reason": "The report should expose the repository-relative misplaced test path."
+    },
+    {
+      "path": "findings[0].id",
+      "expected": "placement:packages/auth-core:split:apps/main/tests/authRoute.test.ts:packages/auth-core/src/authRoute.ts",
+      "reason": "Project finding IDs should wrap stable placement IDs for downstream review links."
+    }
+  ],
+  "allowedVariations": [
+    "additional explanatory evidence",
+    "summary wording",
+    "optional detail depth"
+  ],
+  "unexpectedVariations": [
+    "split downgraded to move",
+    "placement finding hidden from top findings",
+    "minimal fixture target reported as weak coverage",
+    "missing current or suggested project owner"
+  ]
+}

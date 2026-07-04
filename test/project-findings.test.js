@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
 import path from "node:path";
 import { describe, it } from "node:test";
 import { auditDetectedProjects } from "../src/core/project-auditor.js";
@@ -43,6 +44,17 @@ describe("project findings", () => {
     assert.equal(findings.summary.findingCount, 5);
     assert.equal(findings.summary.displayedFindingCount, 2);
     assert.equal(findings.findings.length, 2);
+  });
+
+  it("keeps placement-only fixture targets from becoming weak coverage findings", () => {
+    const { projectAudits } = JSON.parse(fs.readFileSync("examples/mcp/split-placement-project-audits.args.json", "utf8"));
+    const findings = createProjectFindings(projectAudits);
+
+    assert.equal(findings.summary.findingCount, 1);
+    assert.equal(findings.summary.placementFindingCount, 1);
+    assert.equal(findings.findings[0].category, "misplaced-coverage");
+    assert.equal(findings.findings[0].action, "split");
+    assert.equal(findings.findings[0].testFile, "apps/main/tests/authRoute.test.ts");
   });
 
   it("rejects invalid max findings", () => {
