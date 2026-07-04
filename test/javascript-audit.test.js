@@ -389,4 +389,52 @@ export function parseArgs(args: string[]): ParsedArgs {
     assert.match(mirror.reason, /runtime JavaScript implementation/);
     assert.match(mirror.preferredCoveragePath, /runtime JavaScript module/);
   });
+
+  it("matches directory-qualified tests for generic source basenames", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-js-qualified-tests-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "src", "cli"), { recursive: true });
+    fs.mkdirSync(path.join(root, "src", "adapters", "kotlin"), { recursive: true });
+    fs.mkdirSync(path.join(root, "test"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "package.json"),
+      JSON.stringify({
+        scripts: { test: "node --test" }
+      })
+    );
+    fs.writeFileSync(
+      path.join(root, "src", "cli", "index.js"),
+      `
+export function parseCli(args) {
+  if (args.includes("--json")) {
+    return { format: "json" };
+  }
+
+  return { format: "text" };
+}
+`
+    );
+    fs.writeFileSync(
+      path.join(root, "src", "adapters", "kotlin", "audit.js"),
+      `
+export function auditKotlin(files) {
+  if (files.some((file) => file.endsWith("pom.xml"))) {
+    return { tool: "maven" };
+  }
+
+  return { tool: "gradle" };
+}
+`
+    );
+    fs.writeFileSync(path.join(root, "test", "cli.test.js"), "test('cli', () => {});\n");
+    fs.writeFileSync(path.join(root, "test", "kotlin-audit.test.js"), "test('kotlin audit', () => {});\n");
+
+    const audit = auditJavaScriptRepo(root);
+
+    assert.deepEqual(
+      audit.coveredButRisky.map((target) => `${target.path}:${target.existingTestPaths.join(",")}`),
+      ["src/adapters/kotlin/audit.js:test/kotlin-audit.test.js", "src/cli/index.js:test/cli.test.js"]
+    );
+    assert.deepEqual(audit.untestedCandidates, []);
+  });
 });

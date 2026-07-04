@@ -526,11 +526,20 @@ function isTestFile(currentPath) {
 function findExistingTests(sourcePath, testPaths) {
   const normalized = normalizePath(sourcePath);
   const sourceBase = basenameWithoutExtension(normalized);
-  const sourceDir = normalized.split("/").slice(0, -1).join("/");
+  const sourceSegments = normalized.split("/");
+  const sourceDir = sourceSegments.slice(0, -1).join("/");
+  const parentBase = sourceSegments.length > 1 ? sourceSegments.at(-2) : undefined;
+  const sourceBaseCandidates = new Set([sourceBase]);
+  if (parentBase) {
+    sourceBaseCandidates.add(`${parentBase}-${sourceBase}`);
+    if (sourceBase === "index") {
+      sourceBaseCandidates.add(parentBase);
+    }
+  }
 
   return testPaths.filter((testPath) => {
     const testBase = basenameWithoutExtension(testPath).replace(/\.(test|spec)$/, "");
-    return testBase === sourceBase || testPath.startsWith(`${sourceDir}/__tests__/${sourceBase}.`);
+    return sourceBaseCandidates.has(testBase) || testPath.startsWith(`${sourceDir}/__tests__/${sourceBase}.`);
   });
 }
 
