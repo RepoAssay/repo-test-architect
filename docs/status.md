@@ -47,7 +47,8 @@ Implemented:
 - adapter spike checklist for adding ecosystems without changing the shared audit model or enabling generation early
 - package contents dry-run checker for required runtime files and publish allowlist hygiene
 - package binary entrypoint checker for CLI, MCP invoke, and stdio JSON-RPC boot paths
-- release-readiness check runner for tests, evals, model consistency, demo path, smoke, package, and bin checks
+- installed-package tarball smoke checker for published CLI and MCP binary boot paths
+- release-readiness check runner for tests, evals, model consistency, demo path, smoke, package, bin, and installed-package checks
 - GitHub Actions CI workflow that runs the release-readiness check on Ubuntu, macOS, and Windows for pushes and pull requests
 - GitHub pull request template that calls out audit impact, release verification, and risk notes
 - GitHub bug report issue form for audit, planning, MCP, and release-check defects
@@ -139,6 +140,7 @@ npm run smoke
 npm run pack:dry-run
 npm run pack:check
 npm run bin:check
+npm run installed-package:check
 npm run release:check
 ```
 

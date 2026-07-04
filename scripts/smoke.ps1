@@ -25,6 +25,7 @@ $required = @(
   "scripts/check-pack-contents.js",
   "scripts/check-bin-entrypoints.js",
   "scripts/check-demo-script.js",
+  "scripts/check-installed-package.js",
   "scripts/check-mcp-stdio-smoke.js",
   "scripts/check-smoke.js",
   "scripts/check-release-readiness.js",

@@ -11,7 +11,8 @@ export const releaseChecks = [
   "mcp:smoke",
   "smoke",
   "pack:check",
-  "bin:check"
+  "bin:check",
+  "installed-package:check"
 ];
 
 if (isMainModule()) {

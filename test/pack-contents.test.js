@@ -20,6 +20,7 @@ describe("package contents", () => {
   it("requires check script dependencies needed by packaged release verification", () => {
     assert.ok(requiredFiles.includes("scripts/check-bin-entrypoints.js"));
     assert.ok(requiredFiles.includes("scripts/check-demo-script.js"));
+    assert.ok(requiredFiles.includes("scripts/check-installed-package.js"));
     assert.ok(requiredFiles.includes("scripts/check-mcp-stdio-smoke.js"));
     assert.ok(requiredFiles.includes("scripts/check-smoke.js"));
     assert.ok(requiredFiles.includes("scripts/check-release-readiness.js"));
