@@ -331,4 +331,62 @@ export type PaymentClientResult = {
     assert.match(mirror.reason, /mirrors a runtime JavaScript module/);
     assert.match(mirror.preferredCoveragePath, /runtime JavaScript module/);
   });
+
+  it("skips TypeScript implementation mirrors when package runtime entrypoints use source JavaScript", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-js-impl-mirror-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "src", "cli"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "package.json"),
+      JSON.stringify({
+        bin: { sample: "./src/cli/index.js" },
+        scripts: { test: "vitest run" },
+        devDependencies: { vitest: "^1.0.0" }
+      })
+    );
+    fs.writeFileSync(
+      path.join(root, "src", "cli", "index.js"),
+      `
+export function parseArgs(args) {
+  if (args.includes("--help")) {
+    return { mode: "help" };
+  }
+
+  return { mode: "run" };
+}
+`
+    );
+    fs.writeFileSync(
+      path.join(root, "src", "cli", "index.ts"),
+      `
+export interface ParsedArgs {
+  mode: "help" | "run";
+}
+
+export function parseArgs(args: string[]): ParsedArgs {
+  if (args.includes("--help")) {
+    return { mode: "help" };
+  }
+
+  return { mode: "run" };
+}
+`
+    );
+
+    const audit = auditJavaScriptRepo(root);
+
+    assert.deepEqual(
+      audit.untestedCandidates.map((target) => target.path),
+      ["src/cli/index.js"]
+    );
+    assert.deepEqual(
+      audit.skipped.map((target) => `${target.path}:${target.kind}`),
+      ["src/cli/index.ts:reference-mirror"]
+    );
+
+    const mirror = audit.skipped[0];
+    assert.deepEqual(mirror.signals, ["reference-implementation-mirror"]);
+    assert.match(mirror.reason, /runtime JavaScript implementation/);
+    assert.match(mirror.preferredCoveragePath, /runtime JavaScript module/);
+  });
 });

@@ -27,7 +27,7 @@ What the tool found:
 
 - high-confidence JavaScript/TypeScript profile with `npm run test`
 - Vitest and Jest signals, `test/` conventions, and matching test evidence
-- 30 ranked candidates in the direct root audit
+- 27 ranked candidates in the direct root audit after filtering sibling TypeScript reference mirrors for runtime JavaScript modules
 - 19 conservative `keep` placement findings for tests that match source targets in the same project
 - useful distinction between untested files and covered-but-risky files
 
@@ -44,12 +44,12 @@ What it missed or over-reported:
 
 - Direct root audit sees broad branching logic but does not yet understand module ownership well enough to rank adapter files by product risk.
 - The project-wide audit of this repository is noisy because checked-in examples are intentionally separate fixture projects.
-- Some TypeScript reference files duplicate JavaScript runtime files in the candidate list.
+- Standalone TypeScript reference files without a matching runtime JavaScript sibling can still appear as candidates when they contain branching logic.
 
 Heuristic follow-up:
 
 - add ownership or package-role signals for adapter modules, CLI entrypoints, MCP transport, and core scoring modules
-- reduce duplicate JS/TS recommendations when TypeScript files are reference declarations or mirrors of runtime JavaScript
+- continue tightening TypeScript reference-file detection for standalone reference modules without a runtime JavaScript sibling
 - use `--exclude-project "examples/**"` when generating self-audit reports that should ignore checked-in example fixtures
 
 ## Collectors Grimoire App Audit
