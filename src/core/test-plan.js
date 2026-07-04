@@ -109,7 +109,7 @@ function toPlanItem(action, target) {
     maintenanceCost: target.maintenanceCost,
     rationale: enrichRationale(target.reasons, target.signals),
     sourceSignals: target.signals,
-    existingTestPaths: target.existingTestPaths
+    existingTestPaths: target.existingTestPaths ?? []
   };
 }
 

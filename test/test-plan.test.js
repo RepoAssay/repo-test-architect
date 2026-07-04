@@ -78,4 +78,31 @@ describe("test plan generator", () => {
     assert.ok(item.rationale.includes("Assert pagination and sorting boundaries, including limits, offsets, stable ordering, and has-next-page behavior."));
     assert.ok(item.rationale.includes("Exercise MongoDB create/update paths for idempotency, duplicate data, and existing-record updates."));
   });
+
+  it("defaults optional target arrays in plan items", () => {
+    const plan = createTestPlan({
+      schemaVersion: "audit/v1",
+      profile: {
+        confidence: "medium",
+        blockers: []
+      },
+      untestedCandidates: [
+        {
+          id: "src/paymentClient.ts",
+          name: "paymentClient",
+          path: "src/paymentClient.ts",
+          kind: "service",
+          signals: ["service-name"],
+          recommendedTestLevel: "unit",
+          riskReductionScore: 8,
+          maintenanceCost: 4
+        }
+      ],
+      coveredButRisky: [],
+      skipped: []
+    });
+
+    assert.deepEqual(plan.items[0].rationale, []);
+    assert.deepEqual(plan.items[0].existingTestPaths, []);
+  });
 });
