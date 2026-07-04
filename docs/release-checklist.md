@@ -42,13 +42,15 @@ Run:
 ```powershell
 npm run eval:check
 npm test
-powershell -ExecutionPolicy Bypass -File ./scripts/smoke.ps1
+npm run smoke
 npm run mcp:smoke
 npm run pack:dry-run
 npm run pack:check
 npm run bin:check
 npm run release:check
 ```
+
+The repository also keeps `scripts/smoke.ps1` as a manual PowerShell fallback for environments that need it.
 
 Also verify the installed package entry points from a packed tarball before first public release.
 

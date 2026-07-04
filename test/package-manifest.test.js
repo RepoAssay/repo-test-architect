@@ -59,7 +59,7 @@ describe("package manifest", () => {
   it("exposes package verification scripts", () => {
     assert.equal(packageJson.scripts["pack:dry-run"], "npm pack --dry-run");
     assert.ok(packageJson.scripts.test);
-    assert.ok(packageJson.scripts.smoke);
+    assert.equal(packageJson.scripts.smoke, "node ./scripts/check-smoke.js");
     assert.ok(packageJson.scripts["eval:check"]);
     assert.ok(packageJson.scripts["model-consistency:check"]);
     assert.ok(packageJson.scripts["model-consistency:json"]);
@@ -105,6 +105,7 @@ describe("package manifest", () => {
 
   it("keeps smoke checks aligned with packaged release verification scripts", () => {
     const smoke = fs.readFileSync("scripts/smoke.ps1", "utf8");
+    const nodeSmoke = fs.readFileSync("scripts/check-smoke.js", "utf8");
 
     assert.ok(smoke.includes("scripts/check-pack-contents.js"));
     assert.ok(smoke.includes("scripts/check-bin-entrypoints.js"));
@@ -112,5 +113,11 @@ describe("package manifest", () => {
     assert.ok(smoke.includes("scripts/check-mcp-stdio-smoke.js"));
     assert.ok(smoke.includes("scripts/check-release-readiness.js"));
     assert.ok(smoke.includes("scripts/support/npm-runner.js"));
+    assert.ok(nodeSmoke.includes("scripts/check-pack-contents.js"));
+    assert.ok(nodeSmoke.includes("scripts/check-bin-entrypoints.js"));
+    assert.ok(nodeSmoke.includes("scripts/check-demo-script.js"));
+    assert.ok(nodeSmoke.includes("scripts/check-mcp-stdio-smoke.js"));
+    assert.ok(nodeSmoke.includes("scripts/check-release-readiness.js"));
+    assert.ok(nodeSmoke.includes("scripts/support/npm-runner.js"));
   });
 });
