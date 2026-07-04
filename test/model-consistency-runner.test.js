@@ -88,6 +88,7 @@ describe("model consistency runner", () => {
         ["python-pytest-service-plan", []],
         ["python-uv-pytest-plan", []],
         ["react-testing-library-plan", []],
+        ["swift-spm-quick-nimble-plan", []],
         ["swift-spm-swift-testing-plan", []],
         ["swift-spm-xctest-plan", []],
         ["vapor-mongodb-boundaries-plan", []],
@@ -106,10 +107,10 @@ describe("model consistency runner", () => {
     assert.equal(summary.schemaVersion, "model-consistency-summary/v1");
     assert.equal(summary.profileName, "deterministic-baseline");
     assert.deepEqual(summary.summary, {
-      scenarioCount: 23,
-      passedScenarioCount: 23,
+      scenarioCount: 24,
+      passedScenarioCount: 24,
       failedScenarioCount: 0,
-      checkedFieldCount: 181,
+      checkedFieldCount: 189,
       failureCount: 0
     });
     assert.equal(summary.scenarios[4].scenarioId, "node-jest-service-plan");
@@ -127,8 +128,8 @@ describe("model consistency runner", () => {
     assert.equal(comparison.baselineProfile, "deterministic-baseline");
     assert.equal(comparison.candidateProfile, "local-small");
     assert.deepEqual(comparison.summary, {
-      scenarioCount: 23,
-      alignedScenarioCount: 23,
+      scenarioCount: 24,
+      alignedScenarioCount: 24,
       driftedScenarioCount: 0,
       missingScenarioCount: 0,
       unexpectedScenarioCount: 0,
@@ -143,10 +144,10 @@ describe("model consistency runner", () => {
     const candidate = {
       ...createCurrentSummary("local-small"),
       summary: {
-        scenarioCount: 23,
-        passedScenarioCount: 20,
+        scenarioCount: 24,
+        passedScenarioCount: 21,
         failedScenarioCount: 2,
-        checkedFieldCount: 131,
+        checkedFieldCount: 139,
         failureCount: 3
       },
       scenarios: [
@@ -170,8 +171,8 @@ describe("model consistency runner", () => {
     const comparison = compareModelConsistencySummaries(baseline, candidate);
 
     assert.deepEqual(comparison.summary, {
-      scenarioCount: 24,
-      alignedScenarioCount: 21,
+      scenarioCount: 25,
+      alignedScenarioCount: 22,
       driftedScenarioCount: 1,
       missingScenarioCount: 1,
       unexpectedScenarioCount: 1,
@@ -200,6 +201,7 @@ describe("model consistency runner", () => {
         ["python-pytest-service-plan", "aligned"],
         ["python-uv-pytest-plan", "aligned"],
         ["react-testing-library-plan", "aligned"],
+        ["swift-spm-quick-nimble-plan", "aligned"],
         ["swift-spm-swift-testing-plan", "aligned"],
         ["swift-spm-xctest-plan", "aligned"],
         ["unexpected-extra-scenario", "unexpected"],

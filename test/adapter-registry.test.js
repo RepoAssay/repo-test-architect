@@ -38,8 +38,8 @@ describe("adapter registry", () => {
         ecosystems: ["apple", "swift"],
         languages: ["objective-c", "swift"],
         maturity: "experimental",
-        supportedTestFrameworks: ["Swift Testing", "XCTest"],
-        supportedProjectTypes: ["swift-package", "apple-xcode"],
+        supportedTestFrameworks: ["Nimble", "Quick", "SnapshotTesting", "Swift Testing", "XCTest", "XCTVapor"],
+        supportedProjectTypes: ["swift-package", "apple-xcode", "vapor"],
         emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"]
       }
     ]);
@@ -81,8 +81,8 @@ describe("adapter registry", () => {
           ecosystems: ["apple", "swift"],
           languages: ["objective-c", "swift"],
           maturity: "experimental",
-          supportedTestFrameworks: ["Swift Testing", "XCTest"],
-          supportedProjectTypes: ["swift-package", "apple-xcode"],
+          supportedTestFrameworks: ["Nimble", "Quick", "SnapshotTesting", "Swift Testing", "XCTest", "XCTVapor"],
+          supportedProjectTypes: ["swift-package", "apple-xcode", "vapor"],
           emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"]
         }
       ]

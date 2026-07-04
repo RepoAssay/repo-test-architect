@@ -72,6 +72,7 @@ Implemented:
 - `kotlin-maven-junit`
 - `swift-spm-xctest`
 - `swift-spm-swift-testing`
+- `swift-spm-quick-nimble`
 - `vapor-service-tests`
 - `vapor-mongodb-boundaries`
 - `python-pytest-service`

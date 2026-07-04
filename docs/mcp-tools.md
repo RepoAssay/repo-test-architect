@@ -88,7 +88,7 @@ Use `rank_project_candidates` when a client needs ordered candidates across audi
 Use `generate_project_test_plan` when a client needs project-aware plan items before selecting future generation targets.
 Use `analyze_project_test_placement` when a client needs advisory placement findings derived from audited project roots.
 Use `collect_project_stats` when a client needs local artifact-derived counts and distributions for reporting or model-profile comparisons.
-`audit_repo` accepts an optional `adapterId` and optional repository-relative `changedPaths`. The current registered adapters are `javascript` and experimental `kotlin`.
+`audit_repo` accepts an optional `adapterId` and optional repository-relative `changedPaths`. The current registered adapters are `javascript` plus experimental `kotlin`, `python`, and `swift`.
 
 ## SDK Transport
 

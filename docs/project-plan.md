@@ -73,6 +73,7 @@ Later adapter fixtures:
 - `apple-xcode-mixed`
 - Swift Package Manager + XCTest
 - Swift Package Manager + Swift Testing
+- Swift Package Manager + Quick/Nimble or SnapshotTesting
 - Vapor service tests
 - React component tests
 
