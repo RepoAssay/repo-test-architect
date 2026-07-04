@@ -490,7 +490,7 @@ node ./src/cli/index.js audit-projects . --changed-since main --format json
 
 The repository profile still uses the full repo. Candidate targets are limited to changed source files reported by Git.
 For project-aware commands, repository-level changed paths are partitioned by detected project root before each adapter runs, so JavaScript, Kotlin/JVM, and later adapters receive project-relative changed paths.
-Project-aware CLI commands also accept `--exclude-project <root-or-pattern>` to filter exact project roots or quoted subtree patterns such as `"examples/**"` before auditing.
+Project-aware CLI commands also accept `--exclude-project <root-or-pattern>` to filter exact project roots or quoted subtree patterns such as `"examples/**"` before auditing. MCP `detect_projects` and `audit_projects` accept the equivalent `excludeProjectRoots` array.
 
 ## Signals
 

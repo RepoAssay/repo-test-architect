@@ -84,8 +84,8 @@ Each tool descriptor includes `outputArtifact` metadata:
 
 Use `list_adapters` before `audit_repo` when a client needs to discover supported adapter IDs.
 Use `list_project_detection_rules` when a client needs to explain what project markers the deterministic detector recognizes.
-Use `detect_projects` when a repository may contain multiple language or package roots.
-Use `audit_projects` to audit detected supported project roots while reporting unsupported roots separately. It accepts optional repository-relative `changedPaths` and passes matching project-relative paths into each selected adapter.
+Use `detect_projects` when a repository may contain multiple language or package roots. It accepts optional `excludeProjectRoots` entries for exact roots or subtree patterns such as `"examples/**"`.
+Use `audit_projects` to audit detected supported project roots while reporting unsupported roots separately. It accepts optional repository-relative `changedPaths` and optional `excludeProjectRoots`, then passes matching project-relative paths into each selected adapter.
 Use `summarize_project_audits` when a client needs compact audit coverage status, unsupported reasons, and counts before asking for detailed per-project audit data.
 Use `rank_project_candidates` when a client needs ordered candidates across audited project roots while preserving project identity.
 Use `generate_project_test_plan` when a client needs project-aware plan items before selecting future generation targets.
@@ -159,7 +159,9 @@ Direct form:
 node ./src/mcp/invoke.js tools
 node ./src/mcp/invoke.js call list_adapters "{}"
 node ./src/mcp/invoke.js call list_project_detection_rules "{}"
+node ./src/mcp/invoke.js call detect_projects "{\"repoRoot\":\".\",\"excludeProjectRoots\":[\"examples/**\"]}"
 node ./src/mcp/invoke.js call audit_repo "{\"repoRoot\":\"./examples/node-vitest-basic\"}"
+node ./src/mcp/invoke.js call audit_projects "{\"repoRoot\":\".\",\"excludeProjectRoots\":[\"examples/**\"]}"
 node ./src/mcp/invoke.js call audit_repo "@./examples/mcp/kotlin-audit.args.json"
 node ./src/mcp/invoke.js call audit_repo "@./args.json"
 node ./src/mcp/invoke.js call summarize_project_audits "@./examples/mcp/polyglot-project-audits.args.json"

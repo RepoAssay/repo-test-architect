@@ -37,7 +37,12 @@ export const mcpTools = [
     description: "Detect project roots and matching adapters inside a repository.",
     outputArtifact: artifact("project-detection/v1", "schemas/project-detection-v1.schema.json"),
     inputSchema: objectSchema({
-      repoRoot: { type: "string", description: "Repository root path." }
+      repoRoot: { type: "string", description: "Repository root path." },
+      excludeProjectRoots: {
+        type: "array",
+        description: "Optional exact project roots or subtree patterns such as examples/** to exclude before returning detected projects.",
+        items: { type: "string", minLength: 1 }
+      }
     }, ["repoRoot"])
   },
   {
@@ -49,6 +54,11 @@ export const mcpTools = [
       changedPaths: {
         type: "array",
         description: "Optional repository-relative source paths to limit target selection inside detected projects.",
+        items: { type: "string", minLength: 1 }
+      },
+      excludeProjectRoots: {
+        type: "array",
+        description: "Optional exact project roots or subtree patterns such as examples/** to exclude before auditing detected projects.",
         items: { type: "string", minLength: 1 }
       }
     }, ["repoRoot"])
@@ -185,10 +195,13 @@ export function callTool(name, args = {}) {
       case "list_project_detection_rules":
         return getProjectDetectionRules();
       case "detect_projects":
-        return detectRepoProjects(requireString(args.repoRoot, "repoRoot"));
+        return detectRepoProjects(requireString(args.repoRoot, "repoRoot"), {
+          excludeProjectRoots: optionalStringArray(args.excludeProjectRoots, "excludeProjectRoots")
+        });
       case "audit_projects":
         return auditRepoProjects(requireString(args.repoRoot, "repoRoot"), {
-          changedPaths: optionalStringArray(args.changedPaths, "changedPaths")
+          changedPaths: optionalStringArray(args.changedPaths, "changedPaths"),
+          excludeProjectRoots: optionalStringArray(args.excludeProjectRoots, "excludeProjectRoots")
         });
       case "summarize_project_audits":
         return summarizeRepoProjectAudits(requireObject(args.projectAudits, "projectAudits"));
