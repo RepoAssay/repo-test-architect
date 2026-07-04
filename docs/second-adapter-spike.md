@@ -54,7 +54,7 @@ Current Kotlin/JVM status:
 Current Python status:
 
 - registered as experimental `python`
-- audits pytest, unittest, requirements.txt, setuptools, package-local tests, and no-tests-yet fixtures through the shared audit model
+- audits pytest, unittest, requirements.txt, setuptools, uv, Poetry, package-local tests, and no-tests-yet fixtures through the shared audit model
 - classifies parser/service logic as useful and dataclass DTOs as deferred
 - reports no-framework and no-command blockers honestly
 - has golden audit and plan snapshots

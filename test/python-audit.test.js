@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { describe, it } from "node:test";
 import { auditPythonRepo } from "../src/adapters/python/audit.js";
@@ -8,6 +10,8 @@ const unittestRoot = path.resolve("examples/python-unittest-service");
 const requirementsRoot = path.resolve("examples/python-requirements-pytest");
 const packageLocalTestsRoot = path.resolve("examples/python-package-local-tests");
 const setuptoolsRoot = path.resolve("examples/python-setuptools-pytest");
+const uvRoot = path.resolve("examples/python-uv-pytest");
+const poetryRoot = path.resolve("examples/python-poetry-pytest");
 const noTestsRoot = path.resolve("examples/python-no-tests-yet");
 
 describe("Python audit adapter", () => {
@@ -201,5 +205,82 @@ describe("Python audit adapter", () => {
       audit.skipped.map((target) => `${target.name}:${target.kind}`),
       ["order_response:dto"]
     );
+  });
+
+  it("prefers uv pytest commands when uv project markers exist", () => {
+    const audit = auditPythonRepo(uvRoot);
+
+    assert.deepEqual(audit.profile.packageManagers, ["pyproject", "uv"]);
+    assert.deepEqual(audit.profile.testFrameworks, ["pytest"]);
+    assert.equal(audit.profile.testCommand, "uv run pytest");
+    assert.ok(audit.profile.setupSignals.includes("uv project"));
+    assert.ok(audit.profile.setupSignals.includes("pytest dependency"));
+    assert.deepEqual(
+      audit.coveredButRisky.map((target) => `${target.name}:${target.kind}:${target.existingTestPaths.join(",")}`),
+      ["calculator:pure-logic:tests/test_calculator.py"]
+    );
+    assert.deepEqual(
+      audit.untestedCandidates.map((target) => `${target.name}:${target.kind}:${target.recommendedTestLevel}`),
+      ["payment_service:service:unit"]
+    );
+  });
+
+  it("prefers Poetry pytest commands when Poetry project markers exist", () => {
+    const audit = auditPythonRepo(poetryRoot);
+
+    assert.deepEqual(audit.profile.packageManagers, ["poetry", "pyproject"]);
+    assert.deepEqual(audit.profile.testFrameworks, ["pytest"]);
+    assert.equal(audit.profile.testCommand, "poetry run pytest");
+    assert.ok(audit.profile.setupSignals.includes("poetry project"));
+    assert.deepEqual(
+      audit.coveredButRisky.map((target) => `${target.name}:${target.kind}:${target.existingTestPaths.join(",")}`),
+      ["discounts:pure-logic:tests/test_discounts.py"]
+    );
+    assert.deepEqual(
+      audit.untestedCandidates.map((target) => `${target.name}:${target.kind}:${target.recommendedTestLevel}`),
+      ["order_service:service:unit"]
+    );
+  });
+
+  it("prefers Hatch test commands when Hatch project markers exist", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-python-hatch-"));
+    fs.mkdirSync(path.join(root, "src"), { recursive: true });
+    fs.mkdirSync(path.join(root, "tests"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "pyproject.toml"),
+      `[project]
+name = "python-hatch-pytest"
+dependencies = ["pytest"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.envs.default]
+dependencies = ["pytest"]
+`
+    );
+    fs.writeFileSync(
+      path.join(root, "src", "rules.py"),
+      `def is_valid(value):
+    return value > 0
+`
+    );
+    fs.writeFileSync(
+      path.join(root, "tests", "test_rules.py"),
+      `from src.rules import is_valid
+
+
+def test_is_valid():
+    assert is_valid(1)
+`
+    );
+
+    const audit = auditPythonRepo(root);
+
+    assert.deepEqual(audit.profile.packageManagers, ["hatch", "pyproject"]);
+    assert.deepEqual(audit.profile.testFrameworks, ["pytest"]);
+    assert.equal(audit.profile.testCommand, "hatch test");
+    assert.ok(audit.profile.setupSignals.includes("hatch project"));
   });
 });

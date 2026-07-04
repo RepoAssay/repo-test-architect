@@ -1,0 +1,8 @@
+[project]
+name = "python-uv-pytest"
+dependencies = [
+  "pytest"
+]
+
+[tool.uv]
+package = true

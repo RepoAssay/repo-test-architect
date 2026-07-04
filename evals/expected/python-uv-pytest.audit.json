@@ -1,0 +1,148 @@
+{
+  "schemaVersion": "audit/v1",
+  "profile": {
+    "root": "<fixture>",
+    "languages": [
+      "python"
+    ],
+    "packageManagers": [
+      "pyproject",
+      "uv"
+    ],
+    "testFrameworks": [
+      "pytest"
+    ],
+    "architectures": [],
+    "testCommand": "uv run pytest",
+    "detectedConventions": [
+      "tests/test_*.py"
+    ],
+    "existingTestLocations": [
+      "tests"
+    ],
+    "setupSignals": [
+      "pyproject",
+      "uv project",
+      "pytest dependency"
+    ],
+    "confidence": "high",
+    "blockers": []
+  },
+  "untestedCandidates": [
+    {
+      "id": "src/pricing/payment_service.py",
+      "name": "payment_service",
+      "path": "src/pricing/payment_service.py",
+      "kind": "service",
+      "signals": [
+        "service-boundary",
+        "async-or-concurrency",
+        "external-boundary"
+      ],
+      "risk": "high",
+      "testability": "medium",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 8,
+      "maintenanceCost": 4,
+      "reasons": [
+        "Service boundary",
+        "async or concurrency behavior",
+        "external boundary"
+      ],
+      "existingTestPaths": []
+    }
+  ],
+  "coveredButRisky": [
+    {
+      "id": "src/pricing/calculator.py",
+      "name": "calculator",
+      "path": "src/pricing/calculator.py",
+      "kind": "pure-logic",
+      "signals": [
+        "pure-logic",
+        "edge-case-surface",
+        "matching-test"
+      ],
+      "risk": "high",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 9,
+      "maintenanceCost": 2,
+      "reasons": [
+        "Pure transformation logic",
+        "edge-case surface",
+        "Existing test file detected; review missing edge cases"
+      ],
+      "existingTestPaths": [
+        "tests/test_calculator.py"
+      ]
+    }
+  ],
+  "recommended": [
+    {
+      "id": "src/pricing/calculator.py",
+      "name": "calculator",
+      "path": "src/pricing/calculator.py",
+      "kind": "pure-logic",
+      "signals": [
+        "pure-logic",
+        "edge-case-surface",
+        "matching-test"
+      ],
+      "risk": "high",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 9,
+      "maintenanceCost": 2,
+      "reasons": [
+        "Pure transformation logic",
+        "edge-case surface",
+        "Existing test file detected; review missing edge cases"
+      ],
+      "existingTestPaths": [
+        "tests/test_calculator.py"
+      ]
+    },
+    {
+      "id": "src/pricing/payment_service.py",
+      "name": "payment_service",
+      "path": "src/pricing/payment_service.py",
+      "kind": "service",
+      "signals": [
+        "service-boundary",
+        "async-or-concurrency",
+        "external-boundary"
+      ],
+      "risk": "high",
+      "testability": "medium",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 8,
+      "maintenanceCost": 4,
+      "reasons": [
+        "Service boundary",
+        "async or concurrency behavior",
+        "external boundary"
+      ],
+      "existingTestPaths": []
+    }
+  ],
+  "skipped": [
+    {
+      "id": "src/pricing/payment_response.py",
+      "name": "payment_response",
+      "path": "src/pricing/payment_response.py",
+      "kind": "dto",
+      "signals": [
+        "dto-only"
+      ],
+      "riskReductionScore": 2,
+      "maintenanceCost": 4,
+      "reason": "DTO-only models are usually better covered through route, parser, or service tests.",
+      "preferredCoveragePath": "Cover through parser, mapper, repository, or route integration tests that consume the model."
+    }
+  ],
+  "risks": [
+    "calculator has pure transformation logic, edge-case surface and needs edge-case review.",
+    "payment_service has service boundary, async or concurrency behavior, external boundary and has no matching test file."
+  ]
+}

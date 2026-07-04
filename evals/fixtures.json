@@ -70,6 +70,16 @@
     "path": "examples/python-setuptools-pytest"
   },
   {
+    "name": "python-uv-pytest",
+    "adapter": "python",
+    "path": "examples/python-uv-pytest"
+  },
+  {
+    "name": "python-poetry-pytest",
+    "adapter": "python",
+    "path": "examples/python-poetry-pytest"
+  },
+  {
     "name": "python-no-tests-yet",
     "adapter": "python",
     "path": "examples/python-no-tests-yet"
