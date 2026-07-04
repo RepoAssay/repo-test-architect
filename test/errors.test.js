@@ -40,6 +40,18 @@ describe("MCP tool errors", () => {
     });
   });
 
+  it("does not let details override the stable MCP tool error kind", () => {
+    const error = new McpToolError("invalid-arguments", "Invalid tool arguments.", {
+      kind: "unknown-tool",
+      toolName: "audit_repo"
+    });
+
+    assert.deepEqual(toJsonRpcErrorData(error), {
+      kind: "invalid-arguments",
+      toolName: "audit_repo"
+    });
+  });
+
   it("omits JSON-RPC data for generic errors", () => {
     assert.equal(toJsonRpcErrorData(new Error("boom")), undefined);
   });
