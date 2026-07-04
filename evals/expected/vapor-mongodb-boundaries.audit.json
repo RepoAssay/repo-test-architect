@@ -1,0 +1,195 @@
+{
+  "schemaVersion": "audit/v1",
+  "profile": {
+    "root": "<fixture>",
+    "languages": [
+      "swift"
+    ],
+    "packageManagers": [
+      "swiftpm"
+    ],
+    "testFrameworks": [
+      "Swift Testing",
+      "XCTVapor"
+    ],
+    "architectures": [
+      "mongodb",
+      "swift-package",
+      "vapor"
+    ],
+    "testCommand": "swift test",
+    "detectedConventions": [
+      "*Tests.swift files",
+      "Tests"
+    ],
+    "existingTestLocations": [
+      "Tests"
+    ],
+    "setupSignals": [
+      "swift package manager",
+      "vapor dependency",
+      "mongodb dependency",
+      "xctvapor test support",
+      "swiftpm test target",
+      "swiftpm executable target",
+      "swiftpm target"
+    ],
+    "confidence": "high",
+    "blockers": []
+  },
+  "untestedCandidates": [
+    {
+      "id": "Sources/App/Controllers/PriceController.swift",
+      "name": "PriceController",
+      "path": "Sources/App/Controllers/PriceController.swift",
+      "kind": "http-route",
+      "signals": [
+        "http-route",
+        "vapor-route",
+        "mongodb-aggregation",
+        "mongodb-query"
+      ],
+      "risk": "high",
+      "testability": "medium",
+      "recommendedTestLevel": "integration",
+      "riskReductionScore": 9,
+      "maintenanceCost": 5,
+      "reasons": [
+        "HTTP route behavior",
+        "Vapor request handling",
+        "MongoDB query boundary",
+        "aggregation pipeline semantics"
+      ],
+      "existingTestPaths": []
+    },
+    {
+      "id": "Sources/App/Jobs/PriceHistoryJob.swift",
+      "name": "PriceHistoryJob",
+      "path": "Sources/App/Jobs/PriceHistoryJob.swift",
+      "kind": "data-access",
+      "signals": [
+        "data-access",
+        "mongodb-query",
+        "mongodb-write"
+      ],
+      "risk": "high",
+      "testability": "medium",
+      "recommendedTestLevel": "integration",
+      "riskReductionScore": 8,
+      "maintenanceCost": 5,
+      "reasons": [
+        "MongoDB data access",
+        "MongoDB query boundary",
+        "MongoDB write/update behavior"
+      ],
+      "existingTestPaths": []
+    },
+    {
+      "id": "Sources/App/Controllers/SearchController.swift",
+      "name": "SearchController",
+      "path": "Sources/App/Controllers/SearchController.swift",
+      "kind": "http-route",
+      "signals": [
+        "http-route",
+        "vapor-route",
+        "mongodb-dynamic-filter",
+        "mongodb-query",
+        "pagination-or-sort"
+      ],
+      "risk": "high",
+      "testability": "medium",
+      "recommendedTestLevel": "integration",
+      "riskReductionScore": 9,
+      "maintenanceCost": 5,
+      "reasons": [
+        "HTTP route behavior",
+        "Vapor request handling",
+        "MongoDB query boundary",
+        "dynamic BSON filter construction",
+        "pagination or sorting behavior"
+      ],
+      "existingTestPaths": []
+    }
+  ],
+  "coveredButRisky": [],
+  "recommended": [
+    {
+      "id": "Sources/App/Controllers/PriceController.swift",
+      "name": "PriceController",
+      "path": "Sources/App/Controllers/PriceController.swift",
+      "kind": "http-route",
+      "signals": [
+        "http-route",
+        "vapor-route",
+        "mongodb-aggregation",
+        "mongodb-query"
+      ],
+      "risk": "high",
+      "testability": "medium",
+      "recommendedTestLevel": "integration",
+      "riskReductionScore": 9,
+      "maintenanceCost": 5,
+      "reasons": [
+        "HTTP route behavior",
+        "Vapor request handling",
+        "MongoDB query boundary",
+        "aggregation pipeline semantics"
+      ],
+      "existingTestPaths": []
+    },
+    {
+      "id": "Sources/App/Jobs/PriceHistoryJob.swift",
+      "name": "PriceHistoryJob",
+      "path": "Sources/App/Jobs/PriceHistoryJob.swift",
+      "kind": "data-access",
+      "signals": [
+        "data-access",
+        "mongodb-query",
+        "mongodb-write"
+      ],
+      "risk": "high",
+      "testability": "medium",
+      "recommendedTestLevel": "integration",
+      "riskReductionScore": 8,
+      "maintenanceCost": 5,
+      "reasons": [
+        "MongoDB data access",
+        "MongoDB query boundary",
+        "MongoDB write/update behavior"
+      ],
+      "existingTestPaths": []
+    },
+    {
+      "id": "Sources/App/Controllers/SearchController.swift",
+      "name": "SearchController",
+      "path": "Sources/App/Controllers/SearchController.swift",
+      "kind": "http-route",
+      "signals": [
+        "http-route",
+        "vapor-route",
+        "mongodb-dynamic-filter",
+        "mongodb-query",
+        "pagination-or-sort"
+      ],
+      "risk": "high",
+      "testability": "medium",
+      "recommendedTestLevel": "integration",
+      "riskReductionScore": 9,
+      "maintenanceCost": 5,
+      "reasons": [
+        "HTTP route behavior",
+        "Vapor request handling",
+        "MongoDB query boundary",
+        "dynamic BSON filter construction",
+        "pagination or sorting behavior"
+      ],
+      "existingTestPaths": []
+    }
+  ],
+  "skipped": [],
+  "risks": [
+    "PriceController has http route behavior, vapor request handling, mongodb query boundary, aggregation pipeline semantics and has no matching test file.",
+    "SearchController has http route behavior, vapor request handling, mongodb query boundary, dynamic bson filter construction, pagination or sorting behavior and has no matching test file.",
+    "PriceHistoryJob has mongodb data access, mongodb query boundary, mongodb write/update behavior and has no matching test file."
+  ]
+}

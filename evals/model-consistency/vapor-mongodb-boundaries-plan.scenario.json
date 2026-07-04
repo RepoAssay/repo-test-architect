@@ -1,0 +1,82 @@
+{
+  "schemaVersion": "model-consistency-scenario/v1",
+  "id": "vapor-mongodb-boundaries-plan",
+  "description": "Different model profiles should preserve Vapor MongoDB planning decisions, including aggregation, dynamic filter, pagination, and write/update boundary coverage.",
+  "sourceArtifact": {
+    "path": "evals/expected/vapor-mongodb-boundaries.audit.json",
+    "schemaVersion": "audit/v1"
+  },
+  "toolCall": {
+    "toolName": "generate_test_plan",
+    "arguments": {}
+  },
+  "lockedFields": [
+    {
+      "path": "summary.confidence",
+      "expected": "high",
+      "reason": "The checked-in Vapor MongoDB fixture has Swift Testing, XCTVapor, and a runnable swift test command."
+    },
+    {
+      "path": "summary.verificationCommand",
+      "expected": "swift test",
+      "reason": "SwiftPM Vapor fixtures should keep using swift test as the verification command."
+    },
+    {
+      "path": "summary.addTestCount",
+      "expected": 3,
+      "reason": "The aggregation route, search route, and write/update job should all remain add-test candidates."
+    },
+    {
+      "path": "items[0].id",
+      "expected": "add-test:Sources/App/Controllers/PriceController.swift",
+      "reason": "The aggregation route should remain the first high-priority integration candidate."
+    },
+    {
+      "path": "items[0].testLevel",
+      "expected": "integration",
+      "reason": "MongoDB-backed Vapor routes should be planned as integration coverage."
+    },
+    {
+      "path": "items[0].sourceSignals[2]",
+      "expected": "mongodb-aggregation",
+      "reason": "Aggregation pipeline semantics must stay visible to downstream model prompts."
+    },
+    {
+      "path": "items[1].id",
+      "expected": "add-test:Sources/App/Controllers/SearchController.swift",
+      "reason": "The dynamic search route should remain a first-class integration candidate."
+    },
+    {
+      "path": "items[1].sourceSignals[2]",
+      "expected": "mongodb-dynamic-filter",
+      "reason": "Dynamic BSON filter construction must stay visible to downstream model prompts."
+    },
+    {
+      "path": "items[1].sourceSignals[4]",
+      "expected": "pagination-or-sort",
+      "reason": "Pagination and sort behavior should stay pinned as a separate risk signal."
+    },
+    {
+      "path": "items[2].id",
+      "expected": "add-test:Sources/App/Jobs/PriceHistoryJob.swift",
+      "reason": "The write/update job should remain an integration candidate instead of being treated as generic worker orchestration."
+    },
+    {
+      "path": "items[2].sourceSignals[2]",
+      "expected": "mongodb-write",
+      "reason": "MongoDB create/update behavior must stay visible to downstream model prompts."
+    }
+  ],
+  "allowedVariations": [
+    "summary wording",
+    "MongoDB rationale wording",
+    "optional detail depth"
+  ],
+  "unexpectedVariations": [
+    "missing aggregation candidate",
+    "missing dynamic filter candidate",
+    "missing write/update candidate",
+    "downgraded route test level",
+    "lost SwiftPM verification command"
+  ]
+}

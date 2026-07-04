@@ -45,6 +45,11 @@
     "path": "examples/vapor-service-tests"
   },
   {
+    "name": "vapor-mongodb-boundaries",
+    "adapter": "swift",
+    "path": "examples/vapor-mongodb-boundaries"
+  },
+  {
     "name": "python-pytest-service",
     "adapter": "python",
     "path": "examples/python-pytest-service"
