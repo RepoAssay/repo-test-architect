@@ -24,7 +24,6 @@ This document tracks what can be shown publicly before the project is ready for 
 - package metadata still needs final repository, homepage, bugs, and keyword decisions
 - package manifest declares MIT and the repository includes the matching license file
 - native test generation is still deferred
-- real MCP SDK transport wrapper is wired for local stdio
 - remote MCP hosting is out of scope for the first release
 
 ## Before A Public Repository
