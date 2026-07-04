@@ -17,8 +17,8 @@ export class McpToolError extends Error {
 export function toJsonRpcErrorData(error) {
   if (error instanceof McpToolError) {
     return {
-      kind: error.kind,
-      ...error.details
+      ...error.details,
+      kind: error.kind
     };
   }
 
