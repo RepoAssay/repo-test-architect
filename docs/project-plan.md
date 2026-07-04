@@ -50,7 +50,7 @@ These are useful foundation items, but they should not block adapter work:
 - richer project boundary ownership for package, module, and app test-placement findings
 - better report formatting for human audit review
 - local stats and history tracking from saved audit artifacts
-- real MCP SDK transport wrapper after the dependency-free protocol surface stabilizes
+- keep the real MCP SDK transport wrapper aligned with the dependency-free tool surface
 - installed-package tarball smoke checks before a first public npm release
 - CI matrix coverage for Windows, macOS, and Linux once the public repo is configured
 
@@ -124,7 +124,7 @@ The later MCP server should wrap that API rather than duplicate audit, ranking, 
 
 `generate_selected_test` exists in the MCP tool surface but returns a structured deferred artifact until native generation has adapter-specific fixtures and repair-loop coverage.
 
-The dependency-free MCP tool surface lives in `src/mcp/tool-definitions.js` and is documented in `docs/mcp-tools.md`.
+The dependency-free MCP tool surface lives in `src/mcp/tool-definitions.js`, is mounted by `src/mcp/stdio.js`, and is documented in `docs/mcp-tools.md`.
 It defines tool names, input schemas, and dispatch behavior without committing to a specific transport package yet.
 
 The default deployment target is local stdio MCP because repository audits need local source, Git, and test execution context.

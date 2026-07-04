@@ -9,7 +9,7 @@ This document tracks what can be shown publicly before the project is ready for 
 - experimental Kotlin/JVM, Swift, and Python adapter spikes
 - polyglot project detection with unsupported-project reporting
 - local CLI examples
-- dependency-free MCP-shaped stdio and invoke scaffolding
+- local stdio MCP SDK server and dependency-free invoke harness
 - fixture-based regression tests
 - golden audit and plan snapshots
 - model-consistency locked-field scenarios
@@ -24,7 +24,7 @@ This document tracks what can be shown publicly before the project is ready for 
 - package metadata still needs final repository, homepage, bugs, and keyword decisions
 - package manifest declares MIT and the repository includes the matching license file
 - native test generation is still deferred
-- real MCP SDK transport wrapper is still pending
+- real MCP SDK transport wrapper is wired for local stdio
 - remote MCP hosting is out of scope for the first release
 
 ## Before A Public Repository

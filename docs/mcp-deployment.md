@@ -26,9 +26,10 @@ Benefits:
 - simple install story
 - works with private code by default
 
-Current scaffold:
+Current local transport:
 
 - `src/mcp/stdio.js`
+- `@modelcontextprotocol/sdk` stdio transport
 - `src/mcp/json-rpc.js`
 - `src/mcp/tool-definitions.js`
 

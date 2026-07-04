@@ -1,8 +1,8 @@
 # MCP Tool Surface
 
-The MCP server should expose a thin wrapper around `src/mcp/tool-definitions.js`.
+The MCP server exposes a thin wrapper around `src/mcp/tool-definitions.js`.
 
-The tool definitions are dependency-free so the deterministic contract can be tested before wiring a specific MCP SDK transport.
+The tool definitions remain dependency-free so the deterministic contract can be tested separately from the MCP SDK transport.
 
 Deployment direction:
 
@@ -90,18 +90,9 @@ Use `analyze_project_test_placement` when a client needs advisory placement find
 Use `collect_project_stats` when a client needs local artifact-derived counts and distributions for reporting or model-profile comparisons.
 `audit_repo` accepts an optional `adapterId` and optional repository-relative `changedPaths`. The current registered adapters are `javascript` and experimental `kotlin`.
 
-## Future Transport
+## SDK Transport
 
-When adding the real MCP server with an SDK:
-
-- keep tool names snake_case
-- keep input schemas compatible with `mcpTools`
-- call `callTool(name, args)` for execution
-- add transport tests separately from deterministic tool tests
-
-## Local JSON-RPC Scaffold
-
-`src/mcp/stdio.js` is a dependency-free JSON-RPC scaffold for local testing.
+`src/mcp/stdio.js` starts a local stdio MCP server with `@modelcontextprotocol/sdk`.
 It handles:
 
 - `initialize`
@@ -109,9 +100,15 @@ It handles:
 - `tools/list`
 - `tools/call`
 - single JSON-RPC request lines
-- batch JSON-RPC request lines
 
-It is intentionally small and should be replaced or wrapped by an official MCP SDK transport later.
+The SDK transport owns protocol parsing. The deterministic JSON-RPC harness in `src/mcp/json-rpc.js` keeps unit coverage for local batch and parser behavior, but batch request lines are not part of the stdio server smoke contract.
+
+Transport rules:
+
+- keep tool names snake_case
+- keep input schemas compatible with `mcpTools`
+- call `callTool(name, args)` for execution
+- add transport tests separately from deterministic tool tests
 
 ## Error Data
 
@@ -132,7 +129,7 @@ For example, `changedPaths: [""]` on `audit_repo` returns `kind: "invalid-argume
 
 ## Local Harness
 
-Until the real transport is added, use the local invoke harness:
+Use the local invoke harness for deterministic descriptor and dispatcher checks without starting the stdio transport:
 
 ```powershell
 npm run mcp:tools
@@ -163,9 +160,8 @@ node ./src/mcp/invoke.js call audit_repo "@./args.json"
 node ./src/mcp/invoke.js call summarize_project_audits "@./examples/mcp/polyglot-project-audits.args.json"
 node ./src/mcp/invoke.js call collect_project_stats "@./examples/mcp/polyglot-project-audits.args.json"
 node ./src/mcp/invoke.js call-envelope audit_repo "{\"repoRoot\":\"./examples/node-vitest-basic\"}"
-node ./src/mcp/stdio.js
 ```
 
-This validates the same tool descriptors and dispatcher the future MCP server should mount.
+This validates the same tool descriptors and dispatcher the MCP server mounts.
 Use `call-envelope` to inspect the MCP-style `content` response shape.
 Use `@./args.json` when a tool call needs a saved artifact, such as wrapping a `project-audits/v1` artifact as `{ "projectAudits": ... }` for project summary, ranking, planning, placement, or stats calls.

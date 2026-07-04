@@ -104,5 +104,8 @@
     "agent",
     "strategy"
   ],
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0"
+  }
 }

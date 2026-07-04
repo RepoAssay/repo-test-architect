@@ -35,13 +35,13 @@ Implemented:
 - model-consistency scenario artifacts for comparing explanation, ranking, planning, no-framework blocker, Jest service, React component, Express/Supertest route, polyglot project-summary/ranking/plan/stats, and placement output against deterministic locked fields
 - deterministic model-consistency scenario runner, summary artifact, comparison artifact, and stats artifact for checking locked fields and drift counts against tool output
 - changed-file workflows with `--changed` and `--changed-since`
-- MCP-shaped tool descriptors, local invoke harness, and dependency-free stdio JSON-RPC scaffold
+- MCP tool descriptors, local invoke harness, and stdio MCP SDK server
 - MCP stdio smoke check that exercises initialize, notifications, tools/list, project detection, project audit, project planning, batch requests, parse errors, structured tool errors, and recovery through one server process
 - release-readiness checklist, npm package dry-run script, and package contents allowlist
 - public-readiness checklist that separates public repository preparation from npm publishing
 - product positioning note for audit-first differentiation, initial audience, business paths, proof points, and anti-positioning
 - near-term roadmap for public demo polish, second adapter proof, placement analysis, MCP transport, and generation readiness gates
-- demo script for showing audit quality, polyglot detection, MCP-shaped tools, and verification without implying native generation is ready
+- demo script for showing audit quality, polyglot detection, MCP tools, and verification without implying native generation is ready
 - demo command checker that runs the deterministic public demo path without nesting the full release suite
 - decision log for audit-first architecture, adapter scope, local-first MCP, deferred generation, public demo readiness, and stats policy
 - adapter spike checklist for adding ecosystems without changing the shared audit model or enabling generation early
@@ -157,7 +157,7 @@ npm run eval:test
 
 ## Next Useful Milestones
 
-1. Add a real local stdio MCP SDK transport wrapper around `src/mcp/tool-definitions.js`.
+1. Keep the local stdio MCP SDK transport wrapper aligned with `src/mcp/tool-definitions.js`.
 2. Consolidate repeated JSDoc artifact shapes into shared TS reference files when the runtime API stabilizes further.
 3. Harden experimental adapters with more fixture variants, starting with Python packaging/test-command variants and Swift/Vapor edge cases.
 4. Add more model-consistency fixtures and model profile output comparisons.

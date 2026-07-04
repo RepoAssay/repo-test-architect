@@ -1,32 +1,45 @@
 #!/usr/bin/env node
-import readline from "node:readline";
-import { handleJsonRpcMessage } from "./json-rpc.js";
+import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import {
+  CallToolRequestSchema,
+  ListToolsRequestSchema,
+  McpError
+} from "@modelcontextprotocol/sdk/types.js";
+import { toJsonRpcErrorData } from "./errors.js";
+import { toMcpToolResult } from "./responses.js";
+import { callTool, mcpTools } from "./tool-definitions.js";
 
-const rl = readline.createInterface({
-  input: process.stdin,
-  crlfDelay: Infinity
-});
+const TOOL_ERROR_CODE = -32000;
 
-rl.on("line", (line) => {
-  if (!line.trim()) return;
-
-  const response = handleLine(line);
-  if (response) {
-    process.stdout.write(`${JSON.stringify(response)}\n`);
+const server = new Server({
+  name: "repo-test-architect",
+  version: "0.1.0"
+}, {
+  capabilities: {
+    tools: {}
   }
 });
 
-function handleLine(line) {
+server.setRequestHandler(ListToolsRequestSchema, () => ({
+  tools: mcpTools
+}));
+
+server.setRequestHandler(CallToolRequestSchema, (request) => {
   try {
-    return handleJsonRpcMessage(JSON.parse(line));
+    return toMcpToolResult(callTool(request.params.name, request.params.arguments ?? {}));
   } catch (error) {
-    return {
-      jsonrpc: "2.0",
-      id: null,
-      error: {
-        code: -32700,
-        message: `Parse error: ${error.message}`
-      }
-    };
+    throw toMcpError(error);
   }
+});
+
+const transport = new StdioServerTransport();
+await server.connect(transport);
+
+function toMcpError(error) {
+  return new McpError(
+    TOOL_ERROR_CODE,
+    error instanceof Error ? error.message : String(error),
+    toJsonRpcErrorData(error)
+  );
 }

@@ -135,7 +135,7 @@ describe("docs links", () => {
     assert.ok(publicReadiness.includes("package metadata still needs final repository, homepage, bugs, and keyword decisions"));
     assert.ok(publicReadiness.includes("package manifest declares MIT and the repository includes the matching license file"));
     assert.ok(publicReadiness.includes("native test generation is still deferred"));
-    assert.ok(publicReadiness.includes("real MCP SDK transport wrapper is still pending"));
+    assert.ok(publicReadiness.includes("real MCP SDK transport wrapper is wired for local stdio"));
     assert.ok(publicReadiness.includes("verify the copyright owner before publishing"));
     assert.ok(publicReadiness.includes("Avoid presenting native test generation as available"));
     assert.ok(releaseChecklist.includes("add package metadata before publishing"));
@@ -226,6 +226,7 @@ describe("docs links", () => {
     assert.ok(decisionLog.includes("JavaScript And TypeScript First"));
     assert.ok(decisionLog.includes("Polyglot Detection Before Universal Adapters"));
     assert.ok(decisionLog.includes("Local Stdio MCP First"));
+    assert.ok(decisionLog.includes("SDK Stdio Wrapper Over Deterministic Tools"));
     assert.ok(decisionLog.includes("Native Generation Deferred"));
     assert.ok(decisionLog.includes("Public Demo Before Package Release"));
     assert.ok(decisionLog.includes("Local-First Stats Before Telemetry"));

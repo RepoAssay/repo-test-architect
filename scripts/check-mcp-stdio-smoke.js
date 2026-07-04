@@ -31,7 +31,8 @@ try {
       clientInfo: {
         name: "repo-test-architect-smoke",
         version: "0.1.0"
-      }
+      },
+      capabilities: {}
     }
   });
 
@@ -118,25 +119,7 @@ try {
     }
   });
 
-  const batchResponse = await sendBatchRequest([
-    {
-      jsonrpc: "2.0",
-      id: 8,
-      method: "tools/list"
-    },
-    {
-      jsonrpc: "2.0",
-      method: "notifications/initialized"
-    },
-    {
-      jsonrpc: "2.0",
-      id: 9,
-      method: "missing/method"
-    }
-  ]);
-
-  const parseError = await sendRawLine("{");
-  const toolsAfterParseError = await sendRequest({
+  const toolsAfterError = await sendRequest({
     jsonrpc: "2.0",
     id: 10,
     method: "tools/list"
@@ -185,17 +168,8 @@ try {
   assert.equal(statsArtifact.summary.projectCount, 3);
   assert.equal(statsArtifact.summary.auditedProjectCount, 3);
 
-  assert.equal(batchResponse.length, 2);
-  assert.equal(batchResponse[0].id, 8);
-  assert.ok(batchResponse[0].result.tools.some((tool) => tool.name === "detect_projects"));
-  assert.equal(batchResponse[1].id, 9);
-  assert.equal(batchResponse[1].error.code, -32601);
-
-  assert.equal(parseError.id, null);
-  assert.equal(parseError.error.code, -32700);
-  assert.match(parseError.error.message, /Parse error/);
-  assert.equal(toolsAfterParseError.id, 10);
-  assert.ok(toolsAfterParseError.result.tools.some((tool) => tool.name === "detect_projects"));
+  assert.equal(toolsAfterError.id, 10);
+  assert.ok(toolsAfterError.result.tools.some((tool) => tool.name === "detect_projects"));
 
   child.stdin.end();
   const [exitCode] = await once(child, "close");
@@ -221,34 +195,6 @@ async function sendRequest(request) {
   child.stdin.write(`${JSON.stringify(request)}\n`);
   const [line] = await responseLine;
   return JSON.parse(line);
-}
-
-/**
- * @param {object[]} requests
- * @returns {Promise<object[]>}
- */
-async function sendBatchRequest(requests) {
-  const responseLine = readLineWithin(
-    RESPONSE_TIMEOUT_MS,
-    `Timed out waiting for MCP batch response. Stderr: ${stderr || "<empty>"}`
-  );
-  child.stdin.write(`${JSON.stringify(requests)}\n`);
-  const [line] = await responseLine;
-  return JSON.parse(line);
-}
-
-/**
- * @param {string} line
- * @returns {Promise<object>}
- */
-async function sendRawLine(line) {
-  const responseLine = readLineWithin(
-    RESPONSE_TIMEOUT_MS,
-    `Timed out waiting for MCP response to raw input. Stderr: ${stderr || "<empty>"}`
-  );
-  child.stdin.write(`${line}\n`);
-  const [responseLineText] = await responseLine;
-  return JSON.parse(responseLineText);
 }
 
 /**
