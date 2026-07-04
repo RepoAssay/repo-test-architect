@@ -36,7 +36,8 @@ Implemented:
 - deterministic model-consistency scenario runner, summary artifact, comparison artifact, and stats artifact for checking locked fields and drift counts against tool output
 - changed-file workflows with `--changed` and `--changed-since`
 - MCP tool descriptors, local invoke harness, and stdio MCP SDK server
-- MCP stdio smoke check that exercises initialize, notifications, tools/list, project detection, project audit, project planning, batch requests, parse errors, structured tool errors, and recovery through one server process
+- MCP stdio smoke check that exercises initialize, notifications, tools/list, project detection, project audit, project planning, structured tool errors, and recovery through one server process
+- deterministic JSON-RPC harness tests that keep parser, batch request, and local dispatcher behavior covered separately from the SDK transport
 - release-readiness checklist, npm package dry-run script, and package contents allowlist
 - public-readiness checklist that separates public repository preparation from npm publishing
 - product positioning note for audit-first differentiation, initial audience, business paths, proof points, and anti-positioning
@@ -46,7 +47,7 @@ Implemented:
 - decision log for audit-first architecture, adapter scope, local-first MCP, deferred generation, public demo readiness, and stats policy
 - adapter spike checklist for adding ecosystems without changing the shared audit model or enabling generation early
 - package contents dry-run checker for required runtime files and publish allowlist hygiene
-- package binary entrypoint checker for CLI, MCP invoke, and stdio JSON-RPC boot paths
+- package binary entrypoint checker for CLI, MCP invoke, and stdio MCP boot paths
 - installed-package tarball smoke checker for published CLI and MCP binary boot paths
 - release-readiness check runner for tests, evals, model consistency, demo path, smoke, package, bin, and installed-package checks
 - GitHub Actions CI workflow that runs the release-readiness check on Ubuntu, macOS, and Windows for pushes and pull requests
@@ -157,10 +158,9 @@ npm run eval:test
 
 ## Next Useful Milestones
 
-1. Keep the local stdio MCP SDK transport wrapper aligned with `src/mcp/tool-definitions.js`.
-2. Consolidate repeated JSDoc artifact shapes into shared TS reference files when the runtime API stabilizes further.
-3. Harden experimental adapters with more fixture variants, starting with Python packaging/test-command variants and Swift/Vapor edge cases.
-4. Add more model-consistency fixtures and model profile output comparisons.
-5. Expand package-aware test placement analysis from explicit path escapes into richer adapter-owned package boundary signals.
-6. Add local-first stats artifacts for audit coverage, candidate/risk counts, model-consistency drift, and later repair-loop trends.
-7. Add native test generation only after adapter-specific generation rules and repair-loop tests exist.
+1. Consolidate repeated JSDoc artifact shapes into shared TS reference files when the runtime API stabilizes further.
+2. Harden experimental adapters with more fixture variants, starting with Python packaging/test-command variants and Swift/Vapor edge cases.
+3. Add more model-consistency fixtures and model profile output comparisons.
+4. Expand package-aware test placement analysis from explicit path escapes into richer adapter-owned package boundary signals.
+5. Add local-first stats artifacts for audit coverage, candidate/risk counts, model-consistency drift, and later repair-loop trends.
+6. Add native test generation only after adapter-specific generation rules and repair-loop tests exist.
