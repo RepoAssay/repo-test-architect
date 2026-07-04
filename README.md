@@ -234,6 +234,7 @@ examples/
   express-supertest/
   react-testing-library/
   kotlin-junit-basic/
+  kotlin-gradle-groovy-junit/
   kotlin-maven-junit/
   python-pytest-service/
   python-uv-pytest/

@@ -1,0 +1,77 @@
+{
+  "schemaVersion": "plan/v1",
+  "summary": {
+    "confidence": "high",
+    "verificationCommand": "gradle test",
+    "blockerCount": 0,
+    "addTestCount": 1,
+    "extendTestCount": 1,
+    "deferredCount": 1
+  },
+  "blockers": [],
+  "items": [
+    {
+      "id": "extend-test:src/main/java/com/example/shipping/ShipmentValidator.java",
+      "action": "extend-test",
+      "targetId": "src/main/java/com/example/shipping/ShipmentValidator.java",
+      "target": "ShipmentValidator",
+      "path": "src/main/java/com/example/shipping/ShipmentValidator.java",
+      "testLevel": "unit",
+      "priority": 7,
+      "riskReductionScore": 9,
+      "maintenanceCost": 2,
+      "rationale": [
+        "Pure transformation logic",
+        "edge-case surface",
+        "Existing test file detected; review missing edge cases"
+      ],
+      "sourceSignals": [
+        "pure-logic",
+        "edge-case-surface",
+        "matching-test"
+      ],
+      "existingTestPaths": [
+        "src/test/java/com/example/shipping/ShipmentValidatorTest.java"
+      ]
+    },
+    {
+      "id": "add-test:src/main/java/com/example/shipping/WeightFormatter.java",
+      "action": "add-test",
+      "targetId": "src/main/java/com/example/shipping/WeightFormatter.java",
+      "target": "WeightFormatter",
+      "path": "src/main/java/com/example/shipping/WeightFormatter.java",
+      "testLevel": "unit",
+      "priority": 7,
+      "riskReductionScore": 9,
+      "maintenanceCost": 2,
+      "rationale": [
+        "Pure transformation logic",
+        "edge-case surface"
+      ],
+      "sourceSignals": [
+        "pure-logic",
+        "edge-case-surface"
+      ],
+      "existingTestPaths": []
+    },
+    {
+      "id": "defer:src/main/java/com/example/shipping/ShipmentRequest.java",
+      "action": "defer",
+      "targetId": "src/main/java/com/example/shipping/ShipmentRequest.java",
+      "target": "ShipmentRequest",
+      "path": "src/main/java/com/example/shipping/ShipmentRequest.java",
+      "testLevel": "none",
+      "priority": -2,
+      "riskReductionScore": 2,
+      "maintenanceCost": 4,
+      "rationale": [
+        "DTO-only models are usually better covered through boundary parsing or mapper tests.",
+        "Cover through parser, mapper, repository, or route integration tests that consume the model."
+      ],
+      "sourceSignals": [
+        "dto-only"
+      ],
+      "existingTestPaths": []
+    }
+  ]
+}

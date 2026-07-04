@@ -30,6 +30,11 @@
     "path": "examples/kotlin-junit-basic"
   },
   {
+    "name": "kotlin-gradle-groovy-junit",
+    "adapter": "kotlin",
+    "path": "examples/kotlin-gradle-groovy-junit"
+  },
+  {
     "name": "kotlin-maven-junit",
     "adapter": "kotlin",
     "path": "examples/kotlin-maven-junit"

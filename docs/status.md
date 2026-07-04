@@ -68,6 +68,7 @@ Implemented:
 - `express-supertest`
 - `react-testing-library`
 - `kotlin-junit-basic`
+- `kotlin-gradle-groovy-junit`
 - `kotlin-maven-junit`
 - `swift-spm-xctest`
 - `swift-spm-swift-testing`
