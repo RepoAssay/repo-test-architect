@@ -1,0 +1,67 @@
+{
+  "schemaVersion": "model-consistency-scenario/v1",
+  "id": "polyglot-project-findings",
+  "description": "Different model profiles should preserve top project findings, blocker visibility, and high-value missing coverage in a polyglot repository.",
+  "sourceArtifact": {
+    "path": "examples/mcp/polyglot-project-audits.args.json",
+    "schemaVersion": "project-audits/v1",
+    "argumentName": "projectAudits"
+  },
+  "toolCall": {
+    "toolName": "collect_project_findings",
+    "arguments": {}
+  },
+  "lockedFields": [
+    {
+      "path": "summary.auditCoverage",
+      "expected": "complete",
+      "reason": "The top findings report should not downgrade coverage when all detected projects are audited."
+    },
+    {
+      "path": "summary.findingCount",
+      "expected": 5,
+      "reason": "The polyglot fixture should keep two blocker findings and three missing-coverage findings visible."
+    },
+    {
+      "path": "summary.blockedProjectCount",
+      "expected": 2,
+      "reason": "The low-confidence Python service should keep both blocker reasons visible in top findings."
+    },
+    {
+      "path": "findings[0].category",
+      "expected": "blocked-project",
+      "reason": "Blocked projects should outrank target recommendations when the audit cannot fully trust a project."
+    },
+    {
+      "path": "findings[0].projectRoot",
+      "expected": "services/api",
+      "reason": "The blocker should stay attached to the Python service project root."
+    },
+    {
+      "path": "findings[2].category",
+      "expected": "missing-coverage",
+      "reason": "High-value untested targets should remain distinct from blocked-project findings."
+    },
+    {
+      "path": "findings[2].target",
+      "expected": "CheckoutCalculator",
+      "reason": "The Kotlin checkout target is the highest-priority missing coverage recommendation."
+    },
+    {
+      "path": "findings[4].target",
+      "expected": "sessionClient",
+      "reason": "The web service-boundary recommendation should remain visible after higher-priority findings."
+    }
+  ],
+  "allowedVariations": [
+    "additional explanatory evidence",
+    "summary wording",
+    "optional detail depth"
+  ],
+  "unexpectedVariations": [
+    "blocked projects hidden from top findings",
+    "missing high-value target recommendations",
+    "coverage findings merged with placement findings",
+    "different top-finding priority order"
+  ]
+}
