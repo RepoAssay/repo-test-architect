@@ -30,6 +30,11 @@
     "path": "examples/kotlin-junit-basic"
   },
   {
+    "name": "kotlin-maven-junit",
+    "adapter": "kotlin",
+    "path": "examples/kotlin-maven-junit"
+  },
+  {
     "name": "swift-spm-xctest",
     "adapter": "swift",
     "path": "examples/swift-spm-xctest"

@@ -16,7 +16,7 @@ describe("eval summary", () => {
     }
 
     assert.match(output, /PASS mcp-tools\.json/);
-    assert.match(output, /37 snapshot\(s\) matched/);
-    assert.match(output, /18 fixture\(s\) matched audit and plan snapshots/);
+    assert.match(output, /39 snapshot\(s\) matched/);
+    assert.match(output, /19 fixture\(s\) matched audit and plan snapshots/);
   });
 });

@@ -1,0 +1,66 @@
+{
+  "schemaVersion": "model-consistency-scenario/v1",
+  "id": "kotlin-maven-junit-plan",
+  "description": "Different model profiles should preserve Maven/JUnit JVM planning decisions for covered validators, untested formatters, and DTO deferral.",
+  "sourceArtifact": {
+    "path": "evals/expected/kotlin-maven-junit.audit.json",
+    "schemaVersion": "audit/v1"
+  },
+  "toolCall": {
+    "toolName": "generate_test_plan",
+    "arguments": {}
+  },
+  "lockedFields": [
+    {
+      "path": "summary.confidence",
+      "expected": "high",
+      "reason": "The Maven fixture has JUnit tests, src/test/java conventions, and a runnable mvn test command."
+    },
+    {
+      "path": "summary.verificationCommand",
+      "expected": "mvn test",
+      "reason": "Maven-backed JVM fixtures should keep using mvn test as the verification command."
+    },
+    {
+      "path": "summary.extendTestCount",
+      "expected": 1,
+      "reason": "The covered validator should remain an extend-test candidate."
+    },
+    {
+      "path": "summary.addTestCount",
+      "expected": 1,
+      "reason": "The untested formatter should remain an add-test candidate."
+    },
+    {
+      "path": "items[0].id",
+      "expected": "extend-test:src/main/java/com/example/invoice/InvoiceValidator.java",
+      "reason": "The covered validator should remain the first high-priority candidate."
+    },
+    {
+      "path": "items[0].sourceSignals[2]",
+      "expected": "matching-test",
+      "reason": "Existing JUnit coverage should stay visible to downstream model prompts."
+    },
+    {
+      "path": "items[1].id",
+      "expected": "add-test:src/main/java/com/example/invoice/MoneyFormatter.java",
+      "reason": "The untested formatter should remain a direct unit-test candidate."
+    },
+    {
+      "path": "items[2].action",
+      "expected": "defer",
+      "reason": "The DTO record should remain deferred instead of receiving a direct low-value test."
+    }
+  ],
+  "allowedVariations": [
+    "summary wording",
+    "optional detail depth",
+    "Maven rationale wording"
+  ],
+  "unexpectedVariations": [
+    "missing mvn test command",
+    "missing validator extension candidate",
+    "missing formatter add-test candidate",
+    "DTO direct-test recommendation"
+  ]
+}
