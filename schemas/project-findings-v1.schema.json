@@ -1,0 +1,121 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "project-findings-v1.schema.json",
+  "title": "Project Findings Artifact",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "root", "summary", "findings", "unsupportedProjects"],
+  "properties": {
+    "schemaVersion": { "const": "project-findings/v1" },
+    "root": { "type": "string", "minLength": 1 },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "projectCount",
+        "auditedProjectCount",
+        "unsupportedProjectCount",
+        "auditCoverage",
+        "unsupportedReasons",
+        "findingCount",
+        "displayedFindingCount",
+        "maxFindings",
+        "highSeverityCount",
+        "placementFindingCount",
+        "blockedProjectCount"
+      ],
+      "properties": {
+        "projectCount": { "type": "integer", "minimum": 0 },
+        "auditedProjectCount": { "type": "integer", "minimum": 0 },
+        "unsupportedProjectCount": { "type": "integer", "minimum": 0 },
+        "auditCoverage": { "enum": ["complete", "partial", "none"] },
+        "unsupportedReasons": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        },
+        "findingCount": { "type": "integer", "minimum": 0 },
+        "displayedFindingCount": { "type": "integer", "minimum": 0 },
+        "maxFindings": { "type": "integer", "minimum": 1 },
+        "highSeverityCount": { "type": "integer", "minimum": 0 },
+        "placementFindingCount": { "type": "integer", "minimum": 0 },
+        "blockedProjectCount": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "category",
+          "severity",
+          "priority",
+          "projectId",
+          "projectRoot",
+          "title",
+          "rationale",
+          "evidence",
+          "existingTestPaths"
+        ],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "category": {
+            "enum": [
+              "missing-coverage",
+              "weak-existing-coverage",
+              "misplaced-coverage",
+              "low-value-direct-test",
+              "blocked-project"
+            ]
+          },
+          "severity": { "enum": ["high", "medium", "low"] },
+          "priority": { "type": "integer" },
+          "projectId": { "type": "string", "minLength": 1 },
+          "projectRoot": { "type": "string", "minLength": 1 },
+          "adapterId": { "type": "string", "minLength": 1 },
+          "targetId": { "type": "string", "minLength": 1 },
+          "target": { "type": "string", "minLength": 1 },
+          "path": { "type": "string", "minLength": 1 },
+          "kind": { "type": "string", "minLength": 1 },
+          "testLevel": { "enum": ["unit", "integration", "component", "ui", "none"] },
+          "title": { "type": "string", "minLength": 1 },
+          "testFile": { "type": "string", "minLength": 1 },
+          "currentOwner": { "type": "string", "minLength": 1 },
+          "suggestedOwner": { "type": "string", "minLength": 1 },
+          "action": { "enum": ["move", "split", "keep"] },
+          "rationale": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "evidence": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "existingTestPaths": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    },
+    "unsupportedProjects": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["projectId", "projectRoot", "reason", "ecosystems", "languages", "adapterMatches", "supportStatusReason"],
+        "properties": {
+          "projectId": { "type": "string", "minLength": 1 },
+          "projectRoot": { "type": "string", "minLength": 1 },
+          "reason": { "type": "string", "minLength": 1 },
+          "ecosystems": { "type": "array" },
+          "languages": { "type": "array" },
+          "adapterMatches": { "type": "array" },
+          "supportStatusReason": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  }
+}

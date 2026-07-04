@@ -268,6 +268,36 @@ describe("CLI", () => {
     assert.deepEqual(plan.items, []);
   });
 
+  it("emits project findings in markdown", () => {
+    const output = execFileSync(process.execPath, [cliPath, "findings-projects", "examples/polyglot-workspace"], {
+      encoding: "utf8"
+    });
+
+    assert.match(output, /^# Project Findings/);
+    assert.match(output, /Audit coverage: complete/);
+    assert.match(output, /Findings: 5 of 5/);
+    assert.match(output, /services\/api: blocked-project, high, priority 9/);
+    assert.match(output, /apps\/android: missing-coverage, high, priority 7: CheckoutCalculator/);
+  });
+
+  it("emits project findings as JSON", () => {
+    const output = execFileSync(
+      process.execPath,
+      [cliPath, "findings-projects", "examples/polyglot-workspace", "--format=json"],
+      {
+        encoding: "utf8"
+      }
+    );
+    const findings = JSON.parse(output);
+
+    assert.equal(findings.schemaVersion, "project-findings/v1");
+    assert.equal(findings.summary.findingCount, 5);
+    assert.deepEqual(
+      findings.findings.map((finding) => finding.category),
+      ["blocked-project", "blocked-project", "missing-coverage", "missing-coverage", "missing-coverage"]
+    );
+  });
+
   it("emits project test placement findings in markdown", () => {
     const output = execFileSync(process.execPath, [cliPath, "placement-projects", "examples/node-vitest-basic"], {
       encoding: "utf8"

@@ -122,12 +122,18 @@ describe("docs links", () => {
 
   it("documents public readiness separately from npm publishing", () => {
     const readme = fs.readFileSync("README.md", "utf8");
+    const alphaReadiness = fs.readFileSync("docs/alpha-readiness.md", "utf8");
     const packageJson = JSON.parse(fs.readFileSync("package.json", "utf8"));
     const publicReadiness = fs.readFileSync("docs/public-readiness.md", "utf8");
     const releaseChecklist = fs.readFileSync("docs/release-checklist.md", "utf8");
     const status = fs.readFileSync("docs/status.md", "utf8");
 
     assert.ok(readme.includes("[Public readiness](docs/public-readiness.md)"));
+    assert.ok(readme.includes("[Alpha readiness](docs/alpha-readiness.md)"));
+    assert.ok(alphaReadiness.includes("test architecture audit"));
+    assert.ok(alphaReadiness.includes("Which important behavior lacks meaningful test coverage?"));
+    assert.ok(alphaReadiness.includes("Which tests appear misplaced for the project or package structure?"));
+    assert.ok(alphaReadiness.includes("native test generation"));
     assert.ok(publicReadiness.includes("Ready To Show"));
     assert.ok(publicReadiness.includes("Not Ready To Publish"));
     assert.ok(publicReadiness.includes("package remains `private: true`"));
@@ -135,6 +141,7 @@ describe("docs links", () => {
     assert.ok(publicReadiness.includes("package metadata still needs final repository, homepage, bugs, and keyword decisions"));
     assert.ok(publicReadiness.includes("package manifest declares MIT and the repository includes the matching license file"));
     assert.ok(publicReadiness.includes("native test generation is still deferred"));
+    assert.ok(publicReadiness.includes("alpha-readiness acceptance gates"));
     assert.ok(publicReadiness.includes("local stdio MCP SDK server and dependency-free invoke harness"));
     assert.ok(!publicReadiness.includes("real MCP SDK transport wrapper is still pending"));
     assert.ok(publicReadiness.includes("verify the copyright owner before publishing"));
@@ -148,6 +155,7 @@ describe("docs links", () => {
     }
 
     assert.ok(status.includes("public-readiness checklist"));
+    assert.ok(status.includes("alpha-readiness checklist"));
   });
 
   it("documents product positioning without overstating generation or acquisition", () => {
@@ -160,6 +168,8 @@ describe("docs links", () => {
     assert.ok(positioning.includes("audit-first test strategy tool"));
     assert.ok(positioning.includes("not another generic AI test writer"));
     assert.ok(positioning.includes("The defensible value is the audit graph and strategy layer"));
+    assert.ok(positioning.includes("whether existing tests are valuable"));
+    assert.ok(positioning.includes("whether tests are in the right project layer"));
     assert.ok(positioning.includes("Acquisition should be treated as optional upside"));
     assert.ok(positioning.includes("local-first MCP install path"));
     assert.ok(positioning.includes("Avoid claims that the tool:"));
@@ -176,16 +186,19 @@ describe("docs links", () => {
     const status = fs.readFileSync("docs/status.md", "utf8");
 
     assert.ok(readme.includes("[Near-term roadmap](docs/near-term-roadmap.md)"));
+    assert.ok(roadmap.includes("Alpha Readiness"));
     assert.ok(roadmap.includes("public-demo ready, but not package-release ready"));
-    assert.ok(roadmap.includes("Milestone 1: Public Demo Polish"));
-    assert.ok(roadmap.includes("Milestone 2: Adapter Spike Hardening"));
+    assert.ok(roadmap.includes("Milestone 1: Alpha Test Architecture Audit"));
+    assert.ok(roadmap.includes("one concise repo-level summary can show top findings with evidence"));
+    assert.ok(roadmap.includes("Milestone 2: Public Demo Polish"));
+    assert.ok(roadmap.includes("Milestone 3: Adapter Spike Hardening"));
     assert.ok(roadmap.includes("Kotlin/JVM with Gradle/Maven and JUnit"));
     assert.ok(roadmap.includes("Swift Package Manager with XCTest, Swift Testing, Quick/Nimble, and SnapshotTesting signals"));
     assert.ok(roadmap.includes("Python package layouts, pytest/unittest detection, uv/Poetry/Hatch command markers, and no-tests-yet blocker behavior"));
-    assert.ok(roadmap.includes("Milestone 3: Placement And Boundary Analysis"));
+    assert.ok(roadmap.includes("Milestone 4: Placement And Boundary Analysis"));
     assert.ok(roadmap.includes("app-level tests that belong in package-level test targets"));
-    assert.ok(roadmap.includes("Milestone 4: Local MCP Transport"));
-    assert.ok(roadmap.includes("Milestone 5: Generation Readiness Gate"));
+    assert.ok(roadmap.includes("Milestone 5: Local MCP Transport"));
+    assert.ok(roadmap.includes("Milestone 6: Generation Readiness Gate"));
     assert.ok(roadmap.includes("Native generation should remain off until this gate is met"));
     assert.ok(roadmap.includes("npm run release:check"));
     assert.ok(status.includes("near-term roadmap"));
@@ -207,9 +220,11 @@ describe("docs links", () => {
     assert.ok(demoScript.includes("npm run plan:kotlin-fixture"));
     assert.ok(demoScript.includes("npm run detect:example"));
     assert.ok(demoScript.includes("npm run audit-projects:example"));
+    assert.ok(demoScript.includes("npm run findings-projects:example"));
     assert.ok(demoScript.includes("npm run stats-projects:example"));
     assert.ok(demoScript.includes("npm run mcp:tools"));
     assert.ok(demoScript.includes("npm run mcp:audit:kotlin-fixture"));
+    assert.ok(demoScript.includes("npm run mcp:findings-projects:example"));
     assert.ok(demoScript.includes("npm run demo:check"));
     assert.ok(demoScript.includes("npm run model-consistency:check"));
     assert.ok(demoScript.includes("npm run model-consistency:compare:profiles"));

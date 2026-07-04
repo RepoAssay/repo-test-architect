@@ -14,6 +14,7 @@ export const demoChecks = [
   "summarize-projects:example",
   "rank-projects:example",
   "plan-projects:example",
+  "findings-projects:example",
   "placement-projects:split-example:json",
   "stats-projects:example",
   "mcp:tools",
@@ -21,6 +22,7 @@ export const demoChecks = [
   "mcp:audit:kotlin-fixture",
   "mcp:rank-projects:example",
   "mcp:plan-projects:example",
+  "mcp:findings-projects:example",
   "mcp:placement-split:example",
   "model-consistency:check",
   "model-consistency:compare:profiles"

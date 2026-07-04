@@ -4,6 +4,7 @@ import { auditDetectedProjects } from "./project-auditor.js";
 import { summarizeProjectAudits } from "./project-audit-summary.js";
 import { detectProjects, getProjectDetectionRules as readProjectDetectionRules } from "./project-detector.js";
 import { rankProjectTestCandidates } from "./project-candidate-ranking.js";
+import { createProjectFindings } from "./project-findings.js";
 import { analyzeProjectTestPlacement } from "./project-test-placement-analysis.js";
 import { createProjectTestPlan } from "./project-test-plan.js";
 import { collectProjectStats } from "./project-stats.js";
@@ -21,6 +22,7 @@ export { validateProjectAudits } from "./project-audits-validation.js";
  * @typedef {import("./project-auditor.js").ProjectAudits} ProjectAudits
  * @typedef {import("./project-audit-summary.js").ProjectAuditSummary} ProjectAuditSummary
  * @typedef {import("./project-candidate-ranking.js").ProjectCandidateRanking} ProjectCandidateRanking
+ * @typedef {import("./project-findings.js").ProjectFindings} ProjectFindings
  * @typedef {import("./project-test-plan.js").ProjectTestPlan} ProjectTestPlan
  * @typedef {import("./project-stats.js").ProjectStats} ProjectStats
  * @typedef {import("./test-placement-findings.js").TestPlacementFindings} TestPlacementFindings
@@ -106,6 +108,14 @@ export function rankRepoProjectCandidates(projectAudits) {
  */
 export function generateRepoProjectTestPlan(projectAudits) {
   return createProjectTestPlan(projectAudits);
+}
+
+/**
+ * @param {ProjectAudits} projectAudits
+ * @returns {ProjectFindings}
+ */
+export function collectRepoProjectFindings(projectAudits) {
+  return createProjectFindings(projectAudits);
 }
 
 /**

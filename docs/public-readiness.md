@@ -16,6 +16,7 @@ This document tracks what can be shown publicly before the project is ready for 
 - package, binary, smoke, eval, and release-readiness checks
 - contribution, support, and security policies
 - product positioning for audit-first differentiation and plausible business paths
+- alpha-readiness acceptance gates for local test architecture audit
 
 ## Not Ready To Publish
 
@@ -44,6 +45,7 @@ The first demo should focus on audit quality, not generated test count:
 - show a ranked test plan
 - show project-level stats
 - show remaining risks and blockers
+- show whether coverage appears valuable, weak, misplaced, or low-value
 
 Avoid presenting native test generation as available until adapter-specific generation and repair-loop coverage exist.
 

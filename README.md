@@ -68,6 +68,8 @@ npm run rank-projects:example
 npm run rank-projects:example:json
 npm run plan-projects:example
 npm run plan-projects:example:json
+npm run findings-projects:example
+npm run findings-projects:example:json
 npm run placement-projects:example
 npm run placement-projects:example:json
 npm run placement-projects:split-example:json
@@ -82,6 +84,7 @@ node ./src/cli/index.js audit-projects ./examples/polyglot-workspace --format js
 node ./src/cli/index.js summarize-projects --from-project-audits ./project-audits.json --format json
 node ./src/cli/index.js rank-projects --from-project-audits ./project-audits.json --format json
 node ./src/cli/index.js plan-projects --from-project-audits ./project-audits.json --format json
+node ./src/cli/index.js findings-projects --from-project-audits ./project-audits.json --format json
 node ./src/cli/index.js placement-projects --from-project-audits ./project-audits.json --format json
 node ./src/cli/index.js stats-projects --from-project-audits ./project-audits.json --format json
 ```
@@ -141,6 +144,7 @@ npm run mcp:audit-projects:example
 npm run mcp:summarize-projects:example
 npm run mcp:rank-projects:example
 npm run mcp:plan-projects:example
+npm run mcp:findings-projects:example
 npm run mcp:placement-projects:example
 npm run mcp:placement-split:example
 npm run mcp:stats-projects:example
@@ -268,6 +272,7 @@ Important runtime surfaces:
 - [Project plan](docs/project-plan.md)
 - [Project status](docs/status.md)
 - [Public readiness](docs/public-readiness.md)
+- [Alpha readiness](docs/alpha-readiness.md)
 - [Product positioning](docs/product-positioning.md)
 - [Near-term roadmap](docs/near-term-roadmap.md)
 - [Demo script](docs/demo-script.md)

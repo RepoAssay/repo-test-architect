@@ -21,6 +21,7 @@ Descriptor schema:
 - `summarize_project_audits`
 - `rank_project_candidates`
 - `generate_project_test_plan`
+- `collect_project_findings`
 - `analyze_project_test_placement`
 - `collect_project_stats`
 - `audit_repo`
@@ -44,6 +45,7 @@ The model should consume these artifacts directly:
 - compact repo-level audit coverage, unsupported reasons, and project audit counts come from `summarize_project_audits`
 - project-aware candidate ordering comes from `rank_project_candidates`
 - project-aware test planning comes from `generate_project_test_plan`
+- concise top test architecture findings come from `collect_project_findings`
 - project-aware test placement findings come from `analyze_project_test_placement`
 - local deterministic project stats come from `collect_project_stats`
 - audit facts come from `audit_repo` or `get_audit_graph`
@@ -69,6 +71,7 @@ Each tool descriptor includes `outputArtifact` metadata:
 | `summarize_project_audits` | `project-audit-summary/v1` |
 | `rank_project_candidates` | `project-candidate-ranking/v1` |
 | `generate_project_test_plan` | `project-test-plan/v1` |
+| `collect_project_findings` | `project-findings/v1` |
 | `analyze_project_test_placement` | `test-placement-findings/v1` |
 | `collect_project_stats` | `project-stats/v1` |
 | `audit_repo` | `audit/v1` |
@@ -86,6 +89,7 @@ Use `audit_projects` to audit detected supported project roots while reporting u
 Use `summarize_project_audits` when a client needs compact audit coverage status, unsupported reasons, and counts before asking for detailed per-project audit data.
 Use `rank_project_candidates` when a client needs ordered candidates across audited project roots while preserving project identity.
 Use `generate_project_test_plan` when a client needs project-aware plan items before selecting future generation targets.
+Use `collect_project_findings` when a client needs a concise top-findings test architecture audit across projects.
 Use `analyze_project_test_placement` when a client needs advisory placement findings derived from audited project roots.
 Use `collect_project_stats` when a client needs local artifact-derived counts and distributions for reporting or model-profile comparisons.
 `audit_repo` accepts an optional `adapterId` and optional repository-relative `changedPaths`. The current registered adapters are `javascript` plus experimental `kotlin`, `python`, and `swift`.
@@ -140,6 +144,7 @@ npm run mcp:audit-projects:example
 npm run mcp:summarize-projects:example
 npm run mcp:rank-projects:example
 npm run mcp:plan-projects:example
+npm run mcp:findings-projects:example
 npm run mcp:placement-projects:example
 npm run mcp:stats-projects:example
 npm run mcp:audit:example

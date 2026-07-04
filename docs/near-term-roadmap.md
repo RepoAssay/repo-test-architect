@@ -2,6 +2,8 @@
 
 This roadmap tracks the next practical milestones before Repo Test Architect should claim broader adapter support or native test generation.
 
+The first product milestone is a credible private alpha for local test architecture audit. See [Alpha Readiness](alpha-readiness.md) for the acceptance gates.
+
 ## Current Baseline
 
 The repository is public-demo ready, but not package-release ready.
@@ -16,7 +18,19 @@ The useful baseline is:
 - release gate through `npm run release:check`
 - native test generation intentionally deferred
 
-## Milestone 1: Public Demo Polish
+## Milestone 1: Alpha Test Architecture Audit
+
+Goal: make the audit trustworthy enough for a technical lead to run on a real repository and review with a team.
+
+Acceptance:
+
+- real-repo audit reports exist for representative repositories
+- coverage value, covered-but-risky targets, skipped low-value targets, blockers, and risks are visible
+- placement findings can explain conservative `keep`, `move`, and `split` decisions
+- one concise repo-level summary can show top findings with evidence
+- native generation remains deferred
+
+## Milestone 2: Public Demo Polish
 
 Goal: make the current audit-first value easy to show without implying generation is complete.
 
@@ -27,7 +41,7 @@ Acceptance:
 - README points to the demo path, product positioning, and release gate
 - package remains private until ownership and publish targets are confirmed
 
-## Milestone 2: Adapter Spike Hardening
+## Milestone 3: Adapter Spike Hardening
 
 Goal: prove the adapter contract keeps holding as additional ecosystems move from detection-only to audited fixtures.
 
@@ -48,7 +62,7 @@ Acceptance:
 - release gate still passes through `npm run release:check`
 - native generation remains deferred unless adapter-specific repair-loop tests exist
 
-## Milestone 3: Placement And Boundary Analysis
+## Milestone 4: Placement And Boundary Analysis
 
 Goal: move beyond candidate ranking into repo-structure advice.
 
@@ -59,7 +73,7 @@ Acceptance:
 - app-level tests that belong in package-level test targets are reported conservatively
 - findings include reason text and risk notes instead of automatic rewrites
 
-## Milestone 4: Local MCP Transport
+## Milestone 5: Local MCP Transport
 
 Goal: keep the local stdio MCP SDK wrapper aligned with the deterministic tool dispatcher.
 
@@ -73,7 +87,7 @@ Acceptance:
 - client config docs stay aligned with package binaries
 - smoke and release checks cover the boot path
 
-## Milestone 5: Generation Readiness Gate
+## Milestone 6: Generation Readiness Gate
 
 Goal: define the minimum proof needed before native test generation is enabled.
 

@@ -22,6 +22,7 @@ export const smokeRequiredFiles = [
   "src/core/project-audit-summary.js",
   "src/core/project-candidate-ranking.js",
   "src/core/project-test-plan.js",
+  "src/core/project-findings.js",
   "src/core/project-test-placement-analysis.js",
   "src/core/project-stats.js",
   "src/core/model-consistency-stats.js",
