@@ -21,10 +21,14 @@ export function auditJavaScriptRepo(snapshot: JavaScriptRepoSnapshot): AuditResu
   const skipped: SkippedTarget[] = [];
   const risks: string[] = [];
   const runtimeSourcePaths = new Set(snapshot.files.map((file) => normalizePath(file.path)).filter(isRuntimeJavaScriptSource));
+  const sourceJavaScriptRuntime = hasSourceJavaScriptRuntimeEntrypoint(snapshot.files);
 
   for (const file of sourceFiles) {
     const name = basenameWithoutExtension(file.path);
-    const classification = classifySourceFile(file, profile, runtimeSourcePaths);
+    const classification = classifySourceFile(file, profile, {
+      runtimeSourcePaths,
+      sourceJavaScriptRuntime
+    });
     const existingTestPaths = findExistingTests(file.path, testFiles);
 
     if (classification.skipReason) {
@@ -300,7 +304,10 @@ function detectArchitectures(paths: string[], packageText: string): string[] {
   return [...architectures];
 }
 
-function classifySourceFile(file: FileSnapshot, profile: RepoProfile, runtimeSourcePaths = new Set<string>()): {
+function classifySourceFile(file: FileSnapshot, profile: RepoProfile, mirrorContext: {
+  runtimeSourcePaths?: Set<string>;
+  sourceJavaScriptRuntime?: boolean;
+} = {}): {
   kind: string;
   signals: string[];
   risk: "low" | "medium" | "high";
@@ -315,6 +322,7 @@ function classifySourceFile(file: FileSnapshot, profile: RepoProfile, runtimeSou
   const path = normalizePath(file.path);
   const content = file.content;
   const lowerPath = path.toLowerCase();
+  const runtimeSourcePaths = mirrorContext.runtimeSourcePaths ?? new Set<string>();
 
   if (lowerPath.includes("generated") || lowerPath.includes("/dist/") || lowerPath.includes("/build/")) {
     return skipped("generated", ["generated-code"], 1, 8, "Generated or build output should not be test-authored directly.");
@@ -331,6 +339,17 @@ function classifySourceFile(file: FileSnapshot, profile: RepoProfile, runtimeSou
       1,
       2,
       "Reference TypeScript mirrors a runtime JavaScript module and should not be test-authored directly.",
+      "Cover through tests for the matching runtime JavaScript module."
+    );
+  }
+
+  if (isReferenceImplementationMirror(path, runtimeSourcePaths, mirrorContext.sourceJavaScriptRuntime)) {
+    return skipped(
+      "reference-mirror",
+      ["reference-implementation-mirror"],
+      1,
+      2,
+      "Reference TypeScript mirrors a runtime JavaScript implementation and should not be test-authored directly.",
       "Cover through tests for the matching runtime JavaScript module."
     );
   }
@@ -485,6 +504,41 @@ function isRuntimeJavaScriptSource(path: string): boolean {
   return normalized.startsWith("src/") && /\.(cjs|mjs|js|jsx)$/.test(normalized) && !isTestFile(normalized);
 }
 
+function hasSourceJavaScriptRuntimeEntrypoint(files: FileSnapshot[]): boolean {
+  const packageJson = files.find((file) => normalizePath(file.path) === "package.json");
+  const packageData = parsePackageJson(packageJson?.content ?? "");
+  const entrypoints = collectPackageEntrypoints(packageData);
+
+  return entrypoints.some((entrypoint) => {
+    const normalized = stripCurrentDirectoryPrefix(normalizePath(entrypoint));
+    return normalized.startsWith("src/") && /\.(cjs|mjs|js|jsx)$/.test(normalized);
+  });
+}
+
+function collectPackageEntrypoints(packageData: Record<string, unknown>): string[] {
+  const entrypoints: string[] = [];
+
+  collectEntrypointValue(packageData.bin, entrypoints);
+  collectEntrypointValue(packageData.main, entrypoints);
+  collectEntrypointValue(packageData.module, entrypoints);
+  collectEntrypointValue(packageData.exports, entrypoints);
+
+  return entrypoints;
+}
+
+function collectEntrypointValue(value: unknown, entrypoints: string[]): void {
+  if (typeof value === "string") {
+    entrypoints.push(value);
+    return;
+  }
+
+  if (!value || typeof value !== "object") return;
+
+  for (const nested of Object.values(value)) {
+    collectEntrypointValue(nested, entrypoints);
+  }
+}
+
 function isTestFile(path: string): boolean {
   const normalized = normalizePath(path);
   return (
@@ -506,6 +560,10 @@ function findExistingTests(sourcePath: string, testPaths: string[]): string[] {
 
 function normalizePath(path: string): string {
   return path.replaceAll("\\", "/");
+}
+
+function stripCurrentDirectoryPrefix(path: string): string {
+  return path.replace(/^\.\//, "");
 }
 
 function basenameWithoutExtension(path: string): string {
@@ -539,6 +597,16 @@ function isReferenceTypeScriptMirror(path: string, content: string, runtimeSourc
   if (!path.endsWith(".ts") || path.endsWith(".d.ts")) return false;
   if (!isTypeOnlyContent(content)) return false;
 
+  return hasSiblingRuntimeJavaScript(path, runtimeSourcePaths);
+}
+
+function isReferenceImplementationMirror(path: string, runtimeSourcePaths: Set<string>, sourceJavaScriptRuntime?: boolean): boolean {
+  if (!sourceJavaScriptRuntime) return false;
+  if (!path.endsWith(".ts") || path.endsWith(".d.ts")) return false;
+  return hasSiblingRuntimeJavaScript(path, runtimeSourcePaths);
+}
+
+function hasSiblingRuntimeJavaScript(path: string, runtimeSourcePaths: Set<string>): boolean {
   const runtimePath = path.replace(/\.ts$/, ".js");
   const modulePath = path.replace(/\.ts$/, ".mjs");
   const commonJsPath = path.replace(/\.ts$/, ".cjs");

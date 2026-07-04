@@ -13,10 +13,14 @@ export function auditJavaScriptRepo(root, options = {}) {
   const skipped = [];
   const risks = [];
   const runtimeSourcePaths = new Set(files.map((file) => normalizePath(file.path)).filter(isRuntimeJavaScriptSource));
+  const sourceJavaScriptRuntime = hasSourceJavaScriptRuntimeEntrypoint(files);
 
   for (const file of files.filter((candidate) => isSourceFile(candidate.path) && isIncludedByChangedPaths(candidate.path, changedPaths))) {
     const name = basenameWithoutExtension(file.path);
-    const classification = classifySourceFile(file, profile, runtimeSourcePaths);
+    const classification = classifySourceFile(file, profile, {
+      runtimeSourcePaths,
+      sourceJavaScriptRuntime
+    });
     const existingTestPaths = findExistingTests(file.path, testFiles);
 
     if (classification.skipReason) {
@@ -306,10 +310,11 @@ function detectArchitectures(paths, packageText) {
   return [...architectures];
 }
 
-function classifySourceFile(file, profile, runtimeSourcePaths = new Set()) {
+function classifySourceFile(file, profile, mirrorContext = {}) {
   const currentPath = normalizePath(file.path);
   const content = file.content;
   const lowerPath = currentPath.toLowerCase();
+  const runtimeSourcePaths = mirrorContext.runtimeSourcePaths ?? new Set();
 
   if (lowerPath.includes("generated") || lowerPath.includes("/dist/") || lowerPath.includes("/build/")) {
     return skipped("generated", ["generated-code"], 1, 8, "Generated or build output should not be test-authored directly.");
@@ -326,6 +331,17 @@ function classifySourceFile(file, profile, runtimeSourcePaths = new Set()) {
       1,
       2,
       "Reference TypeScript mirrors a runtime JavaScript module and should not be test-authored directly.",
+      "Cover through tests for the matching runtime JavaScript module."
+    );
+  }
+
+  if (isReferenceImplementationMirror(currentPath, runtimeSourcePaths, mirrorContext.sourceJavaScriptRuntime)) {
+    return skipped(
+      "reference-mirror",
+      ["reference-implementation-mirror"],
+      1,
+      2,
+      "Reference TypeScript mirrors a runtime JavaScript implementation and should not be test-authored directly.",
       "Cover through tests for the matching runtime JavaScript module."
     );
   }
@@ -464,6 +480,41 @@ function isRuntimeJavaScriptSource(currentPath) {
   return normalized.startsWith("src/") && /\.(cjs|mjs|js|jsx)$/.test(normalized) && !isTestFile(normalized);
 }
 
+function hasSourceJavaScriptRuntimeEntrypoint(files) {
+  const packageJson = files.find((file) => normalizePath(file.path) === "package.json");
+  const packageData = parsePackageJson(packageJson?.content ?? "");
+  const entrypoints = collectPackageEntrypoints(packageData);
+
+  return entrypoints.some((entrypoint) => {
+    const normalized = stripCurrentDirectoryPrefix(normalizePath(entrypoint));
+    return normalized.startsWith("src/") && /\.(cjs|mjs|js|jsx)$/.test(normalized);
+  });
+}
+
+function collectPackageEntrypoints(packageData) {
+  const entrypoints = [];
+
+  collectEntrypointValue(packageData.bin, entrypoints);
+  collectEntrypointValue(packageData.main, entrypoints);
+  collectEntrypointValue(packageData.module, entrypoints);
+  collectEntrypointValue(packageData.exports, entrypoints);
+
+  return entrypoints;
+}
+
+function collectEntrypointValue(value, entrypoints) {
+  if (typeof value === "string") {
+    entrypoints.push(value);
+    return;
+  }
+
+  if (!value || typeof value !== "object") return;
+
+  for (const nested of Object.values(value)) {
+    collectEntrypointValue(nested, entrypoints);
+  }
+}
+
 function isTestFile(currentPath) {
   const normalized = normalizePath(currentPath);
   return (
@@ -530,6 +581,16 @@ function isReferenceTypeScriptMirror(currentPath, content, runtimeSourcePaths) {
   if (!currentPath.endsWith(".ts") || currentPath.endsWith(".d.ts")) return false;
   if (!isTypeOnlyContent(content)) return false;
 
+  return hasSiblingRuntimeJavaScript(currentPath, runtimeSourcePaths);
+}
+
+function isReferenceImplementationMirror(currentPath, runtimeSourcePaths, sourceJavaScriptRuntime) {
+  if (!sourceJavaScriptRuntime) return false;
+  if (!currentPath.endsWith(".ts") || currentPath.endsWith(".d.ts")) return false;
+  return hasSiblingRuntimeJavaScript(currentPath, runtimeSourcePaths);
+}
+
+function hasSiblingRuntimeJavaScript(currentPath, runtimeSourcePaths) {
   const runtimePath = currentPath.replace(/\.ts$/, ".js");
   const modulePath = currentPath.replace(/\.ts$/, ".mjs");
   const commonJsPath = currentPath.replace(/\.ts$/, ".cjs");

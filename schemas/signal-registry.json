@@ -130,6 +130,11 @@
     "description": "React component code was detected."
   },
   {
+    "id": "reference-implementation-mirror",
+    "category": "low-value",
+    "description": "TypeScript implementation mirrors a matching runtime JavaScript module in a package that runs source JavaScript entrypoints."
+  },
+  {
     "id": "rtl-convention",
     "category": "test-convention",
     "description": "React Testing Library convention was detected."
