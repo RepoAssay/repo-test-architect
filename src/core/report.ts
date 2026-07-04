@@ -78,10 +78,12 @@ function formatList(values: string[]): string {
 }
 
 function formatTarget(target: AuditResult["recommended"][number]): string {
+  const reasons = target.reasons ?? [];
+  const existingTestPaths = target.existingTestPaths ?? [];
   const existingTests =
-    target.existingTestPaths.length > 0 ? `; existing tests: ${target.existingTestPaths.join(", ")}` : "";
+    existingTestPaths.length > 0 ? `; existing tests: ${existingTestPaths.join(", ")}` : "";
 
-  return `- ${target.name}: ${target.recommendedTestLevel} test for ${target.kind} (risk reduction ${target.riskReductionScore}/10, maintenance ${target.maintenanceCost}/10; ${target.reasons.join("; ")}${existingTests})`;
+  return `- ${target.name}: ${target.recommendedTestLevel} test for ${target.kind} (risk reduction ${target.riskReductionScore}/10, maintenance ${target.maintenanceCost}/10; ${reasons.join("; ")}${existingTests})`;
 }
 
 function formatSkippedTarget(target: AuditResult["skipped"][number]): string {

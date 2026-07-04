@@ -66,6 +66,57 @@ describe("project findings", () => {
     assert.ok(findings.findings.some((finding) => finding.category === "weak-existing-coverage"));
   });
 
+  it("defaults optional target arrays in project findings", () => {
+    const findings = createProjectFindings({
+      schemaVersion: "project-audits/v1",
+      root: ".",
+      summary: {
+        projectCount: 1,
+        auditedProjectCount: 1,
+        skippedProjectCount: 0
+      },
+      audits: [
+        {
+          projectId: "apps/web",
+          projectRoot: "apps/web",
+          adapterId: "javascript",
+          adapterMatches: [],
+          audit: {
+            schemaVersion: "audit/v1",
+            profile: {
+              confidence: "medium",
+              blockers: []
+            },
+            untestedCandidates: [
+              {
+                id: "src/paymentClient.ts",
+                name: "paymentClient",
+                path: "src/paymentClient.ts",
+                kind: "service",
+                signals: ["service-name"],
+                risk: "high",
+                testability: "medium",
+                recommendedTestLevel: "unit",
+                riskReductionScore: 8,
+                maintenanceCost: 4
+              }
+            ],
+            coveredButRisky: [],
+            skipped: [],
+            risks: []
+          }
+        }
+      ],
+      skippedProjects: []
+    });
+
+    assert.equal(findings.summary.findingCount, 1);
+    assert.equal(findings.findings[0].category, "missing-coverage");
+    assert.deepEqual(findings.findings[0].rationale, []);
+    assert.deepEqual(findings.findings[0].existingTestPaths, []);
+    assert.ok(findings.findings[0].evidence.includes("existing tests: none detected"));
+  });
+
   it("rejects invalid max findings", () => {
     const projectAudits = auditDetectedProjects(path.resolve("examples/polyglot-workspace"));
 

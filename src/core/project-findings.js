@@ -93,7 +93,8 @@ function toAuditFindings(entry) {
 }
 
 function toTargetFinding(entry, target, category) {
-  const hasExistingTests = target.existingTestPaths.length > 0;
+  const existingTestPaths = target.existingTestPaths ?? [];
+  const hasExistingTests = existingTestPaths.length > 0;
   const title =
     category === "missing-coverage"
       ? `${target.name} lacks matching high-value coverage`
@@ -118,9 +119,9 @@ function toTargetFinding(entry, target, category) {
       `signals: ${target.signals.join(", ")}`,
       `risk: ${target.risk}`,
       `testability: ${target.testability}`,
-      hasExistingTests ? `existing tests: ${target.existingTestPaths.join(", ")}` : "existing tests: none detected"
+      hasExistingTests ? `existing tests: ${existingTestPaths.join(", ")}` : "existing tests: none detected"
     ],
-    existingTestPaths: target.existingTestPaths
+    existingTestPaths
   };
 }
 
@@ -174,8 +175,7 @@ function isReportableCoverageTarget(target) {
     target.path.length > 0 &&
     Number.isInteger(target.riskReductionScore) &&
     Number.isInteger(target.maintenanceCost) &&
-    Array.isArray(target.signals) &&
-    Array.isArray(target.existingTestPaths)
+    Array.isArray(target.signals)
   );
 }
 
