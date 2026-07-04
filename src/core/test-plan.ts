@@ -81,9 +81,9 @@ function toPlanItem(action: "add-test" | "extend-test", target: AuditTarget): Te
     priority: target.riskReductionScore - target.maintenanceCost,
     riskReductionScore: target.riskReductionScore,
     maintenanceCost: target.maintenanceCost,
-    rationale: enrichRationale(target.reasons, target.signals),
+    rationale: enrichRationale(target.reasons ?? [], target.signals),
     sourceSignals: target.signals,
-    existingTestPaths: target.existingTestPaths
+    existingTestPaths: target.existingTestPaths ?? []
   };
 }
 

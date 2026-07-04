@@ -46,8 +46,8 @@ export function explainTarget(audit: AuditResult, targetId: string): TargetExpla
     riskReductionScore: target.riskReductionScore,
     maintenanceCost: target.maintenanceCost,
     signals: target.signals,
-    rationale: skipped ? [target.reason, target.preferredCoveragePath].filter(Boolean) as string[] : target.reasons,
-    existingTestPaths: skipped ? [] : target.existingTestPaths
+    rationale: skipped ? [target.reason, target.preferredCoveragePath].filter(Boolean) as string[] : target.reasons ?? [],
+    existingTestPaths: skipped ? [] : target.existingTestPaths ?? []
   };
 }
 

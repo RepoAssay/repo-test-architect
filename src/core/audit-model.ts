@@ -27,8 +27,8 @@ export interface AuditTarget {
   recommendedTestLevel: TestLevel;
   riskReductionScore: number;
   maintenanceCost: number;
-  reasons: string[];
-  existingTestPaths: string[];
+  reasons?: string[];
+  existingTestPaths?: string[];
 }
 
 export interface SkippedTarget {
