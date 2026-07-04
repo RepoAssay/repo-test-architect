@@ -40,8 +40,8 @@ export function rankTestCandidates(audit: AuditResult): CandidateRanking {
       riskReductionScore: target.riskReductionScore,
       maintenanceCost: target.maintenanceCost,
       signals: target.signals,
-      rationale: target.reasons,
-      existingTestPaths: target.existingTestPaths
+      rationale: target.reasons ?? [],
+      existingTestPaths: target.existingTestPaths ?? []
     }))
     .sort((a, b) => b.priority - a.priority || b.riskReductionScore - a.riskReductionScore || a.target.localeCompare(b.target));
 
