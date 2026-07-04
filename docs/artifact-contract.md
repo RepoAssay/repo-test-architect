@@ -260,7 +260,7 @@ analyze_test_placement
 analyze_project_test_placement
 ```
 
-This advisory artifact reports test placement recommendations. The single-project analyzer emits conservative `keep` findings for tests already matched to audited targets in the same project. The project-audits analyzer can also emit conservative `move` findings when an existing test path explicitly escapes the audited project root and points at another detected project owner. It emits `split` instead when the escaped match is integration-level, because that usually means the test should be separated rather than blindly moved. Future package-aware analyzers can add richer ownership signals once repair loops can safely move files and verify affected test commands.
+This advisory artifact reports test placement recommendations. The single-project analyzer emits conservative `keep` findings for tests already matched to audited targets in the same project. The project-audits analyzer can also emit conservative `move` findings when an existing test path explicitly escapes the audited project root and points at another detected project owner. It emits `split` instead when the escaped match is integration-level, because that usually means the test should be separated rather than blindly moved. Package-aware adapters can also emit `package-owned-behavior` on covered targets with repo-relative test paths; the project analyzer treats those as cross-owner placement findings when the test path belongs to another detected project, and uses `app-integration-dependency` to prefer `split` over `move`.
 
 It contains:
 

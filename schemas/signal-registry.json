@@ -1,5 +1,10 @@
 [
   {
+    "id": "app-integration-dependency",
+    "category": "structure",
+    "description": "A matched test appears to depend on app-level wiring while covering package-owned behavior."
+  },
+  {
     "id": "app-wiring",
     "category": "structure",
     "description": "Application composition or framework setup that should usually be covered through integration tests."
@@ -103,6 +108,11 @@
     "id": "pagination-or-sort",
     "category": "risk",
     "description": "Pagination, limiting, offset, skip, or sort behavior was detected."
+  },
+  {
+    "id": "package-owned-behavior",
+    "category": "architecture",
+    "description": "A target represents behavior owned by a package or module boundary."
   },
   {
     "id": "presentational-component",
