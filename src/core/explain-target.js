@@ -79,8 +79,8 @@ export function explainTarget(audit, targetId) {
     riskReductionScore: target.riskReductionScore,
     maintenanceCost: target.maintenanceCost,
     signals: target.signals,
-    rationale: skipped ? [target.reason, target.preferredCoveragePath].filter(Boolean) : target.reasons,
-    existingTestPaths: skipped ? [] : target.existingTestPaths
+    rationale: skipped ? [target.reason, target.preferredCoveragePath].filter(Boolean) : target.reasons ?? [],
+    existingTestPaths: skipped ? [] : target.existingTestPaths ?? []
   };
 }
 

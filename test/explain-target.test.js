@@ -28,6 +28,34 @@ describe("target explanation", () => {
     assert.ok(explanation.rationale.includes("DTO-only models are usually better covered through boundary parsing or mapper tests."));
   });
 
+  it("defaults optional target arrays in explanation artifacts", () => {
+    const explanation = explainTarget(
+      {
+        schemaVersion: "audit/v1",
+        untestedCandidates: [
+          {
+            id: "src/paymentClient.ts",
+            name: "paymentClient",
+            path: "src/paymentClient.ts",
+            kind: "service",
+            risk: "high",
+            testability: "medium",
+            recommendedTestLevel: "unit",
+            riskReductionScore: 8,
+            maintenanceCost: 4,
+            signals: ["service-name"]
+          }
+        ],
+        coveredButRisky: [],
+        skipped: []
+      },
+      "src/paymentClient.ts"
+    );
+
+    assert.deepEqual(explanation.rationale, []);
+    assert.deepEqual(explanation.existingTestPaths, []);
+  });
+
   it("rejects unknown audit targets", () => {
     const audit = auditJavaScriptRepo(path.resolve("examples/node-vitest-basic"));
 
