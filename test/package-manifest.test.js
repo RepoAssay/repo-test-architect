@@ -68,6 +68,7 @@ describe("package manifest", () => {
     assert.ok(packageJson.scripts["model-consistency:check"]);
     assert.ok(packageJson.scripts["model-consistency:json"]);
     assert.ok(packageJson.scripts["model-consistency:compare"]);
+    assert.ok(packageJson.scripts["model-consistency:compare:profiles"]);
     assert.ok(packageJson.scripts["model-consistency:stats"]);
     assert.equal(packageJson.scripts["demo:check"], "node ./scripts/check-demo-script.js");
     assert.equal(packageJson.scripts["mcp:smoke"], "node ./scripts/check-mcp-stdio-smoke.js");

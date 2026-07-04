@@ -30,6 +30,38 @@ describe("model consistency script", () => {
     assert.equal(summary.profileName, "enterprise-default");
   });
 
+  it("compares current checked-in scenarios for named profiles", () => {
+    const output = execFileSync(
+      process.execPath,
+      [compareScriptPath, "--baseline-profile", "deterministic-baseline", "--candidate-profile", "local-small"],
+      {
+        encoding: "utf8"
+      }
+    );
+    const comparison = JSON.parse(output);
+
+    assert.equal(comparison.schemaVersion, "model-consistency-comparison/v1");
+    assert.equal(comparison.baselineProfile, "deterministic-baseline");
+    assert.equal(comparison.candidateProfile, "local-small");
+    assert.equal(comparison.summary.scenarioCount, 21);
+    assert.equal(comparison.summary.alignedScenarioCount, 21);
+    assert.equal(comparison.summary.driftedScenarioCount, 0);
+  });
+
+  it("compares current checked-in scenarios with equals-style profile arguments", () => {
+    const output = execFileSync(
+      process.execPath,
+      [compareScriptPath, "--baseline-profile=deterministic-baseline", "--candidate-profile=enterprise-default"],
+      {
+        encoding: "utf8"
+      }
+    );
+    const comparison = JSON.parse(output);
+
+    assert.equal(comparison.candidateProfile, "enterprise-default");
+    assert.equal(comparison.summary.failureDelta, 0);
+  });
+
   it("compares aligned summary files successfully", () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-model-consistency-"));
     const baselinePath = writeSummary(tempDir, "baseline.json", "deterministic-baseline");
@@ -69,6 +101,15 @@ describe("model consistency script", () => {
     assert.equal(result.status, 1);
     assert.equal(comparison.summary.driftedScenarioCount, 1);
     assert.equal(comparison.summary.failureDelta, 1);
+  });
+
+  it("rejects partial file comparison arguments", () => {
+    const result = spawnSync(process.execPath, [compareScriptPath, "--baseline", "baseline-summary.json"], {
+      encoding: "utf8"
+    });
+
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /--baseline and --candidate must be provided together/);
   });
 });
 

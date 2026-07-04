@@ -212,6 +212,7 @@ describe("docs links", () => {
     assert.ok(demoScript.includes("npm run mcp:audit:kotlin-fixture"));
     assert.ok(demoScript.includes("npm run demo:check"));
     assert.ok(demoScript.includes("npm run model-consistency:check"));
+    assert.ok(demoScript.includes("npm run model-consistency:compare:profiles"));
     assert.ok(demoScript.includes("The tool is useful before it generates a single test"));
     assert.ok(publicReadiness.includes("[Demo Script](demo-script.md)"));
     assert.ok(status.includes("demo script for showing audit quality"));
