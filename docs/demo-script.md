@@ -106,6 +106,7 @@ End with:
 
 ```powershell
 npm run model-consistency:check
+npm run model-consistency:compare:profiles
 npm run release:check
 ```
 

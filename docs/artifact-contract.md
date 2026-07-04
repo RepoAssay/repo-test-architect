@@ -197,11 +197,13 @@ Schema:
 Command:
 
 ```powershell
+npm run model-consistency:compare:profiles
+npm run model-consistency:compare -- --baseline-profile deterministic-baseline --candidate-profile local-small
 npm run model-consistency:compare -- baseline-summary.json candidate-summary.json
 ```
 
-This artifact compares two `model-consistency-summary/v1` artifacts.
-It is intended for future model profile runs where the deterministic baseline is compared against a named model/provider configuration.
+This artifact compares two `model-consistency-summary/v1` artifacts. The profile comparison command generates summaries from the checked-in scenarios for two named profiles before comparing them. The file comparison command compares previously saved summaries.
+It is intended for model profile runs where the deterministic baseline is compared against a named model/provider configuration.
 
 It contains:
 

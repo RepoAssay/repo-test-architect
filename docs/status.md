@@ -136,6 +136,7 @@ npm run eval:check
 npm run model-consistency:check
 npm run model-consistency:json
 npm run model-consistency:json -- --profile local-small
+npm run model-consistency:compare:profiles
 npm run model-consistency:compare -- baseline-summary.json candidate-summary.json
 npm run model-consistency:stats
 npm run smoke

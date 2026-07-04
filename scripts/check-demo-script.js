@@ -22,7 +22,8 @@ export const demoChecks = [
   "mcp:rank-projects:example",
   "mcp:plan-projects:example",
   "mcp:placement-split:example",
-  "model-consistency:check"
+  "model-consistency:check",
+  "model-consistency:compare:profiles"
 ];
 
 if (isMainModule()) {
