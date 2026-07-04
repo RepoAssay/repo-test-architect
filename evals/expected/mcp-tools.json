@@ -45,6 +45,14 @@
           "repoRoot": {
             "type": "string",
             "description": "Repository root path."
+          },
+          "excludeProjectRoots": {
+            "type": "array",
+            "description": "Optional exact project roots or subtree patterns such as examples/** to exclude before returning detected projects.",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
           }
         }
       }
@@ -70,6 +78,14 @@
           "changedPaths": {
             "type": "array",
             "description": "Optional repository-relative source paths to limit target selection inside detected projects.",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "excludeProjectRoots": {
+            "type": "array",
+            "description": "Optional exact project roots or subtree patterns such as examples/** to exclude before auditing detected projects.",
             "items": {
               "type": "string",
               "minLength": 1

@@ -46,6 +46,16 @@ describe("MCP tool definitions", () => {
     }
   });
 
+  it("declares non-empty project exclusion items", () => {
+    const projectExclusionTools = ["detect_projects", "audit_projects"];
+
+    for (const toolName of projectExclusionTools) {
+      const tool = mcpTools.find((candidate) => candidate.name === toolName);
+
+      assert.equal(tool.inputSchema.properties.excludeProjectRoots.items.minLength, 1);
+    }
+  });
+
   it("dispatches adapter registry, project detection rules, project detection, project audits, audit, plan, explanation, and ranking tools", () => {
     const adapterRegistry = callTool("list_adapters");
     const projectDetectionRules = callTool("list_project_detection_rules");
@@ -151,6 +161,34 @@ describe("MCP tool definitions", () => {
     );
   });
 
+  it("passes project exclusion roots through detect_projects", () => {
+    const detection = callTool("detect_projects", {
+      repoRoot: path.resolve("examples/polyglot-workspace"),
+      excludeProjectRoots: ["apps/**"]
+    });
+
+    assert.equal(detection.schemaVersion, "project-detection/v1");
+    assert.deepEqual(
+      detection.projects.map((project) => project.root),
+      ["services/api"]
+    );
+    assert.equal(detection.summary.projectCount, 1);
+  });
+
+  it("passes project exclusion roots through audit_projects", () => {
+    const projectAudits = callTool("audit_projects", {
+      repoRoot: path.resolve("examples/polyglot-workspace"),
+      excludeProjectRoots: ["apps/**"]
+    });
+
+    assert.equal(projectAudits.schemaVersion, "project-audits/v1");
+    assert.deepEqual(
+      projectAudits.audits.map((entry) => entry.projectId),
+      ["services/api"]
+    );
+    assert.equal(projectAudits.summary.projectCount, 1);
+  });
+
   it("validates tool input before dispatch", () => {
     assert.throws(
       () => callTool("audit_repo", {}),
@@ -175,6 +213,22 @@ describe("MCP tool definitions", () => {
         error.details.toolName === "audit_projects" &&
         error.details.argument === "changedPaths" &&
         /changedPaths must be an array of non-empty strings/.test(error.message)
+    );
+    assert.throws(
+      () => callTool("detect_projects", { repoRoot: ".", excludeProjectRoots: [""] }),
+      (error) =>
+        error.kind === "invalid-arguments" &&
+        error.details.toolName === "detect_projects" &&
+        error.details.argument === "excludeProjectRoots" &&
+        /excludeProjectRoots must be an array of non-empty strings/.test(error.message)
+    );
+    assert.throws(
+      () => callTool("audit_projects", { repoRoot: ".", excludeProjectRoots: [""] }),
+      (error) =>
+        error.kind === "invalid-arguments" &&
+        error.details.toolName === "audit_projects" &&
+        error.details.argument === "excludeProjectRoots" &&
+        /excludeProjectRoots must be an array of non-empty strings/.test(error.message)
     );
   });
 
