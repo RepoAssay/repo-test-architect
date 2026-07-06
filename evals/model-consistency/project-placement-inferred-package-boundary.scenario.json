@@ -1,0 +1,57 @@
+{
+  "schemaVersion": "model-consistency-scenario/v1",
+  "id": "project-placement-inferred-package-boundary",
+  "description": "Different model profiles should preserve inferred package-boundary placement recommendations when app-owned tests cover package-owned source paths.",
+  "sourceArtifact": {
+    "path": "examples/mcp/inferred-package-placement-project-audits.args.json",
+    "schemaVersion": "project-audits/v1",
+    "argumentName": "projectAudits"
+  },
+  "toolCall": {
+    "toolName": "analyze_project_test_placement",
+    "arguments": {}
+  },
+  "lockedFields": [
+    {
+      "path": "findings[0].action",
+      "expected": "move",
+      "reason": "Unit-level package-owned behavior covered by an app-owned test should be a move recommendation, not split."
+    },
+    {
+      "path": "findings[0].currentOwner",
+      "expected": "apps/main",
+      "reason": "The current app-level test owner must remain visible for review."
+    },
+    {
+      "path": "findings[0].suggestedOwner",
+      "expected": "packages/billing-core",
+      "reason": "The package-like source owner should be preserved as the suggested owner."
+    },
+    {
+      "path": "findings[0].testFile",
+      "expected": "apps/main/tests/priceRules.test.ts",
+      "reason": "The report should expose the repo-relative app-owned test path."
+    },
+    {
+      "path": "findings[0].id",
+      "expected": "packages/billing-core:move:apps/main/tests/priceRules.test.ts:packages/billing-core/src/priceRules.ts",
+      "reason": "Inferred placement finding IDs should remain stable for downstream review links."
+    },
+    {
+      "path": "findings[0].evidence[4]",
+      "expected": "package boundary inferred from project roots: package-like source owner covered by app-like test owner",
+      "reason": "The finding should explain that the package boundary came from conservative project-root inference."
+    }
+  ],
+  "allowedVariations": [
+    "additional explanatory evidence",
+    "summary wording",
+    "optional detail depth"
+  ],
+  "unexpectedVariations": [
+    "inferred package boundary hidden from placement findings",
+    "move recommendation downgraded to keep",
+    "unit-level package behavior upgraded to split without app integration evidence",
+    "missing current or suggested project owner"
+  ]
+}

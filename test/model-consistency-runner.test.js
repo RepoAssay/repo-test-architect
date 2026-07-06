@@ -84,6 +84,7 @@ describe("model consistency runner", () => {
         ["polyglot-project-stats", []],
         ["polyglot-project-summary", []],
         ["project-findings-placement-split", []],
+        ["project-placement-inferred-package-boundary", []],
         ["project-placement-split", []],
         ["python-package-local-tests-plan", []],
         ["python-poetry-pytest-plan", []],
@@ -109,10 +110,10 @@ describe("model consistency runner", () => {
     assert.equal(summary.schemaVersion, "model-consistency-summary/v1");
     assert.equal(summary.profileName, "deterministic-baseline");
     assert.deepEqual(summary.summary, {
-      scenarioCount: 26,
-      passedScenarioCount: 26,
+      scenarioCount: 27,
+      passedScenarioCount: 27,
       failedScenarioCount: 0,
-      checkedFieldCount: 208,
+      checkedFieldCount: 214,
       failureCount: 0
     });
     assert.equal(summary.scenarios[4].scenarioId, "node-jest-service-plan");
@@ -130,8 +131,8 @@ describe("model consistency runner", () => {
     assert.equal(comparison.baselineProfile, "deterministic-baseline");
     assert.equal(comparison.candidateProfile, "local-small");
     assert.deepEqual(comparison.summary, {
-      scenarioCount: 26,
-      alignedScenarioCount: 26,
+      scenarioCount: 27,
+      alignedScenarioCount: 27,
       driftedScenarioCount: 0,
       missingScenarioCount: 0,
       unexpectedScenarioCount: 0,
@@ -173,12 +174,12 @@ describe("model consistency runner", () => {
     const comparison = compareModelConsistencySummaries(baseline, candidate);
 
     assert.deepEqual(comparison.summary, {
-      scenarioCount: 27,
-      alignedScenarioCount: 24,
+      scenarioCount: 28,
+      alignedScenarioCount: 25,
       driftedScenarioCount: 1,
       missingScenarioCount: 1,
       unexpectedScenarioCount: 1,
-      checkedFieldDelta: -53,
+      checkedFieldDelta: -59,
       failureDelta: 3
     });
     assert.deepEqual(
@@ -199,6 +200,7 @@ describe("model consistency runner", () => {
         ["polyglot-project-stats", "aligned"],
         ["polyglot-project-summary", "aligned"],
         ["project-findings-placement-split", "aligned"],
+        ["project-placement-inferred-package-boundary", "aligned"],
         ["project-placement-split", "aligned"],
         ["python-package-local-tests-plan", "aligned"],
         ["python-poetry-pytest-plan", "aligned"],
