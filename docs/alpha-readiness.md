@@ -81,8 +81,13 @@ The key message is: this is a test architecture audit layer that makes test gene
 
 ## Next Implementation Priorities
 
-1. Add a concise repo-level top findings report for project audits.
-2. Expand real-repo audit reports beyond owned/local repositories, especially one non-owned JavaScript/TypeScript repo.
-3. Tighten placement findings with more package-boundary signals.
-4. Add model-consistency scenarios for top findings and placement summaries.
-5. Keep adapter hardening focused on common stack variants that improve real-repo audit trust.
+Done:
+
+- Add a concise repo-level top findings report for project audits, including category counts for missing coverage, weak existing coverage, misplaced coverage, low-value direct targets, and blocked projects.
+
+Next:
+
+1. Expand real-repo audit reports beyond owned/local repositories, especially one non-owned JavaScript/TypeScript repo.
+2. Tighten placement findings with more package-boundary signals.
+3. Add more model-consistency scenarios for placement summaries as the finding surface grows.
+4. Keep adapter hardening focused on common stack variants that improve real-repo audit trust.

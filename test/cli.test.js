@@ -311,6 +311,10 @@ describe("CLI", () => {
     assert.match(output, /Finding categories: missing-coverage: 3, weak-existing-coverage: 0, misplaced-coverage: 0, low-value-direct-test: 0, blocked-project: 2/);
     assert.match(output, /services\/api: blocked-project, high, priority 9/);
     assert.match(output, /apps\/android: missing-coverage, high, priority 7: CheckoutCalculator/);
+    assert.match(output, /Source: src\/main\/kotlin\/CheckoutCalculator\.kt/);
+    assert.match(output, /Recommended level: unit/);
+    assert.match(output, /Existing tests: none detected/);
+    assert.match(output, /Evidence: signals: pure-logic, edge-case-surface\. risk: high\. testability: high\. existing tests: none detected\./);
   });
 
   it("emits project findings as JSON", () => {

@@ -10,9 +10,10 @@ The purpose is product validation, not regression locking. These reports record 
 | --- | --- | --- | --- | --- |
 | [Collectors Grimoire Swift packages](cg-swift-audit-report.md) | Swift, Vapor, MongoDB | local sibling `cg-*` repositories | `findings-projects`, Swift adapter audit | current |
 | Repo Test Architect self-audit | JavaScript, TypeScript | this repository | direct `javascript` adapter audit, placement audit | summarized below |
+| `unjs/defu` audit | TypeScript, Vitest | `unjs/defu` at `82632b6` | `findings-projects`, direct `javascript` adapter ranking | summarized below |
 | Collectors Grimoire app audit | Swift, Xcode app | `m-stenbe/Collectors-Grimoire` at `a2d4c54` | `findings-projects`, Xcode-style Swift detection | summarized below |
 
-This gives the alpha gate coverage across at least one JavaScript/TypeScript codebase and multiple Swift codebases, including Swift Package Manager, Vapor/MongoDB, and Xcode-style app structure.
+This gives the alpha gate coverage across owned and non-owned JavaScript/TypeScript codebases and multiple Swift codebases, including Swift Package Manager, Vapor/MongoDB, and Xcode-style app structure.
 
 ## Repo Test Architect Self-Audit
 
@@ -51,6 +52,67 @@ Heuristic follow-up:
 - add ownership or package-role signals for adapter modules, CLI entrypoints, MCP transport, and core scoring modules
 - continue tightening TypeScript reference-file detection for standalone reference modules without a runtime JavaScript sibling
 - use `--exclude-project "examples/**"` when generating self-audit reports that should ignore checked-in example fixtures
+
+## `unjs/defu` Audit
+
+Source:
+
+- repository: `unjs/defu`
+- audited commit: `82632b6` (`2026-05-17`, `chore(deps): update all non-major dependencies (#161)`)
+
+Command focus:
+
+```powershell
+node ./src/cli/index.js detect <defu checkout> --format json
+node ./src/cli/index.js findings-projects <defu checkout>
+node ./src/cli/index.js rank <defu checkout> --adapter javascript --format json
+```
+
+What the tool found:
+
+- one supported JavaScript/TypeScript project from `package.json`
+- high-confidence JavaScript adapter audit with `npm run test`
+- Vitest test tooling through package metadata
+- two medium-priority findings in the repo-level report
+- category summary with one missing-coverage finding and one covered-but-risky finding
+
+Representative findings:
+
+| Category | Examples | Why it matters |
+| --- | --- | --- |
+| Covered but risky | `src/defu.ts` with `test/defu.test.ts` | Existing tests are recognized as evidence while still keeping branch-heavy merge behavior visible for edge-case review. |
+| Missing coverage | `src/_utils.ts` | The audit surfaced branching helper logic that deserves scrutiny, but manual review found nearby coverage under a non-identical test filename. |
+| Blockers | none | The adapter correctly avoided blocking a repo with a runnable test command and supported framework signals. |
+
+What it missed or over-reported:
+
+- `src/_utils.ts` was reported as having no existing tests, but `test/utils.test.ts` covers `isPlainObject` from that file.
+- The current matching heuristic is path/name oriented. It does not yet connect exported function names to tests when the source file has a leading underscore and the test omits it.
+- The `defu` covered-but-risky finding is useful, but the rationale is still generic branch-heavy language rather than merge-specific cases such as prototype pollution, array merge ordering, custom merger behavior, and non-plain objects.
+
+Heuristic follow-up:
+
+- add exported-symbol matching between source files and tests, especially when filenames differ by private prefixes like `_`
+- improve JavaScript/TypeScript utility rationale so merge helpers, guards, and object-shape predicates get domain-specific review hints
+- keep covered-but-risky targets visible, but include a concise "already covered by" line in markdown so reviewers can evaluate whether the warning is fair
+
+## Additional JavaScript/TypeScript Probe: `sindresorhus/is`
+
+Source:
+
+- repository: `sindresorhus/is`
+- audited commit: `7821031` (`2026-05-11`, `Fix CI`)
+
+Result:
+
+- project detection found one supported JavaScript/TypeScript project from `package.json`
+- direct ranking found `npm run test` but reported a blocker: `No supported JS test framework detected.`
+- no candidates were emitted because the adapter could not identify a supported test framework
+
+Why it matters:
+
+- This is a useful non-owned blocker example. The tool correctly avoids pretending it can make high-confidence recommendations when test framework support is missing.
+- The report also shows a near-term adapter gap: common JS package test runners outside Vitest/Jest still need explicit detection before alpha claims should broaden.
 
 ## Collectors Grimoire App Audit
 
@@ -99,12 +161,12 @@ Heuristic follow-up:
 The real-repo report gate is now partially satisfied:
 
 - at least three real repositories have local audit summaries: Repo Test Architect, `cg-bff`/Swift package family, and Collectors Grimoire
-- one JavaScript/TypeScript codebase is covered by the self-audit
+- one JavaScript/TypeScript codebase is covered by the self-audit, and non-owned JavaScript/TypeScript coverage is now represented by `unjs/defu`
 - Swift package and Xcode-style app repos are covered
 - reports include findings, misses, and follow-up heuristics
 - no report requires source upload or remote service execution
 
 Remaining gap:
 
-- add at least one non-owned JavaScript/TypeScript repository report before public alpha messaging
 - make local sibling package report generation independent of local checkout names
+- broaden non-owned JavaScript/TypeScript probes to at least one larger app or service after the small-library behavior is stable
