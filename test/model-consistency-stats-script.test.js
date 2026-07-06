@@ -14,7 +14,7 @@ describe("model consistency stats script", () => {
     assert.equal(stats.schemaVersion, "model-consistency-stats/v1");
     assert.equal(stats.source.profileName, "deterministic-baseline");
     assert.equal(stats.counts.scenarioCount, 27);
-    assert.equal(stats.counts.checkedFieldCount, 214);
+    assert.equal(stats.counts.checkedFieldCount, 220);
     assert.equal(stats.counts.failureCount, 0);
     assert.equal(stats.distributions.scenariosByStatus.passed, 27);
     assert.equal(stats.distributions.scenariosByTool.collect_project_findings, 2);

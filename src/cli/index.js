@@ -701,6 +701,12 @@ function renderMarkdownProjectStats(stats) {
   lines.push(`- Unsupported: ${stats.summary.unsupportedProjectCount}`);
   lines.push(`- Audit coverage: ${stats.summary.auditCoverage}`);
   lines.push("");
+  lines.push("## Source Files");
+  lines.push(`- Total: ${stats.sourceFiles.total}`);
+  lines.push(`- Audited: ${stats.sourceFiles.audited}`);
+  lines.push(`- Unsupported: ${stats.sourceFiles.unsupported}`);
+  lines.push(`- By language: ${formatSourceFileLanguageStats(stats.sourceFiles.byLanguage)}`);
+  lines.push("");
   lines.push("## Counts");
   lines.push(`- Untested candidates: ${stats.counts.untestedCandidateCount}`);
   lines.push(`- Covered but risky: ${stats.counts.coveredButRiskyCount}`);
@@ -876,6 +882,15 @@ function formatList(values) {
 function formatRecord(record) {
   const entries = Object.entries(record);
   return entries.length > 0 ? entries.map(([key, count]) => `${key}: ${count}`).join(", ") : "none detected";
+}
+
+function formatSourceFileLanguageStats(byLanguage) {
+  const entries = Object.entries(byLanguage);
+  return entries.length > 0
+    ? entries
+        .map(([language, counts]) => `${language}: ${counts.total} total, ${counts.audited} audited, ${counts.unsupported} unsupported`)
+        .join("; ")
+    : "none detected";
 }
 
 function trimTrailingPeriod(value) {

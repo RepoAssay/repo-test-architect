@@ -467,6 +467,7 @@ It is intended for reporting, trend comparisons, and later model-profile compari
 It contains:
 
 - project audit coverage counts
+- source file counts by detected language, split into audited and unsupported project coverage
 - candidate, skipped target, risk, and blocker counts
 - confidence distribution
 - detected test framework distribution

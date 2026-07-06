@@ -131,6 +131,12 @@ export interface ProjectStats {
     unsupportedProjectCount: number;
     auditCoverage: "complete" | "partial" | "none";
   };
+  sourceFiles: {
+    total: number;
+    audited: number;
+    unsupported: number;
+    byLanguage: Record<string, { total: number; audited: number; unsupported: number }>;
+  };
   counts: {
     untestedCandidateCount: number;
     coveredButRiskyCount: number;

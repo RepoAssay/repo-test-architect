@@ -185,10 +185,12 @@ describe("schema files", () => {
 
     assert.equal(schema.properties.schemaVersion.const, "project-stats/v1");
     assert.ok(schema.required.includes("summary"));
+    assert.ok(schema.required.includes("sourceFiles"));
     assert.ok(schema.required.includes("counts"));
     assert.ok(schema.required.includes("distributions"));
     assert.ok(schema.required.includes("adapters"));
     assert.ok(schema.properties.summary.required.includes("auditCoverage"));
+    assert.ok(schema.properties.sourceFiles.required.includes("byLanguage"));
     assert.ok(schema.properties.counts.required.includes("blockerCount"));
     assert.ok(schema.properties.distributions.required.includes("testFrameworks"));
     assert.ok(schema.properties.adapters.items.required.includes("adapterId"));

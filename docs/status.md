@@ -26,7 +26,7 @@ Implemented:
 - test placement findings artifact with a conservative audit-based `keep` analyzer
 - project-audits derived placement analysis that preserves project owner identity and reports conservative cross-owner `move` and `split` findings for test paths that escape the audited project root
 - project-level top findings report with category counts for missing coverage, weak existing coverage, misplaced coverage, low-value direct targets, and blocked projects
-- project-audits derived local stats artifact for audit coverage, target counts, risk and signal distributions, framework distribution, test commands, and adapter usage
+- project-audits derived local stats artifact for audit coverage, audited versus unsupported source file counts by language, target counts, risk and signal distributions, framework distribution, test commands, and adapter usage
 - JSDoc contract annotations for core runtime modules, including adapter registry, tool API, project detection, project audit, planning, ranking, explanation, placement, and deferred generation
 - project detection and project audit artifacts for polyglot repository groundwork
 - documented polyglot artifact workflow from project detection through project test planning
