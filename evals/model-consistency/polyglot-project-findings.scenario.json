@@ -28,6 +28,16 @@
       "reason": "The low-confidence Python service should keep both blocker reasons visible in top findings."
     },
     {
+      "path": "summary.categoryCounts.missing-coverage",
+      "expected": 3,
+      "reason": "The top findings report should preserve the count of high-value untested recommendations."
+    },
+    {
+      "path": "summary.categoryCounts.blocked-project",
+      "expected": 2,
+      "reason": "The top findings report should preserve blocked-project visibility in summary counts."
+    },
+    {
       "path": "findings[0].category",
       "expected": "blocked-project",
       "reason": "Blocked projects should outrank target recommendations when the audit cannot fully trust a project."

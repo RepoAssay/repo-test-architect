@@ -93,6 +93,7 @@ export interface ProjectFindings {
     highSeverityCount: number;
     placementFindingCount: number;
     blockedProjectCount: number;
+    categoryCounts: Record<ProjectFinding["category"], number>;
   };
   findings: ProjectFinding[];
   unsupportedProjects: SkippedProjectAudit[];

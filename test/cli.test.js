@@ -308,6 +308,7 @@ describe("CLI", () => {
     assert.match(output, /^# Project Findings/);
     assert.match(output, /Audit coverage: complete/);
     assert.match(output, /Findings: 5 of 5/);
+    assert.match(output, /Finding categories: missing-coverage: 3, weak-existing-coverage: 0, misplaced-coverage: 0, low-value-direct-test: 0, blocked-project: 2/);
     assert.match(output, /services\/api: blocked-project, high, priority 9/);
     assert.match(output, /apps\/android: missing-coverage, high, priority 7: CheckoutCalculator/);
   });

@@ -23,6 +23,11 @@
       "reason": "The split recommendation must be counted as a placement finding in the repo-level report."
     },
     {
+      "path": "summary.categoryCounts.misplaced-coverage",
+      "expected": 1,
+      "reason": "The split recommendation should be visible in category-level findings counts."
+    },
+    {
       "path": "findings[0].category",
       "expected": "misplaced-coverage",
       "reason": "Escaped integration coverage should be reported as misplaced coverage, not missing coverage."

@@ -656,6 +656,7 @@ function renderMarkdownProjectFindings(findings) {
   lines.push(`- High severity: ${findings.summary.highSeverityCount}`);
   lines.push(`- Placement findings: ${findings.summary.placementFindingCount}`);
   lines.push(`- Blocked projects: ${findings.summary.blockedProjectCount}`);
+  lines.push(`- Finding categories: ${formatRecord(findings.summary.categoryCounts)}`);
   lines.push("");
   lines.push("## Top Findings");
 

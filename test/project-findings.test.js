@@ -22,7 +22,14 @@ describe("project findings", () => {
       maxFindings: 10,
       highSeverityCount: 5,
       placementFindingCount: 0,
-      blockedProjectCount: 2
+      blockedProjectCount: 2,
+      categoryCounts: {
+        "missing-coverage": 3,
+        "weak-existing-coverage": 0,
+        "misplaced-coverage": 0,
+        "low-value-direct-test": 0,
+        "blocked-project": 2
+      }
     });
     assert.deepEqual(
       findings.findings.map((finding) => `${finding.category}:${finding.projectRoot}:${finding.target ?? finding.title}`),
