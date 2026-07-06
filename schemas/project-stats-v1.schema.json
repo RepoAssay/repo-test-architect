@@ -4,7 +4,7 @@
   "title": "Project Stats Artifact",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schemaVersion", "root", "summary", "counts", "distributions", "adapters"],
+  "required": ["schemaVersion", "root", "summary", "sourceFiles", "counts", "distributions", "adapters"],
   "properties": {
     "schemaVersion": {
       "const": "project-stats/v1"
@@ -40,6 +40,29 @@
         "skippedTargetCount": { "type": "integer", "minimum": 0 },
         "riskCount": { "type": "integer", "minimum": 0 },
         "blockerCount": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "sourceFiles": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["total", "audited", "unsupported", "byLanguage"],
+      "properties": {
+        "total": { "type": "integer", "minimum": 0 },
+        "audited": { "type": "integer", "minimum": 0 },
+        "unsupported": { "type": "integer", "minimum": 0 },
+        "byLanguage": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["total", "audited", "unsupported"],
+            "properties": {
+              "total": { "type": "integer", "minimum": 0 },
+              "audited": { "type": "integer", "minimum": 0 },
+              "unsupported": { "type": "integer", "minimum": 0 }
+            }
+          }
+        }
       }
     },
     "distributions": {

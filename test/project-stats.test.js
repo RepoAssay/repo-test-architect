@@ -16,6 +16,16 @@ describe("project stats", () => {
       unsupportedProjectCount: 0,
       auditCoverage: "complete"
     });
+    assert.deepEqual(stats.sourceFiles, {
+      total: 3,
+      audited: 3,
+      unsupported: 0,
+      byLanguage: {
+        kotlin: { total: 1, audited: 1, unsupported: 0 },
+        python: { total: 1, audited: 1, unsupported: 0 },
+        typescript: { total: 1, audited: 1, unsupported: 0 }
+      }
+    });
     assert.deepEqual(stats.counts, {
       untestedCandidateCount: 3,
       coveredButRiskyCount: 0,
@@ -41,6 +51,50 @@ describe("project stats", () => {
       { adapterId: "kotlin", projectCount: 1 },
       { adapterId: "python", projectCount: 1 }
     ]);
+  });
+
+  it("separates audited and unsupported source file counts", () => {
+    const projectAudits = {
+      schemaVersion: "project-audits/v1",
+      root: path.resolve("examples/polyglot-workspace"),
+      summary: {
+        projectCount: 3,
+        auditedProjectCount: 2,
+        skippedProjectCount: 1
+      },
+      audits: auditDetectedProjects(path.resolve("examples/polyglot-workspace"), {
+        excludeProjectRoots: ["services/api"]
+      }).audits,
+      skippedProjects: [
+        {
+          projectId: "services/api",
+          projectRoot: "services/api",
+          reason: "Python adapter disabled for this stats fixture.",
+          ecosystems: ["python"],
+          languages: ["python"],
+          adapterMatches: [],
+          supportStatusReason: "Python adapter disabled for this stats fixture."
+        }
+      ]
+    };
+    const stats = collectProjectStats(projectAudits);
+
+    assert.deepEqual(stats.summary, {
+      projectCount: 3,
+      auditedProjectCount: 2,
+      unsupportedProjectCount: 1,
+      auditCoverage: "partial"
+    });
+    assert.deepEqual(stats.sourceFiles, {
+      total: 3,
+      audited: 2,
+      unsupported: 1,
+      byLanguage: {
+        kotlin: { total: 1, audited: 1, unsupported: 0 },
+        python: { total: 1, audited: 0, unsupported: 1 },
+        typescript: { total: 1, audited: 1, unsupported: 0 }
+      }
+    });
   });
 
   it("rejects non-project-audits artifacts", () => {

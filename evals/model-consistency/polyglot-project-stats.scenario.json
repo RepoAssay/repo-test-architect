@@ -33,6 +33,36 @@
       "reason": "Stats must preserve complete audit coverage for this polyglot fixture."
     },
     {
+      "path": "sourceFiles.total",
+      "expected": 3,
+      "reason": "Stats must preserve the detected source file count used for audit coverage reporting."
+    },
+    {
+      "path": "sourceFiles.audited",
+      "expected": 3,
+      "reason": "Stats must preserve how many detected source files belong to audited projects."
+    },
+    {
+      "path": "sourceFiles.unsupported",
+      "expected": 0,
+      "reason": "Stats must preserve that no detected source files belong to unsupported projects in this fixture."
+    },
+    {
+      "path": "sourceFiles.byLanguage.kotlin.audited",
+      "expected": 1,
+      "reason": "Stats must preserve audited Kotlin source coverage."
+    },
+    {
+      "path": "sourceFiles.byLanguage.python.audited",
+      "expected": 1,
+      "reason": "Stats must preserve audited Python source coverage."
+    },
+    {
+      "path": "sourceFiles.byLanguage.typescript.audited",
+      "expected": 1,
+      "reason": "Stats must preserve audited TypeScript source coverage."
+    },
+    {
       "path": "counts.untestedCandidateCount",
       "expected": 3,
       "reason": "Stats must preserve candidate counts derived from audited projects."

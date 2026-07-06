@@ -392,6 +392,8 @@ describe("CLI", () => {
 
     assert.match(output, /^# Project Stats/);
     assert.match(output, /Audit coverage: complete/);
+    assert.match(output, /Total: 3/);
+    assert.match(output, /By language: kotlin: 1 total, 1 audited, 0 unsupported; python: 1 total, 1 audited, 0 unsupported; typescript: 1 total, 1 audited, 0 unsupported/);
     assert.match(output, /Test frameworks: kotlin-test: 1, vitest: 1/);
     assert.match(output, /Target kinds: pure-logic: 2, service: 1/);
     assert.match(output, /Risk levels: high: 3/);
@@ -409,6 +411,11 @@ describe("CLI", () => {
 
     assert.equal(stats.schemaVersion, "project-stats/v1");
     assert.equal(stats.summary.auditCoverage, "complete");
+    assert.deepEqual(stats.sourceFiles.byLanguage, {
+      kotlin: { total: 1, audited: 1, unsupported: 0 },
+      python: { total: 1, audited: 1, unsupported: 0 },
+      typescript: { total: 1, audited: 1, unsupported: 0 }
+    });
     assert.deepEqual(stats.distributions.testCommands, { "gradle test": 1, "npm run test": 1 });
     assert.deepEqual(stats.distributions.targetKinds, { "pure-logic": 2, service: 1 });
     assert.deepEqual(stats.distributions.riskLevels, { high: 3 });

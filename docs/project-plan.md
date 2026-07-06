@@ -264,7 +264,7 @@ Quality:
 
 Add local-first stats before considering any external telemetry.
 
-The first `project-stats/v1` artifact is now derived from `project-audits/v1` and covers audit coverage, candidate/risk/blocker counts, confidence distribution, test framework detection, test commands, and adapter usage.
+The first `project-stats/v1` artifact is now derived from `project-audits/v1` and covers audit coverage, audited versus unsupported source file counts by language, candidate/risk/blocker counts, confidence distribution, test framework detection, test commands, and adapter usage.
 The first `model-consistency-stats/v1` artifact is derived from model-consistency summaries and optional comparisons, covering scenario counts, locked-field counts, failures, drift, missing scenarios, unexpected scenarios, status distribution, and tool distribution.
 
 Useful deterministic stats should be derived from existing artifacts:

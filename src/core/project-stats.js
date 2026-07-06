@@ -1,11 +1,46 @@
+import fs from "node:fs";
+import path from "node:path";
 import { classifyProjectAuditCoverage } from "./project-audit-coverage.js";
 import { validateProjectAudits } from "./project-audits-validation.js";
+
+const IGNORED_DIRECTORIES = new Set([
+  ".build",
+  ".git",
+  ".gradle",
+  ".swiftpm",
+  ".venv",
+  "bin",
+  "build",
+  "coverage",
+  "dist",
+  "node_modules",
+  "obj",
+  "target",
+  "vendor"
+]);
+
+const LANGUAGE_EXTENSIONS = new Map([
+  ["csharp", [".cs"]],
+  ["elixir", [".ex", ".exs"]],
+  ["go", [".go"]],
+  ["java", [".java"]],
+  ["javascript", [".js", ".jsx", ".mjs", ".cjs"]],
+  ["kotlin", [".kt"]],
+  ["objective-c", [".m", ".mm"]],
+  ["php", [".php"]],
+  ["python", [".py"]],
+  ["ruby", [".rb"]],
+  ["rust", [".rs"]],
+  ["swift", [".swift"]],
+  ["typescript", [".ts", ".tsx"]]
+]);
 
 /**
  * @typedef {object} ProjectStats
  * @property {"project-stats/v1"} schemaVersion
  * @property {string} root
  * @property {{ projectCount: number, auditedProjectCount: number, unsupportedProjectCount: number, auditCoverage: "complete" | "partial" | "none" }} summary
+ * @property {{ total: number, audited: number, unsupported: number, byLanguage: Record<string, { total: number, audited: number, unsupported: number }> }} sourceFiles
  * @property {{ untestedCandidateCount: number, coveredButRiskyCount: number, skippedTargetCount: number, riskCount: number, blockerCount: number }} counts
  * @property {{ confidence: Record<string, number>, testFrameworks: Record<string, number>, testCommands: Record<string, number>, targetKinds: Record<string, number>, riskLevels: Record<string, number>, signals: Record<string, number> }} distributions
  * @property {{ adapterId: string, projectCount: number }[]} adapters
@@ -32,6 +67,7 @@ export function collectProjectStats(projectAudits) {
   const riskLevels = {};
   const signals = {};
   const adapters = {};
+  const sourceFiles = createSourceFileStats();
 
   for (const entry of projectAudits.audits) {
     const audit = entry.audit;
@@ -49,6 +85,10 @@ export function collectProjectStats(projectAudits) {
 
     increment(confidence, audit.profile.confidence ?? "unknown");
     increment(adapters, entry.adapterId);
+    mergeSourceFileStats(
+      sourceFiles,
+      countProjectSourceFiles(projectAudits.root, entry.projectRoot, audit.profile.languages ?? [], "audited")
+    );
 
     for (const framework of audit.profile.testFrameworks ?? []) {
       increment(testFrameworks, framework);
@@ -71,6 +111,13 @@ export function collectProjectStats(projectAudits) {
     }
   }
 
+  for (const project of projectAudits.skippedProjects) {
+    mergeSourceFileStats(
+      sourceFiles,
+      countProjectSourceFiles(projectAudits.root, project.projectRoot, project.languages ?? [], "unsupported")
+    );
+  }
+
   return {
     schemaVersion: "project-stats/v1",
     root: projectAudits.root,
@@ -80,6 +127,7 @@ export function collectProjectStats(projectAudits) {
       unsupportedProjectCount: projectAudits.summary.skippedProjectCount,
       auditCoverage: classifyProjectAuditCoverage(projectAudits.summary.auditedProjectCount, projectAudits.summary.skippedProjectCount)
     },
+    sourceFiles: normalizeSourceFileStats(sourceFiles),
     counts,
     distributions: {
       confidence: sortRecord(confidence),
@@ -104,4 +152,87 @@ function increment(record, key) {
 
 function sortRecord(record) {
   return Object.fromEntries(Object.entries(record).sort(([left], [right]) => left.localeCompare(right)));
+}
+
+function createSourceFileStats() {
+  return {
+    total: 0,
+    audited: 0,
+    unsupported: 0,
+    byLanguage: {}
+  };
+}
+
+function countProjectSourceFiles(repoRoot, projectRoot, languages, coverageKey) {
+  const stats = createSourceFileStats();
+  const absoluteProjectRoot = path.resolve(repoRoot, projectRoot);
+  if (!fs.existsSync(absoluteProjectRoot)) return stats;
+
+  for (const filePath of collectSourceFilePaths(absoluteProjectRoot)) {
+    const language = detectSourceLanguage(filePath, languages);
+    if (!language) continue;
+
+    stats.total += 1;
+    stats[coverageKey] += 1;
+    stats.byLanguage[language] ??= { total: 0, audited: 0, unsupported: 0 };
+    stats.byLanguage[language].total += 1;
+    stats.byLanguage[language][coverageKey] += 1;
+  }
+
+  return stats;
+}
+
+function collectSourceFilePaths(root) {
+  const files = [];
+
+  function visit(current) {
+    for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
+      if (entry.isDirectory()) {
+        if (!IGNORED_DIRECTORIES.has(entry.name)) {
+          visit(path.join(current, entry.name));
+        }
+        continue;
+      }
+
+      files.push(path.join(current, entry.name));
+    }
+  }
+
+  visit(root);
+  return files;
+}
+
+function detectSourceLanguage(filePath, languages) {
+  const extension = path.extname(filePath);
+  const languageSet = new Set(languages);
+
+  for (const [language, extensions] of LANGUAGE_EXTENSIONS.entries()) {
+    if (languageSet.has(language) && extensions.includes(extension)) return language;
+  }
+
+  return undefined;
+}
+
+function mergeSourceFileStats(target, source) {
+  target.total += source.total;
+  target.audited += source.audited;
+  target.unsupported += source.unsupported;
+
+  for (const [language, counts] of Object.entries(source.byLanguage)) {
+    target.byLanguage[language] ??= { total: 0, audited: 0, unsupported: 0 };
+    target.byLanguage[language].total += counts.total;
+    target.byLanguage[language].audited += counts.audited;
+    target.byLanguage[language].unsupported += counts.unsupported;
+  }
+}
+
+function normalizeSourceFileStats(stats) {
+  return {
+    total: stats.total,
+    audited: stats.audited,
+    unsupported: stats.unsupported,
+    byLanguage: Object.fromEntries(
+      Object.entries(stats.byLanguage).sort(([left], [right]) => left.localeCompare(right))
+    )
+  };
 }
