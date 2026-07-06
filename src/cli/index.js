@@ -665,11 +665,14 @@ function renderMarkdownProjectFindings(findings) {
   } else {
     for (const finding of findings.findings) {
       const subject = finding.target ? `${finding.target} [${finding.targetId}]` : finding.title;
-      const rationale = finding.rationale.map(trimTrailingPeriod).join(". ");
-      const evidence = finding.evidence.length > 0 ? ` Evidence: ${finding.evidence.join("; ")}.` : "";
       lines.push(
-        `- ${finding.projectRoot}: ${finding.category}, ${finding.severity}, priority ${finding.priority}: ${subject}. ${rationale}.${evidence}`
+        `- ${finding.projectRoot}: ${finding.category}, ${finding.severity}, priority ${finding.priority}: ${subject}.`
       );
+      lines.push(`  - Source: ${formatFindingSource(finding)}`);
+      lines.push(`  - Recommended level: ${finding.testLevel ?? "review"}`);
+      lines.push(`  - Existing tests: ${formatFindingExistingTests(finding)}`);
+      lines.push(`  - Rationale: ${formatFindingDetail(finding.rationale)}`);
+      lines.push(`  - Evidence: ${formatFindingDetail(finding.evidence)}`);
     }
   }
 
@@ -717,6 +720,20 @@ function renderMarkdownProjectStats(stats) {
   lines.push(`- ${stats.adapters.map((adapter) => `${adapter.adapterId}: ${adapter.projectCount}`).join(", ") || "none detected"}`);
 
   return lines.join("\n");
+}
+
+function formatFindingSource(finding) {
+  if (finding.path) return finding.path;
+  if (finding.testFile) return finding.testFile;
+  return finding.projectRoot;
+}
+
+function formatFindingExistingTests(finding) {
+  return finding.existingTestPaths.length > 0 ? finding.existingTestPaths.join(", ") : "none detected";
+}
+
+function formatFindingDetail(items) {
+  return items.length > 0 ? `${items.map(trimTrailingPeriod).join(". ")}.` : "No detail emitted.";
 }
 
 function renderMarkdownPlan(plan) {
