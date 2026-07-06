@@ -88,6 +88,6 @@ Done:
 Next:
 
 1. Expand real-repo audit reports beyond owned/local repositories, especially one non-owned JavaScript/TypeScript repo.
-2. Tighten placement findings with more package-boundary signals.
+2. Tighten placement findings beyond package/app root inference with more adapter-owned package-boundary signals.
 3. Add more model-consistency scenarios for placement summaries as the finding surface grows.
 4. Keep adapter hardening focused on common stack variants that improve real-repo audit trust.

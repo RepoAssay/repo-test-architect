@@ -338,6 +338,74 @@ describe("project test placement analysis", () => {
     });
   });
 
+  it("infers package boundaries from package and app project roots", () => {
+    const placement = analyzeProjectTestPlacement({
+      schemaVersion: "project-audits/v1",
+      root: "/repo",
+      summary: {
+        projectCount: 2,
+        auditedProjectCount: 2,
+        skippedProjectCount: 0
+      },
+      audits: [
+        {
+          projectId: "apps/main",
+          projectRoot: "apps/main",
+          adapterId: "javascript",
+          audit: {
+            schemaVersion: "audit/v1",
+            profile: { root: "/repo/apps/main" },
+            untestedCandidates: [],
+            coveredButRisky: [],
+            skipped: [],
+            risks: []
+          }
+        },
+        {
+          projectId: "packages/billing-core",
+          projectRoot: "packages/billing-core",
+          adapterId: "javascript",
+          audit: {
+            schemaVersion: "audit/v1",
+            profile: { root: "/repo/packages/billing-core" },
+            untestedCandidates: [],
+            coveredButRisky: [
+              {
+                path: "src/priceRules.ts",
+                kind: "pure-logic",
+                signals: ["pure-logic"],
+                recommendedTestLevel: "unit",
+                existingTestPaths: ["apps/main/tests/priceRules.test.ts"]
+              }
+            ],
+            skipped: [],
+            risks: []
+          }
+        }
+      ],
+      skippedProjects: []
+    });
+
+    assert.deepEqual(placement.findings[0], {
+      id: "packages/billing-core:move:apps/main/tests/priceRules.test.ts:packages/billing-core/src/priceRules.ts",
+      testFile: "apps/main/tests/priceRules.test.ts",
+      currentOwner: "apps/main",
+      suggestedOwner: "packages/billing-core",
+      action: "move",
+      reason: "Existing test is owned by another project while covering package-owned behavior from this project.",
+      evidence: [
+        "project id: packages/billing-core",
+        "current owner: apps/main",
+        "suggested owner: packages/billing-core",
+        "test path belongs to another detected project",
+        "package boundary inferred from project roots: package-like source owner covered by app-like test owner",
+        "matches source target packages/billing-core/src/priceRules.ts",
+        "target kind: pure-logic",
+        "recommended level: unit"
+      ]
+    });
+  });
+
   it("rejects non-project-audits artifacts", () => {
     assert.throws(
       () => analyzeProjectTestPlacement({ schemaVersion: "audit/v1" }),
