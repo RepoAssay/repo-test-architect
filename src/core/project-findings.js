@@ -12,7 +12,7 @@ const DEFAULT_MAX_FINDINGS = 10;
  * @typedef {object} ProjectFindings
  * @property {"project-findings/v1"} schemaVersion
  * @property {string} root
- * @property {{ projectCount: number, auditedProjectCount: number, unsupportedProjectCount: number, auditCoverage: "complete" | "partial" | "none", unsupportedReasons: string[], findingCount: number, displayedFindingCount: number, maxFindings: number, highSeverityCount: number, placementFindingCount: number, blockedProjectCount: number }} summary
+ * @property {{ projectCount: number, auditedProjectCount: number, unsupportedProjectCount: number, auditCoverage: "complete" | "partial" | "none", unsupportedReasons: string[], findingCount: number, displayedFindingCount: number, maxFindings: number, highSeverityCount: number, placementFindingCount: number, blockedProjectCount: number, categoryCounts: Record<ProjectFindingCategory, number> }} summary
  * @property {object[]} findings
  * @property {object[]} unsupportedProjects
  */
@@ -33,6 +33,7 @@ export function createProjectFindings(projectAudits, options = {}) {
     .map(toPlacementFinding);
   const findings = [...coverageFindings, ...placementFindings].sort(bySeverityThenPriority);
   const displayedFindings = findings.slice(0, maxFindings);
+  const categoryCounts = countByCategory(findings);
 
   return {
     schemaVersion: "project-findings/v1",
@@ -48,7 +49,8 @@ export function createProjectFindings(projectAudits, options = {}) {
       maxFindings,
       highSeverityCount: findings.filter((finding) => finding.severity === "high").length,
       placementFindingCount: placementFindings.length,
-      blockedProjectCount: findings.filter((finding) => finding.category === "blocked-project").length
+      blockedProjectCount: categoryCounts["blocked-project"],
+      categoryCounts
     },
     findings: displayedFindings,
     unsupportedProjects
@@ -185,6 +187,22 @@ function normalizeMaxFindings(maxFindings) {
     throw new Error("maxFindings must be a positive integer.");
   }
   return maxFindings;
+}
+
+function countByCategory(findings) {
+  const counts = {
+    "missing-coverage": 0,
+    "weak-existing-coverage": 0,
+    "misplaced-coverage": 0,
+    "low-value-direct-test": 0,
+    "blocked-project": 0
+  };
+
+  for (const finding of findings) {
+    counts[finding.category] += 1;
+  }
+
+  return counts;
 }
 
 function bySeverityThenPriority(a, b) {

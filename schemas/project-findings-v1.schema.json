@@ -22,7 +22,8 @@
         "maxFindings",
         "highSeverityCount",
         "placementFindingCount",
-        "blockedProjectCount"
+        "blockedProjectCount",
+        "categoryCounts"
       ],
       "properties": {
         "projectCount": { "type": "integer", "minimum": 0 },
@@ -39,7 +40,25 @@
         "maxFindings": { "type": "integer", "minimum": 1 },
         "highSeverityCount": { "type": "integer", "minimum": 0 },
         "placementFindingCount": { "type": "integer", "minimum": 0 },
-        "blockedProjectCount": { "type": "integer", "minimum": 0 }
+        "blockedProjectCount": { "type": "integer", "minimum": 0 },
+        "categoryCounts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "missing-coverage",
+            "weak-existing-coverage",
+            "misplaced-coverage",
+            "low-value-direct-test",
+            "blocked-project"
+          ],
+          "properties": {
+            "missing-coverage": { "type": "integer", "minimum": 0 },
+            "weak-existing-coverage": { "type": "integer", "minimum": 0 },
+            "misplaced-coverage": { "type": "integer", "minimum": 0 },
+            "low-value-direct-test": { "type": "integer", "minimum": 0 },
+            "blocked-project": { "type": "integer", "minimum": 0 }
+          }
+        }
       }
     },
     "findings": {
