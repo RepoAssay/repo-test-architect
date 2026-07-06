@@ -96,11 +96,13 @@ export function analyzeProjectTestPlacement(projectAudits) {
  */
 function createPackageBoundaryFinding({ entry, entries, finding, sourcePath, target }) {
   const signals = target?.signals ?? [];
-  if (!signals.includes("package-owned-behavior")) return undefined;
 
   const repoTestFile = normalizePath(finding.testFile);
   const currentOwner = inferProjectOwner(entries, repoTestFile, entry.projectRoot);
   if (currentOwner === entry.projectRoot || currentOwner === "outside audited project root") return undefined;
+
+  const boundary = classifyPackageBoundary(entry.projectRoot, currentOwner, signals);
+  if (!boundary.isPackageBoundary) return undefined;
 
   const repoSourcePath = joinProjectPath(entry.projectRoot, sourcePath);
   const action = hasRecommendedLevel(finding.evidence, "integration") || signals.includes("app-integration-dependency")
@@ -122,11 +124,56 @@ function createPackageBoundaryFinding({ entry, entries, finding, sourcePath, tar
       `current owner: ${currentOwner}`,
       `suggested owner: ${entry.projectRoot}`,
       "test path belongs to another detected project",
-      "package boundary signal: package-owned-behavior",
+      boundary.evidence,
       ...(signals.includes("app-integration-dependency") ? ["package boundary signal: app-integration-dependency"] : []),
       ...finding.evidence.map((item) => prefixSourceEvidence(item, entry.projectRoot))
     ]
   };
+}
+
+/**
+ * @param {string} sourceOwner
+ * @param {string} testOwner
+ * @param {string[]} signals
+ * @returns {{ isPackageBoundary: boolean, evidence: string }}
+ */
+function classifyPackageBoundary(sourceOwner, testOwner, signals) {
+  if (signals.includes("package-owned-behavior")) {
+    return {
+      isPackageBoundary: true,
+      evidence: "package boundary signal: package-owned-behavior"
+    };
+  }
+
+  if (isPackageLikeOwner(sourceOwner) && isApplicationLikeOwner(testOwner)) {
+    return {
+      isPackageBoundary: true,
+      evidence: "package boundary inferred from project roots: package-like source owner covered by app-like test owner"
+    };
+  }
+
+  return {
+    isPackageBoundary: false,
+    evidence: ""
+  };
+}
+
+/**
+ * @param {string} owner
+ * @returns {boolean}
+ */
+function isPackageLikeOwner(owner) {
+  const normalized = normalizePath(owner);
+  return /(^|\/)(packages|package|libs|lib|modules)\/[^/]+/.test(normalized);
+}
+
+/**
+ * @param {string} owner
+ * @returns {boolean}
+ */
+function isApplicationLikeOwner(owner) {
+  const normalized = normalizePath(owner);
+  return /(^|\/)(apps|app|clients|client|services)\/[^/]+/.test(normalized);
 }
 
 /**

@@ -110,7 +110,7 @@ Current tool names:
 - `generate_selected_test`
 
 `generate_selected_test` intentionally returns `generation-deferred/v1` until native generation has adapter-specific fixtures and repair-loop coverage.
-`analyze_test_placement` currently returns conservative advisory `keep` findings from existing audit evidence. `analyze_project_test_placement` can additionally return conservative `move` findings when project-derived test paths escape the audited project root, or `split` findings when the escaped match is integration-level. Package-aware adapters can also emit `package-owned-behavior` and `app-integration-dependency` signals so repo-relative cross-owner test paths become advisory `move` or `split` findings.
+`analyze_test_placement` currently returns conservative advisory `keep` findings from existing audit evidence. `analyze_project_test_placement` can additionally return conservative `move` findings when project-derived test paths escape the audited project root, or `split` findings when the escaped match is integration-level. Package-aware adapters can also emit `package-owned-behavior` and `app-integration-dependency` signals so repo-relative cross-owner test paths become advisory `move` or `split` findings. The project placement analyzer can also infer a package boundary when a package-like project root such as `packages/*`, `libs/*`, or `modules/*` is covered by an app-like test owner such as `apps/*`, `clients/*`, or `services/*`.
 
 ## Verification
 
@@ -172,6 +172,6 @@ npm run eval:test
 1. Consolidate repeated JSDoc artifact shapes into shared TS reference files when the runtime API stabilizes further.
 2. Harden experimental adapters with more fixture variants, starting with Python packaging/test-command variants and Swift/Vapor edge cases.
 3. Add more model-consistency fixtures and model profile output comparisons.
-4. Expand package-aware test placement analysis from explicit path escapes into richer adapter-owned package boundary signals.
+4. Expand package-aware test placement analysis from package/app root inference into richer adapter-owned package boundary signals.
 5. Add local-first stats artifacts for audit coverage, candidate/risk counts, model-consistency drift, and later repair-loop trends.
 6. Add native test generation only after adapter-specific generation rules and repair-loop tests exist.
