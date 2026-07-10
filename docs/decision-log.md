@@ -50,6 +50,22 @@ Rationale: useful test strategy is the differentiator. Generating tests before t
 
 Revisit when: a fixture proves generation, exact test command execution, failure parsing, and repair for one adapter without editing production code.
 
+## Audit Contract Before Executors
+
+Decision: treat the deterministic audit artifacts as the stable product contract and keep every test-writing workflow as a replaceable downstream consumer.
+
+Rationale: humans, coding agents, language models, CI policies, and external test tools should be able to trust the same repository evidence and choose independently how to act on it. Model-specific prompting, implementation style, and repair behavior belong in executor profiles; they must not redefine repository facts, risk classifications, or the selected audit target.
+
+Future generation should be layered:
+
+1. stable audit evidence and findings
+2. framework-neutral test behavior and acceptance criteria
+3. adapter-owned repository conventions, placement, and verification commands
+4. model- or agent-specific executor instructions
+5. an evidence-producing verification and repair loop
+
+Revisit when: executor evaluations show that the audit contract lacks information required by multiple independent test-writing consumers. Extend the evidence contract before coupling it to one model's preferred prompt shape.
+
 ## Public Demo Before Package Release
 
 Decision: prepare a public demo path before publishing an npm package.

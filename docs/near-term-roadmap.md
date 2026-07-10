@@ -93,10 +93,13 @@ Goal: define the minimum proof needed before native test generation is enabled.
 
 Acceptance:
 
+- generation consumes a selected stable audit or plan item without rediscovering repository facts
 - adapter-specific generation policy exists
 - generated tests reuse discovered conventions
+- model- or agent-specific instructions live in replaceable executor profiles
 - repair loop only edits generated test files by default
 - fixtures cover compile failures, assertion failures, and skipped recommendations
+- evaluation records convention adherence, unrelated edits, verification results, repair attempts, and contradictions of audit evidence
 - risk report explains what was generated, skipped, repaired, and still risky
 
 Native generation should remain off until this gate is met.
