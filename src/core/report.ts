@@ -1,5 +1,7 @@
 import type { AuditResult } from "./audit-model";
 
+const MAX_DISPLAYED_EXISTING_TEST_PATHS = 5;
+
 export function renderMarkdownReport(audit: AuditResult): string {
   const lines: string[] = [];
 
@@ -77,11 +79,19 @@ function formatList(values: string[]): string {
   return values.length > 0 ? values.join(", ") : "none detected";
 }
 
+function formatExistingTestPaths(paths: string[]): string {
+  if (paths.length === 0) return "none detected";
+  const displayed = paths.slice(0, MAX_DISPLAYED_EXISTING_TEST_PATHS);
+  const omittedCount = paths.length - displayed.length;
+  const omitted = omittedCount > 0 ? ` (+${omittedCount} more; full list available in JSON)` : "";
+  return `${displayed.join(", ")}${omitted}`;
+}
+
 function formatTarget(target: AuditResult["recommended"][number]): string {
   const reasons = target.reasons ?? [];
   const existingTestPaths = target.existingTestPaths ?? [];
   const existingTests =
-    existingTestPaths.length > 0 ? `; existing tests: ${existingTestPaths.join(", ")}` : "";
+    existingTestPaths.length > 0 ? `; existing tests: ${formatExistingTestPaths(existingTestPaths)}` : "";
 
   return `- ${target.name}: ${target.recommendedTestLevel} test for ${target.kind} (risk reduction ${target.riskReductionScore}/10, maintenance ${target.maintenanceCost}/10; ${reasons.join("; ")}${existingTests})`;
 }

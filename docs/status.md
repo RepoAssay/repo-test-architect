@@ -9,6 +9,7 @@ Implemented:
 - JavaScript/TypeScript repository profiling
 - JavaScript/TypeScript existing-test matching from filename conventions, literal relative imports with two bounded source-dependency hops, imported-symbol-aware relative barrel re-exports, exact self-package entry imports, and declared exact or single-wildcard package subpaths
 - directory-qualified filename evidence for generic JavaScript/TypeScript basenames such as `index`, `utils`, `handler`, and `types`
+- bounded Markdown display of existing-test evidence with complete path lists preserved in JSON artifacts
 - runtime adapter registry with the supported `javascript` adapter and experimental `kotlin`, `swift`, and `python` adapters
 - adapter registry capability metadata for maturity, framework signals, project types, and emitted artifacts
 - CLI adapter registry output

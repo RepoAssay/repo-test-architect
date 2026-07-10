@@ -22,6 +22,8 @@ import {
   validateProjectAudits
 } from "../core/tool-api.js";
 
+const MAX_DISPLAYED_EXISTING_TEST_PATHS = 5;
+
 const options = parseArgs(process.argv.slice(2));
 
 if (!["adapters", "detect-rules", "detect", "audit-projects", "summarize-projects", "rank-projects", "plan-projects", "findings-projects", "placement-projects", "stats-projects", "audit", "plan", "explain", "rank", "placement"].includes(options.command)) {
@@ -672,7 +674,7 @@ function renderMarkdownProjectFindings(findings) {
       lines.push(`  - Recommended level: ${finding.testLevel ?? "review"}`);
       lines.push(`  - Existing tests: ${formatFindingExistingTests(finding)}`);
       lines.push(`  - Rationale: ${formatFindingDetail(finding.rationale)}`);
-      lines.push(`  - Evidence: ${formatFindingDetail(finding.evidence)}`);
+      lines.push(`  - Evidence: ${formatFindingEvidence(finding)}`);
     }
   }
 
@@ -735,7 +737,14 @@ function formatFindingSource(finding) {
 }
 
 function formatFindingExistingTests(finding) {
-  return finding.existingTestPaths.length > 0 ? finding.existingTestPaths.join(", ") : "none detected";
+  return formatExistingTestPaths(finding.existingTestPaths);
+}
+
+function formatFindingEvidence(finding) {
+  const evidence = finding.evidence.map((item) =>
+    item.startsWith("existing tests:") ? `existing tests: ${formatExistingTestPaths(finding.existingTestPaths)}` : item
+  );
+  return formatFindingDetail(evidence);
 }
 
 function formatFindingDetail(items) {
@@ -772,7 +781,7 @@ function renderMarkdownPlan(plan) {
   } else {
     for (const item of plan.items) {
       const existingTests =
-        item.existingTestPaths.length > 0 ? ` Existing tests: ${item.existingTestPaths.join(", ")}.` : "";
+        item.existingTestPaths.length > 0 ? ` Existing tests: ${formatExistingTestPaths(item.existingTestPaths)}.` : "";
       const rationale = item.rationale.map(trimTrailingPeriod).join(". ");
       lines.push(
         `- ${item.action}: ${item.target} [${item.id}] (${item.testLevel}, priority ${item.priority}, risk reduction ${item.riskReductionScore}/10, maintenance ${item.maintenanceCost}/10). ${rationale}.${existingTests}`
@@ -800,7 +809,7 @@ function renderMarkdownExplanation(explanation) {
   lines.push(`- Risk reduction: ${explanation.riskReductionScore}/10`);
   lines.push(`- Maintenance: ${explanation.maintenanceCost}/10`);
   lines.push(`- Signals: ${formatList(explanation.signals)}`);
-  lines.push(`- Existing tests: ${formatList(explanation.existingTestPaths)}`);
+  lines.push(`- Existing tests: ${formatExistingTestPaths(explanation.existingTestPaths)}`);
   lines.push("");
   lines.push("## Rationale");
 
@@ -840,7 +849,7 @@ function renderMarkdownRanking(ranking) {
   } else {
     for (const candidate of ranking.candidates) {
       const existingTests =
-        candidate.existingTestPaths.length > 0 ? ` Existing tests: ${candidate.existingTestPaths.join(", ")}.` : "";
+        candidate.existingTestPaths.length > 0 ? ` Existing tests: ${formatExistingTestPaths(candidate.existingTestPaths)}.` : "";
       const rationale = candidate.rationale.map(trimTrailingPeriod).join(". ");
       lines.push(
         `- ${candidate.target} [${candidate.targetId}] (${candidate.category}, ${candidate.testLevel}, priority ${candidate.priority}, risk reduction ${candidate.riskReductionScore}/10, maintenance ${candidate.maintenanceCost}/10). ${rationale}.${existingTests}`
@@ -879,6 +888,14 @@ function formatList(values) {
   return values.length > 0 ? values.join(", ") : "none detected";
 }
 
+function formatExistingTestPaths(paths) {
+  if (paths.length === 0) return "none detected";
+  const displayed = paths.slice(0, MAX_DISPLAYED_EXISTING_TEST_PATHS);
+  const omittedCount = paths.length - displayed.length;
+  const omitted = omittedCount > 0 ? ` (+${omittedCount} more; full list available in JSON)` : "";
+  return `${displayed.join(", ")}${omitted}`;
+}
+
 function formatRecord(record) {
   const entries = Object.entries(record);
   return entries.length > 0 ? entries.map(([key, count]) => `${key}: ${count}`).join(", ") : "none detected";
@@ -901,7 +918,7 @@ function formatTarget(target) {
   const reasons = target.reasons ?? [];
   const existingTestPaths = target.existingTestPaths ?? [];
   const existingTests =
-    existingTestPaths.length > 0 ? `; existing tests: ${existingTestPaths.join(", ")}` : "";
+    existingTestPaths.length > 0 ? `; existing tests: ${formatExistingTestPaths(existingTestPaths)}` : "";
 
   return `- ${target.name}: ${target.recommendedTestLevel} test for ${target.kind} (risk reduction ${target.riskReductionScore}/10, maintenance ${target.maintenanceCost}/10; ${reasons.join("; ")}${existingTests})`;
 }
