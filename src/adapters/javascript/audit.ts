@@ -21,6 +21,7 @@ export function auditJavaScriptRepo(snapshot: JavaScriptRepoSnapshot): AuditResu
   const moduleFiles = snapshot.files.map((file) => ({ ...file, path: normalizePath(file.path) }));
   const packageData = parsePackageJson(snapshot.files.find((file) => normalizePath(file.path) === "package.json")?.content ?? "");
   const packageEntryFile = findSourcePackageEntry(packageData, moduleFiles);
+  const packageSubpathEntries = findSourcePackageSubpathEntries(packageData, moduleFiles);
   const untestedCandidates: AuditTarget[] = [];
   const coveredButRisky: AuditTarget[] = [];
   const skipped: SkippedTarget[] = [];
@@ -36,7 +37,8 @@ export function auditJavaScriptRepo(snapshot: JavaScriptRepoSnapshot): AuditResu
     });
     const existingTestPaths = findExistingTests(file.path, testFiles, moduleFiles, {
       packageName: typeof packageData.name === "string" ? packageData.name : undefined,
-      packageEntryFile
+      packageEntryFile,
+      packageSubpathEntries
     });
 
     if (classification.skipReason) {
@@ -559,7 +561,7 @@ function findExistingTests(
   sourcePath: string,
   testFiles: FileSnapshot[],
   moduleFiles: FileSnapshot[],
-  packageEntry: { packageName?: string; packageEntryFile?: FileSnapshot }
+  packageEntry: { packageName?: string; packageEntryFile?: FileSnapshot; packageSubpathEntries: Map<string, FileSnapshot> }
 ): string[] {
   const normalized = normalizePath(sourcePath);
   const sourceBase = basenameWithoutExtension(normalized);
@@ -608,15 +610,23 @@ function hasOneHopBarrelImport(testFile: FileSnapshot, sourcePath: string, modul
 function hasPackageEntryImport(
   testFile: FileSnapshot,
   sourcePath: string,
-  { packageName, packageEntryFile }: { packageName?: string; packageEntryFile?: FileSnapshot }
+  {
+    packageName,
+    packageEntryFile,
+    packageSubpathEntries
+  }: { packageName?: string; packageEntryFile?: FileSnapshot; packageSubpathEntries: Map<string, FileSnapshot> }
 ): boolean {
-  if (!packageName || !packageEntryFile) return false;
-  if (!collectModuleSpecifiers(testFile.content).includes(packageName)) return false;
-  if (packageEntryFile.path === sourcePath) return true;
+  if (!packageName) return false;
 
-  return collectRelativeExportSpecifiers(packageEntryFile.content).some((exportSpecifier) =>
-    moduleSpecifierTargetsSource(packageEntryFile.path, exportSpecifier, sourcePath)
-  );
+  return collectModuleSpecifiers(testFile.content).some((specifier) => {
+    const entryFile = specifier === packageName ? packageEntryFile : packageSubpathEntries.get(specifier);
+    if (!entryFile) return false;
+    if (entryFile.path === sourcePath) return true;
+
+    return collectRelativeExportSpecifiers(entryFile.content).some((exportSpecifier) =>
+      moduleSpecifierTargetsSource(entryFile.path, exportSpecifier, sourcePath)
+    );
+  });
 }
 
 function findSourcePackageEntry(packageData: Record<string, unknown>, moduleFiles: FileSnapshot[]): FileSnapshot | undefined {
@@ -632,6 +642,48 @@ function findSourcePackageEntry(packageData: Record<string, unknown>, moduleFile
   }
 
   return undefined;
+}
+
+function findSourcePackageSubpathEntries(
+  packageData: Record<string, unknown>,
+  moduleFiles: FileSnapshot[]
+): Map<string, FileSnapshot> {
+  const entries = new Map<string, FileSnapshot>();
+  if (typeof packageData.name !== "string" || !packageData.exports || typeof packageData.exports !== "object") {
+    return entries;
+  }
+
+  for (const [subpath, value] of Object.entries(packageData.exports)) {
+    if (!subpath.startsWith("./") || subpath.includes("*")) continue;
+    const relativeSubpath = subpath.slice(2);
+    const declaredPaths = collectStringValues(value).map((candidate) => candidate.replace(/^\.\//, ""));
+    const candidates = [
+      ...declaredPaths,
+      ...declaredPaths.filter((candidate) => candidate.startsWith("dist/")).map((candidate) => candidate.replace(/^dist\//, "src/")),
+      `src/${relativeSubpath}`,
+      relativeSubpath
+    ];
+    const entryFile = findSourceFileForCandidates(candidates, moduleFiles);
+    if (entryFile) entries.set(`${packageData.name}/${relativeSubpath}`, entryFile);
+  }
+
+  return entries;
+}
+
+function findSourceFileForCandidates(candidates: string[], moduleFiles: FileSnapshot[]): FileSnapshot | undefined {
+  for (const candidate of candidates) {
+    const entryFile = moduleFiles.find(
+      (file) => isSourceFile(file.path) && moduleSpecifierTargetsSource("package.json", candidate, file.path)
+    );
+    if (entryFile) return entryFile;
+  }
+  return undefined;
+}
+
+function collectStringValues(value: unknown): string[] {
+  if (typeof value === "string") return [value];
+  if (!value || typeof value !== "object") return [];
+  return Object.values(value).flatMap(collectStringValues);
 }
 
 function moduleSpecifierTargetsSource(importerPath: string, specifier: string, sourcePath: string): boolean {

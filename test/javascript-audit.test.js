@@ -601,4 +601,48 @@ export function auditKotlin(files) {
       ["src/unexported.ts"]
     );
   });
+
+  it("matches exact declared self-package subpath imports", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-js-package-subpaths-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "src"), { recursive: true });
+    fs.mkdirSync(path.join(root, "test"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "package.json"),
+      JSON.stringify({
+        name: "@example/http-kit",
+        exports: {
+          "./errors": { import: "./dist/errors.js", types: "./dist/errors.d.ts" },
+          "./cookies": "./src/cookies.ts",
+          "./features/*": "./dist/features/*.js"
+        },
+        scripts: { test: "vitest --run" },
+        devDependencies: { vitest: "latest" }
+      })
+    );
+    for (const sourceName of ["errors", "cookies", "unexported"]) {
+      fs.writeFileSync(
+        path.join(root, "src", `${sourceName}.ts`),
+        `export function evaluate(value) {\n  if (value) return value;\n  return "${sourceName}";\n}\n`
+      );
+    }
+    fs.writeFileSync(
+      path.join(root, "test", "public-subpaths.test.ts"),
+      `import { evaluate as createError } from "@example/http-kit/errors";\nconst cookies = require("@example/http-kit/cookies");\n`
+    );
+
+    const audit = auditJavaScriptRepo(root);
+
+    assert.deepEqual(
+      audit.coveredButRisky.map((target) => `${target.path}:${target.existingTestPaths.join(",")}`),
+      [
+        "src/cookies.ts:test/public-subpaths.test.ts",
+        "src/errors.ts:test/public-subpaths.test.ts"
+      ]
+    );
+    assert.deepEqual(
+      audit.untestedCandidates.map((target) => target.path),
+      ["src/unexported.ts"]
+    );
+  });
 });
