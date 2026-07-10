@@ -5,6 +5,7 @@ import { analyzeProjectTestPlacement } from "./project-test-placement-analysis.j
 
 const DEFAULT_MAX_FINDINGS = 10;
 const AUXILIARY_PROJECT_ROOT_NAMES = new Set(["docs", "examples", "playground"]);
+const AUXILIARY_PROJECT_PATH_SEGMENTS = new Set(["benchmarks"]);
 const MISSING_TEST_INFRASTRUCTURE_BLOCKERS = new Set([
   "No supported JS test framework detected.",
   "No runnable test command detected from package scripts or framework config."
@@ -106,8 +107,9 @@ function toAuditFindings(entry) {
 
 function isAuxiliaryProjectRoot(projectRoot) {
   const normalized = projectRoot.replaceAll("\\", "/").replace(/\/$/, "");
-  const rootName = normalized.split("/").at(-1);
-  return AUXILIARY_PROJECT_ROOT_NAMES.has(rootName);
+  const segments = normalized.split("/");
+  const rootName = segments.at(-1);
+  return AUXILIARY_PROJECT_ROOT_NAMES.has(rootName) || segments.some((segment) => AUXILIARY_PROJECT_PATH_SEGMENTS.has(segment));
 }
 
 function toTargetFinding(entry, target, category) {

@@ -58,8 +58,8 @@ describe("project findings", () => {
       schemaVersion: "project-audits/v1",
       root: ".",
       summary: {
-        projectCount: 2,
-        auditedProjectCount: 2,
+        projectCount: 3,
+        auditedProjectCount: 3,
         skippedProjectCount: 0
       },
       audits: [
@@ -113,11 +113,16 @@ describe("project findings", () => {
       ],
       skippedProjects: []
     };
+    projectAudits.audits.push({
+      ...projectAudits.audits[1],
+      projectId: "benchmarks/routers",
+      projectRoot: "benchmarks/routers"
+    });
 
     const findings = createProjectFindings(projectAudits);
 
     assert.equal(findings.summary.highSeverityCount, 1);
-    assert.equal(findings.summary.blockedProjectCount, 2);
+    assert.equal(findings.summary.blockedProjectCount, 4);
     assert.equal(findings.findings[0].category, "missing-coverage");
     assert.deepEqual(
       findings.findings.slice(1).map((finding) => ({
@@ -127,6 +132,18 @@ describe("project findings", () => {
         evidence: finding.evidence
       })),
       [
+        {
+          severity: "low",
+          priority: 1,
+          title: "benchmarks/routers is auxiliary and lacks independent test setup",
+          evidence: ["project role: auxiliary", "confidence: low", "test command: none detected"]
+        },
+        {
+          severity: "low",
+          priority: 1,
+          title: "benchmarks/routers is auxiliary and lacks independent test setup",
+          evidence: ["project role: auxiliary", "confidence: low", "test command: none detected"]
+        },
         {
           severity: "low",
           priority: 1,
