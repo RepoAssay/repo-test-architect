@@ -475,4 +475,44 @@ export function auditKotlin(files) {
     );
     assert.deepEqual(audit.untestedCandidates, []);
   });
+
+  it("matches tests with direct relative source imports", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-js-import-tests-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "src", "rules"), { recursive: true });
+    fs.mkdirSync(path.join(root, "src", "formatters"), { recursive: true });
+    fs.mkdirSync(path.join(root, "test"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "package.json"),
+      JSON.stringify({ scripts: { test: "vitest --run" }, devDependencies: { vitest: "latest" } })
+    );
+
+    for (const sourcePath of ["src/rules/payment-policy.ts", "src/formatters/index.ts", "src/session.ts"]) {
+      fs.writeFileSync(
+        path.join(root, sourcePath),
+        `export function evaluate(value) {\n  if (value) return "yes";\n  return "no";\n}\n`
+      );
+    }
+
+    fs.writeFileSync(
+      path.join(root, "test", "checkout-behavior.test.ts"),
+      `import { evaluate } from "../src/rules/payment-policy";\nexport { evaluate as formatter } from "../src/formatters";\n`
+    );
+    fs.writeFileSync(
+      path.join(root, "test", "login-flow.test.js"),
+      `const { evaluate } = require("../src/session.ts");\n`
+    );
+
+    const audit = auditJavaScriptRepo(root);
+
+    assert.deepEqual(
+      audit.coveredButRisky.map((target) => `${target.path}:${target.existingTestPaths.join(",")}`),
+      [
+        "src/formatters/index.ts:test/checkout-behavior.test.ts",
+        "src/rules/payment-policy.ts:test/checkout-behavior.test.ts",
+        "src/session.ts:test/login-flow.test.js"
+      ]
+    );
+    assert.deepEqual(audit.untestedCandidates, []);
+  });
 });

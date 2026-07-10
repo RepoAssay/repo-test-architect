@@ -7,7 +7,9 @@ export function auditJavaScriptRepo(root, options = {}) {
   const files = readRepoFiles(root);
   const profile = buildProfile(root, files);
   const changedPaths = options.changedPaths ? new Set(options.changedPaths.map((currentPath) => normalizeChangedPath(root, currentPath))) : undefined;
-  const testFiles = files.filter((file) => isTestFile(file.path)).map((file) => normalizePath(file.path));
+  const testFiles = files
+    .filter((file) => isTestFile(file.path))
+    .map((file) => ({ ...file, path: normalizePath(file.path) }));
   const untestedCandidates = [];
   const coveredButRisky = [];
   const skipped = [];
@@ -523,7 +525,7 @@ function isTestFile(currentPath) {
   );
 }
 
-function findExistingTests(sourcePath, testPaths) {
+function findExistingTests(sourcePath, testFiles) {
   const normalized = normalizePath(sourcePath);
   const sourceBase = basenameWithoutExtension(normalized);
   const sourceSegments = normalized.split("/");
@@ -537,10 +539,49 @@ function findExistingTests(sourcePath, testPaths) {
     }
   }
 
-  return testPaths.filter((testPath) => {
-    const testBase = basenameWithoutExtension(testPath).replace(/\.(test|spec)$/, "");
-    return sourceBaseCandidates.has(testBase) || testPath.startsWith(`${sourceDir}/__tests__/${sourceBase}.`);
+  return testFiles
+    .filter((testFile) => {
+      const testBase = basenameWithoutExtension(testFile.path).replace(/\.(test|spec)$/, "");
+      return (
+        sourceBaseCandidates.has(testBase) ||
+        testFile.path.startsWith(`${sourceDir}/__tests__/${sourceBase}.`) ||
+        hasDirectRelativeImport(testFile, normalized)
+      );
+    })
+    .map((testFile) => testFile.path);
+}
+
+function hasDirectRelativeImport(testFile, sourcePath) {
+  return collectRelativeModuleSpecifiers(testFile.content).some((specifier) => {
+    const resolved = path.posix.normalize(path.posix.join(path.posix.dirname(testFile.path), specifier));
+    const resolvedWithoutExtension = removeJavaScriptExtension(resolved);
+    const sourceWithoutExtension = removeJavaScriptExtension(sourcePath);
+    return (
+      resolved === sourcePath ||
+      resolvedWithoutExtension === sourceWithoutExtension ||
+      (basenameWithoutExtension(sourcePath) === "index" && resolvedWithoutExtension === path.posix.dirname(sourcePath))
+    );
   });
+}
+
+function collectRelativeModuleSpecifiers(content) {
+  const specifiers = [];
+  const patterns = [
+    /\b(?:import|export)\s+(?:[^"']*?\s+from\s+)?["']([^"']+)["']/g,
+    /\brequire\s*\(\s*["']([^"']+)["']\s*\)/g
+  ];
+
+  for (const pattern of patterns) {
+    for (const match of content.matchAll(pattern)) {
+      if (match[1].startsWith(".")) specifiers.push(match[1]);
+    }
+  }
+
+  return specifiers;
+}
+
+function removeJavaScriptExtension(currentPath) {
+  return currentPath.replace(/\.[cm]?[jt]sx?$/, "");
 }
 
 function pluralizeBaseName(baseName) {
