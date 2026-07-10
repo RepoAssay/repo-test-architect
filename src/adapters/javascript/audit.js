@@ -11,6 +11,8 @@ export function auditJavaScriptRepo(root, options = {}) {
     .filter((file) => isTestFile(file.path))
     .map((file) => ({ ...file, path: normalizePath(file.path) }));
   const moduleFiles = files.map((file) => ({ ...file, path: normalizePath(file.path) }));
+  const packageData = parsePackageJson(files.find((file) => normalizePath(file.path) === "package.json")?.content ?? "");
+  const packageEntryFile = findSourcePackageEntry(packageData, moduleFiles);
   const untestedCandidates = [];
   const coveredButRisky = [];
   const skipped = [];
@@ -24,7 +26,10 @@ export function auditJavaScriptRepo(root, options = {}) {
       runtimeSourcePaths,
       sourceJavaScriptRuntime
     });
-    const existingTestPaths = findExistingTests(file.path, testFiles, moduleFiles);
+    const existingTestPaths = findExistingTests(file.path, testFiles, moduleFiles, {
+      packageName: packageData.name,
+      packageEntryFile
+    });
 
     if (classification.skipReason) {
       skipped.push({
@@ -526,7 +531,7 @@ function isTestFile(currentPath) {
   );
 }
 
-function findExistingTests(sourcePath, testFiles, moduleFiles) {
+function findExistingTests(sourcePath, testFiles, moduleFiles, packageEntry) {
   const normalized = normalizePath(sourcePath);
   const sourceBase = basenameWithoutExtension(normalized);
   const sourceSegments = normalized.split("/");
@@ -547,7 +552,8 @@ function findExistingTests(sourcePath, testFiles, moduleFiles) {
         sourceBaseCandidates.has(testBase) ||
         testFile.path.startsWith(`${sourceDir}/__tests__/${sourceBase}.`) ||
         hasDirectRelativeImport(testFile, normalized) ||
-        hasOneHopBarrelImport(testFile, normalized, moduleFiles)
+        hasOneHopBarrelImport(testFile, normalized, moduleFiles) ||
+        hasPackageEntryImport(testFile, normalized, packageEntry)
       );
     })
     .map((testFile) => testFile.path);
@@ -570,6 +576,31 @@ function hasOneHopBarrelImport(testFile, sourcePath, moduleFiles) {
   });
 }
 
+function hasPackageEntryImport(testFile, sourcePath, { packageName, packageEntryFile }) {
+  if (typeof packageName !== "string" || !packageEntryFile) return false;
+  if (!collectModuleSpecifiers(testFile.content).includes(packageName)) return false;
+  if (packageEntryFile.path === sourcePath) return true;
+
+  return collectRelativeExportSpecifiers(packageEntryFile.content).some((exportSpecifier) =>
+    moduleSpecifierTargetsSource(packageEntryFile.path, exportSpecifier, sourcePath)
+  );
+}
+
+function findSourcePackageEntry(packageData, moduleFiles) {
+  const candidates = [packageData.source, packageData.module, packageData.main, "src/index", "index"]
+    .filter((candidate) => typeof candidate === "string")
+    .map((candidate) => candidate.replace(/^\.\//, ""));
+
+  for (const candidate of candidates) {
+    const entryFile = moduleFiles.find(
+      (file) => isSourceFile(file.path) && moduleSpecifierTargetsSource("package.json", candidate, file.path)
+    );
+    if (entryFile) return entryFile;
+  }
+
+  return undefined;
+}
+
 function moduleSpecifierTargetsSource(importerPath, specifier, sourcePath) {
   const resolved = path.posix.normalize(path.posix.join(path.posix.dirname(importerPath), specifier));
   const resolvedWithoutExtension = removeJavaScriptExtension(resolved);
@@ -582,6 +613,10 @@ function moduleSpecifierTargetsSource(importerPath, specifier, sourcePath) {
 }
 
 function collectRelativeModuleSpecifiers(content) {
+  return collectModuleSpecifiers(content).filter((specifier) => specifier.startsWith("."));
+}
+
+function collectModuleSpecifiers(content) {
   const specifiers = [];
   const patterns = [
     /\b(?:import|export)\s+(?:[^"']*?\s+from\s+)?["']([^"']+)["']/g,
@@ -590,7 +625,7 @@ function collectRelativeModuleSpecifiers(content) {
 
   for (const pattern of patterns) {
     for (const match of content.matchAll(pattern)) {
-      if (match[1].startsWith(".")) specifiers.push(match[1]);
+      specifiers.push(match[1]);
     }
   }
 
