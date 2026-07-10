@@ -4,6 +4,11 @@ import { collectUnsupportedReasons, normalizeUnsupportedProjects } from "./proje
 import { analyzeProjectTestPlacement } from "./project-test-placement-analysis.js";
 
 const DEFAULT_MAX_FINDINGS = 10;
+const AUXILIARY_PROJECT_ROOT_NAMES = new Set(["docs", "examples", "playground"]);
+const MISSING_TEST_INFRASTRUCTURE_BLOCKERS = new Set([
+  "No supported JS test framework detected.",
+  "No runnable test command detected from package scripts or framework config."
+]);
 
 /**
  * @typedef {"missing-coverage" | "weak-existing-coverage" | "misplaced-coverage" | "low-value-direct-test" | "blocked-project"} ProjectFindingCategory
@@ -61,17 +66,22 @@ function toAuditFindings(entry) {
   const findings = [];
 
   for (const blocker of entry.audit.profile.blockers ?? []) {
+    const auxiliaryInfrastructureBlocker =
+      isAuxiliaryProjectRoot(entry.projectRoot) && MISSING_TEST_INFRASTRUCTURE_BLOCKERS.has(blocker);
     findings.push({
       id: `${entry.projectId}:blocked:${slug(blocker)}`,
       category: "blocked-project",
-      severity: "high",
-      priority: 9,
+      severity: auxiliaryInfrastructureBlocker ? "low" : "high",
+      priority: auxiliaryInfrastructureBlocker ? 1 : 9,
       projectId: entry.projectId,
       projectRoot: entry.projectRoot,
       adapterId: entry.adapterId,
-      title: `${entry.projectRoot} cannot be fully audited`,
+      title: auxiliaryInfrastructureBlocker
+        ? `${entry.projectRoot} is auxiliary and lacks independent test setup`
+        : `${entry.projectRoot} cannot be fully audited`,
       rationale: [blocker],
       evidence: [
+        ...(auxiliaryInfrastructureBlocker ? ["project role: auxiliary"] : []),
         `confidence: ${entry.audit.profile.confidence}`,
         `test command: ${entry.audit.profile.testCommand ?? "none detected"}`
       ],
@@ -92,6 +102,12 @@ function toAuditFindings(entry) {
   }
 
   return findings;
+}
+
+function isAuxiliaryProjectRoot(projectRoot) {
+  const normalized = projectRoot.replaceAll("\\", "/").replace(/\/$/, "");
+  const rootName = normalized.split("/").at(-1);
+  return AUXILIARY_PROJECT_ROOT_NAMES.has(rootName);
 }
 
 function toTargetFinding(entry, target, category) {

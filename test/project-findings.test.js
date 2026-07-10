@@ -53,6 +53,96 @@ describe("project findings", () => {
     assert.equal(findings.findings.length, 2);
   });
 
+  it("ranks missing test setup below actionable findings for auxiliary workspaces", () => {
+    const projectAudits = {
+      schemaVersion: "project-audits/v1",
+      root: ".",
+      summary: {
+        projectCount: 2,
+        auditedProjectCount: 2,
+        skippedProjectCount: 0
+      },
+      audits: [
+        {
+          projectId: "apps/web",
+          projectRoot: "apps/web",
+          adapterId: "javascript",
+          adapterMatches: [],
+          audit: {
+            schemaVersion: "audit/v1",
+            profile: { confidence: "high", blockers: [], testCommand: "npm test" },
+            untestedCandidates: [
+              {
+                id: "src/auth.ts",
+                name: "auth",
+                path: "src/auth.ts",
+                kind: "utility",
+                signals: ["branching-logic"],
+                risk: "high",
+                testability: "high",
+                recommendedTestLevel: "unit",
+                riskReductionScore: 7,
+                maintenanceCost: 2
+              }
+            ],
+            coveredButRisky: [],
+            skipped: [],
+            risks: []
+          }
+        },
+        {
+          projectId: "packages/docs",
+          projectRoot: "packages/docs",
+          adapterId: "javascript",
+          adapterMatches: [],
+          audit: {
+            schemaVersion: "audit/v1",
+            profile: {
+              confidence: "low",
+              blockers: [
+                "No supported JS test framework detected.",
+                "No runnable test command detected from package scripts or framework config."
+              ]
+            },
+            untestedCandidates: [],
+            coveredButRisky: [],
+            skipped: [],
+            risks: []
+          }
+        }
+      ],
+      skippedProjects: []
+    };
+
+    const findings = createProjectFindings(projectAudits);
+
+    assert.equal(findings.summary.highSeverityCount, 1);
+    assert.equal(findings.summary.blockedProjectCount, 2);
+    assert.equal(findings.findings[0].category, "missing-coverage");
+    assert.deepEqual(
+      findings.findings.slice(1).map((finding) => ({
+        severity: finding.severity,
+        priority: finding.priority,
+        title: finding.title,
+        evidence: finding.evidence
+      })),
+      [
+        {
+          severity: "low",
+          priority: 1,
+          title: "packages/docs is auxiliary and lacks independent test setup",
+          evidence: ["project role: auxiliary", "confidence: low", "test command: none detected"]
+        },
+        {
+          severity: "low",
+          priority: 1,
+          title: "packages/docs is auxiliary and lacks independent test setup",
+          evidence: ["project role: auxiliary", "confidence: low", "test command: none detected"]
+        }
+      ]
+    );
+  });
+
   it("keeps placement-only fixture targets from becoming weak coverage findings", () => {
     const { projectAudits } = JSON.parse(fs.readFileSync("examples/mcp/split-placement-project-audits.args.json", "utf8"));
     const findings = createProjectFindings(projectAudits);
