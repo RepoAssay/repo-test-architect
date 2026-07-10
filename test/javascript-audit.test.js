@@ -395,6 +395,7 @@ export function parseArgs(args: string[]): ParsedArgs {
     t.after(() => fs.rmSync(root, { recursive: true, force: true }));
     fs.mkdirSync(path.join(root, "src", "cli"), { recursive: true });
     fs.mkdirSync(path.join(root, "src", "adapters", "kotlin"), { recursive: true });
+    fs.mkdirSync(path.join(root, "src", "other"), { recursive: true });
     fs.mkdirSync(path.join(root, "test"), { recursive: true });
     fs.writeFileSync(
       path.join(root, "package.json"),
@@ -426,7 +427,12 @@ export function auditKotlin(files) {
 }
 `
     );
+    fs.writeFileSync(
+      path.join(root, "src", "other", "index.js"),
+      `export function other(value) {\n  if (value) return value;\n  return "other";\n}\n`
+    );
     fs.writeFileSync(path.join(root, "test", "cli.test.js"), "test('cli', () => {});\n");
+    fs.writeFileSync(path.join(root, "test", "index.test.js"), "test('unrelated index', () => {});\n");
     fs.writeFileSync(path.join(root, "test", "kotlin-audit.test.js"), "test('kotlin audit', () => {});\n");
 
     const audit = auditJavaScriptRepo(root);
@@ -435,7 +441,10 @@ export function auditKotlin(files) {
       audit.coveredButRisky.map((target) => `${target.path}:${target.existingTestPaths.join(",")}`),
       ["src/adapters/kotlin/audit.js:test/kotlin-audit.test.js", "src/cli/index.js:test/cli.test.js"]
     );
-    assert.deepEqual(audit.untestedCandidates, []);
+    assert.deepEqual(
+      audit.untestedCandidates.map((target) => target.path),
+      ["src/other/index.js"]
+    );
   });
 
   it("matches pluralized test filenames", (t) => {
