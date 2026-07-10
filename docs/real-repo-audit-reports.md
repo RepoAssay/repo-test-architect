@@ -12,6 +12,7 @@ The purpose is product validation, not regression locking. These reports record 
 | Repo Test Architect self-audit | JavaScript, TypeScript | this repository | direct `javascript` adapter audit, placement audit | summarized below |
 | `unjs/defu` audit | TypeScript, Vitest | `unjs/defu` at `82632b6` | `findings-projects`, direct `javascript` adapter ranking | summarized below |
 | `h3js/h3` audit | TypeScript, Vitest | `h3js/h3` at `3eb3a57` | `findings-projects`, direct `javascript` adapter ranking | summarized below |
+| `honojs/hono` audit | TypeScript, Vitest | `honojs/hono` at `cda1af2` | `findings-projects`, direct `javascript` adapter ranking | summarized below |
 | Collectors Grimoire app audit | Swift, Xcode app | `m-stenbe/Collectors-Grimoire` at `a2d4c54` | `findings-projects`, Xcode-style Swift detection | summarized below |
 
 This gives the alpha gate coverage across owned and non-owned JavaScript/TypeScript codebases and multiple Swift codebases, including Swift Package Manager, Vapor/MongoDB, and Xcode-style app structure.
@@ -145,6 +146,55 @@ Heuristic follow-up:
 - collapse multiple blocker reasons into one displayed project finding or rank blocked auxiliary projects below actionable root findings
 - add HTTP-domain classifications for request/response, cookie, cache, validation, streaming, and runtime-adapter modules
 
+## `honojs/hono` Audit
+
+Source:
+
+- repository: `honojs/hono`
+- audited commit: `cda1af2` (`2026-07-10`, `4.12.29`)
+
+Command focus:
+
+```powershell
+node ./src/cli/index.js detect <hono checkout> --format json
+node ./src/cli/index.js findings-projects <hono checkout> --format json
+node ./src/cli/index.js rank <hono checkout> --adapter javascript --format json
+```
+
+What the tool found:
+
+- seven supported JavaScript/TypeScript project roots: the package root plus six benchmark packages
+- high-confidence root audit with Vitest conventions and the repository test command
+- 148 repo-level findings: nine missing coverage, 95 weak existing coverage, 32 low-value direct targets, and 12 blocked-project findings
+- nine high-severity findings after benchmark setup blockers are classified as low-severity auxiliary findings
+- direct, relative-barrel, package-entry, exact-subpath, and wildcard-export evidence across a large conditional export surface
+- direct root ranking with six missing candidates and extensive existing-test evidence across adapters, middleware, routers, JSX, client, and utility modules
+
+Representative findings:
+
+| Category | Examples | Why it matters |
+| --- | --- | --- |
+| Covered but risky | validator modules, client modules, service-worker handlers, routing implementations | Branch-heavy framework behavior remains visible with concrete test paths. |
+| Missing by direct evidence | `fetch-result-please.ts`, `hono-base.ts`, ETag `digest.ts`, regex-router `matcher.ts` and `trie.ts` | These are substantial behaviors, but manual review found strong indirect coverage paths through tested consumers. |
+| Export evidence | helper, middleware, JSX, client, and runtime entrypoints | The audit exercises the newer self-package and wildcard export matching on a real public package surface. |
+| Auxiliary blockers | six `benchmarks/*` packages | Benchmark packages remain visible without displacing actionable root-package findings. |
+
+What it missed or over-reported:
+
+- The six direct root missing candidates are likely false missing-coverage findings caused by one-hop evidence limits. `hono-base.ts` is consumed by tested Hono and preset modules; router matcher/trie modules are consumed by tested router implementations; ETag digest and JSX intrinsic helpers are consumed by tested public behavior; fetch result parsing is consumed through the tested client layer.
+- Generic basename matching is too broad. A source file named `index.ts`, `utils.ts`, `handler.ts`, or `types.ts` can collect tests from unrelated directories that share the basename.
+- One-hop barrel matching currently treats every module re-exported by an imported barrel as covered, even when the test imports or exercises only one exported symbol.
+- Covered-but-risky output can contain dozens of test paths for generic entry modules, making otherwise useful evidence hard to review.
+- Framework-specific risk rationales remain generic. Router matching, streaming, validation, client response parsing, middleware security, and runtime-adapter behavior need domain-level explanations.
+
+Heuristic follow-up:
+
+- add bounded transitive import evidence so tested public consumers can support internal implementation coverage without unrestricted graph propagation
+- require directory qualification or import evidence before matching generic basenames such as `index`, `utils`, `handler`, and `types`
+- add exported-symbol usage evidence before attributing every barrel consumer to every re-exported module
+- cap or summarize large existing-test path lists while preserving the full machine-readable evidence
+- add HTTP framework classifications for routing, middleware, validation, response parsing, streaming, and runtime adapters
+
 ## Additional JavaScript/TypeScript Probe: `sindresorhus/is`
 
 Source:
@@ -210,7 +260,7 @@ Heuristic follow-up:
 The real-repo report gate is satisfied for private alpha validation:
 
 - at least three real repositories have local audit summaries: Repo Test Architect, `cg-bff`/Swift package family, and Collectors Grimoire
-- one JavaScript/TypeScript codebase is covered by the self-audit, while non-owned JavaScript/TypeScript coverage now includes both the small `unjs/defu` library and the larger `h3js/h3` HTTP framework
+- one JavaScript/TypeScript codebase is covered by the self-audit, while non-owned JavaScript/TypeScript coverage now includes the small `unjs/defu` library and the larger `h3js/h3` and `honojs/hono` HTTP frameworks
 - Swift package and Xcode-style app repos are covered
 - reports include findings, misses, and follow-up heuristics
 - no report requires source upload or remote service execution
@@ -218,4 +268,4 @@ The real-repo report gate is satisfied for private alpha validation:
 Remaining gap:
 
 - make local sibling package report generation independent of local checkout names
-- turn the `h3` false positives into fixture-backed matching and workspace-role improvements before broadening public support claims
+- turn the `h3` and Hono false positives into fixture-backed transitive, directory-qualified, and exported-symbol matching improvements before broadening public support claims
