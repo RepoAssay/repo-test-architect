@@ -602,10 +602,11 @@ export function auditKotlin(files) {
     );
   });
 
-  it("matches exact declared self-package subpath imports", (t) => {
+  it("matches exact and wildcard declared self-package subpath imports", (t) => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-js-package-subpaths-"));
     t.after(() => fs.rmSync(root, { recursive: true, force: true }));
     fs.mkdirSync(path.join(root, "src"), { recursive: true });
+    fs.mkdirSync(path.join(root, "src", "features"), { recursive: true });
     fs.mkdirSync(path.join(root, "test"), { recursive: true });
     fs.writeFileSync(
       path.join(root, "package.json"),
@@ -627,8 +628,12 @@ export function auditKotlin(files) {
       );
     }
     fs.writeFileSync(
+      path.join(root, "src", "features", "cache.ts"),
+      `export function cache(value) {\n  if (value) return value;\n  return "cache";\n}\n`
+    );
+    fs.writeFileSync(
       path.join(root, "test", "public-subpaths.test.ts"),
-      `import { evaluate as createError } from "@example/http-kit/errors";\nconst cookies = require("@example/http-kit/cookies");\n`
+      `import { evaluate as createError } from "@example/http-kit/errors";\nimport { cache } from "@example/http-kit/features/cache";\nconst cookies = require("@example/http-kit/cookies");\n`
     );
 
     const audit = auditJavaScriptRepo(root);
@@ -636,6 +641,7 @@ export function auditKotlin(files) {
     assert.deepEqual(
       audit.coveredButRisky.map((target) => `${target.path}:${target.existingTestPaths.join(",")}`),
       [
+        "src/features/cache.ts:test/public-subpaths.test.ts",
         "src/cookies.ts:test/public-subpaths.test.ts",
         "src/errors.ts:test/public-subpaths.test.ts"
       ]

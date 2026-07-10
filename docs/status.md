@@ -7,7 +7,7 @@ Repo Test Architect currently has a deterministic JavaScript/TypeScript audit pi
 Implemented:
 
 - JavaScript/TypeScript repository profiling
-- JavaScript/TypeScript existing-test matching from filename conventions, literal direct relative imports, one-hop relative barrel re-exports, exact self-package entry imports, and declared non-wildcard package subpaths
+- JavaScript/TypeScript existing-test matching from filename conventions, literal direct relative imports, one-hop relative barrel re-exports, exact self-package entry imports, and declared exact or single-wildcard package subpaths
 - runtime adapter registry with the supported `javascript` adapter and experimental `kotlin`, `swift`, and `python` adapters
 - adapter registry capability metadata for maturity, framework signals, project types, and emitted artifacts
 - CLI adapter registry output
