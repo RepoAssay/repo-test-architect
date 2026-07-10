@@ -11,6 +11,7 @@ The purpose is product validation, not regression locking. These reports record 
 | [Collectors Grimoire Swift packages](cg-swift-audit-report.md) | Swift, Vapor, MongoDB | local sibling `cg-*` repositories | `findings-projects`, Swift adapter audit | current |
 | Repo Test Architect self-audit | JavaScript, TypeScript | this repository | direct `javascript` adapter audit, placement audit | summarized below |
 | `unjs/defu` audit | TypeScript, Vitest | `unjs/defu` at `82632b6` | `findings-projects`, direct `javascript` adapter ranking | summarized below |
+| `h3js/h3` audit | TypeScript, Vitest | `h3js/h3` at `3eb3a57` | `findings-projects`, direct `javascript` adapter ranking | summarized below |
 | Collectors Grimoire app audit | Swift, Xcode app | `m-stenbe/Collectors-Grimoire` at `a2d4c54` | `findings-projects`, Xcode-style Swift detection | summarized below |
 
 This gives the alpha gate coverage across owned and non-owned JavaScript/TypeScript codebases and multiple Swift codebases, including Swift Package Manager, Vapor/MongoDB, and Xcode-style app structure.
@@ -96,6 +97,54 @@ Heuristic follow-up:
 - improve JavaScript/TypeScript utility rationale so merge helpers, guards, and object-shape predicates get domain-specific review hints
 - keep covered-but-risky targets visible, but include a concise "already covered by" line in markdown so reviewers can evaluate whether the warning is fair
 
+## `h3js/h3` Audit
+
+Source:
+
+- repository: `h3js/h3`
+- audited commit: `3eb3a57` (`2026-07-09`, `docs: add QUERY method docs (#1447)`)
+
+Command focus:
+
+```powershell
+node ./src/cli/index.js detect <h3 checkout> --format json
+node ./src/cli/index.js findings-projects <h3 checkout> --format json
+node ./src/cli/index.js rank <h3 checkout> --adapter javascript --format json
+```
+
+What the tool found:
+
+- four supported JavaScript/TypeScript project roots: the package root plus `docs`, `examples`, and `playground`
+- high-confidence root audit with the repository's `pnpm test` command and Vitest tooling
+- 50 repo-level findings: 13 missing coverage, 31 weak existing coverage, and six blocked-project findings
+- matching tests for many branch-heavy HTTP behaviors, including auth, body handling, CORS, events, handlers, middleware, JSON-RPC, paths, proxies, and sessions
+- a high-priority service-worker entry finding based on the runtime boundary and lack of a filename-matched test
+
+Representative findings:
+
+| Category | Examples | Why it matters |
+| --- | --- | --- |
+| Covered but risky | `src/utils/auth.ts`, `src/utils/body.ts`, `src/handler.ts`, `src/utils/json-rpc.ts` | The tool keeps branch-heavy HTTP behavior visible while citing matching tests. |
+| Missing coverage | `src/_entries/service-worker.ts`, `src/utils/cache.ts`, `src/utils/fingerprint.ts` | Runtime entry boundaries and stateful helpers are reasonable candidates for manual coverage review. |
+| Name-mismatched coverage | `src/error.ts`, `src/utils/cookie.ts` | Manual review found coverage in `test/errors.test.ts` and `test/cookies.test.ts`, exposing the limits of singular/plural filename matching. |
+| Blocked subprojects | `docs`, `examples`, `playground` | Package markers create separate projects, but these workspace roles intentionally have no independent test framework or command. |
+
+What it missed or over-reported:
+
+- `src/error.ts` is marked untested even though `test/errors.test.ts` exercises exported error behavior through `src/index.ts`.
+- `src/utils/cookie.ts` is marked untested even though `test/cookies.test.ts` imports it directly and `test/unit/cookie-validation.test.ts` exercises its exports through the package entrypoint.
+- Barrel-export and behavioral test names make other missing-coverage findings less trustworthy without import or exported-symbol evidence.
+- Six high-severity blockers from docs, examples, and playground occupy most of the default top-ten report even though the root package has complete runnable test infrastructure.
+- The summary calls project audit coverage complete while also reporting six blockers, which is structurally valid but easy for a reader to interpret as contradictory.
+- Generic `utility` and `branching logic` labels do not distinguish HTTP response, cookie, cache, validation, and runtime-adapter risks.
+
+Heuristic follow-up:
+
+- add import and exported-symbol evidence so behavioral or pluralized test filenames can match the source they exercise
+- classify workspace roles such as docs, examples, and playground before promoting missing test infrastructure to high-severity blockers
+- collapse multiple blocker reasons into one displayed project finding or rank blocked auxiliary projects below actionable root findings
+- add HTTP-domain classifications for request/response, cookie, cache, validation, streaming, and runtime-adapter modules
+
 ## Additional JavaScript/TypeScript Probe: `sindresorhus/is`
 
 Source:
@@ -158,10 +207,10 @@ Heuristic follow-up:
 
 ## Current Alpha Gate Read
 
-The real-repo report gate is now partially satisfied:
+The real-repo report gate is satisfied for private alpha validation:
 
 - at least three real repositories have local audit summaries: Repo Test Architect, `cg-bff`/Swift package family, and Collectors Grimoire
-- one JavaScript/TypeScript codebase is covered by the self-audit, and non-owned JavaScript/TypeScript coverage is now represented by `unjs/defu`
+- one JavaScript/TypeScript codebase is covered by the self-audit, while non-owned JavaScript/TypeScript coverage now includes both the small `unjs/defu` library and the larger `h3js/h3` HTTP framework
 - Swift package and Xcode-style app repos are covered
 - reports include findings, misses, and follow-up heuristics
 - no report requires source upload or remote service execution
@@ -169,4 +218,4 @@ The real-repo report gate is now partially satisfied:
 Remaining gap:
 
 - make local sibling package report generation independent of local checkout names
-- broaden non-owned JavaScript/TypeScript probes to at least one larger app or service after the small-library behavior is stable
+- turn the `h3` false positives into fixture-backed matching and workspace-role improvements before broadening public support claims
