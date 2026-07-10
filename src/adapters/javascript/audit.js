@@ -529,7 +529,7 @@ function findExistingTests(sourcePath, testPaths) {
   const sourceSegments = normalized.split("/");
   const sourceDir = sourceSegments.slice(0, -1).join("/");
   const parentBase = sourceSegments.length > 1 ? sourceSegments.at(-2) : undefined;
-  const sourceBaseCandidates = new Set([sourceBase]);
+  const sourceBaseCandidates = new Set([sourceBase, ...pluralizeBaseName(sourceBase)]);
   if (parentBase) {
     sourceBaseCandidates.add(`${parentBase}-${sourceBase}`);
     if (sourceBase === "index") {
@@ -541,6 +541,18 @@ function findExistingTests(sourcePath, testPaths) {
     const testBase = basenameWithoutExtension(testPath).replace(/\.(test|spec)$/, "");
     return sourceBaseCandidates.has(testBase) || testPath.startsWith(`${sourceDir}/__tests__/${sourceBase}.`);
   });
+}
+
+function pluralizeBaseName(baseName) {
+  if (/[^aeiou]y$/i.test(baseName)) {
+    return [`${baseName.slice(0, -1)}ies`];
+  }
+
+  if (/(s|x|z|ch|sh)$/i.test(baseName)) {
+    return [`${baseName}es`];
+  }
+
+  return [`${baseName}s`];
 }
 
 function normalizePath(currentPath) {

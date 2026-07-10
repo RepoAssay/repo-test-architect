@@ -437,4 +437,42 @@ export function auditKotlin(files) {
     );
     assert.deepEqual(audit.untestedCandidates, []);
   });
+
+  it("matches pluralized test filenames", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-js-plural-tests-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "src"), { recursive: true });
+    fs.mkdirSync(path.join(root, "test"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "package.json"),
+      JSON.stringify({
+        scripts: { test: "vitest --run" },
+        devDependencies: { vitest: "latest" }
+      })
+    );
+
+    for (const sourceName of ["error", "cookie", "policy", "box"]) {
+      fs.writeFileSync(
+        path.join(root, "src", `${sourceName}.ts`),
+        `export function ${sourceName}(value) {\n  if (value) {\n    return "yes";\n  }\n\n  return "no";\n}\n`
+      );
+    }
+
+    for (const testName of ["errors", "cookies", "policies", "boxes"]) {
+      fs.writeFileSync(path.join(root, "test", `${testName}.test.ts`), "test('behavior', () => {});\n");
+    }
+
+    const audit = auditJavaScriptRepo(root);
+
+    assert.deepEqual(
+      audit.coveredButRisky.map((target) => `${target.path}:${target.existingTestPaths.join(",")}`),
+      [
+        "src/box.ts:test/boxes.test.ts",
+        "src/cookie.ts:test/cookies.test.ts",
+        "src/error.ts:test/errors.test.ts",
+        "src/policy.ts:test/policies.test.ts"
+      ]
+    );
+    assert.deepEqual(audit.untestedCandidates, []);
+  });
 });
