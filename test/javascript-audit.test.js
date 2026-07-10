@@ -726,7 +726,11 @@ export function auditKotlin(files) {
       "src/utils/auth.ts": "export function auth(event: HTTPEvent) { if (event.req) return true; return false; }",
       "src/utils/body.ts": "export function body(event: HTTPEvent) { if (event.req) return true; return false; }",
       "src/utils/cache.ts": "export function cache(event: HTTPEvent) { if (event.res) return true; return false; }",
-      "src/utils/cookie.ts": "export function cookie(event: HTTPEvent) { if (event.req) return true; return false; }"
+      "src/utils/cookie.ts": "export function cookie(event: HTTPEvent) { if (event.req) return true; return false; }",
+      "src/utils/event.ts": "export function event(current: HTTPEvent) { if (current.req) return true; return false; }",
+      "src/utils/proxy.ts": "export function proxy(current: HTTPEvent): Response { if (current.req) return new Response(); return new Response(); }",
+      "src/utils/response.ts": "export function response(current: HTTPEvent): Response { if (current.res) return new Response(); return new Response(); }",
+      "src/utils/session.ts": "export function session(current: HTTPEvent) { if (current.req) return true; return false; }"
     };
     for (const [sourcePath, content] of Object.entries(sources)) {
       fs.mkdirSync(path.dirname(path.join(root, sourcePath)), { recursive: true });
@@ -749,6 +753,10 @@ export function auditKotlin(files) {
         "src/utils/body.ts": "request-body",
         "src/utils/cache.ts": "http-cache",
         "src/utils/cookie.ts": "cookie-boundary",
+        "src/utils/event.ts": "request-event",
+        "src/utils/proxy.ts": "http-proxy",
+        "src/utils/response.ts": "response-construction",
+        "src/utils/session.ts": "session-management",
         "src/validator/request-validator.ts": "request-validation"
       }
     );
