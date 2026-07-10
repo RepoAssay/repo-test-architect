@@ -85,11 +85,11 @@ Done:
 
 - Add a concise repo-level top findings report for project audits, including category counts for missing coverage, weak existing coverage, misplaced coverage, low-value direct targets, and blocked projects.
 - Expand real-repo audit reports beyond owned/local repositories with small-library and larger HTTP-framework JavaScript/TypeScript probes.
+- Distinguish auxiliary docs, examples, and playground workspaces before ranking missing-test infrastructure blockers.
 
 Next:
 
 1. Improve source-to-test matching with import and exported-symbol evidence for behavioral and pluralized test filenames.
-2. Distinguish auxiliary workspace roles such as docs, examples, and playgrounds before raising missing-test blockers.
-3. Tighten placement findings beyond package/app root inference with more adapter-owned package-boundary signals.
-4. Add more model-consistency scenarios for placement summaries as the finding surface grows.
-5. Keep adapter hardening focused on common stack variants that improve real-repo audit trust.
+2. Tighten placement findings beyond package/app root inference with more adapter-owned package-boundary signals.
+3. Add more model-consistency scenarios for placement summaries as the finding surface grows.
+4. Keep adapter hardening focused on common stack variants that improve real-repo audit trust.
