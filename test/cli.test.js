@@ -747,6 +747,28 @@ describe("CLI", () => {
     assert.match(output, /deckParser \[src\/deckParser\.ts\]/);
   });
 
+  it("summarizes long existing-test lists in markdown while preserving JSON evidence", () => {
+    const audit = JSON.parse(fs.readFileSync("evals/expected/node-vitest-basic.audit.json", "utf8"));
+    const existingTestPaths = Array.from({ length: 7 }, (_, index) => `test/parser-${index + 1}.test.ts`);
+    for (const target of [...audit.coveredButRisky, ...audit.recommended]) {
+      if (target.id === "src/deckParser.ts") target.existingTestPaths = existingTestPaths;
+    }
+    const auditPath = writeTempJson(audit);
+
+    const markdown = execFileSync(process.execPath, [cliPath, "rank", "--from-audit", auditPath], {
+      encoding: "utf8"
+    });
+    const json = JSON.parse(execFileSync(
+      process.execPath,
+      [cliPath, "rank", "--from-audit", auditPath, "--format=json"],
+      { encoding: "utf8" }
+    ));
+
+    assert.match(markdown, /parser-5\.test\.ts \(\+2 more; full list available in JSON\)/);
+    assert.doesNotMatch(markdown, /parser-6\.test\.ts/);
+    assert.deepEqual(json.candidates.find((candidate) => candidate.targetId === "src/deckParser.ts").existingTestPaths, existingTestPaths);
+  });
+
   it("emits test placement findings from an existing audit file", () => {
     const output = execFileSync(
       process.execPath,
