@@ -1,5 +1,7 @@
 import type { AuditResult, AuditTarget, RepoProfile, SkippedTarget } from "../../core/audit-model";
 
+const GENERIC_SOURCE_BASENAMES = new Set(["handler", "index", "types", "utils"]);
+
 export interface FileSnapshot {
   path: string;
   content: string;
@@ -568,11 +570,18 @@ function findExistingTests(
   const sourceSegments = normalized.split("/");
   const sourceDir = sourceSegments.slice(0, -1).join("/");
   const parentBase = sourceSegments.length > 1 ? sourceSegments.at(-2) : undefined;
-  const sourceBaseCandidates = new Set([sourceBase, ...pluralizeBaseName(sourceBase)]);
+  const baseNameCandidates = new Set([sourceBase, ...pluralizeBaseName(sourceBase)]);
+  const sourceBaseCandidates = new Set(baseNameCandidates);
+  const qualifiedBaseCandidates = new Set<string>();
   if (parentBase) {
-    sourceBaseCandidates.add(`${parentBase}-${sourceBase}`);
+    for (const candidate of baseNameCandidates) {
+      const qualifiedCandidate = `${parentBase}-${candidate}`;
+      sourceBaseCandidates.add(qualifiedCandidate);
+      qualifiedBaseCandidates.add(qualifiedCandidate);
+    }
     if (sourceBase === "index") {
       sourceBaseCandidates.add(parentBase);
+      qualifiedBaseCandidates.add(parentBase);
     }
   }
 
@@ -580,7 +589,7 @@ function findExistingTests(
     .filter((testFile) => {
       const testBase = basenameWithoutExtension(testFile.path).replace(/\.(test|spec)$/, "");
       return (
-        sourceBaseCandidates.has(testBase) ||
+        hasFilenameMatch(testFile.path, testBase, sourceBase, sourceDir, baseNameCandidates, sourceBaseCandidates, qualifiedBaseCandidates) ||
         testFile.path.startsWith(`${sourceDir}/__tests__/${sourceBase}.`) ||
         hasDirectRelativeImport(testFile, normalized) ||
         hasOneHopBarrelImport(testFile, normalized, moduleFiles) ||
@@ -588,6 +597,20 @@ function findExistingTests(
       );
     })
     .map((testFile) => testFile.path);
+}
+
+function hasFilenameMatch(
+  testPath: string,
+  testBase: string,
+  sourceBase: string,
+  sourceDir: string,
+  baseNameCandidates: Set<string>,
+  sourceBaseCandidates: Set<string>,
+  qualifiedBaseCandidates: Set<string>
+): boolean {
+  if (!GENERIC_SOURCE_BASENAMES.has(sourceBase)) return sourceBaseCandidates.has(testBase);
+  const testDir = dirname(testPath);
+  return qualifiedBaseCandidates.has(testBase) || (testDir === sourceDir && baseNameCandidates.has(testBase));
 }
 
 function hasDirectRelativeImport(testFile: FileSnapshot, sourcePath: string): boolean {
