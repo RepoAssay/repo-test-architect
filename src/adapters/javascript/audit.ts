@@ -19,6 +19,8 @@ export function auditJavaScriptRepo(snapshot: JavaScriptRepoSnapshot): AuditResu
     .filter((file) => isTestFile(file.path))
     .map((file) => ({ ...file, path: normalizePath(file.path) }));
   const moduleFiles = snapshot.files.map((file) => ({ ...file, path: normalizePath(file.path) }));
+  const packageData = parsePackageJson(snapshot.files.find((file) => normalizePath(file.path) === "package.json")?.content ?? "");
+  const packageEntryFile = findSourcePackageEntry(packageData, moduleFiles);
   const untestedCandidates: AuditTarget[] = [];
   const coveredButRisky: AuditTarget[] = [];
   const skipped: SkippedTarget[] = [];
@@ -32,7 +34,10 @@ export function auditJavaScriptRepo(snapshot: JavaScriptRepoSnapshot): AuditResu
       runtimeSourcePaths,
       sourceJavaScriptRuntime
     });
-    const existingTestPaths = findExistingTests(file.path, testFiles, moduleFiles);
+    const existingTestPaths = findExistingTests(file.path, testFiles, moduleFiles, {
+      packageName: typeof packageData.name === "string" ? packageData.name : undefined,
+      packageEntryFile
+    });
 
     if (classification.skipReason) {
       skipped.push({
@@ -550,7 +555,12 @@ function isTestFile(path: string): boolean {
   );
 }
 
-function findExistingTests(sourcePath: string, testFiles: FileSnapshot[], moduleFiles: FileSnapshot[]): string[] {
+function findExistingTests(
+  sourcePath: string,
+  testFiles: FileSnapshot[],
+  moduleFiles: FileSnapshot[],
+  packageEntry: { packageName?: string; packageEntryFile?: FileSnapshot }
+): string[] {
   const normalized = normalizePath(sourcePath);
   const sourceBase = basenameWithoutExtension(normalized);
   const sourceSegments = normalized.split("/");
@@ -571,7 +581,8 @@ function findExistingTests(sourcePath: string, testFiles: FileSnapshot[], module
         sourceBaseCandidates.has(testBase) ||
         testFile.path.startsWith(`${sourceDir}/__tests__/${sourceBase}.`) ||
         hasDirectRelativeImport(testFile, normalized) ||
-        hasOneHopBarrelImport(testFile, normalized, moduleFiles)
+        hasOneHopBarrelImport(testFile, normalized, moduleFiles) ||
+        hasPackageEntryImport(testFile, normalized, packageEntry)
       );
     })
     .map((testFile) => testFile.path);
@@ -594,6 +605,35 @@ function hasOneHopBarrelImport(testFile: FileSnapshot, sourcePath: string, modul
   });
 }
 
+function hasPackageEntryImport(
+  testFile: FileSnapshot,
+  sourcePath: string,
+  { packageName, packageEntryFile }: { packageName?: string; packageEntryFile?: FileSnapshot }
+): boolean {
+  if (!packageName || !packageEntryFile) return false;
+  if (!collectModuleSpecifiers(testFile.content).includes(packageName)) return false;
+  if (packageEntryFile.path === sourcePath) return true;
+
+  return collectRelativeExportSpecifiers(packageEntryFile.content).some((exportSpecifier) =>
+    moduleSpecifierTargetsSource(packageEntryFile.path, exportSpecifier, sourcePath)
+  );
+}
+
+function findSourcePackageEntry(packageData: Record<string, unknown>, moduleFiles: FileSnapshot[]): FileSnapshot | undefined {
+  const candidates = [packageData.source, packageData.module, packageData.main, "src/index", "index"]
+    .filter((candidate): candidate is string => typeof candidate === "string")
+    .map((candidate) => candidate.replace(/^\.\//, ""));
+
+  for (const candidate of candidates) {
+    const entryFile = moduleFiles.find(
+      (file) => isSourceFile(file.path) && moduleSpecifierTargetsSource("package.json", candidate, file.path)
+    );
+    if (entryFile) return entryFile;
+  }
+
+  return undefined;
+}
+
 function moduleSpecifierTargetsSource(importerPath: string, specifier: string, sourcePath: string): boolean {
   const resolved = normalizePathSegments(joinPath(dirname(importerPath), specifier));
   const resolvedWithoutExtension = removeJavaScriptExtension(resolved);
@@ -606,6 +646,10 @@ function moduleSpecifierTargetsSource(importerPath: string, specifier: string, s
 }
 
 function collectRelativeModuleSpecifiers(content: string): string[] {
+  return collectModuleSpecifiers(content).filter((specifier) => specifier.startsWith("."));
+}
+
+function collectModuleSpecifiers(content: string): string[] {
   const specifiers: string[] = [];
   const patterns = [
     /\b(?:import|export)\s+(?:[^"']*?\s+from\s+)?["']([^"']+)["']/g,
@@ -615,7 +659,7 @@ function collectRelativeModuleSpecifiers(content: string): string[] {
   for (const pattern of patterns) {
     for (const match of content.matchAll(pattern)) {
       const specifier = match[1];
-      if (specifier?.startsWith(".")) specifiers.push(specifier);
+      if (specifier) specifiers.push(specifier);
     }
   }
 

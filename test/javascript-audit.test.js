@@ -560,4 +560,45 @@ export function auditKotlin(files) {
       ["src/unexported.ts"]
     );
   });
+
+  it("matches exact self-package imports through the source entrypoint", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-js-package-imports-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "src"), { recursive: true });
+    fs.mkdirSync(path.join(root, "test"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "package.json"),
+      JSON.stringify({
+        name: "@example/http-kit",
+        source: "./src/index.ts",
+        main: "./dist/index.js",
+        scripts: { test: "vitest --run" },
+        devDependencies: { vitest: "latest" }
+      })
+    );
+    fs.writeFileSync(
+      path.join(root, "src", "error.ts"),
+      `export function createError(value) {\n  if (value) return new Error(value);\n  return new Error("unknown");\n}\n`
+    );
+    fs.writeFileSync(
+      path.join(root, "src", "unexported.ts"),
+      `export function hidden(value) {\n  if (value) return value;\n  return "hidden";\n}\n`
+    );
+    fs.writeFileSync(path.join(root, "src", "index.ts"), `export * from "./error";\n`);
+    fs.writeFileSync(
+      path.join(root, "test", "public-api.test.ts"),
+      `import { createError } from "@example/http-kit";\n`
+    );
+
+    const audit = auditJavaScriptRepo(root);
+
+    assert.deepEqual(
+      audit.coveredButRisky.map((target) => `${target.path}:${target.existingTestPaths.join(",")}`),
+      ["src/error.ts:test/public-api.test.ts"]
+    );
+    assert.deepEqual(
+      audit.untestedCandidates.map((target) => target.path),
+      ["src/unexported.ts"]
+    );
+  });
 });
