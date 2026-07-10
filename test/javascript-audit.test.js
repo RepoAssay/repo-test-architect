@@ -722,7 +722,11 @@ export function auditKotlin(files) {
       "src/validator/request-validator.ts": "export function validate(value) { if (value) return value; return false; }",
       "src/streaming/sse-writer.ts": "export function write(value) { if (value) return value; return false; }",
       "src/adapter/cloudflare/handler.ts": "export function handle(value) { if (value) return value; return false; }",
-      "src/client/fetch-response.ts": "export function parse(value) { if (value) return value; return false; }"
+      "src/client/fetch-response.ts": "export function parse(value) { if (value) return value; return false; }",
+      "src/utils/auth.ts": "export function auth(event: HTTPEvent) { if (event.req) return true; return false; }",
+      "src/utils/body.ts": "export function body(event: HTTPEvent) { if (event.req) return true; return false; }",
+      "src/utils/cache.ts": "export function cache(event: HTTPEvent) { if (event.res) return true; return false; }",
+      "src/utils/cookie.ts": "export function cookie(event: HTTPEvent) { if (event.req) return true; return false; }"
     };
     for (const [sourcePath, content] of Object.entries(sources)) {
       fs.mkdirSync(path.dirname(path.join(root, sourcePath)), { recursive: true });
@@ -741,6 +745,10 @@ export function auditKotlin(files) {
         "src/middleware/compress.ts": "http-middleware",
         "src/router/matcher.ts": "http-router",
         "src/streaming/sse-writer.ts": "streaming",
+        "src/utils/auth.ts": "security-middleware",
+        "src/utils/body.ts": "request-body",
+        "src/utils/cache.ts": "http-cache",
+        "src/utils/cookie.ts": "cookie-boundary",
         "src/validator/request-validator.ts": "request-validation"
       }
     );

@@ -117,7 +117,8 @@ What the tool found:
 
 - four supported JavaScript/TypeScript project roots: the package root plus `docs`, `examples`, and `playground`
 - high-confidence root audit with the repository's `pnpm test` command and Vitest tooling
-- 50 repo-level findings: 13 missing coverage, 31 weak existing coverage, and six blocked-project findings
+- 50 repo-level findings after current matching improvements: one missing coverage, 43 weak existing coverage, and six blocked-project findings
+- four high-severity findings: the untested service-worker entry plus covered auth and CORS security boundaries
 - matching tests for many branch-heavy HTTP behaviors, including auth, body handling, CORS, events, handlers, middleware, JSON-RPC, paths, proxies, and sessions
 - a high-priority service-worker entry finding based on the runtime boundary and lack of a filename-matched test
 
@@ -126,25 +127,23 @@ Representative findings:
 | Category | Examples | Why it matters |
 | --- | --- | --- |
 | Covered but risky | `src/utils/auth.ts`, `src/utils/body.ts`, `src/handler.ts`, `src/utils/json-rpc.ts` | The tool keeps branch-heavy HTTP behavior visible while citing matching tests. |
-| Missing coverage | `src/_entries/service-worker.ts`, `src/utils/cache.ts`, `src/utils/fingerprint.ts` | Runtime entry boundaries and stateful helpers are reasonable candidates for manual coverage review. |
-| Name-mismatched coverage | `src/error.ts`, `src/utils/cookie.ts` | Manual review found coverage in `test/errors.test.ts` and `test/cookies.test.ts`, exposing the limits of singular/plural filename matching. |
+| Missing coverage | `src/_entries/service-worker.ts` | The remaining direct-root missing candidate is a runtime entry boundary that warrants manual review. |
+| Resolved name mismatches | `src/error.ts`, `src/utils/cookie.ts` | Plural filename, direct import, and package-entry matching now connect `test/errors.test.ts` and `test/cookies.test.ts` to these sources. |
+| HTTP boundary roles | auth, CORS, request body, cookie, cache, and streaming utilities | Flat `src/utils/*` modules now receive behavioral rationale from HTTP boundary types without requiring framework-specific directory names. |
 | Blocked subprojects | `docs`, `examples`, `playground` | Package markers create separate projects, but these workspace roles intentionally have no independent test framework or command. |
 
 What it missed or over-reported:
 
-- `src/error.ts` is marked untested even though `test/errors.test.ts` exercises exported error behavior through `src/index.ts`.
-- `src/utils/cookie.ts` is marked untested even though `test/cookies.test.ts` imports it directly and `test/unit/cookie-validation.test.ts` exercises its exports through the package entrypoint.
-- Barrel-export and behavioral test names make other missing-coverage findings less trustworthy without import or exported-symbol evidence.
-- Six high-severity blockers from docs, examples, and playground occupy most of the default top-ten report even though the root package has complete runnable test infrastructure.
+- Earlier false missing-coverage findings for `src/error.ts` and `src/utils/cookie.ts` are now resolved through plural filename, direct import, and package-entry evidence.
+- Static import and symbol evidence establishes plausible reachability but does not prove that tests assert the important behavior.
+- Six blocker records from docs, examples, and playground remain visible, but auxiliary-workspace ranking prevents them from displacing root findings.
 - The summary calls project audit coverage complete while also reporting six blockers, which is structurally valid but easy for a reader to interpret as contradictory.
-- Generic `utility` and `branching logic` labels do not distinguish HTTP response, cookie, cache, validation, and runtime-adapter risks.
+- Thirty-six branch-heavy root candidates remain generic utilities; response construction, event lifecycle, proxies, and sessions are the clearest remaining domain-classification opportunities.
 
 Heuristic follow-up:
 
-- add import and exported-symbol evidence so behavioral or pluralized test filenames can match the source they exercise
-- classify workspace roles such as docs, examples, and playground before promoting missing test infrastructure to high-severity blockers
-- collapse multiple blocker reasons into one displayed project finding or rank blocked auxiliary projects below actionable root findings
-- add HTTP-domain classifications for request/response, cookie, cache, validation, streaming, and runtime-adapter modules
+- expand assertion-aware symbol evidence beyond static reachability when the audit needs to distinguish import from exercised behavior
+- add HTTP-domain classifications for response construction, event lifecycle, proxy behavior, and sessions when framework-neutral boundary signals are available
 
 ## `honojs/hono` Audit
 
@@ -193,7 +192,7 @@ What it missed or over-reported:
 Heuristic follow-up:
 
 - distinguish imported-symbol selection from actual runtime calls and assertions when stronger static evidence is available
-- validate the HTTP role vocabulary against another non-owned framework before treating it as stable adapter taxonomy
+- continue validating the HTTP role vocabulary against frameworks with flat utility layouts and different request/response abstractions
 
 ## Additional JavaScript/TypeScript Probe: `sindresorhus/is`
 

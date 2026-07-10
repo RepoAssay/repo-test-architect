@@ -10,7 +10,7 @@ Implemented:
 - JavaScript/TypeScript existing-test matching from filename conventions, literal relative imports with two bounded source-dependency hops, imported-symbol-aware relative barrel re-exports, exact self-package entry imports, and declared exact or single-wildcard package subpaths
 - directory-qualified filename evidence for generic JavaScript/TypeScript basenames such as `index`, `utils`, `handler`, and `types`
 - bounded Markdown display of existing-test evidence with complete path lists preserved in JSON artifacts
-- behavioral HTTP framework classifications for routers, security and general middleware, request validation, streaming, client response parsing, and runtime adapters
+- behavioral HTTP framework classifications for routers, security and general middleware, request validation, request bodies, cookies, caching, streaming, client response parsing, and runtime adapters, including flat utility layouts identified through HTTP boundary types
 - runtime adapter registry with the supported `javascript` adapter and experimental `kotlin`, `swift`, and `python` adapters
 - adapter registry capability metadata for maturity, framework signals, project types, and emitted artifacts
 - CLI adapter registry output
