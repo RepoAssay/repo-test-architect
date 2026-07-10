@@ -706,4 +706,46 @@ export function auditKotlin(files) {
       ["src/deep.ts"]
     );
   });
+
+  it("classifies HTTP framework risks by behavioral role", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-js-http-risks-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "src"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "package.json"),
+      JSON.stringify({ scripts: { test: "vitest --run" }, devDependencies: { vitest: "latest" } })
+    );
+    const sources = {
+      "src/router/matcher.ts": "export function match(value) { if (value) return value; return false; }",
+      "src/middleware/basic-auth.ts": "export function auth(value) { if (value) return value; return false; }",
+      "src/middleware/compress.ts": "export function compress(value) { if (value) return value; return false; }",
+      "src/validator/request-validator.ts": "export function validate(value) { if (value) return value; return false; }",
+      "src/streaming/sse-writer.ts": "export function write(value) { if (value) return value; return false; }",
+      "src/adapter/cloudflare/handler.ts": "export function handle(value) { if (value) return value; return false; }",
+      "src/client/fetch-response.ts": "export function parse(value) { if (value) return value; return false; }"
+    };
+    for (const [sourcePath, content] of Object.entries(sources)) {
+      fs.mkdirSync(path.dirname(path.join(root, sourcePath)), { recursive: true });
+      fs.writeFileSync(path.join(root, sourcePath), content);
+    }
+
+    const audit = auditJavaScriptRepo(root);
+    const targets = new Map(audit.untestedCandidates.map((target) => [target.path, target]));
+
+    assert.deepEqual(
+      Object.fromEntries([...targets].map(([sourcePath, target]) => [sourcePath, target.kind])),
+      {
+        "src/adapter/cloudflare/handler.ts": "runtime-adapter",
+        "src/client/fetch-response.ts": "response-parser",
+        "src/middleware/basic-auth.ts": "security-middleware",
+        "src/middleware/compress.ts": "http-middleware",
+        "src/router/matcher.ts": "http-router",
+        "src/streaming/sse-writer.ts": "streaming",
+        "src/validator/request-validator.ts": "request-validation"
+      }
+    );
+    assert.ok(targets.get("src/router/matcher.ts").reasons.includes("Route matching and precedence behavior"));
+    assert.ok(targets.get("src/middleware/basic-auth.ts").signals.includes("security-boundary"));
+    assert.ok(targets.get("src/streaming/sse-writer.ts").reasons.includes("cancellation, cleanup, and error propagation"));
+  });
 });
