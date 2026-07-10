@@ -4,15 +4,15 @@
     "confidence": "high",
     "verificationCommand": "npm run test",
     "blockerCount": 0,
-    "addTestCount": 1,
-    "extendTestCount": 1,
+    "addTestCount": 0,
+    "extendTestCount": 2,
     "deferredCount": 2
   },
   "blockers": [],
   "items": [
     {
-      "id": "add-test:src/services/userService.ts",
-      "action": "add-test",
+      "id": "extend-test:src/services/userService.ts",
+      "action": "extend-test",
       "targetId": "src/services/userService.ts",
       "target": "userService",
       "path": "src/services/userService.ts",
@@ -22,13 +22,17 @@
       "maintenanceCost": 4,
       "rationale": [
         "Service boundary",
-        "auth or permission branches"
+        "auth or permission branches",
+        "Existing test file detected; review missing edge cases"
       ],
       "sourceSignals": [
         "service-name",
-        "auth-branch"
+        "auth-branch",
+        "matching-test"
       ],
-      "existingTestPaths": []
+      "existingTestPaths": [
+        "src/routes/userRoutes.test.ts"
+      ]
     },
     {
       "id": "extend-test:src/routes/userRoutes.ts",

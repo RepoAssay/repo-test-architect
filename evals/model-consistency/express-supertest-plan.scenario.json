@@ -18,13 +18,13 @@
     },
     {
       "path": "summary.addTestCount",
-      "expected": 1,
-      "reason": "The service layer has one untested direct candidate."
+      "expected": 0,
+      "reason": "The tested route provides bounded indirect evidence for the service layer, so no target requires a brand-new test file."
     },
     {
       "path": "summary.extendTestCount",
-      "expected": 1,
-      "reason": "The covered route target should be extended for missing integration edge cases."
+      "expected": 2,
+      "reason": "The covered route and its indirectly exercised service should be extended for missing edge cases."
     },
     {
       "path": "items[1].id",

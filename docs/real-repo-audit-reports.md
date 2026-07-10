@@ -165,23 +165,24 @@ What the tool found:
 
 - seven supported JavaScript/TypeScript project roots: the package root plus six benchmark packages
 - high-confidence root audit with Vitest conventions and the repository test command
-- 148 repo-level findings: 11 missing coverage, 93 weak existing coverage, 32 low-value direct targets, and 12 blocked-project findings
+- 148 repo-level findings: four missing coverage, 100 weak existing coverage, 32 low-value direct targets, and 12 blocked-project findings
 - nine high-severity findings after benchmark setup blockers are classified as low-severity auxiliary findings
-- direct, relative-barrel, package-entry, exact-subpath, and wildcard-export evidence across a large conditional export surface
-- direct root ranking with eight missing candidates and extensive existing-test evidence across adapters, middleware, routers, JSX, client, and utility modules
+- direct, bounded transitive-relative, relative-barrel, package-entry, exact-subpath, and wildcard-export evidence across a large conditional export surface
+- direct root ranking with one missing candidate and extensive existing-test evidence across adapters, middleware, routers, JSX, client, and utility modules
 
 Representative findings:
 
 | Category | Examples | Why it matters |
 | --- | --- | --- |
 | Covered but risky | validator modules, client modules, service-worker handlers, routing implementations | Branch-heavy framework behavior remains visible with concrete test paths. |
-| Missing by direct evidence | `fetch-result-please.ts`, `hono-base.ts`, ETag `digest.ts`, regex-router `matcher.ts` and `trie.ts` | These are substantial behaviors, but manual review found strong indirect coverage paths through tested consumers. |
+| Bounded indirect evidence | `fetch-result-please.ts`, `hono-base.ts`, ETag `digest.ts`, regex-router `matcher.ts` and `trie.ts` | Two bounded source-dependency hops now connect these implementations to tests of their consumers. |
 | Export evidence | helper, middleware, JSX, client, and runtime entrypoints | The audit exercises the newer self-package and wildcard export matching on a real public package surface. |
 | Auxiliary blockers | six `benchmarks/*` packages | Benchmark packages remain visible without displacing actionable root-package findings. |
 
 What it missed or over-reported:
 
-- The six direct root missing candidates are likely false missing-coverage findings caused by one-hop evidence limits. `hono-base.ts` is consumed by tested Hono and preset modules; router matcher/trie modules are consumed by tested router implementations; ETag digest and JSX intrinsic helpers are consumed by tested public behavior; fetch result parsing is consumed through the tested client layer.
+- Bounded transitive matching moved seven direct-root candidates from missing to covered-but-risky: client result parsing, JSX intrinsic helpers, ETag digest, `hono-base.ts`, two regex-router internals, and streaming utilities. The service-worker entry remains the sole direct-root missing candidate.
+- The import walk stops after two source-dependency hops. This records plausible execution evidence without claiming that arbitrary downstream modules are covered.
 - Directory qualification now prevents filename-only evidence from unrelated generic `index.ts`, `utils.ts`, `handler.ts`, and `types.ts` tests. Remaining broad matches come from imported barrels and tested consumers rather than basename coincidence.
 - One-hop barrel matching currently treats every module re-exported by an imported barrel as covered, even when the test imports or exercises only one exported symbol.
 - Covered-but-risky output can contain dozens of test paths for generic entry modules, making otherwise useful evidence hard to review.
@@ -189,7 +190,6 @@ What it missed or over-reported:
 
 Heuristic follow-up:
 
-- add bounded transitive import evidence so tested public consumers can support internal implementation coverage without unrestricted graph propagation
 - add exported-symbol usage evidence before attributing every barrel consumer to every re-exported module
 - cap or summarize large existing-test path lists while preserving the full machine-readable evidence
 - add HTTP framework classifications for routing, middleware, validation, response parsing, streaming, and runtime adapters
