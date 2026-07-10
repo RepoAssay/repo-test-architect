@@ -437,6 +437,21 @@ function classifySourceFile(file, profile, mirrorContext = {}) {
     return recommended("http-middleware", ["http-middleware", "request-response-boundary"], "medium", "medium", "integration", 5, 4, ["HTTP middleware request and response behavior", "continuation and error propagation"]);
   }
 
+  if (branchHeavy && hasHttpBoundary(content)) {
+    if (matchesAny(lowerPath, ["auth", "cors", "csrf", "jwt", "jwk", "secure", "permission"])) {
+      return recommended("security-middleware", ["http-security", "security-boundary"], "high", "medium", "integration", 8, 5, ["Security-sensitive HTTP boundary behavior", "allow, reject, and challenge response branches"]);
+    }
+    if (matchesAny(lowerPath, ["body", "form-data", "multipart"])) {
+      return recommended("request-body", ["request-body", "content-type-boundary"], "medium", "high", "unit", 5, 2, ["Request body parsing and content-type behavior", "empty, malformed, and size boundary cases"]);
+    }
+    if (lowerPath.includes("cookie")) {
+      return recommended("cookie-boundary", ["cookie-boundary", "header-serialization"], "medium", "high", "unit", 5, 2, ["Cookie parsing and serialization behavior", "attribute, chunking, and malformed header cases"]);
+    }
+    if (lowerPath.includes("cache")) {
+      return recommended("http-cache", ["http-cache", "conditional-request"], "medium", "high", "unit", 5, 2, ["HTTP cache policy and conditional request behavior", "ETag, freshness, and response header branches"]);
+    }
+  }
+
   if (branchHeavy && (lowerPath.includes("validator") || lowerPath.includes("/validation/"))) {
     return recommended("request-validation", ["request-validation", "failure-mapping"], "high", "high", "unit", 9, 3, ["Request validation and failure mapping", "accepted, rejected, and malformed input boundaries"]);
   }
@@ -490,6 +505,10 @@ function classifySourceFile(file, profile, mirrorContext = {}) {
 
 function recommended(kind, signals, risk, testability, testLevel, riskReductionScore, maintenanceCost, reasons) {
   return { kind, signals, risk, testability, testLevel, riskReductionScore, maintenanceCost, reasons };
+}
+
+function hasHttpBoundary(content) {
+  return /\b(?:HTTPEvent|H3Event|Request|Response|Headers)\b|\.req\b|\.res\b/.test(content);
 }
 
 function skipped(kind, signals, riskReductionScore, maintenanceCost, skipReason, preferredCoveragePath) {
