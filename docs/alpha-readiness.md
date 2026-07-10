@@ -85,7 +85,7 @@ Done:
 
 - Add a concise repo-level top findings report for project audits, including category counts for missing coverage, weak existing coverage, misplaced coverage, low-value direct targets, and blocked projects.
 - Expand real-repo audit reports beyond owned/local repositories with small-library and larger HTTP-framework JavaScript/TypeScript probes.
-- Distinguish auxiliary docs, examples, and playground workspaces before ranking missing-test infrastructure blockers.
+- Distinguish auxiliary docs, examples, playground, and benchmark workspaces before ranking missing-test infrastructure blockers.
 
 Next:
 
