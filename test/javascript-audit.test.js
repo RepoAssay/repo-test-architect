@@ -729,8 +729,13 @@ export function auditKotlin(files) {
       "src/utils/cookie.ts": "export function cookie(event: HTTPEvent) { if (event.req) return true; return false; }",
       "src/utils/event.ts": "export function event(current: HTTPEvent) { if (current.req) return true; return false; }",
       "src/utils/proxy.ts": "export function proxy(current: HTTPEvent): Response { if (current.req) return new Response(); return new Response(); }",
+      "src/utils/query.ts": "export function query(current: HTTPEvent) { if (current.req) return true; return false; }",
+      "src/utils/request.ts": "export function request(current: HTTPEvent) { if (current.req) return true; return false; }",
       "src/utils/response.ts": "export function response(current: HTTPEvent): Response { if (current.res) return new Response(); return new Response(); }",
-      "src/utils/session.ts": "export function session(current: HTTPEvent) { if (current.req) return true; return false; }"
+      "src/utils/route.ts": "export function route(current: EventHandler) { if (current) return true; return false; }",
+      "src/utils/session.ts": "export function session(current: HTTPEvent) { if (current.req) return true; return false; }",
+      "src/utils/ws.ts": "export function ws(current: H3Event): Response { if (current.req) return new Response(); return new Response(); }",
+      "src/handler.ts": "export function handler(current: EventHandler) { if (current) return true; return false; }"
     };
     for (const [sourcePath, content] of Object.entries(sources)) {
       fs.mkdirSync(path.dirname(path.join(root, sourcePath)), { recursive: true });
@@ -745,6 +750,7 @@ export function auditKotlin(files) {
       {
         "src/adapter/cloudflare/handler.ts": "runtime-adapter",
         "src/client/fetch-response.ts": "response-parser",
+        "src/handler.ts": "http-handler",
         "src/middleware/basic-auth.ts": "security-middleware",
         "src/middleware/compress.ts": "http-middleware",
         "src/router/matcher.ts": "http-router",
@@ -755,8 +761,12 @@ export function auditKotlin(files) {
         "src/utils/cookie.ts": "cookie-boundary",
         "src/utils/event.ts": "request-event",
         "src/utils/proxy.ts": "http-proxy",
+        "src/utils/query.ts": "query-boundary",
+        "src/utils/request.ts": "request-access",
         "src/utils/response.ts": "response-construction",
+        "src/utils/route.ts": "http-route",
         "src/utils/session.ts": "session-management",
+        "src/utils/ws.ts": "websocket",
         "src/validator/request-validator.ts": "request-validation"
       }
     );
