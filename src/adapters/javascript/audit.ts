@@ -446,7 +446,7 @@ function classifySourceFile(file: FileSnapshot, profile: RepoProfile, mirrorCont
     return recommended("http-middleware", ["http-middleware", "request-response-boundary"], "medium", "medium", "integration", 5, 4, ["HTTP middleware request and response behavior", "continuation and error propagation"]);
   }
 
-  if (branchHeavy && hasHttpBoundary(content)) {
+  if (branchHeavy && !lowerPath.includes("/adapter/") && hasHttpBoundary(content)) {
     if (matchesAny(lowerPath, ["auth", "cors", "csrf", "jwt", "jwk", "secure", "permission"])) {
       return recommended("security-middleware", ["http-security", "security-boundary"], "high", "medium", "integration", 8, 5, ["Security-sensitive HTTP boundary behavior", "allow, reject, and challenge response branches"]);
     }
@@ -470,6 +470,21 @@ function classifySourceFile(file: FileSnapshot, profile: RepoProfile, mirrorCont
     }
     if (lowerPath.includes("event")) {
       return recommended("request-event", ["request-event", "lifecycle-boundary"], "medium", "high", "unit", 5, 2, ["Request event lifecycle and context behavior", "lazy state, malformed input, and cleanup branches"]);
+    }
+    if (matchesAny(lowerPath, ["websocket", "/ws.", "/ws/"])) {
+      return recommended("websocket", ["websocket", "upgrade-lifecycle"], "high", "medium", "integration", 8, 5, ["WebSocket upgrade and connection lifecycle behavior", "open, message, close, and failure branches"]);
+    }
+    if (lowerPath.includes("handler")) {
+      return recommended("http-handler", ["http-handler", "request-response-boundary"], "medium", "medium", "integration", 5, 4, ["HTTP handler dispatch and response conversion", "middleware, validation, and thrown error branches"]);
+    }
+    if (lowerPath.includes("route")) {
+      return recommended("http-route", ["http-route", "route-registration"], "medium", "medium", "integration", 5, 4, ["HTTP route registration and dispatch behavior", "method, pattern, middleware, and validation branches"]);
+    }
+    if (lowerPath.includes("query")) {
+      return recommended("query-boundary", ["query-boundary", "structured-input"], "medium", "high", "unit", 5, 2, ["HTTP query parsing and serialization behavior", "media type, repeated value, and malformed input branches"]);
+    }
+    if (lowerPath.includes("request")) {
+      return recommended("request-access", ["request-access", "url-header-boundary"], "medium", "high", "unit", 5, 2, ["HTTP request URL, header, and context access", "proxy, validation, and malformed input branches"]);
     }
   }
 
@@ -538,7 +553,7 @@ function recommended(
 }
 
 function hasHttpBoundary(content: string): boolean {
-  return /\b(?:HTTPEvent|H3Event|Request|Response|Headers)\b|\.req\b|\.res\b/.test(content);
+  return /\b(?:HTTPEvent|H3Event|HTTPMethod|EventHandler|H3Route|Request|Response|Headers)\b|\.req\b|\.res\b/.test(content);
 }
 
 function skipped(

@@ -118,7 +118,7 @@ What the tool found:
 - four supported JavaScript/TypeScript project roots: the package root plus `docs`, `examples`, and `playground`
 - high-confidence root audit with the repository's `pnpm test` command and Vitest tooling
 - 50 repo-level findings after current matching improvements: one missing coverage, 43 weak existing coverage, and six blocked-project findings
-- seven high-severity findings: the untested service-worker entry plus covered auth, CORS, proxy, and session boundaries
+- eight high-severity findings: the untested service-worker entry plus covered auth, CORS, proxy, session, and WebSocket boundaries
 - matching tests for many branch-heavy HTTP behaviors, including auth, body handling, CORS, events, handlers, middleware, JSON-RPC, paths, proxies, and sessions
 - a high-priority service-worker entry finding based on the runtime boundary and lack of a filename-matched test
 
@@ -131,6 +131,7 @@ Representative findings:
 | Resolved name mismatches | `src/error.ts`, `src/utils/cookie.ts` | Plural filename, direct import, and package-entry matching now connect `test/errors.test.ts` and `test/cookies.test.ts` to these sources. |
 | HTTP boundary roles | auth, CORS, request body, cookie, cache, and streaming utilities | Flat `src/utils/*` modules now receive behavioral rationale from HTTP boundary types without requiring framework-specific directory names. |
 | Stateful HTTP roles | response construction, request events, proxies, and sessions | Lifecycle, translation, abort, header, expiry, rotation, and tamper branches now replace generic utility rationale. |
+| Request dispatch roles | handlers, routes, request access, query boundaries, and WebSockets | Dispatch, registration, URL/header access, structured query input, upgrades, and connection lifecycle receive distinct review guidance. |
 | Blocked subprojects | `docs`, `examples`, `playground` | Package markers create separate projects, but these workspace roles intentionally have no independent test framework or command. |
 
 What it missed or over-reported:
@@ -139,12 +140,12 @@ What it missed or over-reported:
 - Static import and symbol evidence establishes plausible reachability but does not prove that tests assert the important behavior.
 - Six blocker records from docs, examples, and playground remain visible, but auxiliary-workspace ranking prevents them from displacing root findings.
 - The summary calls project audit coverage complete while also reporting six blockers, which is structurally valid but easy for a reader to interpret as contradictory.
-- Twenty-nine branch-heavy root candidates remain generic utilities after response construction, event lifecycle, proxy, and session roles are identified.
+- Twenty-four branch-heavy root candidates remain generic utilities after handler, route, request, query, and WebSocket roles are identified.
 
 Heuristic follow-up:
 
 - expand assertion-aware symbol evidence beyond static reachability when the audit needs to distinguish import from exercised behavior
-- evaluate the remaining generic HTTP utilities for stable request, handler, route, query, and WebSocket boundary signals
+- evaluate remaining generic utilities only where stable domain boundaries are stronger than filename coincidence
 
 ## `honojs/hono` Audit
 
@@ -166,7 +167,7 @@ What the tool found:
 - seven supported JavaScript/TypeScript project roots: the package root plus six benchmark packages
 - high-confidence root audit with Vitest conventions and the repository test command
 - 148 repo-level findings: four missing coverage, 100 weak existing coverage, 32 low-value direct targets, and 12 blocked-project findings
-- 18 high-severity findings after security middleware, request validation, response parsing, and proxy behavior receive behavioral classifications while benchmark setup blockers remain low-severity auxiliary findings
+- 19 high-severity findings after security middleware, request validation, response parsing, proxy behavior, and shared WebSocket lifecycle receive behavioral classifications while benchmark setup blockers remain low-severity auxiliary findings
 - direct, bounded transitive-relative, relative-barrel, package-entry, exact-subpath, and wildcard-export evidence across a large conditional export surface
 - direct root ranking with one missing candidate and extensive existing-test evidence across adapters, middleware, routers, JSX, client, and utility modules
 - imported-symbol filtering narrowed existing-test path lists for 25 root candidates without moving any covered candidate back to missing
