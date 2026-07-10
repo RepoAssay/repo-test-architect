@@ -614,7 +614,7 @@ function findSourcePackageSubpathEntries(packageData, moduleFiles) {
   }
 
   for (const [subpath, value] of Object.entries(packageData.exports)) {
-    if (!subpath.startsWith("./") || subpath.includes("*")) continue;
+    if (!subpath.startsWith("./")) continue;
     const relativeSubpath = subpath.slice(2);
     const declaredPaths = collectStringValues(value).map((candidate) => candidate.replace(/^\.\//, ""));
     const candidates = [
@@ -623,11 +623,36 @@ function findSourcePackageSubpathEntries(packageData, moduleFiles) {
       `src/${relativeSubpath}`,
       relativeSubpath
     ];
+    if (relativeSubpath.includes("*")) {
+      addWildcardPackageEntries(entries, packageData.name, relativeSubpath, candidates, moduleFiles);
+      continue;
+    }
     const entryFile = findSourceFileForCandidates(candidates, moduleFiles);
     if (entryFile) entries.set(`${packageData.name}/${relativeSubpath}`, entryFile);
   }
 
   return entries;
+}
+
+function addWildcardPackageEntries(entries, packageName, relativeSubpath, candidatePatterns, moduleFiles) {
+  for (const file of moduleFiles.filter((candidate) => isSourceFile(candidate.path))) {
+    for (const pattern of candidatePatterns.filter((candidate) => candidate.includes("*"))) {
+      const wildcardValue = matchWildcardSourcePath(pattern, file.path);
+      if (wildcardValue === undefined) continue;
+      entries.set(`${packageName}/${relativeSubpath.replace("*", wildcardValue)}`, file);
+      break;
+    }
+  }
+}
+
+function matchWildcardSourcePath(pattern, sourcePath) {
+  const normalizedPattern = removeJavaScriptExtension(pattern.replace(/^\.\//, ""));
+  const normalizedSource = removeJavaScriptExtension(sourcePath);
+  const [prefix, suffix, ...extra] = normalizedPattern.split("*");
+  if (extra.length > 0) return undefined;
+  if (!normalizedSource.startsWith(prefix) || !normalizedSource.endsWith(suffix)) return undefined;
+  const wildcardValue = normalizedSource.slice(prefix.length, normalizedSource.length - suffix.length);
+  return wildcardValue || undefined;
 }
 
 function findSourceFileForCandidates(candidates, moduleFiles) {
