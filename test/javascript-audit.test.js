@@ -547,8 +547,12 @@ export function auditKotlin(files) {
       `export function hidden(value) {\n  if (value) return value;\n  return "hidden";\n}\n`
     );
     fs.writeFileSync(
+      path.join(root, "src", "exported-but-unused.ts"),
+      `export function unused(value) {\n  if (value) return value;\n  return "unused";\n}\n`
+    );
+    fs.writeFileSync(
       path.join(root, "src", "index.ts"),
-      `export * from "./error";\nexport { parseCookie } from "./cookie.ts";\n`
+      `export * from "./error";\nexport { parseCookie } from "./cookie.ts";\nexport { unused } from "./exported-but-unused";\n`
     );
     fs.writeFileSync(
       path.join(root, "test", "http-behavior.test.ts"),
@@ -566,7 +570,7 @@ export function auditKotlin(files) {
     );
     assert.deepEqual(
       audit.untestedCandidates.map((target) => target.path),
-      ["src/unexported.ts"]
+      ["src/exported-but-unused.ts", "src/unexported.ts"]
     );
   });
 
