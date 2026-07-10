@@ -166,7 +166,7 @@ What the tool found:
 - seven supported JavaScript/TypeScript project roots: the package root plus six benchmark packages
 - high-confidence root audit with Vitest conventions and the repository test command
 - 148 repo-level findings: four missing coverage, 100 weak existing coverage, 32 low-value direct targets, and 12 blocked-project findings
-- nine high-severity findings after benchmark setup blockers are classified as low-severity auxiliary findings
+- 16 high-severity findings after security middleware, request validation, and response parsing receive behavioral classifications while benchmark setup blockers remain low-severity auxiliary findings
 - direct, bounded transitive-relative, relative-barrel, package-entry, exact-subpath, and wildcard-export evidence across a large conditional export surface
 - direct root ranking with one missing candidate and extensive existing-test evidence across adapters, middleware, routers, JSX, client, and utility modules
 - imported-symbol filtering narrowed existing-test path lists for 25 root candidates without moving any covered candidate back to missing
@@ -178,6 +178,7 @@ Representative findings:
 | Covered but risky | validator modules, client modules, service-worker handlers, routing implementations | Branch-heavy framework behavior remains visible with concrete test paths. |
 | Bounded indirect evidence | `fetch-result-please.ts`, `hono-base.ts`, ETag `digest.ts`, regex-router `matcher.ts` and `trie.ts` | Two bounded source-dependency hops now connect these implementations to tests of their consumers. |
 | Export evidence | helper, middleware, JSX, client, and runtime entrypoints | The audit exercises the newer self-package and wildcard export matching on a real public package surface. |
+| HTTP framework roles | routers, security middleware, request validation, streaming, response parsing, runtime adapters | Findings now describe the behavioral boundary and edge cases instead of collapsing these modules into generic branching utilities. |
 | Auxiliary blockers | six `benchmarks/*` packages | Benchmark packages remain visible without displacing actionable root-package findings. |
 
 What it missed or over-reported:
@@ -187,12 +188,12 @@ What it missed or over-reported:
 - Directory qualification now prevents filename-only evidence from unrelated generic `index.ts`, `utils.ts`, `handler.ts`, and `types.ts` tests. Remaining broad matches come from imported barrels and tested consumers rather than basename coincidence.
 - Imported-symbol matching now distinguishes named and namespace selections across relative barrels and package entrypoints. It remains static evidence: importing a symbol does not prove that every behavioral branch was asserted.
 - Markdown now displays at most five existing-test paths per finding and directs readers to the complete JSON evidence; machine-readable artifacts remain unchanged.
-- Framework-specific risk rationales remain generic. Router matching, streaming, validation, client response parsing, middleware security, and runtime-adapter behavior need domain-level explanations.
+- HTTP role classification is deliberately limited to files that already qualify as branch-heavy; role paths do not promote otherwise low-value files into recommendations.
 
 Heuristic follow-up:
 
 - distinguish imported-symbol selection from actual runtime calls and assertions when stronger static evidence is available
-- add HTTP framework classifications for routing, middleware, validation, response parsing, streaming, and runtime adapters
+- validate the HTTP role vocabulary against another non-owned framework before treating it as stable adapter taxonomy
 
 ## Additional JavaScript/TypeScript Probe: `sindresorhus/is`
 

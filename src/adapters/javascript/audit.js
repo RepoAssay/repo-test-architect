@@ -327,6 +327,7 @@ function classifySourceFile(file, profile, mirrorContext = {}) {
   const currentPath = normalizePath(file.path);
   const content = file.content;
   const lowerPath = currentPath.toLowerCase();
+  const branchHeavy = hasBranching(content);
   const runtimeSourcePaths = mirrorContext.runtimeSourcePaths ?? new Set();
 
   if (lowerPath.includes("generated") || lowerPath.includes("/dist/") || lowerPath.includes("/build/")) {
@@ -425,6 +426,33 @@ function classifySourceFile(file, profile, mirrorContext = {}) {
     };
   }
 
+  if (branchHeavy && (lowerPath.includes("/router/") || lowerPath.includes("/routing/"))) {
+    return recommended("http-router", ["http-routing", "route-precedence"], "medium", "high", "unit", 5, 2, ["Route matching and precedence behavior", "parameter and fallback edge cases"]);
+  }
+
+  if (branchHeavy && lowerPath.includes("/middleware/")) {
+    if (matchesAny(lowerPath, ["auth", "csrf", "cors", "jwt", "jwk", "secure", "ip-restriction", "permission"])) {
+      return recommended("security-middleware", ["http-middleware", "security-boundary"], "high", "medium", "integration", 8, 5, ["Security-sensitive middleware behavior", "allow, reject, and error response branches"]);
+    }
+    return recommended("http-middleware", ["http-middleware", "request-response-boundary"], "medium", "medium", "integration", 5, 4, ["HTTP middleware request and response behavior", "continuation and error propagation"]);
+  }
+
+  if (branchHeavy && (lowerPath.includes("validator") || lowerPath.includes("/validation/"))) {
+    return recommended("request-validation", ["request-validation", "failure-mapping"], "high", "high", "unit", 9, 3, ["Request validation and failure mapping", "accepted, rejected, and malformed input boundaries"]);
+  }
+
+  if (branchHeavy && matchesAny(lowerPath, ["stream", "sse"])) {
+    return recommended("streaming", ["streaming-boundary", "async-lifecycle"], "medium", "medium", "integration", 5, 4, ["Streaming lifecycle and backpressure behavior", "cancellation, cleanup, and error propagation"]);
+  }
+
+  if (branchHeavy && lowerPath.includes("/adapter/")) {
+    return recommended("runtime-adapter", ["runtime-adapter", "platform-boundary"], "medium", "medium", "integration", 5, 4, ["Runtime adapter request and response translation", "platform-specific lifecycle and error behavior"]);
+  }
+
+  if (branchHeavy && lowerPath.includes("/client/") && matchesAny(lowerPath, ["fetch", "result", "response", "parse"])) {
+    return recommended("response-parser", ["response-parsing", "external-boundary"], "high", "high", "unit", 9, 3, ["Client response parsing and error translation", "success, malformed payload, and failure response boundaries"]);
+  }
+
   if (matchesAny(lowerPath, ["parser", "mapper", "validator", "formatter"])) {
     return recommended("pure-logic", ["pure-logic", "edge-case-surface"], "high", "high", "unit", 9, 2, ["Pure transformation logic", "edge-case surface"]);
   }
@@ -453,7 +481,7 @@ function classifySourceFile(file, profile, mirrorContext = {}) {
     return recommended("http-route", ["http-route", "status-handling"], "high", "medium", "integration", 8, 5, ["HTTP behavior", "status code and error handling"]);
   }
 
-  if (hasBranching(content)) {
+  if (branchHeavy) {
     return recommended("utility", ["branching-logic"], "medium", "high", "unit", 5, 2, ["Branching logic"]);
   }
 
