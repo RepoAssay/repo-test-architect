@@ -18,6 +18,7 @@ export function auditJavaScriptRepo(snapshot: JavaScriptRepoSnapshot): AuditResu
   const testFiles = snapshot.files
     .filter((file) => isTestFile(file.path))
     .map((file) => ({ ...file, path: normalizePath(file.path) }));
+  const moduleFiles = snapshot.files.map((file) => ({ ...file, path: normalizePath(file.path) }));
   const untestedCandidates: AuditTarget[] = [];
   const coveredButRisky: AuditTarget[] = [];
   const skipped: SkippedTarget[] = [];
@@ -31,7 +32,7 @@ export function auditJavaScriptRepo(snapshot: JavaScriptRepoSnapshot): AuditResu
       runtimeSourcePaths,
       sourceJavaScriptRuntime
     });
-    const existingTestPaths = findExistingTests(file.path, testFiles);
+    const existingTestPaths = findExistingTests(file.path, testFiles, moduleFiles);
 
     if (classification.skipReason) {
       skipped.push({
@@ -549,7 +550,7 @@ function isTestFile(path: string): boolean {
   );
 }
 
-function findExistingTests(sourcePath: string, testFiles: FileSnapshot[]): string[] {
+function findExistingTests(sourcePath: string, testFiles: FileSnapshot[], moduleFiles: FileSnapshot[]): string[] {
   const normalized = normalizePath(sourcePath);
   const sourceBase = basenameWithoutExtension(normalized);
   const sourceSegments = normalized.split("/");
@@ -569,23 +570,39 @@ function findExistingTests(sourcePath: string, testFiles: FileSnapshot[]): strin
       return (
         sourceBaseCandidates.has(testBase) ||
         testFile.path.startsWith(`${sourceDir}/__tests__/${sourceBase}.`) ||
-        hasDirectRelativeImport(testFile, normalized)
+        hasDirectRelativeImport(testFile, normalized) ||
+        hasOneHopBarrelImport(testFile, normalized, moduleFiles)
       );
     })
     .map((testFile) => testFile.path);
 }
 
 function hasDirectRelativeImport(testFile: FileSnapshot, sourcePath: string): boolean {
+  return collectRelativeModuleSpecifiers(testFile.content).some((specifier) =>
+    moduleSpecifierTargetsSource(testFile.path, specifier, sourcePath)
+  );
+}
+
+function hasOneHopBarrelImport(testFile: FileSnapshot, sourcePath: string, moduleFiles: FileSnapshot[]): boolean {
   return collectRelativeModuleSpecifiers(testFile.content).some((specifier) => {
-    const resolved = normalizePathSegments(joinPath(dirname(testFile.path), specifier));
-    const resolvedWithoutExtension = removeJavaScriptExtension(resolved);
-    const sourceWithoutExtension = removeJavaScriptExtension(sourcePath);
-    return (
-      resolved === sourcePath ||
-      resolvedWithoutExtension === sourceWithoutExtension ||
-      (basenameWithoutExtension(sourcePath) === "index" && resolvedWithoutExtension === dirname(sourcePath))
+    const barrelFile = moduleFiles.find((file) => moduleSpecifierTargetsSource(testFile.path, specifier, file.path));
+    if (!barrelFile || barrelFile.path === sourcePath) return false;
+
+    return collectRelativeExportSpecifiers(barrelFile.content).some((exportSpecifier) =>
+      moduleSpecifierTargetsSource(barrelFile.path, exportSpecifier, sourcePath)
     );
   });
+}
+
+function moduleSpecifierTargetsSource(importerPath: string, specifier: string, sourcePath: string): boolean {
+  const resolved = normalizePathSegments(joinPath(dirname(importerPath), specifier));
+  const resolvedWithoutExtension = removeJavaScriptExtension(resolved);
+  const sourceWithoutExtension = removeJavaScriptExtension(sourcePath);
+  return (
+    resolved === sourcePath ||
+    resolvedWithoutExtension === sourceWithoutExtension ||
+    (basenameWithoutExtension(sourcePath) === "index" && resolvedWithoutExtension === dirname(sourcePath))
+  );
 }
 
 function collectRelativeModuleSpecifiers(content: string): string[] {
@@ -600,6 +617,18 @@ function collectRelativeModuleSpecifiers(content: string): string[] {
       const specifier = match[1];
       if (specifier?.startsWith(".")) specifiers.push(specifier);
     }
+  }
+
+  return specifiers;
+}
+
+function collectRelativeExportSpecifiers(content: string): string[] {
+  const specifiers: string[] = [];
+  const pattern = /\bexport\s+(?:[^"']*?\s+from\s+)["']([^"']+)["']/g;
+
+  for (const match of content.matchAll(pattern)) {
+    const specifier = match[1];
+    if (specifier?.startsWith(".")) specifiers.push(specifier);
   }
 
   return specifiers;

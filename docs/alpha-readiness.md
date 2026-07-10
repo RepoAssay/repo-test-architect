@@ -89,7 +89,7 @@ Done:
 
 Next:
 
-1. Expand source-to-test matching beyond direct relative imports into barrel-export, package-alias, and exported-symbol evidence.
+1. Expand source-to-test matching beyond one-hop relative barrels into package-alias, transitive barrel, and exported-symbol usage evidence.
 2. Tighten placement findings beyond package/app root inference with more adapter-owned package-boundary signals.
 3. Add more model-consistency scenarios for placement summaries as the finding surface grows.
 4. Keep adapter hardening focused on common stack variants that improve real-repo audit trust.

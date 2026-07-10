@@ -515,4 +515,49 @@ export function auditKotlin(files) {
     );
     assert.deepEqual(audit.untestedCandidates, []);
   });
+
+  it("matches tests to source modules re-exported by a relative barrel", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-js-barrel-tests-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "src"), { recursive: true });
+    fs.mkdirSync(path.join(root, "test"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "package.json"),
+      JSON.stringify({ scripts: { test: "vitest --run" }, devDependencies: { vitest: "latest" } })
+    );
+    fs.writeFileSync(
+      path.join(root, "src", "error.ts"),
+      `export function createError(value) {\n  if (value) return new Error(value);\n  return new Error("unknown");\n}\n`
+    );
+    fs.writeFileSync(
+      path.join(root, "src", "cookie.ts"),
+      `export function parseCookie(value) {\n  if (value) return value.split("=");\n  return [];\n}\n`
+    );
+    fs.writeFileSync(
+      path.join(root, "src", "unexported.ts"),
+      `export function hidden(value) {\n  if (value) return value;\n  return "hidden";\n}\n`
+    );
+    fs.writeFileSync(
+      path.join(root, "src", "index.ts"),
+      `export * from "./error";\nexport { parseCookie } from "./cookie.ts";\n`
+    );
+    fs.writeFileSync(
+      path.join(root, "test", "http-behavior.test.ts"),
+      `import { createError, parseCookie } from "../src";\n`
+    );
+
+    const audit = auditJavaScriptRepo(root);
+
+    assert.deepEqual(
+      audit.coveredButRisky.map((target) => `${target.path}:${target.existingTestPaths.join(",")}`),
+      [
+        "src/cookie.ts:test/http-behavior.test.ts",
+        "src/error.ts:test/http-behavior.test.ts"
+      ]
+    );
+    assert.deepEqual(
+      audit.untestedCandidates.map((target) => target.path),
+      ["src/unexported.ts"]
+    );
+  });
 });
