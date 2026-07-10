@@ -459,6 +459,18 @@ function classifySourceFile(file: FileSnapshot, profile: RepoProfile, mirrorCont
     if (lowerPath.includes("cache")) {
       return recommended("http-cache", ["http-cache", "conditional-request"], "medium", "high", "unit", 5, 2, ["HTTP cache policy and conditional request behavior", "ETag, freshness, and response header branches"]);
     }
+    if (lowerPath.includes("proxy")) {
+      return recommended("http-proxy", ["http-proxy", "external-boundary"], "high", "medium", "integration", 8, 5, ["HTTP proxy request and response translation", "abort, header filtering, and upstream failure branches"]);
+    }
+    if (lowerPath.includes("session")) {
+      return recommended("session-management", ["session-boundary", "security-sensitive-state"], "high", "medium", "integration", 8, 5, ["Session lifecycle and protected state behavior", "creation, expiry, rotation, and tamper failure branches"]);
+    }
+    if (lowerPath.includes("response")) {
+      return recommended("response-construction", ["response-construction", "status-header-boundary"], "medium", "high", "unit", 5, 2, ["HTTP response construction and normalization", "status, header, body, and error conversion branches"]);
+    }
+    if (lowerPath.includes("event")) {
+      return recommended("request-event", ["request-event", "lifecycle-boundary"], "medium", "high", "unit", 5, 2, ["Request event lifecycle and context behavior", "lazy state, malformed input, and cleanup branches"]);
+    }
   }
 
   if (branchHeavy && (lowerPath.includes("validator") || lowerPath.includes("/validation/"))) {
