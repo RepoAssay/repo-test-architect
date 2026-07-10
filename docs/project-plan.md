@@ -232,6 +232,33 @@ Longer term, add model-consistency evaluations that run the same audit graph thr
 
 Current deterministic scenarios lock selected fields for single-project planning, ranking, target explanation, no-framework blocker handling, route/component/service fixtures, the Kotlin/JVM adapter spike, and polyglot project-summary/ranking/plan/stats coverage.
 
+## Optional Executor Direction
+
+Test implementation should remain downstream from the audit graph. A future executor should consume a selected stable plan item rather than rediscovering the repository or changing the audit decision.
+
+Executor behavior should be split into reusable layers:
+
+- audit artifact: deterministic repository facts, provenance, confidence, risk, and target identity
+- test specification: framework-neutral behavior, edge cases, and acceptance criteria
+- adapter guidance: repository-native framework, file placement, style, and verification command
+- executor profile: model- or agent-specific instructions, context limits, and task decomposition
+- verification result: files changed, commands run, failures, repairs, and remaining risk
+
+Different models may need different executor profiles. Those profiles should be evaluated against the same audit item and adapter guidance rather than being allowed to reinterpret the underlying facts.
+
+Generation evaluation should record at least:
+
+- whether the selected audit item was implemented
+- whether repository conventions and ownership boundaries were followed
+- whether tests assert behavior instead of implementation details
+- whether unrelated production or test files were changed
+- whether the discovered verification command passed
+- whether mutation or deliberate fault injection proves the test can fail meaningfully
+- repair attempt count and final unresolved failures
+- whether the executor ignored or contradicted audit evidence
+
+This keeps model comparison focused on execution quality while model-consistency checks protect the stable audit decisions.
+
 ## Evaluation Metrics
 
 Detection:

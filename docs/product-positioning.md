@@ -29,6 +29,20 @@ Repo Test Architect starts one layer earlier:
 
 The defensible value is the audit graph and strategy layer: knowing what should be tested, what should be skipped, whether existing tests are valuable, whether tests are in the right project layer, and what risks remain. Native generation is one future action, not the product thesis.
 
+## Audit As An Integration Layer
+
+The audit should be useful without prescribing how tests are written. Its structured evidence can support:
+
+- engineers reviewing or implementing test work manually
+- coding agents and language models with different instruction requirements
+- CI policies that block, warn, or track accepted risk
+- external test-generation and repair tools
+- dashboards, IDE integrations, and architecture reviews
+
+These consumers may disagree about implementation style or choose not to act. They should still receive the same repository facts, provenance, confidence, target identity, and verification command.
+
+If native generation is added, it should remain an optional executor over the audit contract. Model-specific prompts and repair strategies are replaceable profiles rather than part of the deterministic audit core.
+
 ## Initial Audience
 
 The first useful audience is technical:
@@ -61,6 +75,8 @@ Acquisition should be treated as optional upside. The product should first becom
 - local-first MCP install path
 - demo path that shows useful planning without generated tests
 - reports that make skipped areas and remaining risk explicit
+- independent consumers that reach the same target and risk decisions from one saved audit artifact
+- executor evaluations that separate audit correctness from model-specific implementation quality
 
 ## Anti-Positioning
 

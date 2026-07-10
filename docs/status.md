@@ -48,7 +48,7 @@ Implemented:
 - near-term roadmap for public demo polish, second adapter proof, placement analysis, MCP transport, and generation readiness gates
 - demo script for showing audit quality, polyglot detection, MCP tools, and verification without implying native generation is ready
 - demo command checker that runs the deterministic public demo path without nesting the full release suite
-- decision log for audit-first architecture, adapter scope, local-first MCP, deferred generation, public demo readiness, and stats policy
+- decision log for audit-first architecture, the stable audit/executor boundary, adapter scope, local-first MCP, deferred generation, public demo readiness, and stats policy
 - adapter spike checklist for adding ecosystems without changing the shared audit model or enabling generation early
 - package contents dry-run checker for required runtime files and publish allowlist hygiene
 - package binary entrypoint checker for CLI, MCP invoke, and stdio MCP boot paths
