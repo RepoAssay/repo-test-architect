@@ -89,7 +89,7 @@ Done:
 
 Next:
 
-1. Expand source-to-test matching beyond exact self-package entries into subpath/tsconfig aliases, transitive barrels, and exported-symbol usage evidence.
+1. Expand source-to-test matching beyond declared package subpaths into wildcard/tsconfig aliases, transitive barrels, and exported-symbol usage evidence.
 2. Tighten placement findings beyond package/app root inference with more adapter-owned package-boundary signals.
 3. Add more model-consistency scenarios for placement summaries as the finding surface grows.
 4. Keep adapter hardening focused on common stack variants that improve real-repo audit trust.
