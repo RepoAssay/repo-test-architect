@@ -15,7 +15,9 @@ export function auditJavaScriptRepo(snapshot: JavaScriptRepoSnapshot): AuditResu
   const profile = buildProfile(snapshot);
   const changedPaths = snapshot.changedPaths ? new Set(snapshot.changedPaths.map(normalizePath)) : undefined;
   const sourceFiles = snapshot.files.filter((file) => isSourceFile(file.path) && isIncludedByChangedPaths(file.path, changedPaths));
-  const testFiles = snapshot.files.filter((file) => isTestFile(file.path)).map((file) => normalizePath(file.path));
+  const testFiles = snapshot.files
+    .filter((file) => isTestFile(file.path))
+    .map((file) => ({ ...file, path: normalizePath(file.path) }));
   const untestedCandidates: AuditTarget[] = [];
   const coveredButRisky: AuditTarget[] = [];
   const skipped: SkippedTarget[] = [];
@@ -547,7 +549,7 @@ function isTestFile(path: string): boolean {
   );
 }
 
-function findExistingTests(sourcePath: string, testPaths: string[]): string[] {
+function findExistingTests(sourcePath: string, testFiles: FileSnapshot[]): string[] {
   const normalized = normalizePath(sourcePath);
   const sourceBase = basenameWithoutExtension(normalized);
   const sourceSegments = normalized.split("/");
@@ -561,10 +563,68 @@ function findExistingTests(sourcePath: string, testPaths: string[]): string[] {
     }
   }
 
-  return testPaths.filter((testPath) => {
-    const testBase = basenameWithoutExtension(testPath).replace(/\.(test|spec)$/, "");
-    return sourceBaseCandidates.has(testBase) || testPath.startsWith(`${sourceDir}/__tests__/${sourceBase}.`);
+  return testFiles
+    .filter((testFile) => {
+      const testBase = basenameWithoutExtension(testFile.path).replace(/\.(test|spec)$/, "");
+      return (
+        sourceBaseCandidates.has(testBase) ||
+        testFile.path.startsWith(`${sourceDir}/__tests__/${sourceBase}.`) ||
+        hasDirectRelativeImport(testFile, normalized)
+      );
+    })
+    .map((testFile) => testFile.path);
+}
+
+function hasDirectRelativeImport(testFile: FileSnapshot, sourcePath: string): boolean {
+  return collectRelativeModuleSpecifiers(testFile.content).some((specifier) => {
+    const resolved = normalizePathSegments(joinPath(dirname(testFile.path), specifier));
+    const resolvedWithoutExtension = removeJavaScriptExtension(resolved);
+    const sourceWithoutExtension = removeJavaScriptExtension(sourcePath);
+    return (
+      resolved === sourcePath ||
+      resolvedWithoutExtension === sourceWithoutExtension ||
+      (basenameWithoutExtension(sourcePath) === "index" && resolvedWithoutExtension === dirname(sourcePath))
+    );
   });
+}
+
+function collectRelativeModuleSpecifiers(content: string): string[] {
+  const specifiers: string[] = [];
+  const patterns = [
+    /\b(?:import|export)\s+(?:[^"']*?\s+from\s+)?["']([^"']+)["']/g,
+    /\brequire\s*\(\s*["']([^"']+)["']\s*\)/g
+  ];
+
+  for (const pattern of patterns) {
+    for (const match of content.matchAll(pattern)) {
+      const specifier = match[1];
+      if (specifier?.startsWith(".")) specifiers.push(specifier);
+    }
+  }
+
+  return specifiers;
+}
+
+function removeJavaScriptExtension(currentPath: string): string {
+  return currentPath.replace(/\.[cm]?[jt]sx?$/, "");
+}
+
+function dirname(currentPath: string): string {
+  return normalizePath(currentPath).split("/").slice(0, -1).join("/");
+}
+
+function joinPath(left: string, right: string): string {
+  return [left, right].filter(Boolean).join("/");
+}
+
+function normalizePathSegments(currentPath: string): string {
+  const segments: string[] = [];
+  for (const segment of normalizePath(currentPath).split("/")) {
+    if (!segment || segment === ".") continue;
+    if (segment === "..") segments.pop();
+    else segments.push(segment);
+  }
+  return segments.join("/");
 }
 
 function pluralizeBaseName(baseName: string): string[] {
