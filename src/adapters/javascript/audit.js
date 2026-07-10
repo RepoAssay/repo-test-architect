@@ -566,7 +566,7 @@ function findExistingTests(sourcePath, testFiles, moduleFiles, boundedTransitive
         hasDirectRelativeImport(testFile, normalized) ||
         boundedTransitiveImports.get(testFile.path)?.has(normalized) ||
         hasOneHopBarrelImport(testFile, normalized, moduleFiles) ||
-        hasPackageEntryImport(testFile, normalized, packageEntry)
+        hasPackageEntryImport(testFile, normalized, moduleFiles, packageEntry)
       );
     })
     .map((testFile) => testFile.path);
@@ -589,10 +589,16 @@ function collectBoundedTransitiveImports(testFiles, moduleFiles) {
 }
 
 function collectBoundedTransitiveImportsForTest(testFile, moduleFiles) {
-  const queue = collectRelativeModuleSpecifiers(testFile.content)
-    .map((specifier) => findRelativeModuleFile(testFile.path, specifier, moduleFiles))
-    .filter(Boolean)
-    .map((file) => ({ file, depth: 0 }));
+  const queue = [];
+  for (const { specifier, importedNames } of collectModuleImports(testFile.content)) {
+    if (!specifier.startsWith(".")) continue;
+    const file = findRelativeModuleFile(testFile.path, specifier, moduleFiles);
+    if (!file) continue;
+    queue.push({ file, depth: 0 });
+    for (const reExport of findImportedReExportFiles(file, importedNames, moduleFiles)) {
+      queue.push({ file: reExport, depth: 1 });
+    }
+  }
   const visited = new Set();
 
   while (queue.length > 0) {
@@ -601,13 +607,22 @@ function collectBoundedTransitiveImportsForTest(testFile, moduleFiles) {
     visited.add(file.path);
     if (depth >= MAX_TRANSITIVE_SOURCE_DEPTH) continue;
 
-    for (const specifier of collectRelativeModuleSpecifiers(file.content)) {
+    for (const specifier of collectRelativeRuntimeDependencySpecifiers(file.content)) {
       const dependency = findRelativeModuleFile(file.path, specifier, moduleFiles);
       if (dependency && !visited.has(dependency.path)) queue.push({ file: dependency, depth: depth + 1 });
     }
   }
 
   return visited;
+}
+
+function findImportedReExportFiles(barrelFile, importedNames, moduleFiles) {
+  if (importedNames.size === 0) return [];
+  return moduleFiles.filter((sourceFile) =>
+    sourceFile.path !== barrelFile.path &&
+    isSourceFile(sourceFile.path) &&
+    barrelExportsImportedNames(barrelFile, sourceFile, importedNames)
+  );
 }
 
 function findRelativeModuleFile(importerPath, specifier, moduleFiles) {
@@ -617,27 +632,33 @@ function findRelativeModuleFile(importerPath, specifier, moduleFiles) {
 }
 
 function hasOneHopBarrelImport(testFile, sourcePath, moduleFiles) {
-  return collectRelativeModuleSpecifiers(testFile.content).some((specifier) => {
+  return collectModuleImports(testFile.content).some(({ specifier, importedNames }) => {
+    if (!specifier.startsWith(".")) return false;
     const barrelFile = moduleFiles.find((file) => moduleSpecifierTargetsSource(testFile.path, specifier, file.path));
     if (!barrelFile || barrelFile.path === sourcePath) return false;
-
-    return collectRelativeExportSpecifiers(barrelFile.content).some((exportSpecifier) =>
-      moduleSpecifierTargetsSource(barrelFile.path, exportSpecifier, sourcePath)
-    );
+    const sourceFile = moduleFiles.find((file) => file.path === sourcePath);
+    return sourceFile ? barrelExportsImportedNames(barrelFile, sourceFile, importedNames) : false;
   });
 }
 
-function hasPackageEntryImport(testFile, sourcePath, { packageName, packageEntryFile, packageSubpathEntries }) {
+function hasPackageEntryImport(testFile, sourcePath, moduleFiles, { packageName, packageEntryFile, packageSubpathEntries }) {
   if (typeof packageName !== "string") return false;
 
-  return collectModuleSpecifiers(testFile.content).some((specifier) => {
+  return collectModuleImports(testFile.content).some(({ specifier, importedNames }) => {
     const entryFile = specifier === packageName ? packageEntryFile : packageSubpathEntries.get(specifier);
     if (!entryFile) return false;
     if (entryFile.path === sourcePath) return true;
+    const sourceFile = moduleFiles.find((file) => file.path === sourcePath);
+    return sourceFile ? barrelExportsImportedNames(entryFile, sourceFile, importedNames) : false;
+  });
+}
 
-    return collectRelativeExportSpecifiers(entryFile.content).some((exportSpecifier) =>
-      moduleSpecifierTargetsSource(entryFile.path, exportSpecifier, sourcePath)
-    );
+function barrelExportsImportedNames(barrelFile, sourceFile, importedNames) {
+  if (importedNames.size === 0) return false;
+  return collectRelativeReExports(barrelFile.content).some(({ specifier, exportedNames, exportAll }) => {
+    if (!moduleSpecifierTargetsSource(barrelFile.path, specifier, sourceFile.path)) return false;
+    const availableNames = exportAll ? collectDeclaredExportNames(sourceFile.content) : exportedNames;
+    return [...importedNames].some((name) => availableNames.has(name));
   });
 }
 
@@ -733,6 +754,81 @@ function moduleSpecifierTargetsSource(importerPath, specifier, sourcePath) {
 
 function collectRelativeModuleSpecifiers(content) {
   return collectModuleSpecifiers(content).filter((specifier) => specifier.startsWith("."));
+}
+
+function collectRelativeRuntimeDependencySpecifiers(content) {
+  return collectModuleImports(content)
+    .map(({ specifier }) => specifier)
+    .filter((specifier) => specifier.startsWith("."));
+}
+
+function collectModuleImports(content) {
+  const imports = [];
+  const importPattern = /\bimport\s+([^;"']*?)\s+from\s+["']([^"']+)["']/g;
+  for (const match of content.matchAll(importPattern)) {
+    imports.push({ specifier: match[2], importedNames: collectImportClauseNames(match[1], content) });
+  }
+  const requirePattern = /\b(?:const|let|var)\s+\{([^}]+)\}\s*=\s*require\s*\(\s*["']([^"']+)["']\s*\)/g;
+  for (const match of content.matchAll(requirePattern)) {
+    imports.push({ specifier: match[2], importedNames: collectAliasedNames(match[1], ":") });
+  }
+  const plainRequirePattern = /\brequire\s*\(\s*["']([^"']+)["']\s*\)/g;
+  for (const match of content.matchAll(plainRequirePattern)) {
+    if (!imports.some((current) => current.specifier === match[1])) {
+      imports.push({ specifier: match[1], importedNames: new Set() });
+    }
+  }
+  return imports;
+}
+
+function collectImportClauseNames(clause, content) {
+  const names = new Set();
+  const named = clause.match(/\{([^}]+)\}/)?.[1];
+  if (named) for (const name of collectAliasedNames(named, "as")) names.add(name);
+  const defaultImport = clause.split(",", 1)[0].trim();
+  if (defaultImport && !defaultImport.startsWith("{") && !defaultImport.startsWith("*")) names.add("default");
+  const namespace = clause.match(/\*\s+as\s+([A-Za-z_$][\w$]*)/)?.[1];
+  if (namespace) {
+    const propertyPattern = new RegExp(`\\b${namespace}\\.([A-Za-z_$][\\w$]*)`, "g");
+    for (const match of content.matchAll(propertyPattern)) names.add(match[1]);
+  }
+  return names;
+}
+
+function collectAliasedNames(value, aliasToken) {
+  return new Set(value.split(",").map((part) => part.trim().split(new RegExp(`\\s+${aliasToken}\\s+|\\s*${aliasToken}\\s*`))[0].trim()).filter(Boolean));
+}
+
+function collectRelativeReExports(content) {
+  const exports = [];
+  const namedPattern = /\bexport\s*\{([^}]+)\}\s*from\s*["']([^"']+)["']/g;
+  for (const match of content.matchAll(namedPattern)) {
+    if (match[2].startsWith(".")) exports.push({ specifier: match[2], exportedNames: collectPublicExportNames(match[1]), exportAll: false });
+  }
+  const allPattern = /\bexport\s*\*\s*from\s*["']([^"']+)["']/g;
+  for (const match of content.matchAll(allPattern)) {
+    if (match[1].startsWith(".")) exports.push({ specifier: match[1], exportedNames: new Set(), exportAll: true });
+  }
+  return exports;
+}
+
+function collectPublicExportNames(value) {
+  return new Set(value.split(",").map((part) => {
+    const names = part.trim().split(/\s+as\s+/);
+    return names.at(-1)?.trim();
+  }).filter(Boolean));
+}
+
+function collectDeclaredExportNames(content) {
+  const names = new Set();
+  const declarationPattern = /\bexport\s+(?:async\s+)?(?:function|class|const|let|var|type|interface|enum)\s+([A-Za-z_$][\w$]*)/g;
+  for (const match of content.matchAll(declarationPattern)) names.add(match[1]);
+  if (/\bexport\s+default\b/.test(content)) names.add("default");
+  const localExportPattern = /\bexport\s*\{([^}]+)\}(?!\s*from)/g;
+  for (const match of content.matchAll(localExportPattern)) {
+    for (const name of collectPublicExportNames(match[1])) names.add(name);
+  }
+  return names;
 }
 
 function collectModuleSpecifiers(content) {
