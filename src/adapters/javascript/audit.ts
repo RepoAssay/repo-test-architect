@@ -1,6 +1,7 @@
 import type { AuditResult, AuditTarget, RepoProfile, SkippedTarget } from "../../core/audit-model";
 
 const GENERIC_SOURCE_BASENAMES = new Set(["handler", "index", "types", "utils"]);
+const MAX_TRANSITIVE_SOURCE_DEPTH = 2;
 
 export interface FileSnapshot {
   path: string;
@@ -21,6 +22,7 @@ export function auditJavaScriptRepo(snapshot: JavaScriptRepoSnapshot): AuditResu
     .filter((file) => isTestFile(file.path))
     .map((file) => ({ ...file, path: normalizePath(file.path) }));
   const moduleFiles = snapshot.files.map((file) => ({ ...file, path: normalizePath(file.path) }));
+  const boundedTransitiveImports = collectBoundedTransitiveImports(testFiles, moduleFiles);
   const packageData = parsePackageJson(snapshot.files.find((file) => normalizePath(file.path) === "package.json")?.content ?? "");
   const packageEntryFile = findSourcePackageEntry(packageData, moduleFiles);
   const packageSubpathEntries = findSourcePackageSubpathEntries(packageData, moduleFiles);
@@ -37,7 +39,7 @@ export function auditJavaScriptRepo(snapshot: JavaScriptRepoSnapshot): AuditResu
       runtimeSourcePaths,
       sourceJavaScriptRuntime
     });
-    const existingTestPaths = findExistingTests(file.path, testFiles, moduleFiles, {
+    const existingTestPaths = findExistingTests(file.path, testFiles, moduleFiles, boundedTransitiveImports, {
       packageName: typeof packageData.name === "string" ? packageData.name : undefined,
       packageEntryFile,
       packageSubpathEntries
@@ -563,6 +565,7 @@ function findExistingTests(
   sourcePath: string,
   testFiles: FileSnapshot[],
   moduleFiles: FileSnapshot[],
+  boundedTransitiveImports: Map<string, Set<string>>,
   packageEntry: { packageName?: string; packageEntryFile?: FileSnapshot; packageSubpathEntries: Map<string, FileSnapshot> }
 ): string[] {
   const normalized = normalizePath(sourcePath);
@@ -592,6 +595,7 @@ function findExistingTests(
         hasFilenameMatch(testFile.path, testBase, sourceBase, sourceDir, baseNameCandidates, sourceBaseCandidates, qualifiedBaseCandidates) ||
         testFile.path.startsWith(`${sourceDir}/__tests__/${sourceBase}.`) ||
         hasDirectRelativeImport(testFile, normalized) ||
+        boundedTransitiveImports.get(testFile.path)?.has(normalized) ||
         hasOneHopBarrelImport(testFile, normalized, moduleFiles) ||
         hasPackageEntryImport(testFile, normalized, packageEntry)
       );
@@ -616,6 +620,46 @@ function hasFilenameMatch(
 function hasDirectRelativeImport(testFile: FileSnapshot, sourcePath: string): boolean {
   return collectRelativeModuleSpecifiers(testFile.content).some((specifier) =>
     moduleSpecifierTargetsSource(testFile.path, specifier, sourcePath)
+  );
+}
+
+function collectBoundedTransitiveImports(testFiles: FileSnapshot[], moduleFiles: FileSnapshot[]): Map<string, Set<string>> {
+  return new Map(
+    testFiles.map((testFile) => [testFile.path, collectBoundedTransitiveImportsForTest(testFile, moduleFiles)])
+  );
+}
+
+function collectBoundedTransitiveImportsForTest(testFile: FileSnapshot, moduleFiles: FileSnapshot[]): Set<string> {
+  const queue: Array<{ file: FileSnapshot; depth: number }> = collectRelativeModuleSpecifiers(testFile.content)
+    .map((specifier) => findRelativeModuleFile(testFile.path, specifier, moduleFiles))
+    .filter((file): file is FileSnapshot => file !== undefined)
+    .map((file) => ({ file, depth: 0 }));
+  const visited = new Set<string>();
+
+  while (queue.length > 0) {
+    const current = queue.shift();
+    if (!current) break;
+    const { file, depth } = current;
+    if (visited.has(file.path)) continue;
+    visited.add(file.path);
+    if (depth >= MAX_TRANSITIVE_SOURCE_DEPTH) continue;
+
+    for (const specifier of collectRelativeModuleSpecifiers(file.content)) {
+      const dependency = findRelativeModuleFile(file.path, specifier, moduleFiles);
+      if (dependency && !visited.has(dependency.path)) queue.push({ file: dependency, depth: depth + 1 });
+    }
+  }
+
+  return visited;
+}
+
+function findRelativeModuleFile(
+  importerPath: string,
+  specifier: string,
+  moduleFiles: FileSnapshot[]
+): FileSnapshot | undefined {
+  return moduleFiles.find(
+    (file) => isSourceFile(file.path) && moduleSpecifierTargetsSource(importerPath, specifier, file.path)
   );
 }
 

@@ -217,7 +217,7 @@ describe("JavaScript audit adapter", () => {
 
     assert.deepEqual(
       audit.coveredButRisky.map((target) => target.name),
-      ["userRoutes"]
+      ["userRoutes", "userService"]
     );
 
     const userRoutes = audit.coveredButRisky[0];
@@ -233,7 +233,7 @@ describe("JavaScript audit adapter", () => {
 
     assert.deepEqual(
       audit.untestedCandidates.map((target) => target.name),
-      ["userService"]
+      []
     );
     assert.deepEqual(
       audit.skipped.map((target) => target.name),
@@ -658,6 +658,48 @@ export function auditKotlin(files) {
     assert.deepEqual(
       audit.untestedCandidates.map((target) => target.path),
       ["src/unexported.ts"]
+    );
+  });
+
+  it("matches bounded transitive relative imports", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-js-transitive-imports-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "src"), { recursive: true });
+    fs.mkdirSync(path.join(root, "test"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "package.json"),
+      JSON.stringify({ scripts: { test: "vitest --run" }, devDependencies: { vitest: "latest" } })
+    );
+    fs.writeFileSync(
+      path.join(root, "src", "public.ts"),
+      `import { service } from "./service";\nexport function publicApi(value) {\n  if (value) return service(value);\n  return "public";\n}\n`
+    );
+    fs.writeFileSync(
+      path.join(root, "src", "service.ts"),
+      `import { parse } from "./parser";\nexport function service(value) {\n  if (value) return parse(value);\n  return "service";\n}\n`
+    );
+    fs.writeFileSync(
+      path.join(root, "src", "parser.ts"),
+      `import { deep } from "./deep";\nexport function parse(value) {\n  if (value) return deep(value);\n  return "parser";\n}\n`
+    );
+    fs.writeFileSync(
+      path.join(root, "src", "deep.ts"),
+      `export function deep(value) {\n  if (value) return value;\n  return "deep";\n}\n`
+    );
+    fs.writeFileSync(
+      path.join(root, "test", "behavior.test.ts"),
+      `import { publicApi } from "../src/public";\n`
+    );
+
+    const audit = auditJavaScriptRepo(root);
+
+    assert.deepEqual(
+      audit.coveredButRisky.map((target) => target.path),
+      ["src/parser.ts", "src/public.ts", "src/service.ts"]
+    );
+    assert.deepEqual(
+      audit.untestedCandidates.map((target) => target.path),
+      ["src/deep.ts"]
     );
   });
 });

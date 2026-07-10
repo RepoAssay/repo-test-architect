@@ -3,6 +3,7 @@ import path from "node:path";
 
 const SOURCE_EXTENSIONS = [".js", ".jsx", ".mjs", ".ts", ".tsx"];
 const GENERIC_SOURCE_BASENAMES = new Set(["handler", "index", "types", "utils"]);
+const MAX_TRANSITIVE_SOURCE_DEPTH = 2;
 
 export function auditJavaScriptRepo(root, options = {}) {
   const files = readRepoFiles(root);
@@ -12,6 +13,7 @@ export function auditJavaScriptRepo(root, options = {}) {
     .filter((file) => isTestFile(file.path))
     .map((file) => ({ ...file, path: normalizePath(file.path) }));
   const moduleFiles = files.map((file) => ({ ...file, path: normalizePath(file.path) }));
+  const boundedTransitiveImports = collectBoundedTransitiveImports(testFiles, moduleFiles);
   const packageData = parsePackageJson(files.find((file) => normalizePath(file.path) === "package.json")?.content ?? "");
   const packageEntryFile = findSourcePackageEntry(packageData, moduleFiles);
   const packageSubpathEntries = findSourcePackageSubpathEntries(packageData, moduleFiles);
@@ -28,7 +30,7 @@ export function auditJavaScriptRepo(root, options = {}) {
       runtimeSourcePaths,
       sourceJavaScriptRuntime
     });
-    const existingTestPaths = findExistingTests(file.path, testFiles, moduleFiles, {
+    const existingTestPaths = findExistingTests(file.path, testFiles, moduleFiles, boundedTransitiveImports, {
       packageName: packageData.name,
       packageEntryFile,
       packageSubpathEntries
@@ -534,7 +536,7 @@ function isTestFile(currentPath) {
   );
 }
 
-function findExistingTests(sourcePath, testFiles, moduleFiles, packageEntry) {
+function findExistingTests(sourcePath, testFiles, moduleFiles, boundedTransitiveImports, packageEntry) {
   const normalized = normalizePath(sourcePath);
   const sourceBase = basenameWithoutExtension(normalized);
   const sourceSegments = normalized.split("/");
@@ -562,6 +564,7 @@ function findExistingTests(sourcePath, testFiles, moduleFiles, packageEntry) {
         hasFilenameMatch(testFile.path, testBase, sourceBase, sourceDir, baseNameCandidates, sourceBaseCandidates, qualifiedBaseCandidates) ||
         testFile.path.startsWith(`${sourceDir}/__tests__/${sourceBase}.`) ||
         hasDirectRelativeImport(testFile, normalized) ||
+        boundedTransitiveImports.get(testFile.path)?.has(normalized) ||
         hasOneHopBarrelImport(testFile, normalized, moduleFiles) ||
         hasPackageEntryImport(testFile, normalized, packageEntry)
       );
@@ -578,6 +581,38 @@ function hasFilenameMatch(testPath, testBase, sourceBase, sourceDir, baseNameCan
 function hasDirectRelativeImport(testFile, sourcePath) {
   return collectRelativeModuleSpecifiers(testFile.content).some((specifier) =>
     moduleSpecifierTargetsSource(testFile.path, specifier, sourcePath)
+  );
+}
+
+function collectBoundedTransitiveImports(testFiles, moduleFiles) {
+  return new Map(testFiles.map((testFile) => [testFile.path, collectBoundedTransitiveImportsForTest(testFile, moduleFiles)]));
+}
+
+function collectBoundedTransitiveImportsForTest(testFile, moduleFiles) {
+  const queue = collectRelativeModuleSpecifiers(testFile.content)
+    .map((specifier) => findRelativeModuleFile(testFile.path, specifier, moduleFiles))
+    .filter(Boolean)
+    .map((file) => ({ file, depth: 0 }));
+  const visited = new Set();
+
+  while (queue.length > 0) {
+    const { file, depth } = queue.shift();
+    if (visited.has(file.path)) continue;
+    visited.add(file.path);
+    if (depth >= MAX_TRANSITIVE_SOURCE_DEPTH) continue;
+
+    for (const specifier of collectRelativeModuleSpecifiers(file.content)) {
+      const dependency = findRelativeModuleFile(file.path, specifier, moduleFiles);
+      if (dependency && !visited.has(dependency.path)) queue.push({ file: dependency, depth: depth + 1 });
+    }
+  }
+
+  return visited;
+}
+
+function findRelativeModuleFile(importerPath, specifier, moduleFiles) {
+  return moduleFiles.find(
+    (file) => isSourceFile(file.path) && moduleSpecifierTargetsSource(importerPath, specifier, file.path)
   );
 }
 

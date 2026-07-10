@@ -32,28 +32,7 @@
     "confidence": "high",
     "blockers": []
   },
-  "untestedCandidates": [
-    {
-      "id": "src/services/userService.ts",
-      "name": "userService",
-      "path": "src/services/userService.ts",
-      "kind": "service",
-      "signals": [
-        "service-name",
-        "auth-branch"
-      ],
-      "risk": "high",
-      "testability": "medium",
-      "recommendedTestLevel": "unit",
-      "riskReductionScore": 8,
-      "maintenanceCost": 4,
-      "reasons": [
-        "Service boundary",
-        "auth or permission branches"
-      ],
-      "existingTestPaths": []
-    }
-  ],
+  "untestedCandidates": [],
   "coveredButRisky": [
     {
       "id": "src/routes/userRoutes.ts",
@@ -73,6 +52,30 @@
       "reasons": [
         "HTTP behavior",
         "status code and error handling",
+        "Existing test file detected; review missing edge cases"
+      ],
+      "existingTestPaths": [
+        "src/routes/userRoutes.test.ts"
+      ]
+    },
+    {
+      "id": "src/services/userService.ts",
+      "name": "userService",
+      "path": "src/services/userService.ts",
+      "kind": "service",
+      "signals": [
+        "service-name",
+        "auth-branch",
+        "matching-test"
+      ],
+      "risk": "high",
+      "testability": "medium",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 8,
+      "maintenanceCost": 4,
+      "reasons": [
+        "Service boundary",
+        "auth or permission branches",
         "Existing test file detected; review missing edge cases"
       ],
       "existingTestPaths": [
@@ -112,7 +115,8 @@
       "kind": "service",
       "signals": [
         "service-name",
-        "auth-branch"
+        "auth-branch",
+        "matching-test"
       ],
       "risk": "high",
       "testability": "medium",
@@ -121,9 +125,12 @@
       "maintenanceCost": 4,
       "reasons": [
         "Service boundary",
-        "auth or permission branches"
+        "auth or permission branches",
+        "Existing test file detected; review missing edge cases"
       ],
-      "existingTestPaths": []
+      "existingTestPaths": [
+        "src/routes/userRoutes.test.ts"
+      ]
     }
   ],
   "skipped": [
@@ -156,6 +163,6 @@
   ],
   "risks": [
     "userRoutes has http behavior, status code and error handling and needs edge-case review.",
-    "userService has service boundary, auth or permission branches and has no matching test file."
+    "userService has service boundary, auth or permission branches and needs edge-case review."
   ]
 }
