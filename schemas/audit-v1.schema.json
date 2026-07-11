@@ -97,7 +97,29 @@
         "riskReductionScore": { "type": "integer", "minimum": 0, "maximum": 10 },
         "maintenanceCost": { "type": "integer", "minimum": 0, "maximum": 10 },
         "reasons": { "type": "array", "items": { "type": "string" } },
-        "existingTestPaths": { "type": "array", "items": { "type": "string" } }
+        "existingTestPaths": { "type": "array", "items": { "type": "string" } },
+        "existingTestEvidence": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["testPath", "kind", "strength"],
+            "properties": {
+              "testPath": { "type": "string" },
+              "kind": {
+                "enum": [
+                  "filename-convention",
+                  "direct-relative-import",
+                  "referenced-relative-reexport",
+                  "tsconfig-path-import",
+                  "package-entry-import",
+                  "bounded-dependency"
+                ]
+              },
+              "strength": { "enum": ["naming", "direct", "referenced", "indirect"] }
+            }
+          }
+        }
       }
     },
     "skippedTarget": {

@@ -28,6 +28,14 @@ It contains:
 - skipped targets
 - remaining risks
 - structured `signals`
+- optional `existingTestEvidence` entries for adapters that can explain each matched test path, including a deterministic evidence `kind` and `strength`
+
+The JavaScript/TypeScript adapter currently emits these evidence strengths:
+
+- `naming` for filename conventions
+- `direct` for relative or `tsconfig`-aliased module imports
+- `referenced` for referenced symbols reached through relative barrels or package entrypoints
+- `indirect` for modules reached through the bounded dependency graph
 
 ## Plan Artifact
 
