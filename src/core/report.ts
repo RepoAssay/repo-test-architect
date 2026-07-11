@@ -87,13 +87,25 @@ function formatExistingTestPaths(paths: string[]): string {
   return `${displayed.join(", ")}${omitted}`;
 }
 
+function formatEvidenceStrengths(evidence: Array<{ strength: string }>): string {
+  const counts = new Map<string, number>();
+  for (const item of evidence) counts.set(item.strength, (counts.get(item.strength) ?? 0) + 1);
+  return ["direct", "referenced", "indirect", "naming"]
+    .filter((strength) => counts.has(strength))
+    .map((strength) => `${strength}: ${counts.get(strength)}`)
+    .join(", ");
+}
+
 function formatTarget(target: AuditResult["recommended"][number]): string {
   const reasons = target.reasons ?? [];
   const existingTestPaths = target.existingTestPaths ?? [];
   const existingTests =
     existingTestPaths.length > 0 ? `; existing tests: ${formatExistingTestPaths(existingTestPaths)}` : "";
+  const evidenceStrengths = target.existingTestEvidence?.length
+    ? `; evidence strengths: ${formatEvidenceStrengths(target.existingTestEvidence)}`
+    : "";
 
-  return `- ${target.name}: ${target.recommendedTestLevel} test for ${target.kind} (risk reduction ${target.riskReductionScore}/10, maintenance ${target.maintenanceCost}/10; ${reasons.join("; ")}${existingTests})`;
+  return `- ${target.name}: ${target.recommendedTestLevel} test for ${target.kind} (risk reduction ${target.riskReductionScore}/10, maintenance ${target.maintenanceCost}/10; ${reasons.join("; ")}${existingTests}${evidenceStrengths})`;
 }
 
 function formatSkippedTarget(target: AuditResult["skipped"][number]): string {

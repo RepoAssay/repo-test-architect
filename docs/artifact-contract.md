@@ -3,6 +3,7 @@
 Repo Test Architect produces deterministic JSON artifacts that other tools, future MCP endpoints, and model-assisted layers can consume.
 
 JSON artifacts always preserve complete `existingTestPaths` evidence. Markdown output displays at most five paths per item and reports how many additional paths remain available in JSON, keeping human review concise without weakening the machine-readable audit trail.
+When provenance is available, Markdown also summarizes evidence counts by strength (`direct`, `referenced`, `indirect`, and `naming`) without expanding the complete per-path evidence objects.
 
 ## Audit Artifact
 
