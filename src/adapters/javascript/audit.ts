@@ -22,7 +22,9 @@ export function auditJavaScriptRepo(snapshot: JavaScriptRepoSnapshot): AuditResu
     .filter((file) => isTestFile(file.path))
     .map((file) => ({ ...file, path: normalizePath(file.path) }));
   const moduleFiles = snapshot.files.map((file) => ({ ...file, path: normalizePath(file.path) }));
-  const boundedTransitiveImports = collectBoundedTransitiveImports(testFiles, moduleFiles);
+  const tsconfigData = parseJsonConfig(snapshot.files.find((file) => normalizePath(file.path) === "tsconfig.json")?.content ?? "");
+  const pathAliasEntries = findTsconfigPathAliasEntries(tsconfigData, moduleFiles);
+  const boundedTransitiveImports = collectBoundedTransitiveImports(testFiles, moduleFiles, pathAliasEntries);
   const packageData = parsePackageJson(snapshot.files.find((file) => normalizePath(file.path) === "package.json")?.content ?? "");
   const packageEntryFile = findSourcePackageEntry(packageData, moduleFiles);
   const packageSubpathEntries = findSourcePackageSubpathEntries(packageData, moduleFiles);
@@ -42,7 +44,8 @@ export function auditJavaScriptRepo(snapshot: JavaScriptRepoSnapshot): AuditResu
     const existingTestPaths = findExistingTests(file.path, testFiles, moduleFiles, boundedTransitiveImports, {
       packageName: typeof packageData.name === "string" ? packageData.name : undefined,
       packageEntryFile,
-      packageSubpathEntries
+      packageSubpathEntries,
+      pathAliasEntries
     });
 
     if (classification.skipReason) {
@@ -640,7 +643,7 @@ function findExistingTests(
   testFiles: FileSnapshot[],
   moduleFiles: FileSnapshot[],
   boundedTransitiveImports: Map<string, Set<string>>,
-  packageEntry: { packageName?: string; packageEntryFile?: FileSnapshot; packageSubpathEntries: Map<string, FileSnapshot> }
+  packageEntry: { packageName?: string; packageEntryFile?: FileSnapshot; packageSubpathEntries: Map<string, FileSnapshot>; pathAliasEntries: Map<string, FileSnapshot> }
 ): string[] {
   const normalized = normalizePath(sourcePath);
   const sourceBase = basenameWithoutExtension(normalized);
@@ -671,6 +674,7 @@ function findExistingTests(
         hasDirectRelativeImport(testFile, normalized) ||
         boundedTransitiveImports.get(testFile.path)?.has(normalized) ||
         hasOneHopBarrelImport(testFile, normalized, moduleFiles) ||
+        hasPathAliasImport(testFile, normalized, moduleFiles, packageEntry.pathAliasEntries) ||
         hasPackageEntryImport(testFile, normalized, moduleFiles, packageEntry)
       );
     })
@@ -697,17 +701,16 @@ function hasDirectRelativeImport(testFile: FileSnapshot, sourcePath: string): bo
   );
 }
 
-function collectBoundedTransitiveImports(testFiles: FileSnapshot[], moduleFiles: FileSnapshot[]): Map<string, Set<string>> {
+function collectBoundedTransitiveImports(testFiles: FileSnapshot[], moduleFiles: FileSnapshot[], pathAliasEntries: Map<string, FileSnapshot>): Map<string, Set<string>> {
   return new Map(
-    testFiles.map((testFile) => [testFile.path, collectBoundedTransitiveImportsForTest(testFile, moduleFiles)])
+    testFiles.map((testFile) => [testFile.path, collectBoundedTransitiveImportsForTest(testFile, moduleFiles, pathAliasEntries)])
   );
 }
 
-function collectBoundedTransitiveImportsForTest(testFile: FileSnapshot, moduleFiles: FileSnapshot[]): Set<string> {
+function collectBoundedTransitiveImportsForTest(testFile: FileSnapshot, moduleFiles: FileSnapshot[], pathAliasEntries: Map<string, FileSnapshot>): Set<string> {
   const queue: Array<{ file: FileSnapshot; depth: number }> = [];
   for (const { specifier, importedNames } of collectModuleImports(testFile.content)) {
-    if (!specifier.startsWith(".")) continue;
-    const file = findRelativeModuleFile(testFile.path, specifier, moduleFiles);
+    const file = findImportedModuleFile(testFile.path, specifier, moduleFiles, pathAliasEntries);
     if (!file) continue;
     queue.push({ file, depth: 0 });
     for (const reExport of findImportedReExportFiles(file, importedNames, moduleFiles)) {
@@ -724,13 +727,24 @@ function collectBoundedTransitiveImportsForTest(testFile: FileSnapshot, moduleFi
     visited.add(file.path);
     if (depth >= MAX_TRANSITIVE_SOURCE_DEPTH) continue;
 
-    for (const specifier of collectRelativeRuntimeDependencySpecifiers(file.content)) {
-      const dependency = findRelativeModuleFile(file.path, specifier, moduleFiles);
+    for (const specifier of collectRuntimeDependencySpecifiers(file.content)) {
+      const dependency = findImportedModuleFile(file.path, specifier, moduleFiles, pathAliasEntries);
       if (dependency && !visited.has(dependency.path)) queue.push({ file: dependency, depth: depth + 1 });
     }
   }
 
   return visited;
+}
+
+function findImportedModuleFile(
+  importerPath: string,
+  specifier: string,
+  moduleFiles: FileSnapshot[],
+  pathAliasEntries: Map<string, FileSnapshot>
+): FileSnapshot | undefined {
+  return specifier.startsWith(".")
+    ? findRelativeModuleFile(importerPath, specifier, moduleFiles)
+    : pathAliasEntries.get(specifier);
 }
 
 function findImportedReExportFiles(
@@ -763,6 +777,21 @@ function hasOneHopBarrelImport(testFile: FileSnapshot, sourcePath: string, modul
     if (!barrelFile || barrelFile.path === sourcePath) return false;
     const sourceFile = moduleFiles.find((file) => file.path === sourcePath);
     return sourceFile ? barrelExportsImportedNames(barrelFile, sourceFile, importedNames) : false;
+  });
+}
+
+function hasPathAliasImport(
+  testFile: FileSnapshot,
+  sourcePath: string,
+  moduleFiles: FileSnapshot[],
+  pathAliasEntries: Map<string, FileSnapshot>
+): boolean {
+  return collectModuleImports(testFile.content).some(({ specifier, importedNames }) => {
+    const entryFile = pathAliasEntries.get(specifier);
+    if (!entryFile) return false;
+    if (entryFile.path === sourcePath) return true;
+    const sourceFile = moduleFiles.find((file) => file.path === sourcePath);
+    return sourceFile ? barrelExportsImportedNames(entryFile, sourceFile, importedNames) : false;
   });
 }
 
@@ -842,6 +871,50 @@ function findSourcePackageSubpathEntries(
   return entries;
 }
 
+function parseJsonConfig(content: string): Record<string, unknown> {
+  if (!content.trim()) return {};
+  try {
+    const withoutComments = content.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+    return JSON.parse(withoutComments.replace(/,\s*([}\]])/g, "$1"));
+  } catch {
+    return {};
+  }
+}
+
+function findTsconfigPathAliasEntries(
+  tsconfigData: Record<string, unknown>,
+  moduleFiles: FileSnapshot[]
+): Map<string, FileSnapshot> {
+  const entries = new Map<string, FileSnapshot>();
+  const compilerOptions = tsconfigData.compilerOptions;
+  if (!compilerOptions || typeof compilerOptions !== "object") return entries;
+  const { paths, baseUrl: rawBaseUrl } = compilerOptions as { paths?: unknown; baseUrl?: unknown };
+  if (!paths || typeof paths !== "object") return entries;
+  const baseUrl = typeof rawBaseUrl === "string" ? rawBaseUrl.replace(/^\.\//, "") : ".";
+
+  for (const [aliasPattern, targetValues] of Object.entries(paths)) {
+    if (!Array.isArray(targetValues)) continue;
+    const targetPatterns = targetValues
+      .filter((value): value is string => typeof value === "string")
+      .map((value) => normalizePathSegments(joinPath(baseUrl, value)));
+    if (!aliasPattern.includes("*")) {
+      const entryFile = findSourceFileForCandidates(targetPatterns, moduleFiles);
+      if (entryFile) entries.set(aliasPattern, entryFile);
+      continue;
+    }
+    if (aliasPattern.split("*").length !== 2) continue;
+    for (const file of moduleFiles.filter((candidate) => isSourceFile(candidate.path))) {
+      for (const targetPattern of targetPatterns.filter((candidate) => candidate.split("*").length === 2)) {
+        const wildcardValue = matchWildcardSourcePath(targetPattern, file.path);
+        if (wildcardValue === undefined) continue;
+        entries.set(aliasPattern.replace("*", wildcardValue), file);
+        break;
+      }
+    }
+  }
+  return entries;
+}
+
 function addWildcardPackageEntries(
   entries: Map<string, FileSnapshot>,
   packageName: string,
@@ -911,10 +984,9 @@ interface RelativeReExport {
   exportAll: boolean;
 }
 
-function collectRelativeRuntimeDependencySpecifiers(content: string): string[] {
+function collectRuntimeDependencySpecifiers(content: string): string[] {
   return collectModuleImports(content)
-    .map(({ specifier }) => specifier)
-    .filter((specifier) => specifier.startsWith("."));
+    .map(({ specifier }) => specifier);
 }
 
 function collectModuleImports(content: string): ModuleImport[] {
