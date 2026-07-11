@@ -583,8 +583,11 @@ function renderMarkdownProjectCandidateRanking(ranking) {
   } else {
     for (const candidate of ranking.candidates) {
       const rationale = candidate.rationale.map(trimTrailingPeriod).join(". ");
+      const evidenceStrengths = candidate.existingTestEvidence
+        ? ` Evidence strengths: ${formatEvidenceStrengths(candidate.existingTestEvidence)}.`
+        : "";
       lines.push(
-        `- ${candidate.projectRoot}: ${candidate.target} [${candidate.projectTargetId}] (${candidate.category}, ${candidate.testLevel}, priority ${candidate.priority}, risk reduction ${candidate.riskReductionScore}/10, maintenance ${candidate.maintenanceCost}/10). ${rationale}.`
+        `- ${candidate.projectRoot}: ${candidate.target} [${candidate.projectTargetId}] (${candidate.category}, ${candidate.testLevel}, priority ${candidate.priority}, risk reduction ${candidate.riskReductionScore}/10, maintenance ${candidate.maintenanceCost}/10). ${rationale}.${evidenceStrengths}`
       );
     }
   }
@@ -624,8 +627,11 @@ function renderMarkdownProjectTestPlan(plan) {
   } else {
     for (const item of plan.items) {
       const rationale = item.rationale.map(trimTrailingPeriod).join(". ");
+      const evidenceStrengths = item.existingTestEvidence
+        ? ` Evidence strengths: ${formatEvidenceStrengths(item.existingTestEvidence)}.`
+        : "";
       lines.push(
-        `- ${item.projectRoot}: ${item.action}: ${item.target} [${item.projectItemId}] (${item.testLevel}, priority ${item.priority}, risk reduction ${item.riskReductionScore}/10, maintenance ${item.maintenanceCost}/10). ${rationale}.`
+        `- ${item.projectRoot}: ${item.action}: ${item.target} [${item.projectItemId}] (${item.testLevel}, priority ${item.priority}, risk reduction ${item.riskReductionScore}/10, maintenance ${item.maintenanceCost}/10). ${rationale}.${evidenceStrengths}`
       );
     }
   }
@@ -782,9 +788,12 @@ function renderMarkdownPlan(plan) {
     for (const item of plan.items) {
       const existingTests =
         item.existingTestPaths.length > 0 ? ` Existing tests: ${formatExistingTestPaths(item.existingTestPaths)}.` : "";
+      const evidenceStrengths = item.existingTestEvidence
+        ? ` Evidence strengths: ${formatEvidenceStrengths(item.existingTestEvidence)}.`
+        : "";
       const rationale = item.rationale.map(trimTrailingPeriod).join(". ");
       lines.push(
-        `- ${item.action}: ${item.target} [${item.id}] (${item.testLevel}, priority ${item.priority}, risk reduction ${item.riskReductionScore}/10, maintenance ${item.maintenanceCost}/10). ${rationale}.${existingTests}`
+        `- ${item.action}: ${item.target} [${item.id}] (${item.testLevel}, priority ${item.priority}, risk reduction ${item.riskReductionScore}/10, maintenance ${item.maintenanceCost}/10). ${rationale}.${existingTests}${evidenceStrengths}`
       );
     }
   }
@@ -810,6 +819,7 @@ function renderMarkdownExplanation(explanation) {
   lines.push(`- Maintenance: ${explanation.maintenanceCost}/10`);
   lines.push(`- Signals: ${formatList(explanation.signals)}`);
   lines.push(`- Existing tests: ${formatExistingTestPaths(explanation.existingTestPaths)}`);
+  lines.push(`- Evidence strengths: ${formatEvidenceStrengths(explanation.existingTestEvidence ?? [])}`);
   lines.push("");
   lines.push("## Rationale");
 
@@ -850,9 +860,12 @@ function renderMarkdownRanking(ranking) {
     for (const candidate of ranking.candidates) {
       const existingTests =
         candidate.existingTestPaths.length > 0 ? ` Existing tests: ${formatExistingTestPaths(candidate.existingTestPaths)}.` : "";
+      const evidenceStrengths = candidate.existingTestEvidence
+        ? ` Evidence strengths: ${formatEvidenceStrengths(candidate.existingTestEvidence)}.`
+        : "";
       const rationale = candidate.rationale.map(trimTrailingPeriod).join(". ");
       lines.push(
-        `- ${candidate.target} [${candidate.targetId}] (${candidate.category}, ${candidate.testLevel}, priority ${candidate.priority}, risk reduction ${candidate.riskReductionScore}/10, maintenance ${candidate.maintenanceCost}/10). ${rationale}.${existingTests}`
+        `- ${candidate.target} [${candidate.targetId}] (${candidate.category}, ${candidate.testLevel}, priority ${candidate.priority}, risk reduction ${candidate.riskReductionScore}/10, maintenance ${candidate.maintenanceCost}/10). ${rationale}.${existingTests}${evidenceStrengths}`
       );
     }
   }
@@ -896,6 +909,16 @@ function formatExistingTestPaths(paths) {
   return `${displayed.join(", ")}${omitted}`;
 }
 
+function formatEvidenceStrengths(evidence) {
+  if (evidence.length === 0) return "none detected";
+  const counts = new Map();
+  for (const item of evidence) counts.set(item.strength, (counts.get(item.strength) ?? 0) + 1);
+  return ["direct", "referenced", "indirect", "naming"]
+    .filter((strength) => counts.has(strength))
+    .map((strength) => `${strength}: ${counts.get(strength)}`)
+    .join(", ");
+}
+
 function formatRecord(record) {
   const entries = Object.entries(record);
   return entries.length > 0 ? entries.map(([key, count]) => `${key}: ${count}`).join(", ") : "none detected";
@@ -919,8 +942,11 @@ function formatTarget(target) {
   const existingTestPaths = target.existingTestPaths ?? [];
   const existingTests =
     existingTestPaths.length > 0 ? `; existing tests: ${formatExistingTestPaths(existingTestPaths)}` : "";
+  const evidenceStrengths = target.existingTestEvidence?.length
+    ? `; evidence strengths: ${formatEvidenceStrengths(target.existingTestEvidence)}`
+    : "";
 
-  return `- ${target.name}: ${target.recommendedTestLevel} test for ${target.kind} (risk reduction ${target.riskReductionScore}/10, maintenance ${target.maintenanceCost}/10; ${reasons.join("; ")}${existingTests})`;
+  return `- ${target.name}: ${target.recommendedTestLevel} test for ${target.kind} (risk reduction ${target.riskReductionScore}/10, maintenance ${target.maintenanceCost}/10; ${reasons.join("; ")}${existingTests}${evidenceStrengths})`;
 }
 
 function formatSkippedTarget(target) {

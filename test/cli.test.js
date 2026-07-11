@@ -544,6 +544,7 @@ describe("CLI", () => {
 
     assert.match(output, /^# Repository Test Audit/);
     assert.match(output, /## Untested Candidates/);
+    assert.match(output, /evidence strengths: direct: 1/);
   });
 
   it("emits JSON when requested", () => {
@@ -670,6 +671,7 @@ describe("CLI", () => {
     assert.match(output, /add-test: authService/);
     assert.match(output, /\[add-test:src\/authService\.ts\]/);
     assert.match(output, /extend-test: deckParser/);
+    assert.match(output, /Evidence strengths: direct: 1/);
   });
 
   it("emits a JSON test plan", () => {
@@ -745,6 +747,7 @@ describe("CLI", () => {
 
     assert.match(output, /^# Candidate Ranking/);
     assert.match(output, /deckParser \[src\/deckParser\.ts\]/);
+    assert.match(output, /Evidence strengths: direct: 1/);
   });
 
   it("summarizes long existing-test lists in markdown while preserving JSON evidence", () => {
@@ -795,6 +798,16 @@ describe("CLI", () => {
     assert.match(output, /^# Target Explanation/);
     assert.match(output, /Target ID: src\/userDto\.ts/);
     assert.match(output, /Recommendation: defer/);
+  });
+
+  it("shows evidence strengths in covered target explanations", () => {
+    const output = execFileSync(
+      process.execPath,
+      [cliPath, "explain", "--from-audit", "evals/expected/node-vitest-basic.audit.json", "--target=src/deckParser.ts"],
+      { encoding: "utf8" }
+    );
+
+    assert.match(output, /Evidence strengths: direct: 1/);
   });
 
   it("emits a JSON test plan from an existing audit file", () => {
