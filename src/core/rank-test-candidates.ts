@@ -13,6 +13,7 @@ export interface CandidateRankingItem {
   signals: string[];
   rationale: string[];
   existingTestPaths: string[];
+  existingTestEvidence?: Array<{ testPath: string; kind: string; strength: string }>;
 }
 
 export interface CandidateRanking {
@@ -41,7 +42,8 @@ export function rankTestCandidates(audit: AuditResult): CandidateRanking {
       maintenanceCost: target.maintenanceCost,
       signals: target.signals,
       rationale: target.reasons ?? [],
-      existingTestPaths: target.existingTestPaths ?? []
+      existingTestPaths: target.existingTestPaths ?? [],
+      ...(target.existingTestEvidence ? { existingTestEvidence: target.existingTestEvidence } : {})
     }))
     .sort((a, b) => b.priority - a.priority || b.riskReductionScore - a.riskReductionScore || a.target.localeCompare(b.target));
 

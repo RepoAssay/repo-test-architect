@@ -61,6 +61,7 @@ It contains:
 - stable item IDs
 - stable target IDs
 - source signals from the audit target
+- optional `existingTestEvidence` copied from adapters that emit per-test provenance
 
 ## Stable Plan Item IDs
 
@@ -84,6 +85,8 @@ Audit targets also expose a stable `id`, currently the repository-relative sourc
 Plan items carry that value as `targetId` so model and MCP layers can link plan actions back to audit evidence.
 
 ## Target Explanation Artifact
+
+Target explanations preserve optional `existingTestEvidence` from the selected audit target so a consumer can assess evidence quality without reopening the complete audit.
 
 Schema:
 
@@ -109,6 +112,8 @@ It contains:
 - rationale and existing test paths
 
 ## Candidate Ranking Artifact
+
+Ranked candidates preserve optional `existingTestEvidence`; project candidate rankings and project test plans retain the same provenance when composing supported project artifacts.
 
 Schema:
 

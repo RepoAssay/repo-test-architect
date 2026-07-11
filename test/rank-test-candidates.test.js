@@ -16,6 +16,13 @@ describe("test candidate ranking", () => {
       ranking.candidates.map((candidate) => `${candidate.category}:${candidate.targetId}`),
       ["covered-but-risky:src/deckParser.ts", "untested:src/authService.ts"]
     );
+    assert.deepEqual(ranking.candidates[0].existingTestEvidence, [
+      {
+        testPath: "src/deckParser.test.ts",
+        kind: "direct-relative-import",
+        strength: "direct"
+      }
+    ]);
   });
 
   it("carries blockers when ranking candidates without a runnable test command", () => {

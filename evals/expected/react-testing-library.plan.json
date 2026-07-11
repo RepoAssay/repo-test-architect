@@ -51,6 +51,13 @@
       ],
       "existingTestPaths": [
         "src/components/LoginForm.test.tsx"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "src/components/LoginForm.test.tsx",
+          "kind": "direct-relative-import",
+          "strength": "direct"
+        }
       ]
     },
     {

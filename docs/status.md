@@ -10,6 +10,7 @@ Implemented:
 - JavaScript/TypeScript existing-test matching from filename conventions, literal relative imports with two bounded source-dependency hops, referenced-import-symbol-aware barrel re-exports, exact self-package entry imports, and declared exact or single-wildcard package subpaths
 - JavaScript/TypeScript `tsconfig.json` path-alias evidence for exact and single-wildcard mappings, including local inherited configs, `baseUrl` relative to the declaring config, JSON comments/trailing commas, symbol-aware aliased barrels, and bounded aliased dependencies
 - optional JavaScript/TypeScript per-test provenance with deterministic naming, direct, referenced-symbol, and bounded-indirect evidence strengths
+- optional test-evidence provenance propagated from audits into direct and project-level explanations, candidate rankings, and test plans
 - directory-qualified filename evidence for generic JavaScript/TypeScript basenames such as `index`, `utils`, `handler`, and `types`
 - bounded Markdown display of existing-test evidence with complete path lists preserved in JSON artifacts
 - behavioral HTTP framework classifications for routers, routes, handlers, security and general middleware, request access and validation, request bodies, queries, cookies, caching, response construction, request events, proxies, sessions, WebSockets, streaming, client response parsing, and runtime adapters, including flat utility layouts identified through HTTP boundary types

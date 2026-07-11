@@ -16,6 +16,7 @@ export interface TargetExplanation {
   signals: string[];
   rationale: string[];
   existingTestPaths: string[];
+  existingTestEvidence?: Array<{ testPath: string; kind: string; strength: string }>;
 }
 
 export function explainTarget(audit: AuditResult, targetId: string): TargetExplanation {
@@ -47,7 +48,8 @@ export function explainTarget(audit: AuditResult, targetId: string): TargetExpla
     maintenanceCost: target.maintenanceCost,
     signals: target.signals,
     rationale: skipped ? [target.reason, target.preferredCoveragePath].filter(Boolean) as string[] : target.reasons ?? [],
-    existingTestPaths: skipped ? [] : target.existingTestPaths ?? []
+    existingTestPaths: skipped ? [] : target.existingTestPaths ?? [],
+    ...(!skipped && target.existingTestEvidence ? { existingTestEvidence: target.existingTestEvidence } : {})
   };
 }
 

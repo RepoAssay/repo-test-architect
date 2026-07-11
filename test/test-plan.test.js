@@ -31,6 +31,13 @@ describe("test plan generator", () => {
     );
     assert.deepEqual(plan.items[0].sourceSignals, ["service-name", "auth-branch"]);
     assert.equal(plan.items[0].targetId, "src/services/sessionService.ts");
+    assert.deepEqual(plan.items[1].existingTestEvidence, [
+      {
+        testPath: "src/components/LoginForm.test.tsx",
+        kind: "direct-relative-import",
+        strength: "direct"
+      }
+    ]);
   });
 
   it("carries blockers into the plan for repos without tests", () => {
