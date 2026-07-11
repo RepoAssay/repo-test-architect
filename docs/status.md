@@ -7,7 +7,7 @@ Repo Test Architect currently has a deterministic JavaScript/TypeScript audit pi
 Implemented:
 
 - JavaScript/TypeScript repository profiling
-- JavaScript/TypeScript existing-test matching from filename conventions, literal relative imports with two bounded source-dependency hops, imported-symbol-aware relative barrel re-exports, exact self-package entry imports, and declared exact or single-wildcard package subpaths
+- JavaScript/TypeScript existing-test matching from filename conventions, literal relative imports with two bounded source-dependency hops, referenced-import-symbol-aware barrel re-exports, exact self-package entry imports, and declared exact or single-wildcard package subpaths
 - JavaScript/TypeScript `tsconfig.json` path-alias evidence for exact and single-wildcard mappings, including local inherited configs, `baseUrl` relative to the declaring config, JSON comments/trailing commas, symbol-aware aliased barrels, and bounded aliased dependencies
 - directory-qualified filename evidence for generic JavaScript/TypeScript basenames such as `index`, `utils`, `handler`, and `types`
 - bounded Markdown display of existing-test evidence with complete path lists preserved in JSON artifacts
