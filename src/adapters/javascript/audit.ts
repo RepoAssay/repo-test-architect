@@ -22,7 +22,7 @@ export function auditJavaScriptRepo(snapshot: JavaScriptRepoSnapshot): AuditResu
     .filter((file) => isTestFile(file.path))
     .map((file) => ({ ...file, path: normalizePath(file.path) }));
   const moduleFiles = snapshot.files.map((file) => ({ ...file, path: normalizePath(file.path) }));
-  const tsconfigData = parseJsonConfig(snapshot.files.find((file) => normalizePath(file.path) === "tsconfig.json")?.content ?? "");
+  const tsconfigData = resolveTsconfigData("tsconfig.json", snapshot.files);
   const pathAliasEntries = findTsconfigPathAliasEntries(tsconfigData, moduleFiles);
   const boundedTransitiveImports = collectBoundedTransitiveImports(testFiles, moduleFiles, pathAliasEntries);
   const packageData = parsePackageJson(snapshot.files.find((file) => normalizePath(file.path) === "package.json")?.content ?? "");
@@ -879,6 +879,40 @@ function parseJsonConfig(content: string): Record<string, unknown> {
   } catch {
     return {};
   }
+}
+
+function resolveTsconfigData(
+  configPath: string,
+  files: FileSnapshot[],
+  visited = new Set<string>()
+): Record<string, unknown> {
+  const normalizedPath = normalizePath(configPath);
+  if (visited.has(normalizedPath)) return {};
+  visited.add(normalizedPath);
+  const file = files.find((candidate) => normalizePath(candidate.path) === normalizedPath);
+  if (!file) return {};
+  const current = parseJsonConfig(file.content);
+  const extendedPath = resolveLocalTsconfigExtends(normalizedPath, current.extends);
+  const inherited = extendedPath ? resolveTsconfigData(extendedPath, files, visited) : {};
+  const inheritedCompilerOptions = inherited.compilerOptions && typeof inherited.compilerOptions === "object"
+    ? inherited.compilerOptions as Record<string, unknown>
+    : {};
+  const currentCompilerOptions = current.compilerOptions && typeof current.compilerOptions === "object"
+    ? current.compilerOptions as Record<string, unknown>
+    : {};
+  const compilerOptions: Record<string, unknown> = { ...inheritedCompilerOptions, ...currentCompilerOptions };
+  if (typeof currentCompilerOptions.baseUrl === "string") {
+    compilerOptions.baseUrl = normalizePathSegments(joinPath(dirname(normalizedPath), currentCompilerOptions.baseUrl));
+  } else if (currentCompilerOptions.paths && typeof compilerOptions.baseUrl !== "string") {
+    compilerOptions.baseUrl = dirname(normalizedPath) || ".";
+  }
+  return { ...inherited, ...current, compilerOptions };
+}
+
+function resolveLocalTsconfigExtends(configPath: string, extendsValue: unknown): string | undefined {
+  if (typeof extendsValue !== "string" || !extendsValue.startsWith(".")) return undefined;
+  const resolved = normalizePathSegments(joinPath(dirname(configPath), extendsValue));
+  return resolved.endsWith(".json") ? resolved : `${resolved}.json`;
 }
 
 function findTsconfigPathAliasEntries(

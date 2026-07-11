@@ -13,7 +13,7 @@ export function auditJavaScriptRepo(root, options = {}) {
     .filter((file) => isTestFile(file.path))
     .map((file) => ({ ...file, path: normalizePath(file.path) }));
   const moduleFiles = files.map((file) => ({ ...file, path: normalizePath(file.path) }));
-  const tsconfigData = parseJsonConfig(files.find((file) => normalizePath(file.path) === "tsconfig.json")?.content ?? "");
+  const tsconfigData = resolveTsconfigData("tsconfig.json", files);
   const pathAliasEntries = findTsconfigPathAliasEntries(tsconfigData, moduleFiles);
   const boundedTransitiveImports = collectBoundedTransitiveImports(testFiles, moduleFiles, pathAliasEntries);
   const packageData = parsePackageJson(files.find((file) => normalizePath(file.path) === "package.json")?.content ?? "");
@@ -142,12 +142,11 @@ function shouldRead(relative) {
       "package-lock.json",
       "pnpm-lock.yaml",
       "yarn.lock",
-      "tsconfig.json",
       "vitest.config.ts",
       "vitest.config.js",
       "jest.config.ts",
       "jest.config.js"
-    ].includes(relative)
+    ].includes(relative) || /(^|\/)tsconfig(?:\.[^/]+)?\.json$/.test(relative)
   );
 }
 
@@ -805,6 +804,36 @@ function parseJsonConfig(content) {
   } catch {
     return {};
   }
+}
+
+function resolveTsconfigData(configPath, files, visited = new Set()) {
+  const normalizedPath = normalizePath(configPath);
+  if (visited.has(normalizedPath)) return {};
+  visited.add(normalizedPath);
+  const file = files.find((candidate) => normalizePath(candidate.path) === normalizedPath);
+  if (!file) return {};
+  const current = parseJsonConfig(file.content);
+  const extendedPath = resolveLocalTsconfigExtends(normalizedPath, current.extends);
+  const inherited = extendedPath ? resolveTsconfigData(extendedPath, files, visited) : {};
+  const inheritedCompilerOptions = inherited.compilerOptions && typeof inherited.compilerOptions === "object"
+    ? inherited.compilerOptions
+    : {};
+  const currentCompilerOptions = current.compilerOptions && typeof current.compilerOptions === "object"
+    ? current.compilerOptions
+    : {};
+  const compilerOptions = { ...inheritedCompilerOptions, ...currentCompilerOptions };
+  if (typeof currentCompilerOptions.baseUrl === "string") {
+    compilerOptions.baseUrl = path.posix.normalize(path.posix.join(path.posix.dirname(normalizedPath), currentCompilerOptions.baseUrl));
+  } else if (currentCompilerOptions.paths && typeof compilerOptions.baseUrl !== "string") {
+    compilerOptions.baseUrl = path.posix.dirname(normalizedPath) || ".";
+  }
+  return { ...inherited, ...current, compilerOptions };
+}
+
+function resolveLocalTsconfigExtends(configPath, extendsValue) {
+  if (typeof extendsValue !== "string" || !extendsValue.startsWith(".")) return undefined;
+  const resolved = path.posix.normalize(path.posix.join(path.posix.dirname(configPath), extendsValue));
+  return resolved.endsWith(".json") ? resolved : `${resolved}.json`;
 }
 
 function findTsconfigPathAliasEntries(tsconfigData, moduleFiles) {

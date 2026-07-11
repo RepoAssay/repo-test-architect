@@ -665,10 +665,10 @@ export function auditKotlin(files) {
     );
   });
 
-  it("matches exact and wildcard tsconfig path aliases", (t) => {
+  it("matches exact and wildcard aliases inherited from a local tsconfig", (t) => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-js-tsconfig-aliases-"));
     t.after(() => fs.rmSync(root, { recursive: true, force: true }));
-    for (const directory of ["src/core", "src/internal", "src/public", "test"]) {
+    for (const directory of ["config", "src/core", "src/internal", "src/public", "test"]) {
       fs.mkdirSync(path.join(root, directory), { recursive: true });
     }
     fs.writeFileSync(
@@ -678,9 +678,16 @@ export function auditKotlin(files) {
     fs.writeFileSync(
       path.join(root, "tsconfig.json"),
       `{
-        // Alias evidence should accept normal tsconfig comments and trailing commas.
+        "extends": "./config/tsconfig.base",
+        "compilerOptions": { "strict": true },
+      }`
+    );
+    fs.writeFileSync(
+      path.join(root, "config/tsconfig.base.json"),
+      `{
+        // Inherited alias evidence should accept normal tsconfig comments and trailing commas.
         "compilerOptions": {
-          "baseUrl": ".",
+          "baseUrl": "..",
           "paths": {
             "@core/*": ["src/core/*"],
             "@internal/*": ["src/internal/*"],
