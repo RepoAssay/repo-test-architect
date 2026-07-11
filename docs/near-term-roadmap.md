@@ -41,6 +41,27 @@ Acceptance:
 - README points to the demo path, product positioning, and release gate
 - package remains private until ownership and publish targets are confirmed
 
+### Output Format Roadmap
+
+Keep the versioned JSON artifact as the canonical source of audit facts. Additional formats are presentation-only renderers and must not reclassify candidates, change scores, omit machine-readable provenance, or produce recommendations that disagree with JSON.
+
+Preferred implementation order:
+
+1. CSV for deterministic spreadsheet and BI workflows.
+2. HTML for navigable reports with expandable evidence.
+3. PDF generated from the HTML renderer for sharing and archival, rather than a separate report implementation.
+4. SARIF only after audit findings map cleanly to code-scanning semantics without overstating advisory findings as defects.
+
+Potential CLI shape:
+
+```powershell
+repo-test-architect audit . --format csv
+repo-test-architect audit . --format html --output audit.html
+repo-test-architect audit . --format pdf --output audit.pdf
+```
+
+Markdown and JSON remain the supported formats until each additional renderer has deterministic fixtures and cross-format consistency tests.
+
 ## Milestone 3: Adapter Spike Hardening
 
 Goal: prove the adapter contract keeps holding as additional ecosystems move from detection-only to audited fixtures.
