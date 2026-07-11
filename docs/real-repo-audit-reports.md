@@ -187,13 +187,13 @@ What it missed or over-reported:
 - Bounded transitive matching moved seven direct-root candidates from missing to covered-but-risky: client result parsing, JSX intrinsic helpers, ETag digest, `hono-base.ts`, two regex-router internals, and streaming utilities. The service-worker entry remains the sole direct-root missing candidate.
 - The import walk stops after two source-dependency hops. This records plausible execution evidence without claiming that arbitrary downstream modules are covered.
 - Directory qualification now prevents filename-only evidence from unrelated generic `index.ts`, `utils.ts`, `handler.ts`, and `types.ts` tests. Remaining broad matches come from imported barrels and tested consumers rather than basename coincidence.
-- Imported-symbol matching now distinguishes named and namespace selections across relative barrels and package entrypoints. It remains static evidence: importing a symbol does not prove that every behavioral branch was asserted.
+- Barrel matching now requires named, aliased, default, namespace, or destructured CommonJS bindings to be referenced outside their import declaration. It remains static evidence: a reference does not prove that every behavioral branch was asserted.
 - Markdown now displays at most five existing-test paths per finding and directs readers to the complete JSON evidence; machine-readable artifacts remain unchanged.
 - HTTP role classification is deliberately limited to files that already qualify as branch-heavy; role paths do not promote otherwise low-value files into recommendations.
 
 Heuristic follow-up:
 
-- distinguish imported-symbol selection from actual runtime calls and assertions when stronger static evidence is available
+- distinguish referenced bindings from actual runtime calls and assertions when stronger static evidence is available
 - continue validating the HTTP role vocabulary against frameworks with flat utility layouts and different request/response abstractions
 
 ## Additional JavaScript/TypeScript Probe: `sindresorhus/is`

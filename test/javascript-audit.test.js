@@ -556,7 +556,7 @@ export function auditKotlin(files) {
     );
     fs.writeFileSync(
       path.join(root, "test", "http-behavior.test.ts"),
-      `import { createError, parseCookie } from "../src";\n`
+      `import { createError as makeError, parseCookie, unused } from "../src";\nmakeError("boom");\nparseCookie("a=b");\n`
     );
 
     const audit = auditJavaScriptRepo(root);
@@ -600,7 +600,7 @@ export function auditKotlin(files) {
     fs.writeFileSync(path.join(root, "src", "index.ts"), `export * from "./error";\n`);
     fs.writeFileSync(
       path.join(root, "test", "public-api.test.ts"),
-      `import { createError } from "@example/http-kit";\n`
+      `import { createError } from "@example/http-kit";\ncreateError("boom");\n`
     );
 
     const audit = auditJavaScriptRepo(root);
@@ -718,7 +718,7 @@ export function auditKotlin(files) {
     );
     fs.writeFileSync(
       path.join(root, "test/behavior.test.ts"),
-      `import { calculate } from "@core/calculator";\nimport { published } from "@public";\n`
+      `import { calculate } from "@core/calculator";\nimport { published } from "@public";\ncalculate(1);\npublished("yes");\n`
     );
 
     const audit = auditJavaScriptRepo(root);
