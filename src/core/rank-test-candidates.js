@@ -18,6 +18,7 @@
  * @property {string[]} signals
  * @property {string[]} reasons
  * @property {string[]} existingTestPaths
+ * @property {Array<{testPath: string, kind: string, strength: string}>} [existingTestEvidence]
  *
  * @typedef {object} AuditResult
  * @property {"audit/v1"} schemaVersion
@@ -38,6 +39,7 @@
  * @property {string[]} signals
  * @property {string[]} rationale
  * @property {string[]} existingTestPaths
+ * @property {Array<{testPath: string, kind: string, strength: string}>} [existingTestEvidence]
  *
  * @typedef {object} CandidateRanking
  * @property {"candidate-ranking/v1"} schemaVersion
@@ -64,7 +66,8 @@ export function rankTestCandidates(audit) {
       maintenanceCost: target.maintenanceCost,
       signals: target.signals,
       rationale: target.reasons ?? [],
-      existingTestPaths: target.existingTestPaths ?? []
+      existingTestPaths: target.existingTestPaths ?? [],
+      ...(target.existingTestEvidence ? { existingTestEvidence: target.existingTestEvidence } : {})
     }))
     .sort((a, b) => b.priority - a.priority || b.riskReductionScore - a.riskReductionScore || a.target.localeCompare(b.target));
 

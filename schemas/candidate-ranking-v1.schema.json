@@ -64,7 +64,20 @@
           "maintenanceCost": { "type": "integer", "minimum": 0, "maximum": 10 },
           "signals": { "type": "array", "items": { "type": "string" } },
           "rationale": { "type": "array", "items": { "type": "string" } },
-          "existingTestPaths": { "type": "array", "items": { "type": "string" } }
+          "existingTestPaths": { "type": "array", "items": { "type": "string" } },
+          "existingTestEvidence": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["testPath", "kind", "strength"],
+              "properties": {
+                "testPath": { "type": "string" },
+                "kind": { "type": "string" },
+                "strength": { "enum": ["naming", "direct", "referenced", "indirect"] }
+              }
+            }
+          }
         }
       }
     }

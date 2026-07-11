@@ -15,6 +15,7 @@ export interface TestPlanItem {
   rationale: string[];
   sourceSignals: string[];
   existingTestPaths: string[];
+  existingTestEvidence?: Array<{ testPath: string; kind: string; strength: string }>;
 }
 
 export interface TestPlan {
@@ -83,7 +84,8 @@ function toPlanItem(action: "add-test" | "extend-test", target: AuditTarget): Te
     maintenanceCost: target.maintenanceCost,
     rationale: enrichRationale(target.reasons ?? [], target.signals),
     sourceSignals: target.signals,
-    existingTestPaths: target.existingTestPaths ?? []
+    existingTestPaths: target.existingTestPaths ?? [],
+    ...(target.existingTestEvidence ? { existingTestEvidence: target.existingTestEvidence } : {})
   };
 }
 

@@ -28,6 +28,19 @@ describe("target explanation", () => {
     assert.ok(explanation.rationale.includes("DTO-only models are usually better covered through boundary parsing or mapper tests."));
   });
 
+  it("carries existing test evidence into covered target explanations", () => {
+    const audit = auditJavaScriptRepo(path.resolve("examples/node-vitest-basic"));
+    const explanation = explainTarget(audit, "src/deckParser.ts");
+
+    assert.deepEqual(explanation.existingTestEvidence, [
+      {
+        testPath: "src/deckParser.test.ts",
+        kind: "direct-relative-import",
+        strength: "direct"
+      }
+    ]);
+  });
+
   it("defaults optional target arrays in explanation artifacts", () => {
     const explanation = explainTarget(
       {

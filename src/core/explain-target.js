@@ -17,6 +17,7 @@
  * @property {string} [reason]
  * @property {string} [preferredCoveragePath]
  * @property {string[]} [existingTestPaths]
+ * @property {Array<{testPath: string, kind: string, strength: string}>} [existingTestEvidence]
  *
  * @typedef {object} AuditResult
  * @property {"audit/v1"} schemaVersion
@@ -44,6 +45,7 @@
  * @property {string[]} signals
  * @property {string[]} rationale
  * @property {string[]} existingTestPaths
+ * @property {Array<{testPath: string, kind: string, strength: string}>} [existingTestEvidence]
  */
 
 /**
@@ -80,7 +82,8 @@ export function explainTarget(audit, targetId) {
     maintenanceCost: target.maintenanceCost,
     signals: target.signals,
     rationale: skipped ? [target.reason, target.preferredCoveragePath].filter(Boolean) : target.reasons ?? [],
-    existingTestPaths: skipped ? [] : target.existingTestPaths ?? []
+    existingTestPaths: skipped ? [] : target.existingTestPaths ?? [],
+    ...(!skipped && target.existingTestEvidence ? { existingTestEvidence: target.existingTestEvidence } : {})
   };
 }
 
