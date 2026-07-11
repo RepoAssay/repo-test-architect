@@ -665,6 +665,67 @@ export function auditKotlin(files) {
     );
   });
 
+  it("matches exact and wildcard tsconfig path aliases", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-js-tsconfig-aliases-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    for (const directory of ["src/core", "src/internal", "src/public", "test"]) {
+      fs.mkdirSync(path.join(root, directory), { recursive: true });
+    }
+    fs.writeFileSync(
+      path.join(root, "package.json"),
+      JSON.stringify({ scripts: { test: "vitest --run" }, devDependencies: { vitest: "latest" } })
+    );
+    fs.writeFileSync(
+      path.join(root, "tsconfig.json"),
+      `{
+        // Alias evidence should accept normal tsconfig comments and trailing commas.
+        "compilerOptions": {
+          "baseUrl": ".",
+          "paths": {
+            "@core/*": ["src/core/*"],
+            "@internal/*": ["src/internal/*"],
+            "@public": ["src/index.ts"],
+          },
+        },
+      }`
+    );
+    fs.writeFileSync(
+      path.join(root, "src/core/calculator.ts"),
+      `import { normalize } from "@internal/normalize";\nexport function calculate(value) {\n  if (value) return normalize(value);\n  return 0;\n}\n`
+    );
+    fs.writeFileSync(
+      path.join(root, "src/internal/normalize.ts"),
+      `export function normalize(value) {\n  if (value) return Number(value);\n  return 0;\n}\n`
+    );
+    fs.writeFileSync(
+      path.join(root, "src/public/published.ts"),
+      `export function published(value) {\n  if (value) return value;\n  return "published";\n}\n`
+    );
+    fs.writeFileSync(
+      path.join(root, "src/public/unused.ts"),
+      `export function unused(value) {\n  if (value) return value;\n  return "unused";\n}\n`
+    );
+    fs.writeFileSync(
+      path.join(root, "src/index.ts"),
+      `export { published } from "./public/published";\nexport { unused } from "./public/unused";\n`
+    );
+    fs.writeFileSync(
+      path.join(root, "test/behavior.test.ts"),
+      `import { calculate } from "@core/calculator";\nimport { published } from "@public";\n`
+    );
+
+    const audit = auditJavaScriptRepo(root);
+
+    assert.deepEqual(
+      audit.coveredButRisky.map((target) => target.path),
+      ["src/core/calculator.ts", "src/internal/normalize.ts", "src/public/published.ts"]
+    );
+    assert.deepEqual(
+      audit.untestedCandidates.map((target) => target.path),
+      ["src/public/unused.ts"]
+    );
+  });
+
   it("matches bounded transitive relative imports", (t) => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-js-transitive-imports-"));
     t.after(() => fs.rmSync(root, { recursive: true, force: true }));
