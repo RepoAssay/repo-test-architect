@@ -32,12 +32,13 @@ export function auditJavaScriptRepo(root, options = {}) {
       runtimeSourcePaths,
       sourceJavaScriptRuntime
     });
-    const existingTestPaths = findExistingTests(file.path, testFiles, moduleFiles, boundedTransitiveImports, {
+    const existingTestEvidence = findExistingTestEvidence(file.path, testFiles, moduleFiles, boundedTransitiveImports, {
       packageName: packageData.name,
       packageEntryFile,
       packageSubpathEntries,
       pathAliasEntries
     });
+    const existingTestPaths = existingTestEvidence.map((evidence) => evidence.testPath);
 
     if (classification.skipReason) {
       skipped.push({
@@ -72,7 +73,8 @@ export function auditJavaScriptRepo(root, options = {}) {
         existingTestPaths.length > 0
           ? [...classification.reasons, "Existing test file detected; review missing edge cases"]
           : classification.reasons,
-      existingTestPaths
+      existingTestPaths,
+      ...(existingTestEvidence.length > 0 ? { existingTestEvidence } : {})
     };
 
     if (existingTestPaths.length > 0) {
@@ -612,7 +614,7 @@ function isTestFile(currentPath) {
   );
 }
 
-function findExistingTests(sourcePath, testFiles, moduleFiles, boundedTransitiveImports, packageEntry) {
+function findExistingTestEvidence(sourcePath, testFiles, moduleFiles, boundedTransitiveImports, packageEntry) {
   const normalized = normalizePath(sourcePath);
   const sourceBase = basenameWithoutExtension(normalized);
   const sourceSegments = normalized.split("/");
@@ -633,20 +635,19 @@ function findExistingTests(sourcePath, testFiles, moduleFiles, boundedTransitive
     }
   }
 
-  return testFiles
-    .filter((testFile) => {
+  return testFiles.flatMap((testFile) => {
       const testBase = basenameWithoutExtension(testFile.path).replace(/\.(test|spec)$/, "");
-      return (
+      const filenameMatch =
         hasFilenameMatch(testFile.path, testBase, sourceBase, sourceDir, baseNameCandidates, sourceBaseCandidates, qualifiedBaseCandidates) ||
-        testFile.path.startsWith(`${sourceDir}/__tests__/${sourceBase}.`) ||
-        hasDirectRelativeImport(testFile, normalized) ||
-        boundedTransitiveImports.get(testFile.path)?.has(normalized) ||
-        hasOneHopBarrelImport(testFile, normalized, moduleFiles) ||
-        hasPathAliasImport(testFile, normalized, moduleFiles, packageEntry.pathAliasEntries) ||
-        hasPackageEntryImport(testFile, normalized, moduleFiles, packageEntry)
-      );
-    })
-    .map((testFile) => testFile.path);
+        testFile.path.startsWith(`${sourceDir}/__tests__/${sourceBase}.`);
+      if (hasDirectRelativeImport(testFile, normalized)) return [{ testPath: testFile.path, kind: "direct-relative-import", strength: "direct" }];
+      if (hasOneHopBarrelImport(testFile, normalized, moduleFiles)) return [{ testPath: testFile.path, kind: "referenced-relative-reexport", strength: "referenced" }];
+      if (hasPathAliasImport(testFile, normalized, moduleFiles, packageEntry.pathAliasEntries)) return [{ testPath: testFile.path, kind: "tsconfig-path-import", strength: "direct" }];
+      if (hasPackageEntryImport(testFile, normalized, moduleFiles, packageEntry)) return [{ testPath: testFile.path, kind: "package-entry-import", strength: "referenced" }];
+      if (boundedTransitiveImports.get(testFile.path)?.has(normalized)) return [{ testPath: testFile.path, kind: "bounded-dependency", strength: "indirect" }];
+      if (filenameMatch) return [{ testPath: testFile.path, kind: "filename-convention", strength: "naming" }];
+      return [];
+    });
 }
 
 function hasFilenameMatch(testPath, testBase, sourceBase, sourceDir, baseNameCandidates, sourceBaseCandidates, qualifiedBaseCandidates) {

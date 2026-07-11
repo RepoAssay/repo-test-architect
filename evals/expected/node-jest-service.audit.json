@@ -74,6 +74,13 @@
       ],
       "existingTestPaths": [
         "src/invoiceParser.spec.ts"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "src/invoiceParser.spec.ts",
+          "kind": "direct-relative-import",
+          "strength": "direct"
+        }
       ]
     }
   ],
@@ -100,6 +107,13 @@
       ],
       "existingTestPaths": [
         "src/invoiceParser.spec.ts"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "src/invoiceParser.spec.ts",
+          "kind": "direct-relative-import",
+          "strength": "direct"
+        }
       ]
     },
     {

@@ -56,6 +56,13 @@
       ],
       "existingTestPaths": [
         "src/routes/userRoutes.test.ts"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "src/routes/userRoutes.test.ts",
+          "kind": "bounded-dependency",
+          "strength": "indirect"
+        }
       ]
     },
     {
@@ -80,6 +87,13 @@
       ],
       "existingTestPaths": [
         "src/routes/userRoutes.test.ts"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "src/routes/userRoutes.test.ts",
+          "kind": "bounded-dependency",
+          "strength": "indirect"
+        }
       ]
     }
   ],
@@ -106,6 +120,13 @@
       ],
       "existingTestPaths": [
         "src/routes/userRoutes.test.ts"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "src/routes/userRoutes.test.ts",
+          "kind": "bounded-dependency",
+          "strength": "indirect"
+        }
       ]
     },
     {
@@ -130,6 +151,13 @@
       ],
       "existingTestPaths": [
         "src/routes/userRoutes.test.ts"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "src/routes/userRoutes.test.ts",
+          "kind": "bounded-dependency",
+          "strength": "indirect"
+        }
       ]
     }
   ],

@@ -72,6 +72,13 @@
       ],
       "existingTestPaths": [
         "src/deckParser.test.ts"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "src/deckParser.test.ts",
+          "kind": "direct-relative-import",
+          "strength": "direct"
+        }
       ]
     }
   ],
@@ -118,6 +125,13 @@
       ],
       "existingTestPaths": [
         "src/deckParser.test.ts"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "src/deckParser.test.ts",
+          "kind": "direct-relative-import",
+          "strength": "direct"
+        }
       ]
     }
   ],

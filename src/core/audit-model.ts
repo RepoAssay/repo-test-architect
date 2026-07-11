@@ -29,6 +29,11 @@ export interface AuditTarget {
   maintenanceCost: number;
   reasons?: string[];
   existingTestPaths?: string[];
+  existingTestEvidence?: Array<{
+    testPath: string;
+    kind: "filename-convention" | "direct-relative-import" | "referenced-relative-reexport" | "tsconfig-path-import" | "package-entry-import" | "bounded-dependency";
+    strength: "naming" | "direct" | "referenced" | "indirect";
+  }>;
 }
 
 export interface SkippedTarget {

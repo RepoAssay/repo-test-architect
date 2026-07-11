@@ -572,6 +572,13 @@ export function auditKotlin(files) {
       audit.untestedCandidates.map((target) => target.path),
       ["src/exported-but-unused.ts", "src/unexported.ts"]
     );
+    assert.deepEqual(audit.coveredButRisky.find((target) => target.path === "src/error.ts").existingTestEvidence, [
+      {
+        testPath: "test/http-behavior.test.ts",
+        kind: "referenced-relative-reexport",
+        strength: "referenced"
+      }
+    ]);
   });
 
   it("matches exact self-package imports through the source entrypoint", (t) => {
@@ -773,6 +780,13 @@ export function auditKotlin(files) {
       audit.untestedCandidates.map((target) => target.path),
       ["src/deep.ts"]
     );
+    assert.deepEqual(audit.coveredButRisky.find((target) => target.path === "src/parser.ts").existingTestEvidence, [
+      {
+        testPath: "test/behavior.test.ts",
+        kind: "bounded-dependency",
+        strength: "indirect"
+      }
+    ]);
   });
 
   it("classifies HTTP framework risks by behavioral role", (t) => {

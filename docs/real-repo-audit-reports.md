@@ -171,6 +171,7 @@ What the tool found:
 - direct, bounded transitive-relative, relative-barrel, package-entry, exact-subpath, and wildcard-export evidence across a large conditional export surface
 - direct root ranking with one missing candidate and extensive existing-test evidence across adapters, middleware, routers, JSX, client, and utility modules
 - imported-symbol filtering narrowed existing-test path lists for 25 root candidates without moving any covered candidate back to missing
+- machine-readable evidence provenance records 183 direct, 39 referenced-symbol, 57 filename-convention, and 820 bounded-indirect root test links
 
 Representative findings:
 
@@ -186,6 +187,7 @@ What it missed or over-reported:
 
 - Bounded transitive matching moved seven direct-root candidates from missing to covered-but-risky: client result parsing, JSX intrinsic helpers, ETag digest, `hono-base.ts`, two regex-router internals, and streaming utilities. The service-worker entry remains the sole direct-root missing candidate.
 - The import walk stops after two source-dependency hops. This records plausible execution evidence without claiming that arbitrary downstream modules are covered.
+- Bounded-indirect links make up most Hono evidence paths. Consumers can now distinguish these weaker reachability links from direct imports and referenced barrel symbols instead of treating all existing-test paths as equal.
 - Directory qualification now prevents filename-only evidence from unrelated generic `index.ts`, `utils.ts`, `handler.ts`, and `types.ts` tests. Remaining broad matches come from imported barrels and tested consumers rather than basename coincidence.
 - Barrel matching now requires named, aliased, default, namespace, or destructured CommonJS bindings to be referenced outside their import declaration. It remains static evidence: a reference does not prove that every behavioral branch was asserted.
 - Markdown now displays at most five existing-test paths per finding and directs readers to the complete JSON evidence; machine-readable artifacts remain unchanged.
