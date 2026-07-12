@@ -644,8 +644,10 @@ function findExistingTestEvidence(sourcePath, testFiles, moduleFiles, boundedTra
       if (directImportUsage) return [{ testPath: testFile.path, kind: "direct-relative-import", strength: "direct", ...(directImportUsage !== "imported" ? { usage: directImportUsage } : {}) }];
       const barrelUsage = getOneHopBarrelImportUsage(testFile, normalized, moduleFiles);
       if (barrelUsage) return [{ testPath: testFile.path, kind: "referenced-relative-reexport", strength: "referenced", ...(barrelUsage !== "referenced" ? { usage: barrelUsage } : {}) }];
-      if (hasPathAliasImport(testFile, normalized, moduleFiles, packageEntry.pathAliasEntries)) return [{ testPath: testFile.path, kind: "tsconfig-path-import", strength: "direct" }];
-      if (hasPackageEntryImport(testFile, normalized, moduleFiles, packageEntry)) return [{ testPath: testFile.path, kind: "package-entry-import", strength: "referenced" }];
+      const pathAliasUsage = getPathAliasImportUsage(testFile, normalized, moduleFiles, packageEntry.pathAliasEntries);
+      if (pathAliasUsage) return [{ testPath: testFile.path, kind: "tsconfig-path-import", strength: "direct", ...(pathAliasUsage !== "imported" ? { usage: pathAliasUsage } : {}) }];
+      const packageEntryUsage = getPackageEntryImportUsage(testFile, normalized, moduleFiles, packageEntry);
+      if (packageEntryUsage) return [{ testPath: testFile.path, kind: "package-entry-import", strength: "referenced", ...(packageEntryUsage !== "referenced" ? { usage: packageEntryUsage } : {}) }];
       if (boundedTransitiveImports.get(testFile.path)?.has(normalized)) return [{ testPath: testFile.path, kind: "bounded-dependency", strength: "indirect" }];
       if (filenameMatch) return [{ testPath: testFile.path, kind: "filename-convention", strength: "naming" }];
       return [];
@@ -735,26 +737,42 @@ function getOneHopBarrelImportUsage(testFile, sourcePath, moduleFiles) {
   return undefined;
 }
 
-function hasPathAliasImport(testFile, sourcePath, moduleFiles, pathAliasEntries) {
-  return collectModuleImports(testFile.content).some(({ specifier, usedImportedNames }) => {
+function getPathAliasImportUsage(testFile, sourcePath, moduleFiles, pathAliasEntries) {
+  for (const moduleImport of collectModuleImports(testFile.content)) {
+    const { specifier } = moduleImport;
     const entryFile = pathAliasEntries.get(specifier);
-    if (!entryFile) return false;
-    if (entryFile.path === sourcePath) return true;
+    if (!entryFile) continue;
     const sourceFile = moduleFiles.find((file) => file.path === sourcePath);
-    return sourceFile ? barrelExportsImportedNames(entryFile, sourceFile, usedImportedNames) : false;
-  });
+    const usage = sourceFile ? getEntrypointImportUsage(moduleImport, entryFile, sourceFile, "imported") : undefined;
+    if (usage) return usage;
+  }
+  return undefined;
 }
 
-function hasPackageEntryImport(testFile, sourcePath, moduleFiles, { packageName, packageEntryFile, packageSubpathEntries }) {
-  if (typeof packageName !== "string") return false;
+function getPackageEntryImportUsage(testFile, sourcePath, moduleFiles, { packageName, packageEntryFile, packageSubpathEntries }) {
+  if (typeof packageName !== "string") return undefined;
 
-  return collectModuleImports(testFile.content).some(({ specifier, usedImportedNames }) => {
+  for (const moduleImport of collectModuleImports(testFile.content)) {
+    const { specifier } = moduleImport;
     const entryFile = specifier === packageName ? packageEntryFile : packageSubpathEntries.get(specifier);
-    if (!entryFile) return false;
-    if (entryFile.path === sourcePath) return true;
+    if (!entryFile) continue;
     const sourceFile = moduleFiles.find((file) => file.path === sourcePath);
-    return sourceFile ? barrelExportsImportedNames(entryFile, sourceFile, usedImportedNames) : false;
-  });
+    const usage = sourceFile ? getEntrypointImportUsage(moduleImport, entryFile, sourceFile, "referenced") : undefined;
+    if (usage) return usage;
+  }
+  return undefined;
+}
+
+function getEntrypointImportUsage(moduleImport, entryFile, sourceFile, structuralUsage) {
+  if (entryFile.path === sourceFile.path) {
+    if (moduleImport.assertedImportedNames.size > 0) return "asserted";
+    if (moduleImport.calledImportedNames.size > 0) return "called";
+    return structuralUsage;
+  }
+  if (!barrelExportsImportedNames(entryFile, sourceFile, moduleImport.usedImportedNames)) return undefined;
+  if (barrelExportsImportedNames(entryFile, sourceFile, moduleImport.assertedImportedNames)) return "asserted";
+  if (barrelExportsImportedNames(entryFile, sourceFile, moduleImport.calledImportedNames)) return "called";
+  return structuralUsage;
 }
 
 function barrelExportsImportedNames(barrelFile, sourceFile, importedNames) {

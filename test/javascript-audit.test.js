@@ -626,7 +626,7 @@ export function auditKotlin(files) {
     fs.writeFileSync(path.join(root, "src", "index.ts"), `export * from "./error";\n`);
     fs.writeFileSync(
       path.join(root, "test", "public-api.test.ts"),
-      `import { createError } from "@example/http-kit";\ncreateError("boom");\n`
+      `import { createError } from "@example/http-kit";\nexpect(createError("boom")).toBeInstanceOf(Error);\n`
     );
 
     const audit = auditJavaScriptRepo(root);
@@ -639,6 +639,7 @@ export function auditKotlin(files) {
       audit.untestedCandidates.map((target) => target.path),
       ["src/unexported.ts"]
     );
+    assert.equal(audit.coveredButRisky[0].existingTestEvidence[0].usage, "asserted");
   });
 
   it("matches exact and wildcard declared self-package subpath imports", (t) => {
@@ -672,7 +673,7 @@ export function auditKotlin(files) {
     );
     fs.writeFileSync(
       path.join(root, "test", "public-subpaths.test.ts"),
-      `import { evaluate as createError } from "@example/http-kit/errors";\nimport { cache } from "@example/http-kit/features/cache";\nconst cookies = require("@example/http-kit/cookies");\n`
+      `import { evaluate as createError } from "@example/http-kit/errors";\nimport { cache } from "@example/http-kit/features/cache";\nconst cookies = require("@example/http-kit/cookies");\nexpect(createError("boom")).toBe("boom");\ncache("value");\n`
     );
 
     const audit = auditJavaScriptRepo(root);
@@ -688,6 +689,14 @@ export function auditKotlin(files) {
     assert.deepEqual(
       audit.untestedCandidates.map((target) => target.path),
       ["src/unexported.ts"]
+    );
+    assert.deepEqual(
+      audit.coveredButRisky.map((target) => [target.path, target.existingTestEvidence[0].usage]),
+      [
+        ["src/features/cache.ts", "called"],
+        ["src/cookies.ts", undefined],
+        ["src/errors.ts", "asserted"]
+      ]
     );
   });
 
@@ -756,6 +765,14 @@ export function auditKotlin(files) {
     assert.deepEqual(
       audit.untestedCandidates.map((target) => target.path),
       ["src/public/unused.ts"]
+    );
+    assert.deepEqual(
+      audit.coveredButRisky.map((target) => [target.path, target.existingTestEvidence[0].usage]),
+      [
+        ["src/core/calculator.ts", "called"],
+        ["src/internal/normalize.ts", undefined],
+        ["src/public/published.ts", "called"]
+      ]
     );
   });
 

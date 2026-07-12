@@ -219,6 +219,7 @@ Re-audit after call/assertion-aware evidence (`2026-07-12`):
 - evidence now separates 39 asserted and 116 called direct-import relationships from the larger structural evidence graph
 - 820 bounded-indirect, 57 filename-convention, and 39 referenced-barrel links remain deliberately unlabelled as called or asserted
 - only 155 of 1,099 evidence links currently carry usage proof, making direct-import call/assertion analysis valuable while clearly identifying barrel and transitive usage analysis as the next evidence-depth gap
+- after propagating usage through relative barrels and declared package entry/subpath imports, the same graph reports 40 asserted and 146 called relationships; 31 additional export-surface links gain usage proof while candidate counts and evidence strengths remain stable
 
 ## Additional JavaScript/TypeScript Probe: `sindresorhus/is`
 
