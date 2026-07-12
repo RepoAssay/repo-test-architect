@@ -27,6 +27,11 @@
       "reason": "Candidate priority must remain tied to deterministic scoring."
     },
     {
+      "path": "candidates[0].existingTestEvidence[0].usage",
+      "expected": "asserted",
+      "reason": "Candidate ranking must not discard assertion-aware provenance from the audit graph."
+    },
+    {
       "path": "candidates[1].targetId",
       "expected": "src/authService.ts",
       "reason": "authService remains the next ranked test candidate for this fixture."

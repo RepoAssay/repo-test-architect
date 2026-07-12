@@ -1,0 +1,48 @@
+{
+  "schemaVersion": "model-consistency-scenario/v1",
+  "id": "node-vitest-basic-deck-explanation",
+  "description": "Different model profiles should preserve assertion-aware evidence when explaining the covered deckParser target.",
+  "sourceArtifact": {
+    "path": "evals/expected/node-vitest-basic.audit.json",
+    "schemaVersion": "audit/v1"
+  },
+  "toolCall": {
+    "toolName": "explain_target",
+    "arguments": {
+      "targetId": "src/deckParser.ts"
+    }
+  },
+  "lockedFields": [
+    {
+      "path": "targetId",
+      "expected": "src/deckParser.ts",
+      "reason": "The selected covered target must not change across model profiles."
+    },
+    {
+      "path": "recommendation",
+      "expected": "test",
+      "reason": "The explanation contract keeps covered testable targets as test recommendations while plans choose the extend-test action."
+    },
+    {
+      "path": "existingTestEvidence[0].kind",
+      "expected": "direct-relative-import",
+      "reason": "The explanation must preserve the deterministic source-to-test relationship."
+    },
+    {
+      "path": "existingTestEvidence[0].usage",
+      "expected": "asserted",
+      "reason": "The explanation must preserve proof that the imported call participates in an assertion."
+    }
+  ],
+  "allowedVariations": [
+    "summary wording",
+    "ordering of explanatory prose",
+    "optional detail depth"
+  ],
+  "unexpectedVariations": [
+    "different target id",
+    "different recommendation",
+    "missing existing-test provenance",
+    "asserted evidence downgraded to called or structural import evidence"
+  ]
+}
