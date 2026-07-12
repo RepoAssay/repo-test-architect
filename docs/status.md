@@ -62,6 +62,7 @@ Implemented:
 - real-repo audit reports for owned JavaScript/TypeScript and Swift repositories, including Collectors Grimoire and `cg-*` sibling packages
 - product positioning note for audit-first differentiation, initial audience, business paths, proof points, and anti-positioning
 - near-term roadmap for public demo polish, second adapter proof, placement analysis, MCP transport, and generation readiness gates
+- adapter reuse roadmap defining shared audit semantics, adapter-owned proof, and compiler/parser-backed ecosystem analysis
 - demo script for showing audit quality, polyglot detection, MCP tools, and verification without implying native generation is ready
 - demo command checker that runs the deterministic public demo path without nesting the full release suite
 - decision log for audit-first architecture, the stable audit/executor boundary, adapter scope, local-first MCP, deferred generation, public demo readiness, and stats policy
