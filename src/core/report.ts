@@ -96,13 +96,24 @@ function formatEvidenceStrengths(evidence: Array<{ strength: string }>): string 
     .join(", ");
 }
 
+function formatEvidenceUsage(evidence: Array<{ usage?: string }>): string {
+  const counts = new Map<string, number>();
+  for (const item of evidence) {
+    if (item.usage) counts.set(item.usage, (counts.get(item.usage) ?? 0) + 1);
+  }
+  return ["asserted", "called"]
+    .filter((usage) => counts.has(usage))
+    .map((usage) => `${usage}: ${counts.get(usage)}`)
+    .join(", ");
+}
+
 function formatTarget(target: AuditResult["recommended"][number]): string {
   const reasons = target.reasons ?? [];
   const existingTestPaths = target.existingTestPaths ?? [];
   const existingTests =
     existingTestPaths.length > 0 ? `; existing tests: ${formatExistingTestPaths(existingTestPaths)}` : "";
   const evidenceStrengths = target.existingTestEvidence?.length
-    ? `; evidence strengths: ${formatEvidenceStrengths(target.existingTestEvidence)}`
+    ? `; evidence strengths: ${formatEvidenceStrengths(target.existingTestEvidence)}${formatEvidenceUsage(target.existingTestEvidence) ? `; evidence usage: ${formatEvidenceUsage(target.existingTestEvidence)}` : ""}`
     : "";
 
   return `- ${target.name}: ${target.recommendedTestLevel} test for ${target.kind} (risk reduction ${target.riskReductionScore}/10, maintenance ${target.maintenanceCost}/10; ${reasons.join("; ")}${existingTests}${evidenceStrengths})`;

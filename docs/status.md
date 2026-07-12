@@ -14,6 +14,7 @@ Implemented:
 - assertion-aware JavaScript/TypeScript provenance for inline `expect` calls and asserted variables assigned from directly imported named bindings
 - optional test-evidence provenance propagated from audits into direct and project-level explanations, candidate rankings, test plans, and repository-wide project stats distributions
 - concise Markdown evidence-strength counts for audits, explanations, direct and project rankings, and direct and project plans
+- Markdown and project-stats evidence-usage counts that distinguish called from asserted direct imports
 - directory-qualified filename evidence for generic JavaScript/TypeScript basenames such as `index`, `utils`, `handler`, and `types`
 - bounded Markdown display of existing-test evidence with complete path lists preserved in JSON artifacts
 - behavioral HTTP framework classifications for routers, routes, handlers, security and general middleware, request access and validation, request bodies, queries, cookies, caching, response construction, request events, proxies, sessions, WebSockets, streaming, client response parsing, and runtime adapters, including flat utility layouts identified through HTTP boundary types

@@ -153,6 +153,7 @@ export interface ProjectStats {
     signals: Record<string, number>;
     evidenceStrengths: Record<string, number>;
     evidenceKinds: Record<string, number>;
+    evidenceUsage: Record<string, number>;
   };
   adapters: Array<{
     adapterId: string;
