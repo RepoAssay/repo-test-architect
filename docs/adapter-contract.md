@@ -2,6 +2,8 @@
 
 Adapters translate ecosystem-specific repository signals into the shared audit model.
 
+The adapter boundary is evidence collection, not product behavior. Each adapter may use different parsing, compiler, language-server, build-tool, or lightweight text-analysis techniques, but it should normalize proven facts into the same audit vocabulary. Ranking, explanations, plans, placement analysis, stats, output rendering, and transport remain core responsibilities.
+
 An adapter should:
 
 - detect package managers, test frameworks, and architecture signals
@@ -10,6 +12,8 @@ An adapter should:
 - recommend a test level only when the repository has enough convention signal
 - skip low-value targets with an explicit reason
 - return structured audit data before generating any code
+- distinguish structural reachability from proven calls, assertions, and indirect entrypoint usage when the ecosystem can support those claims
+- leave evidence fields absent when it cannot prove them safely
 
 An adapter should not:
 
@@ -18,6 +22,16 @@ An adapter should not:
 - recommend UI/component tests without an existing convention signal
 - treat coverage growth as the main success metric
 - blindly move tests that depend on app-level integration wiring
+- copy JavaScript-specific heuristics when ecosystem-native parsers or compiler/build metadata provide stronger evidence
+- redefine shared evidence terms to match language-specific implementation details
+
+The normalized evidence flow is:
+
+```text
+language/build/framework facts -> adapter evidence -> shared audit graph -> shared consumers
+```
+
+For example, JavaScript may infer a call from an imported binding, Python may resolve an imported function through its syntax tree, Kotlin/JVM may use source sets and compiler symbols, and Swift may use package targets and syntax/compiler metadata. All should emit the same semantic claim only when their underlying analyzer can support it.
 
 The core model lives in `src/core/audit-model.ts`.
 

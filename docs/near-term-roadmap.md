@@ -74,9 +74,38 @@ Useful hardening targets:
 - Swift Package Manager with XCTest, Swift Testing, Quick/Nimble, and SnapshotTesting signals
 - Python package layouts, pytest/unittest detection, uv/Poetry/Hatch command markers, and no-tests-yet blocker behavior
 
+### Adapter Reuse Boundary
+
+The expected architecture is mostly shared product infrastructure with an ecosystem-specific evidence collector at the bottom. As a planning estimate, roughly 70-80% of the product should remain reusable across adapters, while roughly 20-30% will vary by language, build system, and test framework. These percentages are directional rather than release metrics and should be revisited after a second adapter reaches supported maturity.
+
+Shared core responsibilities include:
+
+- versioned audit, explanation, ranking, plan, placement, findings, and stats artifacts
+- normalized evidence concepts such as relationship kind, strength, direct usage, and indirect entrypoint usage
+- candidate scoring, risk classification, project aggregation, reporting, CLI/MCP transport, model-consistency checks, and readiness gates
+
+Adapter-owned responsibilities include:
+
+- project/build metadata, source sets, module resolution, exports, packages, and target ownership
+- framework and test-command detection
+- language-aware source classification and generated/DTO/wiring conventions
+- proof that a test references, calls, asserts, or reaches a source target
+
+Adapters should normalize their evidence into the shared contract instead of copying JavaScript implementation techniques. Python, Kotlin/JVM, and Swift may use parser, compiler, language-server, or build-tool APIs where those provide safer symbol and call resolution than lightweight text analysis.
+
+Target pipeline:
+
+```text
+adapter-owned repository and test evidence
+                  -> shared normalized audit graph
+                  -> shared ranking, reporting, planning, stats, and review
+```
+
 Acceptance:
 
 - adapter emits the shared audit model
+- adapter documents which evidence fields it can prove and which remain unavailable or structural-only
+- language-specific analyzers do not change shared evidence semantics
 - unsupported-to-supported transition is visible in project detection
 - golden audit and plan snapshots exist
 - model-consistency scenario covers adapter-specific recommendations

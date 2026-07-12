@@ -26,6 +26,16 @@ Rationale: real repositories commonly mix frontend, backend, mobile, tooling, ge
 
 Revisit when: cross-project dependency analysis becomes necessary for recommendations that cannot be made from isolated project audits.
 
+## Shared Audit Semantics, Adapter-Owned Proof
+
+Decision: keep evidence collection ecosystem-specific while normalizing proven repository facts into shared audit semantics and shared downstream artifacts.
+
+Rationale: languages differ materially in module resolution, build targets, symbol systems, test frameworks, and available compiler tooling. Reusing JavaScript heuristics would create weak or misleading adapters. The reusable product value lives above that boundary: evidence vocabulary, scoring, explanations, ranking, planning, placement, reporting, stats, model-consistency, CLI/MCP transport, and readiness gates.
+
+Planning assumption: approximately 70-80% of the product architecture should remain shared and approximately 20-30% should be adapter-specific. This is directional and must be validated when another adapter reaches supported maturity.
+
+Revisit when: a supported non-JavaScript adapter demonstrates that shared semantics prevent accurate ecosystem-specific evidence, or measured implementation effort differs materially from the planning assumption.
+
 ## Local Stdio MCP First
 
 Decision: start with local stdio MCP distribution rather than hosted remote MCP.
