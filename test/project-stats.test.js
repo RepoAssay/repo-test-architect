@@ -44,13 +44,23 @@ describe("project stats", () => {
         "edge-case-surface": 2,
         "pure-logic": 2,
         "service-name": 1
-      }
+      },
+      evidenceStrengths: {},
+      evidenceKinds: {}
     });
     assert.deepEqual(stats.adapters, [
       { adapterId: "javascript", projectCount: 1 },
       { adapterId: "kotlin", projectCount: 1 },
       { adapterId: "python", projectCount: 1 }
     ]);
+  });
+
+  it("aggregates JavaScript test evidence provenance", () => {
+    const projectAudits = auditDetectedProjects(path.resolve("examples/node-vitest-basic"));
+    const stats = collectProjectStats(projectAudits);
+
+    assert.deepEqual(stats.distributions.evidenceStrengths, { direct: 1 });
+    assert.deepEqual(stats.distributions.evidenceKinds, { "direct-relative-import": 1 });
   });
 
   it("separates audited and unsupported source file counts", () => {
