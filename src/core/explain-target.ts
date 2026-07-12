@@ -16,7 +16,7 @@ export interface TargetExplanation {
   signals: string[];
   rationale: string[];
   existingTestPaths: string[];
-  existingTestEvidence?: Array<{ testPath: string; kind: string; strength: string; usage?: "called" }>;
+  existingTestEvidence?: Array<{ testPath: string; kind: string; strength: string; usage?: "called" | "asserted" }>;
 }
 
 export function explainTarget(audit: AuditResult, targetId: string): TargetExplanation {
