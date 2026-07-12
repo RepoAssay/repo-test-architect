@@ -539,6 +539,39 @@ export function auditKotlin(files) {
     assert.deepEqual(audit.untestedCandidates, []);
   });
 
+  it("tracks calls and assertions through default and namespace imports", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-js-import-shapes-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "src"), { recursive: true });
+    fs.mkdirSync(path.join(root, "test"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "package.json"),
+      JSON.stringify({ scripts: { test: "vitest --run" }, devDependencies: { vitest: "latest" } })
+    );
+    fs.writeFileSync(
+      path.join(root, "src", "parser.ts"),
+      `export default function parse(value) {\n  if (value) return value;\n  return "empty";\n}\n`
+    );
+    fs.writeFileSync(
+      path.join(root, "src", "api.ts"),
+      `export function load(value) {\n  if (value) return value;\n  return "empty";\n}\n`
+    );
+    fs.writeFileSync(
+      path.join(root, "test", "behavior.test.ts"),
+      `import parse from "../src/parser";\nimport * as api from "../src/api";\nexpect(parse("value")).toBe("value");\napi.load("value");\n`
+    );
+
+    const audit = auditJavaScriptRepo(root);
+
+    assert.deepEqual(
+      audit.coveredButRisky.map((target) => [target.path, target.existingTestEvidence[0].usage]),
+      [
+        ["src/parser.ts", "asserted"],
+        ["src/api.ts", "called"]
+      ]
+    );
+  });
+
   it("matches tests to source modules re-exported by a relative barrel", (t) => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-js-barrel-tests-"));
     t.after(() => fs.rmSync(root, { recursive: true, force: true }));

@@ -1001,6 +1001,9 @@ function collectCalledImportClauseNames(clause, contentWithoutImports) {
       if (imported && isIdentifierCalled(contentWithoutImports, local)) names.add(imported);
     }
   }
+  const defaultImport = clause.split(",", 1)[0].trim();
+  if (defaultImport && !defaultImport.startsWith("{") && !defaultImport.startsWith("*") && isIdentifierCalled(contentWithoutImports, defaultImport)) names.add("default");
+  collectNamespaceUsageNames(clause, contentWithoutImports, isIdentifierCalled, names);
   return names;
 }
 
@@ -1022,7 +1025,19 @@ function collectAssertedImportClauseNames(clause, contentWithoutImports) {
       if (imported && isIdentifierAsserted(contentWithoutImports, local)) names.add(imported);
     }
   }
+  const defaultImport = clause.split(",", 1)[0].trim();
+  if (defaultImport && !defaultImport.startsWith("{") && !defaultImport.startsWith("*") && isIdentifierAsserted(contentWithoutImports, defaultImport)) names.add("default");
+  collectNamespaceUsageNames(clause, contentWithoutImports, isIdentifierAsserted, names);
   return names;
+}
+
+function collectNamespaceUsageNames(clause, content, predicate, names) {
+  const namespace = clause.match(/\*\s+as\s+([A-Za-z_$][\w$]*)/)?.[1];
+  if (!namespace) return;
+  const propertyPattern = new RegExp(`\\b${escapeRegExp(namespace)}\\.([A-Za-z_$][\\w$]*)`, "g");
+  for (const match of content.matchAll(propertyPattern)) {
+    if (predicate(content, `${namespace}.${match[1]}`)) names.add(match[1]);
+  }
 }
 
 function collectAssertedRequireNames(clause, contentWithoutImports) {
@@ -1035,7 +1050,7 @@ function collectAssertedRequireNames(clause, contentWithoutImports) {
 }
 
 function isIdentifierAsserted(content, identifier) {
-  const escaped = identifier.replace(/[$]/g, "\\$");
+  const escaped = escapeRegExp(identifier);
   if (new RegExp(`\\bexpect\\s*\\(\\s*(?:\\(\\s*\\)\\s*=>\\s*)?(?:await\\s+)?${escaped}\\s*\\(`).test(content)) return true;
   const assignmentPattern = new RegExp(`\\b(?:const|let|var)\\s+([A-Za-z_$][\\w$]*)\\s*=\\s*(?:await\\s+)?${escaped}\\s*\\(`, "g");
   for (const match of content.matchAll(assignmentPattern)) {
@@ -1045,7 +1060,11 @@ function isIdentifierAsserted(content, identifier) {
 }
 
 function isIdentifierCalled(content, identifier) {
-  return new RegExp(`\\b${identifier.replace(/[$]/g, "\\$")}\\s*\\(`).test(content);
+  return new RegExp(`\\b${escapeRegExp(identifier)}\\s*\\(`).test(content);
+}
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function collectUsedImportClauseNames(clause, contentWithoutImports) {
