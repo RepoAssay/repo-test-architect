@@ -505,11 +505,11 @@ export function auditKotlin(files) {
 
     fs.writeFileSync(
       path.join(root, "test", "checkout-behavior.test.ts"),
-      `import { evaluate } from "../src/rules/payment-policy";\nexport { evaluate as formatter } from "../src/formatters";\n`
+      `import { evaluate as evaluatePayment } from "../src/rules/payment-policy";\nexport { evaluate as formatter } from "../src/formatters";\nevaluatePayment(true);\n`
     );
     fs.writeFileSync(
       path.join(root, "test", "login-flow.test.js"),
-      `const { evaluate } = require("../src/session.ts");\n`
+      `const { evaluate: evaluateSession } = require("../src/session.ts");\nevaluateSession(true);\n`
     );
 
     const audit = auditJavaScriptRepo(root);
@@ -520,6 +520,14 @@ export function auditKotlin(files) {
         "src/formatters/index.ts:test/checkout-behavior.test.ts",
         "src/rules/payment-policy.ts:test/checkout-behavior.test.ts",
         "src/session.ts:test/login-flow.test.js"
+      ]
+    );
+    assert.deepEqual(
+      audit.coveredButRisky.map((target) => [target.path, target.existingTestEvidence[0].usage]),
+      [
+        ["src/formatters/index.ts", undefined],
+        ["src/rules/payment-policy.ts", "called"],
+        ["src/session.ts", "called"]
       ]
     );
     assert.deepEqual(audit.untestedCandidates, []);

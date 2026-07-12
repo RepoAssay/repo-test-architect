@@ -148,7 +148,8 @@
               "properties": {
                 "testPath": { "type": "string" },
                 "kind": { "type": "string" },
-                "strength": { "enum": ["naming", "direct", "referenced", "indirect"] }
+                "strength": { "enum": ["naming", "direct", "referenced", "indirect"] },
+                "usage": { "enum": ["called"] }
               }
             }
           }

@@ -33,6 +33,7 @@ export interface AuditTarget {
     testPath: string;
     kind: "filename-convention" | "direct-relative-import" | "referenced-relative-reexport" | "tsconfig-path-import" | "package-entry-import" | "bounded-dependency";
     strength: "naming" | "direct" | "referenced" | "indirect";
+    usage?: "called";
   }>;
 }
 

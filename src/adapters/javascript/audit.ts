@@ -646,7 +646,7 @@ function findExistingTestEvidence(
   moduleFiles: FileSnapshot[],
   boundedTransitiveImports: Map<string, Set<string>>,
   packageEntry: { packageName?: string; packageEntryFile?: FileSnapshot; packageSubpathEntries: Map<string, FileSnapshot>; pathAliasEntries: Map<string, FileSnapshot> }
-): Array<{ testPath: string; kind: string; strength: "naming" | "direct" | "referenced" | "indirect" }> {
+): Array<{ testPath: string; kind: string; strength: "naming" | "direct" | "referenced" | "indirect"; usage?: "called" }> {
   const normalized = normalizePath(sourcePath);
   const sourceBase = basenameWithoutExtension(normalized);
   const sourceSegments = normalized.split("/");
@@ -672,7 +672,8 @@ function findExistingTestEvidence(
       const filenameMatch =
         hasFilenameMatch(testFile.path, testBase, sourceBase, sourceDir, baseNameCandidates, sourceBaseCandidates, qualifiedBaseCandidates) ||
         testFile.path.startsWith(`${sourceDir}/__tests__/${sourceBase}.`);
-      if (hasDirectRelativeImport(testFile, normalized)) return [{ testPath: testFile.path, kind: "direct-relative-import", strength: "direct" as const }];
+      const directImportUsage = getDirectRelativeImportUsage(testFile, normalized);
+      if (directImportUsage) return [{ testPath: testFile.path, kind: "direct-relative-import", strength: "direct" as const, ...(directImportUsage === "called" ? { usage: directImportUsage } : {}) }];
       if (hasOneHopBarrelImport(testFile, normalized, moduleFiles)) return [{ testPath: testFile.path, kind: "referenced-relative-reexport", strength: "referenced" as const }];
       if (hasPathAliasImport(testFile, normalized, moduleFiles, packageEntry.pathAliasEntries)) return [{ testPath: testFile.path, kind: "tsconfig-path-import", strength: "direct" as const }];
       if (hasPackageEntryImport(testFile, normalized, moduleFiles, packageEntry)) return [{ testPath: testFile.path, kind: "package-entry-import", strength: "referenced" as const }];
@@ -696,10 +697,14 @@ function hasFilenameMatch(
   return qualifiedBaseCandidates.has(testBase) || (testDir === sourceDir && baseNameCandidates.has(testBase));
 }
 
-function hasDirectRelativeImport(testFile: FileSnapshot, sourcePath: string): boolean {
-  return collectRelativeModuleSpecifiers(testFile.content).some((specifier) =>
-    moduleSpecifierTargetsSource(testFile.path, specifier, sourcePath)
+function getDirectRelativeImportUsage(testFile: FileSnapshot, sourcePath: string): "imported" | "called" | undefined {
+  const matchingImports = collectModuleImports(testFile.content).filter(({ specifier }) =>
+    specifier.startsWith(".") && moduleSpecifierTargetsSource(testFile.path, specifier, sourcePath)
   );
+  if (matchingImports.some(({ calledImportedNames }) => calledImportedNames.size > 0)) return "called";
+  return matchingImports.length > 0 || collectRelativeModuleSpecifiers(testFile.content).some((specifier) =>
+    moduleSpecifierTargetsSource(testFile.path, specifier, sourcePath)
+  ) ? "imported" : undefined;
 }
 
 function collectBoundedTransitiveImports(testFiles: FileSnapshot[], moduleFiles: FileSnapshot[], pathAliasEntries: Map<string, FileSnapshot>): Map<string, Set<string>> {
@@ -1012,6 +1017,7 @@ interface ModuleImport {
   specifier: string;
   importedNames: Set<string>;
   usedImportedNames: Set<string>;
+  calledImportedNames: Set<string>;
 }
 
 interface RelativeReExport {
@@ -1037,7 +1043,8 @@ function collectModuleImports(content: string): ModuleImport[] {
     if (clause && specifier) imports.push({
       specifier,
       importedNames: collectImportClauseNames(clause, content),
-      usedImportedNames: collectUsedImportClauseNames(clause, contentWithoutImports)
+      usedImportedNames: collectUsedImportClauseNames(clause, contentWithoutImports),
+      calledImportedNames: collectCalledImportClauseNames(clause, contentWithoutImports)
     });
   }
   const requirePattern = /\b(?:const|let|var)\s+\{([^}]+)\}\s*=\s*require\s*\(\s*["']([^"']+)["']\s*\)/g;
@@ -1047,17 +1054,43 @@ function collectModuleImports(content: string): ModuleImport[] {
     if (names && specifier) imports.push({
       specifier,
       importedNames: collectAliasedNames(names, ":"),
-      usedImportedNames: collectUsedRequireNames(names, contentWithoutImports)
+      usedImportedNames: collectUsedRequireNames(names, contentWithoutImports),
+      calledImportedNames: collectCalledRequireNames(names, contentWithoutImports)
     });
   }
   const plainRequirePattern = /\brequire\s*\(\s*["']([^"']+)["']\s*\)/g;
   for (const match of content.matchAll(plainRequirePattern)) {
     const specifier = match[1];
     if (specifier && !imports.some((current) => current.specifier === specifier)) {
-      imports.push({ specifier, importedNames: new Set(), usedImportedNames: new Set() });
+      imports.push({ specifier, importedNames: new Set(), usedImportedNames: new Set(), calledImportedNames: new Set() });
     }
   }
   return imports;
+}
+
+function collectCalledImportClauseNames(clause: string, contentWithoutImports: string): Set<string> {
+  const names = new Set<string>();
+  const named = clause.match(/\{([^}]+)\}/)?.[1];
+  if (named) {
+    for (const part of named.split(",")) {
+      const [imported, local = imported] = part.trim().replace(/^type\s+/, "").split(/\s+as\s+/);
+      if (imported && local && isIdentifierCalled(contentWithoutImports, local)) names.add(imported);
+    }
+  }
+  return names;
+}
+
+function collectCalledRequireNames(clause: string, contentWithoutImports: string): Set<string> {
+  const names = new Set<string>();
+  for (const part of clause.split(",")) {
+    const [imported, local = imported] = part.trim().split(/\s*:\s*/);
+    if (imported && local && isIdentifierCalled(contentWithoutImports, local)) names.add(imported);
+  }
+  return names;
+}
+
+function isIdentifierCalled(content: string, identifier: string): boolean {
+  return new RegExp(`\\b${identifier.replace(/[$]/g, "\\$")}\\s*\\(`).test(content);
 }
 
 function collectUsedImportClauseNames(clause: string, contentWithoutImports: string): Set<string> {
