@@ -98,6 +98,13 @@ Heuristic follow-up:
 - improve JavaScript/TypeScript utility rationale so merge helpers, guards, and object-shape predicates get domain-specific review hints
 - keep covered-but-risky targets visible, but include a concise "already covered by" line in markdown so reviewers can evaluate whether the warning is fair
 
+Re-audit after call/assertion-aware evidence (`2026-07-12`):
+
+- the same pinned commit now reports zero untested candidates, two covered-but-risky targets, and one skipped target
+- `src/_utils.ts` is connected directly to `test/utils.test.ts` with `asserted` usage, resolving the earlier false missing-coverage report; its additional relationship to `test/defu.test.ts` remains separately classified as bounded-indirect evidence
+- `src/defu.ts` is also connected to direct asserted evidence, producing two direct asserted links and one bounded-indirect link across the project
+- this validates the intended trust model: stronger usage evidence improves the finding without upgrading a weaker transitive relationship
+
 ## `h3js/h3` Audit
 
 Source:
@@ -146,6 +153,13 @@ Heuristic follow-up:
 
 - expand assertion-aware symbol evidence beyond static reachability when the audit needs to distinguish import from exercised behavior
 - evaluate remaining generic utilities only where stable domain boundaries are stronger than filename coincidence
+
+Re-audit after call/assertion-aware evidence (`2026-07-12`):
+
+- the same pinned commit still detects four audited project roots, one untested candidate, 43 covered-but-risky targets, 16 skipped targets, and six blockers
+- evidence now separates 10 asserted and 23 called direct-import relationships from 347 structural relationships without proven call/assertion usage
+- the structural pool contains 282 bounded-indirect, 54 referenced-barrel, and six filename-convention links; those remain useful reachability evidence but are not promoted to asserted coverage
+- the stable candidate counts show that the new usage dimension improves review precision without silently reclassifying audit targets
 
 ## `honojs/hono` Audit
 
@@ -197,6 +211,13 @@ Heuristic follow-up:
 
 - distinguish referenced bindings from actual runtime calls and assertions when stronger static evidence is available
 - continue validating the HTTP role vocabulary against frameworks with flat utility layouts and different request/response abstractions
+
+Re-audit after call/assertion-aware evidence (`2026-07-12`):
+
+- the same pinned commit still detects seven audited project roots, four untested candidates, 100 covered-but-risky targets, 100 skipped targets, and 12 blockers
+- evidence now separates 39 asserted and 116 called direct-import relationships from the larger structural evidence graph
+- 820 bounded-indirect, 57 filename-convention, and 39 referenced-barrel links remain deliberately unlabelled as called or asserted
+- only 155 of 1,099 evidence links currently carry usage proof, making direct-import call/assertion analysis valuable while clearly identifying barrel and transitive usage analysis as the next evidence-depth gap
 
 ## Additional JavaScript/TypeScript Probe: `sindresorhus/is`
 
