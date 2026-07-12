@@ -15,7 +15,7 @@ export interface TestPlanItem {
   rationale: string[];
   sourceSignals: string[];
   existingTestPaths: string[];
-  existingTestEvidence?: Array<{ testPath: string; kind: string; strength: string; usage?: "called" | "asserted" }>;
+  existingTestEvidence?: Array<{ testPath: string; kind: string; strength: string; usage?: "called" | "asserted"; viaUsage?: "called" | "asserted" }>;
 }
 
 export interface TestPlan {

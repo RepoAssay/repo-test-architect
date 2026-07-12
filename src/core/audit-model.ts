@@ -34,6 +34,7 @@ export interface AuditTarget {
     kind: "filename-convention" | "direct-relative-import" | "referenced-relative-reexport" | "tsconfig-path-import" | "package-entry-import" | "bounded-dependency";
     strength: "naming" | "direct" | "referenced" | "indirect";
     usage?: "called" | "asserted";
+    viaUsage?: "called" | "asserted";
   }>;
 }
 

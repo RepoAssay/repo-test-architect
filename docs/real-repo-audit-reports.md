@@ -161,6 +161,7 @@ Re-audit after call/assertion-aware evidence (`2026-07-12`):
 - the structural pool contains 282 bounded-indirect, 54 referenced-barrel, and six filename-convention links; those remain useful reachability evidence but are not promoted to asserted coverage
 - the stable candidate counts show that the new usage dimension improves review precision without silently reclassifying audit targets
 - after propagating usage through one-hop relative barrels, the same evidence graph reports 21 asserted and 65 called relationships, up from 10 asserted and 23 called; 53 of 54 referenced-barrel links now carry usage proof while candidate counts remain unchanged
+- conservative bounded-indirect provenance additionally records 93 asserted and 186 called entrypoint paths for 279 of 282 indirect links; these are reported as `viaUsage`, not as assertions of the dependency itself
 
 ## `honojs/hono` Audit
 
@@ -220,6 +221,7 @@ Re-audit after call/assertion-aware evidence (`2026-07-12`):
 - 820 bounded-indirect, 57 filename-convention, and 39 referenced-barrel links remain deliberately unlabelled as called or asserted
 - only 155 of 1,099 evidence links currently carry usage proof, making direct-import call/assertion analysis valuable while clearly identifying barrel and transitive usage analysis as the next evidence-depth gap
 - after propagating usage through relative barrels and declared package entry/subpath imports, the same graph reports 40 asserted and 146 called relationships; 31 additional export-surface links gain usage proof while candidate counts and evidence strengths remain stable
+- conservative bounded-indirect provenance additionally records 114 asserted and 631 called entrypoint paths for 745 of 820 indirect links, without reclassifying those dependencies as directly called or asserted
 
 ## Additional JavaScript/TypeScript Probe: `sindresorhus/is`
 

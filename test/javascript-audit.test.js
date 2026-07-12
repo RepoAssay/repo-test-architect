@@ -803,7 +803,7 @@ export function auditKotlin(files) {
     );
     fs.writeFileSync(
       path.join(root, "test", "behavior.test.ts"),
-      `import { publicApi } from "../src/public";\n`
+      `import { publicApi } from "../src/public";\nexpect(publicApi("value")).toBe("value");\n`
     );
 
     const audit = auditJavaScriptRepo(root);
@@ -820,7 +820,8 @@ export function auditKotlin(files) {
       {
         testPath: "test/behavior.test.ts",
         kind: "bounded-dependency",
-        strength: "indirect"
+        strength: "indirect",
+        viaUsage: "asserted"
       }
     ]);
   });

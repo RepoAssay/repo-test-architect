@@ -154,6 +154,7 @@ export interface ProjectStats {
     evidenceStrengths: Record<string, number>;
     evidenceKinds: Record<string, number>;
     evidenceUsage: Record<string, number>;
+    evidenceViaUsage: Record<string, number>;
   };
   adapters: Array<{
     adapterId: string;
@@ -185,7 +186,7 @@ export interface ProjectPlanItem {
   rationale: string[];
   sourceSignals: string[];
   existingTestPaths: string[];
-  existingTestEvidence?: Array<{ testPath: string; kind: string; strength: string; usage?: "called" | "asserted" }>;
+  existingTestEvidence?: Array<{ testPath: string; kind: string; strength: string; usage?: "called" | "asserted"; viaUsage?: "called" | "asserted" }>;
 }
 
 export interface ProjectCandidate {
@@ -205,7 +206,7 @@ export interface ProjectCandidate {
   signals: string[];
   rationale: string[];
   existingTestPaths: string[];
-  existingTestEvidence?: Array<{ testPath: string; kind: string; strength: string; usage?: "called" | "asserted" }>;
+  existingTestEvidence?: Array<{ testPath: string; kind: string; strength: string; usage?: "called" | "asserted"; viaUsage?: "called" | "asserted" }>;
 }
 
 export interface ProjectAuditSummaryEntry {
