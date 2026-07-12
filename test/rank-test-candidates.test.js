@@ -20,7 +20,8 @@ describe("test candidate ranking", () => {
       {
         testPath: "src/deckParser.test.ts",
         kind: "direct-relative-import",
-        strength: "direct"
+        strength: "direct",
+        usage: "called"
       }
     ]);
   });

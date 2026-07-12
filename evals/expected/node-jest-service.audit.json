@@ -79,7 +79,8 @@
         {
           "testPath": "src/invoiceParser.spec.ts",
           "kind": "direct-relative-import",
-          "strength": "direct"
+          "strength": "direct",
+          "usage": "called"
         }
       ]
     }
@@ -112,7 +113,8 @@
         {
           "testPath": "src/invoiceParser.spec.ts",
           "kind": "direct-relative-import",
-          "strength": "direct"
+          "strength": "direct",
+          "usage": "called"
         }
       ]
     },

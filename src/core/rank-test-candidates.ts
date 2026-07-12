@@ -13,7 +13,7 @@ export interface CandidateRankingItem {
   signals: string[];
   rationale: string[];
   existingTestPaths: string[];
-  existingTestEvidence?: Array<{ testPath: string; kind: string; strength: string }>;
+  existingTestEvidence?: Array<{ testPath: string; kind: string; strength: string; usage?: "called" }>;
 }
 
 export interface CandidateRanking {
