@@ -172,8 +172,11 @@ Run the auditor regression tests:
 
 ```powershell
 npm test
+npm run alpha:check
 npm run release:check
 ```
+
+Use `alpha:check` for the private audit milestone. `release:check` additionally covers packaging and installed-binary readiness.
 
 The CI workflow runs `npm run release:check` on Ubuntu, macOS, and Windows for pushes to `master` and `main`, and on pull requests.
 

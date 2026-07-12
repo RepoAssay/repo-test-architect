@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import { describe, it } from "node:test";
 import { releaseChecks } from "../scripts/check-release-readiness.js";
+import { alphaChecks } from "../scripts/check-alpha-readiness.js";
 
 const packageJson = JSON.parse(fs.readFileSync("package.json", "utf8"));
 
@@ -75,7 +76,23 @@ describe("package manifest", () => {
     assert.ok(packageJson.scripts["pack:check"]);
     assert.ok(packageJson.scripts["bin:check"]);
     assert.equal(packageJson.scripts["installed-package:check"], "node ./scripts/check-installed-package.js");
+    assert.equal(packageJson.scripts["alpha:check"], "node ./scripts/check-alpha-readiness.js");
     assert.ok(packageJson.scripts["release:check"]);
+  });
+
+  it("keeps the private-alpha gate focused on audit trust rather than package publishing", () => {
+    const alphaRunner = fs.readFileSync("scripts/check-alpha-readiness.js", "utf8");
+
+    assert.deepEqual(alphaChecks, [
+      "test",
+      "eval:check",
+      "model-consistency:check",
+      "demo:check",
+      "mcp:smoke",
+    ]);
+    assert.match(alphaRunner, /Alpha readiness check passed/);
+    assert.ok(!alphaChecks.includes("pack:check"));
+    assert.ok(!alphaChecks.includes("installed-package:check"));
   });
 
   it("keeps release readiness checks aligned with public demo verification", () => {
