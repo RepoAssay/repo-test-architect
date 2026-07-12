@@ -76,6 +76,7 @@ describe("model consistency runner", () => {
         ["node-jest-service-plan", []],
         ["node-no-tests-yet-plan", []],
         ["node-vitest-basic-auth-explanation", []],
+        ["node-vitest-basic-deck-explanation", []],
         ["node-vitest-basic-plan", []],
         ["node-vitest-basic-ranking", []],
         ["polyglot-project-findings", []],
@@ -110,10 +111,10 @@ describe("model consistency runner", () => {
     assert.equal(summary.schemaVersion, "model-consistency-summary/v1");
     assert.equal(summary.profileName, "deterministic-baseline");
     assert.deepEqual(summary.summary, {
-      scenarioCount: 27,
-      passedScenarioCount: 27,
+      scenarioCount: 28,
+      passedScenarioCount: 28,
       failedScenarioCount: 0,
-      checkedFieldCount: 220,
+      checkedFieldCount: 226,
       failureCount: 0
     });
     assert.equal(summary.scenarios[4].scenarioId, "node-jest-service-plan");
@@ -131,8 +132,8 @@ describe("model consistency runner", () => {
     assert.equal(comparison.baselineProfile, "deterministic-baseline");
     assert.equal(comparison.candidateProfile, "local-small");
     assert.deepEqual(comparison.summary, {
-      scenarioCount: 27,
-      alignedScenarioCount: 27,
+      scenarioCount: 28,
+      alignedScenarioCount: 28,
       driftedScenarioCount: 0,
       missingScenarioCount: 0,
       unexpectedScenarioCount: 0,
@@ -174,12 +175,12 @@ describe("model consistency runner", () => {
     const comparison = compareModelConsistencySummaries(baseline, candidate);
 
     assert.deepEqual(comparison.summary, {
-      scenarioCount: 28,
-      alignedScenarioCount: 25,
+      scenarioCount: 29,
+      alignedScenarioCount: 26,
       driftedScenarioCount: 1,
       missingScenarioCount: 1,
       unexpectedScenarioCount: 1,
-      checkedFieldDelta: -65,
+      checkedFieldDelta: -71,
       failureDelta: 3
     });
     assert.deepEqual(
@@ -192,6 +193,7 @@ describe("model consistency runner", () => {
         ["node-jest-service-plan", "aligned"],
         ["node-no-tests-yet-plan", "aligned"],
         ["node-vitest-basic-auth-explanation", "aligned"],
+        ["node-vitest-basic-deck-explanation", "aligned"],
         ["node-vitest-basic-plan", "aligned"],
         ["node-vitest-basic-ranking", "aligned"],
         ["polyglot-project-findings", "aligned"],

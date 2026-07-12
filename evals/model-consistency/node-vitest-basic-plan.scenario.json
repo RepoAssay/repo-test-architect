@@ -32,6 +32,11 @@
       "reason": "The highest priority plan item should remain the deckParser edge-case extension."
     },
     {
+      "path": "items[0].existingTestEvidence[0].usage",
+      "expected": "asserted",
+      "reason": "The plan must preserve deterministic proof that the directly imported deck parser call participates in an assertion."
+    },
+    {
       "path": "items[1].id",
       "expected": "add-test:src/authService.ts",
       "reason": "The authService unit test remains the next highest value plan item."
