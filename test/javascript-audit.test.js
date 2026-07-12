@@ -570,7 +570,7 @@ export function auditKotlin(files) {
     );
     fs.writeFileSync(
       path.join(root, "test", "http-behavior.test.ts"),
-      `import { createError as makeError, parseCookie, unused } from "../src";\nmakeError("boom");\nparseCookie("a=b");\n`
+      `import { createError as makeError, parseCookie, unused } from "../src";\nexpect(makeError("boom")).toBeInstanceOf(Error);\nparseCookie("a=b");\n`
     );
 
     const audit = auditJavaScriptRepo(root);
@@ -590,9 +590,14 @@ export function auditKotlin(files) {
       {
         testPath: "test/http-behavior.test.ts",
         kind: "referenced-relative-reexport",
-        strength: "referenced"
+        strength: "referenced",
+        usage: "asserted"
       }
     ]);
+    assert.equal(
+      audit.coveredButRisky.find((target) => target.path === "src/cookie.ts").existingTestEvidence[0].usage,
+      "called"
+    );
   });
 
   it("matches exact self-package imports through the source entrypoint", (t) => {

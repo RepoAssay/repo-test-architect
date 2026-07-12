@@ -160,6 +160,7 @@ Re-audit after call/assertion-aware evidence (`2026-07-12`):
 - evidence now separates 10 asserted and 23 called direct-import relationships from 347 structural relationships without proven call/assertion usage
 - the structural pool contains 282 bounded-indirect, 54 referenced-barrel, and six filename-convention links; those remain useful reachability evidence but are not promoted to asserted coverage
 - the stable candidate counts show that the new usage dimension improves review precision without silently reclassifying audit targets
+- after propagating usage through one-hop relative barrels, the same evidence graph reports 21 asserted and 65 called relationships, up from 10 asserted and 23 called; 53 of 54 referenced-barrel links now carry usage proof while candidate counts remain unchanged
 
 ## `honojs/hono` Audit
 
