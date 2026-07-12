@@ -117,7 +117,8 @@
                 ]
               },
               "strength": { "enum": ["naming", "direct", "referenced", "indirect"] },
-              "usage": { "enum": ["called", "asserted"] }
+              "usage": { "enum": ["called", "asserted"] },
+              "viaUsage": { "enum": ["called", "asserted"] }
             }
           }
         }

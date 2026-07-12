@@ -644,9 +644,9 @@ function findExistingTestEvidence(
   sourcePath: string,
   testFiles: FileSnapshot[],
   moduleFiles: FileSnapshot[],
-  boundedTransitiveImports: Map<string, Set<string>>,
+  boundedTransitiveImports: Map<string, Map<string, "called" | "asserted" | undefined>>,
   packageEntry: { packageName?: string; packageEntryFile?: FileSnapshot; packageSubpathEntries: Map<string, FileSnapshot>; pathAliasEntries: Map<string, FileSnapshot> }
-): Array<{ testPath: string; kind: string; strength: "naming" | "direct" | "referenced" | "indirect"; usage?: "called" | "asserted" }> {
+): Array<{ testPath: string; kind: string; strength: "naming" | "direct" | "referenced" | "indirect"; usage?: "called" | "asserted"; viaUsage?: "called" | "asserted" }> {
   const normalized = normalizePath(sourcePath);
   const sourceBase = basenameWithoutExtension(normalized);
   const sourceSegments = normalized.split("/");
@@ -680,7 +680,11 @@ function findExistingTestEvidence(
       if (pathAliasUsage) return [{ testPath: testFile.path, kind: "tsconfig-path-import", strength: "direct" as const, ...(pathAliasUsage !== "imported" ? { usage: pathAliasUsage } : {}) }];
       const packageEntryUsage = getPackageEntryImportUsage(testFile, normalized, moduleFiles, packageEntry);
       if (packageEntryUsage) return [{ testPath: testFile.path, kind: "package-entry-import", strength: "referenced" as const, ...(packageEntryUsage !== "referenced" ? { usage: packageEntryUsage } : {}) }];
-      if (boundedTransitiveImports.get(testFile.path)?.has(normalized)) return [{ testPath: testFile.path, kind: "bounded-dependency", strength: "indirect" as const }];
+      const transitiveImports = boundedTransitiveImports.get(testFile.path);
+      if (transitiveImports?.has(normalized)) {
+        const viaUsage = transitiveImports.get(normalized);
+        return [{ testPath: testFile.path, kind: "bounded-dependency", strength: "indirect" as const, ...(viaUsage ? { viaUsage } : {}) }];
+      }
       if (filenameMatch) return [{ testPath: testFile.path, kind: "filename-convention", strength: "naming" as const }];
       return [];
     });
@@ -711,39 +715,44 @@ function getDirectRelativeImportUsage(testFile: FileSnapshot, sourcePath: string
   ) ? "imported" : undefined;
 }
 
-function collectBoundedTransitiveImports(testFiles: FileSnapshot[], moduleFiles: FileSnapshot[], pathAliasEntries: Map<string, FileSnapshot>): Map<string, Set<string>> {
+function collectBoundedTransitiveImports(testFiles: FileSnapshot[], moduleFiles: FileSnapshot[], pathAliasEntries: Map<string, FileSnapshot>): Map<string, Map<string, "called" | "asserted" | undefined>> {
   return new Map(
     testFiles.map((testFile) => [testFile.path, collectBoundedTransitiveImportsForTest(testFile, moduleFiles, pathAliasEntries)])
   );
 }
 
-function collectBoundedTransitiveImportsForTest(testFile: FileSnapshot, moduleFiles: FileSnapshot[], pathAliasEntries: Map<string, FileSnapshot>): Set<string> {
-  const queue: Array<{ file: FileSnapshot; depth: number }> = [];
-  for (const { specifier, usedImportedNames } of collectModuleImports(testFile.content)) {
+function collectBoundedTransitiveImportsForTest(testFile: FileSnapshot, moduleFiles: FileSnapshot[], pathAliasEntries: Map<string, FileSnapshot>): Map<string, "called" | "asserted" | undefined> {
+  const queue: Array<{ file: FileSnapshot; depth: number; viaUsage?: "called" | "asserted" }> = [];
+  for (const { specifier, usedImportedNames, calledImportedNames, assertedImportedNames } of collectModuleImports(testFile.content)) {
     const file = findImportedModuleFile(testFile.path, specifier, moduleFiles, pathAliasEntries);
     if (!file) continue;
-    queue.push({ file, depth: 0 });
+    const viaUsage = assertedImportedNames.size > 0 ? "asserted" : calledImportedNames.size > 0 ? "called" : undefined;
+    queue.push({ file, depth: 0, viaUsage });
     for (const reExport of findImportedReExportFiles(file, usedImportedNames, moduleFiles)) {
-      queue.push({ file: reExport, depth: 1 });
+      queue.push({ file: reExport, depth: 1, viaUsage });
     }
   }
-  const visited = new Set<string>();
+  const visited = new Map<string, "called" | "asserted" | undefined>();
 
   while (queue.length > 0) {
     const current = queue.shift();
     if (!current) break;
-    const { file, depth } = current;
-    if (visited.has(file.path)) continue;
-    visited.add(file.path);
+    const { file, depth, viaUsage } = current;
+    if (visited.has(file.path) && usageRank(visited.get(file.path)) >= usageRank(viaUsage)) continue;
+    visited.set(file.path, viaUsage);
     if (depth >= MAX_TRANSITIVE_SOURCE_DEPTH) continue;
 
     for (const specifier of collectRuntimeDependencySpecifiers(file.content)) {
       const dependency = findImportedModuleFile(file.path, specifier, moduleFiles, pathAliasEntries);
-      if (dependency && !visited.has(dependency.path)) queue.push({ file: dependency, depth: depth + 1 });
+      if (dependency) queue.push({ file: dependency, depth: depth + 1, viaUsage });
     }
   }
 
   return visited;
+}
+
+function usageRank(usage: "called" | "asserted" | undefined): number {
+  return usage === "asserted" ? 2 : usage === "called" ? 1 : 0;
 }
 
 function findImportedModuleFile(

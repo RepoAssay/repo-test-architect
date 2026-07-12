@@ -47,7 +47,8 @@ describe("project stats", () => {
       },
       evidenceStrengths: {},
       evidenceKinds: {},
-      evidenceUsage: {}
+      evidenceUsage: {},
+      evidenceViaUsage: {}
     });
     assert.deepEqual(stats.adapters, [
       { adapterId: "javascript", projectCount: 1 },
@@ -63,6 +64,7 @@ describe("project stats", () => {
     assert.deepEqual(stats.distributions.evidenceStrengths, { direct: 1 });
     assert.deepEqual(stats.distributions.evidenceKinds, { "direct-relative-import": 1 });
     assert.deepEqual(stats.distributions.evidenceUsage, { asserted: 1 });
+    assert.deepEqual(stats.distributions.evidenceViaUsage, {});
   });
 
   it("separates audited and unsupported source file counts", () => {

@@ -31,6 +31,7 @@ It contains:
 - structured `signals`
 - optional `existingTestEvidence` entries for adapters that can explain each matched test path, including a deterministic evidence `kind` and `strength`
 - optional evidence `usage` when the adapter can prove more than a structural relationship; JavaScript/TypeScript emits `called` for named bindings invoked through direct imports, one-hop relative barrels, `tsconfig` aliases, or declared package entry/subpath imports and `asserted` when the call or its assigned result is passed to `expect`
+- optional `viaUsage` for bounded-indirect evidence records whether the test called or asserted the imported entrypoint that reaches the dependency; it does not claim that the indirect dependency itself was called or asserted
 
 The JavaScript/TypeScript adapter currently emits these evidence strengths:
 
@@ -492,7 +493,7 @@ It contains:
 - target kind distribution
 - risk level distribution
 - emitted signal distribution
-- existing-test evidence strength, evidence kind, and call/assertion usage distributions
+- existing-test evidence strength, evidence kind, direct call/assertion usage, and bounded-indirect entrypoint usage distributions
 - audited adapter usage counts
 
 ## Changed-Only Flow

@@ -61,7 +61,8 @@
         {
           "testPath": "src/routes/userRoutes.test.ts",
           "kind": "bounded-dependency",
-          "strength": "indirect"
+          "strength": "indirect",
+          "viaUsage": "called"
         }
       ]
     },
@@ -92,7 +93,8 @@
         {
           "testPath": "src/routes/userRoutes.test.ts",
           "kind": "bounded-dependency",
-          "strength": "indirect"
+          "strength": "indirect",
+          "viaUsage": "called"
         }
       ]
     }
@@ -125,7 +127,8 @@
         {
           "testPath": "src/routes/userRoutes.test.ts",
           "kind": "bounded-dependency",
-          "strength": "indirect"
+          "strength": "indirect",
+          "viaUsage": "called"
         }
       ]
     },
@@ -156,7 +159,8 @@
         {
           "testPath": "src/routes/userRoutes.test.ts",
           "kind": "bounded-dependency",
-          "strength": "indirect"
+          "strength": "indirect",
+          "viaUsage": "called"
         }
       ]
     }

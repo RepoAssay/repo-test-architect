@@ -648,7 +648,11 @@ function findExistingTestEvidence(sourcePath, testFiles, moduleFiles, boundedTra
       if (pathAliasUsage) return [{ testPath: testFile.path, kind: "tsconfig-path-import", strength: "direct", ...(pathAliasUsage !== "imported" ? { usage: pathAliasUsage } : {}) }];
       const packageEntryUsage = getPackageEntryImportUsage(testFile, normalized, moduleFiles, packageEntry);
       if (packageEntryUsage) return [{ testPath: testFile.path, kind: "package-entry-import", strength: "referenced", ...(packageEntryUsage !== "referenced" ? { usage: packageEntryUsage } : {}) }];
-      if (boundedTransitiveImports.get(testFile.path)?.has(normalized)) return [{ testPath: testFile.path, kind: "bounded-dependency", strength: "indirect" }];
+      const transitiveImports = boundedTransitiveImports.get(testFile.path);
+      if (transitiveImports?.has(normalized)) {
+        const viaUsage = transitiveImports.get(normalized);
+        return [{ testPath: testFile.path, kind: "bounded-dependency", strength: "indirect", ...(viaUsage ? { viaUsage } : {}) }];
+      }
       if (filenameMatch) return [{ testPath: testFile.path, kind: "filename-convention", strength: "naming" }];
       return [];
     });
@@ -677,29 +681,34 @@ function collectBoundedTransitiveImports(testFiles, moduleFiles, pathAliasEntrie
 
 function collectBoundedTransitiveImportsForTest(testFile, moduleFiles, pathAliasEntries) {
   const queue = [];
-  for (const { specifier, usedImportedNames } of collectModuleImports(testFile.content)) {
+  for (const { specifier, usedImportedNames, calledImportedNames, assertedImportedNames } of collectModuleImports(testFile.content)) {
     const file = findImportedModuleFile(testFile.path, specifier, moduleFiles, pathAliasEntries);
     if (!file) continue;
-    queue.push({ file, depth: 0 });
+    const viaUsage = assertedImportedNames.size > 0 ? "asserted" : calledImportedNames.size > 0 ? "called" : undefined;
+    queue.push({ file, depth: 0, viaUsage });
     for (const reExport of findImportedReExportFiles(file, usedImportedNames, moduleFiles)) {
-      queue.push({ file: reExport, depth: 1 });
+      queue.push({ file: reExport, depth: 1, viaUsage });
     }
   }
-  const visited = new Set();
+  const visited = new Map();
 
   while (queue.length > 0) {
-    const { file, depth } = queue.shift();
-    if (visited.has(file.path)) continue;
-    visited.add(file.path);
+    const { file, depth, viaUsage } = queue.shift();
+    if (visited.has(file.path) && usageRank(visited.get(file.path)) >= usageRank(viaUsage)) continue;
+    visited.set(file.path, viaUsage);
     if (depth >= MAX_TRANSITIVE_SOURCE_DEPTH) continue;
 
     for (const specifier of collectRuntimeDependencySpecifiers(file.content)) {
       const dependency = findImportedModuleFile(file.path, specifier, moduleFiles, pathAliasEntries);
-      if (dependency && !visited.has(dependency.path)) queue.push({ file: dependency, depth: depth + 1 });
+      if (dependency) queue.push({ file: dependency, depth: depth + 1, viaUsage });
     }
   }
 
   return visited;
+}
+
+function usageRank(usage) {
+  return usage === "asserted" ? 2 : usage === "called" ? 1 : 0;
 }
 
 function findImportedModuleFile(importerPath, specifier, moduleFiles, pathAliasEntries) {
