@@ -68,7 +68,7 @@
     "distributions": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["confidence", "testFrameworks", "testCommands", "targetKinds", "riskLevels", "signals", "evidenceStrengths", "evidenceKinds"],
+      "required": ["confidence", "testFrameworks", "testCommands", "targetKinds", "riskLevels", "signals", "evidenceStrengths", "evidenceKinds", "evidenceUsage"],
       "properties": {
         "confidence": { "$ref": "#/$defs/countRecord" },
         "testFrameworks": { "$ref": "#/$defs/countRecord" },
@@ -77,7 +77,8 @@
         "riskLevels": { "$ref": "#/$defs/countRecord" },
         "signals": { "$ref": "#/$defs/countRecord" },
         "evidenceStrengths": { "$ref": "#/$defs/countRecord" },
-        "evidenceKinds": { "$ref": "#/$defs/countRecord" }
+        "evidenceKinds": { "$ref": "#/$defs/countRecord" },
+        "evidenceUsage": { "$ref": "#/$defs/countRecord" }
       }
     },
     "adapters": {

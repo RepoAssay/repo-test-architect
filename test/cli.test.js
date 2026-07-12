@@ -672,6 +672,7 @@ describe("CLI", () => {
     assert.match(output, /\[add-test:src\/authService\.ts\]/);
     assert.match(output, /extend-test: deckParser/);
     assert.match(output, /Evidence strengths: direct: 1/);
+    assert.match(output, /Evidence usage: asserted: 1/);
   });
 
   it("emits a JSON test plan", () => {
@@ -748,6 +749,7 @@ describe("CLI", () => {
     assert.match(output, /^# Candidate Ranking/);
     assert.match(output, /deckParser \[src\/deckParser\.ts\]/);
     assert.match(output, /Evidence strengths: direct: 1/);
+    assert.match(output, /Evidence usage: asserted: 1/);
   });
 
   it("summarizes long existing-test lists in markdown while preserving JSON evidence", () => {

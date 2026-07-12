@@ -584,7 +584,7 @@ function renderMarkdownProjectCandidateRanking(ranking) {
     for (const candidate of ranking.candidates) {
       const rationale = candidate.rationale.map(trimTrailingPeriod).join(". ");
       const evidenceStrengths = candidate.existingTestEvidence
-        ? ` Evidence strengths: ${formatEvidenceStrengths(candidate.existingTestEvidence)}.`
+        ? ` Evidence strengths: ${formatEvidenceStrengths(candidate.existingTestEvidence)}.${formatEvidenceUsage(candidate.existingTestEvidence) ? ` Evidence usage: ${formatEvidenceUsage(candidate.existingTestEvidence)}.` : ""}`
         : "";
       lines.push(
         `- ${candidate.projectRoot}: ${candidate.target} [${candidate.projectTargetId}] (${candidate.category}, ${candidate.testLevel}, priority ${candidate.priority}, risk reduction ${candidate.riskReductionScore}/10, maintenance ${candidate.maintenanceCost}/10). ${rationale}.${evidenceStrengths}`
@@ -628,7 +628,7 @@ function renderMarkdownProjectTestPlan(plan) {
     for (const item of plan.items) {
       const rationale = item.rationale.map(trimTrailingPeriod).join(". ");
       const evidenceStrengths = item.existingTestEvidence
-        ? ` Evidence strengths: ${formatEvidenceStrengths(item.existingTestEvidence)}.`
+        ? ` Evidence strengths: ${formatEvidenceStrengths(item.existingTestEvidence)}.${formatEvidenceUsage(item.existingTestEvidence) ? ` Evidence usage: ${formatEvidenceUsage(item.existingTestEvidence)}.` : ""}`
         : "";
       lines.push(
         `- ${item.projectRoot}: ${item.action}: ${item.target} [${item.projectItemId}] (${item.testLevel}, priority ${item.priority}, risk reduction ${item.riskReductionScore}/10, maintenance ${item.maintenanceCost}/10). ${rationale}.${evidenceStrengths}`
@@ -731,6 +731,7 @@ function renderMarkdownProjectStats(stats) {
   lines.push(`- Signals: ${formatRecord(stats.distributions.signals)}`);
   lines.push(`- Evidence strengths: ${formatRecord(stats.distributions.evidenceStrengths)}`);
   lines.push(`- Evidence kinds: ${formatRecord(stats.distributions.evidenceKinds)}`);
+  lines.push(`- Evidence usage: ${formatRecord(stats.distributions.evidenceUsage)}`);
   lines.push("");
   lines.push("## Adapters");
   lines.push(`- ${stats.adapters.map((adapter) => `${adapter.adapterId}: ${adapter.projectCount}`).join(", ") || "none detected"}`);
@@ -791,7 +792,7 @@ function renderMarkdownPlan(plan) {
       const existingTests =
         item.existingTestPaths.length > 0 ? ` Existing tests: ${formatExistingTestPaths(item.existingTestPaths)}.` : "";
       const evidenceStrengths = item.existingTestEvidence
-        ? ` Evidence strengths: ${formatEvidenceStrengths(item.existingTestEvidence)}.`
+        ? ` Evidence strengths: ${formatEvidenceStrengths(item.existingTestEvidence)}.${formatEvidenceUsage(item.existingTestEvidence) ? ` Evidence usage: ${formatEvidenceUsage(item.existingTestEvidence)}.` : ""}`
         : "";
       const rationale = item.rationale.map(trimTrailingPeriod).join(". ");
       lines.push(
@@ -822,6 +823,7 @@ function renderMarkdownExplanation(explanation) {
   lines.push(`- Signals: ${formatList(explanation.signals)}`);
   lines.push(`- Existing tests: ${formatExistingTestPaths(explanation.existingTestPaths)}`);
   lines.push(`- Evidence strengths: ${formatEvidenceStrengths(explanation.existingTestEvidence ?? [])}`);
+  lines.push(`- Evidence usage: ${formatEvidenceUsage(explanation.existingTestEvidence ?? []) || "none detected"}`);
   lines.push("");
   lines.push("## Rationale");
 
@@ -863,7 +865,7 @@ function renderMarkdownRanking(ranking) {
       const existingTests =
         candidate.existingTestPaths.length > 0 ? ` Existing tests: ${formatExistingTestPaths(candidate.existingTestPaths)}.` : "";
       const evidenceStrengths = candidate.existingTestEvidence
-        ? ` Evidence strengths: ${formatEvidenceStrengths(candidate.existingTestEvidence)}.`
+        ? ` Evidence strengths: ${formatEvidenceStrengths(candidate.existingTestEvidence)}.${formatEvidenceUsage(candidate.existingTestEvidence) ? ` Evidence usage: ${formatEvidenceUsage(candidate.existingTestEvidence)}.` : ""}`
         : "";
       const rationale = candidate.rationale.map(trimTrailingPeriod).join(". ");
       lines.push(
@@ -921,6 +923,17 @@ function formatEvidenceStrengths(evidence) {
     .join(", ");
 }
 
+function formatEvidenceUsage(evidence) {
+  const counts = new Map();
+  for (const item of evidence) {
+    if (item.usage) counts.set(item.usage, (counts.get(item.usage) ?? 0) + 1);
+  }
+  return ["asserted", "called"]
+    .filter((usage) => counts.has(usage))
+    .map((usage) => `${usage}: ${counts.get(usage)}`)
+    .join(", ");
+}
+
 function formatRecord(record) {
   const entries = Object.entries(record);
   return entries.length > 0 ? entries.map(([key, count]) => `${key}: ${count}`).join(", ") : "none detected";
@@ -945,7 +958,7 @@ function formatTarget(target) {
   const existingTests =
     existingTestPaths.length > 0 ? `; existing tests: ${formatExistingTestPaths(existingTestPaths)}` : "";
   const evidenceStrengths = target.existingTestEvidence?.length
-    ? `; evidence strengths: ${formatEvidenceStrengths(target.existingTestEvidence)}`
+    ? `; evidence strengths: ${formatEvidenceStrengths(target.existingTestEvidence)}${formatEvidenceUsage(target.existingTestEvidence) ? `; evidence usage: ${formatEvidenceUsage(target.existingTestEvidence)}` : ""}`
     : "";
 
   return `- ${target.name}: ${target.recommendedTestLevel} test for ${target.kind} (risk reduction ${target.riskReductionScore}/10, maintenance ${target.maintenanceCost}/10; ${reasons.join("; ")}${existingTests}${evidenceStrengths})`;
