@@ -674,7 +674,8 @@ function findExistingTestEvidence(
         testFile.path.startsWith(`${sourceDir}/__tests__/${sourceBase}.`);
       const directImportUsage = getDirectRelativeImportUsage(testFile, normalized);
       if (directImportUsage) return [{ testPath: testFile.path, kind: "direct-relative-import", strength: "direct" as const, ...(directImportUsage !== "imported" ? { usage: directImportUsage } : {}) }];
-      if (hasOneHopBarrelImport(testFile, normalized, moduleFiles)) return [{ testPath: testFile.path, kind: "referenced-relative-reexport", strength: "referenced" as const }];
+      const barrelUsage = getOneHopBarrelImportUsage(testFile, normalized, moduleFiles);
+      if (barrelUsage) return [{ testPath: testFile.path, kind: "referenced-relative-reexport", strength: "referenced" as const, ...(barrelUsage !== "referenced" ? { usage: barrelUsage } : {}) }];
       if (hasPathAliasImport(testFile, normalized, moduleFiles, packageEntry.pathAliasEntries)) return [{ testPath: testFile.path, kind: "tsconfig-path-import", strength: "direct" as const }];
       if (hasPackageEntryImport(testFile, normalized, moduleFiles, packageEntry)) return [{ testPath: testFile.path, kind: "package-entry-import", strength: "referenced" as const }];
       if (boundedTransitiveImports.get(testFile.path)?.has(normalized)) return [{ testPath: testFile.path, kind: "bounded-dependency", strength: "indirect" as const }];
@@ -777,14 +778,18 @@ function findRelativeModuleFile(
   );
 }
 
-function hasOneHopBarrelImport(testFile: FileSnapshot, sourcePath: string, moduleFiles: FileSnapshot[]): boolean {
-  return collectModuleImports(testFile.content).some(({ specifier, usedImportedNames }) => {
-    if (!specifier.startsWith(".")) return false;
+function getOneHopBarrelImportUsage(testFile: FileSnapshot, sourcePath: string, moduleFiles: FileSnapshot[]): "referenced" | "called" | "asserted" | undefined {
+  for (const { specifier, usedImportedNames, calledImportedNames, assertedImportedNames } of collectModuleImports(testFile.content)) {
+    if (!specifier.startsWith(".")) continue;
     const barrelFile = moduleFiles.find((file) => moduleSpecifierTargetsSource(testFile.path, specifier, file.path));
-    if (!barrelFile || barrelFile.path === sourcePath) return false;
+    if (!barrelFile || barrelFile.path === sourcePath) continue;
     const sourceFile = moduleFiles.find((file) => file.path === sourcePath);
-    return sourceFile ? barrelExportsImportedNames(barrelFile, sourceFile, usedImportedNames) : false;
-  });
+    if (!sourceFile || !barrelExportsImportedNames(barrelFile, sourceFile, usedImportedNames)) continue;
+    if (barrelExportsImportedNames(barrelFile, sourceFile, assertedImportedNames)) return "asserted";
+    if (barrelExportsImportedNames(barrelFile, sourceFile, calledImportedNames)) return "called";
+    return "referenced";
+  }
+  return undefined;
 }
 
 function hasPathAliasImport(
