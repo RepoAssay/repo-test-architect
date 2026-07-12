@@ -15,6 +15,7 @@ Implemented:
 - call- and assertion-aware provenance propagated through one-hop relative barrel exports
 - call- and assertion-aware provenance propagated through `tsconfig` aliases and declared package entry/subpath imports
 - conservative bounded-indirect `viaUsage` provenance that records called/asserted entrypoints without upgrading dependency usage claims
+- default-import and namespace-member call/assertion evidence for JavaScript/TypeScript ES modules
 - optional test-evidence provenance propagated from audits into direct and project-level explanations, candidate rankings, test plans, and repository-wide project stats distributions
 - concise Markdown evidence-strength counts for audits, explanations, direct and project rankings, and direct and project plans
 - Markdown and project-stats evidence-usage counts that distinguish called from asserted direct imports

@@ -1117,6 +1117,9 @@ function collectCalledImportClauseNames(clause: string, contentWithoutImports: s
       if (imported && local && isIdentifierCalled(contentWithoutImports, local)) names.add(imported);
     }
   }
+  const defaultImport = clause.split(",", 1)[0]?.trim();
+  if (defaultImport && !defaultImport.startsWith("{") && !defaultImport.startsWith("*") && isIdentifierCalled(contentWithoutImports, defaultImport)) names.add("default");
+  collectNamespaceUsageNames(clause, contentWithoutImports, isIdentifierCalled, names);
   return names;
 }
 
@@ -1138,7 +1141,25 @@ function collectAssertedImportClauseNames(clause: string, contentWithoutImports:
       if (imported && local && isIdentifierAsserted(contentWithoutImports, local)) names.add(imported);
     }
   }
+  const defaultImport = clause.split(",", 1)[0]?.trim();
+  if (defaultImport && !defaultImport.startsWith("{") && !defaultImport.startsWith("*") && isIdentifierAsserted(contentWithoutImports, defaultImport)) names.add("default");
+  collectNamespaceUsageNames(clause, contentWithoutImports, isIdentifierAsserted, names);
   return names;
+}
+
+function collectNamespaceUsageNames(
+  clause: string,
+  content: string,
+  predicate: (content: string, identifier: string) => boolean,
+  names: Set<string>
+): void {
+  const namespace = clause.match(/\*\s+as\s+([A-Za-z_$][\w$]*)/)?.[1];
+  if (!namespace) return;
+  const propertyPattern = new RegExp(`\\b${escapeRegExp(namespace)}\\.([A-Za-z_$][\\w$]*)`, "g");
+  for (const match of content.matchAll(propertyPattern)) {
+    const property = match[1];
+    if (property && predicate(content, `${namespace}.${property}`)) names.add(property);
+  }
 }
 
 function collectAssertedRequireNames(clause: string, contentWithoutImports: string): Set<string> {
@@ -1151,7 +1172,7 @@ function collectAssertedRequireNames(clause: string, contentWithoutImports: stri
 }
 
 function isIdentifierAsserted(content: string, identifier: string): boolean {
-  const escaped = identifier.replace(/[$]/g, "\\$");
+  const escaped = escapeRegExp(identifier);
   if (new RegExp(`\\bexpect\\s*\\(\\s*(?:\\(\\s*\\)\\s*=>\\s*)?(?:await\\s+)?${escaped}\\s*\\(`).test(content)) return true;
   const assignmentPattern = new RegExp(`\\b(?:const|let|var)\\s+([A-Za-z_$][\\w$]*)\\s*=\\s*(?:await\\s+)?${escaped}\\s*\\(`, "g");
   for (const match of content.matchAll(assignmentPattern)) {
@@ -1162,7 +1183,11 @@ function isIdentifierAsserted(content: string, identifier: string): boolean {
 }
 
 function isIdentifierCalled(content: string, identifier: string): boolean {
-  return new RegExp(`\\b${identifier.replace(/[$]/g, "\\$")}\\s*\\(`).test(content);
+  return new RegExp(`\\b${escapeRegExp(identifier)}\\s*\\(`).test(content);
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function collectUsedImportClauseNames(clause: string, contentWithoutImports: string): Set<string> {
