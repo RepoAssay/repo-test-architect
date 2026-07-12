@@ -42,7 +42,7 @@ const LANGUAGE_EXTENSIONS = new Map([
  * @property {{ projectCount: number, auditedProjectCount: number, unsupportedProjectCount: number, auditCoverage: "complete" | "partial" | "none" }} summary
  * @property {{ total: number, audited: number, unsupported: number, byLanguage: Record<string, { total: number, audited: number, unsupported: number }> }} sourceFiles
  * @property {{ untestedCandidateCount: number, coveredButRiskyCount: number, skippedTargetCount: number, riskCount: number, blockerCount: number }} counts
- * @property {{ confidence: Record<string, number>, testFrameworks: Record<string, number>, testCommands: Record<string, number>, targetKinds: Record<string, number>, riskLevels: Record<string, number>, signals: Record<string, number> }} distributions
+ * @property {{ confidence: Record<string, number>, testFrameworks: Record<string, number>, testCommands: Record<string, number>, targetKinds: Record<string, number>, riskLevels: Record<string, number>, signals: Record<string, number>, evidenceStrengths: Record<string, number>, evidenceKinds: Record<string, number> }} distributions
  * @property {{ adapterId: string, projectCount: number }[]} adapters
  */
 
@@ -66,6 +66,8 @@ export function collectProjectStats(projectAudits) {
   const targetKinds = {};
   const riskLevels = {};
   const signals = {};
+  const evidenceStrengths = {};
+  const evidenceKinds = {};
   const adapters = {};
   const sourceFiles = createSourceFileStats();
 
@@ -108,6 +110,11 @@ export function collectProjectStats(projectAudits) {
       for (const signal of target.signals ?? []) {
         increment(signals, signal);
       }
+
+      for (const evidence of target.existingTestEvidence ?? []) {
+        increment(evidenceStrengths, evidence.strength);
+        increment(evidenceKinds, evidence.kind);
+      }
     }
   }
 
@@ -135,7 +142,9 @@ export function collectProjectStats(projectAudits) {
       testCommands: sortRecord(testCommands),
       targetKinds: sortRecord(targetKinds),
       riskLevels: sortRecord(riskLevels),
-      signals: sortRecord(signals)
+      signals: sortRecord(signals),
+      evidenceStrengths: sortRecord(evidenceStrengths),
+      evidenceKinds: sortRecord(evidenceKinds)
     },
     adapters: Object.keys(adapters)
       .sort()

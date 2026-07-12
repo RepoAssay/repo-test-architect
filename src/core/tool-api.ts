@@ -151,6 +151,8 @@ export interface ProjectStats {
     targetKinds: Record<string, number>;
     riskLevels: Record<string, number>;
     signals: Record<string, number>;
+    evidenceStrengths: Record<string, number>;
+    evidenceKinds: Record<string, number>;
   };
   adapters: Array<{
     adapterId: string;

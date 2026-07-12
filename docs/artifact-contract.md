@@ -491,6 +491,7 @@ It contains:
 - target kind distribution
 - risk level distribution
 - emitted signal distribution
+- existing-test evidence strength and evidence kind distributions
 - audited adapter usage counts
 
 ## Changed-Only Flow
