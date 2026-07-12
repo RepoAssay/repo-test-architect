@@ -30,7 +30,7 @@ It contains:
 - remaining risks
 - structured `signals`
 - optional `existingTestEvidence` entries for adapters that can explain each matched test path, including a deterministic evidence `kind` and `strength`
-- optional evidence `usage` when the adapter can prove more than a structural relationship; JavaScript/TypeScript currently emits `called` for directly imported named bindings invoked by a test
+- optional evidence `usage` when the adapter can prove more than a structural relationship; JavaScript/TypeScript emits `called` for directly imported named bindings invoked by a test and `asserted` when the call or its assigned result is passed to `expect`
 
 The JavaScript/TypeScript adapter currently emits these evidence strengths:
 

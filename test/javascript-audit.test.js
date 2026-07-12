@@ -496,7 +496,7 @@ export function auditKotlin(files) {
       JSON.stringify({ scripts: { test: "vitest --run" }, devDependencies: { vitest: "latest" } })
     );
 
-    for (const sourcePath of ["src/rules/payment-policy.ts", "src/formatters/index.ts", "src/session.ts"]) {
+    for (const sourcePath of ["src/rules/payment-policy.ts", "src/rules/cart-policy.ts", "src/formatters/index.ts", "src/session.ts"]) {
       fs.writeFileSync(
         path.join(root, sourcePath),
         `export function evaluate(value) {\n  if (value) return "yes";\n  return "no";\n}\n`
@@ -505,11 +505,15 @@ export function auditKotlin(files) {
 
     fs.writeFileSync(
       path.join(root, "test", "checkout-behavior.test.ts"),
-      `import { evaluate as evaluatePayment } from "../src/rules/payment-policy";\nexport { evaluate as formatter } from "../src/formatters";\nevaluatePayment(true);\n`
+      `import { evaluate as evaluatePayment } from "../src/rules/payment-policy";\nexport { evaluate as formatter } from "../src/formatters";\nexpect(evaluatePayment(true)).toBe("yes");\n`
     );
     fs.writeFileSync(
       path.join(root, "test", "login-flow.test.js"),
       `const { evaluate: evaluateSession } = require("../src/session.ts");\nevaluateSession(true);\n`
+    );
+    fs.writeFileSync(
+      path.join(root, "test", "cart-flow.test.ts"),
+      `import { evaluate as evaluateCart } from "../src/rules/cart-policy";\nconst result = evaluateCart(true);\nexpect(result).toBe("yes");\n`
     );
 
     const audit = auditJavaScriptRepo(root);
@@ -518,6 +522,7 @@ export function auditKotlin(files) {
       audit.coveredButRisky.map((target) => `${target.path}:${target.existingTestPaths.join(",")}`),
       [
         "src/formatters/index.ts:test/checkout-behavior.test.ts",
+        "src/rules/cart-policy.ts:test/cart-flow.test.ts",
         "src/rules/payment-policy.ts:test/checkout-behavior.test.ts",
         "src/session.ts:test/login-flow.test.js"
       ]
@@ -526,7 +531,8 @@ export function auditKotlin(files) {
       audit.coveredButRisky.map((target) => [target.path, target.existingTestEvidence[0].usage]),
       [
         ["src/formatters/index.ts", undefined],
-        ["src/rules/payment-policy.ts", "called"],
+        ["src/rules/cart-policy.ts", "asserted"],
+        ["src/rules/payment-policy.ts", "asserted"],
         ["src/session.ts", "called"]
       ]
     );

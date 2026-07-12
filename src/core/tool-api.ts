@@ -184,7 +184,7 @@ export interface ProjectPlanItem {
   rationale: string[];
   sourceSignals: string[];
   existingTestPaths: string[];
-  existingTestEvidence?: Array<{ testPath: string; kind: string; strength: string; usage?: "called" }>;
+  existingTestEvidence?: Array<{ testPath: string; kind: string; strength: string; usage?: "called" | "asserted" }>;
 }
 
 export interface ProjectCandidate {
@@ -204,7 +204,7 @@ export interface ProjectCandidate {
   signals: string[];
   rationale: string[];
   existingTestPaths: string[];
-  existingTestEvidence?: Array<{ testPath: string; kind: string; strength: string; usage?: "called" }>;
+  existingTestEvidence?: Array<{ testPath: string; kind: string; strength: string; usage?: "called" | "asserted" }>;
 }
 
 export interface ProjectAuditSummaryEntry {
