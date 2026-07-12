@@ -23,6 +23,27 @@ The output should be useful even when the user disagrees with a recommendation. 
 
 ## Acceptance Gates
 
+Run the deterministic private-alpha gate with:
+
+```powershell
+npm run alpha:check
+```
+
+This verifies the test suite, golden audit artifacts, model-consistency locks, public demo path, and local MCP transport. Package publishing checks remain part of `release:check`, not the private-alpha gate.
+
+### Current Readiness Verdict
+
+The deterministic gate passes locally. Repo Test Architect is therefore a private-alpha candidate for its explicitly detected and documented JavaScript/TypeScript stacks, subject to human review of the real-repository reports.
+
+This verdict does not mean:
+
+- npm package or public release readiness
+- universal JavaScript test-runner support
+- proof that structural test evidence asserts every important branch
+- native test generation readiness
+
+While repository GitHub Actions are disabled under the temporary $0-budget policy, alpha changes require a passing local `npm run alpha:check` and a PR that records the local-verification exception.
+
 ### Real Repo Audit Reports
 
 - at least three real repositories are audited and summarized in checked-in reports; current progress is tracked in [Real Repository Audit Reports](real-repo-audit-reports.md)

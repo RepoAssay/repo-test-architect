@@ -100,6 +100,7 @@
     "pack:check": "node ./scripts/check-pack-contents.js",
     "bin:check": "node ./scripts/check-bin-entrypoints.js",
     "installed-package:check": "node ./scripts/check-installed-package.js",
+    "alpha:check": "node ./scripts/check-alpha-readiness.js",
     "release:check": "node ./scripts/check-release-readiness.js"
   },
   "keywords": [
