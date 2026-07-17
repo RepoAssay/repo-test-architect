@@ -93,6 +93,7 @@
     "model-consistency:compare": "node ./scripts/compare-model-consistency-summaries.js",
     "model-consistency:compare:profiles": "node ./scripts/compare-model-consistency-summaries.js --baseline-profile deterministic-baseline --candidate-profile local-small",
     "model-consistency:stats": "node ./scripts/collect-model-consistency-stats.js",
+    "validation:repos": "node ./scripts/find-validation-repos.js",
     "demo:check": "node ./scripts/check-demo-script.js",
     "test": "node ./scripts/run-tests.js",
     "smoke": "node ./scripts/check-smoke.js",
