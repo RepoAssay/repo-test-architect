@@ -123,7 +123,7 @@
       "riskReductionScore": 1,
       "maintenanceCost": 3,
       "reason": "Vapor bootstrap and route registration files should be covered through endpoint or application integration tests.",
-      "preferredCoveragePath": "Cover through XCTVapor request tests that exercise registered routes and application configuration."
+      "preferredCoveragePath": "Cover through VaporTesting or XCTVapor request tests that exercise registered routes and application configuration."
     },
     {
       "id": "Sources/App/routes.swift",
@@ -136,7 +136,7 @@
       "riskReductionScore": 1,
       "maintenanceCost": 3,
       "reason": "Vapor bootstrap and route registration files should be covered through endpoint or application integration tests.",
-      "preferredCoveragePath": "Cover through XCTVapor request tests that exercise registered routes and application configuration."
+      "preferredCoveragePath": "Cover through VaporTesting or XCTVapor request tests that exercise registered routes and application configuration."
     },
     {
       "id": "Sources/App/Models/UserResponseDTO.swift",

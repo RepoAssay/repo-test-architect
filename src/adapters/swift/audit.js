@@ -193,6 +193,10 @@ function detectTestFrameworks(files, packageText) {
     frameworks.add("XCTVapor");
   }
 
+  if (/^\s*import\s+VaporTesting\b/m.test(sourceText) || packageText.includes(".product(name: \"VaporTesting\"")) {
+    frameworks.add("VaporTesting");
+  }
+
   if (/^\s*import\s+Testing\b/m.test(sourceText)) {
     frameworks.add("Swift Testing");
   }
@@ -267,6 +271,7 @@ function detectConventions(paths, bazelGraph) {
 
 function detectSetupSignals(paths, packageText, bazelGraph, files) {
   const signals = new Set();
+  const sourceText = files.map((file) => file.content).join("\n");
   if (paths.includes("Package.swift")) signals.add("swift package manager");
   if (paths.some((item) => item.endsWith(".xcodeproj/project.pbxproj"))) signals.add("xcode project");
   if (paths.some(isXcodeWorkspaceDataPath)) signals.add("xcode workspace");
@@ -276,8 +281,10 @@ function detectSetupSignals(paths, packageText, bazelGraph, files) {
   const testPlans = new Set(paths.filter((item) => item.endsWith(".xctestplan")).map(basenameWithoutExtension));
   if (scheme && detectSchemeTestPlan(files, scheme, testPlans)) signals.add("xcode scheme test plan");
   if (packageText.includes("Vapor") || packageText.includes("vapor.git")) signals.add("vapor dependency");
-  if (/MongoKitten|FluentMongoDriver|MongoSwift|mongodb|mongo-driver/i.test(packageText)) signals.add("mongodb dependency");
-  if (packageText.includes(".product(name: \"XCTVapor\"")) signals.add("xctvapor test support");
+  if (/\bFluent\b|fluent(?:-[a-z]+)?\.git|fluent-[a-z]+-driver/i.test(packageText)) signals.add("fluent orm");
+  for (const driver of detectDatabaseDrivers(packageText)) signals.add(`${driver} database driver`);
+  if (packageText.includes(".product(name: \"XCTVapor\"") || /^\s*import\s+XCTVapor\b/m.test(sourceText)) signals.add("xctvapor test support");
+  if (packageText.includes(".product(name: \"VaporTesting\"") || /^\s*import\s+VaporTesting\b/m.test(sourceText)) signals.add("vapor testing support");
   if (/quick\.git|Quick\/Quick|product\(name:\s*"Quick"/i.test(packageText)) signals.add("quick test support");
   if (/nimble\.git|Quick\/Nimble|product\(name:\s*"Nimble"/i.test(packageText)) signals.add("nimble assertion support");
   if (/swift-snapshot-testing|pointfreeco\/swift-snapshot-testing|product\(name:\s*"SnapshotTesting"/i.test(packageText)) signals.add("snapshot testing support");
@@ -304,7 +311,8 @@ function detectArchitectures(paths, files, bazelGraph) {
   if (bazelGraph.hasSwiftRules) architectures.add("bazel-swift");
   if (files.some((file) => file.content.includes("import SwiftUI") || /\bView\b/.test(file.content))) architectures.add("swiftui");
   if (files.some((file) => file.content.includes("Vapor"))) architectures.add("vapor");
-  if (files.some((file) => isMongoDataAccess(file.content))) architectures.add("mongodb");
+  if (files.some((file) => hasFluentPersistence(file.content))) architectures.add("database-persistence");
+  for (const driver of detectDatabaseDrivers(files.map((file) => file.content).join("\n"))) architectures.add(driver);
   if (files.some((file) => isReactiveStreamsSource(file.path, file.content))) architectures.add("reactive-streams");
   if (files.some((file) => /\bactor\s+\w+/.test(file.content))) architectures.add("concurrency");
   return [...architectures].sort();
@@ -328,7 +336,7 @@ function classifySourceFile(file, sourceGraph) {
   const currentPath = normalizePath(file.path);
   const content = file.content;
   const lowerPath = currentPath.toLowerCase();
-  const mongoSignals = detectMongoSignals(content);
+  const databaseSignals = detectDatabaseSignals(content);
 
   if (!currentPath.endsWith(".swift")) {
     return skipped(
@@ -381,7 +389,7 @@ function classifySourceFile(file, sourceGraph) {
       3,
       5,
       "Fluent persistence models are usually better covered through repository, route, migration, or integration tests.",
-      "Cover through XCTVapor or repository tests that exercise persistence behavior and schema migrations."
+      "Cover through VaporTesting, XCTVapor, or repository integration tests that exercise persistence behavior and schema migrations."
     );
   }
 
@@ -403,46 +411,46 @@ function classifySourceFile(file, sourceGraph) {
       1,
       3,
       "Vapor bootstrap and route registration files should be covered through endpoint or application integration tests.",
-      "Cover through XCTVapor request tests that exercise registered routes and application configuration."
+      "Cover through VaporTesting or XCTVapor request tests that exercise registered routes and application configuration."
     );
   }
 
   if (isVaporMiddleware(lowerPath, content)) {
     return recommended(
       "http-middleware",
-      ["http-middleware", "vapor-middleware", ...mongoSignals],
+      ["http-middleware", "vapor-middleware", ...databaseSignals],
       "high",
       "medium",
       "integration",
-      mongoSignals.length > 0 ? 8 : 7,
+      databaseSignals.length > 0 ? 8 : 7,
       4,
-      ["HTTP middleware behavior", "Vapor request handling", ...mongoReasons(mongoSignals)]
+      ["HTTP middleware behavior", "Vapor request handling", ...databaseReasons(databaseSignals)]
     );
   }
 
   if (isVaporRoute(lowerPath, content)) {
     return recommended(
       "http-route",
-      ["http-route", "vapor-route", ...mongoSignals],
+      ["http-route", "vapor-route", ...databaseSignals],
       "high",
       "medium",
       "integration",
-      mongoSignals.length > 0 ? 9 : 8,
+      databaseSignals.length > 0 ? 9 : 8,
       5,
-      ["HTTP route behavior", "Vapor request handling", ...mongoReasons(mongoSignals)]
+      ["HTTP route behavior", "Vapor request handling", ...databaseReasons(databaseSignals)]
     );
   }
 
-  if (mongoSignals.length > 0) {
+  if (databaseSignals.length > 0) {
     return recommended(
       "data-access",
-      ["data-access", ...mongoSignals],
+      ["data-access", ...databaseSignals],
       "high",
       "medium",
       "integration",
-      mongoSignals.includes("mongodb-aggregation") || mongoSignals.includes("mongodb-write") ? 8 : 7,
+      hasHighRiskDatabaseSemantics(databaseSignals) ? 8 : 7,
       5,
-      ["MongoDB data access", ...mongoReasons(mongoSignals)]
+      ["Database access boundary", ...databaseReasons(databaseSignals)]
     );
   }
 
@@ -1231,10 +1239,6 @@ function isVaporRoute(currentPath, content) {
   );
 }
 
-function isMongoDataAccess(content) {
-  return detectMongoSignals(content).length > 0;
-}
-
 function isStorageBoundary(currentPath, content) {
   return (
     matchesAny(currentPath, ["storage", "persistence", "keychain", "userdefaults"]) ||
@@ -1278,8 +1282,9 @@ function detectMongoSignals(content) {
   const hasMongoImport = /(?:^|\n)\s*(?:@preconcurrency\s+)?import\s+(MongoKitten|BSON|MongoSwift|FluentMongoDriver)\b/.test(content);
   const hasMongoDbHandle = /\bdb\s*\(\s*\.mongo\s*\)|\bMongoDatabaseRepresentable\b|\bMongoConnection\b|\.raw\s*\[/.test(content);
   const hasMongoQueryDocument = /\bDocument\s*\(|\bDocument\s*\[|\bqueryDocument\b|"\$(match|lookup|group|unwind|project|sort|slice|regex|push|set|in|and|or)"/.test(content);
+  const hasMongoOperation = hasMongoDbHandle || hasMongoQueryDocument || /\baggregate\s*\(|\bfilter\s*\(\s*\.custom\b|\$regex|\b(insertOne|updateOne|updateMany|deleteOne|deleteMany|bulkWrite)\s*\(/.test(content);
 
-  if (!hasMongoImport && !hasMongoDbHandle && !hasMongoQueryDocument) return [];
+  if ((!hasMongoImport && !hasMongoDbHandle && !hasMongoQueryDocument) || !hasMongoOperation) return [];
 
   signals.add("mongodb-query");
   if (/\baggregate\s*\(|"\$(match|lookup|group|unwind|project|sortArray|slice|push)"/.test(content)) signals.add("mongodb-aggregation");
@@ -1287,6 +1292,47 @@ function detectMongoSignals(content) {
   if (/\.(limit|offset|skip|sort)\s*\(/.test(content)) signals.add("pagination-or-sort");
   if (/\b(create|update|save|delete)\s*\(\s*on:\s*[^)]*\.mongo\b|\b(insertOne|updateOne|updateMany|deleteOne|deleteMany|bulkWrite)\s*\(/.test(content)) signals.add("mongodb-write");
   return [...signals].sort();
+}
+
+function detectDatabaseSignals(content) {
+  const signals = new Set(detectMongoSignals(content));
+  const hasFluentContext = /^\s*(?:@testable\s+)?import\s+(?:Fluent|FluentKit|Fluent[A-Za-z]+Driver)\b/m.test(content);
+  const hasSqlContext = /^\s*import\s+(?:SQLKit|PostgresKit|MySQLKit|SQLiteKit)\b/m.test(content) || /\bSQLDatabase\b|\.sql\(\)/.test(content);
+  const hasQuery = /\.query\s*\(\s*on:|\b(?:Model|Database)QueryBuilder\b|\.filter\s*\(|\.join\s*\(/.test(content);
+  const hasRead = hasQuery || /\.(?:find|all|first|count|paginate)\s*\(/.test(content);
+  const hasWrite = /\.(?:create|save|update|delete)\s*\(\s*on:|\b(?:insert|update|delete)\s*\(/.test(content);
+  const hasTransaction = /\b(?:withTransaction|transaction)\s*(?:\(|\{)/.test(content);
+  const hasRawSql = hasSqlContext && /\b(?:SQLQueryString|SQLRawBuilder)\b|\.raw\s*\(|\.execute\s*\(/.test(content);
+  const hasDatabaseOperation = hasRead || hasWrite || hasTransaction || hasRawSql || signals.size > 0;
+
+  if ((!hasFluentContext && !hasSqlContext && signals.size === 0) || !hasDatabaseOperation) return [];
+
+  signals.add("database-access");
+  if (hasQuery && hasFluentContext) signals.add("fluent-query");
+  if (hasRead) signals.add("database-read");
+  if (hasWrite || signals.has("mongodb-write")) signals.add("database-write");
+  if (hasTransaction) signals.add("database-transaction");
+  if (hasRawSql) signals.add("raw-sql");
+  if (/\.(?:limit|offset|skip|sort|paginate)\s*\(/.test(content)) signals.add("pagination-or-sort");
+  for (const driver of detectDatabaseDrivers(content)) signals.add(`database-driver-${driver}`);
+  return [...signals].sort();
+}
+
+function detectDatabaseDrivers(content) {
+  const drivers = new Set();
+  if (/FluentPostgresDriver|PostgresKit|fluent-postgres-driver|\.psql\b/i.test(content)) drivers.add("postgresql");
+  if (/FluentMySQLDriver|MySQLKit|fluent-mysql-driver|\.mysql\b/i.test(content)) drivers.add("mysql");
+  if (/FluentSQLiteDriver|SQLiteKit|fluent-sqlite-driver|\.sqlite\b/i.test(content)) drivers.add("sqlite");
+  if (/MongoKitten|FluentMongoDriver|MongoSwift|fluent-mongo-driver|mongo-swift-driver|mongodb-vapor|\.mongo\b/i.test(content)) drivers.add("mongodb");
+  return [...drivers].sort();
+}
+
+function hasFluentPersistence(content) {
+  return /\bFluent\b|fluent(?:-[a-z]+)?\.git|fluent-[a-z]+-driver/i.test(content) || detectDatabaseSignals(content).length > 0;
+}
+
+function hasHighRiskDatabaseSemantics(signals) {
+  return ["database-transaction", "database-write", "mongodb-aggregation", "mongodb-dynamic-filter", "raw-sql"].some((signal) => signals.includes(signal));
 }
 
 function isReactiveStreamsSource(currentPath, content) {
@@ -1297,13 +1343,17 @@ function isReactiveStreamsSource(currentPath, content) {
   );
 }
 
-function mongoReasons(signals) {
+function databaseReasons(signals) {
   const reasons = [];
-  if (signals.includes("mongodb-query")) reasons.push("MongoDB query boundary");
+  if (signals.includes("database-access")) reasons.push("database access behavior");
+  if (signals.includes("fluent-query")) reasons.push("Fluent query semantics");
+  if (signals.includes("database-transaction")) reasons.push("transaction and rollback behavior");
+  if (signals.includes("raw-sql")) reasons.push("raw SQL semantics");
+  if (signals.includes("mongodb-query")) reasons.push("MongoDB-specific query semantics");
   if (signals.includes("mongodb-aggregation")) reasons.push("aggregation pipeline semantics");
   if (signals.includes("mongodb-dynamic-filter")) reasons.push("dynamic BSON filter construction");
   if (signals.includes("pagination-or-sort")) reasons.push("pagination or sorting behavior");
-  if (signals.includes("mongodb-write")) reasons.push("MongoDB write/update behavior");
+  if (signals.includes("database-write")) reasons.push("database write/update behavior");
   return reasons;
 }
 

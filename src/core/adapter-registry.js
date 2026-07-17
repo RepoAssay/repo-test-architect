@@ -80,7 +80,7 @@ export const adapters = [
     ecosystems: ["apple", "bazel", "swift"],
     languages: ["objective-c", "swift"],
     maturity: "experimental",
-    supportedTestFrameworks: ["Nimble", "Quick", "RxBlocking", "RxTest", "SnapshotTesting", "Swift Testing", "XCTest", "XCTVapor"],
+    supportedTestFrameworks: ["Nimble", "Quick", "RxBlocking", "RxTest", "SnapshotTesting", "Swift Testing", "VaporTesting", "XCTest", "XCTVapor"],
     supportedProjectTypes: ["swift-package", "apple-xcode", "bazel-swift", "vapor"],
     emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"],
     audit(repoRoot, options = {}) {

@@ -40,6 +40,46 @@
     "description": "Repository, query, or database access behavior was detected."
   },
   {
+    "id": "database-access",
+    "category": "architecture",
+    "description": "Executable database read, write, transaction, raw query, or driver-specific behavior was detected."
+  },
+  {
+    "id": "database-driver-mongodb",
+    "category": "architecture",
+    "description": "The target directly uses MongoDB-specific database APIs."
+  },
+  {
+    "id": "database-driver-mysql",
+    "category": "architecture",
+    "description": "The target directly uses MySQL-specific database APIs."
+  },
+  {
+    "id": "database-driver-postgresql",
+    "category": "architecture",
+    "description": "The target directly uses PostgreSQL-specific database APIs."
+  },
+  {
+    "id": "database-driver-sqlite",
+    "category": "architecture",
+    "description": "The target directly uses SQLite-specific database APIs."
+  },
+  {
+    "id": "database-read",
+    "category": "behavior",
+    "description": "Database query or read behavior was detected."
+  },
+  {
+    "id": "database-transaction",
+    "category": "risk",
+    "description": "Transactional database behavior was detected."
+  },
+  {
+    "id": "database-write",
+    "category": "risk",
+    "description": "Database create, update, save, or delete behavior was detected."
+  },
+  {
     "id": "dto-only",
     "category": "low-value",
     "description": "File appears to contain DTO, model, schema, request, or response type declarations only."
@@ -53,6 +93,11 @@
     "id": "external-boundary",
     "category": "risk",
     "description": "Code touches network, database, file system, or another external boundary."
+  },
+  {
+    "id": "fluent-query",
+    "category": "architecture",
+    "description": "A Fluent query builder operation was detected."
   },
   {
     "id": "generated-code",
@@ -133,6 +178,11 @@
     "id": "react-hook",
     "category": "architecture",
     "description": "React hook state or lifecycle behavior was detected."
+  },
+  {
+    "id": "raw-sql",
+    "category": "risk",
+    "description": "Raw SQL execution or construction was detected."
   },
   {
     "id": "reference-implementation-mirror",

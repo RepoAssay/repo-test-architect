@@ -7,7 +7,7 @@ This matrix defines the evidence boundary for moving the Swift adapter from an e
 | Area | Current support | Evidence used |
 | --- | --- | --- |
 | Package and project shapes | Swift Package Manager, Xcode projects/workspaces, and Swift Bazel workspaces | `Package.swift`, `.xcodeproj`, `.xcworkspace`, shared schemes/test plans, `MODULE.bazel`/`WORKSPACE`, and Swift BUILD rules |
-| Test frameworks | Swift Testing, XCTest, Quick, Nimble, SnapshotTesting, XCTVapor, RxTest, and RxBlocking | imports, package dependencies, and product declarations; RxTest/RxBlocking are support libraries alongside the XCTest runner |
+| Test frameworks | Swift Testing, XCTest, Quick, Nimble, SnapshotTesting, VaporTesting, XCTVapor, RxTest, and RxBlocking | imports, package dependencies, and product declarations; VaporTesting supports modern Vapor/Swift Testing suites while XCTVapor supports XCTest suites |
 | Commands | `swift test`, project/workspace/scheme/test-plan-aware `xcodebuild test`, and `bazel test //...` | package, sole or scheme-matching project/workspace, container-matching shared scheme, scheme-default or otherwise unambiguous test plan, and `swift_test` markers |
 | Bazel target layout | `swift_binary`, `swift_library`, and `swift_test`, including test sources owned through direct dependencies | BUILD target sources, module names, direct dependencies, imports, and glob patterns |
 | SwiftPM source layout | library, executable, test, macro, and plugin targets under default or alternate roots, plus manifest-declared custom paths, source lists, excludes, and test dependencies | parsed target declarations, target kinds, source ownership, and test dependencies |
@@ -16,7 +16,7 @@ This matrix defines the evidence boundary for moving the Swift adapter from an e
 | Generated source boundaries | skips conventional generated directories, protobuf/gRPC or `.generated.swift` files, and explicit generator headers | path segments, filename suffixes, and the first 12 source lines |
 | Test relationships | `*Test.swift`, `*Tests.swift`, Quick-style `*Spec.swift`, root-level test filenames, and uniquely declared top-level symbol references | target-qualified naming evidence plus module-qualified symbol usage |
 | Application boundaries | services, clients, repositories, storage, commands/workers, parsers, URL/query builders, and error mapping | path, declaration, branching, async/concurrency, encoding, and platform API signals |
-| Server boundaries | Vapor routes, middleware, lifecycle files, Fluent models, XCTVapor, and MongoDB operations | imports, protocols, calls, and package products |
+| Server boundaries | Vapor routes, middleware, lifecycle files, Fluent models and queries, VaporTesting/XCTVapor, and PostgreSQL, MySQL/MariaDB, SQLite, and MongoDB drivers | imports, protocols, operations, package products, and driver declarations |
 | UI boundaries | SwiftUI architecture, views, Xcode UI test folders, and snapshot support | imports, `View` declarations, test locations, and package products |
 | Reactive boundaries | RxSwift/RxCocoa/RxRelay modules, RxTest scheduler support, RxBlocking support, and established signal primitive declarations | imports, product declarations, module paths, and conservative type declarations |
 
@@ -51,9 +51,10 @@ This normalized evidence now flows through audit, plan, explanation, findings, p
 - custom Starlark macros, generated BUILD files, `select()` expressions, aliases, and transitive Bazel test-source graphs are not resolved
 - member-level references through inferred receiver types, overload resolution, extensions, aliases, raw-string interpolation, and macro expansion are not resolved
 - computed Swift manifests, local variables that assemble targets, conditional target graphs, and dependency aliases are not resolved by the static manifest reader
+- database driver presence identifies the environment but does not prove that tests use an isolated database, execute migrations, or exercise production-engine semantics
 - reactive virtual-time, event-ordering, disposal, completion, reentrancy, and error-path coverage is not inferred from RxTest/RxBlocking presence
 - multiple Xcode schemes remain ambiguous when none matches the project name; multiple plans remain ambiguous when the selected scheme lacks a single default or sole reference
-- UI tests, snapshot tests, and XCTVapor tests are detected, but runtime reachability is not mapped back to source modules
+- UI tests, snapshot tests, VaporTesting tests, and XCTVapor tests are detected, but runtime reachability is not mapped back to source modules
 - Objective-C is visible to the adapter and XCTest detection, but direct Objective-C source classification remains deferred
 - unrecognized generator-specific outputs, plugin invocation reachability, conditional manifests, and platform-specific target graphs need more real-repository validation
 
