@@ -496,7 +496,7 @@ export function auditKotlin(files) {
       JSON.stringify({ scripts: { test: "vitest --run" }, devDependencies: { vitest: "latest" } })
     );
 
-    for (const sourcePath of ["src/rules/payment-policy.ts", "src/rules/cart-policy.ts", "src/formatters/index.ts", "src/session.ts"]) {
+    for (const sourcePath of ["src/rules/payment-policy.ts", "src/rules/cart-policy.ts", "src/rules/tax-policy.ts", "src/formatters/index.ts", "src/session.ts"]) {
       fs.writeFileSync(
         path.join(root, sourcePath),
         `export function evaluate(value) {\n  if (value) return "yes";\n  return "no";\n}\n`
@@ -513,7 +513,11 @@ export function auditKotlin(files) {
     );
     fs.writeFileSync(
       path.join(root, "test", "cart-flow.test.ts"),
-      `import { evaluate as evaluateCart } from "../src/rules/cart-policy";\nconst result = evaluateCart(true);\nexpect(result).toBe("yes");\n`
+      `import { evaluate as evaluateCart } from "../src/rules/cart-policy";\nconst result = evaluateCart(true);\nexpect(result.value).toBe("yes");\n`
+    );
+    fs.writeFileSync(
+      path.join(root, "test", "tax-flow.test.ts"),
+      `import { evaluate as evaluateTax } from "../src/rules/tax-policy";\nconst { value: taxValue } = evaluateTax(true);\nexpect(taxValue).toBe("yes");\n`
     );
 
     const audit = auditJavaScriptRepo(root);
@@ -524,7 +528,8 @@ export function auditKotlin(files) {
         "src/formatters/index.ts:test/checkout-behavior.test.ts",
         "src/rules/cart-policy.ts:test/cart-flow.test.ts",
         "src/rules/payment-policy.ts:test/checkout-behavior.test.ts",
-        "src/session.ts:test/login-flow.test.js"
+        "src/session.ts:test/login-flow.test.js",
+        "src/rules/tax-policy.ts:test/tax-flow.test.ts"
       ]
     );
     assert.deepEqual(
@@ -533,7 +538,8 @@ export function auditKotlin(files) {
         ["src/formatters/index.ts", undefined],
         ["src/rules/cart-policy.ts", "asserted"],
         ["src/rules/payment-policy.ts", "asserted"],
-        ["src/session.ts", "called"]
+        ["src/session.ts", "called"],
+        ["src/rules/tax-policy.ts", "asserted"]
       ]
     );
     assert.deepEqual(audit.untestedCandidates, []);

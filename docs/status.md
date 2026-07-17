@@ -17,6 +17,7 @@ Implemented:
 - conservative bounded-indirect `viaUsage` provenance that records called/asserted entrypoints without upgrading dependency usage claims
 - default-import and namespace-member call/assertion evidence for JavaScript/TypeScript ES modules
 - constructor call/assertion evidence and namespace-member usage for CommonJS module bindings
+- assertion evidence traced through one-hop result and destructured-result assignments
 - optional test-evidence provenance propagated from audits into direct and project-level explanations, candidate rankings, test plans, and repository-wide project stats distributions
 - concise Markdown evidence-strength counts for audits, explanations, direct and project rankings, and direct and project plans
 - Markdown and project-stats evidence-usage counts that distinguish called from asserted direct imports
