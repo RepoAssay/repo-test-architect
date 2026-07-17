@@ -327,6 +327,17 @@ function classifySourceFile(file) {
     );
   }
 
+  if (isGeneratedSwiftSource(currentPath, content)) {
+    return skipped(
+      "generated",
+      ["generated-code"],
+      1,
+      8,
+      "Generated Swift source should not be test-authored directly.",
+      "Test generator inputs and consuming behavior, then regenerate the source through its owning tool."
+    );
+  }
+
   if (isSwiftUIView(content)) {
     return skipped(
       "ui-view",
@@ -568,7 +579,11 @@ function collectUniqueSwiftSourceSymbols(files, sourceGraph) {
   const symbolsByPath = new Map();
   const pathsByOwnerAndSymbol = new Map();
 
-  for (const file of files.filter((candidate) => isSourceFile(candidate.path, sourceGraph) && candidate.path.endsWith(".swift"))) {
+  for (const file of files.filter((candidate) =>
+    isSourceFile(candidate.path, sourceGraph) &&
+    candidate.path.endsWith(".swift") &&
+    !isGeneratedSwiftSource(candidate.path, candidate.content)
+  )) {
     const currentPath = normalizePath(file.path);
     const owner = normalizeModuleName(sourceGraph.sourceOwners.get(currentPath) ?? inferSourceOwner(currentPath) ?? "__root__");
     const symbols = collectTopLevelSwiftDeclarations(file.content);
@@ -1092,6 +1107,15 @@ function hasBranching(content) {
 
 function isSwiftUIView(content) {
   return content.includes("import SwiftUI") && /\bstruct\s+\w+\s*:\s*View\b/.test(content);
+}
+
+function isGeneratedSwiftSource(currentPath, content) {
+  const lowerPath = normalizePath(currentPath).toLowerCase();
+  const pathSegments = lowerPath.split("/");
+  if (pathSegments.some((segment) => [".generated", "derivedsources", "generated", "generatedsources"].includes(segment))) return true;
+  if (/\.(?:generated|grpc|pb)\.swift$/.test(lowerPath)) return true;
+  const header = content.split(/\r?\n/).slice(0, 12).join("\n");
+  return /\b(?:automatically\s+generated|generated\s+(?:by|from|using)|machine-generated)\b|\bdo\s+not\s+edit\b/i.test(header);
 }
 
 function isDtoLike(currentPath, content) {
