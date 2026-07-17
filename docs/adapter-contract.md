@@ -42,7 +42,7 @@ Currently registered adapters are:
 - `javascript` for the JavaScript ecosystem, covering JavaScript and TypeScript repositories
 - `kotlin` for the JVM ecosystem, covering Kotlin and Java Gradle or Maven roots, currently experimental
 - `python` for Python package roots, currently experimental
-- `swift` for Swift Package Manager and Apple Xcode roots, currently experimental
+- `swift` for the bounded Swift Package Manager, Apple Xcode, and Bazel/rules_swift patterns in the Swift alpha support matrix
 
 Non-JavaScript adapters should follow the focused [Second Adapter Spike](second-adapter-spike.md) checklist before expanding framework coverage or native generation.
 

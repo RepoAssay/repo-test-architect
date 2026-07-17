@@ -2,7 +2,7 @@
 
 ## Current State
 
-Repo Test Architect currently has a deterministic JavaScript/TypeScript audit pipeline plus experimental Kotlin/JVM, Swift, and Python adapter spikes.
+Repo Test Architect currently has supported deterministic JavaScript/TypeScript and Swift audit pipelines plus experimental Kotlin/JVM and Python adapter spikes.
 
 Implemented:
 
@@ -32,7 +32,7 @@ Implemented:
 - bounded Markdown display of existing-test evidence with complete path lists preserved in JSON artifacts
 - shared runtime Markdown audit renderer with a TypeScript reference mirror, used directly by the CLI
 - behavioral HTTP framework classifications for routers, routes, handlers, security and general middleware, request access and validation, request bodies, queries, cookies, caching, response construction, request events, proxies, sessions, WebSockets, streaming, client response parsing, and runtime adapters, including flat utility layouts identified through HTTP boundary types
-- runtime adapter registry with the supported `javascript` adapter and experimental `kotlin`, `swift`, and `python` adapters
+- runtime adapter registry with supported `javascript` and `swift` adapters plus experimental `kotlin` and `python` adapters
 - adapter registry capability metadata for maturity, framework signals, project types, and emitted artifacts
 - CLI adapter registry output
 - deterministic project detection for polyglot repository roots
@@ -206,7 +206,7 @@ npm run eval:test
 ## Next Useful Milestones
 
 1. Consolidate repeated JSDoc artifact shapes into shared TS reference files when the runtime API stabilizes further.
-2. Harden experimental adapters with more fixture variants, starting with Python packaging/test-command variants and Swift/Vapor edge cases.
+2. Maintain Swift support with evidence-driven real-repository probes while hardening experimental Python and Kotlin/JVM variants.
 3. Add more model-consistency fixtures and model profile output comparisons.
 4. Expand package-aware test placement analysis from package/app root inference into richer adapter-owned package boundary signals.
 5. Add local-first stats artifacts for audit coverage, candidate/risk counts, model-consistency drift, and later repair-loop trends.

@@ -11,7 +11,7 @@ The repository is public-demo ready, but not package-release ready.
 The useful baseline is:
 
 - deterministic JavaScript/TypeScript audit pipeline
-- experimental Kotlin/JVM, Swift, and Python adapter spikes
+- supported Swift plus experimental Kotlin/JVM and Python adapters
 - polyglot project detection with unsupported-project reporting
 - project-level ranking, planning, placement, stats, and local MCP tool calls
 - model-consistency scenarios for stable audit and plan outputs
@@ -66,7 +66,7 @@ Markdown and JSON remain the supported formats until each additional renderer ha
 
 Goal: prove the adapter contract keeps holding as additional ecosystems move from detection-only to audited fixtures.
 
-Status: started with experimental Kotlin/JVM, Swift, and Python adapters.
+Status: Swift reached supported private-alpha maturity; Kotlin/JVM and Python remain experimental.
 
 Useful hardening targets:
 

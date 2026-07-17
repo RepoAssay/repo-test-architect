@@ -16,7 +16,7 @@ describe("MCP docs", () => {
       assert.match(docs, new RegExp(`\\b${kind}\\b`));
     }
 
-    assert.ok(docs.includes("current registered adapters are `javascript` plus experimental `kotlin`, `python`, and `swift`"));
+    assert.ok(docs.includes("current supported adapters are `javascript` and `swift`; `kotlin` and `python` remain experimental"));
     assert.ok(docs.includes("@./examples/mcp/kotlin-audit.args.json"));
     assert.ok(docs.includes('`changedPaths: [""]` on `audit_repo` returns `kind: "invalid-arguments"`'));
     assert.ok(docs.includes('`argument: "changedPaths"`'));

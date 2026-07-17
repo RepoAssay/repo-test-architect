@@ -351,7 +351,7 @@ What it missed or over-reported:
 
 - Branching logic is too generic as a rationale for app-specific Swift files.
 - Camera and CoreML files need richer domain labels than `utility`.
-- Xcode app support is still experimental and should not be described as equivalent to Swift Package Manager support.
+- Xcode app support is bounded to the checked-in Swift alpha matrix and should not be described as equivalent to native Objective-C analysis or arbitrary Xcode build-graph evaluation.
 
 Heuristic follow-up:
 

@@ -1,6 +1,6 @@
-# Swift Alpha Hardening Boundary
+# Swift Alpha Support
 
-This matrix defines the evidence boundary for moving the Swift adapter from an experimental spike toward private-alpha quality. It describes conventions the adapter detects and tests today; it does not yet promote Swift to supported maturity.
+This matrix is the acceptance boundary for the supported Swift private-alpha adapter. It describes conventions the adapter detects and tests today; it is not a claim that every Swift repository, computed build graph, or Objective-C implementation will be interpreted perfectly.
 
 ## Current Common-Pattern Coverage
 
@@ -46,7 +46,7 @@ Swift also emits stronger `swift-symbol-reference` evidence when a test qualifie
 
 This normalized evidence now flows through audit, plan, explanation, findings, placement, and stats artifacts using the shared model. Stronger Swift evidence should be added as a distinct direct or referenced relationship only when the adapter can actually prove it.
 
-## Known Gaps Before Swift Alpha
+## Known Alpha Gaps
 
 - custom Starlark macros, generated BUILD files, `select()` expressions, aliases, and transitive Bazel test-source graphs are not resolved
 - member-level references through inferred receiver types, overload resolution, extensions, aliases, raw-string interpolation, and macro expansion are not resolved
@@ -58,13 +58,13 @@ This normalized evidence now flows through audit, plan, explanation, findings, p
 - Objective-C is visible to the adapter and XCTest detection, but direct Objective-C source classification remains deferred
 - unrecognized generator-specific outputs, plugin invocation reachability, conditional target selection, and platform-specific target graphs need more real-repository validation
 
-## Promotion Direction
+## Validation Depth
 
-Swift can move from experimental toward private alpha when:
+Swift is supported at the same maturity level as the JavaScript/TypeScript adapter because:
 
-1. continue expanding maintained-repository validation beyond the current SwiftNIO multi-target, RxSwift computed-manifest, custom-path, and Bazel fixture coverage
-2. Swift symbol evidence remains conservative across maintained public packages with overloaded APIs, extensions, macros, and generated sources
-3. Xcode app findings remain conservative across multiple schemes, UI tests, and test plans
-4. the deterministic private-alpha gate and pinned real-repository reports remain stable
+1. multi-target ownership is validated against maintained SwiftNIO and RxSwift repositories, with custom-path and Bazel behavior locked by deterministic fixtures
+2. Swift symbol evidence stays target-qualified and conservative across public packages with overloaded APIs, extensions, macros, generated sources, and reactive frameworks
+3. Xcode app behavior covers shared schemes, workspaces, UI test locations, and test plans, with a pinned app-style repository report
+4. golden audits/plans, Swift-specific model-consistency scenarios, blocker behavior, and the full deterministic private-alpha gate remain stable
 
-The goal is the same as JavaScript/TypeScript: support the popular, inspectable shapes well and report uncertainty for the long tail instead of claiming universal repository coverage.
+Supported maturity remains bounded to this matrix. The maintenance goal is the same as JavaScript/TypeScript: support popular, inspectable shapes well and report uncertainty for the long tail instead of claiming universal repository coverage. Native Objective-C source classification, manifest execution, and runtime coverage proof remain outside the supported promise.
