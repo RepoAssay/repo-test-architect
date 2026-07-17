@@ -274,6 +274,25 @@ describe("project detector", () => {
     );
   });
 
+  it("detects Xcode workspace directories as experimental Swift adapter projects", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-xcworkspace-"));
+    fs.mkdirSync(path.join(root, "apps", "ios", "Checkout.xcworkspace"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "apps", "ios", "Checkout.xcworkspace", "contents.xcworkspacedata"),
+      '<Workspace version="1.0"></Workspace>\n'
+    );
+
+    const detection = detectProjects(root);
+
+    assert.equal(detection.summary.projectCount, 1);
+    assert.deepEqual(detection.projects[0].root, "apps/ios");
+    assert.deepEqual(detection.projects[0].ecosystems, ["apple"]);
+    assert.deepEqual(detection.projects[0].languages, ["objective-c", "swift"]);
+    assert.deepEqual(detection.projects[0].markerFiles, ["apps/ios/Checkout.xcworkspace"]);
+    assert.deepEqual(detection.projects[0].adapterIds, ["swift"]);
+    assert.equal(detection.projects[0].supported, true);
+  });
+
   it("detects Swift Bazel workspaces without claiming generic Bazel workspaces", (t) => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-bazel-workspaces-"));
     t.after(() => fs.rmSync(root, { recursive: true, force: true }));

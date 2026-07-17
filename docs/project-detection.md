@@ -28,6 +28,7 @@ npm run detect-rules:json
 | `WORKSPACE` | `bazel` | `swift` | Supported by experimental `swift` when Swift rules and sources are present |
 | `WORKSPACE.bazel` | `bazel` | `swift` | Supported by experimental `swift` when Swift rules and sources are present |
 | `*.xcodeproj` | `apple` | `swift`, `objective-c` | Supported by experimental `swift` |
+| `*.xcworkspace` | `apple` | `swift`, `objective-c` | Supported by experimental `swift` |
 | `*.csproj` | `dotnet` | `csharp` | Detected, unsupported |
 | `pom.xml` | `jvm` | `java`, `kotlin` | Supported by experimental `kotlin` |
 | `build.gradle` | `jvm` | `kotlin`, `java` | Supported by experimental `kotlin` |

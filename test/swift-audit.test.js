@@ -124,7 +124,7 @@ describe("Swift audit adapter", () => {
     assert.ok(audit.profile.architectures.includes("apple-xcode"));
     assert.ok(audit.profile.architectures.includes("swiftui"));
     assert.ok(audit.profile.blockers.includes("No supported Swift test framework detected."));
-    assert.ok(audit.profile.blockers.includes("No runnable Swift test command detected from Package.swift or Xcode project markers."));
+    assert.ok(audit.profile.blockers.includes("No runnable Swift test command detected from Package.swift or Xcode project/workspace markers."));
     assert.deepEqual(
       audit.skipped.map((target) => target.name),
       ["CheckoutView", "LegacyPaymentClient"]
@@ -385,7 +385,7 @@ final class BehaviorTests: XCTestCase {
     assert.ok(audit.profile.setupSignals.includes("vapor dependency"));
     assert.ok(audit.profile.setupSignals.includes("swiftpm executable target"));
     assert.ok(audit.profile.blockers.includes("No supported Swift test framework detected."));
-    assert.ok(audit.profile.blockers.includes("No runnable Swift test command detected from Package.swift or Xcode project markers."));
+    assert.ok(audit.profile.blockers.includes("No runnable Swift test command detected from Package.swift or Xcode project/workspace markers."));
     assert.deepEqual(
       audit.untestedCandidates.map((target) => `${target.name}:${target.kind}:${target.recommendedTestLevel}`),
       ["UserRoutes:http-route:integration", "UserService:service:unit"]
@@ -919,6 +919,35 @@ final class CollectorTests: XCTestCase {
     assert.ok(audit.profile.setupSignals.includes("xcode shared scheme"));
   });
 
+  it("audits a shared Xcode workspace without requiring a project marker", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-xcode-workspace-"));
+    const workspaceRoot = path.join(root, "Checkout.xcworkspace");
+    fs.mkdirSync(path.join(workspaceRoot, "xcshareddata", "xcschemes"), { recursive: true });
+    fs.mkdirSync(path.join(root, "Checkout", "Services"), { recursive: true });
+    fs.mkdirSync(path.join(root, "CheckoutTests"), { recursive: true });
+    fs.writeFileSync(path.join(workspaceRoot, "contents.xcworkspacedata"), '<Workspace version="1.0"></Workspace>\n');
+    fs.writeFileSync(
+      path.join(workspaceRoot, "xcshareddata", "xcschemes", "Checkout.xcscheme"),
+      "<Scheme></Scheme>\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "Checkout", "Services", "SessionService.swift"),
+      "struct SessionService { func restore(_ token: String) -> Bool { !token.isEmpty } }\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "CheckoutTests", "SessionServiceTests.swift"),
+      "import XCTest\n@testable import Checkout\nfinal class SessionServiceTests: XCTestCase { func testRestore() { XCTAssertTrue(SessionService().restore(\"token\")) } }\n"
+    );
+
+    const audit = auditSwiftRepo(root);
+
+    assert.deepEqual(audit.profile.packageManagers, ["xcodebuild"]);
+    assert.ok(audit.profile.architectures.includes("apple-xcode"));
+    assert.ok(audit.profile.setupSignals.includes("xcode workspace"));
+    assert.equal(audit.profile.testCommand, "xcodebuild test -workspace Checkout.xcworkspace -scheme Checkout");
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["Checkout/Services/SessionService.swift"]);
+  });
+
   it("detects popular SwiftPM test support libraries", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-swift-frameworks-"));
     fs.mkdirSync(path.join(root, "Sources", "Feature"), { recursive: true });
@@ -1063,8 +1092,9 @@ final class SampleAppTests: XCTestCase {
     const audit = auditSwiftRepo(xcodeTestPlansRoot);
 
     assert.deepEqual(audit.profile.packageManagers, ["xcodebuild"]);
-    assert.equal(audit.profile.testCommand, "xcodebuild test -scheme CheckoutApp -testPlan CheckoutAppTests");
+    assert.equal(audit.profile.testCommand, "xcodebuild test -workspace CheckoutApp.xcworkspace -scheme CheckoutApp -testPlan CheckoutAppTests");
     assert.ok(audit.profile.setupSignals.includes("xcode shared scheme"));
+    assert.ok(audit.profile.setupSignals.includes("xcode workspace"));
     assert.ok(audit.profile.setupSignals.includes("xcode test plan"));
     assert.ok(audit.profile.setupSignals.includes("xcode scheme test plan"));
     assert.deepEqual(audit.coveredButRisky.map((target) => target.path), [

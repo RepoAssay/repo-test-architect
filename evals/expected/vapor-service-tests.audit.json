@@ -23,7 +23,7 @@
     "confidence": "low",
     "blockers": [
       "No supported Swift test framework detected.",
-      "No runnable Swift test command detected from Package.swift or Xcode project markers."
+      "No runnable Swift test command detected from Package.swift or Xcode project/workspace markers."
     ]
   },
   "untestedCandidates": [

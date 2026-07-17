@@ -124,6 +124,7 @@ function shouldRead(relative) {
     isBazelWorkspaceFile(relative) ||
     isBazelBuildFile(relative) ||
     relative.endsWith(".xcodeproj/project.pbxproj") ||
+    relative.endsWith(".xcworkspace/contents.xcworkspacedata") ||
     relative.endsWith(".xcscheme") ||
     relative.endsWith(".xctestplan")
   );
@@ -162,7 +163,7 @@ function detectLanguages(paths) {
 function detectPackageManagers(paths, bazelGraph) {
   const managers = new Set();
   if (paths.includes("Package.swift")) managers.add("swiftpm");
-  if (paths.some((item) => item.endsWith(".xcodeproj/project.pbxproj"))) managers.add("xcodebuild");
+  if (hasXcodeContainer(paths)) managers.add("xcodebuild");
   if (bazelGraph.hasSwiftRules) managers.add("bazel");
   return [...managers].sort();
 }
@@ -207,11 +208,13 @@ function detectTestCommand(paths, frameworks, bazelGraph, files) {
   if (frameworks.length === 0) return undefined;
   if (bazelGraph.hasSwiftTest) return "bazel test //...";
   if (paths.includes("Package.swift")) return "swift test";
-  if (paths.some((item) => item.endsWith(".xcodeproj/project.pbxproj"))) {
+  if (hasXcodeContainer(paths)) {
     const scheme = detectXcodeScheme(paths);
     const testPlan = detectXcodeTestPlan(paths, files, scheme);
-    if (scheme && testPlan) return `xcodebuild test -scheme ${quoteShellArgument(scheme)} -testPlan ${quoteShellArgument(testPlan)}`;
-    return scheme ? `xcodebuild test -scheme ${quoteShellArgument(scheme)}` : "xcodebuild test";
+    const workspace = detectXcodeWorkspace(paths, scheme);
+    const workspaceOption = workspace ? ` -workspace ${quoteShellArgument(workspace)}` : "";
+    if (scheme && testPlan) return `xcodebuild test${workspaceOption} -scheme ${quoteShellArgument(scheme)} -testPlan ${quoteShellArgument(testPlan)}`;
+    return scheme ? `xcodebuild test${workspaceOption} -scheme ${quoteShellArgument(scheme)}` : "xcodebuild test";
   }
   return undefined;
 }
@@ -242,6 +245,7 @@ function detectSetupSignals(paths, packageText, bazelGraph, files) {
   const signals = new Set();
   if (paths.includes("Package.swift")) signals.add("swift package manager");
   if (paths.some((item) => item.endsWith(".xcodeproj/project.pbxproj"))) signals.add("xcode project");
+  if (paths.some((item) => item.endsWith(".xcworkspace/contents.xcworkspacedata"))) signals.add("xcode workspace");
   if (detectXcodeScheme(paths)) signals.add("xcode shared scheme");
   if (paths.some((item) => item.endsWith(".xctestplan"))) signals.add("xcode test plan");
   const scheme = detectXcodeScheme(paths);
@@ -267,7 +271,7 @@ function detectSetupSignals(paths, packageText, bazelGraph, files) {
 function detectArchitectures(paths, files, bazelGraph) {
   const architectures = new Set();
   if (paths.includes("Package.swift")) architectures.add("swift-package");
-  if (paths.some((item) => item.endsWith(".xcodeproj/project.pbxproj"))) architectures.add("apple-xcode");
+  if (hasXcodeContainer(paths)) architectures.add("apple-xcode");
   if (bazelGraph.hasSwiftRules) architectures.add("bazel-swift");
   if (files.some((file) => file.content.includes("import SwiftUI") || /\bView\b/.test(file.content))) architectures.add("swiftui");
   if (files.some((file) => file.content.includes("Vapor"))) architectures.add("vapor");
@@ -279,7 +283,7 @@ function detectArchitectures(paths, files, bazelGraph) {
 function detectBlockers(testCommand, frameworks) {
   const blockers = [];
   if (frameworks.length === 0) blockers.push("No supported Swift test framework detected.");
-  if (!testCommand) blockers.push("No runnable Swift test command detected from Package.swift or Xcode project markers.");
+  if (!testCommand) blockers.push("No runnable Swift test command detected from Package.swift or Xcode project/workspace markers.");
   return blockers;
 }
 
@@ -989,6 +993,12 @@ function detectXcodeScheme(paths) {
     .sort();
   if (schemeNames.length === 0) return undefined;
 
+  const workspaceNames = paths
+    .filter((item) => item.endsWith(".xcworkspace/contents.xcworkspacedata"))
+    .map((item) => item.split("/").at(-2)?.replace(/\.xcworkspace$/, ""))
+    .filter(Boolean);
+  const workspaceScheme = schemeNames.find((schemeName) => workspaceNames.includes(schemeName));
+  if (workspaceScheme) return workspaceScheme;
   const projectNames = paths
     .filter((item) => item.endsWith(".xcodeproj/project.pbxproj"))
     .map((item) => item.split("/").at(-2)?.replace(/\.xcodeproj$/, ""))
@@ -999,6 +1009,20 @@ function detectXcodeScheme(paths) {
   if (projectScheme) return projectScheme;
   if (schemeNames.length === 1) return schemeNames[0];
   return undefined;
+}
+
+function detectXcodeWorkspace(paths, scheme) {
+  const workspaces = [...new Set(paths
+    .filter((item) => item.endsWith(".xcworkspace/contents.xcworkspacedata"))
+    .map((item) => item.split("/").at(-2))
+    .filter(Boolean))].sort();
+  if (workspaces.length === 1) return workspaces[0];
+  if (scheme) return workspaces.find((workspace) => basenameWithoutExtension(workspace) === scheme);
+  return undefined;
+}
+
+function hasXcodeContainer(paths) {
+  return paths.some((item) => item.endsWith(".xcodeproj/project.pbxproj") || item.endsWith(".xcworkspace/contents.xcworkspacedata"));
 }
 
 function detectXcodeTestPlan(paths, files, scheme) {

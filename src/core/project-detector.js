@@ -90,6 +90,11 @@ const MARKERS = [
     languages: ["swift", "objective-c"]
   },
   {
+    directoryExtension: ".xcworkspace",
+    ecosystem: "apple",
+    languages: ["swift", "objective-c"]
+  },
+  {
     extension: ".csproj",
     ecosystem: "dotnet",
     languages: ["csharp"]
