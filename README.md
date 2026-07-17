@@ -229,6 +229,7 @@ npm run release:check
 src/
   core/
     audit-model.ts
+    report.js
     report.ts
   adapters/
     javascript/

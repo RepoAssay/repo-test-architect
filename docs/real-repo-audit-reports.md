@@ -47,12 +47,12 @@ What it missed or over-reported:
 
 - Direct root audit sees broad branching logic but does not yet understand module ownership well enough to rank adapter files by product risk.
 - The project-wide audit of this repository is noisy because checked-in examples are intentionally separate fixture projects.
-- Standalone TypeScript reference files without a matching runtime JavaScript sibling can still appear as candidates when they contain branching logic.
+- The standalone `src/core/report.ts` reference renderer previously appeared as a candidate because the live implementation was duplicated inside the CLI without a runtime sibling module.
 
 Heuristic follow-up:
 
 - add ownership or package-role signals for adapter modules, CLI entrypoints, MCP transport, and core scoring modules
-- continue tightening TypeScript reference-file detection for standalone reference modules without a runtime JavaScript sibling
+- keep reference implementations paired with their runtime JavaScript modules so the adapter can distinguish shipped behavior from mirrors
 - use `--exclude-project "examples/**"` when generating self-audit reports that should ignore checked-in example fixtures
 
 ## `unjs/defu` Audit

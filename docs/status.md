@@ -23,6 +23,7 @@ Implemented:
 - Markdown and project-stats evidence-usage counts that distinguish called from asserted direct imports
 - directory-qualified filename evidence for generic JavaScript/TypeScript basenames such as `index`, `utils`, `handler`, and `types`
 - bounded Markdown display of existing-test evidence with complete path lists preserved in JSON artifacts
+- shared runtime Markdown audit renderer with a TypeScript reference mirror, used directly by the CLI
 - behavioral HTTP framework classifications for routers, routes, handlers, security and general middleware, request access and validation, request bodies, queries, cookies, caching, response construction, request events, proxies, sessions, WebSockets, streaming, client response parsing, and runtime adapters, including flat utility layouts identified through HTTP boundary types
 - runtime adapter registry with the supported `javascript` adapter and experimental `kotlin`, `swift`, and `python` adapters
 - adapter registry capability metadata for maturity, framework signals, project types, and emitted artifacts
