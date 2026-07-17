@@ -27,10 +27,8 @@ export function auditJavaScriptRepo(snapshot: JavaScriptRepoSnapshot): AuditResu
   const profile = buildProfile({ ...snapshot, files });
   const changedPaths = snapshot.changedPaths ? new Set(snapshot.changedPaths.map(normalizePath)) : undefined;
   const sourceFiles = files.filter((file) => isSourceFile(file.path) && isIncludedByChangedPaths(file.path, changedPaths));
-  const testFiles = files
-    .filter((file) => isTestFile(file.path))
-    .map((file) => ({ ...file, path: normalizePath(file.path) }));
-  const moduleFiles = files.map((file) => ({ ...file, path: normalizePath(file.path) }));
+  const moduleFiles = files.map((file) => analyzeModuleFile({ ...file, path: normalizePath(file.path) }));
+  const testFiles = moduleFiles.filter((file) => isTestFile(file.path));
   const tsconfigData = resolveTsconfigData("tsconfig.json", files);
   const pathAliasEntries = findTsconfigPathAliasEntries(tsconfigData, moduleFiles);
   const boundedTransitiveImports = collectBoundedTransitiveImports(testFiles, moduleFiles, pathAliasEntries);
@@ -463,6 +461,12 @@ function classifySourceFile(file: FileSnapshot, profile: RepoProfile, mirrorCont
     );
   }
 
+  if (isReactHook(currentPath, content, profile)) {
+    const signals = ["react-hook"];
+    if (profile.testFrameworks.includes("react-testing-library")) signals.push("rtl-convention");
+    return recommended("react-hook", signals, "medium", "high", "component", 6, 3, ["React hook state and lifecycle behavior"]);
+  }
+
   if (lowerPath.includes("component") || lowerPath.endsWith(".tsx") || content.includes("jsx")) {
     if (isPresentationalComponent(content)) {
       return skipped(
@@ -763,12 +767,12 @@ function hasFilenameMatch(
 }
 
 function getDirectRelativeImportUsage(testFile: FileSnapshot, sourcePath: string): "imported" | "called" | "asserted" | undefined {
-  const matchingImports = collectModuleImports(testFile.content).filter(({ specifier }) =>
+  const matchingImports = getModuleImports(testFile).filter(({ specifier }) =>
     specifier.startsWith(".") && moduleSpecifierTargetsSource(testFile.path, specifier, sourcePath)
   );
   if (matchingImports.some(({ assertedImportedNames }) => assertedImportedNames.size > 0)) return "asserted";
   if (matchingImports.some(({ calledImportedNames }) => calledImportedNames.size > 0)) return "called";
-  return matchingImports.length > 0 || collectRelativeModuleSpecifiers(testFile.content).some((specifier) =>
+  return matchingImports.length > 0 || getRelativeModuleSpecifiers(testFile).some((specifier) =>
     moduleSpecifierTargetsSource(testFile.path, specifier, sourcePath)
   ) ? "imported" : undefined;
 }
@@ -781,7 +785,7 @@ function collectBoundedTransitiveImports(testFiles: FileSnapshot[], moduleFiles:
 
 function collectBoundedTransitiveImportsForTest(testFile: FileSnapshot, moduleFiles: FileSnapshot[], pathAliasEntries: Map<string, FileSnapshot>): Map<string, "called" | "asserted" | undefined> {
   const queue: Array<{ file: FileSnapshot; depth: number; viaUsage?: "called" | "asserted" }> = [];
-  for (const { specifier, usedImportedNames, calledImportedNames, assertedImportedNames } of collectModuleImports(testFile.content)) {
+  for (const { specifier, usedImportedNames, calledImportedNames, assertedImportedNames } of getModuleImports(testFile)) {
     const file = findImportedModuleFile(testFile.path, specifier, moduleFiles, pathAliasEntries);
     if (!file) continue;
     const viaUsage = assertedImportedNames.size > 0 ? "asserted" : calledImportedNames.size > 0 ? "called" : undefined;
@@ -800,7 +804,7 @@ function collectBoundedTransitiveImportsForTest(testFile: FileSnapshot, moduleFi
     visited.set(file.path, viaUsage);
     if (depth >= MAX_TRANSITIVE_SOURCE_DEPTH) continue;
 
-    for (const specifier of collectRuntimeDependencySpecifiers(file.content)) {
+    for (const specifier of getRuntimeDependencySpecifiers(file)) {
       const dependency = findImportedModuleFile(file.path, specifier, moduleFiles, pathAliasEntries);
       if (dependency) queue.push({ file: dependency, depth: depth + 1, viaUsage });
     }
@@ -848,7 +852,7 @@ function findRelativeModuleFile(
 }
 
 function getOneHopBarrelImportUsage(testFile: FileSnapshot, sourcePath: string, moduleFiles: FileSnapshot[]): "referenced" | "called" | "asserted" | undefined {
-  for (const { specifier, usedImportedNames, calledImportedNames, assertedImportedNames } of collectModuleImports(testFile.content)) {
+  for (const { specifier, usedImportedNames, calledImportedNames, assertedImportedNames } of getModuleImports(testFile)) {
     if (!specifier.startsWith(".")) continue;
     const barrelFile = moduleFiles.find((file) => moduleSpecifierTargetsSource(testFile.path, specifier, file.path));
     if (!barrelFile || barrelFile.path === sourcePath) continue;
@@ -867,7 +871,7 @@ function getPathAliasImportUsage(
   moduleFiles: FileSnapshot[],
   pathAliasEntries: Map<string, FileSnapshot>
 ): "imported" | "called" | "asserted" | undefined {
-  for (const moduleImport of collectModuleImports(testFile.content)) {
+  for (const moduleImport of getModuleImports(testFile)) {
     const { specifier } = moduleImport;
     const entryFile = pathAliasEntries.get(specifier);
     if (!entryFile) continue;
@@ -890,7 +894,7 @@ function getPackageEntryImportUsage(
 ): "referenced" | "called" | "asserted" | undefined {
   if (!packageName) return undefined;
 
-  for (const moduleImport of collectModuleImports(testFile.content)) {
+  for (const moduleImport of getModuleImports(testFile)) {
     const { specifier } = moduleImport;
     const entryFile = specifier === packageName ? packageEntryFile : packageSubpathEntries.get(specifier);
     if (!entryFile) continue;
@@ -1120,6 +1124,35 @@ interface RelativeReExport {
   specifier: string;
   exportedNames: Set<string>;
   exportAll: boolean;
+}
+
+type AnalyzedFileSnapshot = FileSnapshot & {
+  moduleImports?: ModuleImport[];
+  relativeModuleSpecifiers?: string[];
+  runtimeDependencySpecifiers?: string[];
+};
+
+function analyzeModuleFile(file: FileSnapshot): AnalyzedFileSnapshot {
+  if (!SOURCE_EXTENSIONS.some((extension) => file.path.endsWith(extension))) return file;
+  const moduleImports = collectModuleImports(file.content);
+  return {
+    ...file,
+    moduleImports,
+    relativeModuleSpecifiers: collectRelativeModuleSpecifiers(file.content),
+    runtimeDependencySpecifiers: moduleImports.map(({ specifier }) => specifier)
+  };
+}
+
+function getModuleImports(file: FileSnapshot): ModuleImport[] {
+  return (file as AnalyzedFileSnapshot).moduleImports ?? collectModuleImports(file.content);
+}
+
+function getRelativeModuleSpecifiers(file: FileSnapshot): string[] {
+  return (file as AnalyzedFileSnapshot).relativeModuleSpecifiers ?? collectRelativeModuleSpecifiers(file.content);
+}
+
+function getRuntimeDependencySpecifiers(file: FileSnapshot): string[] {
+  return (file as AnalyzedFileSnapshot).runtimeDependencySpecifiers ?? collectRuntimeDependencySpecifiers(file.content);
 }
 
 function collectRuntimeDependencySpecifiers(content: string): string[] {
@@ -1570,6 +1603,13 @@ function isPresentationalComponent(content: string): boolean {
   const hasJsxReturn = /return\s*\(?\s*</.test(content);
   const hasInteraction = /\bon[A-Z]\w+\s*=|useState|useReducer|useEffect|if\s*\(|\?\s*[^:]+:/.test(content);
   return hasJsxReturn && !hasInteraction;
+}
+
+function isReactHook(currentPath: string, content: string, profile: RepoProfile): boolean {
+  if (!profile.architectures.includes("react")) return false;
+  const name = basenameWithoutExtension(currentPath);
+  if (!/^use[A-Z0-9]/.test(name)) return false;
+  return new RegExp(`\\b(?:function\\s+${escapeRegExp(name)}|(?:const|let|var)\\s+${escapeRegExp(name)}\\b)`).test(content);
 }
 
 function byRiskThenName(a: AuditTarget, b: AuditTarget): number {

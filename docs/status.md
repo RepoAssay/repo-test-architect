@@ -7,6 +7,8 @@ Repo Test Architect currently has a deterministic JavaScript/TypeScript audit pi
 Implemented:
 
 - JavaScript/TypeScript repository profiling
+- JavaScript/TypeScript React hook classification ahead of generic component and HTTP controller heuristics
+- cached JavaScript/TypeScript module-import analysis for real repositories with large test suites
 - JavaScript/TypeScript package-boundary scoping that excludes nested packages from parent profiles and candidate graphs
 - Node test runner detection from `node:test` imports, alongside AVA, Mocha, Vitest, Jest, React Testing Library, and Supertest dependency/config signals
 - JavaScript/TypeScript `src/`, `source/`, and `lib/` roots plus conventional `test/`, `tests/`, and `__tests__/` test locations
