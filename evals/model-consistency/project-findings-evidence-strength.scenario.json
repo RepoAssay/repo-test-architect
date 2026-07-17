@@ -1,0 +1,44 @@
+{
+  "schemaVersion": "model-consistency-scenario/v1",
+  "id": "project-findings-evidence-strength",
+  "description": "Different model profiles should preserve evidence-aware weak-coverage review ordering.",
+  "sourceArtifact": {
+    "path": "examples/mcp/evidence-aware-project-findings.args.json",
+    "schemaVersion": "project-audits/v1",
+    "argumentName": "projectAudits"
+  },
+  "toolCall": {
+    "toolName": "collect_project_findings",
+    "arguments": {}
+  },
+  "lockedFields": [
+    {
+      "path": "findings[0].target",
+      "expected": "indirect",
+      "reason": "Bounded-indirect evidence should remain the first weak-coverage review target."
+    },
+    {
+      "path": "findings[0].priority",
+      "expected": 3,
+      "reason": "Weak bounded-indirect evidence should retain the target's base review priority."
+    },
+    {
+      "path": "findings[1].target",
+      "expected": "asserted",
+      "reason": "Direct asserted evidence should remain below weaker structural evidence in the review queue."
+    },
+    {
+      "path": "findings[1].priority",
+      "expected": 0,
+      "reason": "Direct asserted evidence should receive the deterministic three-point review discount."
+    }
+  ],
+  "allowedVariations": [
+    "additional explanatory evidence",
+    "summary wording"
+  ],
+  "unexpectedVariations": [
+    "asserted evidence ranked above bounded-indirect evidence",
+    "evidence provenance omitted from review priority"
+  ]
+}

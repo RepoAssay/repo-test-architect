@@ -408,6 +408,21 @@ node ./src/cli/index.js summarize-projects --from-project-audits ./project-audit
 This artifact summarizes a `project-audits/v1` artifact into project-level counts, audit coverage status, unsupported status reasons, top candidate IDs, risk counts, and unsupported project roots with ecosystem labels, language labels, adapter match evidence, and support status reasons.
 It is intentionally not a merged audit graph and does not perform cross-project ranking.
 
+## Project Findings Artifact
+
+Schema:
+
+- `schemas/project-findings-v1.schema.json`
+- `schemaVersion: "project-findings/v1"`
+
+MCP tool:
+
+```txt
+collect_project_findings
+```
+
+The findings artifact turns project audits into a bounded review queue for missing, weak, misplaced, low-value, and blocked coverage. Weak-existing-coverage priority uses the strongest normalized provenance available: direct asserted usage receives the largest review discount, followed by called usage and structural direct/referenced reachability. Naming-only, bounded-indirect, and legacy evidence remain at the target's base review priority. This changes review ordering only; it does not reclassify audit targets or claim branch completeness.
+
 ## Project Candidate Ranking Artifact
 
 Schema:
