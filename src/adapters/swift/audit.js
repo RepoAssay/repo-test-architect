@@ -326,7 +326,7 @@ function detectArchitectures(paths, files, bazelGraph) {
   if (files.some((file) => file.content.includes("import SwiftUI") || /\bView\b/.test(file.content))) architectures.add("swiftui");
   if (files.some((file) => file.content.includes("Vapor"))) architectures.add("vapor");
   if (files.some((file) => hasFluentPersistence(file.content))) architectures.add("database-persistence");
-  for (const driver of detectDatabaseDrivers(files.map((file) => file.content).join("\n"))) architectures.add(driver);
+  for (const driver of detectDatabaseDrivers(files.map((file) => maskSwiftCommentsAndStrings(file.content)).join("\n"))) architectures.add(driver);
   if (files.some((file) => isReactiveStreamsSource(file.path, file.content))) architectures.add("reactive-streams");
   if (files.some((file) => /\bactor\s+\w+/.test(file.content))) architectures.add("concurrency");
   return [...architectures].sort();
@@ -1355,14 +1355,17 @@ function isVaporMiddleware(currentPath, content) {
 }
 
 function isVaporRoute(currentPath, content) {
+  const hasExplicitRouteBehavior =
+    /\bRouteCollection\b/.test(content) ||
+    /\bRoutesBuilder\b/.test(content) ||
+    /\b(app|routes|router|grouped)\s*\.\s*(get|post|put|patch|delete|on|group|grouped|webSocket)\s*\(/.test(content);
+  const hasControllerHandler = currentPath.includes("/controllers/") && /\b(?:req|request)\s*:\s*Request\b/.test(content);
   return (
     content.includes("import Vapor") &&
     (
       currentPath.includes("/routes/") ||
-      currentPath.includes("/controllers/") ||
-      /\bRouteCollection\b/.test(content) ||
-      /\bRoutesBuilder\b/.test(content) ||
-      /\b(app|routes|router|grouped)\s*\.\s*(get|post|put|patch|delete|on|group|grouped|webSocket)\s*\(/.test(content)
+      hasExplicitRouteBehavior ||
+      hasControllerHandler
     )
   );
 }
@@ -1427,10 +1430,12 @@ function detectDatabaseSignals(content) {
   const hasFluentContext = /^\s*(?:@testable\s+)?import\s+(?:Fluent|FluentKit|Fluent[A-Za-z]+Driver)\b/m.test(content);
   const hasSqlContext = /^\s*import\s+(?:SQLKit|PostgresKit|MySQLKit|SQLiteKit)\b/m.test(content) || /\bSQLDatabase\b|\.sql\(\)/.test(content);
   const hasQuery = /\.query\s*\(\s*on:|\b(?:Model|Database)QueryBuilder\b|\.filter\s*\(|\.join\s*\(/.test(content);
-  const hasRead = hasQuery || /\.(?:find|all|first|count|paginate)\s*\(/.test(content);
-  const hasWrite = /\.(?:create|save|update|delete)\s*\(\s*on:|\b(?:insert|update|delete)\s*\(/.test(content);
+  const hasRead = hasQuery || /\.(?:find|all|first|count|paginate)\s*\(/.test(content) || /\.fetch\s*\(\s*on:/.test(content);
+  const hasFluentWrite = /\.(?:create|save|update|delete)\s*\(\s*on:/.test(content);
+  const hasSqlWrite = hasSqlContext && (/\bSQL(?:Insert|Update|Delete)Builder\b/.test(content) || /\.(?:insert|update|delete)\s*\(\s*(?:into|from|table)\s*:/.test(content));
+  const hasWrite = hasFluentWrite || hasSqlWrite;
   const hasTransaction = /\b(?:withTransaction|transaction)\s*(?:\(|\{)/.test(content);
-  const hasRawSql = hasSqlContext && /\b(?:SQLQueryString|SQLRawBuilder)\b|\.raw\s*\(|\.execute\s*\(/.test(content);
+  const hasRawSql = hasSqlContext && (/\b(?:SQLQueryString|SQLRawBuilder)\b/.test(content) || /\.raw\s*\(|\.execute\s*\(/.test(content));
   const hasDatabaseOperation = hasRead || hasWrite || hasTransaction || hasRawSql || signals.size > 0;
 
   if ((!hasFluentContext && !hasSqlContext && signals.size === 0) || !hasDatabaseOperation) return [];
@@ -1442,7 +1447,7 @@ function detectDatabaseSignals(content) {
   if (hasTransaction) signals.add("database-transaction");
   if (hasRawSql) signals.add("raw-sql");
   if (/\.(?:limit|offset|skip|sort|paginate)\s*\(/.test(content)) signals.add("pagination-or-sort");
-  for (const driver of detectDatabaseDrivers(content)) signals.add(`database-driver-${driver}`);
+  for (const driver of detectDatabaseDrivers(maskSwiftCommentsAndStrings(content))) signals.add(`database-driver-${driver}`);
   return [...signals].sort();
 }
 

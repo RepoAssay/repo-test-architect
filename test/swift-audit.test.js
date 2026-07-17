@@ -1171,6 +1171,74 @@ final class User: Model {
     assert.ok(rawRepository.signals.includes("database-driver-mysql"));
   });
 
+  it("keeps Vapor controller helpers and collection operations out of route and database-write signals", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-vapor-signal-noise-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "Sources", "App", "Controllers"), { recursive: true });
+    fs.mkdirSync(path.join(root, "Tests", "AppTests"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "Package.swift"),
+      `// swift-tools-version: 6.0
+import PackageDescription
+let package = Package(
+    name: "App",
+    dependencies: [
+        .package(url: "https://github.com/vapor/vapor.git", from: "4.110.1"),
+        .package(url: "https://github.com/vapor/fluent-postgres-driver.git", from: "2.0.0")
+    ],
+    targets: [
+        .target(name: "App", dependencies: [
+            .product(name: "Vapor", package: "vapor"),
+            .product(name: "FluentPostgresDriver", package: "fluent-postgres-driver")
+        ]),
+        .testTarget(name: "AppTests", dependencies: ["App"])
+    ]
+)
+`
+    );
+    fs.writeFileSync(
+      path.join(root, "Sources", "App", "Controllers", "PackageController.swift"),
+      `import Vapor
+enum PackageController {
+    static func show(req: Request) async throws -> String { "ok" }
+}
+`
+    );
+    fs.writeFileSync(
+      path.join(root, "Sources", "App", "Controllers", "PackageController+PackageResult.swift"),
+      `import Fluent
+import Vapor
+extension PackageController {
+    struct PackageResult {
+        static func query(on database: Database) async throws -> [Package] {
+            // A dependency allowlist may mention MongoKitten without making this a MongoDB boundary.
+            var filters: Set<String> = []
+            filters.insert("active")
+            _ = HTML.raw("<p>safe</p>")
+            return try await Package.query(on: database).filter(\\.$isActive == true).all()
+        }
+    }
+}
+`
+    );
+    fs.writeFileSync(
+      path.join(root, "Tests", "AppTests", "AppTests.swift"),
+      "@testable import App\nimport Testing\n@Test func appBoots() {}\n"
+    );
+
+    const audit = auditSwiftRepo(root);
+    const route = audit.recommended.find((target) => target.name === "PackageController");
+    const helper = audit.recommended.find((target) => target.name === "PackageController+PackageResult");
+
+    assert.equal(route.kind, "http-route");
+    assert.equal(helper.kind, "data-access");
+    assert.ok(helper.signals.includes("database-read"));
+    assert.ok(!helper.signals.includes("database-write"));
+    assert.ok(!helper.signals.includes("raw-sql"));
+    assert.ok(!helper.signals.includes("database-driver-mongodb"));
+    assert.ok(!audit.profile.architectures.includes("mongodb"));
+  });
+
   it("classifies common Swift utility sub-kinds", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-swift-subkinds-"));
     fs.mkdirSync(path.join(root, "Sources", "Core", "Worker"), { recursive: true });
