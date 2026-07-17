@@ -38,8 +38,8 @@ export const adapters = [
     ecosystems: ["javascript"],
     languages: ["javascript", "typescript"],
     maturity: "supported",
-    supportedTestFrameworks: ["ava", "jest", "mocha", "node-test", "react-testing-library", "supertest", "vitest"],
-    supportedProjectTypes: ["node", "express", "react"],
+    supportedTestFrameworks: ["ava", "bun-test", "cypress", "jest", "mocha", "node-test", "playwright", "react-testing-library", "supertest", "vitest"],
+    supportedProjectTypes: ["node", "express", "react", "browser-e2e"],
     emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"],
     audit(repoRoot, options = {}) {
       return auditJavaScriptRepo(repoRoot, {

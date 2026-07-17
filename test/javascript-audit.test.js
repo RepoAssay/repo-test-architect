@@ -1088,4 +1088,104 @@ export function auditKotlin(files) {
     assert.ok(targets.get("src/middleware/basic-auth.ts").signals.includes("security-boundary"));
     assert.ok(targets.get("src/streaming/sse-writer.ts").reasons.includes("cancellation, cleanup, and error propagation"));
   });
+
+  it("detects Playwright and Cypress browser E2E conventions without overstating source coverage", (t) => {
+    const roots = [];
+    t.after(() => roots.forEach((root) => fs.rmSync(root, { recursive: true, force: true })));
+
+    const cases = [
+      {
+        framework: "playwright",
+        config: "playwright.config.ts",
+        testPath: "tests/checkout.spec.ts",
+        testContent: "import { test, expect } from '@playwright/test';\ntest('checkout', async ({ page }) => { await page.goto('/checkout'); expect(page.url()).toContain('checkout'); });\n",
+        command: "npx playwright test",
+        setupSignal: "playwright config",
+        convention: "*.spec files",
+        location: "tests/"
+      },
+      {
+        framework: "cypress",
+        config: "cypress.config.ts",
+        testPath: "cypress/e2e/checkout.cy.ts",
+        testContent: "describe('checkout', () => { it('opens', () => { cy.visit('/checkout'); cy.url().should('include', 'checkout'); }); });\n",
+        command: "npx cypress run",
+        setupSignal: "cypress config",
+        convention: "*.cy files",
+        location: "custom test location"
+      }
+    ];
+
+    for (const entry of cases) {
+      const root = fs.mkdtempSync(path.join(os.tmpdir(), `repo-test-architect-${entry.framework}-`));
+      roots.push(root);
+      fs.mkdirSync(path.join(root, "src"), { recursive: true });
+      fs.mkdirSync(path.dirname(path.join(root, entry.testPath)), { recursive: true });
+      fs.writeFileSync(path.join(root, "package.json"), JSON.stringify({ name: `${entry.framework}-app` }));
+      fs.writeFileSync(path.join(root, entry.config), "export default {};\n");
+      fs.writeFileSync(path.join(root, "src", "checkout.ts"), "export function checkout(value) { if (!value) throw new Error('missing'); return value; }\n");
+      fs.writeFileSync(path.join(root, entry.testPath), entry.testContent);
+
+      const audit = auditJavaScriptRepo(root);
+
+      assert.deepEqual(audit.profile.testFrameworks, [entry.framework]);
+      assert.equal(audit.profile.testCommand, entry.command);
+      assert.equal(audit.profile.confidence, "high");
+      assert.ok(audit.profile.setupSignals.includes(entry.setupSignal));
+      assert.ok(audit.profile.detectedConventions.includes(entry.convention));
+      assert.ok(audit.profile.existingTestLocations.includes(entry.location));
+      assert.deepEqual(audit.untestedCandidates.map((target) => target.path), ["src/checkout.ts"]);
+      assert.deepEqual(audit.coveredButRisky, []);
+    }
+  });
+
+  it("detects Bun's lockfile, runner import, config, and underscore test naming", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-bun-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "src"), { recursive: true });
+    fs.mkdirSync(path.join(root, "test"), { recursive: true });
+    fs.writeFileSync(path.join(root, "package.json"), JSON.stringify({ name: "bun-app" }));
+    fs.writeFileSync(path.join(root, "bun.lock"), "{}\n");
+    fs.writeFileSync(path.join(root, "bunfig.toml"), "[test]\nroot = './test'\n");
+    fs.writeFileSync(path.join(root, "src", "checkout.ts"), "export function checkout(value) { if (!value) throw new Error('missing'); return value; }\n");
+    fs.writeFileSync(
+      path.join(root, "test", "checkout_test.ts"),
+      "import { expect, test } from 'bun:test';\nimport { checkout } from '../src/checkout';\ntest('checkout', () => expect(checkout('ok')).toBe('ok'));\n"
+    );
+
+    const audit = auditJavaScriptRepo(root);
+
+    assert.deepEqual(audit.profile.packageManagers, ["bun"]);
+    assert.deepEqual(audit.profile.testFrameworks, ["bun-test"]);
+    assert.equal(audit.profile.testCommand, "bun test");
+    assert.equal(audit.profile.confidence, "high");
+    assert.ok(audit.profile.setupSignals.includes("bunfig"));
+    assert.ok(audit.profile.detectedConventions.includes("Bun-style test files"));
+    assert.deepEqual(audit.coveredButRisky[0].existingTestEvidence, [
+      { testPath: "test/checkout_test.ts", kind: "direct-relative-import", strength: "direct", usage: "asserted" }
+    ]);
+  });
+
+  it("uses the detected package manager for package scripts", (t) => {
+    const roots = [];
+    t.after(() => roots.forEach((root) => fs.rmSync(root, { recursive: true, force: true })));
+
+    for (const [lockfile, manager, script, expectedCommand] of [
+      ["pnpm-lock.yaml", "pnpm", "test:e2e", "pnpm run test:e2e"],
+      ["yarn.lock", "yarn", "test", "yarn test"],
+      ["bun.lockb", "bun", "test", "bun run test"]
+    ]) {
+      const root = fs.mkdtempSync(path.join(os.tmpdir(), `repo-test-architect-${manager}-script-`));
+      roots.push(root);
+      fs.mkdirSync(path.join(root, "src"), { recursive: true });
+      fs.writeFileSync(path.join(root, "package.json"), JSON.stringify({ scripts: { [script]: "vitest run" }, devDependencies: { vitest: "latest" } }));
+      fs.writeFileSync(path.join(root, lockfile), "lock\n");
+      fs.writeFileSync(path.join(root, "src", "parser.ts"), "export function parse(value) { return value; }\n");
+
+      const audit = auditJavaScriptRepo(root);
+
+      assert.deepEqual(audit.profile.packageManagers, [manager]);
+      assert.equal(audit.profile.testCommand, expectedCommand);
+    }
+  });
 });
