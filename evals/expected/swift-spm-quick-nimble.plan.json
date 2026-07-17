@@ -52,6 +52,13 @@
       ],
       "existingTestPaths": [
         "Tests/InventoryRulesTests/StockValidatorTests.swift"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "Tests/InventoryRulesTests/StockValidatorTests.swift",
+          "kind": "filename-convention",
+          "strength": "naming"
+        }
       ]
     },
     {
