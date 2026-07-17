@@ -176,6 +176,16 @@ npm run alpha:check
 npm run release:check
 ```
 
+Find and rank active public repositories for real-world adapter validation:
+
+```powershell
+npm run validation:repos -- --profile react
+npm run validation:repos -- --profile workspace --limit 10
+npm run validation:repos -- --profile swift,gradle,maven --format json
+```
+
+The finder uses authenticated GitHub repository search, verifies exact ecosystem markers in root manifests, and ranks candidates using maintenance recency, stars, repository size, lockfiles, CI, and license metadata. Run `npm run validation:repos -- --list-profiles` for the available profiles and `--help` for quality-filter options.
+
 Use `alpha:check` for the private audit milestone. `release:check` additionally covers packaging and installed-binary readiness.
 
 The CI workflow runs `npm run release:check` on Ubuntu, macOS, and Windows for pushes to `master` and `main`, and on pull requests.
