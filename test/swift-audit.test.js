@@ -401,6 +401,66 @@ final class ParserSpec: QuickSpec {
     ]);
   });
 
+  it("maps SwiftPM macro ownership and defers package plugin implementations", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-swiftpm-macro-plugin-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    for (const directory of ["Sources/CheckoutMacros", "Sources/CheckoutKit", "Plugins/SchemaPlugin", "Tests/CheckoutMacrosTests"]) {
+      fs.mkdirSync(path.join(root, directory), { recursive: true });
+    }
+    fs.writeFileSync(
+      path.join(root, "Package.swift"),
+      `// swift-tools-version: 5.9
+import PackageDescription
+import CompilerPluginSupport
+
+let package = Package(
+    name: "CheckoutKit",
+    targets: [
+        .macro(name: "CheckoutMacros"),
+        .target(name: "CheckoutKit", dependencies: ["CheckoutMacros"]),
+        .plugin(name: "SchemaPlugin", capability: .buildTool()),
+        .testTarget(name: "CheckoutMacrosTests", dependencies: [.target(name: "CheckoutMacros")])
+    ]
+)
+`
+    );
+    fs.writeFileSync(
+      path.join(root, "Sources", "CheckoutMacros", "CheckoutMacro.swift"),
+      "public struct CheckoutMacro { public init() {}; public func expand(_ value: Bool) -> String { if value { return \"yes\" }; return \"no\" } }\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "Sources", "CheckoutKit", "Checkout.swift"),
+      "public struct Checkout { public let id: String }\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "Plugins", "SchemaPlugin", "SchemaPlugin.swift"),
+      "@main struct SchemaPlugin { func createBuildCommands(_ enabled: Bool) -> [String] { if enabled { return [\"generate\"] }; return [] } }\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "Tests", "CheckoutMacrosTests", "MacroExpansionTests.swift"),
+      "import XCTest\n@testable import CheckoutMacros\nfinal class MacroExpansionTests: XCTestCase { func testMacroType() { XCTAssertNotNil(CheckoutMacro.self) } }\n"
+    );
+
+    const audit = auditSwiftRepo(root);
+
+    assert.equal(audit.profile.testCommand, "swift test");
+    assert.ok(audit.profile.setupSignals.includes("swiftpm macro target"));
+    assert.ok(audit.profile.setupSignals.includes("swiftpm plugin target"));
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["Sources/CheckoutMacros/CheckoutMacro.swift"]);
+    assert.deepEqual(audit.coveredButRisky[0].existingTestEvidence, [
+      {
+        testPath: "Tests/CheckoutMacrosTests/MacroExpansionTests.swift",
+        kind: "swift-symbol-reference",
+        strength: "referenced",
+        usage: "asserted"
+      }
+    ]);
+    assert.deepEqual(
+      audit.skipped.filter((target) => target.kind === "swiftpm-plugin").map((target) => target.path),
+      ["Plugins/SchemaPlugin/SchemaPlugin.swift"]
+    );
+  });
+
   it("uses Bazel swift_test ownership for separately located test sources", () => {
     const audit = auditSwiftRepo(bazelRoot);
 

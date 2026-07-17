@@ -22,7 +22,7 @@ export function auditSwiftRepo(root, options = {}) {
 
   for (const file of files.filter((candidate) => isSourceFile(candidate.path, sourceGraph) && isIncludedByChangedPaths(candidate.path, changedPaths))) {
     const name = basenameWithoutExtension(file.path);
-    const classification = classifySourceFile(file);
+    const classification = classifySourceFile(file, sourceGraph);
     const existingTestEvidence = findExistingTestEvidence(file.path, testFiles, sourceGraph, sourceSymbols);
     const existingTestPaths = existingTestEvidence.map((evidence) => evidence.testPath);
 
@@ -275,6 +275,8 @@ function detectSetupSignals(paths, packageText, bazelGraph, files) {
   if (/swift-snapshot-testing|pointfreeco\/swift-snapshot-testing|product\(name:\s*"SnapshotTesting"/i.test(packageText)) signals.add("snapshot testing support");
   if (packageText.includes(".testTarget")) signals.add("swiftpm test target");
   if (packageText.includes(".executableTarget")) signals.add("swiftpm executable target");
+  if (bazelGraph.hasMacroTargets) signals.add("swiftpm macro target");
+  if (bazelGraph.hasPluginTargets) signals.add("swiftpm plugin target");
   if (packageText.includes(".target")) signals.add("swiftpm target");
   if (bazelGraph.hasCustomTargetPaths) signals.add("swiftpm custom target path");
   if (bazelGraph.hasExplicitSources) signals.add("swiftpm explicit sources");
@@ -310,7 +312,7 @@ function scoreProfileConfidence(testFrameworks, existingTestLocations, blockers)
   return "low";
 }
 
-function classifySourceFile(file) {
+function classifySourceFile(file, sourceGraph) {
   const currentPath = normalizePath(file.path);
   const content = file.content;
   const lowerPath = currentPath.toLowerCase();
@@ -335,6 +337,17 @@ function classifySourceFile(file) {
       8,
       "Generated Swift source should not be test-authored directly.",
       "Test generator inputs and consuming behavior, then regenerate the source through its owning tool."
+    );
+  }
+
+  if (sourceGraph.pluginSources.has(currentPath)) {
+    return skipped(
+      "swiftpm-plugin",
+      ["swiftpm-plugin"],
+      2,
+      6,
+      "Swift package plugin implementations are build tooling rather than product runtime behavior.",
+      "Cover through package-level integration checks that invoke the plugin against representative targets."
     );
   }
 
@@ -740,6 +753,7 @@ function mergeSourceGraphs(...graphs) {
   const sourceOwners = new Map(graphs.flatMap((graph) => [...graph.sourceOwners]));
   const testSources = new Set(graphs.flatMap((graph) => [...graph.testSources]));
   const ignoredSources = new Set(graphs.flatMap((graph) => [...graph.ignoredSources]));
+  const pluginSources = new Set(graphs.flatMap((graph) => [...(graph.pluginSources ?? [])]));
   for (const ownedPath of [...sourceOwners.keys(), ...testSources]) ignoredSources.delete(ownedPath);
 
   return {
@@ -748,42 +762,64 @@ function mergeSourceGraphs(...graphs) {
     hasCustomTargetPaths: graphs.some((graph) => graph.hasCustomTargetPaths),
     hasExplicitSources: graphs.some((graph) => graph.hasExplicitSources),
     hasAlternateSourceRoots: graphs.some((graph) => graph.hasAlternateSourceRoots),
+    hasMacroTargets: graphs.some((graph) => graph.hasMacroTargets),
+    hasPluginTargets: graphs.some((graph) => graph.hasPluginTargets),
     sourceOwners,
     testSources,
     ignoredSources,
+    pluginSources,
     testDependencies
   };
 }
 
 function parseSwiftPmGraph(files) {
   const packageFile = files.find((file) => normalizePath(file.path) === "Package.swift");
-  const emptyGraph = { hasSwiftRules: false, hasSwiftTest: false, hasCustomTargetPaths: false, hasExplicitSources: false, hasAlternateSourceRoots: false, sourceOwners: new Map(), testSources: new Set(), testDependencies: new Map(), ignoredSources: new Set() };
+  const emptyGraph = {
+    hasSwiftRules: false,
+    hasSwiftTest: false,
+    hasCustomTargetPaths: false,
+    hasExplicitSources: false,
+    hasAlternateSourceRoots: false,
+    hasMacroTargets: false,
+    hasPluginTargets: false,
+    sourceOwners: new Map(),
+    testSources: new Set(),
+    testDependencies: new Map(),
+    ignoredSources: new Set(),
+    pluginSources: new Set()
+  };
   if (!packageFile) return emptyGraph;
 
   const swiftPaths = files.map((file) => normalizePath(file.path)).filter((currentPath) => currentPath.endsWith(".swift"));
-  const rules = extractSwiftPmTargets(packageFile.content).map((rule) => ({
-    ...rule,
-    name: readStringAttribute(rule.body, "name")
-  })).filter((rule) => rule.name);
+  const rules = extractSwiftPmTargets(packageFile.content)
+    .filter((rule) => rule.kind !== "plugin" || /\bcapability\s*:/.test(rule.body))
+    .map((rule) => ({
+      ...rule,
+      name: readStringAttribute(rule.body, "name")
+    }))
+    .filter((rule) => rule.name);
   const targetNames = new Set(rules.map((rule) => rule.name));
   const sourceOwners = new Map();
   const testSources = new Set();
   const testDependencies = new Map();
   const ignoredSources = new Set();
+  const pluginSources = new Set();
   let hasCustomTargetPaths = false;
   let hasExplicitSourceLists = false;
   let hasAlternateSourceRoots = false;
 
   for (const rule of rules) {
     const isTest = rule.kind === "testTarget";
+    const isPlugin = rule.kind === "plugin";
     const declaredPath = readStringAttribute(rule.body, "path");
-    const targetPath = declaredPath ?? inferDefaultSwiftPmTargetPath(rule.name, isTest, swiftPaths);
+    const targetPath = declaredPath ?? inferDefaultSwiftPmTargetPath(rule.name, isTest, isPlugin, swiftPaths);
     const sourceEntries = readStringArrayAttribute(rule.body, "sources");
     const excludeEntries = readStringArrayAttribute(rule.body, "exclude");
     const hasExplicitSources = /\bsources\s*:/.test(rule.body);
     if (declaredPath) hasCustomTargetPaths = true;
     if (hasExplicitSources) hasExplicitSourceLists = true;
-    if (!declaredPath && !targetPath.startsWith(`${isTest ? "Tests" : "Sources"}/`)) hasAlternateSourceRoots = true;
+    const conventionalRoot = isPlugin ? "Plugins" : isTest ? "Tests" : "Sources";
+    if (!declaredPath && !targetPath.startsWith(`${conventionalRoot}/`)) hasAlternateSourceRoots = true;
     const ownedSources = resolveSwiftPmSources(targetPath, sourceEntries, excludeEntries, hasExplicitSources, swiftPaths);
     if (hasExplicitSources || excludeEntries.length > 0) {
       for (const swiftPath of swiftPaths.filter((candidate) => pathContains(targetPath, candidate))) {
@@ -798,15 +834,28 @@ function parseSwiftPmGraph(files) {
         testDependencies.set(sourcePath, dependencies);
       } else {
         sourceOwners.set(sourcePath, rule.name);
+        if (isPlugin) pluginSources.add(sourcePath);
       }
     }
   }
 
-  return { ...emptyGraph, hasCustomTargetPaths, hasExplicitSources: hasExplicitSourceLists, hasAlternateSourceRoots, sourceOwners, testSources, testDependencies, ignoredSources };
+  return {
+    ...emptyGraph,
+    hasCustomTargetPaths,
+    hasExplicitSources: hasExplicitSourceLists,
+    hasAlternateSourceRoots,
+    hasMacroTargets: rules.some((rule) => rule.kind === "macro"),
+    hasPluginTargets: rules.some((rule) => rule.kind === "plugin"),
+    sourceOwners,
+    testSources,
+    testDependencies,
+    ignoredSources,
+    pluginSources
+  };
 }
 
 function extractSwiftPmTargets(content) {
-  return extractCallBodies(content, /\.(testTarget|executableTarget|target)\s*\(/g);
+  return extractCallBodies(content, /\.(testTarget|executableTarget|macro|plugin|target)\s*\(/g);
 }
 
 function extractCallBodies(content, matcher) {
@@ -871,11 +920,14 @@ function resolveSwiftPmSources(targetPath, sourceEntries, excludeEntries, hasExp
   return new Set(candidates.filter((swiftPath) => !excludeEntries.some((entry) => pathContains(path.posix.join(normalizedTargetPath, entry), swiftPath))));
 }
 
-function inferDefaultSwiftPmTargetPath(targetName, isTest, swiftPaths) {
-  const searchRoots = isTest ? ["Tests", "Sources", "Source", "src", "srcs"] : ["Sources", "Source", "src", "srcs"];
+function inferDefaultSwiftPmTargetPath(targetName, isTest, isPlugin, swiftPaths) {
+  const defaultRoot = isPlugin ? "Plugins" : isTest ? "Tests" : "Sources";
+  const searchRoots = isPlugin
+    ? ["Plugins"]
+    : isTest ? ["Tests", "Sources", "Source", "src", "srcs"] : ["Sources", "Source", "src", "srcs"];
   return searchRoots
     .map((root) => `${root}/${targetName}`)
-    .find((candidate) => swiftPaths.some((swiftPath) => pathContains(candidate, swiftPath))) ?? `${isTest ? "Tests" : "Sources"}/${targetName}`;
+    .find((candidate) => swiftPaths.some((swiftPath) => pathContains(candidate, swiftPath))) ?? `${defaultRoot}/${targetName}`;
 }
 
 function pathContains(ownerPath, currentPath) {
