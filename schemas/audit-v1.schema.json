@@ -113,7 +113,8 @@
                   "referenced-relative-reexport",
                   "tsconfig-path-import",
                   "package-entry-import",
-                  "bounded-dependency"
+                  "bounded-dependency",
+                  "swift-symbol-reference"
                 ]
               },
               "strength": { "enum": ["naming", "direct", "referenced", "indirect"] },

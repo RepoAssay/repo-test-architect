@@ -36,8 +36,9 @@
       "existingTestEvidence": [
         {
           "testPath": "Tests/CheckoutCoreTests/CheckoutParserTests.swift",
-          "kind": "filename-convention",
-          "strength": "naming"
+          "kind": "swift-symbol-reference",
+          "strength": "referenced",
+          "usage": "called"
         }
       ]
     },

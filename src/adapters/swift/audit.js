@@ -8,9 +8,13 @@ export function auditSwiftRepo(root, options = {}) {
   const bazelGraph = parseBazelSwiftGraph(files);
   const swiftPmGraph = parseSwiftPmGraph(files);
   const sourceGraph = mergeSourceGraphs(bazelGraph, swiftPmGraph);
+  const sourceSymbols = collectUniqueSwiftSourceSymbols(files, sourceGraph);
   const profile = buildProfile(root, files, sourceGraph);
   const changedPaths = options.changedPaths ? new Set(options.changedPaths.map((currentPath) => normalizeChangedPath(root, currentPath))) : undefined;
-  const testFiles = files.filter((file) => isTestFile(file.path, sourceGraph)).map((file) => ({ ...file, path: normalizePath(file.path) }));
+  const testFiles = files
+    .filter((file) => isTestFile(file.path, sourceGraph))
+    .map((file) => ({ ...file, path: normalizePath(file.path) }))
+    .sort((a, b) => a.path.localeCompare(b.path));
   const untestedCandidates = [];
   const coveredButRisky = [];
   const skipped = [];
@@ -19,7 +23,7 @@ export function auditSwiftRepo(root, options = {}) {
   for (const file of files.filter((candidate) => isSourceFile(candidate.path, sourceGraph) && isIncludedByChangedPaths(candidate.path, changedPaths))) {
     const name = basenameWithoutExtension(file.path);
     const classification = classifySourceFile(file);
-    const existingTestEvidence = findExistingTestEvidence(file.path, testFiles, sourceGraph);
+    const existingTestEvidence = findExistingTestEvidence(file.path, testFiles, sourceGraph, sourceSymbols);
     const existingTestPaths = existingTestEvidence.map((evidence) => evidence.testPath);
 
     if (classification.skipReason) {
@@ -485,13 +489,24 @@ function isTestFile(currentPath, bazelGraph) {
   return (isTestPath(normalized) || bazelGraph.testSources.has(normalized)) && normalized.endsWith(".swift");
 }
 
-function findExistingTestEvidence(sourcePath, testFiles, sourceGraph) {
+function findExistingTestEvidence(sourcePath, testFiles, sourceGraph, sourceSymbols) {
   const sourceBase = basenameWithoutExtension(sourcePath);
   const sourceOwner = sourceGraph.sourceOwners.get(normalizePath(sourcePath)) ?? inferSourceOwner(sourcePath);
+  const symbols = sourceSymbols.get(normalizePath(sourcePath)) ?? new Set();
 
   return testFiles.flatMap((testFile) => {
     const testBase = basenameWithoutExtension(testFile.path).replace(/(?:Tests?|Spec)$/, "");
-    if (testBase !== sourceBase || !testMatchesSourceOwner(testFile, sourceOwner, sourceGraph)) return [];
+    if (!testMatchesSourceOwner(testFile, sourceOwner, sourceGraph)) return [];
+    const symbolUsage = findSwiftSymbolUsage(testFile.content, symbols);
+    if (symbolUsage) {
+      return [{
+        testPath: testFile.path,
+        kind: "swift-symbol-reference",
+        strength: "referenced",
+        ...(symbolUsage !== "referenced" ? { usage: symbolUsage } : {})
+      }];
+    }
+    if (testBase !== sourceBase) return [];
     return [{ testPath: testFile.path, kind: "filename-convention", strength: "naming" }];
   });
 }
@@ -523,6 +538,156 @@ function inferTestOwner(currentPath) {
 
 function collectImportedModules(content) {
   return [...content.matchAll(/^\s*(?:@testable\s+)?import\s+([A-Za-z_][A-Za-z0-9_]*)\b/gm)].map((match) => match[1]);
+}
+
+function collectUniqueSwiftSourceSymbols(files, sourceGraph) {
+  const symbolsByPath = new Map();
+  const pathsByOwnerAndSymbol = new Map();
+
+  for (const file of files.filter((candidate) => isSourceFile(candidate.path, sourceGraph) && candidate.path.endsWith(".swift"))) {
+    const currentPath = normalizePath(file.path);
+    const owner = normalizeModuleName(sourceGraph.sourceOwners.get(currentPath) ?? inferSourceOwner(currentPath) ?? "__root__");
+    const symbols = collectTopLevelSwiftDeclarations(file.content);
+    symbolsByPath.set(currentPath, symbols);
+    for (const symbol of symbols) {
+      const key = `${owner}:${symbol}`;
+      pathsByOwnerAndSymbol.set(key, new Set([...(pathsByOwnerAndSymbol.get(key) ?? []), currentPath]));
+    }
+  }
+
+  return new Map([...symbolsByPath].map(([currentPath, symbols]) => {
+    const owner = normalizeModuleName(sourceGraph.sourceOwners.get(currentPath) ?? inferSourceOwner(currentPath) ?? "__root__");
+    return [currentPath, new Set([...symbols].filter((symbol) => pathsByOwnerAndSymbol.get(`${owner}:${symbol}`)?.size === 1))];
+  }));
+}
+
+function collectTopLevelSwiftDeclarations(content) {
+  const masked = maskSwiftCommentsAndStrings(content);
+  const symbols = new Set();
+  let braceDepth = 0;
+
+  for (const line of masked.split("\n")) {
+    if (braceDepth === 0) {
+      for (const match of line.matchAll(/\b(?:struct|class|enum|actor|protocol|func)\s+`?([A-Za-z_][A-Za-z0-9_]*)`?/g)) {
+        symbols.add(match[1]);
+      }
+    }
+    braceDepth += [...line].filter((character) => character === "{").length;
+    braceDepth -= [...line].filter((character) => character === "}").length;
+    braceDepth = Math.max(0, braceDepth);
+  }
+
+  return symbols;
+}
+
+function findSwiftSymbolUsage(content, symbols) {
+  if (symbols.size === 0) return undefined;
+  const masked = maskSwiftCommentsAndStrings(content).replace(/^\s*(?:@testable\s+)?import\s+.*$/gm, "");
+
+  for (const symbol of [...symbols].sort()) {
+    const escapedSymbol = escapeRegex(symbol);
+    const reference = new RegExp(`\\b${escapedSymbol}\\b`);
+    if (!reference.test(masked)) continue;
+    const declaration = new RegExp(`\\b(?:struct|class|enum|actor|protocol|func|typealias)\\s+${escapedSymbol}\\b`);
+    const withoutDeclarations = masked.replace(declaration, "");
+    if (!reference.test(withoutDeclarations)) continue;
+    if (swiftAssertionBodies(masked).some((body) => reference.test(body))) return "asserted";
+    if (new RegExp(`\\b${escapedSymbol}\\s*(?:<[^>\\n]+>\\s*)?\\(`).test(withoutDeclarations)) return "called";
+    return "referenced";
+  }
+
+  return undefined;
+}
+
+function swiftAssertionBodies(content) {
+  const bodies = [];
+  const matcher = /(?:#expect|#require|XCTAssert[A-Za-z]*|expect)\s*\(/g;
+  let match;
+
+  while ((match = matcher.exec(content)) !== null) {
+    let depth = 1;
+    let index = matcher.lastIndex;
+    for (; index < content.length && depth > 0; index += 1) {
+      if (content[index] === "(") depth += 1;
+      else if (content[index] === ")") depth -= 1;
+    }
+    bodies.push(content.slice(matcher.lastIndex, index - 1));
+    matcher.lastIndex = index;
+  }
+
+  return bodies;
+}
+
+function maskSwiftCommentsAndStrings(content) {
+  let result = "";
+  let index = 0;
+  let blockCommentDepth = 0;
+  let lineComment = false;
+  let stringDelimiter;
+
+  while (index < content.length) {
+    const current = content[index];
+    const next = content[index + 1];
+    if (lineComment) {
+      if (current === "\n") {
+        lineComment = false;
+        result += "\n";
+      } else result += " ";
+      index += 1;
+      continue;
+    }
+    if (blockCommentDepth > 0) {
+      if (current === "/" && next === "*") {
+        blockCommentDepth += 1;
+        result += "  ";
+        index += 2;
+      } else if (current === "*" && next === "/") {
+        blockCommentDepth -= 1;
+        result += "  ";
+        index += 2;
+      } else {
+        result += current === "\n" ? "\n" : " ";
+        index += 1;
+      }
+      continue;
+    }
+    if (stringDelimiter) {
+      if (content.startsWith(stringDelimiter, index)) {
+        result += " ".repeat(stringDelimiter.length);
+        index += stringDelimiter.length;
+        stringDelimiter = undefined;
+      } else if (current === "\\" && stringDelimiter === "\"") {
+        result += "  ";
+        index += 2;
+      } else {
+        result += current === "\n" ? "\n" : " ";
+        index += 1;
+      }
+      continue;
+    }
+    if (current === "/" && next === "/") {
+      lineComment = true;
+      result += "  ";
+      index += 2;
+    } else if (current === "/" && next === "*") {
+      blockCommentDepth = 1;
+      result += "  ";
+      index += 2;
+    } else if (content.startsWith("\"\"\"", index)) {
+      stringDelimiter = "\"\"\"";
+      result += "   ";
+      index += 3;
+    } else if (current === "\"") {
+      stringDelimiter = "\"";
+      result += " ";
+      index += 1;
+    } else {
+      result += current;
+      index += 1;
+    }
+  }
+
+  return result;
 }
 
 function mergeSourceGraphs(...graphs) {

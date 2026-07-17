@@ -51,9 +51,16 @@
         "matching-test"
       ],
       "existingTestPaths": [
+        "Verification/Core/Parser/CheckoutBehaviorTests.swift",
         "Verification/Core/Parser/CheckoutParserTests.swift"
       ],
       "existingTestEvidence": [
+        {
+          "testPath": "Verification/Core/Parser/CheckoutBehaviorTests.swift",
+          "kind": "swift-symbol-reference",
+          "strength": "referenced",
+          "usage": "asserted"
+        },
         {
           "testPath": "Verification/Core/Parser/CheckoutParserTests.swift",
           "kind": "filename-convention",

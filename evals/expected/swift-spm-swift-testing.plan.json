@@ -36,8 +36,9 @@
       "existingTestEvidence": [
         {
           "testPath": "Tests/PriceRulesTests/DiscountValidatorTests.swift",
-          "kind": "filename-convention",
-          "strength": "naming"
+          "kind": "swift-symbol-reference",
+          "strength": "referenced",
+          "usage": "called"
         }
       ]
     },
