@@ -15,6 +15,11 @@
     "path": "examples/node-jest-service"
   },
   {
+    "name": "node-test-typescript",
+    "adapter": "javascript",
+    "path": "examples/node-test-typescript"
+  },
+  {
     "name": "express-supertest",
     "adapter": "javascript",
     "path": "examples/express-supertest"

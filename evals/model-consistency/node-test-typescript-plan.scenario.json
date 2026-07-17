@@ -1,0 +1,70 @@
+{
+  "schemaVersion": "model-consistency-scenario/v1",
+  "id": "node-test-typescript-plan",
+  "description": "TypeScript projects using Node's built-in test runner should preserve their native command, asserted import evidence, and audit-first plan shape.",
+  "sourceArtifact": {
+    "path": "evals/expected/node-test-typescript.audit.json",
+    "schemaVersion": "audit/v1"
+  },
+  "toolCall": {
+    "toolName": "generate_test_plan",
+    "arguments": {}
+  },
+  "lockedFields": [
+    {
+      "path": "summary.verificationCommand",
+      "expected": "npm run test",
+      "reason": "The plan should preserve the package's TypeScript-aware Node test command."
+    },
+    {
+      "path": "summary.confidence",
+      "expected": "high",
+      "reason": "An explicit Node test import, native script, and matching test location provide high-confidence setup evidence."
+    },
+    {
+      "path": "summary.addTestCount",
+      "expected": 1,
+      "reason": "The untested external order boundary should remain one add-test candidate."
+    },
+    {
+      "path": "summary.extendTestCount",
+      "expected": 1,
+      "reason": "The parser's existing native test should be extended rather than duplicated."
+    },
+    {
+      "path": "summary.deferredCount",
+      "expected": 1,
+      "reason": "The DTO-only interface should remain deferred from direct testing."
+    },
+    {
+      "path": "items[0].id",
+      "expected": "extend-test:src/orderParser.ts",
+      "reason": "The asserted parser evidence should keep the existing test as the first review target."
+    },
+    {
+      "path": "items[0].existingTestEvidence[0].usage",
+      "expected": "asserted",
+      "reason": "Node assert usage should remain explicit in the plan provenance."
+    },
+    {
+      "path": "items[1].id",
+      "expected": "add-test:src/orderClient.ts",
+      "reason": "The untested service boundary should receive a new unit-test recommendation."
+    },
+    {
+      "path": "items[2].id",
+      "expected": "defer:src/orderDto.ts",
+      "reason": "DTO-only TypeScript should not become a direct test target."
+    }
+  ],
+  "allowedVariations": [
+    "Rationale wording may change while retaining the native Node test strategy.",
+    "Additional non-locked metadata may be added."
+  ],
+  "unexpectedVariations": [
+    "Treating the Node test runner as unsupported.",
+    "Replacing the discovered npm test command.",
+    "Dropping asserted evidence for the parser test.",
+    "Generating a direct DTO test recommendation."
+  ]
+}

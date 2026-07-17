@@ -22,7 +22,7 @@ Native test generation is intentionally deferred. `generate_selected_test` retur
 
 Supported proof point:
 
-- `javascript`: JavaScript/TypeScript repositories with Node's test runner, Vitest, Jest, Express/Supertest, and React Testing Library fixture coverage
+- `javascript`: JavaScript/TypeScript repositories with Node's test runner (including TypeScript execution scripts), Vitest, Jest, Express/Supertest, and React Testing Library fixture coverage
 
 Experimental adapter spikes:
 

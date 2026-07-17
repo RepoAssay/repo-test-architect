@@ -9,6 +9,7 @@ Implemented:
 - JavaScript/TypeScript repository profiling
 - JavaScript/TypeScript package-boundary scoping that excludes nested packages from parent profiles and candidate graphs
 - Node test runner detection from `node:test` imports, alongside Vitest, Jest, React Testing Library, and Supertest dependency/config signals
+- JavaScript/TypeScript `src/` and `source/` roots plus conventional `test/`, `tests/`, and `__tests__/` test locations
 - JavaScript/TypeScript existing-test matching from filename conventions, literal relative imports with two bounded source-dependency hops, referenced-import-symbol-aware barrel re-exports, exact self-package entry imports, and declared exact or single-wildcard package subpaths
 - JavaScript/TypeScript `tsconfig.json` path-alias evidence for exact and single-wildcard mappings, including local inherited configs, `baseUrl` relative to the declaring config, JSON comments/trailing commas, symbol-aware aliased barrels, and bounded aliased dependencies
 - optional JavaScript/TypeScript per-test provenance with deterministic naming, direct, referenced-symbol, and bounded-indirect evidence strengths
@@ -93,6 +94,7 @@ Implemented:
 - `node-vitest-basic`
 - `node-no-tests-yet`
 - `node-jest-service`
+- `node-test-typescript`
 - `express-supertest`
 - `react-testing-library`
 - `kotlin-junit-basic`

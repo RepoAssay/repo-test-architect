@@ -2,6 +2,8 @@ import type { AuditResult, AuditTarget, RepoProfile, SkippedTarget } from "../..
 
 const GENERIC_SOURCE_BASENAMES = new Set(["handler", "index", "types", "utils"]);
 const MAX_TRANSITIVE_SOURCE_DEPTH = 2;
+const SOURCE_EXTENSIONS = [".cjs", ".js", ".jsx", ".mjs", ".ts", ".tsx"];
+const SOURCE_ROOTS = ["src/", "source/"];
 
 export interface FileSnapshot {
   path: string;
@@ -623,15 +625,19 @@ function skipped(
 function isSourceFile(path: string): boolean {
   const normalized = normalizePath(path);
   return (
-    normalized.startsWith("src/") &&
-    [".js", ".jsx", ".mjs", ".ts", ".tsx"].some((extension) => normalized.endsWith(extension)) &&
+    isInSourceRoot(normalized) &&
+    SOURCE_EXTENSIONS.some((extension) => normalized.endsWith(extension)) &&
     !isTestFile(normalized)
   );
 }
 
 function isRuntimeJavaScriptSource(path: string): boolean {
   const normalized = normalizePath(path);
-  return normalized.startsWith("src/") && /\.(cjs|mjs|js|jsx)$/.test(normalized) && !isTestFile(normalized);
+  return isInSourceRoot(normalized) && /\.(cjs|mjs|js|jsx)$/.test(normalized) && !isTestFile(normalized);
+}
+
+function isInSourceRoot(path: string): boolean {
+  return SOURCE_ROOTS.some((root) => path.startsWith(root));
 }
 
 function hasSourceJavaScriptRuntimeEntrypoint(files: FileSnapshot[]): boolean {
@@ -641,7 +647,7 @@ function hasSourceJavaScriptRuntimeEntrypoint(files: FileSnapshot[]): boolean {
 
   return entrypoints.some((entrypoint) => {
     const normalized = stripCurrentDirectoryPrefix(normalizePath(entrypoint));
-    return normalized.startsWith("src/") && /\.(cjs|mjs|js|jsx)$/.test(normalized);
+    return isInSourceRoot(normalized) && /\.(cjs|mjs|js|jsx)$/.test(normalized);
   });
 }
 
@@ -672,6 +678,7 @@ function collectEntrypointValue(value: unknown, entrypoints: string[]): void {
 function isTestFile(path: string): boolean {
   const normalized = normalizePath(path);
   return (
+    ((normalized.startsWith("test/") || normalized.startsWith("tests/")) && SOURCE_EXTENSIONS.some((extension) => normalized.endsWith(extension))) ||
     normalized.includes("__tests__/") ||
     /\.(test|spec)\.[cm]?[jt]sx?$/.test(normalized)
   );

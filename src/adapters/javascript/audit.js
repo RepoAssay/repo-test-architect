@@ -1,7 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 
-const SOURCE_EXTENSIONS = [".js", ".jsx", ".mjs", ".ts", ".tsx"];
+const SOURCE_EXTENSIONS = [".cjs", ".js", ".jsx", ".mjs", ".ts", ".tsx"];
+const SOURCE_ROOTS = ["src/", "source/"];
 const GENERIC_SOURCE_BASENAMES = new Set(["handler", "index", "types", "utils"]);
 const MAX_TRANSITIVE_SOURCE_DEPTH = 2;
 
@@ -589,7 +590,7 @@ function skipped(kind, signals, riskReductionScore, maintenanceCost, skipReason,
 function isSourceFile(currentPath) {
   const normalized = normalizePath(currentPath);
   return (
-    normalized.startsWith("src/") &&
+    isInSourceRoot(normalized) &&
     SOURCE_EXTENSIONS.some((extension) => normalized.endsWith(extension)) &&
     !isTestFile(normalized)
   );
@@ -597,7 +598,11 @@ function isSourceFile(currentPath) {
 
 function isRuntimeJavaScriptSource(currentPath) {
   const normalized = normalizePath(currentPath);
-  return normalized.startsWith("src/") && /\.(cjs|mjs|js|jsx)$/.test(normalized) && !isTestFile(normalized);
+  return isInSourceRoot(normalized) && /\.(cjs|mjs|js|jsx)$/.test(normalized) && !isTestFile(normalized);
+}
+
+function isInSourceRoot(currentPath) {
+  return SOURCE_ROOTS.some((root) => currentPath.startsWith(root));
 }
 
 function hasSourceJavaScriptRuntimeEntrypoint(files) {
@@ -607,7 +612,7 @@ function hasSourceJavaScriptRuntimeEntrypoint(files) {
 
   return entrypoints.some((entrypoint) => {
     const normalized = stripCurrentDirectoryPrefix(normalizePath(entrypoint));
-    return normalized.startsWith("src/") && /\.(cjs|mjs|js|jsx)$/.test(normalized);
+    return isInSourceRoot(normalized) && /\.(cjs|mjs|js|jsx)$/.test(normalized);
   });
 }
 
@@ -638,6 +643,7 @@ function collectEntrypointValue(value, entrypoints) {
 function isTestFile(currentPath) {
   const normalized = normalizePath(currentPath);
   return (
+    ((normalized.startsWith("test/") || normalized.startsWith("tests/")) && SOURCE_EXTENSIONS.some((extension) => normalized.endsWith(extension))) ||
     normalized.includes("__tests__/") ||
     /\.(test|spec)\.[cm]?[jt]sx?$/.test(normalized)
   );

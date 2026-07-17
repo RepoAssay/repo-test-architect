@@ -75,6 +75,7 @@ describe("model consistency runner", () => {
         ["kotlin-maven-junit-plan", []],
         ["node-jest-service-plan", []],
         ["node-no-tests-yet-plan", []],
+        ["node-test-typescript-plan", []],
         ["node-vitest-basic-auth-explanation", []],
         ["node-vitest-basic-deck-explanation", []],
         ["node-vitest-basic-plan", []],
@@ -112,10 +113,10 @@ describe("model consistency runner", () => {
     assert.equal(summary.schemaVersion, "model-consistency-summary/v1");
     assert.equal(summary.profileName, "deterministic-baseline");
     assert.deepEqual(summary.summary, {
-      scenarioCount: 29,
-      passedScenarioCount: 29,
+      scenarioCount: 30,
+      passedScenarioCount: 30,
       failedScenarioCount: 0,
-      checkedFieldCount: 230,
+      checkedFieldCount: 239,
       failureCount: 0
     });
     assert.equal(summary.scenarios[4].scenarioId, "node-jest-service-plan");
@@ -133,8 +134,8 @@ describe("model consistency runner", () => {
     assert.equal(comparison.baselineProfile, "deterministic-baseline");
     assert.equal(comparison.candidateProfile, "local-small");
     assert.deepEqual(comparison.summary, {
-      scenarioCount: 29,
-      alignedScenarioCount: 29,
+      scenarioCount: 30,
+      alignedScenarioCount: 30,
       driftedScenarioCount: 0,
       missingScenarioCount: 0,
       unexpectedScenarioCount: 0,
@@ -176,12 +177,12 @@ describe("model consistency runner", () => {
     const comparison = compareModelConsistencySummaries(baseline, candidate);
 
     assert.deepEqual(comparison.summary, {
-      scenarioCount: 30,
-      alignedScenarioCount: 27,
+      scenarioCount: 31,
+      alignedScenarioCount: 28,
       driftedScenarioCount: 1,
       missingScenarioCount: 1,
       unexpectedScenarioCount: 1,
-      checkedFieldDelta: -75,
+      checkedFieldDelta: -84,
       failureDelta: 3
     });
     assert.deepEqual(
@@ -193,6 +194,7 @@ describe("model consistency runner", () => {
         ["kotlin-maven-junit-plan", "aligned"],
         ["node-jest-service-plan", "aligned"],
         ["node-no-tests-yet-plan", "aligned"],
+        ["node-test-typescript-plan", "aligned"],
         ["node-vitest-basic-auth-explanation", "aligned"],
         ["node-vitest-basic-deck-explanation", "aligned"],
         ["node-vitest-basic-plan", "aligned"],

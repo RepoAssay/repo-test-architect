@@ -9,33 +9,31 @@
       "npm"
     ],
     "testFrameworks": [
-      "vitest"
+      "node-test"
     ],
     "architectures": [],
     "testCommand": "npm run test",
     "detectedConventions": [
-      "*.test files",
-      "fixture folders"
+      "*.test files"
     ],
     "existingTestLocations": [
-      "colocated with source",
       "test/"
     ],
     "setupSignals": [
-      "tsconfig",
-      "vitest config"
+      "tsconfig"
     ],
     "confidence": "high",
     "blockers": []
   },
   "untestedCandidates": [
     {
-      "id": "src/authService.ts",
-      "name": "authService",
-      "path": "src/authService.ts",
+      "id": "src/orderClient.ts",
+      "name": "orderClient",
+      "path": "src/orderClient.ts",
       "kind": "service",
       "signals": [
         "service-name",
+        "external-boundary",
         "auth-branch"
       ],
       "risk": "high",
@@ -45,6 +43,7 @@
       "maintenanceCost": 4,
       "reasons": [
         "Service boundary",
+        "external dependency boundary",
         "auth or permission branches"
       ],
       "existingTestPaths": []
@@ -52,9 +51,9 @@
   ],
   "coveredButRisky": [
     {
-      "id": "src/deckParser.ts",
-      "name": "deckParser",
-      "path": "src/deckParser.ts",
+      "id": "src/orderParser.ts",
+      "name": "orderParser",
+      "path": "src/orderParser.ts",
       "kind": "pure-logic",
       "signals": [
         "pure-logic",
@@ -72,11 +71,11 @@
         "Existing test file detected; review missing edge cases"
       ],
       "existingTestPaths": [
-        "src/deckParser.test.ts"
+        "test/orderParser.test.ts"
       ],
       "existingTestEvidence": [
         {
-          "testPath": "src/deckParser.test.ts",
+          "testPath": "test/orderParser.test.ts",
           "kind": "direct-relative-import",
           "strength": "direct",
           "usage": "asserted"
@@ -86,12 +85,13 @@
   ],
   "recommended": [
     {
-      "id": "src/authService.ts",
-      "name": "authService",
-      "path": "src/authService.ts",
+      "id": "src/orderClient.ts",
+      "name": "orderClient",
+      "path": "src/orderClient.ts",
       "kind": "service",
       "signals": [
         "service-name",
+        "external-boundary",
         "auth-branch"
       ],
       "risk": "high",
@@ -101,14 +101,15 @@
       "maintenanceCost": 4,
       "reasons": [
         "Service boundary",
+        "external dependency boundary",
         "auth or permission branches"
       ],
       "existingTestPaths": []
     },
     {
-      "id": "src/deckParser.ts",
-      "name": "deckParser",
-      "path": "src/deckParser.ts",
+      "id": "src/orderParser.ts",
+      "name": "orderParser",
+      "path": "src/orderParser.ts",
       "kind": "pure-logic",
       "signals": [
         "pure-logic",
@@ -126,11 +127,11 @@
         "Existing test file detected; review missing edge cases"
       ],
       "existingTestPaths": [
-        "src/deckParser.test.ts"
+        "test/orderParser.test.ts"
       ],
       "existingTestEvidence": [
         {
-          "testPath": "src/deckParser.test.ts",
+          "testPath": "test/orderParser.test.ts",
           "kind": "direct-relative-import",
           "strength": "direct",
           "usage": "asserted"
@@ -140,22 +141,9 @@
   ],
   "skipped": [
     {
-      "id": "src/constants.ts",
-      "name": "constants",
-      "path": "src/constants.ts",
-      "kind": "constants",
-      "signals": [
-        "constants-only"
-      ],
-      "riskReductionScore": 1,
-      "maintenanceCost": 3,
-      "reason": "Constants-only files are better covered by behavior that consumes the constants.",
-      "preferredCoveragePath": "Cover through tests for the service, parser, or component that uses these constants."
-    },
-    {
-      "id": "src/userDto.ts",
-      "name": "userDto",
-      "path": "src/userDto.ts",
+      "id": "src/orderDto.ts",
+      "name": "orderDto",
+      "path": "src/orderDto.ts",
       "kind": "dto",
       "signals": [
         "dto-only"
@@ -167,7 +155,7 @@
     }
   ],
   "risks": [
-    "authService has service boundary, auth or permission branches and has no matching test file.",
-    "deckParser has pure transformation logic, edge-case surface and needs edge-case review."
+    "orderClient has service boundary, external dependency boundary, auth or permission branches and has no matching test file.",
+    "orderParser has pure transformation logic, edge-case surface and needs edge-case review."
   ]
 }
