@@ -133,7 +133,7 @@ function buildProfile(root, files, bazelGraph) {
   const paths = files.map((file) => normalizePath(file.path));
   const packageText = files.find((file) => normalizePath(file.path) === "Package.swift")?.content ?? "";
   const testFrameworks = detectTestFrameworks(files, packageText);
-  const testCommand = detectTestCommand(paths, testFrameworks, bazelGraph);
+  const testCommand = detectTestCommand(paths, testFrameworks, bazelGraph, files);
   const existingTestLocations = detectExistingTestLocations(paths, bazelGraph);
   const blockers = detectBlockers(testCommand, testFrameworks);
 
@@ -146,7 +146,7 @@ function buildProfile(root, files, bazelGraph) {
     testCommand,
     detectedConventions: detectConventions(paths, bazelGraph),
     existingTestLocations,
-    setupSignals: detectSetupSignals(paths, packageText, bazelGraph),
+    setupSignals: detectSetupSignals(paths, packageText, bazelGraph, files),
     confidence: scoreProfileConfidence(testFrameworks, existingTestLocations, blockers),
     blockers
   };
@@ -203,13 +203,13 @@ function detectTestFrameworks(files, packageText) {
   return [...frameworks].sort();
 }
 
-function detectTestCommand(paths, frameworks, bazelGraph) {
+function detectTestCommand(paths, frameworks, bazelGraph, files) {
   if (frameworks.length === 0) return undefined;
   if (bazelGraph.hasSwiftTest) return "bazel test //...";
   if (paths.includes("Package.swift")) return "swift test";
   if (paths.some((item) => item.endsWith(".xcodeproj/project.pbxproj"))) {
     const scheme = detectXcodeScheme(paths);
-    const testPlan = detectXcodeTestPlan(paths);
+    const testPlan = detectXcodeTestPlan(paths, files, scheme);
     if (scheme && testPlan) return `xcodebuild test -scheme ${quoteShellArgument(scheme)} -testPlan ${quoteShellArgument(testPlan)}`;
     return scheme ? `xcodebuild test -scheme ${quoteShellArgument(scheme)}` : "xcodebuild test";
   }
@@ -238,12 +238,15 @@ function detectConventions(paths, bazelGraph) {
   return [...conventions];
 }
 
-function detectSetupSignals(paths, packageText, bazelGraph) {
+function detectSetupSignals(paths, packageText, bazelGraph, files) {
   const signals = new Set();
   if (paths.includes("Package.swift")) signals.add("swift package manager");
   if (paths.some((item) => item.endsWith(".xcodeproj/project.pbxproj"))) signals.add("xcode project");
   if (detectXcodeScheme(paths)) signals.add("xcode shared scheme");
-  if (detectXcodeTestPlan(paths)) signals.add("xcode test plan");
+  if (paths.some((item) => item.endsWith(".xctestplan"))) signals.add("xcode test plan");
+  const scheme = detectXcodeScheme(paths);
+  const testPlans = new Set(paths.filter((item) => item.endsWith(".xctestplan")).map(basenameWithoutExtension));
+  if (scheme && detectSchemeTestPlan(files, scheme, testPlans)) signals.add("xcode scheme test plan");
   if (packageText.includes("Vapor") || packageText.includes("vapor.git")) signals.add("vapor dependency");
   if (/MongoKitten|FluentMongoDriver|MongoSwift|mongodb|mongo-driver/i.test(packageText)) signals.add("mongodb dependency");
   if (packageText.includes(".product(name: \"XCTVapor\"")) signals.add("xctvapor test support");
@@ -998,12 +1001,30 @@ function detectXcodeScheme(paths) {
   return undefined;
 }
 
-function detectXcodeTestPlan(paths) {
+function detectXcodeTestPlan(paths, files, scheme) {
   const testPlanNames = paths
     .filter((item) => item.endsWith(".xctestplan"))
     .map((item) => basenameWithoutExtension(item))
     .sort();
+  const schemePlan = scheme ? detectSchemeTestPlan(files, scheme, new Set(testPlanNames)) : undefined;
+  if (schemePlan) return schemePlan;
   if (testPlanNames.length === 1) return testPlanNames[0];
+  return undefined;
+}
+
+function detectSchemeTestPlan(files, scheme, availablePlans) {
+  const schemeFile = files.find((file) => file.path.endsWith(".xcscheme") && basenameWithoutExtension(file.path) === scheme);
+  if (!schemeFile) return undefined;
+  const references = [...schemeFile.content.matchAll(/<TestPlanReference\b[^>]*>/g)].flatMap((match) => {
+    const reference = match[0].match(/\breference\s*=\s*"(?:container:)?([^"]+\.xctestplan)"/)?.[1];
+    if (!reference) return [];
+    const name = basenameWithoutExtension(reference);
+    if (availablePlans && !availablePlans.has(name)) return [];
+    return [{ name, isDefault: /\bdefault\s*=\s*"YES"/.test(match[0]) }];
+  });
+  const defaultPlans = references.filter((reference) => reference.isDefault);
+  if (defaultPlans.length === 1) return defaultPlans[0].name;
+  if (references.length === 1) return references[0].name;
   return undefined;
 }
 

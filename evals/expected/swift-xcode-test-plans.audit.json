@@ -1,0 +1,115 @@
+{
+  "schemaVersion": "audit/v1",
+  "profile": {
+    "root": "<fixture>",
+    "languages": [
+      "swift"
+    ],
+    "packageManagers": [
+      "xcodebuild"
+    ],
+    "testFrameworks": [
+      "XCTest"
+    ],
+    "architectures": [
+      "apple-xcode",
+      "swiftui"
+    ],
+    "testCommand": "xcodebuild test -scheme CheckoutApp -testPlan CheckoutAppTests",
+    "detectedConventions": [
+      "*Tests.swift files"
+    ],
+    "existingTestLocations": [
+      "CheckoutAppTests"
+    ],
+    "setupSignals": [
+      "xcode project",
+      "xcode shared scheme",
+      "xcode test plan",
+      "xcode scheme test plan"
+    ],
+    "confidence": "high",
+    "blockers": []
+  },
+  "untestedCandidates": [],
+  "coveredButRisky": [
+    {
+      "id": "CheckoutApp/Services/SessionService.swift",
+      "name": "SessionService",
+      "path": "CheckoutApp/Services/SessionService.swift",
+      "kind": "service",
+      "signals": [
+        "service-boundary",
+        "matching-test"
+      ],
+      "risk": "medium",
+      "testability": "medium",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 6,
+      "maintenanceCost": 4,
+      "reasons": [
+        "Service boundary",
+        "Existing test file detected; review missing edge cases"
+      ],
+      "existingTestPaths": [
+        "CheckoutAppTests/SessionServiceTests.swift"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "CheckoutAppTests/SessionServiceTests.swift",
+          "kind": "swift-symbol-reference",
+          "strength": "referenced",
+          "usage": "asserted"
+        }
+      ]
+    }
+  ],
+  "recommended": [
+    {
+      "id": "CheckoutApp/Services/SessionService.swift",
+      "name": "SessionService",
+      "path": "CheckoutApp/Services/SessionService.swift",
+      "kind": "service",
+      "signals": [
+        "service-boundary",
+        "matching-test"
+      ],
+      "risk": "medium",
+      "testability": "medium",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 6,
+      "maintenanceCost": 4,
+      "reasons": [
+        "Service boundary",
+        "Existing test file detected; review missing edge cases"
+      ],
+      "existingTestPaths": [
+        "CheckoutAppTests/SessionServiceTests.swift"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "CheckoutAppTests/SessionServiceTests.swift",
+          "kind": "swift-symbol-reference",
+          "strength": "referenced",
+          "usage": "asserted"
+        }
+      ]
+    }
+  ],
+  "skipped": [
+    {
+      "id": "CheckoutApp/Views/LoginView.swift",
+      "name": "LoginView",
+      "path": "CheckoutApp/Views/LoginView.swift",
+      "kind": "ui-view",
+      "signals": [
+        "swiftui-view"
+      ],
+      "riskReductionScore": 2,
+      "maintenanceCost": 5,
+      "reason": "SwiftUI views should only get direct tests when the repo already has UI or snapshot conventions.",
+      "preferredCoveragePath": "Cover through view model, reducer, service, or UI/snapshot tests when a convention exists."
+    }
+  ],
+  "risks": []
+}

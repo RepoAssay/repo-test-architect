@@ -85,6 +85,11 @@
     "path": "examples/swift-bazel-xctest"
   },
   {
+    "name": "swift-xcode-test-plans",
+    "adapter": "swift",
+    "path": "examples/swift-xcode-test-plans"
+  },
+  {
     "name": "vapor-service-tests",
     "adapter": "swift",
     "path": "examples/vapor-service-tests"

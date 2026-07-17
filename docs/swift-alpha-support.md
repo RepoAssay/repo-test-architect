@@ -8,7 +8,7 @@ This matrix defines the evidence boundary for moving the Swift adapter from an e
 | --- | --- | --- |
 | Package and project shapes | Swift Package Manager, Xcode projects, and Swift Bazel workspaces | `Package.swift`, `.xcodeproj`, shared schemes/test plans, `MODULE.bazel`/`WORKSPACE`, and Swift BUILD rules |
 | Test frameworks | Swift Testing, XCTest, Quick, Nimble, SnapshotTesting, and XCTVapor | imports, package dependencies, and product declarations |
-| Commands | `swift test`, scheme/test-plan-aware `xcodebuild test`, and `bazel test //...` | package, project, shared scheme, unambiguous test-plan, and `swift_test` markers |
+| Commands | `swift test`, scheme/test-plan-aware `xcodebuild test`, and `bazel test //...` | package, project, project-matching shared scheme, scheme-default or otherwise unambiguous test plan, and `swift_test` markers |
 | Bazel target layout | `swift_binary`, `swift_library`, and `swift_test`, including test sources owned through direct dependencies | BUILD target sources, module names, direct dependencies, imports, and glob patterns |
 | SwiftPM source layout | default `Sources`, `Source`, `src`, `srcs`, and `Tests` search roots plus manifest-declared custom paths, source lists, excludes, and test dependencies | parsed target declarations plus source and test ownership |
 | Xcode source layout | app/framework source folders plus `*Tests` and `*UITests` folders | project markers and target-like directory names |
@@ -20,6 +20,8 @@ This matrix defines the evidence boundary for moving the Swift adapter from an e
 Swift Package Manager searches target-named subdirectories under `Sources`, `Source`, `src`, and `srcs`, with `Tests` also available for test targets; `path`, `sources`, and `exclude` can define further custom layouts. Each target forms a module or test suite. The adapter parses those static declarations and test-target dependencies to avoid matching the same source filename across unrelated modules. See the official [Creating a Swift package](https://docs.swift.org/swiftpm/documentation/packagemanagerdocs/creatingswiftpackage/), [Target](https://docs.swift.org/swiftpm/documentation/packagedescription/target/), [path](https://docs.swift.org/swiftpm/documentation/packagedescription/target/path/), and [sources](https://docs.swift.org/swiftpm/documentation/packagedescription/target/sources/) documentation.
 
 Bazel's `swift_test` can own test sources directly or discover XCTest cases in direct dependencies. The adapter follows both shapes, including tests outside `Tests` directories, and uses `bazel test //...` as the conservative workspace command. See the official [rules_swift API](https://registry.bazel.build/docs/rules_swift) and [Bazel test command](https://bazel.build/docs/user-manual#running-tests) documentation.
+
+Xcode schemes associate test targets and test plans with a build. When a project-matching shared scheme references multiple checked-in plans, the adapter selects its single default plan; it also accepts a scheme's sole referenced plan or the repository's sole plan. Ambiguous choices remain unreported. See Apple's guidance on [running tests and interpreting results](https://developer.apple.com/documentation/xcode/running-tests-and-interpreting-results) and [organizing tests to improve feedback](https://developer.apple.com/documentation/xcode/organizing-tests-to-improve-feedback).
 
 ## Evidence Boundary
 
@@ -46,7 +48,7 @@ This normalized evidence now flows through audit, plan, explanation, findings, p
 - custom Starlark macros, generated BUILD files, `select()` expressions, aliases, and transitive Bazel test-source graphs are not resolved
 - member-level references through inferred receiver types, overload resolution, extensions, aliases, raw-string interpolation, and macro expansion are not resolved
 - computed Swift manifests, local variables that assemble targets, conditional target graphs, and dependency aliases are not resolved by the static manifest reader
-- multiple Xcode schemes or test plans remain ambiguous when no project-name or single-plan choice exists
+- multiple Xcode schemes remain ambiguous when none matches the project name; multiple plans remain ambiguous when the selected scheme lacks a single default or sole reference
 - UI tests, snapshot tests, and XCTVapor tests are detected, but runtime reachability is not mapped back to source modules
 - Objective-C is visible to the adapter and XCTest detection, but direct Objective-C source classification remains deferred
 - generated sources, macros, plugins, conditional manifests, and platform-specific target graphs need more real-repository validation
