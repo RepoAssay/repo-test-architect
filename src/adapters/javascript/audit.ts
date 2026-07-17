@@ -14,26 +14,32 @@ export interface JavaScriptRepoSnapshot {
   changedPaths?: string[];
 }
 
+interface PackageJsonData extends Record<string, unknown> {
+  name?: string;
+  scripts?: Record<string, string>;
+}
+
 export function auditJavaScriptRepo(snapshot: JavaScriptRepoSnapshot): AuditResult {
-  const profile = buildProfile(snapshot);
+  const files = scopeToPackageRoot(snapshot.files);
+  const profile = buildProfile({ ...snapshot, files });
   const changedPaths = snapshot.changedPaths ? new Set(snapshot.changedPaths.map(normalizePath)) : undefined;
-  const sourceFiles = snapshot.files.filter((file) => isSourceFile(file.path) && isIncludedByChangedPaths(file.path, changedPaths));
-  const testFiles = snapshot.files
+  const sourceFiles = files.filter((file) => isSourceFile(file.path) && isIncludedByChangedPaths(file.path, changedPaths));
+  const testFiles = files
     .filter((file) => isTestFile(file.path))
     .map((file) => ({ ...file, path: normalizePath(file.path) }));
-  const moduleFiles = snapshot.files.map((file) => ({ ...file, path: normalizePath(file.path) }));
-  const tsconfigData = resolveTsconfigData("tsconfig.json", snapshot.files);
+  const moduleFiles = files.map((file) => ({ ...file, path: normalizePath(file.path) }));
+  const tsconfigData = resolveTsconfigData("tsconfig.json", files);
   const pathAliasEntries = findTsconfigPathAliasEntries(tsconfigData, moduleFiles);
   const boundedTransitiveImports = collectBoundedTransitiveImports(testFiles, moduleFiles, pathAliasEntries);
-  const packageData = parsePackageJson(snapshot.files.find((file) => normalizePath(file.path) === "package.json")?.content ?? "");
+  const packageData = parsePackageJson(files.find((file) => normalizePath(file.path) === "package.json")?.content ?? "");
   const packageEntryFile = findSourcePackageEntry(packageData, moduleFiles);
   const packageSubpathEntries = findSourcePackageSubpathEntries(packageData, moduleFiles);
   const untestedCandidates: AuditTarget[] = [];
   const coveredButRisky: AuditTarget[] = [];
   const skipped: SkippedTarget[] = [];
   const risks: string[] = [];
-  const runtimeSourcePaths = new Set(snapshot.files.map((file) => normalizePath(file.path)).filter(isRuntimeJavaScriptSource));
-  const sourceJavaScriptRuntime = hasSourceJavaScriptRuntimeEntrypoint(snapshot.files);
+  const runtimeSourcePaths = new Set(files.map((file) => normalizePath(file.path)).filter(isRuntimeJavaScriptSource));
+  const sourceJavaScriptRuntime = hasSourceJavaScriptRuntimeEntrypoint(files);
 
   for (const file of sourceFiles) {
     const name = basenameWithoutExtension(file.path);
@@ -116,16 +122,30 @@ function isIncludedByChangedPaths(path: string, changedPaths?: Set<string>): boo
   return changedPaths.has(normalizePath(path));
 }
 
+function scopeToPackageRoot(files: FileSnapshot[]): FileSnapshot[] {
+  const nestedPackageRoots = files
+    .map((file) => normalizePath(file.path))
+    .filter((path) => path.endsWith("/package.json"))
+    .map((path) => path.slice(0, -"/package.json".length));
+
+  if (nestedPackageRoots.length === 0) return files;
+
+  return files.filter((file) => {
+    const path = normalizePath(file.path);
+    return !nestedPackageRoots.some((nestedRoot) => path === nestedRoot || path.startsWith(`${nestedRoot}/`));
+  });
+}
+
 function buildProfile(snapshot: JavaScriptRepoSnapshot): RepoProfile {
   const paths = snapshot.files.map((file) => normalizePath(file.path));
   const packageJson = snapshot.files.find((file) => normalizePath(file.path) === "package.json");
   const packageText = packageJson?.content ?? "";
   const packageData = parsePackageJson(packageText);
-  const testFrameworks = detectTestFrameworks(paths, packageText);
+  const testFrameworks = detectTestFrameworks(snapshot.files, packageData);
   const testCommand = detectTestCommand(packageData, testFrameworks);
   const existingTestLocations = detectExistingTestLocations(paths);
   const detectedConventions = detectConventions(paths);
-  const setupSignals = detectSetupSignals(paths, packageText);
+  const setupSignals = detectSetupSignals(paths, packageData);
   const blockers = detectBlockers(packageJson !== undefined, testCommand, testFrameworks);
 
   return {
@@ -133,7 +153,7 @@ function buildProfile(snapshot: JavaScriptRepoSnapshot): RepoProfile {
     languages: detectLanguages(paths),
     packageManagers: detectPackageManagers(paths),
     testFrameworks,
-    architectures: detectArchitectures(paths, packageText),
+    architectures: detectArchitectures(paths, packageData),
     testCommand,
     detectedConventions,
     existingTestLocations,
@@ -143,11 +163,11 @@ function buildProfile(snapshot: JavaScriptRepoSnapshot): RepoProfile {
   };
 }
 
-function parsePackageJson(packageText: string): { scripts?: Record<string, string> } {
+function parsePackageJson(packageText: string): PackageJsonData {
   if (!packageText.trim()) return {};
 
   try {
-    return JSON.parse(packageText) as { scripts?: Record<string, string> };
+    return JSON.parse(packageText) as PackageJsonData;
   } catch {
     return {};
   }
@@ -178,26 +198,42 @@ function detectPackageManagers(paths: string[]): string[] {
   return [...managers];
 }
 
-function detectTestFrameworks(paths: string[], packageText: string): string[] {
+function detectTestFrameworks(files: FileSnapshot[], packageData: PackageJsonData): string[] {
+  const paths = files.map((file) => normalizePath(file.path));
   const frameworks = new Set<string>();
 
-  if (paths.some((path) => path.includes("vitest.config")) || packageText.includes("vitest")) {
+  if (paths.some((path) => path.includes("vitest.config")) || hasPackageDependency(packageData, "vitest")) {
     frameworks.add("vitest");
   }
 
-  if (paths.some((path) => path.includes("jest.config")) || packageText.includes("jest")) {
+  if (paths.some((path) => path.includes("jest.config")) || hasPackageDependency(packageData, "jest")) {
     frameworks.add("jest");
   }
 
-  if (packageText.includes("@testing-library/react")) {
+  if (files.some((file) => isTestFile(file.path) && usesNodeTest(file.content))) {
+    frameworks.add("node-test");
+  }
+
+  if (hasPackageDependency(packageData, "@testing-library/react")) {
     frameworks.add("react-testing-library");
   }
 
-  if (packageText.includes("supertest")) {
+  if (hasPackageDependency(packageData, "supertest")) {
     frameworks.add("supertest");
   }
 
   return [...frameworks];
+}
+
+function hasPackageDependency(packageData: PackageJsonData, dependencyName: string): boolean {
+  return ["dependencies", "devDependencies", "peerDependencies", "optionalDependencies"].some((field) => {
+    const dependencies = packageData[field];
+    return dependencies !== null && typeof dependencies === "object" && Object.hasOwn(dependencies, dependencyName);
+  });
+}
+
+function usesNodeTest(content: string): boolean {
+  return /(?:from\s+|import\s+|require\(\s*)["']node:test["']/.test(content);
 }
 
 function detectTestCommand(packageData: { scripts?: Record<string, string> }, frameworks: string[]): string | undefined {
@@ -212,6 +248,7 @@ function detectTestCommand(packageData: { scripts?: Record<string, string> }, fr
 
   if (frameworks.includes("vitest")) return "npx vitest run";
   if (frameworks.includes("jest")) return "npx jest";
+  if (frameworks.includes("node-test")) return "node --test";
 
   return undefined;
 }
@@ -267,15 +304,15 @@ function detectConventions(paths: string[]): string[] {
   return [...conventions];
 }
 
-function detectSetupSignals(paths: string[], packageText: string): string[] {
+function detectSetupSignals(paths: string[], packageData: PackageJsonData): string[] {
   const signals = new Set<string>();
 
   if (paths.includes("tsconfig.json")) signals.add("tsconfig");
   if (paths.some((path) => path.includes("vitest.config"))) signals.add("vitest config");
   if (paths.some((path) => path.includes("jest.config"))) signals.add("jest config");
-  if (packageText.includes("msw")) signals.add("msw");
-  if (packageText.includes("nock")) signals.add("nock");
-  if (packageText.includes("supertest")) signals.add("supertest");
+  if (hasPackageDependency(packageData, "msw")) signals.add("msw");
+  if (hasPackageDependency(packageData, "nock")) signals.add("nock");
+  if (hasPackageDependency(packageData, "supertest")) signals.add("supertest");
 
   return [...signals];
 }
@@ -305,14 +342,14 @@ function scoreProfileConfidence(testFrameworks: string[], existingTestLocations:
   return "low";
 }
 
-function detectArchitectures(paths: string[], packageText: string): string[] {
+function detectArchitectures(paths: string[], packageData: PackageJsonData): string[] {
   const architectures = new Set<string>();
 
-  if (packageText.includes("react") || paths.some((path) => path.endsWith(".tsx") || path.endsWith(".jsx"))) {
+  if (hasPackageDependency(packageData, "react") || paths.some((path) => path.endsWith(".tsx") || path.endsWith(".jsx"))) {
     architectures.add("react");
   }
 
-  if (packageText.includes("express") || paths.some((path) => path.includes("/routes/"))) {
+  if (hasPackageDependency(packageData, "express") || paths.some((path) => path.includes("/routes/"))) {
     architectures.add("http-routes");
   }
 

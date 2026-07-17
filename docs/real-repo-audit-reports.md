@@ -29,9 +29,9 @@ node ./src/cli/index.js placement . --adapter javascript
 What the tool found:
 
 - high-confidence JavaScript/TypeScript profile with `npm run test`
-- Vitest and Jest signals, `test/` conventions, and matching test evidence
-- 27 ranked candidates in the direct root audit after filtering sibling TypeScript reference mirrors for runtime JavaScript modules
-- 19 conservative `keep` placement findings for tests that match source targets in the same project
+- Node test runner signals, `test/` conventions, and matching test evidence
+- 26 covered-but-risky candidates in the direct root audit after filtering sibling TypeScript reference mirrors and nested example packages
+- 186 conservative `keep` placement evidence links for tests that match source targets in the same project
 - useful distinction between untested files and covered-but-risky files
 
 Representative findings:
@@ -39,21 +39,20 @@ Representative findings:
 | Category | Examples | Why it matters |
 | --- | --- | --- |
 | Covered but risky | `adapter-registry`, `explain-target`, `project-findings`, `tool-api`, `test-plan` | Existing tests are treated as evidence, not proof of complete edge-case coverage. |
-| Untested candidates | adapter audit modules, CLI/MCP entry modules, JSON-RPC handling | These are branch-heavy implementation files where more focused tests may reduce regression risk. |
 | Low-value direct targets | DTO/reference files and low-runtime-behavior modules | The adapter avoids treating every source file as a direct test target. |
 | Placement | `test/*.test.js` files matching `src/core/*` targets | Existing tests are reported as correctly colocated with the audited project. |
 
 What it missed or over-reported:
 
 - Direct root audit sees broad branching logic but does not yet understand module ownership well enough to rank adapter files by product risk.
-- The project-wide audit of this repository is noisy because checked-in examples are intentionally separate fixture projects.
+- Matching-test evidence is now complete for direct root candidates, but it does not prove that every important branch is asserted.
 - The standalone `src/core/report.ts` reference renderer previously appeared as a candidate because the live implementation was duplicated inside the CLI without a runtime sibling module.
 
 Heuristic follow-up:
 
 - add ownership or package-role signals for adapter modules, CLI entrypoints, MCP transport, and core scoring modules
 - keep reference implementations paired with their runtime JavaScript modules so the adapter can distinguish shipped behavior from mirrors
-- use `--exclude-project "examples/**"` when generating self-audit reports that should ignore checked-in example fixtures
+- use project-level audits when checked-in nested packages should be evaluated independently from the root package
 
 ## `unjs/defu` Audit
 
