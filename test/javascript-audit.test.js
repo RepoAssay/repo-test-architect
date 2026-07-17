@@ -319,6 +319,49 @@ describe("JavaScript audit adapter", () => {
     assert.match(avatar.reason, /Presentational components/);
   });
 
+  it("classifies tested React hooks before generic controller heuristics", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-react-hook-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "src"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "package.json"),
+      JSON.stringify({
+        scripts: { test: "vitest run" },
+        dependencies: { react: "latest" },
+        devDependencies: { "@testing-library/react": "latest", vitest: "latest" }
+      })
+    );
+    fs.writeFileSync(
+      path.join(root, "src", "useCheckoutController.ts"),
+      `import React from "react";
+export function useCheckoutController(initial = 0) {
+  const [count, setCount] = React.useState(initial);
+  if (count < 0) throw new Error("invalid count");
+  return { count, increment: () => setCount(count + 1) };
+}
+`
+    );
+    fs.writeFileSync(
+      path.join(root, "src", "useCheckoutController.test.tsx"),
+      `import { renderHook } from "@testing-library/react";
+import { expect, test } from "vitest";
+import { useCheckoutController } from "./useCheckoutController";
+test("returns the initial count", () => {
+  const { result } = renderHook(() => useCheckoutController(2));
+  expect(result.current.count).toBe(2);
+});
+`
+    );
+
+    const audit = auditJavaScriptRepo(root);
+    const hook = audit.coveredButRisky.find((target) => target.name === "useCheckoutController");
+
+    assert.equal(hook.kind, "react-hook");
+    assert.equal(hook.recommendedTestLevel, "component");
+    assert.deepEqual(hook.signals, ["react-hook", "rtl-convention", "matching-test"]);
+    assert.deepEqual(hook.existingTestPaths, ["src/useCheckoutController.test.tsx"]);
+  });
+
   it("skips TypeScript reference mirrors when a matching runtime JavaScript module exists", (t) => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-js-mirror-"));
     t.after(() => fs.rmSync(root, { recursive: true, force: true }));

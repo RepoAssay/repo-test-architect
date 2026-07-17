@@ -11,10 +11,8 @@ export function auditJavaScriptRepo(root, options = {}) {
   const files = scopeToPackageRoot(readRepoFiles(root));
   const profile = buildProfile(root, files);
   const changedPaths = options.changedPaths ? new Set(options.changedPaths.map((currentPath) => normalizeChangedPath(root, currentPath))) : undefined;
-  const testFiles = files
-    .filter((file) => isTestFile(file.path))
-    .map((file) => ({ ...file, path: normalizePath(file.path) }));
-  const moduleFiles = files.map((file) => ({ ...file, path: normalizePath(file.path) }));
+  const moduleFiles = files.map((file) => analyzeModuleFile({ ...file, path: normalizePath(file.path) }));
+  const testFiles = moduleFiles.filter((file) => isTestFile(file.path));
   const tsconfigData = resolveTsconfigData("tsconfig.json", files);
   const pathAliasEntries = findTsconfigPathAliasEntries(tsconfigData, moduleFiles);
   const boundedTransitiveImports = collectBoundedTransitiveImports(testFiles, moduleFiles, pathAliasEntries);
@@ -439,6 +437,12 @@ function classifySourceFile(file, profile, mirrorContext = {}) {
     );
   }
 
+  if (isReactHook(currentPath, content, profile)) {
+    const signals = ["react-hook"];
+    if (profile.testFrameworks.includes("react-testing-library")) signals.push("rtl-convention");
+    return recommended("react-hook", signals, "medium", "high", "component", 6, 3, ["React hook state and lifecycle behavior"]);
+  }
+
   if (lowerPath.includes("component") || lowerPath.endsWith(".tsx") || content.includes("jsx")) {
     if (isPresentationalComponent(content)) {
       return skipped(
@@ -709,12 +713,12 @@ function hasFilenameMatch(testPath, testBase, sourceBase, sourceDir, baseNameCan
 }
 
 function getDirectRelativeImportUsage(testFile, sourcePath) {
-  const matchingImports = collectModuleImports(testFile.content).filter(({ specifier }) =>
+  const matchingImports = getModuleImports(testFile).filter(({ specifier }) =>
     specifier.startsWith(".") && moduleSpecifierTargetsSource(testFile.path, specifier, sourcePath)
   );
   if (matchingImports.some(({ assertedImportedNames }) => assertedImportedNames.size > 0)) return "asserted";
   if (matchingImports.some(({ calledImportedNames }) => calledImportedNames.size > 0)) return "called";
-  return matchingImports.length > 0 || collectRelativeModuleSpecifiers(testFile.content).some((specifier) =>
+  return matchingImports.length > 0 || getRelativeModuleSpecifiers(testFile).some((specifier) =>
     moduleSpecifierTargetsSource(testFile.path, specifier, sourcePath)
   ) ? "imported" : undefined;
 }
@@ -725,7 +729,7 @@ function collectBoundedTransitiveImports(testFiles, moduleFiles, pathAliasEntrie
 
 function collectBoundedTransitiveImportsForTest(testFile, moduleFiles, pathAliasEntries) {
   const queue = [];
-  for (const { specifier, usedImportedNames, calledImportedNames, assertedImportedNames } of collectModuleImports(testFile.content)) {
+  for (const { specifier, usedImportedNames, calledImportedNames, assertedImportedNames } of getModuleImports(testFile)) {
     const file = findImportedModuleFile(testFile.path, specifier, moduleFiles, pathAliasEntries);
     if (!file) continue;
     const viaUsage = assertedImportedNames.size > 0 ? "asserted" : calledImportedNames.size > 0 ? "called" : undefined;
@@ -742,7 +746,7 @@ function collectBoundedTransitiveImportsForTest(testFile, moduleFiles, pathAlias
     visited.set(file.path, viaUsage);
     if (depth >= MAX_TRANSITIVE_SOURCE_DEPTH) continue;
 
-    for (const specifier of collectRuntimeDependencySpecifiers(file.content)) {
+    for (const specifier of getRuntimeDependencySpecifiers(file)) {
       const dependency = findImportedModuleFile(file.path, specifier, moduleFiles, pathAliasEntries);
       if (dependency) queue.push({ file: dependency, depth: depth + 1, viaUsage });
     }
@@ -777,7 +781,7 @@ function findRelativeModuleFile(importerPath, specifier, moduleFiles) {
 }
 
 function getOneHopBarrelImportUsage(testFile, sourcePath, moduleFiles) {
-  for (const { specifier, usedImportedNames, calledImportedNames, assertedImportedNames } of collectModuleImports(testFile.content)) {
+  for (const { specifier, usedImportedNames, calledImportedNames, assertedImportedNames } of getModuleImports(testFile)) {
     if (!specifier.startsWith(".")) continue;
     const barrelFile = moduleFiles.find((file) => moduleSpecifierTargetsSource(testFile.path, specifier, file.path));
     if (!barrelFile || barrelFile.path === sourcePath) continue;
@@ -791,7 +795,7 @@ function getOneHopBarrelImportUsage(testFile, sourcePath, moduleFiles) {
 }
 
 function getPathAliasImportUsage(testFile, sourcePath, moduleFiles, pathAliasEntries) {
-  for (const moduleImport of collectModuleImports(testFile.content)) {
+  for (const moduleImport of getModuleImports(testFile)) {
     const { specifier } = moduleImport;
     const entryFile = pathAliasEntries.get(specifier);
     if (!entryFile) continue;
@@ -805,7 +809,7 @@ function getPathAliasImportUsage(testFile, sourcePath, moduleFiles, pathAliasEnt
 function getPackageEntryImportUsage(testFile, sourcePath, moduleFiles, { packageName, packageEntryFile, packageSubpathEntries }) {
   if (typeof packageName !== "string") return undefined;
 
-  for (const moduleImport of collectModuleImports(testFile.content)) {
+  for (const moduleImport of getModuleImports(testFile)) {
     const { specifier } = moduleImport;
     const entryFile = specifier === packageName ? packageEntryFile : packageSubpathEntries.get(specifier);
     if (!entryFile) continue;
@@ -1000,6 +1004,29 @@ function moduleSpecifierTargetsSource(importerPath, specifier, sourcePath) {
 
 function collectRelativeModuleSpecifiers(content) {
   return collectModuleSpecifiers(content).filter((specifier) => specifier.startsWith("."));
+}
+
+function analyzeModuleFile(file) {
+  if (!SOURCE_EXTENSIONS.some((extension) => file.path.endsWith(extension))) return file;
+  const moduleImports = collectModuleImports(file.content);
+  return {
+    ...file,
+    moduleImports,
+    relativeModuleSpecifiers: collectRelativeModuleSpecifiers(file.content),
+    runtimeDependencySpecifiers: moduleImports.map(({ specifier }) => specifier)
+  };
+}
+
+function getModuleImports(file) {
+  return file.moduleImports ?? collectModuleImports(file.content);
+}
+
+function getRelativeModuleSpecifiers(file) {
+  return file.relativeModuleSpecifiers ?? collectRelativeModuleSpecifiers(file.content);
+}
+
+function getRuntimeDependencySpecifiers(file) {
+  return file.runtimeDependencySpecifiers ?? collectRuntimeDependencySpecifiers(file.content);
 }
 
 function collectRuntimeDependencySpecifiers(content) {
@@ -1391,6 +1418,13 @@ function isPresentationalComponent(content) {
   const hasJsxReturn = /return\s*\(?\s*</.test(content);
   const hasInteraction = /\bon[A-Z]\w+\s*=|useState|useReducer|useEffect|if\s*\(|\?\s*[^:]+:/.test(content);
   return hasJsxReturn && !hasInteraction;
+}
+
+function isReactHook(currentPath, content, profile) {
+  if (!profile.architectures.includes("react")) return false;
+  const name = basenameWithoutExtension(currentPath);
+  if (!/^use[A-Z0-9]/.test(name)) return false;
+  return new RegExp(`\\b(?:function\\s+${escapeRegExp(name)}|(?:const|let|var)\\s+${escapeRegExp(name)}\\b)`).test(content);
 }
 
 function byRiskThenName(a, b) {

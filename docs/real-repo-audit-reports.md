@@ -13,6 +13,7 @@ The purpose is product validation, not regression locking. These reports record 
 | `unjs/defu` audit | TypeScript, Vitest | `unjs/defu` at `82632b6` | `findings-projects`, direct `javascript` adapter ranking | summarized below |
 | `h3js/h3` audit | TypeScript, Vitest | `h3js/h3` at `3eb3a57` | `findings-projects`, direct `javascript` adapter ranking | summarized below |
 | `honojs/hono` audit | TypeScript, Vitest | `honojs/hono` at `cda1af2` | `findings-projects`, direct `javascript` adapter ranking | summarized below |
+| `react-hook-form/react-hook-form` audit | TypeScript, Jest, React Testing Library | `react-hook-form/react-hook-form` at `521adfc` | direct `javascript` adapter audit and timing | summarized below |
 | `expressjs/express` audit | JavaScript, Mocha, Supertest | `expressjs/express` at `ae6dd37` | direct `javascript` adapter audit | summarized below |
 | Collectors Grimoire app audit | Swift, Xcode app | `m-stenbe/Collectors-Grimoire` at `a2d4c54` | `findings-projects`, Xcode-style Swift detection | summarized below |
 
@@ -244,6 +245,28 @@ Why it matters:
 - The probe also locks common `source/` roots and generically named files inside `test/`, rather than requiring `src/` plus `.test` or `.spec` filenames.
 - Runner support remains explicit rather than universal; unsupported frameworks should still produce blockers.
 
+## Additional React Probe: `react-hook-form/react-hook-form`
+
+Source:
+
+- repository: `react-hook-form/react-hook-form`
+- audited commit: `521adfc` (`2026-07-16`, `fix: expose resetDefaultValues through form context (#13598)`)
+
+Result:
+
+- direct audit found a high-confidence Jest and React Testing Library profile with `npm run test` and no blockers
+- the initial audit took about 90 seconds and emitted roughly 159,000 output tokens; module-import parsing was repeated while matching every source against every test
+- caching parsed module imports and dependency specifiers reduced the same audit to 9.7 seconds while preserving the evidence graph
+- eight declared `use*` modules are now classified as React hooks with component-level testing guidance and existing-test evidence
+- `useController.ts` is no longer falsely classified as an HTTP route merely because its name contains `controller`
+- the resulting audit contains one untested candidate, 37 covered-but-risky targets, and 67 skipped targets
+
+Why it matters:
+
+- React hooks in `.ts` files previously fell through to generic branching or low-runtime classifications, while hook names containing `controller` could receive incorrect HTTP rationale.
+- Hook detection now runs before generic component and controller heuristics, but only for hook-shaped declarations inside detected React projects.
+- Precomputing static import analysis removes repeated parsing without weakening the conservative two-hop dependency boundary or dropping complete JSON evidence.
+
 ## Additional JavaScript Probe: `expressjs/express`
 
 Source:
@@ -313,7 +336,7 @@ Heuristic follow-up:
 The real-repo report gate is satisfied for private alpha validation:
 
 - at least three real repositories have local audit summaries: Repo Test Architect, `cg-bff`/Swift package family, and Collectors Grimoire
-- one JavaScript/TypeScript codebase is covered by the self-audit, while non-owned JavaScript/TypeScript coverage now includes the small `unjs/defu` and `sindresorhus/is` libraries plus Express, `h3js/h3`, and `honojs/hono` HTTP frameworks
+- one JavaScript/TypeScript codebase is covered by the self-audit, while non-owned JavaScript/TypeScript coverage now includes the small `unjs/defu` and `sindresorhus/is` libraries, React Hook Form, Express, and the `h3js/h3` and `honojs/hono` HTTP frameworks
 - Swift package and Xcode-style app repos are covered
 - reports include findings, misses, and follow-up heuristics
 - no report requires source upload or remote service execution
