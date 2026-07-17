@@ -114,6 +114,46 @@ describe("Swift audit adapter", () => {
     assert.deepEqual(audit.recommended, []);
   });
 
+  it("excludes common vendored and checked-out Swift dependency roots", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-swift-dependencies-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "Sources", "CheckoutCore"), { recursive: true });
+    fs.mkdirSync(path.join(root, "Tests", "CheckoutCoreTests"), { recursive: true });
+    for (const dependencyRoot of ["Pods", "Carthage/Checkouts", "SourcePackages/checkouts", ".symlinks/plugins", "Vendor", "vendor"]) {
+      fs.mkdirSync(path.join(root, dependencyRoot, "RemoteSDK"), { recursive: true });
+      fs.writeFileSync(
+        path.join(root, dependencyRoot, "RemoteSDK", "RemotePaymentClient.swift"),
+        "struct RemotePaymentClient { func charge(_ value: Int) async throws -> Bool { if value > 0 { return true }; return false } }\n"
+      );
+      fs.writeFileSync(
+        path.join(root, dependencyRoot, "RemoteSDK", "RemotePaymentClientTests.swift"),
+        "import Quick\nfinal class RemotePaymentClientTests: QuickSpec {}\n"
+      );
+    }
+    fs.writeFileSync(
+      path.join(root, "Package.swift"),
+      `// swift-tools-version: 6.0
+import PackageDescription
+let package = Package(name: "Checkout", targets: [.target(name: "CheckoutCore"), .testTarget(name: "CheckoutCoreTests", dependencies: ["CheckoutCore"])])
+`
+    );
+    fs.writeFileSync(
+      path.join(root, "Sources", "CheckoutCore", "CheckoutService.swift"),
+      "struct CheckoutService { func validate(_ value: Int) -> Bool { if value > 0 { return true }; return false } }\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "Tests", "CheckoutCoreTests", "CheckoutServiceTests.swift"),
+      "import XCTest\n@testable import CheckoutCore\nfinal class CheckoutServiceTests: XCTestCase { func testValidate() { XCTAssertTrue(CheckoutService().validate(1)) } }\n"
+    );
+
+    const audit = auditSwiftRepo(root);
+
+    assert.deepEqual(audit.profile.testFrameworks, ["XCTest"]);
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["Sources/CheckoutCore/CheckoutService.swift"]);
+    assert.ok(audit.recommended.every((target) => !/^(?:Pods|Carthage|SourcePackages|\.symlinks|Vendor|vendor)\//.test(target.path)));
+    assert.ok(audit.skipped.every((target) => !/^(?:Pods|Carthage|SourcePackages|\.symlinks|Vendor|vendor)\//.test(target.path)));
+  });
+
   it("detects mixed Swift and Objective-C Apple projects without inventing a test command", () => {
     const audit = auditSwiftRepo(path.resolve("examples/apple-xcode-mixed"));
 

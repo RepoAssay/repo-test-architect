@@ -12,6 +12,7 @@ This matrix defines the evidence boundary for moving the Swift adapter from an e
 | Bazel target layout | `swift_binary`, `swift_library`, and `swift_test`, including test sources owned through direct dependencies | BUILD target sources, module names, direct dependencies, imports, and glob patterns |
 | SwiftPM source layout | default `Sources`, `Source`, `src`, `srcs`, and `Tests` search roots plus manifest-declared custom paths, source lists, excludes, and test dependencies | parsed target declarations plus source and test ownership |
 | Xcode source layout | app/framework source folders plus `*Tests` and `*UITests` folders | project markers and target-like directory names |
+| Dependency boundaries | excludes CocoaPods, Carthage, checked-out package caches, and conventional vendored roots | `Pods`, `Carthage`, `SourcePackages`, `.symlinks`, `Vendor`, and `vendor` directories |
 | Test relationships | `*Test.swift`, `*Tests.swift`, Quick-style `*Spec.swift`, and uniquely declared top-level symbol references | target-qualified naming evidence plus module-qualified symbol usage |
 | Application boundaries | services, clients, repositories, storage, commands/workers, parsers, URL/query builders, and error mapping | path, declaration, branching, async/concurrency, encoding, and platform API signals |
 | Server boundaries | Vapor routes, middleware, lifecycle files, Fluent models, XCTVapor, and MongoDB operations | imports, protocols, calls, and package products |
