@@ -212,9 +212,13 @@ function detectTestCommand(paths, frameworks, bazelGraph, files) {
     const scheme = detectXcodeScheme(paths);
     const testPlan = detectXcodeTestPlan(paths, files, scheme);
     const workspace = detectXcodeWorkspace(paths, scheme);
-    const workspaceOption = workspace ? ` -workspace ${quoteShellArgument(workspace)}` : "";
-    if (scheme && testPlan) return `xcodebuild test${workspaceOption} -scheme ${quoteShellArgument(scheme)} -testPlan ${quoteShellArgument(testPlan)}`;
-    return scheme ? `xcodebuild test${workspaceOption} -scheme ${quoteShellArgument(scheme)}` : "xcodebuild test";
+    const project = workspace ? undefined : detectXcodeProject(paths, scheme);
+    const containerOption = workspace
+      ? ` -workspace ${quoteShellArgument(workspace)}`
+      : project ? ` -project ${quoteShellArgument(project)}` : "";
+    if (scheme && testPlan) return `xcodebuild test${containerOption} -scheme ${quoteShellArgument(scheme)} -testPlan ${quoteShellArgument(testPlan)}`;
+    if (scheme) return `xcodebuild test${containerOption} -scheme ${quoteShellArgument(scheme)}`;
+    return `xcodebuild test${containerOption}`;
   }
   return undefined;
 }
@@ -1018,6 +1022,16 @@ function detectXcodeWorkspace(paths, scheme) {
     .filter(Boolean))].sort();
   if (workspaces.length === 1) return workspaces[0];
   if (scheme) return workspaces.find((workspace) => basenameWithoutExtension(workspace) === scheme);
+  return undefined;
+}
+
+function detectXcodeProject(paths, scheme) {
+  const projects = [...new Set(paths
+    .filter((item) => item.endsWith(".xcodeproj/project.pbxproj"))
+    .map((item) => item.split("/").at(-2))
+    .filter(Boolean))].sort();
+  if (projects.length === 1) return projects[0];
+  if (scheme) return projects.find((project) => basenameWithoutExtension(project) === scheme);
   return undefined;
 }
 

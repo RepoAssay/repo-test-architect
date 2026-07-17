@@ -332,7 +332,7 @@ What the tool found:
 - one Xcode-style Apple project
 - Swift and Objective-C project signals
 - Swift Testing and XCTest conventions
-- `xcodebuild test -scheme "Collector's Grimoire"` as the detected command
+- `xcodebuild test -project "Collector's Grimoire.xcodeproj" -scheme "Collector's Grimoire"` as the detected command
 - nine medium-severity missing-coverage findings
 - many SwiftUI view and app-wiring files skipped as low-value direct test targets
 

@@ -880,7 +880,7 @@ final class SampleAppUITests: XCTestCase {
 
     assert.deepEqual(audit.profile.packageManagers, ["xcodebuild"]);
     assert.deepEqual(audit.profile.testFrameworks, ["XCTest"]);
-    assert.equal(audit.profile.testCommand, "xcodebuild test -scheme SampleApp");
+    assert.equal(audit.profile.testCommand, "xcodebuild test -project SampleApp.xcodeproj -scheme SampleApp");
     assert.ok(audit.profile.setupSignals.includes("xcode shared scheme"));
     assert.ok(audit.profile.detectedConventions.includes("*UITests folders"));
     assert.ok(audit.profile.existingTestLocations.includes("SampleAppTests"));
@@ -915,7 +915,7 @@ final class CollectorTests: XCTestCase {
 
     const audit = auditSwiftRepo(root);
 
-    assert.equal(audit.profile.testCommand, `xcodebuild test -scheme "Collector's Grimoire"`);
+    assert.equal(audit.profile.testCommand, `xcodebuild test -project "Collector's Grimoire.xcodeproj" -scheme "Collector's Grimoire"`);
     assert.ok(audit.profile.setupSignals.includes("xcode shared scheme"));
   });
 
@@ -1032,7 +1032,7 @@ final class FeatureFlagsSpec: QuickSpec {
     const audit = auditSwiftRepo(root);
 
     assert.deepEqual(audit.profile.testFrameworks, ["XCTest"]);
-    assert.equal(audit.profile.testCommand, "xcodebuild test");
+    assert.equal(audit.profile.testCommand, "xcodebuild test -project LegacyApp.xcodeproj");
     assert.deepEqual(audit.profile.blockers, []);
   });
 
@@ -1056,7 +1056,7 @@ final class SampleAppTests: XCTestCase {
 
     const audit = auditSwiftRepo(root);
 
-    assert.equal(audit.profile.testCommand, "xcodebuild test -scheme SampleApp -testPlan SampleApp");
+    assert.equal(audit.profile.testCommand, "xcodebuild test -project SampleApp.xcodeproj -scheme SampleApp -testPlan SampleApp");
     assert.ok(audit.profile.setupSignals.includes("xcode test plan"));
   });
 
@@ -1083,7 +1083,7 @@ final class SampleAppTests: XCTestCase {
 
     const audit = auditSwiftRepo(root);
 
-    assert.equal(audit.profile.testCommand, "xcodebuild test -scheme SampleApp");
+    assert.equal(audit.profile.testCommand, "xcodebuild test -project SampleApp.xcodeproj -scheme SampleApp");
     assert.ok(audit.profile.setupSignals.includes("xcode test plan"));
     assert.ok(!audit.profile.setupSignals.includes("xcode scheme test plan"));
   });
