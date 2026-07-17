@@ -4,6 +4,30 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 export const validationProfiles = {
+  playwright: {
+    description: "JavaScript/TypeScript projects with Playwright tests",
+    repositoryQuery: "playwright",
+    language: "TypeScript",
+    searches: [
+      { signal: "playwright-test", file: "package.json", pattern: /"@playwright\/test"/ }
+    ]
+  },
+  cypress: {
+    description: "JavaScript/TypeScript projects with Cypress tests",
+    repositoryQuery: "cypress",
+    language: "TypeScript",
+    searches: [
+      { signal: "cypress-test", file: "package.json", pattern: /"cypress"/ }
+    ]
+  },
+  bun: {
+    description: "JavaScript/TypeScript projects using Bun's native test runner",
+    repositoryQuery: "bun",
+    language: "TypeScript",
+    searches: [
+      { signal: "bun-test", file: "package.json", pattern: /"[^"\n]*test[^"\n]*"\s*:\s*"[^"]*\bbun\s+test\b/ }
+    ]
+  },
   react: {
     description: "React projects with React Testing Library",
     repositoryQuery: "react",

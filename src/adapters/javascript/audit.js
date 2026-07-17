@@ -17,16 +17,17 @@ export function auditJavaScriptRepo(root, options = {}) {
   const pathAliasEntries = findTsconfigPathAliasEntries(tsconfigData, moduleFiles);
   const boundedTransitiveImports = collectBoundedTransitiveImports(testFiles, moduleFiles, pathAliasEntries);
   const packageData = parsePackageJson(files.find((file) => normalizePath(file.path) === "package.json")?.content ?? "");
+  const packageSourcePaths = findDeclaredPackageSourcePaths(packageData, moduleFiles);
   const packageEntryFile = findSourcePackageEntry(packageData, moduleFiles);
   const packageSubpathEntries = findSourcePackageSubpathEntries(packageData, moduleFiles);
   const untestedCandidates = [];
   const coveredButRisky = [];
   const skipped = [];
   const risks = [];
-  const runtimeSourcePaths = new Set(files.map((file) => normalizePath(file.path)).filter(isRuntimeJavaScriptSource));
-  const sourceJavaScriptRuntime = hasSourceJavaScriptRuntimeEntrypoint(files);
+  const runtimeSourcePaths = new Set(files.map((file) => normalizePath(file.path)).filter((currentPath) => isRuntimeJavaScriptSource(currentPath) || (packageSourcePaths.has(currentPath) && /\.(cjs|mjs|js|jsx)$/.test(currentPath))));
+  const sourceJavaScriptRuntime = hasSourceJavaScriptRuntimeEntrypoint(files) || [...packageSourcePaths].some((currentPath) => /\.(cjs|mjs|js|jsx)$/.test(currentPath));
 
-  for (const file of files.filter((candidate) => isSourceFile(candidate.path) && isIncludedByChangedPaths(candidate.path, changedPaths))) {
+  for (const file of files.filter((candidate) => isAuditableSourceFile(candidate.path, packageSourcePaths) && isIncludedByChangedPaths(candidate.path, changedPaths))) {
     const name = basenameWithoutExtension(file.path);
     const classification = classifySourceFile(file, profile, {
       runtimeSourcePaths,
@@ -52,7 +53,8 @@ export function auditJavaScriptRepo(root, options = {}) {
       packageName: packageData.name,
       packageEntryFile,
       packageSubpathEntries,
-      pathAliasEntries
+      pathAliasEntries,
+      browserE2EFrameworks: new Set(profile.testFrameworks.filter((framework) => framework === "playwright" || framework === "cypress"))
     });
     const existingTestPaths = existingTestEvidence.map((evidence) => evidence.testPath);
 
@@ -154,7 +156,7 @@ function shouldRead(relative) {
       "jest.config.ts",
       "jest.config.js",
       "ava.config.json"
-    ].includes(relative) || /^(?:playwright|cypress)\.config\.[cm]?[jt]s$/.test(relative) || /(^|\/)tsconfig(?:\.[^/]+)?\.json$/.test(relative) || /(^|\/)\.mocharc(?:\.(?:json|ya?ml))?$/.test(relative)
+    ].includes(relative) || /(^|\/)(?:playwright|cypress)\.config\.[cm]?[jt]s$/.test(relative) || /(^|\/)tsconfig(?:\.[^/]+)?\.json$/.test(relative) || /(^|\/)\.mocharc(?:\.(?:json|ya?ml))?$/.test(relative)
   );
 }
 
@@ -162,7 +164,8 @@ function scopeToPackageRoot(files) {
   const nestedPackageRoots = files
     .map((file) => normalizePath(file.path))
     .filter((currentPath) => currentPath.endsWith("/package.json"))
-    .map((currentPath) => currentPath.slice(0, -"/package.json".length));
+    .map((currentPath) => currentPath.slice(0, -"/package.json".length))
+    .filter((nestedRoot) => !isTestHarnessRoot(nestedRoot));
 
   if (nestedPackageRoots.length === 0) return files;
 
@@ -172,6 +175,10 @@ function scopeToPackageRoot(files) {
   });
 }
 
+function isTestHarnessRoot(currentPath) {
+  return ["test", "tests", "__tests__"].includes(currentPath.split("/")[0]);
+}
+
 function buildProfile(root, files) {
   const paths = files.map((file) => normalizePath(file.path));
   const packageJson = files.find((file) => normalizePath(file.path) === "package.json");
@@ -179,7 +186,7 @@ function buildProfile(root, files) {
   const packageData = parsePackageJson(packageText);
   const packageManagers = detectPackageManagers(paths);
   const testFrameworks = detectTestFrameworks(files, packageData);
-  const testCommand = detectTestCommand(packageData, testFrameworks, packageManagers);
+  const testCommand = detectTestCommand(packageData, testFrameworks, packageManagers, paths);
   const existingTestLocations = detectExistingTestLocations(paths);
   const detectedConventions = detectConventions(paths);
   const setupSignals = detectSetupSignals(paths, packageData);
@@ -258,7 +265,7 @@ function usesBunTest(content) {
   return /(?:from\s+|import\s+|require\(\s*)["']bun:test["']/.test(content);
 }
 
-function detectTestCommand(packageData, frameworks, packageManagers) {
+function detectTestCommand(packageData, frameworks, packageManagers, paths) {
   const scripts = packageData.scripts ?? {};
 
   for (const key of ["test", "test:unit", "test:e2e", "e2e", "vitest", "jest", "playwright", "cypress"]) {
@@ -274,10 +281,20 @@ function detectTestCommand(packageData, frameworks, packageManagers) {
   if (frameworks.includes("ava")) return "npx ava";
   if (frameworks.includes("mocha")) return "npx mocha";
   if (frameworks.includes("bun-test")) return "bun test";
-  if (frameworks.includes("playwright")) return "npx playwright test";
-  if (frameworks.includes("cypress")) return "npx cypress run";
+  if (frameworks.includes("playwright")) {
+    const config = paths.find((currentPath) => /(^|\/)playwright\.config\.[cm]?[jt]s$/.test(currentPath));
+    return config?.includes("/") ? `npx playwright test --config ${quoteCommandPath(config)}` : "npx playwright test";
+  }
+  if (frameworks.includes("cypress")) {
+    const config = paths.find((currentPath) => /(^|\/)cypress\.config\.[cm]?[jt]s$/.test(currentPath));
+    return config?.includes("/") ? `npx cypress run --config-file ${quoteCommandPath(config)}` : "npx cypress run";
+  }
 
   return undefined;
+}
+
+function quoteCommandPath(value) {
+  return /^[A-Za-z0-9_./-]+$/.test(value) ? value : JSON.stringify(value);
 }
 
 function formatPackageScriptCommand(packageManagers, script) {
@@ -633,6 +650,19 @@ function isSourceFile(currentPath) {
   return isInSourceRoot(normalized) && isJavaScriptModuleFile(normalized);
 }
 
+function isAuditableSourceFile(currentPath, packageSourcePaths) {
+  const normalized = normalizePath(currentPath);
+  return isSourceFile(normalized) || packageSourcePaths.has(normalized);
+}
+
+function findDeclaredPackageSourcePaths(packageData, moduleFiles) {
+  const entrypoints = collectPackageEntrypoints(packageData).map((entrypoint) => stripCurrentDirectoryPrefix(normalizePath(entrypoint)));
+  return new Set(moduleFiles.filter((file) => {
+    if (file.path.endsWith(".d.ts") || !isJavaScriptModuleFile(file.path)) return false;
+    return entrypoints.some((entrypoint) => moduleSpecifierTargetsSource("package.json", entrypoint, file.path));
+  }).map((file) => file.path));
+}
+
 function isJavaScriptModuleFile(currentPath) {
   const normalized = normalizePath(currentPath);
   return SOURCE_EXTENSIONS.some((extension) => normalized.endsWith(extension)) && !isTestFile(normalized);
@@ -684,6 +714,7 @@ function collectEntrypointValue(value, entrypoints) {
 
 function isTestFile(currentPath) {
   const normalized = normalizePath(currentPath);
+  if (/(^|\/)(?:playwright|cypress)\.config\.[cm]?[jt]s$/.test(normalized) || /(^|\/)cypress\/support\//.test(normalized)) return false;
   return (
     ((normalized.startsWith("test/") || normalized.startsWith("tests/")) && SOURCE_EXTENSIONS.some((extension) => normalized.endsWith(extension))) ||
     normalized.includes("__tests__/") ||
@@ -731,15 +762,15 @@ function findExistingTestEvidence(sourcePath, testFiles, moduleFiles, boundedTra
         const viaUsage = transitiveImports.get(normalized);
         return [{ testPath: testFile.path, kind: "bounded-dependency", strength: "indirect", ...(viaUsage ? { viaUsage } : {}) }];
       }
-      if (filenameMatch && !isBrowserE2ETestFile(testFile)) {
+      if (filenameMatch && !isBrowserE2ETestFile(testFile, packageEntry.browserE2EFrameworks)) {
         return [{ testPath: testFile.path, kind: "filename-convention", strength: "naming" }];
       }
       return [];
     });
 }
 
-function isBrowserE2ETestFile(testFile) {
-  return /\.cy\.[cm]?[jt]sx?$/.test(testFile.path) || /["']@playwright\/test["']/.test(testFile.content);
+function isBrowserE2ETestFile(testFile, browserE2EFrameworks) {
+  return browserE2EFrameworks?.size > 0 || /(^|\/)cypress\/(?:e2e|integration|component)\//.test(testFile.path) || /\.cy\.[cm]?[jt]sx?$/.test(testFile.path) || /["']@playwright\/test["']/.test(testFile.content);
 }
 
 function hasFilenameMatch(testPath, testBase, sourceBase, sourceDir, baseNameCandidates, sourceBaseCandidates, qualifiedBaseCandidates) {
@@ -884,7 +915,7 @@ function findSourcePackageEntry(packageData, moduleFiles) {
 
   for (const candidate of candidates) {
     const entryFile = moduleFiles.find(
-      (file) => isSourceFile(file.path) && moduleSpecifierTargetsSource("package.json", candidate, file.path)
+      (file) => isJavaScriptModuleFile(file.path) && moduleSpecifierTargetsSource("package.json", candidate, file.path)
     );
     if (entryFile) return entryFile;
   }

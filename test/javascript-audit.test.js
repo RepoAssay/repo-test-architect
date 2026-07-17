@@ -1139,6 +1139,50 @@ export function auditKotlin(files) {
     }
   });
 
+  it("keeps a nested Cypress test harness in the owning package audit", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-cypress-harness-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "src"), { recursive: true });
+    fs.mkdirSync(path.join(root, "test", "specs"), { recursive: true });
+    fs.mkdirSync(path.join(root, "test", "cypress", "support"), { recursive: true });
+    fs.writeFileSync(path.join(root, "package.json"), JSON.stringify({ scripts: { test: "echo 'no test specified' && exit 1" }, devDependencies: { cypress: "latest" } }));
+    fs.writeFileSync(path.join(root, "src", "checkout.ts"), "export function checkout(value) { if (!value) throw new Error('missing'); return value; }\n");
+    fs.writeFileSync(path.join(root, "test", "package.json"), JSON.stringify({ scripts: { test: "mocha specs/*.spec.ts" } }));
+    fs.writeFileSync(path.join(root, "test", "cypress.config.js"), "require('../src/checkout');\nmodule.exports = {};\n");
+    fs.writeFileSync(path.join(root, "test", "cypress", "support", "e2e.js"), "require('../../../src/checkout');\n");
+    fs.writeFileSync(
+      path.join(root, "test", "specs", "checkout.spec.ts"),
+      "import { checkout } from '../../src/checkout';\ndescribe('checkout', () => it('works', () => checkout('ok')));\n"
+    );
+
+    const audit = auditJavaScriptRepo(root);
+    const checkout = audit.coveredButRisky.find((target) => target.path === "src/checkout.ts");
+
+    assert.deepEqual(audit.profile.testFrameworks, ["cypress"]);
+    assert.equal(audit.profile.testCommand, "npx cypress run --config-file test/cypress.config.js");
+    assert.ok(audit.profile.setupSignals.includes("cypress config"));
+    assert.deepEqual(checkout.existingTestEvidence, [
+      { testPath: "test/specs/checkout.spec.ts", kind: "direct-relative-import", strength: "direct", usage: "called" }
+    ]);
+  });
+
+  it("audits declared package entrypoints outside conventional source roots", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-root-entrypoints-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "tests"), { recursive: true });
+    fs.writeFileSync(path.join(root, "package.json"), JSON.stringify({ main: "index.js", bin: { sample: "cli.js" }, scripts: { test: "playwright test" }, devDependencies: { "@playwright/test": "latest" } }));
+    fs.writeFileSync(path.join(root, "playwright.config.ts"), "export default {};\n");
+    fs.writeFileSync(path.join(root, "index.js"), "export function start(value) { if (!value) throw new Error('missing'); return value; }\n");
+    fs.writeFileSync(path.join(root, "cli.js"), "export function run(value) { if (!value) throw new Error('missing'); return value; }\n");
+    fs.writeFileSync(path.join(root, "tests", "fixtures.ts"), "export { test } from '@playwright/test';\n");
+    fs.writeFileSync(path.join(root, "tests", "cli.spec.ts"), "import { test } from './fixtures';\ntest('starts', async () => {});\n");
+
+    const audit = auditJavaScriptRepo(root);
+
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.path), ["cli.js", "index.js"]);
+    assert.deepEqual(audit.coveredButRisky, []);
+  });
+
   it("detects Bun's lockfile, runner import, config, and underscore test naming", (t) => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-bun-"));
     t.after(() => fs.rmSync(root, { recursive: true, force: true }));

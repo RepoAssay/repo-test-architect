@@ -5,7 +5,8 @@ import {
   inspectRootEntries,
   parseArgs,
   rankCandidates,
-  scoreCandidate
+  scoreCandidate,
+  validationProfiles
 } from "../scripts/find-validation-repos.js";
 
 const now = new Date("2026-07-17T12:00:00Z");
@@ -53,6 +54,24 @@ describe("validation repository finder", () => {
       signals: ["react-testing-library", "pnpm-workspace"],
       matchedPaths: ["package.json", "pnpm-workspace.yaml"]
     });
+  });
+
+  it("defines browser and Bun validation profiles from exact package signals", () => {
+    const packageJson = JSON.stringify({
+      scripts: { test: "bun test" },
+      devDependencies: { "@playwright/test": "latest", cypress: "latest" }
+    });
+
+    for (const [profile, expectedSignal] of [
+      ["playwright", "playwright-test"],
+      ["cypress", "cypress-test"],
+      ["bun", "bun-test"]
+    ]) {
+      assert.deepEqual(detectManifestSignals(validationProfiles[profile].searches, { "package.json": packageJson }), {
+        signals: [expectedSignal],
+        matchedPaths: ["package.json"]
+      });
+    }
   });
 
   it("detects root lockfiles and CI configuration", () => {

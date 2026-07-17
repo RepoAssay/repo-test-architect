@@ -15,10 +15,11 @@ The purpose is product validation, not regression locking. These reports record 
 | `honojs/hono` audit | TypeScript, Vitest | `honojs/hono` at `cda1af2` | `findings-projects`, direct `javascript` adapter ranking | summarized below |
 | `react-hook-form/react-hook-form` audit | TypeScript, Jest, React Testing Library | `react-hook-form/react-hook-form` at `521adfc` | direct `javascript` adapter audit and timing | summarized below |
 | `typescript-eslint/typescript-eslint` audit | TypeScript, Vitest, pnpm/Nx workspace | `typescript-eslint/typescript-eslint` at `c2386e4` | project detection, project audits, and timing | summarized below |
+| [Browser E2E and Bun audit](browser-bun-audit-report.md) | TypeScript, Playwright, Cypress, Bun | `microsoft/playwright-mcp`, `archfz/cypress-terminal-report`, `honojs/hono` | direct JavaScript adapter audit and evidence boundaries | current |
 | `expressjs/express` audit | JavaScript, Mocha, Supertest | `expressjs/express` at `ae6dd37` | direct `javascript` adapter audit | summarized below |
 | Collectors Grimoire app audit | Swift, Xcode app | `m-stenbe/Collectors-Grimoire` at `a2d4c54` | `findings-projects`, Xcode-style Swift detection | summarized below |
 
-This gives the alpha gate coverage across owned and non-owned JavaScript/TypeScript codebases and multiple Swift codebases, including Swift Package Manager, Vapor/MongoDB, and Xcode-style app structure.
+This gives the alpha gate coverage across owned and non-owned JavaScript/TypeScript codebases and multiple Swift codebases, including browser E2E runners, Bun, Swift Package Manager, Vapor/MongoDB, and Xcode-style app structure.
 
 ## Repo Test Architect Self-Audit
 
