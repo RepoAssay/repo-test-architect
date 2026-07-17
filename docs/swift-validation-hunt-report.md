@@ -28,7 +28,7 @@ The SwiftUI/Xcode search surfaced maintained application candidates including Fi
 
 | Repository | Audited commit | Role | Frameworks | Command | Untested | Covered | Skipped | Recommended | High-risk notes |
 | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: |
-| [FineTune](https://github.com/ronitsingh10/FineTune) | `2285279d36d3f8115c1c2d4aecd904f1bdf96a51` | compact maintained SwiftUI/Xcode application | Swift Testing | `xcodebuild test -project FineTune.xcodeproj -scheme FineTune` | 40 | 46 | 65 | 86 | 3 |
+| [FineTune](https://github.com/ronitsingh10/FineTune) | `2285279d36d3f8115c1c2d4aecd904f1bdf96a51` | compact maintained SwiftUI/Xcode application | Swift Testing | `xcodebuild test -project FineTune.xcodeproj -scheme FineTune` | 41 | 44 | 66 | 85 | 3 |
 | [Swift Package Index Server](https://github.com/SwiftPackageIndex/SwiftPackageIndex-Server) | `26943bfd3e62f29348e6a06722ba5fcd9dc11d58` | production Vapor/Fluent service | SnapshotTesting, Swift Testing, VaporTesting | `swift test` | 91 | 93 | 166 | 184 | 75 |
 | [ReerCodable](https://github.com/reers/ReerCodable) | `9e9edc29e1aa6c6c644f5761737506cc243236f7` | macro declarations, implementations, and expansion tests | Swift Testing, XCTest | `swift test` | 17 | 22 | 15 | 39 | 0 |
 | [rules_swift](https://github.com/bazelbuild/rules_swift) | `4428a622d5127737fda3d55752659a657216281a` | canonical Bazel/rules_swift workspace | Swift Testing, XCTest | `bazel test //...` | 29 | 5 | 102 | 34 | 0 |
@@ -65,14 +65,17 @@ The live probes found several concrete sources of audit noise:
 - external macro declaration files containing only `#externalMacro` wiring were recommended as direct utility tests; they are now deferred to macro expansion and representative client-compilation tests while implementation targets remain analyzable
 - files under a Vapor `Controllers` directory were all treated as HTTP routes, including nested response models, query helpers, and compatibility helpers; controller-adjacent files now require request-handler or explicit route-registration behavior, while real database helpers remain integration-level data-access targets
 - comments and ordinary collection/rendering operations could leak MongoDB, database-write, or raw-SQL signals through names such as `MongoKitten`, `Set.insert`, and `HTML.raw`; source-level driver detection now masks comments and strings, Fluent writes require `on:` semantics, and raw SQL requires SQL context
+- protocol references in tests could credit a concrete implementation declared in the same source file even when the test only defined a mock conformer; mixed files now require evidence for a concrete declaration, while protocol-only files explicitly defer direct testing to conformers and consumers
 
 After hardening, three unrelated rules_swift example entrypoints moved from covered to untested instead of borrowing a fixture's `main.swift` test name. ReerCodable's 15 external declaration files moved out of direct recommendations, reducing its recommendations from 54 to 39 without hiding the macro implementation sources.
 
 The Swift Package Index calibration kept the same 184 actionable targets while moving seven controller-adjacent helpers out of the HTTP-route bucket: five retained high-risk data-access treatment and two became medium-risk branching utilities. It also removed a false MongoDB architecture from the Postgres service and reduced high-risk notes from 77 to 75. The small 90/94 to 91/93 coverage shift reflects corrected target identity rather than a lost test suite.
 
+The FineTune calibration exposed `AccessibilityPermissionService` as untested because its only previous evidence was a mock conforming to `AccessibilityTrustProviding`; concrete instantiation and call evidence still count normally. Four protocol-only contracts now carry an explicit deferred-coverage reason, with `ProcessTapControlling` moving out of direct recommendations. The result changes from 40/46/65/86 to 41/44/66/85 for untested/covered/skipped/recommended while preserving all three high-risk notes.
+
 ## Next Validation Pressure
 
-- FineTune provides a compact app target for checking whether protocol-only references are weighted appropriately against concrete implementation behavior.
+- FineTune should remain the compact application probe for protocol-driven dependency injection, CoreAudio boundaries, and Swift Testing evidence.
 - Swift Package Index Server should remain the recurring Vapor/Fluent pressure test, especially as SQL builder and migration semantics expand.
 - rules_swift still relies on custom Starlark macros that the static reader does not expand; its examples and fixtures should remain a recurring ownership probe.
 - The local `cg-*` packages should remain a no-meaningful-tests cohort even as real suites are added incrementally, because they expose the difference between framework presence and source coverage.

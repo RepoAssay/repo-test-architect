@@ -396,6 +396,17 @@ function classifySourceFile(file, sourceGraph) {
     );
   }
 
+  if (isProtocolContractOnly(content)) {
+    return skipped(
+      "protocol-contract",
+      ["protocol-declaration"],
+      1,
+      2,
+      "Protocol-only contracts do not contain a concrete runtime implementation to test directly.",
+      "Cover through concrete conformer behavior and consumer tests that use protocol-driven substitution."
+    );
+  }
+
   if (isSwiftUIView(content)) {
     return skipped(
       "ui-view",
@@ -651,7 +662,13 @@ function collectUniqueSwiftSourceSymbols(files, sourceGraph) {
   )) {
     const currentPath = normalizePath(file.path);
     const owner = normalizeModuleName(sourceGraph.sourceOwners.get(currentPath) ?? inferSourceOwner(currentPath) ?? "__root__");
-    const symbols = collectTopLevelSwiftDeclarations(file.content);
+    const declarations = collectTopLevelSwiftDeclarations(file.content);
+    const hasConcreteDeclaration = declarations.some((declaration) => declaration.kind !== "protocol");
+    const symbols = new Set(
+      declarations
+        .filter((declaration) => declaration.kind !== "protocol" || !hasConcreteDeclaration)
+        .map((declaration) => declaration.name)
+    );
     symbolsByPath.set(currentPath, symbols);
     for (const symbol of symbols) {
       const key = `${owner}:${symbol}`;
@@ -667,13 +684,13 @@ function collectUniqueSwiftSourceSymbols(files, sourceGraph) {
 
 function collectTopLevelSwiftDeclarations(content) {
   const masked = maskSwiftCommentsAndStrings(content);
-  const symbols = new Set();
+  const declarations = [];
   let braceDepth = 0;
 
   for (const line of masked.split("\n")) {
     if (braceDepth === 0) {
-      for (const match of line.matchAll(/\b(?:struct|class|enum|actor|protocol|func)\s+`?([A-Za-z_][A-Za-z0-9_]*)`?/g)) {
-        symbols.add(match[1]);
+      for (const match of line.matchAll(/\b(struct|class|enum|actor|protocol|func)\s+`?([A-Za-z_][A-Za-z0-9_]*)`?/g)) {
+        declarations.push({ kind: match[1], name: match[2] });
       }
     }
     braceDepth += [...line].filter((character) => character === "{").length;
@@ -681,7 +698,7 @@ function collectTopLevelSwiftDeclarations(content) {
     braceDepth = Math.max(0, braceDepth);
   }
 
-  return symbols;
+  return declarations;
 }
 
 function findSwiftSymbolUsage(content, symbols) {
@@ -1308,6 +1325,11 @@ function quoteShellArgument(value) {
 
 function hasBranching(content) {
   return /\b(if|switch|guard|do|catch)\b|\?[ \t]*[^:\n]+:/.test(content);
+}
+
+function isProtocolContractOnly(content) {
+  const declarations = collectTopLevelSwiftDeclarations(content);
+  return declarations.some((declaration) => declaration.kind === "protocol") && declarations.every((declaration) => declaration.kind === "protocol");
 }
 
 function isSwiftUIView(content) {
