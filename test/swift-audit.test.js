@@ -919,6 +919,32 @@ final class CollectorTests: XCTestCase {
     assert.ok(audit.profile.setupSignals.includes("xcode shared scheme"));
   });
 
+  it("ignores user-local Xcode schemes when selecting a portable command", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-xcode-user-scheme-"));
+    const projectRoot = path.join(root, "SampleApp.xcodeproj");
+    fs.mkdirSync(path.join(projectRoot, "xcshareddata", "xcschemes"), { recursive: true });
+    fs.mkdirSync(path.join(projectRoot, "xcuserdata", "developer.xcuserdatad", "xcschemes"), { recursive: true });
+    fs.mkdirSync(path.join(root, "SampleAppTests"), { recursive: true });
+    fs.writeFileSync(path.join(projectRoot, "project.pbxproj"), "{}\n");
+    fs.writeFileSync(
+      path.join(projectRoot, "xcshareddata", "xcschemes", "SampleApp-CI.xcscheme"),
+      "<Scheme></Scheme>\n"
+    );
+    fs.writeFileSync(
+      path.join(projectRoot, "xcuserdata", "developer.xcuserdatad", "xcschemes", "SampleApp.xcscheme"),
+      "<Scheme></Scheme>\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "SampleAppTests", "SampleAppTests.swift"),
+      "import XCTest\nfinal class SampleAppTests: XCTestCase { func testExample() {} }\n"
+    );
+
+    const audit = auditSwiftRepo(root);
+
+    assert.equal(audit.profile.testCommand, "xcodebuild test -project SampleApp.xcodeproj -scheme SampleApp-CI");
+    assert.ok(audit.profile.setupSignals.includes("xcode shared scheme"));
+  });
+
   it("audits a shared Xcode workspace without requiring a project marker", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-xcode-workspace-"));
     const workspaceRoot = path.join(root, "Checkout.xcworkspace");
