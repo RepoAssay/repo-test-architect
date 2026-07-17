@@ -38,7 +38,7 @@ export const adapters = [
     ecosystems: ["javascript"],
     languages: ["javascript", "typescript"],
     maturity: "supported",
-    supportedTestFrameworks: ["ava", "jest", "node-test", "react-testing-library", "supertest", "vitest"],
+    supportedTestFrameworks: ["ava", "jest", "mocha", "node-test", "react-testing-library", "supertest", "vitest"],
     supportedProjectTypes: ["node", "express", "react"],
     emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"],
     audit(repoRoot, options = {}) {

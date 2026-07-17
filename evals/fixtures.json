@@ -15,6 +15,11 @@
     "path": "examples/node-jest-service"
   },
   {
+    "name": "node-mocha-commonjs",
+    "adapter": "javascript",
+    "path": "examples/node-mocha-commonjs"
+  },
+  {
     "name": "node-ava-basic",
     "adapter": "javascript",
     "path": "examples/node-ava-basic"

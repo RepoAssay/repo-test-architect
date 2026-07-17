@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 const SOURCE_EXTENSIONS = [".cjs", ".js", ".jsx", ".mjs", ".ts", ".tsx"];
-const SOURCE_ROOTS = ["src/", "source/"];
+const SOURCE_ROOTS = ["src/", "source/", "lib/"];
 const GENERIC_SOURCE_BASENAMES = new Set(["handler", "index", "types", "utils"]);
 const MAX_TRANSITIVE_SOURCE_DEPTH = 2;
 const AVA_ASSERTION_METHODS = ["assert", "deepEqual", "false", "falsy", "is", "like", "not", "notDeepEqual", "notRegex", "notThrows", "notThrowsAsync", "regex", "snapshot", "throws", "throwsAsync", "true", "truthy"];
@@ -152,7 +152,7 @@ function shouldRead(relative) {
       "jest.config.ts",
       "jest.config.js",
       "ava.config.json"
-    ].includes(relative) || /(^|\/)tsconfig(?:\.[^/]+)?\.json$/.test(relative)
+    ].includes(relative) || /(^|\/)tsconfig(?:\.[^/]+)?\.json$/.test(relative) || /(^|\/)\.mocharc(?:\.(?:json|ya?ml))?$/.test(relative)
   );
 }
 
@@ -227,6 +227,7 @@ function detectTestFrameworks(files, packageData) {
   const paths = files.map((file) => normalizePath(file.path));
   const frameworks = new Set();
   if (paths.some((item) => item.includes("ava.config")) || hasPackageDependency(packageData, "ava")) frameworks.add("ava");
+  if (paths.some((item) => item.includes(".mocharc")) || hasPackageDependency(packageData, "mocha")) frameworks.add("mocha");
   if (paths.some((item) => item.includes("vitest.config")) || hasPackageDependency(packageData, "vitest")) frameworks.add("vitest");
   if (paths.some((item) => item.includes("jest.config")) || hasPackageDependency(packageData, "jest")) frameworks.add("jest");
   if (files.some((file) => isTestFile(file.path) && usesNodeTest(file.content))) frameworks.add("node-test");
@@ -260,6 +261,7 @@ function detectTestCommand(packageData, frameworks) {
   if (frameworks.includes("jest")) return "npx jest";
   if (frameworks.includes("node-test")) return "node --test";
   if (frameworks.includes("ava")) return "npx ava";
+  if (frameworks.includes("mocha")) return "npx mocha";
 
   return undefined;
 }
@@ -320,6 +322,7 @@ function detectSetupSignals(paths, packageData) {
 
   if (paths.includes("tsconfig.json")) signals.add("tsconfig");
   if (paths.some((currentPath) => currentPath.includes("ava.config"))) signals.add("ava config");
+  if (paths.some((currentPath) => currentPath.includes(".mocharc"))) signals.add("mocha config");
   if (paths.some((currentPath) => currentPath.includes("vitest.config"))) signals.add("vitest config");
   if (paths.some((currentPath) => currentPath.includes("jest.config"))) signals.add("jest config");
   if (hasPackageDependency(packageData, "msw")) signals.add("msw");
@@ -594,11 +597,12 @@ function skipped(kind, signals, riskReductionScore, maintenanceCost, skipReason,
 
 function isSourceFile(currentPath) {
   const normalized = normalizePath(currentPath);
-  return (
-    isInSourceRoot(normalized) &&
-    SOURCE_EXTENSIONS.some((extension) => normalized.endsWith(extension)) &&
-    !isTestFile(normalized)
-  );
+  return isInSourceRoot(normalized) && isJavaScriptModuleFile(normalized);
+}
+
+function isJavaScriptModuleFile(currentPath) {
+  const normalized = normalizePath(currentPath);
+  return SOURCE_EXTENSIONS.some((extension) => normalized.endsWith(extension)) && !isTestFile(normalized);
 }
 
 function isRuntimeJavaScriptSource(currentPath) {
@@ -768,7 +772,7 @@ function findImportedReExportFiles(barrelFile, importedNames, moduleFiles) {
 
 function findRelativeModuleFile(importerPath, specifier, moduleFiles) {
   return moduleFiles.find(
-    (file) => isSourceFile(file.path) && moduleSpecifierTargetsSource(importerPath, specifier, file.path)
+    (file) => isJavaScriptModuleFile(file.path) && moduleSpecifierTargetsSource(importerPath, specifier, file.path)
   );
 }
 
@@ -1026,12 +1030,16 @@ function collectModuleImports(content) {
   }
   const namespaceRequirePattern = /\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*require\s*\(\s*["']([^"']+)["']\s*\)/g;
   for (const match of content.matchAll(namespaceRequirePattern)) {
+    const calledImportedNames = collectNamespaceMemberNames(match[1], contentWithoutImports, isIdentifierCalled);
+    const assertedImportedNames = collectNamespaceMemberNames(match[1], contentWithoutImports, isIdentifierAsserted);
+    if (isIdentifierCalled(contentWithoutImports, match[1])) calledImportedNames.add("default");
+    if (isIdentifierAsserted(contentWithoutImports, match[1])) assertedImportedNames.add("default");
     imports.push({
       specifier: match[2],
       importedNames: collectNamespaceMemberNames(match[1], contentWithoutImports),
       usedImportedNames: collectNamespaceMemberNames(match[1], contentWithoutImports),
-      calledImportedNames: collectNamespaceMemberNames(match[1], contentWithoutImports, isIdentifierCalled),
-      assertedImportedNames: collectNamespaceMemberNames(match[1], contentWithoutImports, isIdentifierAsserted)
+      calledImportedNames,
+      assertedImportedNames
     });
   }
   const plainRequirePattern = /\brequire\s*\(\s*["']([^"']+)["']\s*\)/g;

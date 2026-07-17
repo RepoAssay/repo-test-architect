@@ -1,0 +1,158 @@
+{
+  "schemaVersion": "audit/v1",
+  "profile": {
+    "root": "<fixture>",
+    "languages": [
+      "javascript"
+    ],
+    "packageManagers": [
+      "npm"
+    ],
+    "testFrameworks": [
+      "mocha"
+    ],
+    "architectures": [],
+    "testCommand": "npm run test",
+    "detectedConventions": [],
+    "existingTestLocations": [
+      "test/"
+    ],
+    "setupSignals": [
+      "mocha config"
+    ],
+    "confidence": "high",
+    "blockers": []
+  },
+  "untestedCandidates": [
+    {
+      "id": "lib/catalogClient.cjs",
+      "name": "catalogClient",
+      "path": "lib/catalogClient.cjs",
+      "kind": "service",
+      "signals": [
+        "service-name",
+        "external-boundary",
+        "auth-branch"
+      ],
+      "risk": "high",
+      "testability": "medium",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 8,
+      "maintenanceCost": 4,
+      "reasons": [
+        "Service boundary",
+        "external dependency boundary",
+        "auth or permission branches"
+      ],
+      "existingTestPaths": []
+    }
+  ],
+  "coveredButRisky": [
+    {
+      "id": "lib/priceParser.cjs",
+      "name": "priceParser",
+      "path": "lib/priceParser.cjs",
+      "kind": "pure-logic",
+      "signals": [
+        "pure-logic",
+        "edge-case-surface",
+        "matching-test"
+      ],
+      "risk": "high",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 9,
+      "maintenanceCost": 2,
+      "reasons": [
+        "Pure transformation logic",
+        "edge-case surface",
+        "Existing test file detected; review missing edge cases"
+      ],
+      "existingTestPaths": [
+        "test/price-parser.js"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "test/price-parser.js",
+          "kind": "direct-relative-import",
+          "strength": "direct",
+          "usage": "asserted"
+        }
+      ]
+    }
+  ],
+  "recommended": [
+    {
+      "id": "lib/catalogClient.cjs",
+      "name": "catalogClient",
+      "path": "lib/catalogClient.cjs",
+      "kind": "service",
+      "signals": [
+        "service-name",
+        "external-boundary",
+        "auth-branch"
+      ],
+      "risk": "high",
+      "testability": "medium",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 8,
+      "maintenanceCost": 4,
+      "reasons": [
+        "Service boundary",
+        "external dependency boundary",
+        "auth or permission branches"
+      ],
+      "existingTestPaths": []
+    },
+    {
+      "id": "lib/priceParser.cjs",
+      "name": "priceParser",
+      "path": "lib/priceParser.cjs",
+      "kind": "pure-logic",
+      "signals": [
+        "pure-logic",
+        "edge-case-surface",
+        "matching-test"
+      ],
+      "risk": "high",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 9,
+      "maintenanceCost": 2,
+      "reasons": [
+        "Pure transformation logic",
+        "edge-case surface",
+        "Existing test file detected; review missing edge cases"
+      ],
+      "existingTestPaths": [
+        "test/price-parser.js"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "test/price-parser.js",
+          "kind": "direct-relative-import",
+          "strength": "direct",
+          "usage": "asserted"
+        }
+      ]
+    }
+  ],
+  "skipped": [
+    {
+      "id": "lib/constants.cjs",
+      "name": "constants",
+      "path": "lib/constants.cjs",
+      "kind": "low-value",
+      "signals": [
+        "low-runtime-behavior"
+      ],
+      "riskReductionScore": 1,
+      "maintenanceCost": 3,
+      "reason": "No meaningful runtime behavior detected by current heuristics."
+    }
+  ],
+  "risks": [
+    "catalogClient has service boundary, external dependency boundary, auth or permission branches and has no matching test file.",
+    "priceParser has pure transformation logic, edge-case surface and needs edge-case review."
+  ]
+}
