@@ -10,6 +10,7 @@ The purpose is product validation, not regression locking. These reports record 
 | --- | --- | --- | --- | --- |
 | [Collectors Grimoire Swift packages](cg-swift-audit-report.md) | Swift, Vapor, MongoDB | local sibling `cg-*` repositories | `findings-projects`, Swift adapter audit | current |
 | [Swift reactive libraries](swift-reactive-audit-report.md) | Swift, XCTest, RxTest, RxBlocking | `ReactiveX/RxSwift` at `132aea4`, `iZettle/Flow` at `b452ec9` | direct Swift adapter audit and evidence boundaries | current |
+| [SwiftPM ownership](swiftpm-ownership-audit-report.md) | Swift, SwiftPM, XCTest, Swift Testing | `ReactiveX/RxSwift` at `132aea4`, `apple/swift-nio` at `590dd7b` | versioned/computed manifests, multi-target ownership, and duplicate boundaries | current |
 | [Vapor database templates](swift-vapor-database-audit-report.md) | Swift, Vapor, Fluent, SQL, MongoDB | official Vapor PostgreSQL, MySQL, and SQLite templates plus local `cg-bff` | direct Swift adapter audit and database evidence boundaries | current |
 | Repo Test Architect self-audit | JavaScript, TypeScript | this repository | direct `javascript` adapter audit, placement audit | summarized below |
 | `unjs/defu` audit | TypeScript, Vitest | `unjs/defu` at `82632b6` | `findings-projects`, direct `javascript` adapter ranking | summarized below |

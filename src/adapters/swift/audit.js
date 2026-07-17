@@ -112,9 +112,12 @@ function readRepoFiles(root) {
       const relative = path.relative(root, absolute).replaceAll(path.sep, "/");
 
       if (entry.isDirectory()) {
+        if (shouldIgnoreSwiftDirectory(absolute, entry.name)) continue;
         visit(absolute);
         continue;
       }
+
+      if (entry.isSymbolicLink()) continue;
 
       if (shouldRead(relative)) {
         files.push({
@@ -132,7 +135,7 @@ function readRepoFiles(root) {
 function shouldRead(relative) {
   return (
     SOURCE_EXTENSIONS.some((extension) => relative.endsWith(extension)) ||
-    relative === "Package.swift" ||
+    isSwiftPmManifestPath(relative) ||
     isBazelWorkspaceFile(relative) ||
     isBazelBuildFile(relative) ||
     relative.endsWith(".xcodeproj/project.pbxproj") ||
@@ -142,9 +145,17 @@ function shouldRead(relative) {
   );
 }
 
+function shouldIgnoreSwiftDirectory(absolute, name) {
+  if (name.endsWith(".playground") || /^Playgrounds?$/i.test(name)) return true;
+  if (!/(?:^|[-_])(?:examples?|demos?|samples?)$|(?:Example|Demo|Sample)(?:App)?s?$/i.test(name)) return false;
+  return fs.readdirSync(absolute, { withFileTypes: true }).some((entry) =>
+    entry.name === "Package.swift" || entry.name.endsWith(".xcodeproj") || entry.name.endsWith(".xcworkspace")
+  );
+}
+
 function buildProfile(root, files, bazelGraph) {
   const paths = files.map((file) => normalizePath(file.path));
-  const packageText = files.find((file) => normalizePath(file.path) === "Package.swift")?.content ?? "";
+  const packageText = swiftPmManifestText(files);
   const testFrameworks = detectTestFrameworks(files, packageText);
   const testCommand = detectTestCommand(paths, testFrameworks, bazelGraph, files);
   const existingTestLocations = detectExistingTestLocations(paths, bazelGraph);
@@ -273,6 +284,7 @@ function detectSetupSignals(paths, packageText, bazelGraph, files) {
   const signals = new Set();
   const sourceText = files.map((file) => file.content).join("\n");
   if (paths.includes("Package.swift")) signals.add("swift package manager");
+  if (paths.some(isVersionSpecificSwiftPmManifestPath)) signals.add("swiftpm version-specific manifest");
   if (paths.some((item) => item.endsWith(".xcodeproj/project.pbxproj"))) signals.add("xcode project");
   if (paths.some(isXcodeWorkspaceDataPath)) signals.add("xcode workspace");
   if (detectXcodeScheme(paths)) signals.add("xcode shared scheme");
@@ -295,6 +307,7 @@ function detectSetupSignals(paths, packageText, bazelGraph, files) {
   if (packageText.includes(".executableTarget")) signals.add("swiftpm executable target");
   if (bazelGraph.hasMacroTargets) signals.add("swiftpm macro target");
   if (bazelGraph.hasPluginTargets) signals.add("swiftpm plugin target");
+  if (bazelGraph.hasHelperTargets) signals.add("swiftpm helper target declaration");
   if (packageText.includes(".target")) signals.add("swiftpm target");
   if (bazelGraph.hasCustomTargetPaths) signals.add("swiftpm custom target path");
   if (bazelGraph.hasExplicitSources) signals.add("swiftpm explicit sources");
@@ -545,7 +558,7 @@ function isIncludedByChangedPaths(currentPath, changedPaths) {
 function isSourceFile(currentPath, bazelGraph) {
   const normalized = normalizePath(currentPath);
   return (
-    normalized !== "Package.swift" &&
+    !isSwiftPmManifestPath(normalized) &&
     !isTestFile(normalized, bazelGraph) &&
     !bazelGraph.ignoredSources.has(normalized) &&
     SOURCE_EXTENSIONS.some((extension) => normalized.endsWith(extension))
@@ -784,6 +797,7 @@ function mergeSourceGraphs(...graphs) {
     hasAlternateSourceRoots: graphs.some((graph) => graph.hasAlternateSourceRoots),
     hasMacroTargets: graphs.some((graph) => graph.hasMacroTargets),
     hasPluginTargets: graphs.some((graph) => graph.hasPluginTargets),
+    hasHelperTargets: graphs.some((graph) => graph.hasHelperTargets),
     sourceOwners,
     testSources,
     ignoredSources,
@@ -793,7 +807,7 @@ function mergeSourceGraphs(...graphs) {
 }
 
 function parseSwiftPmGraph(files) {
-  const packageFile = files.find((file) => normalizePath(file.path) === "Package.swift");
+  const packageFiles = files.filter((file) => isSwiftPmManifestPath(file.path));
   const emptyGraph = {
     hasSwiftRules: false,
     hasSwiftTest: false,
@@ -802,16 +816,21 @@ function parseSwiftPmGraph(files) {
     hasAlternateSourceRoots: false,
     hasMacroTargets: false,
     hasPluginTargets: false,
+    hasHelperTargets: false,
     sourceOwners: new Map(),
     testSources: new Set(),
     testDependencies: new Map(),
     ignoredSources: new Set(),
     pluginSources: new Set()
   };
-  if (!packageFile) return emptyGraph;
+  if (!packageFiles.some((file) => normalizePath(file.path) === "Package.swift")) return emptyGraph;
+  return mergeSourceGraphs(...packageFiles.map((packageFile) => parseSwiftPmManifestGraph(packageFile, files, emptyGraph)));
+}
 
+function parseSwiftPmManifestGraph(packageFile, files, emptyGraph) {
   const swiftPaths = files.map((file) => normalizePath(file.path)).filter((currentPath) => currentPath.endsWith(".swift"));
-  const rules = extractSwiftPmTargets(packageFile.content)
+  const targetExtraction = extractSwiftPmTargets(packageFile.content);
+  const rules = targetExtraction.targets
     .filter((rule) => rule.kind !== "plugin" || /\bcapability\s*:/.test(rule.body))
     .map((rule) => ({
       ...rule,
@@ -859,6 +878,8 @@ function parseSwiftPmGraph(files) {
     }
   }
 
+  applyConventionalSwiftPmOwnership(swiftPaths, targetNames, sourceOwners, testSources, testDependencies, ignoredSources);
+
   return {
     ...emptyGraph,
     hasCustomTargetPaths,
@@ -866,6 +887,7 @@ function parseSwiftPmGraph(files) {
     hasAlternateSourceRoots,
     hasMacroTargets: rules.some((rule) => rule.kind === "macro"),
     hasPluginTargets: rules.some((rule) => rule.kind === "plugin"),
+    hasHelperTargets: targetExtraction.hasHelperTargets,
     sourceOwners,
     testSources,
     testDependencies,
@@ -875,7 +897,78 @@ function parseSwiftPmGraph(files) {
 }
 
 function extractSwiftPmTargets(content) {
-  return extractCallBodies(content, /\.(testTarget|executableTarget|macro|plugin|target)\s*\(/g);
+  const targets = extractCallBodies(content, /\.(testTarget|executableTarget|macro|plugin|target)\s*\(/g);
+  const helpers = extractSwiftPmTargetHelpers(content);
+  let helperCallCount = 0;
+  for (const [helperName, kind] of helpers) {
+    const matcher = new RegExp(`\\.(${escapeRegex(helperName)})\\s*\\(`, "g");
+    for (const call of extractCallBodies(content, matcher)) {
+      targets.push({ ...call, kind });
+      helperCallCount += 1;
+    }
+  }
+  return { targets, hasHelperTargets: helperCallCount > 0 };
+}
+
+function applyConventionalSwiftPmOwnership(swiftPaths, declaredTargetNames, sourceOwners, testSources, testDependencies, ignoredSources) {
+  const targetNames = new Map([...declaredTargetNames].map((name) => [normalizeModuleName(name), name]));
+
+  for (const swiftPath of swiftPaths) {
+    const match = swiftPath.match(/^(?:Sources|Source|src|srcs)\/([^/]+)\//);
+    if (match && !/(?:Tests?|UITests?)$/.test(match[1])) targetNames.set(normalizeModuleName(match[1]), match[1]);
+  }
+
+  for (const swiftPath of swiftPaths) {
+    if (ignoredSources.has(swiftPath) || isTestPath(swiftPath) || /(?:Tests?|Spec)\.swift$/.test(swiftPath)) continue;
+    const segments = swiftPath.split("/");
+    const conventionalMatch = swiftPath.match(/^(?:Sources|Source|src|srcs)\/([^/]+)\//);
+    const owner = conventionalMatch?.[1] ?? targetNames.get(normalizeModuleName(segments[0]));
+    if (owner) sourceOwners.set(swiftPath, sourceOwners.get(swiftPath) ?? owner);
+  }
+
+  for (const swiftPath of swiftPaths) {
+    if (!isTestPath(swiftPath) && !/(?:Tests?|Spec)\.swift$/.test(swiftPath)) continue;
+    const inferredOwner = inferTestOwner(swiftPath);
+    const dependency = inferredOwner && targetNames.get(normalizeModuleName(inferredOwner));
+    if (!dependency) continue;
+    testSources.add(swiftPath);
+    if (!testDependencies.has(swiftPath)) testDependencies.set(swiftPath, new Set([dependency]));
+  }
+}
+
+function extractSwiftPmTargetHelpers(content) {
+  const helpers = new Map();
+  const matcher = /\bstatic\s+func\s+([A-Za-z_][A-Za-z0-9_]*)\s*\([^)]*\)\s*->\s*Target\b/g;
+  let match;
+  while ((match = matcher.exec(content)) !== null) {
+    const openingBrace = content.indexOf("{", matcher.lastIndex);
+    if (openingBrace < 0) continue;
+    const body = readBalancedSwiftBody(content, openingBrace, "{", "}");
+    const kind = body.match(/\.(testTarget|executableTarget|macro|plugin|target)\s*\(/)?.[1];
+    if (kind) helpers.set(match[1], kind);
+    matcher.lastIndex = openingBrace + body.length;
+  }
+  return helpers;
+}
+
+function readBalancedSwiftBody(content, openingIndex, opening, closing) {
+  let depth = 0;
+  let quote;
+  let escaped = false;
+  let index = openingIndex;
+  for (; index < content.length; index += 1) {
+    const character = content[index];
+    if (quote) {
+      if (escaped) escaped = false;
+      else if (character === "\\") escaped = true;
+      else if (character === quote) quote = undefined;
+      continue;
+    }
+    if (character === "\"" || character === "'") quote = character;
+    else if (character === opening) depth += 1;
+    else if (character === closing && --depth === 0) return content.slice(openingIndex, index + 1);
+  }
+  return content.slice(openingIndex);
 }
 
 function extractCallBodies(content, matcher) {
@@ -944,9 +1037,9 @@ function inferDefaultSwiftPmTargetPath(targetName, isTest, isPlugin, swiftPaths)
   const defaultRoot = isPlugin ? "Plugins" : isTest ? "Tests" : "Sources";
   const searchRoots = isPlugin
     ? ["Plugins"]
-    : isTest ? ["Tests", "Sources", "Source", "src", "srcs"] : ["Sources", "Source", "src", "srcs"];
+    : isTest ? ["Tests", "Sources", "Source", "src", "srcs", ""] : ["Sources", "Source", "src", "srcs", ""];
   return searchRoots
-    .map((root) => `${root}/${targetName}`)
+    .map((root) => root ? `${root}/${targetName}` : targetName)
     .find((candidate) => swiftPaths.some((swiftPath) => pathContains(candidate, swiftPath))) ?? `${defaultRoot}/${targetName}`;
 }
 
@@ -1045,6 +1138,22 @@ function escapeRegex(value) {
 function isBazelWorkspaceFile(currentPath) {
   const fileName = normalizePath(currentPath).split("/").at(-1);
   return fileName === "MODULE.bazel" || fileName === "WORKSPACE" || fileName === "WORKSPACE.bazel";
+}
+
+function isSwiftPmManifestPath(currentPath) {
+  return /^Package(?:@swift-\d+(?:\.\d+)*)?\.swift$/.test(normalizePath(currentPath));
+}
+
+function isVersionSpecificSwiftPmManifestPath(currentPath) {
+  return /^Package@swift-\d+(?:\.\d+)*\.swift$/.test(normalizePath(currentPath));
+}
+
+function swiftPmManifestText(files) {
+  return files
+    .filter((file) => isSwiftPmManifestPath(file.path))
+    .sort((a, b) => normalizePath(a.path).localeCompare(normalizePath(b.path)))
+    .map((file) => file.content)
+    .join("\n");
 }
 
 function isBazelBuildFile(currentPath) {
