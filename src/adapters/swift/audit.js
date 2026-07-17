@@ -125,7 +125,7 @@ function shouldRead(relative) {
     isBazelBuildFile(relative) ||
     relative.endsWith(".xcodeproj/project.pbxproj") ||
     relative.endsWith(".xcworkspace/contents.xcworkspacedata") ||
-    relative.endsWith(".xcscheme") ||
+    isSharedXcodeSchemePath(relative) ||
     relative.endsWith(".xctestplan")
   );
 }
@@ -992,7 +992,7 @@ function firstTestDirectory(currentPath) {
 
 function detectXcodeScheme(paths) {
   const schemeNames = paths
-    .filter((item) => item.endsWith(".xcscheme"))
+    .filter(isSharedXcodeSchemePath)
     .map((item) => basenameWithoutExtension(item))
     .sort();
   if (schemeNames.length === 0) return undefined;
@@ -1039,6 +1039,10 @@ function hasXcodeContainer(paths) {
   return paths.some((item) => item.endsWith(".xcodeproj/project.pbxproj") || item.endsWith(".xcworkspace/contents.xcworkspacedata"));
 }
 
+function isSharedXcodeSchemePath(currentPath) {
+  return /(?:^|\/)xcshareddata\/xcschemes\/[^/]+\.xcscheme$/.test(normalizePath(currentPath));
+}
+
 function detectXcodeTestPlan(paths, files, scheme) {
   const testPlanNames = paths
     .filter((item) => item.endsWith(".xctestplan"))
@@ -1051,7 +1055,7 @@ function detectXcodeTestPlan(paths, files, scheme) {
 }
 
 function detectSchemeTestPlan(files, scheme, availablePlans) {
-  const schemeFile = files.find((file) => file.path.endsWith(".xcscheme") && basenameWithoutExtension(file.path) === scheme);
+  const schemeFile = files.find((file) => isSharedXcodeSchemePath(file.path) && basenameWithoutExtension(file.path) === scheme);
   if (!schemeFile) return undefined;
   const references = [...schemeFile.content.matchAll(/<TestPlanReference\b[^>]*>/g)].flatMap((match) => {
     const reference = match[0].match(/\breference\s*=\s*"(?:container:)?([^"]+\.xctestplan)"/)?.[1];
