@@ -1,0 +1,65 @@
+{
+  "schemaVersion": "model-consistency-scenario/v1",
+  "id": "node-mocha-commonjs-plan",
+  "description": "Mocha CommonJS projects should preserve their native command, callable require assertion evidence, and lib-root plan shape.",
+  "sourceArtifact": {
+    "path": "evals/expected/node-mocha-commonjs.audit.json",
+    "schemaVersion": "audit/v1"
+  },
+  "toolCall": {
+    "toolName": "generate_test_plan",
+    "arguments": {}
+  },
+  "lockedFields": [
+    {
+      "path": "summary.verificationCommand",
+      "expected": "npm run test",
+      "reason": "The plan should preserve the package's Mocha test script."
+    },
+    {
+      "path": "summary.confidence",
+      "expected": "high",
+      "reason": "Mocha dependency, config, command, and test-location signals provide high-confidence setup evidence."
+    },
+    {
+      "path": "summary.addTestCount",
+      "expected": 1,
+      "reason": "The untested catalog client should remain one add-test candidate."
+    },
+    {
+      "path": "summary.extendTestCount",
+      "expected": 1,
+      "reason": "The parser's existing Mocha test should be extended rather than duplicated."
+    },
+    {
+      "path": "items[0].id",
+      "expected": "extend-test:lib/priceParser.cjs",
+      "reason": "The covered lib-root parser should remain the first review target."
+    },
+    {
+      "path": "items[0].existingTestEvidence[0].usage",
+      "expected": "asserted",
+      "reason": "A callable CommonJS export passed into Node assert should remain asserted provenance."
+    },
+    {
+      "path": "items[0].existingTestPaths[0]",
+      "expected": "test/price-parser.js",
+      "reason": "The plan should reuse the existing Mocha test location."
+    },
+    {
+      "path": "items[1].id",
+      "expected": "add-test:lib/catalogClient.cjs",
+      "reason": "The untested external service boundary should receive a focused unit-test recommendation."
+    }
+  ],
+  "allowedVariations": [
+    "Rationale wording may change while retaining the native Mocha/CommonJS strategy.",
+    "Additional non-locked metadata may be added."
+  ],
+  "unexpectedVariations": [
+    "Treating Mocha as unsupported.",
+    "Dropping callable CommonJS assertion provenance.",
+    "Ignoring lib-root source files.",
+    "Duplicating the existing parser test instead of extending it."
+  ]
+}

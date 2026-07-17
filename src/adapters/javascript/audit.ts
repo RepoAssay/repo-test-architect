@@ -3,7 +3,7 @@ import type { AuditResult, AuditTarget, RepoProfile, SkippedTarget } from "../..
 const GENERIC_SOURCE_BASENAMES = new Set(["handler", "index", "types", "utils"]);
 const MAX_TRANSITIVE_SOURCE_DEPTH = 2;
 const SOURCE_EXTENSIONS = [".cjs", ".js", ".jsx", ".mjs", ".ts", ".tsx"];
-const SOURCE_ROOTS = ["src/", "source/"];
+const SOURCE_ROOTS = ["src/", "source/", "lib/"];
 const AVA_ASSERTION_METHODS = ["assert", "deepEqual", "false", "falsy", "is", "like", "not", "notDeepEqual", "notRegex", "notThrows", "notThrowsAsync", "regex", "snapshot", "throws", "throwsAsync", "true", "truthy"];
 
 export interface FileSnapshot {
@@ -209,6 +209,10 @@ function detectTestFrameworks(files: FileSnapshot[], packageData: PackageJsonDat
     frameworks.add("ava");
   }
 
+  if (paths.some((path) => path.includes(".mocharc")) || hasPackageDependency(packageData, "mocha")) {
+    frameworks.add("mocha");
+  }
+
   if (paths.some((path) => path.includes("vitest.config")) || hasPackageDependency(packageData, "vitest")) {
     frameworks.add("vitest");
   }
@@ -257,6 +261,7 @@ function detectTestCommand(packageData: { scripts?: Record<string, string> }, fr
   if (frameworks.includes("jest")) return "npx jest";
   if (frameworks.includes("node-test")) return "node --test";
   if (frameworks.includes("ava")) return "npx ava";
+  if (frameworks.includes("mocha")) return "npx mocha";
 
   return undefined;
 }
@@ -317,6 +322,7 @@ function detectSetupSignals(paths: string[], packageData: PackageJsonData): stri
 
   if (paths.includes("tsconfig.json")) signals.add("tsconfig");
   if (paths.some((path) => path.includes("ava.config"))) signals.add("ava config");
+  if (paths.some((path) => path.includes(".mocharc"))) signals.add("mocha config");
   if (paths.some((path) => path.includes("vitest.config"))) signals.add("vitest config");
   if (paths.some((path) => path.includes("jest.config"))) signals.add("jest config");
   if (hasPackageDependency(packageData, "msw")) signals.add("msw");
@@ -631,11 +637,12 @@ function skipped(
 
 function isSourceFile(path: string): boolean {
   const normalized = normalizePath(path);
-  return (
-    isInSourceRoot(normalized) &&
-    SOURCE_EXTENSIONS.some((extension) => normalized.endsWith(extension)) &&
-    !isTestFile(normalized)
-  );
+  return isInSourceRoot(normalized) && isJavaScriptModuleFile(normalized);
+}
+
+function isJavaScriptModuleFile(path: string): boolean {
+  const normalized = normalizePath(path);
+  return SOURCE_EXTENSIONS.some((extension) => normalized.endsWith(extension)) && !isTestFile(normalized);
 }
 
 function isRuntimeJavaScriptSource(path: string): boolean {
@@ -836,7 +843,7 @@ function findRelativeModuleFile(
   moduleFiles: FileSnapshot[]
 ): FileSnapshot | undefined {
   return moduleFiles.find(
-    (file) => isSourceFile(file.path) && moduleSpecifierTargetsSource(importerPath, specifier, file.path)
+    (file) => isJavaScriptModuleFile(file.path) && moduleSpecifierTargetsSource(importerPath, specifier, file.path)
   );
 }
 
@@ -1154,13 +1161,19 @@ function collectModuleImports(content: string): ModuleImport[] {
   for (const match of content.matchAll(namespaceRequirePattern)) {
     const namespace = match[1];
     const specifier = match[2];
-    if (namespace && specifier) imports.push({
-      specifier,
-      importedNames: collectNamespaceMemberNames(namespace, contentWithoutImports),
-      usedImportedNames: collectNamespaceMemberNames(namespace, contentWithoutImports),
-      calledImportedNames: collectNamespaceMemberNames(namespace, contentWithoutImports, isIdentifierCalled),
-      assertedImportedNames: collectNamespaceMemberNames(namespace, contentWithoutImports, isIdentifierAsserted)
-    });
+    if (namespace && specifier) {
+      const calledImportedNames = collectNamespaceMemberNames(namespace, contentWithoutImports, isIdentifierCalled);
+      const assertedImportedNames = collectNamespaceMemberNames(namespace, contentWithoutImports, isIdentifierAsserted);
+      if (isIdentifierCalled(contentWithoutImports, namespace)) calledImportedNames.add("default");
+      if (isIdentifierAsserted(contentWithoutImports, namespace)) assertedImportedNames.add("default");
+      imports.push({
+        specifier,
+        importedNames: collectNamespaceMemberNames(namespace, contentWithoutImports),
+        usedImportedNames: collectNamespaceMemberNames(namespace, contentWithoutImports),
+        calledImportedNames,
+        assertedImportedNames
+      });
+    }
   }
   const plainRequirePattern = /\brequire\s*\(\s*["']([^"']+)["']\s*\)/g;
   for (const match of content.matchAll(plainRequirePattern)) {

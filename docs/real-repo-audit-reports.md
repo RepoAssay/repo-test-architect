@@ -13,6 +13,7 @@ The purpose is product validation, not regression locking. These reports record 
 | `unjs/defu` audit | TypeScript, Vitest | `unjs/defu` at `82632b6` | `findings-projects`, direct `javascript` adapter ranking | summarized below |
 | `h3js/h3` audit | TypeScript, Vitest | `h3js/h3` at `3eb3a57` | `findings-projects`, direct `javascript` adapter ranking | summarized below |
 | `honojs/hono` audit | TypeScript, Vitest | `honojs/hono` at `cda1af2` | `findings-projects`, direct `javascript` adapter ranking | summarized below |
+| `expressjs/express` audit | JavaScript, Mocha, Supertest | `expressjs/express` at `ae6dd37` | direct `javascript` adapter audit | summarized below |
 | Collectors Grimoire app audit | Swift, Xcode app | `m-stenbe/Collectors-Grimoire` at `a2d4c54` | `findings-projects`, Xcode-style Swift detection | summarized below |
 
 This gives the alpha gate coverage across owned and non-owned JavaScript/TypeScript codebases and multiple Swift codebases, including Swift Package Manager, Vapor/MongoDB, and Xcode-style app structure.
@@ -243,6 +244,28 @@ Why it matters:
 - The probe also locks common `source/` roots and generically named files inside `test/`, rather than requiring `src/` plus `.test` or `.spec` filenames.
 - Runner support remains explicit rather than universal; unsupported frameworks should still produce blockers.
 
+## Additional JavaScript Probe: `expressjs/express`
+
+Source:
+
+- repository: `expressjs/express`
+- audited commit: `ae6dd37` (`2026-07-12`, `feat: allow conditional revalidation for QUERY requests (#7366)`)
+
+Result:
+
+- direct audit found a high-confidence Mocha and Supertest profile with `npm run test` and no blockers
+- all six runtime modules under `lib/` are classified instead of the previous zero-target result
+- `application.js`, `request.js`, and `response.js` have bounded package-entry evidence with called and asserted entrypoint usage
+- `utils.js` has five direct relative-import evidence links
+- `view.js` remains an untested candidate because its package-entry path is beyond the conservative two-hop dependency limit
+- `express.js` is skipped as low-runtime-behavior composition rather than promoted as a direct test target
+
+Why it matters:
+
+- Supertest alone previously produced a high-confidence profile with zero source targets, which overstated audit usefulness.
+- Supporting `lib/`, Mocha, callable CommonJS exports, and root `require('..')` resolution makes the profile and candidate graph agree.
+- The remaining `view.js` gap stays visible instead of silently expanding dependency traversal and weakening provenance.
+
 ## Collectors Grimoire App Audit
 
 Source:
@@ -290,7 +313,7 @@ Heuristic follow-up:
 The real-repo report gate is satisfied for private alpha validation:
 
 - at least three real repositories have local audit summaries: Repo Test Architect, `cg-bff`/Swift package family, and Collectors Grimoire
-- one JavaScript/TypeScript codebase is covered by the self-audit, while non-owned JavaScript/TypeScript coverage now includes the small `unjs/defu` and `sindresorhus/is` libraries plus the larger `h3js/h3` and `honojs/hono` HTTP frameworks
+- one JavaScript/TypeScript codebase is covered by the self-audit, while non-owned JavaScript/TypeScript coverage now includes the small `unjs/defu` and `sindresorhus/is` libraries plus Express, `h3js/h3`, and `honojs/hono` HTTP frameworks
 - Swift package and Xcode-style app repos are covered
 - reports include findings, misses, and follow-up heuristics
 - no report requires source upload or remote service execution
