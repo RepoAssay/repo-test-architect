@@ -1,0 +1,11 @@
+{
+  "name": "node-ava-basic",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "ava"
+  },
+  "devDependencies": {
+    "ava": "^6.0.0"
+  }
+}

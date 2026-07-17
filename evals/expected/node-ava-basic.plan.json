@@ -1,0 +1,68 @@
+{
+  "schemaVersion": "plan/v1",
+  "summary": {
+    "confidence": "high",
+    "verificationCommand": "npm run test",
+    "blockerCount": 0,
+    "addTestCount": 1,
+    "extendTestCount": 1,
+    "deferredCount": 0
+  },
+  "blockers": [],
+  "items": [
+    {
+      "id": "extend-test:src/cartParser.js",
+      "action": "extend-test",
+      "targetId": "src/cartParser.js",
+      "target": "cartParser",
+      "path": "src/cartParser.js",
+      "testLevel": "unit",
+      "priority": 7,
+      "riskReductionScore": 9,
+      "maintenanceCost": 2,
+      "rationale": [
+        "Pure transformation logic",
+        "edge-case surface",
+        "Existing test file detected; review missing edge cases"
+      ],
+      "sourceSignals": [
+        "pure-logic",
+        "edge-case-surface",
+        "matching-test"
+      ],
+      "existingTestPaths": [
+        "test/cart-parser.js"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "test/cart-parser.js",
+          "kind": "direct-relative-import",
+          "strength": "direct",
+          "usage": "asserted"
+        }
+      ]
+    },
+    {
+      "id": "add-test:src/cartClient.js",
+      "action": "add-test",
+      "targetId": "src/cartClient.js",
+      "target": "cartClient",
+      "path": "src/cartClient.js",
+      "testLevel": "unit",
+      "priority": 4,
+      "riskReductionScore": 8,
+      "maintenanceCost": 4,
+      "rationale": [
+        "Service boundary",
+        "external dependency boundary",
+        "auth or permission branches"
+      ],
+      "sourceSignals": [
+        "service-name",
+        "external-boundary",
+        "auth-branch"
+      ],
+      "existingTestPaths": []
+    }
+  ]
+}

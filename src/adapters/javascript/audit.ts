@@ -4,6 +4,7 @@ const GENERIC_SOURCE_BASENAMES = new Set(["handler", "index", "types", "utils"])
 const MAX_TRANSITIVE_SOURCE_DEPTH = 2;
 const SOURCE_EXTENSIONS = [".cjs", ".js", ".jsx", ".mjs", ".ts", ".tsx"];
 const SOURCE_ROOTS = ["src/", "source/"];
+const AVA_ASSERTION_METHODS = ["assert", "deepEqual", "false", "falsy", "is", "like", "not", "notDeepEqual", "notRegex", "notThrows", "notThrowsAsync", "regex", "snapshot", "throws", "throwsAsync", "true", "truthy"];
 
 export interface FileSnapshot {
   path: string;
@@ -204,6 +205,10 @@ function detectTestFrameworks(files: FileSnapshot[], packageData: PackageJsonDat
   const paths = files.map((file) => normalizePath(file.path));
   const frameworks = new Set<string>();
 
+  if (paths.some((path) => path.includes("ava.config")) || hasPackageDependency(packageData, "ava")) {
+    frameworks.add("ava");
+  }
+
   if (paths.some((path) => path.includes("vitest.config")) || hasPackageDependency(packageData, "vitest")) {
     frameworks.add("vitest");
   }
@@ -251,6 +256,7 @@ function detectTestCommand(packageData: { scripts?: Record<string, string> }, fr
   if (frameworks.includes("vitest")) return "npx vitest run";
   if (frameworks.includes("jest")) return "npx jest";
   if (frameworks.includes("node-test")) return "node --test";
+  if (frameworks.includes("ava")) return "npx ava";
 
   return undefined;
 }
@@ -310,6 +316,7 @@ function detectSetupSignals(paths: string[], packageData: PackageJsonData): stri
   const signals = new Set<string>();
 
   if (paths.includes("tsconfig.json")) signals.add("tsconfig");
+  if (paths.some((path) => path.includes("ava.config"))) signals.add("ava config");
   if (paths.some((path) => path.includes("vitest.config"))) signals.add("vitest config");
   if (paths.some((path) => path.includes("jest.config"))) signals.add("jest config");
   if (hasPackageDependency(packageData, "msw")) signals.add("msw");
@@ -1240,8 +1247,8 @@ function collectAssertedRequireNames(clause: string, contentWithoutImports: stri
 
 function isIdentifierAsserted(content: string, identifier: string): boolean {
   const escaped = escapeRegExp(identifier);
-  const assertionCall = `(?:expect|assert(?:\\.[A-Za-z_$][\\w$]*)?)`;
-  if (new RegExp(`\\b${assertionCall}\\s*\\(\\s*(?:\\(\\s*\\)\\s*=>\\s*)?(?:await\\s+)?(?:new\\s+)?${escaped}\\s*\\(`).test(content)) return true;
+  const assertionCall = assertionCallPattern(content);
+  if (new RegExp(`\\b${assertionCall}\\s*\\(\\s*(?:(?:async\\s+)?\\(\\s*\\)\\s*=>\\s*)?(?:await\\s+)?(?:new\\s+)?${escaped}\\s*\\(`).test(content)) return true;
   const assignmentPattern = new RegExp(`\\b(?:const|let|var)\\s+([A-Za-z_$][\\w$]*)\\s*=\\s*(?:await\\s+)?(?:new\\s+)?${escaped}\\s*\\(`, "g");
   for (const match of content.matchAll(assignmentPattern)) {
     const resultName = match[1];
@@ -1260,7 +1267,22 @@ function isIdentifierAsserted(content: string, identifier: string): boolean {
 }
 
 function isResultIdentifierAsserted(content: string, identifier: string): boolean {
-  return new RegExp(`\\b(?:expect|assert(?:\\.[A-Za-z_$][\\w$]*)?)\\s*\\(\\s*${escapeRegExp(identifier)}\\b`).test(content);
+  return new RegExp(`\\b${assertionCallPattern(content)}\\s*\\(\\s*${escapeRegExp(identifier)}\\b`).test(content);
+}
+
+function assertionCallPattern(content: string): string {
+  const avaContexts = collectAvaExecutionContextNames(content);
+  const avaAssertions = avaContexts.length > 0
+    ? `|(?:${avaContexts.map(escapeRegExp).join("|")})\\.(?:${AVA_ASSERTION_METHODS.join("|")})`
+    : "";
+  return `(?:expect|assert(?:\\.[A-Za-z_$][\\w$]*)?${avaAssertions})`;
+}
+
+function collectAvaExecutionContextNames(content: string): string[] {
+  const names = new Set<string>();
+  const pattern = /\btest(?:\.(?:failing|only|serial|skip))?\s*\(\s*["'`][\s\S]*?["'`]\s*,\s*(?:async\s+)?(?:\(\s*)?([A-Za-z_$][\w$]*)\s*(?:\))?\s*=>/g;
+  for (const match of content.matchAll(pattern)) names.add(match[1]);
+  return [...names];
 }
 
 function isIdentifierCalled(content: string, identifier: string): boolean {

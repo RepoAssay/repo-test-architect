@@ -11,7 +11,7 @@ describe("adapter registry", () => {
         ecosystems: ["javascript"],
         languages: ["javascript", "typescript"],
         maturity: "supported",
-        supportedTestFrameworks: ["jest", "node-test", "react-testing-library", "supertest", "vitest"],
+        supportedTestFrameworks: ["ava", "jest", "node-test", "react-testing-library", "supertest", "vitest"],
         supportedProjectTypes: ["node", "express", "react"],
         emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"]
       },
@@ -54,7 +54,7 @@ describe("adapter registry", () => {
           ecosystems: ["javascript"],
           languages: ["javascript", "typescript"],
           maturity: "supported",
-          supportedTestFrameworks: ["jest", "node-test", "react-testing-library", "supertest", "vitest"],
+          supportedTestFrameworks: ["ava", "jest", "node-test", "react-testing-library", "supertest", "vitest"],
           supportedProjectTypes: ["node", "express", "react"],
           emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"]
         },
@@ -102,7 +102,7 @@ describe("adapter registry", () => {
     assert.equal(relisted[0].id, "javascript");
     assert.deepEqual(relisted[0].ecosystems, ["javascript"]);
     assert.deepEqual(relisted[0].languages, ["javascript", "typescript"]);
-    assert.deepEqual(relisted[0].supportedTestFrameworks, ["jest", "node-test", "react-testing-library", "supertest", "vitest"]);
+    assert.deepEqual(relisted[0].supportedTestFrameworks, ["ava", "jest", "node-test", "react-testing-library", "supertest", "vitest"]);
     assert.deepEqual(relisted[0].supportedProjectTypes, ["node", "express", "react"]);
     assert.deepEqual(relisted[0].emittedArtifacts, ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"]);
   });
