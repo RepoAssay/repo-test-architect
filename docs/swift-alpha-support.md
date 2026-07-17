@@ -12,7 +12,7 @@ This matrix defines the evidence boundary for moving the Swift adapter from an e
 | Bazel target layout | `swift_binary`, `swift_library`, and `swift_test`, including test sources owned through direct dependencies | BUILD target sources, module names, direct dependencies, imports, and glob patterns |
 | SwiftPM source layout | conventional and manifest-declared custom target paths, source lists, excludes, and test dependencies | parsed target declarations plus source and test ownership |
 | Xcode source layout | app/framework source folders plus `*Tests` and `*UITests` folders | project markers and target-like directory names |
-| Test names | `*Test.swift`, `*Tests.swift`, and Quick-style `*Spec.swift` | target-qualified filename evidence |
+| Test relationships | `*Test.swift`, `*Tests.swift`, Quick-style `*Spec.swift`, and uniquely declared top-level symbol references | target-qualified naming evidence plus module-qualified symbol usage |
 | Application boundaries | services, clients, repositories, storage, commands/workers, parsers, URL/query builders, and error mapping | path, declaration, branching, async/concurrency, encoding, and platform API signals |
 | Server boundaries | Vapor routes, middleware, lifecycle files, Fluent models, XCTVapor, and MongoDB operations | imports, protocols, calls, and package products |
 | UI boundaries | SwiftUI architecture, views, Xcode UI test folders, and snapshot support | imports, `View` declarations, test locations, and package products |
@@ -23,7 +23,7 @@ Bazel's `swift_test` can own test sources directly or discover XCTest cases in d
 
 ## Evidence Boundary
 
-Swift source-to-test evidence currently remains structural:
+Swift filename evidence remains structural:
 
 - a source/test basename relationship must use a recognized `Test`, `Tests`, or `Spec` suffix
 - conventional or manifest-declared SwiftPM ownership, target dependencies, Xcode test directories, and `import`/`@testable import` statements qualify ownership
@@ -31,12 +31,20 @@ Swift source-to-test evidence currently remains structural:
 - emitted evidence uses `filename-convention` with `naming` strength
 - naming evidence does not prove that a symbol is referenced, called, asserted, or behaviorally covered
 
+Swift also emits stronger `swift-symbol-reference` evidence when a test qualified by its import, target directory, or declared build dependency references a uniquely declared top-level type or function from the source file:
+
+- the evidence uses `referenced` strength because a module import does not identify a source file as directly as a relative file import
+- constructor and top-level function calls carry `called` usage
+- references inside `#expect`, `#require`, XCTest assertions, or Nimble `expect` expressions carry `asserted` usage
+- comments, ordinary string literals, test-local declarations, duplicate declarations in the same module, and wrong-target references are not credited
+- this evidence proves a static symbol relationship, not runtime execution or behavioral completeness
+
 This normalized evidence now flows through audit, plan, explanation, findings, placement, and stats artifacts using the shared model. Stronger Swift evidence should be added as a distinct direct or referenced relationship only when the adapter can actually prove it.
 
 ## Known Gaps Before Swift Alpha
 
 - custom Starlark macros, generated BUILD files, `select()` expressions, aliases, and transitive Bazel test-source graphs are not resolved
-- source-to-test symbol references, calls, assertions, and macros are not resolved
+- member-level references through inferred receiver types, overload resolution, extensions, aliases, raw-string interpolation, and macro expansion are not resolved
 - computed Swift manifests, local variables that assemble targets, conditional target graphs, and dependency aliases are not resolved by the static manifest reader
 - multiple Xcode schemes or test plans remain ambiguous when no project-name or single-plan choice exists
 - UI tests, snapshot tests, and XCTVapor tests are detected, but runtime reachability is not mapped back to source modules
@@ -48,7 +56,7 @@ This normalized evidence now flows through audit, plan, explanation, findings, p
 Swift can move from experimental toward private alpha when:
 
 1. multi-target ownership, custom target paths, and Bazel Swift behavior are validated on maintained public repositories
-2. at least one direct Swift symbol relationship is emitted without weakening shared evidence semantics
+2. Swift symbol evidence remains conservative across maintained public packages with overloaded APIs, extensions, macros, and generated sources
 3. Xcode app findings remain conservative across multiple schemes, UI tests, and test plans
 4. the deterministic private-alpha gate and pinned real-repository reports remain stable
 

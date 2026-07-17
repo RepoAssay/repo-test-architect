@@ -42,6 +42,21 @@
       "reason": "The adapter must preserve matching XCTest evidence."
     },
     {
+      "path": "items[0].existingTestEvidence[0].kind",
+      "expected": "swift-symbol-reference",
+      "reason": "The plan must preserve the proven Swift declaration relationship rather than downgrade it to filename evidence."
+    },
+    {
+      "path": "items[0].existingTestEvidence[0].strength",
+      "expected": "referenced",
+      "reason": "Module-qualified Swift symbol evidence should retain referenced strength."
+    },
+    {
+      "path": "items[0].existingTestEvidence[0].usage",
+      "expected": "called",
+      "reason": "CheckoutParser construction should remain recorded as called usage."
+    },
+    {
       "path": "items[1].id",
       "expected": "add-test:Sources/CheckoutCore/PaymentClient.swift",
       "reason": "Untested async service code should stay a direct unit-test candidate."

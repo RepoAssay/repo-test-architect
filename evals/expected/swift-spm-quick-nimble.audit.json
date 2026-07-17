@@ -82,8 +82,9 @@
       "existingTestEvidence": [
         {
           "testPath": "Tests/InventoryRulesTests/StockValidatorTests.swift",
-          "kind": "filename-convention",
-          "strength": "naming"
+          "kind": "swift-symbol-reference",
+          "strength": "referenced",
+          "usage": "called"
         }
       ]
     }
@@ -135,8 +136,9 @@
       "existingTestEvidence": [
         {
           "testPath": "Tests/InventoryRulesTests/StockValidatorTests.swift",
-          "kind": "filename-convention",
-          "strength": "naming"
+          "kind": "swift-symbol-reference",
+          "strength": "referenced",
+          "usage": "called"
         }
       ]
     }

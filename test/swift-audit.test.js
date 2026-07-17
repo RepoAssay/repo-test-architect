@@ -55,8 +55,9 @@ describe("Swift audit adapter", () => {
     assert.deepEqual(parser.existingTestEvidence, [
       {
         testPath: "Tests/CheckoutCoreTests/CheckoutParserTests.swift",
-        kind: "filename-convention",
-        strength: "naming"
+        kind: "swift-symbol-reference",
+        strength: "referenced",
+        usage: "called"
       }
     ]);
     assert.ok(parser.signals.includes("matching-test"));
@@ -254,6 +255,12 @@ final class ParserSpec: QuickSpec {
     assert.ok(!audit.recommended.some((target) => target.path.includes("LegacyGateway.swift")));
     assert.deepEqual(audit.coveredButRisky[0].existingTestEvidence, [
       {
+        testPath: "Verification/Core/Parser/CheckoutBehaviorTests.swift",
+        kind: "swift-symbol-reference",
+        strength: "referenced",
+        usage: "asserted"
+      },
+      {
         testPath: "Verification/Core/Parser/CheckoutParserTests.swift",
         kind: "filename-convention",
         strength: "naming"
@@ -277,9 +284,66 @@ final class ParserSpec: QuickSpec {
     assert.deepEqual(audit.coveredButRisky[0].existingTestEvidence, [
       {
         testPath: "verification/CheckoutParserTests.swift",
-        kind: "filename-convention",
-        strength: "naming"
+        kind: "swift-symbol-reference",
+        strength: "referenced",
+        usage: "called"
       }
+    ]);
+  });
+
+  it("keeps Swift symbol evidence target-qualified and ignores comments, strings, and declarations", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-swift-symbols-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "Sources", "Core"), { recursive: true });
+    fs.mkdirSync(path.join(root, "Sources", "UI"), { recursive: true });
+    fs.mkdirSync(path.join(root, "Tests", "CoreTests"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "Package.swift"),
+      `// swift-tools-version: 6.0
+import PackageDescription
+let package = Package(targets: [
+    .target(name: "Core"),
+    .target(name: "UI"),
+    .testTarget(name: "CoreTests", dependencies: ["Core"])
+])
+`
+    );
+    fs.writeFileSync(path.join(root, "Sources", "Core", "Parser.swift"), "public struct Parser { public init() {}; public func parse(_ value: String) -> String { if value.isEmpty { return \"missing\" }; return value } }\n");
+    fs.writeFileSync(path.join(root, "Sources", "UI", "Parser.swift"), "public struct Parser { public init() {}; public func parse(_ value: String) -> String { if value.isEmpty { return \"empty\" }; return value } }\n");
+    fs.writeFileSync(path.join(root, "Sources", "Core", "Ghost.swift"), "public struct Ghost { public init() {}; public func load(_ value: Bool) -> Bool { if value { return true }; return false } }\n");
+    fs.writeFileSync(path.join(root, "Sources", "Core", "Shadow.swift"), "public struct Shadow { public init() {}; public func load(_ value: Bool) -> Bool { if value { return true }; return false } }\n");
+    fs.writeFileSync(
+      path.join(root, "Tests", "CoreTests", "BehaviorTests.swift"),
+      `import XCTest
+@testable import Core
+
+private struct Shadow {}
+
+final class BehaviorTests: XCTestCase {
+    func testParser() {
+        _ = Parser()
+        _ = "Ghost()"
+        // Ghost()
+    }
+}
+`
+    );
+
+    const audit = auditSwiftRepo(root);
+
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["Sources/Core/Parser.swift"]);
+    assert.deepEqual(audit.coveredButRisky[0].existingTestEvidence, [
+      {
+        testPath: "Tests/CoreTests/BehaviorTests.swift",
+        kind: "swift-symbol-reference",
+        strength: "referenced",
+        usage: "called"
+      }
+    ]);
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.path).sort(), [
+      "Sources/Core/Ghost.swift",
+      "Sources/Core/Shadow.swift",
+      "Sources/UI/Parser.swift"
     ]);
   });
 
