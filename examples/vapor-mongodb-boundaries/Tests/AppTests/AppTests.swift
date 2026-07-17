@@ -1,6 +1,6 @@
 @testable import App
 import Testing
-import XCTVapor
+import VaporTesting
 
 @Test("app boots")
 func appBoots() async throws {

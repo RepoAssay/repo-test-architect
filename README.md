@@ -27,7 +27,7 @@ Supported proof point:
 Experimental adapter spikes:
 
 - `kotlin`: Gradle/Maven JVM projects with JUnit and Kotlin test signals
-- `swift`: Swift Package Manager, Xcode-style and Bazel/rules_swift layouts, Swift Testing, XCTest, Quick/Nimble, SnapshotTesting, XCTVapor, Vapor, and MongoDB boundary signals; see the [Swift alpha hardening boundary](docs/swift-alpha-support.md)
+- `swift`: Swift Package Manager, Xcode-style and Bazel/rules_swift layouts, Swift Testing, XCTest, Quick/Nimble, SnapshotTesting, VaporTesting/XCTVapor, and generic Fluent database boundaries with driver-specific qualifiers; see the [Swift alpha hardening boundary](docs/swift-alpha-support.md)
 - `python`: pytest, unittest, requirements, setuptools, uv, Poetry, Hatch command markers, and no-tests-yet blocker behavior
 
 Project detection also reports unsupported Ruby, PHP, Elixir, Go, Rust, and .NET roots so clients can distinguish "not audited yet" from "not present."

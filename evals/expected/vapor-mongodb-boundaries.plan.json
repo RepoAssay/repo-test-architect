@@ -23,13 +23,17 @@
       "rationale": [
         "HTTP route behavior",
         "Vapor request handling",
-        "MongoDB query boundary",
+        "database access behavior",
+        "MongoDB-specific query semantics",
         "aggregation pipeline semantics",
+        "Use an isolated test database, apply the owning migrations, and clean up persisted state between cases.",
         "Seed representative MongoDB fixture data and assert aggregation grouping, ordering, and edge-case result shape."
       ],
       "sourceSignals": [
         "http-route",
         "vapor-route",
+        "database-access",
+        "database-driver-mongodb",
         "mongodb-aggregation",
         "mongodb-query"
       ],
@@ -48,15 +52,22 @@
       "rationale": [
         "HTTP route behavior",
         "Vapor request handling",
-        "MongoDB query boundary",
+        "database access behavior",
+        "Fluent query semantics",
+        "MongoDB-specific query semantics",
         "dynamic BSON filter construction",
         "pagination or sorting behavior",
+        "Use an isolated test database, apply the owning migrations, and clean up persisted state between cases.",
         "Cover dynamic BSON filter construction with escaped user input, empty results, and malformed query boundaries.",
         "Assert pagination and sorting boundaries, including limits, offsets, stable ordering, and has-next-page behavior."
       ],
       "sourceSignals": [
         "http-route",
         "vapor-route",
+        "database-access",
+        "database-driver-mongodb",
+        "database-read",
+        "fluent-query",
         "mongodb-dynamic-filter",
         "mongodb-query",
         "pagination-or-sort"
@@ -74,13 +85,21 @@
       "riskReductionScore": 8,
       "maintenanceCost": 5,
       "rationale": [
-        "MongoDB data access",
-        "MongoDB query boundary",
-        "MongoDB write/update behavior",
-        "Exercise MongoDB create/update paths for idempotency, duplicate data, and existing-record updates."
+        "Database access boundary",
+        "database access behavior",
+        "Fluent query semantics",
+        "MongoDB-specific query semantics",
+        "database write/update behavior",
+        "Use an isolated test database, apply the owning migrations, and clean up persisted state between cases.",
+        "Exercise create, update, and delete paths for idempotency, constraints, duplicate data, and existing-record updates."
       ],
       "sourceSignals": [
         "data-access",
+        "database-access",
+        "database-driver-mongodb",
+        "database-read",
+        "database-write",
+        "fluent-query",
         "mongodb-query",
         "mongodb-write"
       ],

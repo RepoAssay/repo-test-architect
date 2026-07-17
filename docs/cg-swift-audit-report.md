@@ -43,7 +43,7 @@ Top-findings results:
 | `cg-networking` | 5 | 2 | 0 | 0 | `URLBuilder`, `DefaultNetworkingClient`, `APIError` |
 | `cg-persistence` | 4 | 0 | 0 | 0 | `KeychainStorage`, `UserDefaultsStorage`, `Persistence` |
 
-This confirms the new repo-level findings artifact is useful on real Swift package repos: it surfaces the highest-risk Vapor/MongoDB boundaries first, keeps focused package utilities visible, and does not invent blockers for packages with runnable Swift test commands.
+This confirms the new repo-level findings artifact is useful on real Swift package repos: it surfaces the highest-risk Vapor and persistence boundaries first, keeps focused package utilities visible, and does not invent blockers for packages with runnable Swift test commands.
 
 ## Highest-Value Targets
 
@@ -65,7 +65,7 @@ Top `cg-bff` targets from the audit:
 | `SeedPriceTodayCommand` | `data-access` | MongoDB query/write behavior, pagination/sort |
 | `UserAuthenticator` | `http-middleware` | Vapor middleware, MongoDB query |
 
-These should generally be covered with XCTVapor integration tests and seeded MongoDB fixture data. For pure query-builder extraction, unit tests can assert generated BSON or pipeline shape, but the current code shape mostly points to integration coverage.
+These should generally be covered with VaporTesting or XCTVapor integration tests and seeded MongoDB fixture data. For pure query-builder extraction, unit tests can assert generated BSON or pipeline shape, but the current code shape mostly points to integration coverage.
 
 ## Package-Level Targets
 
@@ -88,9 +88,9 @@ These are good candidates for package-level Swift Testing or XCTest coverage bef
 The latest Swift adapter improvements are useful on these repositories:
 
 - Swift Testing and XCTest detection is enough for all audited packages.
-- XCTVapor detection correctly makes `cg-bff` runnable through `swift test`.
+- XCTVapor detection correctly makes the existing `cg-bff` suite runnable through `swift test`; VaporTesting is also recognized for newer Swift Testing-based Vapor projects.
 - Fluent persistence models no longer dominate recommendations.
-- MongoDB data-access signals make the route/query risks visible without hiding route classification.
+- Generic database-access and Fluent query signals make persistence risks comparable across drivers, while MongoDB qualifiers preserve aggregation, BSON filter, and write semantics without hiding route classification.
 - Swift utility sub-kinds split storage, worker/command, URL/query-building, and error-mapping targets out of the generic utility bucket.
 
 Remaining heuristic gaps:
@@ -103,6 +103,6 @@ Remaining heuristic gaps:
 
 ## Suggested Next Work
 
-1. Improve generated plan text for `mongodb-*` signals so plans recommend seeded data, aggregation result ordering, pagination boundaries, and idempotent write/update cases.
+1. Improve generated persistence plan text so plans recommend isolated databases, migrations, seeded data, ordering, pagination boundaries, transactions, and idempotent writes when the corresponding signals exist.
 2. Add a project-level report command that can summarize a local workspace without checking local-only sibling paths into stable fixtures.
 3. Use `cg-bff` as the manual reference repo for future Vapor/Mongo heuristic checks, but keep deterministic tests synthetic.

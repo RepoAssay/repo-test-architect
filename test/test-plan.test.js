@@ -50,7 +50,7 @@ describe("test plan generator", () => {
     assert.ok(plan.blockers.includes("No supported JS test framework detected."));
   });
 
-  it("adds concrete MongoDB coverage guidance from source signals", () => {
+  it("adds generic database and MongoDB-specific coverage guidance from source signals", () => {
     const plan = createTestPlan({
       schemaVersion: "audit/v1",
       profile: {
@@ -64,7 +64,7 @@ describe("test plan generator", () => {
           name: "PriceController",
           path: "Sources/App/Controllers/PriceController.swift",
           kind: "http-route",
-          signals: ["http-route", "vapor-route", "mongodb-aggregation", "mongodb-dynamic-filter", "pagination-or-sort", "mongodb-write"],
+          signals: ["http-route", "vapor-route", "database-access", "database-transaction", "database-write", "raw-sql", "mongodb-aggregation", "mongodb-dynamic-filter", "pagination-or-sort", "mongodb-write"],
           risk: "high",
           testability: "medium",
           recommendedTestLevel: "integration",
@@ -80,10 +80,13 @@ describe("test plan generator", () => {
 
     const item = plan.items[0];
     assert.equal(item.target, "PriceController");
+    assert.ok(item.rationale.includes("Use an isolated test database, apply the owning migrations, and clean up persisted state between cases."));
+    assert.ok(item.rationale.includes("Assert commit, rollback, and atomicity behavior, including failures partway through the transaction."));
+    assert.ok(item.rationale.includes("Run raw SQL coverage against the production database engine and assert parameter binding, result shape, and engine-specific edge cases."));
     assert.ok(item.rationale.includes("Seed representative MongoDB fixture data and assert aggregation grouping, ordering, and edge-case result shape."));
     assert.ok(item.rationale.includes("Cover dynamic BSON filter construction with escaped user input, empty results, and malformed query boundaries."));
     assert.ok(item.rationale.includes("Assert pagination and sorting boundaries, including limits, offsets, stable ordering, and has-next-page behavior."));
-    assert.ok(item.rationale.includes("Exercise MongoDB create/update paths for idempotency, duplicate data, and existing-record updates."));
+    assert.ok(item.rationale.includes("Exercise create, update, and delete paths for idempotency, constraints, duplicate data, and existing-record updates."));
   });
 
   it("defaults optional target arrays in plan items", () => {

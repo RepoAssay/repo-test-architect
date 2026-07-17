@@ -14,7 +14,7 @@
     {
       "path": "summary.confidence",
       "expected": "high",
-      "reason": "The checked-in Vapor MongoDB fixture has Swift Testing, XCTVapor, and a runnable swift test command."
+      "reason": "The checked-in Vapor MongoDB fixture has Swift Testing, VaporTesting, and a runnable swift test command."
     },
     {
       "path": "summary.verificationCommand",
@@ -37,7 +37,7 @@
       "reason": "MongoDB-backed Vapor routes should be planned as integration coverage."
     },
     {
-      "path": "items[0].sourceSignals[2]",
+      "path": "items[0].sourceSignals[4]",
       "expected": "mongodb-aggregation",
       "reason": "Aggregation pipeline semantics must stay visible to downstream model prompts."
     },
@@ -47,12 +47,12 @@
       "reason": "The dynamic search route should remain a first-class integration candidate."
     },
     {
-      "path": "items[1].sourceSignals[2]",
+      "path": "items[1].sourceSignals[6]",
       "expected": "mongodb-dynamic-filter",
       "reason": "Dynamic BSON filter construction must stay visible to downstream model prompts."
     },
     {
-      "path": "items[1].sourceSignals[4]",
+      "path": "items[1].sourceSignals[8]",
       "expected": "pagination-or-sort",
       "reason": "Pagination and sort behavior should stay pinned as a separate risk signal."
     },
@@ -62,7 +62,7 @@
       "reason": "The write/update job should remain an integration candidate instead of being treated as generic worker orchestration."
     },
     {
-      "path": "items[2].sourceSignals[2]",
+      "path": "items[2].sourceSignals[7]",
       "expected": "mongodb-write",
       "reason": "MongoDB create/update behavior must stay visible to downstream model prompts."
     }

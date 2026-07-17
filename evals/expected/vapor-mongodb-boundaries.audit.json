@@ -10,9 +10,10 @@
     ],
     "testFrameworks": [
       "Swift Testing",
-      "XCTVapor"
+      "VaporTesting"
     ],
     "architectures": [
+      "database-persistence",
       "mongodb",
       "swift-package",
       "vapor"
@@ -28,8 +29,9 @@
     "setupSignals": [
       "swift package manager",
       "vapor dependency",
-      "mongodb dependency",
-      "xctvapor test support",
+      "fluent orm",
+      "mongodb database driver",
+      "vapor testing support",
       "swiftpm test target",
       "swiftpm executable target",
       "swiftpm target"
@@ -46,6 +48,8 @@
       "signals": [
         "http-route",
         "vapor-route",
+        "database-access",
+        "database-driver-mongodb",
         "mongodb-aggregation",
         "mongodb-query"
       ],
@@ -57,7 +61,8 @@
       "reasons": [
         "HTTP route behavior",
         "Vapor request handling",
-        "MongoDB query boundary",
+        "database access behavior",
+        "MongoDB-specific query semantics",
         "aggregation pipeline semantics"
       ],
       "existingTestPaths": []
@@ -69,6 +74,11 @@
       "kind": "data-access",
       "signals": [
         "data-access",
+        "database-access",
+        "database-driver-mongodb",
+        "database-read",
+        "database-write",
+        "fluent-query",
         "mongodb-query",
         "mongodb-write"
       ],
@@ -78,9 +88,11 @@
       "riskReductionScore": 8,
       "maintenanceCost": 5,
       "reasons": [
-        "MongoDB data access",
-        "MongoDB query boundary",
-        "MongoDB write/update behavior"
+        "Database access boundary",
+        "database access behavior",
+        "Fluent query semantics",
+        "MongoDB-specific query semantics",
+        "database write/update behavior"
       ],
       "existingTestPaths": []
     },
@@ -92,6 +104,10 @@
       "signals": [
         "http-route",
         "vapor-route",
+        "database-access",
+        "database-driver-mongodb",
+        "database-read",
+        "fluent-query",
         "mongodb-dynamic-filter",
         "mongodb-query",
         "pagination-or-sort"
@@ -104,7 +120,9 @@
       "reasons": [
         "HTTP route behavior",
         "Vapor request handling",
-        "MongoDB query boundary",
+        "database access behavior",
+        "Fluent query semantics",
+        "MongoDB-specific query semantics",
         "dynamic BSON filter construction",
         "pagination or sorting behavior"
       ],
@@ -121,6 +139,8 @@
       "signals": [
         "http-route",
         "vapor-route",
+        "database-access",
+        "database-driver-mongodb",
         "mongodb-aggregation",
         "mongodb-query"
       ],
@@ -132,7 +152,8 @@
       "reasons": [
         "HTTP route behavior",
         "Vapor request handling",
-        "MongoDB query boundary",
+        "database access behavior",
+        "MongoDB-specific query semantics",
         "aggregation pipeline semantics"
       ],
       "existingTestPaths": []
@@ -144,6 +165,11 @@
       "kind": "data-access",
       "signals": [
         "data-access",
+        "database-access",
+        "database-driver-mongodb",
+        "database-read",
+        "database-write",
+        "fluent-query",
         "mongodb-query",
         "mongodb-write"
       ],
@@ -153,9 +179,11 @@
       "riskReductionScore": 8,
       "maintenanceCost": 5,
       "reasons": [
-        "MongoDB data access",
-        "MongoDB query boundary",
-        "MongoDB write/update behavior"
+        "Database access boundary",
+        "database access behavior",
+        "Fluent query semantics",
+        "MongoDB-specific query semantics",
+        "database write/update behavior"
       ],
       "existingTestPaths": []
     },
@@ -167,6 +195,10 @@
       "signals": [
         "http-route",
         "vapor-route",
+        "database-access",
+        "database-driver-mongodb",
+        "database-read",
+        "fluent-query",
         "mongodb-dynamic-filter",
         "mongodb-query",
         "pagination-or-sort"
@@ -179,7 +211,9 @@
       "reasons": [
         "HTTP route behavior",
         "Vapor request handling",
-        "MongoDB query boundary",
+        "database access behavior",
+        "Fluent query semantics",
+        "MongoDB-specific query semantics",
         "dynamic BSON filter construction",
         "pagination or sorting behavior"
       ],
@@ -188,8 +222,8 @@
   ],
   "skipped": [],
   "risks": [
-    "PriceController has http route behavior, vapor request handling, mongodb query boundary, aggregation pipeline semantics and has no matching test file.",
-    "SearchController has http route behavior, vapor request handling, mongodb query boundary, dynamic bson filter construction, pagination or sorting behavior and has no matching test file.",
-    "PriceHistoryJob has mongodb data access, mongodb query boundary, mongodb write/update behavior and has no matching test file."
+    "PriceController has http route behavior, vapor request handling, database access behavior, mongodb-specific query semantics, aggregation pipeline semantics and has no matching test file.",
+    "SearchController has http route behavior, vapor request handling, database access behavior, fluent query semantics, mongodb-specific query semantics, dynamic bson filter construction, pagination or sorting behavior and has no matching test file.",
+    "PriceHistoryJob has database access boundary, database access behavior, fluent query semantics, mongodb-specific query semantics, database write/update behavior and has no matching test file."
   ]
 }

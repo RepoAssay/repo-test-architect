@@ -92,10 +92,13 @@ function toPlanItem(action: "add-test" | "extend-test", target: AuditTarget): Te
 function enrichRationale(reasons: string[] = [], signals: string[] = []): string[] {
   const rationale = [...reasons];
   const guidance: Array<[string, string]> = [
+    ["database-access", "Use an isolated test database, apply the owning migrations, and clean up persisted state between cases."],
+    ["database-transaction", "Assert commit, rollback, and atomicity behavior, including failures partway through the transaction."],
+    ["raw-sql", "Run raw SQL coverage against the production database engine and assert parameter binding, result shape, and engine-specific edge cases."],
     ["mongodb-aggregation", "Seed representative MongoDB fixture data and assert aggregation grouping, ordering, and edge-case result shape."],
     ["mongodb-dynamic-filter", "Cover dynamic BSON filter construction with escaped user input, empty results, and malformed query boundaries."],
     ["pagination-or-sort", "Assert pagination and sorting boundaries, including limits, offsets, stable ordering, and has-next-page behavior."],
-    ["mongodb-write", "Exercise MongoDB create/update paths for idempotency, duplicate data, and existing-record updates."]
+    ["database-write", "Exercise create, update, and delete paths for idempotency, constraints, duplicate data, and existing-record updates."]
   ];
 
   for (const [signal, text] of guidance) {

@@ -853,23 +853,27 @@ final class CardPriceHistory {}
     const audit = auditSwiftRepo(root);
 
     assert.ok(audit.profile.architectures.includes("mongodb"));
-    assert.ok(audit.profile.setupSignals.includes("mongodb dependency"));
+    assert.ok(audit.profile.setupSignals.includes("fluent orm"));
+    assert.ok(audit.profile.setupSignals.includes("mongodb database driver"));
 
     const price = audit.recommended.find((target) => target.name === "PriceController");
     assert.equal(price.kind, "http-route");
     assert.equal(price.riskReductionScore, 9);
     assert.ok(price.signals.includes("mongodb-aggregation"));
+    assert.ok(price.signals.includes("database-access"));
     assert.ok(price.reasons.includes("aggregation pipeline semantics"));
 
     const search = audit.recommended.find((target) => target.name === "SearchController");
     assert.equal(search.kind, "http-route");
     assert.ok(search.signals.includes("mongodb-dynamic-filter"));
+    assert.ok(search.signals.includes("fluent-query"));
     assert.ok(search.signals.includes("pagination-or-sort"));
 
     const job = audit.recommended.find((target) => target.name === "PriceHistoryJob");
     assert.equal(job.kind, "data-access");
     assert.equal(job.recommendedTestLevel, "integration");
     assert.ok(job.signals.includes("mongodb-write"));
+    assert.ok(job.signals.includes("database-write"));
   });
 
   it("does not mistake ordinary reactive filters and sorting for MongoDB access", (t) => {
@@ -911,13 +915,15 @@ struct SearchPipeline {
   it("audits the checked-in Vapor MongoDB boundary fixture", () => {
     const audit = auditSwiftRepo(vaporMongoRoot);
 
-    assert.deepEqual(audit.profile.testFrameworks, ["Swift Testing", "XCTVapor"]);
+    assert.deepEqual(audit.profile.testFrameworks, ["Swift Testing", "VaporTesting"]);
     assert.equal(audit.profile.testCommand, "swift test");
     assert.equal(audit.profile.confidence, "high");
     assert.ok(audit.profile.architectures.includes("mongodb"));
     assert.ok(audit.profile.architectures.includes("vapor"));
-    assert.ok(audit.profile.setupSignals.includes("mongodb dependency"));
-    assert.ok(audit.profile.setupSignals.includes("xctvapor test support"));
+    assert.ok(audit.profile.architectures.includes("database-persistence"));
+    assert.ok(audit.profile.setupSignals.includes("fluent orm"));
+    assert.ok(audit.profile.setupSignals.includes("mongodb database driver"));
+    assert.ok(audit.profile.setupSignals.includes("vapor testing support"));
 
     assert.deepEqual(
       audit.recommended.map((target) => `${target.name}:${target.kind}:${target.recommendedTestLevel}`),
@@ -938,7 +944,112 @@ struct SearchPipeline {
 
     const job = audit.recommended.find((target) => target.name === "PriceHistoryJob");
     assert.ok(job.signals.includes("mongodb-write"));
+    assert.ok(job.signals.includes("database-write"));
     assert.deepEqual(audit.skipped, []);
+  });
+
+  it("detects VaporTesting and all official Fluent database drivers without ranking imports alone", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-fluent-drivers-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "Sources", "App", "Repositories"), { recursive: true });
+    fs.mkdirSync(path.join(root, "Sources", "App", "Models"), { recursive: true });
+    fs.mkdirSync(path.join(root, "Tests", "AppTests"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "Package.swift"),
+      `// swift-tools-version: 6.0
+import PackageDescription
+let package = Package(
+    name: "App",
+    dependencies: [
+        .package(url: "https://github.com/vapor/vapor.git", from: "4.110.1"),
+        .package(url: "https://github.com/vapor/fluent-postgres-driver.git", from: "2.0.0"),
+        .package(url: "https://github.com/vapor/fluent-mysql-driver.git", from: "4.0.0"),
+        .package(url: "https://github.com/vapor/fluent-sqlite-driver.git", from: "4.0.0"),
+        .package(url: "https://github.com/vapor/fluent-mongo-driver.git", from: "1.0.0")
+    ],
+    targets: [
+        .target(name: "App", dependencies: [
+            .product(name: "Vapor", package: "vapor"),
+            .product(name: "FluentPostgresDriver", package: "fluent-postgres-driver"),
+            .product(name: "FluentMySQLDriver", package: "fluent-mysql-driver"),
+            .product(name: "FluentSQLiteDriver", package: "fluent-sqlite-driver"),
+            .product(name: "FluentMongoDriver", package: "fluent-mongo-driver")
+        ]),
+        .testTarget(name: "AppTests", dependencies: [.target(name: "App"), .product(name: "VaporTesting", package: "vapor")])
+    ]
+)
+`
+    );
+    fs.writeFileSync(
+      path.join(root, "Sources", "App", "DatabaseImports.swift"),
+      "import FluentPostgresDriver\nimport FluentMySQLDriver\nimport FluentSQLiteDriver\nimport FluentMongoDriver\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "Sources", "App", "Repositories", "UserRepository.swift"),
+      `import Fluent
+import FluentPostgresDriver
+
+struct UserRepository {
+    func activeUsers(on database: any Database) async throws -> [User] {
+        try await database.transaction { db in
+            try await User.query(on: db).filter(\\.$isActive == true).sort(\\.$name).limit(25).all()
+        }
+    }
+}
+`
+    );
+    fs.writeFileSync(
+      path.join(root, "Sources", "App", "Repositories", "AuditRepository.swift"),
+      `import SQLKit
+import FluentMySQLDriver
+
+struct AuditRepository {
+    func recent(on database: any SQLDatabase) async throws {
+        try await database.raw(SQLQueryString("SELECT * FROM audit_log ORDER BY created_at DESC LIMIT 10")).run()
+    }
+}
+`
+    );
+    fs.writeFileSync(
+      path.join(root, "Sources", "App", "Models", "User.swift"),
+      `import Fluent
+final class User: Model {
+    static let schema = "users"
+    @ID(key: .id) var id: UUID?
+    @Field(key: "is_active") var isActive: Bool
+    @Field(key: "name") var name: String
+    init() {}
+}
+`
+    );
+    fs.writeFileSync(
+      path.join(root, "Tests", "AppTests", "AppTests.swift"),
+      "@testable import App\nimport Testing\nimport VaporTesting\n@Test func appBoots() {}\n"
+    );
+
+    const audit = auditSwiftRepo(root);
+    const repository = audit.recommended.find((target) => target.name === "UserRepository");
+    const rawRepository = audit.recommended.find((target) => target.name === "AuditRepository");
+
+    assert.deepEqual(audit.profile.testFrameworks, ["Swift Testing", "VaporTesting"]);
+    assert.equal(audit.profile.testCommand, "swift test");
+    assert.ok(audit.profile.architectures.includes("database-persistence"));
+    for (const driver of ["mongodb", "mysql", "postgresql", "sqlite"]) {
+      assert.ok(audit.profile.architectures.includes(driver));
+      assert.ok(audit.profile.setupSignals.includes(`${driver} database driver`));
+    }
+    assert.ok(audit.profile.setupSignals.includes("fluent orm"));
+    assert.ok(audit.profile.setupSignals.includes("vapor testing support"));
+    assert.ok(audit.recommended.every((target) => target.name !== "DatabaseImports"));
+    assert.equal(repository.kind, "data-access");
+    assert.ok(repository.signals.includes("database-access"));
+    assert.ok(repository.signals.includes("fluent-query"));
+    assert.ok(repository.signals.includes("database-transaction"));
+    assert.ok(repository.signals.includes("database-driver-postgresql"));
+    assert.ok(repository.signals.includes("pagination-or-sort"));
+    assert.equal(rawRepository.kind, "data-access");
+    assert.ok(rawRepository.signals.includes("raw-sql"));
+    assert.ok(rawRepository.signals.includes("database-driver-mysql"));
   });
 
   it("classifies common Swift utility sub-kinds", () => {
