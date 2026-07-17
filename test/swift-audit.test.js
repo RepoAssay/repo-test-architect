@@ -685,6 +685,86 @@ final class BehaviorTests: XCTestCase {
     ]);
   });
 
+  it("does not credit concrete Swift implementations from protocol-only test references", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-swift-protocol-evidence-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "Sources", "Core"), { recursive: true });
+    fs.mkdirSync(path.join(root, "Tests", "CoreTests"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "Package.swift"),
+      `// swift-tools-version: 6.0
+import PackageDescription
+let package = Package(targets: [
+    .target(name: "Core"),
+    .testTarget(name: "CoreTests", dependencies: ["Core"])
+])
+`
+    );
+    fs.writeFileSync(
+      path.join(root, "Sources", "Core", "AccessibilityPermissionService.swift"),
+      `protocol AccessibilityTrustProviding: AnyObject {
+    var isTrusted: Bool { get }
+}
+
+final class AccessibilityPermissionService: AccessibilityTrustProviding {
+    var isTrusted = false
+    func refresh() { if !isTrusted { isTrusted = true } }
+}
+`
+    );
+    fs.writeFileSync(
+      path.join(root, "Sources", "Core", "PopupService.swift"),
+      `protocol PopupPresenting: AnyObject { func show() }
+final class PopupService: PopupPresenting {
+    private(set) var isVisible = false
+    func show() { if !isVisible { isVisible = true } }
+}
+`
+    );
+    fs.writeFileSync(
+      path.join(root, "Sources", "Core", "ProcessControlling.swift"),
+      `protocol ProcessControlling: AnyObject {
+    func switchDevice(to uid: String?, sourceDeviceDead: Bool)
+}
+
+extension ProcessControlling {
+    // Callers should test the concrete conformer if it owns runtime behavior.
+    func switchDevice(to uid: String?) {
+        switchDevice(to: uid, sourceDeviceDead: false)
+    }
+}
+`
+    );
+    fs.writeFileSync(
+      path.join(root, "Tests", "CoreTests", "BehaviorTests.swift"),
+      `@testable import Core
+import Testing
+
+final class MockAccessibilityTrustProvider: AccessibilityTrustProviding {
+    var isTrusted = true
+}
+
+@Test func popupShows() {
+    let popup = PopupService()
+    popup.show()
+    #expect(popup.isVisible)
+}
+`
+    );
+
+    const audit = auditSwiftRepo(root);
+    const accessibility = audit.untestedCandidates.find((target) => target.name === "AccessibilityPermissionService");
+    const popup = audit.coveredButRisky.find((target) => target.name === "PopupService");
+    const protocolContract = audit.skipped.find((target) => target.name === "ProcessControlling");
+
+    assert.equal(accessibility.kind, "service");
+    assert.deepEqual(accessibility.existingTestPaths, []);
+    assert.equal(popup.kind, "service");
+    assert.equal(popup.existingTestEvidence[0].usage, "called");
+    assert.equal(protocolContract.kind, "protocol-contract");
+    assert.deepEqual(protocolContract.signals, ["protocol-declaration"]);
+  });
+
   it("detects Vapor service routes without inventing missing test conventions", () => {
     const audit = auditSwiftRepo(vaporRoot);
 
