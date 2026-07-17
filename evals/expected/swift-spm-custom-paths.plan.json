@@ -1,0 +1,85 @@
+{
+  "schemaVersion": "plan/v1",
+  "summary": {
+    "confidence": "high",
+    "verificationCommand": "swift test",
+    "blockerCount": 0,
+    "addTestCount": 2,
+    "extendTestCount": 1,
+    "deferredCount": 0
+  },
+  "blockers": [],
+  "items": [
+    {
+      "id": "add-test:Modules/CheckoutUI/CheckoutParser.swift",
+      "action": "add-test",
+      "targetId": "Modules/CheckoutUI/CheckoutParser.swift",
+      "target": "CheckoutParser",
+      "path": "Modules/CheckoutUI/CheckoutParser.swift",
+      "testLevel": "unit",
+      "priority": 7,
+      "riskReductionScore": 9,
+      "maintenanceCost": 2,
+      "rationale": [
+        "Pure transformation logic",
+        "edge-case surface"
+      ],
+      "sourceSignals": [
+        "pure-logic",
+        "edge-case-surface"
+      ],
+      "existingTestPaths": []
+    },
+    {
+      "id": "extend-test:Modules/CheckoutCore/Parsing/CheckoutParser.swift",
+      "action": "extend-test",
+      "targetId": "Modules/CheckoutCore/Parsing/CheckoutParser.swift",
+      "target": "CheckoutParser",
+      "path": "Modules/CheckoutCore/Parsing/CheckoutParser.swift",
+      "testLevel": "unit",
+      "priority": 7,
+      "riskReductionScore": 9,
+      "maintenanceCost": 2,
+      "rationale": [
+        "Pure transformation logic",
+        "edge-case surface",
+        "Existing test file detected; review missing edge cases"
+      ],
+      "sourceSignals": [
+        "pure-logic",
+        "edge-case-surface",
+        "matching-test"
+      ],
+      "existingTestPaths": [
+        "Verification/Core/Parser/CheckoutParserTests.swift"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "Verification/Core/Parser/CheckoutParserTests.swift",
+          "kind": "filename-convention",
+          "strength": "naming"
+        }
+      ]
+    },
+    {
+      "id": "add-test:Modules/CheckoutCore/Networking/PaymentClient.swift",
+      "action": "add-test",
+      "targetId": "Modules/CheckoutCore/Networking/PaymentClient.swift",
+      "target": "PaymentClient",
+      "path": "Modules/CheckoutCore/Networking/PaymentClient.swift",
+      "testLevel": "unit",
+      "priority": 4,
+      "riskReductionScore": 8,
+      "maintenanceCost": 4,
+      "rationale": [
+        "Service boundary",
+        "async or concurrency behavior"
+      ],
+      "sourceSignals": [
+        "service-boundary",
+        "async-or-concurrency"
+      ],
+      "existingTestPaths": []
+    }
+  ]
+}

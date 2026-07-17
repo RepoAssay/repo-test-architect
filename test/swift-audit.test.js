@@ -8,6 +8,7 @@ import { auditSwiftRepo } from "../src/adapters/swift/audit.js";
 const exampleRoot = path.resolve("examples/swift-spm-xctest");
 const swiftTestingRoot = path.resolve("examples/swift-spm-swift-testing");
 const quickNimbleRoot = path.resolve("examples/swift-spm-quick-nimble");
+const customPathsRoot = path.resolve("examples/swift-spm-custom-paths");
 const bazelRoot = path.resolve("examples/swift-bazel-xctest");
 const vaporRoot = path.resolve("examples/vapor-service-tests");
 const vaporMongoRoot = path.resolve("examples/vapor-mongodb-boundaries");
@@ -229,6 +230,31 @@ final class ParserSpec: QuickSpec {
     assert.deepEqual(audit.coveredButRisky[0].existingTestEvidence, [
       {
         testPath: "Tests/CoreSpecs/ParserSpec.swift",
+        kind: "filename-convention",
+        strength: "naming"
+      }
+    ]);
+  });
+
+  it("uses custom SwiftPM paths, sources, excludes, and test dependencies", () => {
+    const audit = auditSwiftRepo(customPathsRoot);
+
+    assert.deepEqual(audit.profile.packageManagers, ["swiftpm"]);
+    assert.equal(audit.profile.testCommand, "swift test");
+    assert.ok(audit.profile.setupSignals.includes("swiftpm custom target path"));
+    assert.ok(audit.profile.setupSignals.includes("swiftpm explicit sources"));
+    assert.ok(audit.profile.existingTestLocations.includes("Verification/Core/Parser"));
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), [
+      "Modules/CheckoutCore/Parsing/CheckoutParser.swift"
+    ]);
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.path), [
+      "Modules/CheckoutUI/CheckoutParser.swift",
+      "Modules/CheckoutCore/Networking/PaymentClient.swift"
+    ]);
+    assert.ok(!audit.recommended.some((target) => target.path.includes("LegacyGateway.swift")));
+    assert.deepEqual(audit.coveredButRisky[0].existingTestEvidence, [
+      {
+        testPath: "Verification/Core/Parser/CheckoutParserTests.swift",
         kind: "filename-convention",
         strength: "naming"
       }
