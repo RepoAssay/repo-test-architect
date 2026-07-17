@@ -373,6 +373,23 @@ final class ParserSpec: QuickSpec {
     ]);
   });
 
+  it("does not match generic Swift filenames across unowned build fixtures", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-swift-generic-name-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "examples", "client"), { recursive: true });
+    fs.mkdirSync(path.join(root, "test", "fixtures"), { recursive: true });
+    fs.writeFileSync(path.join(root, "examples", "client", "main.swift"), "func launchClient(_ enabled: Bool) -> String { enabled ? \"on\" : \"off\" }\n");
+    fs.writeFileSync(
+      path.join(root, "test", "fixtures", "main.swift"),
+      "import XCTest\nfinal class FixtureTests: XCTestCase { func testFixture() { XCTAssertTrue(true) } }\n"
+    );
+
+    const audit = auditSwiftRepo(root);
+
+    assert.deepEqual(audit.coveredButRisky, []);
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.path), ["examples/client/main.swift"]);
+  });
+
   it("merges version-specific manifests and helper-wrapped targets without auditing aliases or auxiliary projects", (t) => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-swiftpm-ownership-"));
     t.after(() => fs.rmSync(root, { recursive: true, force: true }));
@@ -553,6 +570,10 @@ let package = Package(
       "public struct Checkout { public let id: String }\n"
     );
     fs.writeFileSync(
+      path.join(root, "Sources", "CheckoutKit", "CheckoutMacroDeclaration.swift"),
+      "@attached(member, names: named(validate)) public macro CheckoutValidated() = #externalMacro(module: \"CheckoutMacros\", type: \"CheckoutMacro\")\n"
+    );
+    fs.writeFileSync(
       path.join(root, "Plugins", "SchemaPlugin", "SchemaPlugin.swift"),
       "@main struct SchemaPlugin { func createBuildCommands(_ enabled: Bool) -> [String] { if enabled { return [\"generate\"] }; return [] } }\n"
     );
@@ -578,6 +599,10 @@ let package = Package(
     assert.deepEqual(
       audit.skipped.filter((target) => target.kind === "swiftpm-plugin").map((target) => target.path),
       ["Plugins/SchemaPlugin/SchemaPlugin.swift"]
+    );
+    assert.deepEqual(
+      audit.skipped.filter((target) => target.kind === "macro-declaration").map((target) => target.path),
+      ["Sources/CheckoutKit/CheckoutMacroDeclaration.swift"]
     );
   });
 
