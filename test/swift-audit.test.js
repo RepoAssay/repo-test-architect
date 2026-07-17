@@ -114,6 +114,32 @@ describe("Swift audit adapter", () => {
     assert.deepEqual(audit.recommended, []);
   });
 
+  it("recognizes root-level Swift test filenames as tests", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-root-swift-test-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "Sources", "Flow"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "Package.swift"),
+      `// swift-tools-version: 5.10
+import PackageDescription
+let package = Package(name: "Flow", targets: [.target(name: "Flow"), .testTarget(name: "FlowTests", dependencies: ["Flow"])])
+`
+    );
+    fs.writeFileSync(
+      path.join(root, "Sources", "Flow", "Disposable.swift"),
+      "public struct Disposable { public func dispose(_ isDisposed: Bool) -> Bool { if isDisposed { return false }; return true } }\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "Disposable+CombineTests.swift"),
+      "import XCTest\n@testable import Flow\nfinal class DisposableCombineTests: XCTestCase { func testDispose() { XCTAssertTrue(Disposable().dispose(false)) } }\n"
+    );
+
+    const audit = auditSwiftRepo(root);
+
+    assert.ok(audit.recommended.every((target) => target.path !== "Disposable+CombineTests.swift"));
+    assert.deepEqual(audit.coveredButRisky[0].existingTestPaths, ["Disposable+CombineTests.swift"]);
+  });
+
   it("excludes common vendored and checked-out Swift dependency roots", (t) => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-swift-dependencies-"));
     t.after(() => fs.rmSync(root, { recursive: true, force: true }));
@@ -846,6 +872,42 @@ final class CardPriceHistory {}
     assert.ok(job.signals.includes("mongodb-write"));
   });
 
+  it("does not mistake ordinary reactive filters and sorting for MongoDB access", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-reactive-swift-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "Sources", "ReactiveFeature"), { recursive: true });
+    fs.mkdirSync(path.join(root, "Tests", "ReactiveFeatureTests"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "Package.swift"),
+      `// swift-tools-version: 5.10
+import PackageDescription
+let package = Package(name: "ReactiveFeature", targets: [.target(name: "ReactiveFeature"), .testTarget(name: "ReactiveFeatureTests", dependencies: ["ReactiveFeature"])])
+`
+    );
+    fs.writeFileSync(
+      path.join(root, "Sources", "ReactiveFeature", "SearchPipeline.swift"),
+      `import Foundation
+struct SearchPipeline {
+    func values(_ input: [String]) -> [String] {
+        if input.isEmpty { return [] }
+        input.filter { !$0.isEmpty }.sorted().filter { NSRegularExpression.escapedPattern(for: $0).count > 1 }
+    }
+}
+`
+    );
+    fs.writeFileSync(
+      path.join(root, "Tests", "ReactiveFeatureTests", "SmokeTests.swift"),
+      "import XCTest\nfinal class SmokeTests: XCTestCase {}\n"
+    );
+
+    const audit = auditSwiftRepo(root);
+    const pipeline = audit.recommended.find((target) => target.name === "SearchPipeline");
+
+    assert.ok(!audit.profile.architectures.includes("mongodb"));
+    assert.equal(pipeline.kind, "utility");
+    assert.ok(pipeline.signals.every((signal) => !signal.startsWith("mongodb-") && signal !== "pagination-or-sort"));
+  });
+
   it("audits the checked-in Vapor MongoDB boundary fixture", () => {
     const audit = auditSwiftRepo(vaporMongoRoot);
 
@@ -1113,6 +1175,27 @@ final class CollectorTests: XCTestCase {
     assert.ok(audit.profile.setupSignals.includes("xcode shared scheme"));
   });
 
+  it("does not treat an Xcode project's internal workspace as a shared workspace", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-internal-xcode-workspace-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    const projectRoot = path.join(root, "SampleApp.xcodeproj");
+    fs.mkdirSync(path.join(projectRoot, "project.xcworkspace"), { recursive: true });
+    fs.mkdirSync(path.join(projectRoot, "xcshareddata", "xcschemes"), { recursive: true });
+    fs.mkdirSync(path.join(root, "SampleAppTests"), { recursive: true });
+    fs.writeFileSync(path.join(projectRoot, "project.pbxproj"), "{}\n");
+    fs.writeFileSync(path.join(projectRoot, "project.xcworkspace", "contents.xcworkspacedata"), "<Workspace></Workspace>\n");
+    fs.writeFileSync(path.join(projectRoot, "xcshareddata", "xcschemes", "SampleApp.xcscheme"), "<Scheme></Scheme>\n");
+    fs.writeFileSync(
+      path.join(root, "SampleAppTests", "SampleAppTests.swift"),
+      "import XCTest\nfinal class SampleAppTests: XCTestCase {}\n"
+    );
+
+    const audit = auditSwiftRepo(root);
+
+    assert.equal(audit.profile.testCommand, "xcodebuild test -project SampleApp.xcodeproj -scheme SampleApp");
+    assert.ok(!audit.profile.setupSignals.includes("xcode workspace"));
+  });
+
   it("audits a shared Xcode workspace without requiring a project marker", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-xcode-workspace-"));
     const workspaceRoot = path.join(root, "Checkout.xcworkspace");
@@ -1157,7 +1240,8 @@ let package = Package(
     dependencies: [
         .package(url: "https://github.com/Quick/Quick.git", from: "7.0.0"),
         .package(url: "https://github.com/Quick/Nimble.git", from: "13.0.0"),
-        .package(url: "https://github.com/pointfreeco/swift-snapshot-testing", from: "1.17.0")
+        .package(url: "https://github.com/pointfreeco/swift-snapshot-testing", from: "1.17.0"),
+        .package(url: "https://github.com/ReactiveX/RxSwift.git", from: "6.9.0")
     ],
     targets: [
         .target(name: "Feature"),
@@ -1167,7 +1251,9 @@ let package = Package(
                 "Feature",
                 .product(name: "Quick", package: "Quick"),
                 .product(name: "Nimble", package: "Nimble"),
-                .product(name: "SnapshotTesting", package: "swift-snapshot-testing")
+                .product(name: "SnapshotTesting", package: "swift-snapshot-testing"),
+                .product(name: "RxTest", package: "RxSwift"),
+                .product(name: "RxBlocking", package: "RxSwift")
             ]
         )
     ]
@@ -1188,6 +1274,8 @@ let package = Package(
       `import Quick
 import Nimble
 import SnapshotTesting
+import RxTest
+import RxBlocking
 @testable import Feature
 
 final class FeatureFlagsSpec: QuickSpec {
@@ -1198,10 +1286,14 @@ final class FeatureFlagsSpec: QuickSpec {
 
     const audit = auditSwiftRepo(root);
 
-    assert.deepEqual(audit.profile.testFrameworks, ["Nimble", "Quick", "SnapshotTesting"]);
+    assert.deepEqual(audit.profile.testFrameworks, ["Nimble", "Quick", "RxBlocking", "RxTest", "SnapshotTesting"]);
     assert.equal(audit.profile.testCommand, "swift test");
+    assert.ok(audit.profile.architectures.includes("reactive-streams"));
     assert.ok(audit.profile.setupSignals.includes("quick test support"));
     assert.ok(audit.profile.setupSignals.includes("nimble assertion support"));
+    assert.ok(audit.profile.setupSignals.includes("rxswift reactive support"));
+    assert.ok(audit.profile.setupSignals.includes("rxtest scheduler support"));
+    assert.ok(audit.profile.setupSignals.includes("rxblocking support"));
     assert.ok(audit.profile.setupSignals.includes("snapshot testing support"));
   });
 

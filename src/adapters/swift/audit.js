@@ -136,7 +136,7 @@ function shouldRead(relative) {
     isBazelWorkspaceFile(relative) ||
     isBazelBuildFile(relative) ||
     relative.endsWith(".xcodeproj/project.pbxproj") ||
-    relative.endsWith(".xcworkspace/contents.xcworkspacedata") ||
+    isXcodeWorkspaceDataPath(relative) ||
     isSharedXcodeSchemePath(relative) ||
     relative.endsWith(".xctestplan")
   );
@@ -213,6 +213,14 @@ function detectTestFrameworks(files, packageText) {
     frameworks.add("SnapshotTesting");
   }
 
+  if (/^\s*import\s+RxTest\b/m.test(sourceText) || /product\(name:\s*"RxTest"|\bRxTest\b/.test(packageText)) {
+    frameworks.add("RxTest");
+  }
+
+  if (/^\s*import\s+RxBlocking\b/m.test(sourceText) || /product\(name:\s*"RxBlocking"|\bRxBlocking\b/.test(packageText)) {
+    frameworks.add("RxBlocking");
+  }
+
   return [...frameworks].sort();
 }
 
@@ -261,7 +269,7 @@ function detectSetupSignals(paths, packageText, bazelGraph, files) {
   const signals = new Set();
   if (paths.includes("Package.swift")) signals.add("swift package manager");
   if (paths.some((item) => item.endsWith(".xcodeproj/project.pbxproj"))) signals.add("xcode project");
-  if (paths.some((item) => item.endsWith(".xcworkspace/contents.xcworkspacedata"))) signals.add("xcode workspace");
+  if (paths.some(isXcodeWorkspaceDataPath)) signals.add("xcode workspace");
   if (detectXcodeScheme(paths)) signals.add("xcode shared scheme");
   if (paths.some((item) => item.endsWith(".xctestplan"))) signals.add("xcode test plan");
   const scheme = detectXcodeScheme(paths);
@@ -273,6 +281,9 @@ function detectSetupSignals(paths, packageText, bazelGraph, files) {
   if (/quick\.git|Quick\/Quick|product\(name:\s*"Quick"/i.test(packageText)) signals.add("quick test support");
   if (/nimble\.git|Quick\/Nimble|product\(name:\s*"Nimble"/i.test(packageText)) signals.add("nimble assertion support");
   if (/swift-snapshot-testing|pointfreeco\/swift-snapshot-testing|product\(name:\s*"SnapshotTesting"/i.test(packageText)) signals.add("snapshot testing support");
+  if (/rxswift|product\(name:\s*"RxSwift"|product\(name:\s*"RxCocoa"|product\(name:\s*"RxRelay"/i.test(packageText)) signals.add("rxswift reactive support");
+  if (/product\(name:\s*"RxTest"|\bRxTest\b/.test(packageText)) signals.add("rxtest scheduler support");
+  if (/product\(name:\s*"RxBlocking"|\bRxBlocking\b/.test(packageText)) signals.add("rxblocking support");
   if (packageText.includes(".testTarget")) signals.add("swiftpm test target");
   if (packageText.includes(".executableTarget")) signals.add("swiftpm executable target");
   if (bazelGraph.hasMacroTargets) signals.add("swiftpm macro target");
@@ -294,6 +305,7 @@ function detectArchitectures(paths, files, bazelGraph) {
   if (files.some((file) => file.content.includes("import SwiftUI") || /\bView\b/.test(file.content))) architectures.add("swiftui");
   if (files.some((file) => file.content.includes("Vapor"))) architectures.add("vapor");
   if (files.some((file) => isMongoDataAccess(file.content))) architectures.add("mongodb");
+  if (files.some((file) => isReactiveStreamsSource(file.path, file.content))) architectures.add("reactive-streams");
   if (files.some((file) => /\bactor\s+\w+/.test(file.content))) architectures.add("concurrency");
   return [...architectures].sort();
 }
@@ -534,7 +546,7 @@ function isSourceFile(currentPath, bazelGraph) {
 
 function isTestFile(currentPath, bazelGraph) {
   const normalized = normalizePath(currentPath);
-  return (isTestPath(normalized) || bazelGraph.testSources.has(normalized)) && normalized.endsWith(".swift");
+  return (isTestPath(normalized) || /(?:Tests?|Spec)\.swift$/.test(normalized) || bazelGraph.testSources.has(normalized)) && normalized.endsWith(".swift");
 }
 
 function findExistingTestEvidence(sourcePath, testFiles, sourceGraph, sourceSymbols) {
@@ -1077,7 +1089,7 @@ function detectXcodeScheme(paths) {
   if (schemeNames.length === 0) return undefined;
 
   const workspaceNames = paths
-    .filter((item) => item.endsWith(".xcworkspace/contents.xcworkspacedata"))
+    .filter(isXcodeWorkspaceDataPath)
     .map((item) => item.split("/").at(-2)?.replace(/\.xcworkspace$/, ""))
     .filter(Boolean);
   const workspaceScheme = schemeNames.find((schemeName) => workspaceNames.includes(schemeName));
@@ -1096,7 +1108,7 @@ function detectXcodeScheme(paths) {
 
 function detectXcodeWorkspace(paths, scheme) {
   const workspaces = [...new Set(paths
-    .filter((item) => item.endsWith(".xcworkspace/contents.xcworkspacedata"))
+    .filter(isXcodeWorkspaceDataPath)
     .map((item) => item.split("/").at(-2))
     .filter(Boolean))].sort();
   if (workspaces.length === 1) return workspaces[0];
@@ -1115,7 +1127,12 @@ function detectXcodeProject(paths, scheme) {
 }
 
 function hasXcodeContainer(paths) {
-  return paths.some((item) => item.endsWith(".xcodeproj/project.pbxproj") || item.endsWith(".xcworkspace/contents.xcworkspacedata"));
+  return paths.some((item) => item.endsWith(".xcodeproj/project.pbxproj") || isXcodeWorkspaceDataPath(item));
+}
+
+function isXcodeWorkspaceDataPath(currentPath) {
+  const normalized = normalizePath(currentPath);
+  return normalized.endsWith(".xcworkspace/contents.xcworkspacedata") && !normalized.includes(".xcodeproj/project.xcworkspace/");
 }
 
 function isSharedXcodeSchemePath(currentPath) {
@@ -1262,12 +1279,22 @@ function detectMongoSignals(content) {
   const hasMongoDbHandle = /\bdb\s*\(\s*\.mongo\s*\)|\bMongoDatabaseRepresentable\b|\bMongoConnection\b|\.raw\s*\[/.test(content);
   const hasMongoQueryDocument = /\bDocument\s*\(|\bDocument\s*\[|\bqueryDocument\b|"\$(match|lookup|group|unwind|project|sort|slice|regex|push|set|in|and|or)"/.test(content);
 
-  if (hasMongoImport || hasMongoDbHandle || hasMongoQueryDocument) signals.add("mongodb-query");
+  if (!hasMongoImport && !hasMongoDbHandle && !hasMongoQueryDocument) return [];
+
+  signals.add("mongodb-query");
   if (/\baggregate\s*\(|"\$(match|lookup|group|unwind|project|sortArray|slice|push)"/.test(content)) signals.add("mongodb-aggregation");
   if (/\bfilter\s*\(\s*\.custom\b|\$regex|NSRegularExpression|queryDocument/.test(content)) signals.add("mongodb-dynamic-filter");
   if (/\.(limit|offset|skip|sort)\s*\(/.test(content)) signals.add("pagination-or-sort");
   if (/\b(create|update|save|delete)\s*\(\s*on:\s*[^)]*\.mongo\b|\b(insertOne|updateOne|updateMany|deleteOne|deleteMany|bulkWrite)\s*\(/.test(content)) signals.add("mongodb-write");
   return [...signals].sort();
+}
+
+function isReactiveStreamsSource(currentPath, content) {
+  return (
+    /^\s*(?:@testable\s+)?import\s+(?:RxSwift|RxCocoa|RxRelay|RxTest|RxBlocking|ReactiveSwift|ReactiveCocoa)\b/m.test(content) ||
+    /(?:^|\/)Rx(?:Swift|Cocoa|Relay|Test|Blocking)(?:\/|$)/.test(normalizePath(currentPath)) ||
+    /\b(?:class|struct|enum|protocol)\s+(?:Observable|Observer|Subject|Relay|Signal|SignalProducer|Disposable|Scheduler)\b/.test(content)
+  );
 }
 
 function mongoReasons(signals) {

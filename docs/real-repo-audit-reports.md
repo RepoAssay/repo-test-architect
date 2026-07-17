@@ -9,6 +9,7 @@ The purpose is product validation, not regression locking. These reports record 
 | Report | Ecosystem | Source | Command focus | Status |
 | --- | --- | --- | --- | --- |
 | [Collectors Grimoire Swift packages](cg-swift-audit-report.md) | Swift, Vapor, MongoDB | local sibling `cg-*` repositories | `findings-projects`, Swift adapter audit | current |
+| [Swift reactive libraries](swift-reactive-audit-report.md) | Swift, XCTest, RxTest, RxBlocking | `ReactiveX/RxSwift` at `132aea4`, `iZettle/Flow` at `b452ec9` | direct Swift adapter audit and evidence boundaries | current |
 | Repo Test Architect self-audit | JavaScript, TypeScript | this repository | direct `javascript` adapter audit, placement audit | summarized below |
 | `unjs/defu` audit | TypeScript, Vitest | `unjs/defu` at `82632b6` | `findings-projects`, direct `javascript` adapter ranking | summarized below |
 | `h3js/h3` audit | TypeScript, Vitest | `h3js/h3` at `3eb3a57` | `findings-projects`, direct `javascript` adapter ranking | summarized below |
@@ -19,7 +20,7 @@ The purpose is product validation, not regression locking. These reports record 
 | `expressjs/express` audit | JavaScript, Mocha, Supertest | `expressjs/express` at `ae6dd37` | direct `javascript` adapter audit | summarized below |
 | Collectors Grimoire app audit | Swift, Xcode app | `m-stenbe/Collectors-Grimoire` at `a2d4c54` | `findings-projects`, Xcode-style Swift detection | summarized below |
 
-This gives the alpha gate coverage across owned and non-owned JavaScript/TypeScript codebases and multiple Swift codebases, including browser E2E runners, Bun, Swift Package Manager, Vapor/MongoDB, and Xcode-style app structure.
+This gives the alpha gate coverage across owned and non-owned JavaScript/TypeScript codebases and multiple Swift codebases, including browser E2E runners, Bun, Swift Package Manager, Vapor/MongoDB, Xcode-style app structure, and maintained plus legacy reactive libraries.
 
 ## Repo Test Architect Self-Audit
 
