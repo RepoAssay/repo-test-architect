@@ -30,7 +30,7 @@ It contains:
 - remaining risks
 - structured `signals`
 - optional `existingTestEvidence` entries for adapters that can explain each matched test path, including a deterministic evidence `kind` and `strength`
-- optional evidence `usage` when the adapter can prove more than a structural relationship; JavaScript/TypeScript emits `called` for named bindings invoked through direct imports, one-hop relative barrels, `tsconfig` aliases, or declared package entry/subpath imports and `asserted` when the call or its assigned result is passed to Jest/Vitest `expect` or a Node/Chai-style `assert` method
+- optional evidence `usage` when the adapter can prove more than a structural relationship; JavaScript/TypeScript emits `called` for named bindings invoked through direct imports, one-hop relative barrels, `tsconfig` aliases, or declared package entry/subpath imports and `asserted` when the call or its assigned result is passed to Jest/Vitest `expect`, an AVA execution-context assertion, or a Node/Chai-style `assert` method
 - JavaScript/TypeScript usage detection covers named, aliased, default, and namespace-member ES module imports
 - optional `viaUsage` for bounded-indirect evidence records whether the test called or asserted the imported entrypoint that reaches the dependency; it does not claim that the indirect dependency itself was called or asserted
 

@@ -1,0 +1,65 @@
+{
+  "schemaVersion": "model-consistency-scenario/v1",
+  "id": "node-ava-basic-plan",
+  "description": "AVA projects should preserve their native command, execution-context assertion evidence, and audit-first plan shape.",
+  "sourceArtifact": {
+    "path": "evals/expected/node-ava-basic.audit.json",
+    "schemaVersion": "audit/v1"
+  },
+  "toolCall": {
+    "toolName": "generate_test_plan",
+    "arguments": {}
+  },
+  "lockedFields": [
+    {
+      "path": "summary.verificationCommand",
+      "expected": "npm run test",
+      "reason": "The plan should preserve the package's AVA test script."
+    },
+    {
+      "path": "summary.confidence",
+      "expected": "high",
+      "reason": "AVA dependency, config, command, and test-location signals provide high-confidence setup evidence."
+    },
+    {
+      "path": "summary.addTestCount",
+      "expected": 1,
+      "reason": "The untested cart client should remain one add-test candidate."
+    },
+    {
+      "path": "summary.extendTestCount",
+      "expected": 1,
+      "reason": "The parser's existing AVA test should be extended rather than duplicated."
+    },
+    {
+      "path": "items[0].id",
+      "expected": "extend-test:src/cartParser.js",
+      "reason": "Existing parser coverage should remain the first review target."
+    },
+    {
+      "path": "items[0].existingTestEvidence[0].usage",
+      "expected": "asserted",
+      "reason": "Inline and assigned-result AVA execution-context assertions should remain explicit provenance."
+    },
+    {
+      "path": "items[0].existingTestPaths[0]",
+      "expected": "test/cart-parser.js",
+      "reason": "The plan should reuse the existing AVA test location."
+    },
+    {
+      "path": "items[1].id",
+      "expected": "add-test:src/cartClient.js",
+      "reason": "The untested external service boundary should receive a focused unit-test recommendation."
+    }
+  ],
+  "allowedVariations": [
+    "Rationale wording may change while retaining the native AVA strategy.",
+    "Additional non-locked metadata may be added."
+  ],
+  "unexpectedVariations": [
+    "Treating AVA as unsupported.",
+    "Dropping AVA assertion provenance.",
+    "Replacing the discovered npm test command.",
+    "Duplicating the existing parser test instead of extending it."
+  ]
+}
