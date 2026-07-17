@@ -111,7 +111,7 @@ Done:
 
 Next:
 
-1. Expand source-to-test matching beyond bounded relative and aliased dependencies, referenced imported barrel symbols, and declared single-wildcard package subpaths into call- and assertion-aware usage evidence.
+1. Continue validating call- and assertion-aware source-to-test evidence across common JavaScript/TypeScript module and execution shapes.
 2. Tighten placement findings beyond package/app root inference with more adapter-owned package-boundary signals.
 3. Add more model-consistency scenarios for placement summaries as the finding surface grows.
 4. Keep adapter hardening focused on common stack variants that improve real-repo audit trust.
