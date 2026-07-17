@@ -13,6 +13,7 @@ This matrix defines the evidence boundary for moving the Swift adapter from an e
 | SwiftPM source layout | default `Sources`, `Source`, `src`, `srcs`, and `Tests` search roots plus manifest-declared custom paths, source lists, excludes, and test dependencies | parsed target declarations plus source and test ownership |
 | Xcode source layout | app/framework source folders plus `*Tests` and `*UITests` folders | project markers and target-like directory names |
 | Dependency boundaries | excludes CocoaPods, Carthage, checked-out package caches, and conventional vendored roots | `Pods`, `Carthage`, `SourcePackages`, `.symlinks`, `Vendor`, and `vendor` directories |
+| Generated source boundaries | skips conventional generated directories, protobuf/gRPC or `.generated.swift` files, and explicit generator headers | path segments, filename suffixes, and the first 12 source lines |
 | Test relationships | `*Test.swift`, `*Tests.swift`, Quick-style `*Spec.swift`, and uniquely declared top-level symbol references | target-qualified naming evidence plus module-qualified symbol usage |
 | Application boundaries | services, clients, repositories, storage, commands/workers, parsers, URL/query builders, and error mapping | path, declaration, branching, async/concurrency, encoding, and platform API signals |
 | Server boundaries | Vapor routes, middleware, lifecycle files, Fluent models, XCTVapor, and MongoDB operations | imports, protocols, calls, and package products |
@@ -52,7 +53,7 @@ This normalized evidence now flows through audit, plan, explanation, findings, p
 - multiple Xcode schemes remain ambiguous when none matches the project name; multiple plans remain ambiguous when the selected scheme lacks a single default or sole reference
 - UI tests, snapshot tests, and XCTVapor tests are detected, but runtime reachability is not mapped back to source modules
 - Objective-C is visible to the adapter and XCTest detection, but direct Objective-C source classification remains deferred
-- generated sources, macros, plugins, conditional manifests, and platform-specific target graphs need more real-repository validation
+- unrecognized generator-specific outputs, macros, plugins, conditional manifests, and platform-specific target graphs need more real-repository validation
 
 ## Promotion Direction
 

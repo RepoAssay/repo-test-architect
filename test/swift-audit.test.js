@@ -154,6 +154,74 @@ let package = Package(name: "Checkout", targets: [.target(name: "CheckoutCore"),
     assert.ok(audit.skipped.every((target) => !/^(?:Pods|Carthage|SourcePackages|\.symlinks|Vendor|vendor)\//.test(target.path)));
   });
 
+  it("skips common generated Swift source shapes without relying on loose name matches", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-generated-swift-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    for (const directory of ["Sources/Core/Generated", "Sources/Core/DerivedSources", "Sources/Core/Services", "Tests/CoreTests"]) {
+      fs.mkdirSync(path.join(root, directory), { recursive: true });
+    }
+    fs.writeFileSync(
+      path.join(root, "Package.swift"),
+      `// swift-tools-version: 6.0
+import PackageDescription
+let package = Package(name: "Core", targets: [.target(name: "Core"), .testTarget(name: "CoreTests", dependencies: ["Core"])])
+`
+    );
+    fs.writeFileSync(
+      path.join(root, "Sources", "Core", "Generated", "APIClient.swift"),
+      "struct HandGeneratedService { func validate(_ value: Int) -> Bool { false } }\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "Sources", "Core", "DerivedSources", "Routes.swift"),
+      "func generatedRoutes() -> [String] { [\"/checkout\"] }\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "Sources", "Core", "Checkout.pb.swift"),
+      "struct CheckoutMessage { let id: String }\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "Sources", "Core", "R.generated.swift"),
+      "enum R { static let checkout = \"checkout\" }\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "Sources", "Core", "Assets.swift"),
+      "// Generated using SwiftGen — https://github.com/SwiftGen/SwiftGen\nstruct Assets { static let checkout = \"checkout\" }\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "Sources", "Core", "Services", "HandGeneratedService.swift"),
+      "struct HandGeneratedService { func validate(_ value: Int) -> Bool { if value > 0 { return true }; return false } }\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "Tests", "CoreTests", "CoreTests.swift"),
+      "import XCTest\n@testable import Core\nfinal class CoreTests: XCTestCase { func testValidate() { XCTAssertTrue(HandGeneratedService().validate(1)) } }\n"
+    );
+
+    const audit = auditSwiftRepo(root);
+
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), [
+      "Sources/Core/Services/HandGeneratedService.swift"
+    ]);
+    assert.deepEqual(audit.coveredButRisky[0].existingTestEvidence, [
+      {
+        testPath: "Tests/CoreTests/CoreTests.swift",
+        kind: "swift-symbol-reference",
+        strength: "referenced",
+        usage: "asserted"
+      }
+    ]);
+    assert.deepEqual(
+      audit.skipped.filter((target) => target.kind === "generated").map((target) => target.path).sort(),
+      [
+        "Sources/Core/Assets.swift",
+        "Sources/Core/Checkout.pb.swift",
+        "Sources/Core/DerivedSources/Routes.swift",
+        "Sources/Core/Generated/APIClient.swift",
+        "Sources/Core/R.generated.swift"
+      ]
+    );
+    assert.ok(audit.skipped.filter((target) => target.kind === "generated").every((target) => target.signals.includes("generated-code")));
+  });
+
   it("detects mixed Swift and Objective-C Apple projects without inventing a test command", () => {
     const audit = auditSwiftRepo(path.resolve("examples/apple-xcode-mixed"));
 
