@@ -6,9 +6,10 @@ This matrix defines the evidence boundary for moving the Swift adapter from an e
 
 | Area | Current support | Evidence used |
 | --- | --- | --- |
-| Package and project shapes | Swift Package Manager and Xcode projects | `Package.swift`, `.xcodeproj`, shared schemes, and test plans |
+| Package and project shapes | Swift Package Manager, Xcode projects, and Swift Bazel workspaces | `Package.swift`, `.xcodeproj`, shared schemes/test plans, `MODULE.bazel`/`WORKSPACE`, and Swift BUILD rules |
 | Test frameworks | Swift Testing, XCTest, Quick, Nimble, SnapshotTesting, and XCTVapor | imports, package dependencies, and product declarations |
-| Commands | `swift test` and scheme/test-plan-aware `xcodebuild test` | package, project, shared scheme, and unambiguous test-plan markers |
+| Commands | `swift test`, scheme/test-plan-aware `xcodebuild test`, and `bazel test //...` | package, project, shared scheme, unambiguous test-plan, and `swift_test` markers |
+| Bazel target layout | `swift_binary`, `swift_library`, and `swift_test`, including test sources owned through direct dependencies | BUILD target sources, module names, direct dependencies, imports, and glob patterns |
 | SwiftPM source layout | conventional `Sources/<Target>/` and `Tests/<TestTarget>/` paths | source target and test target directory ownership |
 | Xcode source layout | app/framework source folders plus `*Tests` and `*UITests` folders | project markers and target-like directory names |
 | Test names | `*Test.swift`, `*Tests.swift`, and Quick-style `*Spec.swift` | target-qualified filename evidence |
@@ -17,6 +18,8 @@ This matrix defines the evidence boundary for moving the Swift adapter from an e
 | UI boundaries | SwiftUI architecture, views, Xcode UI test folders, and snapshot support | imports, `View` declarations, test locations, and package products |
 
 Swift Package Manager conventionally collects sources and tests by target name under `Sources` and `Tests`, and each target forms a module or test suite. The adapter uses that target ownership to avoid matching the same source filename across unrelated modules. See the official [Creating a Swift package](https://docs.swift.org/swiftpm/documentation/packagemanagerdocs/creatingswiftpackage/) and [Target](https://docs.swift.org/swiftpm/documentation/packagedescription/target/) documentation.
+
+Bazel's `swift_test` can own test sources directly or discover XCTest cases in direct dependencies. The adapter follows both shapes, including tests outside `Tests` directories, and uses `bazel test //...` as the conservative workspace command. See the official [rules_swift API](https://registry.bazel.build/docs/rules_swift) and [Bazel test command](https://bazel.build/docs/user-manual#running-tests) documentation.
 
 ## Evidence Boundary
 
@@ -33,6 +36,7 @@ This normalized evidence now flows through audit, plan, explanation, findings, p
 ## Known Gaps Before Swift Alpha
 
 - custom SwiftPM target paths and explicit source lists are not parsed from the manifest
+- custom Starlark macros, generated BUILD files, `select()` expressions, aliases, and transitive Bazel test-source graphs are not resolved
 - source-to-test symbol references, calls, assertions, and macros are not resolved
 - test target dependencies are inferred from directory ownership and imports rather than a parsed package graph
 - multiple Xcode schemes or test plans remain ambiguous when no project-name or single-plan choice exists
@@ -44,7 +48,7 @@ This normalized evidence now flows through audit, plan, explanation, findings, p
 
 Swift can move from experimental toward private alpha when:
 
-1. multi-target ownership and custom target-path behavior are validated on maintained public Swift packages
+1. multi-target ownership, custom target paths, and Bazel Swift behavior are validated on maintained public repositories
 2. at least one direct Swift symbol relationship is emitted without weakening shared evidence semantics
 3. Xcode app findings remain conservative across multiple schemes, UI tests, and test plans
 4. the deterministic private-alpha gate and pinned real-repository reports remain stable

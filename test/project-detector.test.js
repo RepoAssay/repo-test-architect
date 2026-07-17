@@ -274,6 +274,41 @@ describe("project detector", () => {
     );
   });
 
+  it("detects Swift Bazel workspaces without claiming generic Bazel workspaces", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-bazel-workspaces-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    const swiftRoot = path.join(root, "swift-app");
+    const genericRoot = path.join(root, "generic-app");
+    fs.mkdirSync(path.join(swiftRoot, "Core"), { recursive: true });
+    fs.mkdirSync(genericRoot, { recursive: true });
+    fs.writeFileSync(path.join(swiftRoot, "MODULE.bazel"), 'bazel_dep(name = "rules_swift", version = "3.6.1")\n');
+    fs.writeFileSync(path.join(swiftRoot, "BUILD.bazel"), 'swift_library(name = "Core", srcs = ["Core/Parser.swift"])\n');
+    fs.writeFileSync(path.join(swiftRoot, "Core", "Parser.swift"), "struct Parser {}\n");
+    fs.writeFileSync(path.join(genericRoot, "MODULE.bazel"), 'module(name = "generic")\n');
+    fs.writeFileSync(path.join(genericRoot, "BUILD.bazel"), 'cc_library(name = "core")\n');
+
+    const detection = detectProjects(root);
+
+    assert.deepEqual(
+      detection.projects.map((project) => ({
+        root: project.root,
+        ecosystems: project.ecosystems,
+        languages: project.languages,
+        markerFiles: project.markerFiles,
+        adapterIds: project.adapterIds
+      })),
+      [
+        {
+          root: "swift-app",
+          ecosystems: ["bazel"],
+          languages: ["swift"],
+          markerFiles: ["swift-app/MODULE.bazel"],
+          adapterIds: ["swift"]
+        }
+      ]
+    );
+  });
+
   it("keeps mixed Swift and Objective-C sources under one Apple project root", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-mixed-apple-"));
     fs.mkdirSync(path.join(root, "apps", "ios", "Checkout.xcodeproj"), { recursive: true });

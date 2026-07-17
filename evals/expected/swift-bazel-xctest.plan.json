@@ -1,0 +1,65 @@
+{
+  "schemaVersion": "plan/v1",
+  "summary": {
+    "confidence": "high",
+    "verificationCommand": "bazel test //...",
+    "blockerCount": 0,
+    "addTestCount": 1,
+    "extendTestCount": 1,
+    "deferredCount": 0
+  },
+  "blockers": [],
+  "items": [
+    {
+      "id": "extend-test:Core/CheckoutParser.swift",
+      "action": "extend-test",
+      "targetId": "Core/CheckoutParser.swift",
+      "target": "CheckoutParser",
+      "path": "Core/CheckoutParser.swift",
+      "testLevel": "unit",
+      "priority": 7,
+      "riskReductionScore": 9,
+      "maintenanceCost": 2,
+      "rationale": [
+        "Pure transformation logic",
+        "edge-case surface",
+        "Existing test file detected; review missing edge cases"
+      ],
+      "sourceSignals": [
+        "pure-logic",
+        "edge-case-surface",
+        "matching-test"
+      ],
+      "existingTestPaths": [
+        "verification/CheckoutParserTests.swift"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "verification/CheckoutParserTests.swift",
+          "kind": "filename-convention",
+          "strength": "naming"
+        }
+      ]
+    },
+    {
+      "id": "add-test:Core/PaymentClient.swift",
+      "action": "add-test",
+      "targetId": "Core/PaymentClient.swift",
+      "target": "PaymentClient",
+      "path": "Core/PaymentClient.swift",
+      "testLevel": "unit",
+      "priority": 4,
+      "riskReductionScore": 8,
+      "maintenanceCost": 4,
+      "rationale": [
+        "Service boundary",
+        "async or concurrency behavior"
+      ],
+      "sourceSignals": [
+        "service-boundary",
+        "async-or-concurrency"
+      ],
+      "existingTestPaths": []
+    }
+  ]
+}

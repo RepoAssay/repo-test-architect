@@ -5,18 +5,19 @@ const SOURCE_EXTENSIONS = [".swift", ".m", ".mm"];
 
 export function auditSwiftRepo(root, options = {}) {
   const files = readRepoFiles(root);
-  const profile = buildProfile(root, files);
+  const bazelGraph = parseBazelSwiftGraph(files);
+  const profile = buildProfile(root, files, bazelGraph);
   const changedPaths = options.changedPaths ? new Set(options.changedPaths.map((currentPath) => normalizeChangedPath(root, currentPath))) : undefined;
-  const testFiles = files.filter((file) => isTestFile(file.path)).map((file) => ({ ...file, path: normalizePath(file.path) }));
+  const testFiles = files.filter((file) => isTestFile(file.path, bazelGraph)).map((file) => ({ ...file, path: normalizePath(file.path) }));
   const untestedCandidates = [];
   const coveredButRisky = [];
   const skipped = [];
   const risks = [];
 
-  for (const file of files.filter((candidate) => isSourceFile(candidate.path) && isIncludedByChangedPaths(candidate.path, changedPaths))) {
+  for (const file of files.filter((candidate) => isSourceFile(candidate.path, bazelGraph) && isIncludedByChangedPaths(candidate.path, changedPaths))) {
     const name = basenameWithoutExtension(file.path);
     const classification = classifySourceFile(file);
-    const existingTestEvidence = findExistingTestEvidence(file.path, testFiles);
+    const existingTestEvidence = findExistingTestEvidence(file.path, testFiles, bazelGraph);
     const existingTestPaths = existingTestEvidence.map((evidence) => evidence.testPath);
 
     if (classification.skipReason) {
@@ -114,30 +115,32 @@ function shouldRead(relative) {
   return (
     SOURCE_EXTENSIONS.some((extension) => relative.endsWith(extension)) ||
     relative === "Package.swift" ||
+    isBazelWorkspaceFile(relative) ||
+    isBazelBuildFile(relative) ||
     relative.endsWith(".xcodeproj/project.pbxproj") ||
     relative.endsWith(".xcscheme") ||
     relative.endsWith(".xctestplan")
   );
 }
 
-function buildProfile(root, files) {
+function buildProfile(root, files, bazelGraph) {
   const paths = files.map((file) => normalizePath(file.path));
   const packageText = files.find((file) => normalizePath(file.path) === "Package.swift")?.content ?? "";
   const testFrameworks = detectTestFrameworks(files, packageText);
-  const testCommand = detectTestCommand(paths, testFrameworks);
-  const existingTestLocations = detectExistingTestLocations(paths);
+  const testCommand = detectTestCommand(paths, testFrameworks, bazelGraph);
+  const existingTestLocations = detectExistingTestLocations(paths, bazelGraph);
   const blockers = detectBlockers(testCommand, testFrameworks);
 
   return {
     root,
     languages: detectLanguages(paths),
-    packageManagers: detectPackageManagers(paths),
+    packageManagers: detectPackageManagers(paths, bazelGraph),
     testFrameworks,
-    architectures: detectArchitectures(paths, files),
+    architectures: detectArchitectures(paths, files, bazelGraph),
     testCommand,
-    detectedConventions: detectConventions(paths),
+    detectedConventions: detectConventions(paths, bazelGraph),
     existingTestLocations,
-    setupSignals: detectSetupSignals(paths, packageText),
+    setupSignals: detectSetupSignals(paths, packageText, bazelGraph),
     confidence: scoreProfileConfidence(testFrameworks, existingTestLocations, blockers),
     blockers
   };
@@ -150,10 +153,11 @@ function detectLanguages(paths) {
   return [...languages].sort();
 }
 
-function detectPackageManagers(paths) {
+function detectPackageManagers(paths, bazelGraph) {
   const managers = new Set();
   if (paths.includes("Package.swift")) managers.add("swiftpm");
   if (paths.some((item) => item.endsWith(".xcodeproj/project.pbxproj"))) managers.add("xcodebuild");
+  if (bazelGraph.hasSwiftRules) managers.add("bazel");
   return [...managers].sort();
 }
 
@@ -193,8 +197,9 @@ function detectTestFrameworks(files, packageText) {
   return [...frameworks].sort();
 }
 
-function detectTestCommand(paths, frameworks) {
+function detectTestCommand(paths, frameworks, bazelGraph) {
   if (frameworks.length === 0) return undefined;
+  if (bazelGraph.hasSwiftTest) return "bazel test //...";
   if (paths.includes("Package.swift")) return "swift test";
   if (paths.some((item) => item.endsWith(".xcodeproj/project.pbxproj"))) {
     const scheme = detectXcodeScheme(paths);
@@ -205,25 +210,27 @@ function detectTestCommand(paths, frameworks) {
   return undefined;
 }
 
-function detectExistingTestLocations(paths) {
+function detectExistingTestLocations(paths, bazelGraph) {
   const locations = new Set();
   if (paths.some((item) => item.startsWith("Tests/"))) locations.add("Tests");
   for (const currentPath of paths) {
     const testDirectory = firstTestDirectory(currentPath);
     if (testDirectory) locations.add(testDirectory);
   }
+  for (const currentPath of bazelGraph.testSources) locations.add(path.posix.dirname(currentPath));
   return [...locations];
 }
 
-function detectConventions(paths) {
+function detectConventions(paths, bazelGraph) {
   const conventions = new Set();
   if (paths.some((item) => /Tests?\.swift$/.test(item))) conventions.add("*Tests.swift files");
   if (paths.some((item) => item.startsWith("Tests/"))) conventions.add("Tests");
   if (paths.some((item) => firstTestDirectory(item)?.endsWith("UITests"))) conventions.add("*UITests folders");
+  if (bazelGraph.hasSwiftTest) conventions.add("Bazel swift_test targets");
   return [...conventions];
 }
 
-function detectSetupSignals(paths, packageText) {
+function detectSetupSignals(paths, packageText, bazelGraph) {
   const signals = new Set();
   if (paths.includes("Package.swift")) signals.add("swift package manager");
   if (paths.some((item) => item.endsWith(".xcodeproj/project.pbxproj"))) signals.add("xcode project");
@@ -238,13 +245,16 @@ function detectSetupSignals(paths, packageText) {
   if (packageText.includes(".testTarget")) signals.add("swiftpm test target");
   if (packageText.includes(".executableTarget")) signals.add("swiftpm executable target");
   if (packageText.includes(".target")) signals.add("swiftpm target");
+  if (bazelGraph.hasSwiftRules) signals.add("bazel swift rules");
+  if (bazelGraph.hasSwiftTest) signals.add("bazel swift_test target");
   return [...signals];
 }
 
-function detectArchitectures(paths, files) {
+function detectArchitectures(paths, files, bazelGraph) {
   const architectures = new Set();
   if (paths.includes("Package.swift")) architectures.add("swift-package");
   if (paths.some((item) => item.endsWith(".xcodeproj/project.pbxproj"))) architectures.add("apple-xcode");
+  if (bazelGraph.hasSwiftRules) architectures.add("bazel-swift");
   if (files.some((file) => file.content.includes("import SwiftUI") || /\bView\b/.test(file.content))) architectures.add("swiftui");
   if (files.some((file) => file.content.includes("Vapor"))) architectures.add("vapor");
   if (files.some((file) => isMongoDataAccess(file.content))) architectures.add("mongodb");
@@ -454,23 +464,23 @@ function isIncludedByChangedPaths(currentPath, changedPaths) {
   return changedPaths.has(normalizePath(currentPath));
 }
 
-function isSourceFile(currentPath) {
+function isSourceFile(currentPath, bazelGraph) {
   const normalized = normalizePath(currentPath);
   return (
     normalized !== "Package.swift" &&
-    !isTestPath(normalized) &&
+    !isTestFile(normalized, bazelGraph) &&
     SOURCE_EXTENSIONS.some((extension) => normalized.endsWith(extension))
   );
 }
 
-function isTestFile(currentPath) {
+function isTestFile(currentPath, bazelGraph) {
   const normalized = normalizePath(currentPath);
-  return isTestPath(normalized) && normalized.endsWith(".swift");
+  return (isTestPath(normalized) || bazelGraph.testSources.has(normalized)) && normalized.endsWith(".swift");
 }
 
-function findExistingTestEvidence(sourcePath, testFiles) {
+function findExistingTestEvidence(sourcePath, testFiles, bazelGraph) {
   const sourceBase = basenameWithoutExtension(sourcePath);
-  const sourceOwner = inferSourceOwner(sourcePath);
+  const sourceOwner = bazelGraph.sourceOwners.get(normalizePath(sourcePath)) ?? inferSourceOwner(sourcePath);
 
   return testFiles.flatMap((testFile) => {
     const testBase = basenameWithoutExtension(testFile.path).replace(/(?:Tests?|Spec)$/, "");
@@ -503,6 +513,125 @@ function inferTestOwner(currentPath) {
 
 function collectImportedModules(content) {
   return [...content.matchAll(/^\s*(?:@testable\s+)?import\s+([A-Za-z_][A-Za-z0-9_]*)\b/gm)].map((match) => match[1]);
+}
+
+function parseBazelSwiftGraph(files) {
+  const swiftPaths = files
+    .map((file) => normalizePath(file.path))
+    .filter((currentPath) => currentPath.endsWith(".swift"));
+  const sourceOwners = new Map();
+  const testSources = new Set();
+  const rules = [];
+  let hasSwiftRules = false;
+  let hasSwiftTest = false;
+
+  for (const file of files.filter((candidate) => isBazelBuildFile(candidate.path))) {
+    const packageDirectory = path.posix.dirname(normalizePath(file.path)).replace(/^\.$/, "");
+    for (const rule of extractBazelSwiftRules(file.content)) {
+      hasSwiftRules = true;
+      if (rule.kind === "swift_test") hasSwiftTest = true;
+      const name = readBazelStringAttribute(rule.body, "name");
+      const owner = readBazelStringAttribute(rule.body, "module_name") ?? name;
+      const ownedSources = resolveBazelSwiftSources(rule.body, packageDirectory, swiftPaths);
+      const label = name ? bazelRuleLabel(packageDirectory, name) : undefined;
+      const dependencies = readBazelLabelAttribute(rule.body, "deps").map((dependency) => resolveBazelLabel(packageDirectory, dependency));
+      rules.push({ ...rule, label, owner, ownedSources, dependencies });
+
+      for (const sourcePath of ownedSources) {
+        if (rule.kind === "swift_test") testSources.add(sourcePath);
+        else if (owner) sourceOwners.set(sourcePath, owner);
+      }
+    }
+  }
+
+  const rulesByLabel = new Map(rules.filter((rule) => rule.label).map((rule) => [rule.label, rule]));
+  for (const rule of rules.filter((candidate) => candidate.kind === "swift_test" && candidate.ownedSources.size === 0)) {
+    for (const dependency of rule.dependencies) {
+      for (const sourcePath of rulesByLabel.get(dependency)?.ownedSources ?? []) testSources.add(sourcePath);
+    }
+  }
+
+  return { hasSwiftRules, hasSwiftTest, sourceOwners, testSources };
+}
+
+function extractBazelSwiftRules(content) {
+  const rules = [];
+  const matcher = /\b(swift_binary|swift_library|swift_test)\s*\(/g;
+  let match;
+
+  while ((match = matcher.exec(content)) !== null) {
+    let depth = 1;
+    let quote;
+    let escaped = false;
+    let index = matcher.lastIndex;
+    for (; index < content.length && depth > 0; index += 1) {
+      const character = content[index];
+      if (quote) {
+        if (escaped) escaped = false;
+        else if (character === "\\") escaped = true;
+        else if (character === quote) quote = undefined;
+      } else if (character === "\"" || character === "'") quote = character;
+      else if (character === "(") depth += 1;
+      else if (character === ")") depth -= 1;
+    }
+    rules.push({ kind: match[1], body: content.slice(matcher.lastIndex, index - 1) });
+    matcher.lastIndex = index;
+  }
+
+  return rules;
+}
+
+function readBazelStringAttribute(body, attribute) {
+  return body.match(new RegExp(`\\b${attribute}\\s*=\\s*["']([^"']+)["']`))?.[1];
+}
+
+function readBazelLabelAttribute(body, attribute) {
+  const expression = body.match(new RegExp(`\\b${attribute}\\s*=([\\s\\S]*?)(?:,\\s*\\n\\s*[A-Za-z_]\\w*\\s*=|\\s*$)`))?.[1] ?? "";
+  return [...expression.matchAll(/["']([^"']+)["']/g)].map((match) => match[1]);
+}
+
+function bazelRuleLabel(packageDirectory, name) {
+  return `//${packageDirectory}:${name}`;
+}
+
+function resolveBazelLabel(packageDirectory, label) {
+  if (label.startsWith("//")) return label.includes(":") ? label : `${label}:${label.split("/").at(-1)}`;
+  if (label.startsWith(":")) return bazelRuleLabel(packageDirectory, label.slice(1));
+  return label;
+}
+
+function resolveBazelSwiftSources(body, packageDirectory, swiftPaths) {
+  const sourceExpression = body.match(/\bsrcs\s*=([\s\S]*?)(?:,\s*\n\s*[A-Za-z_]\w*\s*=|\s*$)/)?.[1] ?? "";
+  const entries = [...sourceExpression.matchAll(/["']([^"']+\.swift)["']/g)].map((match) => match[1]);
+  const resolved = new Set();
+
+  for (const entry of entries) {
+    const packagePath = path.posix.join(packageDirectory, entry);
+    if (!entry.includes("*")) {
+      if (swiftPaths.includes(packagePath)) resolved.add(packagePath);
+      continue;
+    }
+    const pattern = new RegExp(`^${escapeRegex(packagePath).replaceAll("\\*\\*", ".*").replaceAll("\\*", "[^/]*")}$`);
+    for (const swiftPath of swiftPaths) {
+      if (pattern.test(swiftPath)) resolved.add(swiftPath);
+    }
+  }
+
+  return resolved;
+}
+
+function escapeRegex(value) {
+  return value.replace(/[|\\{}()[\]^$+?.*]/g, "\\$&");
+}
+
+function isBazelWorkspaceFile(currentPath) {
+  const fileName = normalizePath(currentPath).split("/").at(-1);
+  return fileName === "MODULE.bazel" || fileName === "WORKSPACE" || fileName === "WORKSPACE.bazel";
+}
+
+function isBazelBuildFile(currentPath) {
+  const fileName = normalizePath(currentPath).split("/").at(-1);
+  return fileName === "BUILD" || fileName === "BUILD.bazel";
 }
 
 function normalizeModuleName(value) {

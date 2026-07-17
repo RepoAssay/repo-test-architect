@@ -24,6 +24,9 @@ npm run detect-rules:json
 | `go.mod` | `go` | `go` | Detected, unsupported |
 | `Cargo.toml` | `rust` | `rust` | Detected, unsupported |
 | `Package.swift` | `swift` | `swift` | Supported by experimental `swift` |
+| `MODULE.bazel` | `bazel` | `swift` | Supported by experimental `swift` when Swift rules and sources are present |
+| `WORKSPACE` | `bazel` | `swift` | Supported by experimental `swift` when Swift rules and sources are present |
+| `WORKSPACE.bazel` | `bazel` | `swift` | Supported by experimental `swift` when Swift rules and sources are present |
 | `*.xcodeproj` | `apple` | `swift`, `objective-c` | Supported by experimental `swift` |
 | `*.csproj` | `dotnet` | `csharp` | Detected, unsupported |
 | `pom.xml` | `jvm` | `java`, `kotlin` | Supported by experimental `kotlin` |

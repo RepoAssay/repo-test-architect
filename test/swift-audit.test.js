@@ -8,6 +8,7 @@ import { auditSwiftRepo } from "../src/adapters/swift/audit.js";
 const exampleRoot = path.resolve("examples/swift-spm-xctest");
 const swiftTestingRoot = path.resolve("examples/swift-spm-swift-testing");
 const quickNimbleRoot = path.resolve("examples/swift-spm-quick-nimble");
+const bazelRoot = path.resolve("examples/swift-bazel-xctest");
 const vaporRoot = path.resolve("examples/vapor-service-tests");
 const vaporMongoRoot = path.resolve("examples/vapor-mongodb-boundaries");
 
@@ -228,6 +229,28 @@ final class ParserSpec: QuickSpec {
     assert.deepEqual(audit.coveredButRisky[0].existingTestEvidence, [
       {
         testPath: "Tests/CoreSpecs/ParserSpec.swift",
+        kind: "filename-convention",
+        strength: "naming"
+      }
+    ]);
+  });
+
+  it("uses Bazel swift_test ownership for separately located test sources", () => {
+    const audit = auditSwiftRepo(bazelRoot);
+
+    assert.deepEqual(audit.profile.packageManagers, ["bazel"]);
+    assert.deepEqual(audit.profile.testFrameworks, ["XCTest"]);
+    assert.equal(audit.profile.testCommand, "bazel test //...");
+    assert.equal(audit.profile.confidence, "high");
+    assert.ok(audit.profile.architectures.includes("bazel-swift"));
+    assert.ok(audit.profile.detectedConventions.includes("Bazel swift_test targets"));
+    assert.ok(audit.profile.setupSignals.includes("bazel swift_test target"));
+    assert.ok(audit.profile.existingTestLocations.includes("verification"));
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.path), ["Core/PaymentClient.swift"]);
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["Core/CheckoutParser.swift"]);
+    assert.deepEqual(audit.coveredButRisky[0].existingTestEvidence, [
+      {
+        testPath: "verification/CheckoutParserTests.swift",
         kind: "filename-convention",
         strength: "naming"
       }

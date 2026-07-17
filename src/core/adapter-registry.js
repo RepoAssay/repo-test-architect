@@ -77,11 +77,11 @@ export const adapters = [
   },
   {
     id: "swift",
-    ecosystems: ["apple", "swift"],
+    ecosystems: ["apple", "bazel", "swift"],
     languages: ["objective-c", "swift"],
     maturity: "experimental",
     supportedTestFrameworks: ["Nimble", "Quick", "SnapshotTesting", "Swift Testing", "XCTest", "XCTVapor"],
-    supportedProjectTypes: ["swift-package", "apple-xcode", "vapor"],
+    supportedProjectTypes: ["swift-package", "apple-xcode", "bazel-swift", "vapor"],
     emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"],
     audit(repoRoot, options = {}) {
       return auditSwiftRepo(repoRoot, {
