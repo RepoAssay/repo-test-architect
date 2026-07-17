@@ -1,0 +1,84 @@
+{
+  "schemaVersion": "plan/v1",
+  "summary": {
+    "confidence": "high",
+    "verificationCommand": "swift test",
+    "blockerCount": 0,
+    "addTestCount": 2,
+    "extendTestCount": 1,
+    "deferredCount": 0
+  },
+  "blockers": [],
+  "items": [
+    {
+      "id": "extend-test:Source/CheckoutCore/CheckoutParser.swift",
+      "action": "extend-test",
+      "targetId": "Source/CheckoutCore/CheckoutParser.swift",
+      "target": "CheckoutParser",
+      "path": "Source/CheckoutCore/CheckoutParser.swift",
+      "testLevel": "unit",
+      "priority": 7,
+      "riskReductionScore": 9,
+      "maintenanceCost": 2,
+      "rationale": [
+        "Pure transformation logic",
+        "edge-case surface",
+        "Existing test file detected; review missing edge cases"
+      ],
+      "sourceSignals": [
+        "pure-logic",
+        "edge-case-surface",
+        "matching-test"
+      ],
+      "existingTestPaths": [
+        "srcs/CheckoutCoreChecks/CheckoutBehavior.swift"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "srcs/CheckoutCoreChecks/CheckoutBehavior.swift",
+          "kind": "swift-symbol-reference",
+          "strength": "referenced",
+          "usage": "asserted"
+        }
+      ]
+    },
+    {
+      "id": "add-test:srcs/CheckoutFormatting/PriceFormatter.swift",
+      "action": "add-test",
+      "targetId": "srcs/CheckoutFormatting/PriceFormatter.swift",
+      "target": "PriceFormatter",
+      "path": "srcs/CheckoutFormatting/PriceFormatter.swift",
+      "testLevel": "unit",
+      "priority": 7,
+      "riskReductionScore": 9,
+      "maintenanceCost": 2,
+      "rationale": [
+        "Pure transformation logic",
+        "edge-case surface"
+      ],
+      "sourceSignals": [
+        "pure-logic",
+        "edge-case-surface"
+      ],
+      "existingTestPaths": []
+    },
+    {
+      "id": "add-test:src/CheckoutSupport/RetryPolicy.swift",
+      "action": "add-test",
+      "targetId": "src/CheckoutSupport/RetryPolicy.swift",
+      "target": "RetryPolicy",
+      "path": "src/CheckoutSupport/RetryPolicy.swift",
+      "testLevel": "unit",
+      "priority": 3,
+      "riskReductionScore": 5,
+      "maintenanceCost": 2,
+      "rationale": [
+        "Branching logic"
+      ],
+      "sourceSignals": [
+        "branching-logic"
+      ],
+      "existingTestPaths": []
+    }
+  ]
+}
