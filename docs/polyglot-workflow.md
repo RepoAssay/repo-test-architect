@@ -44,8 +44,8 @@ This emits `project-audits/v1`.
 
 For every supported project root, the matching adapter produces a normal audit artifact. Unsupported project roots are reported separately with their ecosystem and language labels, adapter match evidence, and support status reason.
 
-The current runtime audits JavaScript and TypeScript project roots through the supported `javascript` adapter, Kotlin/JVM Gradle or Maven roots through the experimental `kotlin` adapter, Python package roots through the experimental `python` adapter, and Swift Package Manager or Apple Xcode roots through the experimental `swift` adapter.
-JavaScript and TypeScript share one adapter domain. Java and Kotlin share one experimental JVM adapter domain. Swift and Objective-C are kept inside the experimental Apple adapter domain when they share one Xcode root.
+The current runtime audits JavaScript and TypeScript project roots through the supported `javascript` adapter, Swift Package Manager, Apple Xcode, and Swift Bazel roots through the supported `swift` adapter, Kotlin/JVM Gradle or Maven roots through the experimental `kotlin` adapter, and Python package roots through the experimental `python` adapter.
+JavaScript and TypeScript share one adapter domain. Java and Kotlin share one experimental JVM adapter domain. Swift and Objective-C remain inside one Apple project root when they share Xcode metadata, while the supported classification and evidence promise is bounded to Swift source behavior and Objective-C XCTest visibility.
 
 For report-style self-audits, project-aware commands can exclude exact roots or subtrees before auditing:
 

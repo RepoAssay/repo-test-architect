@@ -92,7 +92,7 @@ Use `generate_project_test_plan` when a client needs project-aware plan items be
 Use `collect_project_findings` when a client needs a concise top-findings test architecture audit across projects.
 Use `analyze_project_test_placement` when a client needs advisory placement findings derived from audited project roots.
 Use `collect_project_stats` when a client needs local artifact-derived counts and distributions for reporting or model-profile comparisons.
-`audit_repo` accepts an optional `adapterId` and optional repository-relative `changedPaths`. The current registered adapters are `javascript` plus experimental `kotlin`, `python`, and `swift`.
+`audit_repo` accepts an optional `adapterId` and optional repository-relative `changedPaths`. The current supported adapters are `javascript` and `swift`; `kotlin` and `python` remain experimental.
 
 ## SDK Transport
 

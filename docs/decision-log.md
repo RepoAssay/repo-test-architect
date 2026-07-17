@@ -18,6 +18,14 @@ Rationale: the PC environment can run Node locally, fixtures are cheap to build,
 
 Revisit when: the JS/TS adapter contract is stable enough to make a second supported adapter cheaper than more JS/TS fixture work.
 
+## Swift As The Second Supported Adapter
+
+Decision: promote Swift to supported private-alpha maturity alongside JavaScript/TypeScript, bounded by the checked-in Swift alpha support matrix.
+
+Rationale: Swift now exercises the full shared audit pipeline with deterministic SwiftPM, Xcode, Bazel, Vapor, reactive, and framework fixtures; golden audit and plan artifacts; model-consistency locks; blocker behavior; target-qualified symbol evidence; and pinned maintained-repository validation. RxSwift and SwiftNIO exposed and verified ownership boundaries that synthetic fixtures alone did not cover. This is enough to support popular inspectable patterns without claiming manifest execution, native Objective-C classification, or universal Xcode graph resolution.
+
+Revisit when: common supported Swift shapes produce repeatable false ownership or coverage claims, or compiler/build-tool integration can replace conservative static evidence without weakening deterministic local operation.
+
 ## Polyglot Detection Before Universal Adapters
 
 Decision: detect project roots and assign adapters per project instead of assuming one repository has one language.

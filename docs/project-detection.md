@@ -23,12 +23,12 @@ npm run detect-rules:json
 | `mix.exs` | `elixir` | `elixir` | Detected, unsupported |
 | `go.mod` | `go` | `go` | Detected, unsupported |
 | `Cargo.toml` | `rust` | `rust` | Detected, unsupported |
-| `Package.swift` | `swift` | `swift` | Supported by experimental `swift` |
-| `MODULE.bazel` | `bazel` | `swift` | Supported by experimental `swift` when Swift rules and sources are present |
-| `WORKSPACE` | `bazel` | `swift` | Supported by experimental `swift` when Swift rules and sources are present |
-| `WORKSPACE.bazel` | `bazel` | `swift` | Supported by experimental `swift` when Swift rules and sources are present |
-| `*.xcodeproj` | `apple` | `swift`, `objective-c` | Supported by experimental `swift` |
-| `*.xcworkspace` | `apple` | `swift`, `objective-c` | Supported by experimental `swift` |
+| `Package.swift` | `swift` | `swift` | Supported by `swift` |
+| `MODULE.bazel` | `bazel` | `swift` | Supported by `swift` when Swift rules and sources are present |
+| `WORKSPACE` | `bazel` | `swift` | Supported by `swift` when Swift rules and sources are present |
+| `WORKSPACE.bazel` | `bazel` | `swift` | Supported by `swift` when Swift rules and sources are present |
+| `*.xcodeproj` | `apple` | `swift`, `objective-c` | Supported by `swift` |
+| `*.xcworkspace` | `apple` | `swift`, `objective-c` | Supported by `swift` |
 | `*.csproj` | `dotnet` | `csharp` | Detected, unsupported |
 | `pom.xml` | `jvm` | `java`, `kotlin` | Supported by experimental `kotlin` |
 | `build.gradle` | `jvm` | `kotlin`, `java` | Supported by experimental `kotlin` |

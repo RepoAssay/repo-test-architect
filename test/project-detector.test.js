@@ -245,12 +245,14 @@ describe("project detector", () => {
     );
   });
 
-  it("detects Xcode project directories as experimental Swift adapter projects", () => {
+  it("detects Xcode project directories as supported Swift adapter projects", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-xcode-"));
     fs.mkdirSync(path.join(root, "apps", "ios", "Checkout.xcodeproj"), { recursive: true });
     fs.writeFileSync(path.join(root, "apps", "ios", "Checkout.xcodeproj", "project.pbxproj"), "// !$*UTF8*$!\n");
 
     const detection = detectProjects(root);
+
+    assert.equal(detection.projects[0].adapterMatches[0].maturity, "supported");
 
     assert.deepEqual(
       detection.projects.map((project) => ({
@@ -274,7 +276,7 @@ describe("project detector", () => {
     );
   });
 
-  it("detects Xcode workspace directories as experimental Swift adapter projects", () => {
+  it("detects Xcode workspace directories as supported Swift adapter projects", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-xcworkspace-"));
     fs.mkdirSync(path.join(root, "apps", "ios", "Checkout.xcworkspace"), { recursive: true });
     fs.writeFileSync(
@@ -344,7 +346,7 @@ describe("project detector", () => {
     assert.deepEqual(detection.projects[0].markerFiles, ["apps/ios/Checkout.xcodeproj"]);
   });
 
-  it("detects the mixed Apple Xcode fixture as one experimental Swift adapter project", () => {
+  it("detects the mixed Apple Xcode fixture as one supported Swift adapter project", () => {
     const fixtureRoot = path.resolve("examples/apple-xcode-mixed");
     const detection = detectProjects(fixtureRoot);
 
