@@ -373,6 +373,100 @@ final class ParserSpec: QuickSpec {
     ]);
   });
 
+  it("merges version-specific manifests and helper-wrapped targets without auditing aliases or auxiliary projects", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-swiftpm-ownership-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    for (const directory of [
+      "Core",
+      "UI",
+      "Sources/Core",
+      "Tests/CoreTests",
+      "DemoApp/DemoApp.xcodeproj",
+      "Core.playground/Sources"
+    ]) {
+      fs.mkdirSync(path.join(root, directory), { recursive: true });
+    }
+    fs.writeFileSync(
+      path.join(root, "Package.swift"),
+      `// swift-tools-version: 5.8
+import PackageDescription
+
+extension Target {
+    static func wrappedTarget(name: String, dependencies: [Target.Dependency]) -> Target {
+        .target(name: name, dependencies: dependencies)
+    }
+}
+
+let package = Package(
+    name: "WrappedTargets",
+    targets: [.wrappedTarget(name: "Core", dependencies: [])]
+)
+`
+    );
+    fs.writeFileSync(
+      path.join(root, "Package@swift-5.9.swift"),
+      `// swift-tools-version: 5.9
+import PackageDescription
+
+let package = Package(
+    name: "WrappedTargets",
+    targets: [
+        .target(name: "Core"),
+        .target(name: "UI"),
+        .testTarget(name: "CoreTests", dependencies: ["Core"])
+    ]
+)
+`
+    );
+    fs.writeFileSync(path.join(root, "Core", "Parser.swift"), "public func parse(_ value: String) -> String { value.isEmpty ? \"missing\" : value }\n");
+    fs.writeFileSync(path.join(root, "UI", "Parser.swift"), "public func parse(_ value: String) -> String { value.isEmpty ? \"empty\" : value }\n");
+    fs.symlinkSync(path.join("..", "..", "Core", "Parser.swift"), path.join(root, "Sources", "Core", "Parser.swift"));
+    fs.writeFileSync(
+      path.join(root, "Tests", "CoreTests", "ParserTests.swift"),
+      "import XCTest\n@testable import Core\nfinal class ParserTests: XCTestCase { func testParse() { XCTAssertEqual(parse(\"\"), \"missing\") } }\n"
+    );
+    fs.writeFileSync(path.join(root, "DemoApp", "Demo.swift"), "func demoBranch(_ value: Bool) -> String { value ? \"yes\" : \"no\" }\n");
+    fs.writeFileSync(path.join(root, "Core.playground", "Sources", "Scratch.swift"), "func scratch(_ value: Bool) -> Bool { !value }\n");
+
+    const audit = auditSwiftRepo(root);
+
+    assert.ok(audit.profile.setupSignals.includes("swiftpm version-specific manifest"));
+    assert.ok(audit.profile.setupSignals.includes("swiftpm helper target declaration"));
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["Core/Parser.swift"]);
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.path), ["UI/Parser.swift"]);
+    assert.deepEqual(audit.coveredButRisky[0].existingTestPaths, ["Tests/CoreTests/ParserTests.swift"]);
+    assert.ok(!audit.recommended.some((target) => target.path.startsWith("Sources/") || target.path.startsWith("DemoApp/") || target.path.includes(".playground/")));
+  });
+
+  it("falls back to conventional SwiftPM module ownership for computed target arrays", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-swiftpm-computed-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    for (const directory of ["Sources/Core", "Sources/UI", "Tests/CoreTests"]) {
+      fs.mkdirSync(path.join(root, directory), { recursive: true });
+    }
+    fs.writeFileSync(
+      path.join(root, "Package.swift"),
+      `// swift-tools-version: 6.0
+import PackageDescription
+
+let modules = ["Core", "UI"]
+let targets = modules.map { Target.target(name: $0) }
+let package = Package(name: "ComputedTargets", targets: targets)
+`
+    );
+    fs.writeFileSync(path.join(root, "Sources", "Core", "Parser.swift"), "public func parse(_ value: String) -> String { value.isEmpty ? \"missing\" : value }\n");
+    fs.writeFileSync(path.join(root, "Sources", "UI", "Parser.swift"), "public func parse(_ value: String) -> String { value.isEmpty ? \"empty\" : value }\n");
+    fs.writeFileSync(
+      path.join(root, "Tests", "CoreTests", "ParserTests.swift"),
+      "import XCTest\n@testable import Core\nfinal class ParserTests: XCTestCase { func testParse() { XCTAssertEqual(parse(\"\"), \"missing\") } }\n"
+    );
+
+    const audit = auditSwiftRepo(root);
+
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["Sources/Core/Parser.swift"]);
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.path), ["Sources/UI/Parser.swift"]);
+  });
+
   it("uses custom SwiftPM paths, sources, excludes, and test dependencies", () => {
     const audit = auditSwiftRepo(customPathsRoot);
 

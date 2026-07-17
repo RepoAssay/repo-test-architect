@@ -19,7 +19,7 @@ node ./src/cli/index.js audit <checkout> --adapter swift --format json
 
 | Repository | Frameworks | Architectures | Untested | Covered | Skipped | Recommended | High-risk notes |
 | --- | --- | --- | ---: | ---: | ---: | ---: | ---: |
-| RxSwift | RxBlocking, RxTest, XCTest | Apple/Xcode, reactive streams, SwiftPM, SwiftUI | 403 | 119 | 187 | 522 | 4 |
+| RxSwift | RxBlocking, RxTest, XCTest | Apple/Xcode, reactive streams, SwiftPM, SwiftUI | 121 | 94 | 59 | 215 | 0 |
 | Flow | XCTest | Apple/Xcode, reactive streams, SwiftPM, SwiftUI | 21 | 20 | 4 | 41 | 0 |
 
 Both profiles are high confidence, select `swift test`, and report no blockers. RxTest and RxBlocking are identified as reactive testing support alongside the XCTest runner; they do not replace the repository-native test command. Flow remains a normal XCTest project from the adapter's perspective.
@@ -32,7 +32,7 @@ The first live pass exposed three trust problems:
 - `.xcodeproj/project.xcworkspace` metadata was treated as a user-selected workspace even though it is internal Xcode project state
 - Flow's root-level `Disposable+CombineTests.swift` was treated as production because test filenames were only recognized inside test-named directories or parsed build targets
 
-The hardened pass requires an import, database handle, or BSON/document marker before emitting MongoDB query signals; ignores internal project workspaces while retaining real checked-in `.xcworkspace` containers; and recognizes root-level `*Test.swift`, `*Tests.swift`, and `*Spec.swift` files. After the changes, neither reactive repository emits MongoDB candidates and Flow's root Combine test is excluded from production recommendations.
+The hardened passes require an import, database handle, or BSON/document marker before emitting MongoDB query signals; ignore internal project workspaces while retaining real checked-in `.xcworkspace` containers; recognize root-level `*Test.swift`, `*Tests.swift`, and `*Spec.swift` files; recover RxSwift targets declared through its `rxTarget` helper and version-specific manifest; and avoid recounting its symlink source overlay, examples, and playgrounds. After the changes, neither reactive repository emits MongoDB candidates, Flow's root Combine test is excluded from production recommendations, and RxSwift falls from 522 duplicate-heavy recommendations to 215 canonical source recommendations.
 
 ## Reactive Boundary
 
@@ -46,8 +46,8 @@ This is intentionally profile-level support. It does not claim that a virtual-ti
 
 ## Remaining Gaps
 
-- RxSwift's computed `Package.swift` target graph uses helper functions and conditionals that the static manifest parser cannot fully resolve, so some source/test ownership remains path- and import-based.
-- Large framework repositories contain duplicated, generated, example, playground, compatibility, and platform-specific source shapes that still need stronger ownership boundaries.
+- RxSwift's remaining conditional and locally assembled target graph cannot be fully evaluated by the static reader, so some source/test ownership still uses conservative conventional paths and imports.
+- Large framework repositories still contain generated, compatibility, and platform-specific source shapes that need stronger ownership boundaries; symlink overlays, standalone examples, and playgrounds are now bounded.
 - Reactive primitives are not yet assigned broad special-purpose recommendations solely because they are named `Observable`, `Signal`, `Future`, or `Disposable`; doing that without module context would create false positives in ordinary Swift concurrency and callback code.
 - Flow should remain a regression reference for a once-popular layout, not a source of expanding product-specific heuristics now that the repository is archived.
 
