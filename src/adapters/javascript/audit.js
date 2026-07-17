@@ -1068,7 +1068,8 @@ function collectAssertedRequireNames(clause, contentWithoutImports) {
 
 function isIdentifierAsserted(content, identifier) {
   const escaped = escapeRegExp(identifier);
-  if (new RegExp(`\\bexpect\\s*\\(\\s*(?:\\(\\s*\\)\\s*=>\\s*)?(?:await\\s+)?(?:new\\s+)?${escaped}\\s*\\(`).test(content)) return true;
+  const assertionCall = `(?:expect|assert(?:\\.[A-Za-z_$][\\w$]*)?)`;
+  if (new RegExp(`\\b${assertionCall}\\s*\\(\\s*(?:\\(\\s*\\)\\s*=>\\s*)?(?:await\\s+)?(?:new\\s+)?${escaped}\\s*\\(`).test(content)) return true;
   const assignmentPattern = new RegExp(`\\b(?:const|let|var)\\s+([A-Za-z_$][\\w$]*)\\s*=\\s*(?:await\\s+)?(?:new\\s+)?${escaped}\\s*\\(`, "g");
   for (const match of content.matchAll(assignmentPattern)) {
     if (isResultIdentifierAsserted(content, match[1])) return true;
@@ -1084,7 +1085,7 @@ function isIdentifierAsserted(content, identifier) {
 }
 
 function isResultIdentifierAsserted(content, identifier) {
-  return new RegExp(`\\bexpect\\s*\\(\\s*${escapeRegExp(identifier)}\\b`).test(content);
+  return new RegExp(`\\b(?:expect|assert(?:\\.[A-Za-z_$][\\w$]*)?)\\s*\\(\\s*${escapeRegExp(identifier)}\\b`).test(content);
 }
 
 function isIdentifierCalled(content, identifier) {

@@ -617,6 +617,40 @@ export function auditKotlin(files) {
     assert.deepEqual(audit.untestedCandidates, []);
   });
 
+  it("tracks inline and assigned-result assertions through assert APIs", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-js-assert-api-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "src"), { recursive: true });
+    fs.mkdirSync(path.join(root, "test"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "package.json"),
+      JSON.stringify({ scripts: { test: "vitest --run" }, devDependencies: { vitest: "latest" } })
+    );
+    fs.writeFileSync(
+      path.join(root, "src", "parser.ts"),
+      `export function parse(value) {\n  if (value) return { value };\n  return { value: "empty" };\n}\n`
+    );
+    fs.writeFileSync(
+      path.join(root, "src", "validator.ts"),
+      `export function validate(value) {\n  if (!value) throw new Error("missing");\n  return true;\n}\n`
+    );
+    fs.writeFileSync(
+      path.join(root, "test", "behavior.test.ts"),
+      `import assert from "node:assert/strict";\nimport { parse } from "../src/parser";\nimport { validate } from "../src/validator";\nconst result = parse("value");\nassert.equal(result.value, "value");\nassert.throws(() => validate(""));\n`
+    );
+
+    const audit = auditJavaScriptRepo(root);
+
+    assert.deepEqual(
+      audit.coveredButRisky.map((target) => [target.path, target.existingTestEvidence[0].usage]),
+      [
+        ["src/parser.ts", "asserted"],
+        ["src/validator.ts", "asserted"]
+      ]
+    );
+    assert.deepEqual(audit.untestedCandidates, []);
+  });
+
   it("matches tests to source modules re-exported by a relative barrel", (t) => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-js-barrel-tests-"));
     t.after(() => fs.rmSync(root, { recursive: true, force: true }));
