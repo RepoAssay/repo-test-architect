@@ -67,6 +67,24 @@ const MARKERS = [
     languages: ["swift"]
   },
   {
+    fileName: "MODULE.bazel",
+    ecosystem: "bazel",
+    languages: ["swift"],
+    requiresSwiftRules: true
+  },
+  {
+    fileName: "WORKSPACE",
+    ecosystem: "bazel",
+    languages: ["swift"],
+    requiresSwiftRules: true
+  },
+  {
+    fileName: "WORKSPACE.bazel",
+    ecosystem: "bazel",
+    languages: ["swift"],
+    requiresSwiftRules: true
+  },
+  {
     directoryExtension: ".xcodeproj",
     ecosystem: "apple",
     languages: ["swift", "objective-c"]
@@ -110,6 +128,7 @@ const MARKERS = [
  * @property {string} [directoryExtension]
  * @property {string} ecosystem
  * @property {string[]} languages
+ * @property {boolean} [requiresSwiftRules]
  *
  * @typedef {object} ProjectMarkerGroup
  * @property {string} root
@@ -150,7 +169,7 @@ const MARKERS = [
 export function getProjectDetectionRules() {
   return {
     schemaVersion: "project-detection-rules/v1",
-    markers: MARKERS.map((marker) => ({
+    markers: MARKERS.map(({ requiresSwiftRules: _requiresSwiftRules, ...marker }) => ({
       ...marker,
       languages: [...marker.languages]
     })),
@@ -208,6 +227,7 @@ function normalizeProjectPattern(pattern) {
  */
 function collectMarkerGroups(root) {
   const groups = new Map();
+  const swiftBazelRoots = new Map();
 
   function visit(current) {
     for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
@@ -230,7 +250,7 @@ function collectMarkerGroups(root) {
         candidate.fileName === entry.name ||
         (candidate.extension && entry.name.endsWith(candidate.extension))
       );
-      if (!marker) continue;
+      if (!marker || !isApplicableMarker(current, marker, swiftBazelRoots)) continue;
 
       addMarkerGroup(groups, root, current, entry.name, marker);
     }
@@ -238,6 +258,35 @@ function collectMarkerGroups(root) {
 
   visit(root);
   return groups;
+}
+
+function isApplicableMarker(current, marker, swiftBazelRoots) {
+  if (!marker.requiresSwiftRules) return true;
+  if (!swiftBazelRoots.has(current)) swiftBazelRoots.set(current, containsSwiftBazelProject(current));
+  return swiftBazelRoots.get(current);
+}
+
+function containsSwiftBazelProject(root) {
+  let hasSwiftSource = false;
+  let hasSwiftRule = false;
+
+  function visit(current) {
+    for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
+      if (entry.isDirectory()) {
+        if (!IGNORED_DIRECTORIES.has(entry.name)) visit(path.join(current, entry.name));
+        continue;
+      }
+      if (entry.name.endsWith(".swift")) hasSwiftSource = true;
+      if (entry.name === "BUILD" || entry.name === "BUILD.bazel") {
+        const content = fs.readFileSync(path.join(current, entry.name), "utf8");
+        if (/\bswift_(?:library|binary|test)\s*\(/.test(content)) hasSwiftRule = true;
+      }
+      if (hasSwiftSource && hasSwiftRule) return;
+    }
+  }
+
+  visit(root);
+  return hasSwiftSource && hasSwiftRule;
 }
 
 /**
