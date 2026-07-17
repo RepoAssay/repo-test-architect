@@ -15,7 +15,7 @@
       "apple-xcode",
       "swiftui"
     ],
-    "testCommand": "xcodebuild test -scheme CheckoutApp -testPlan CheckoutAppTests",
+    "testCommand": "xcodebuild test -workspace CheckoutApp.xcworkspace -scheme CheckoutApp -testPlan CheckoutAppTests",
     "detectedConventions": [
       "*Tests.swift files"
     ],
@@ -24,6 +24,7 @@
     ],
     "setupSignals": [
       "xcode project",
+      "xcode workspace",
       "xcode shared scheme",
       "xcode test plan",
       "xcode scheme test plan"

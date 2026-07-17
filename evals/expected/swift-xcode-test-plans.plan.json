@@ -2,7 +2,7 @@
   "schemaVersion": "plan/v1",
   "summary": {
     "confidence": "high",
-    "verificationCommand": "xcodebuild test -scheme CheckoutApp -testPlan CheckoutAppTests",
+    "verificationCommand": "xcodebuild test -workspace CheckoutApp.xcworkspace -scheme CheckoutApp -testPlan CheckoutAppTests",
     "blockerCount": 0,
     "addTestCount": 0,
     "extendTestCount": 1,

@@ -99,6 +99,7 @@ describe("docs links", () => {
     assert.ok(docs.includes("| `package.json` | `javascript` | `javascript`, `typescript` | Supported by `javascript` |"));
     assert.ok(docs.includes("| `Package.swift` | `swift` | `swift` | Supported by experimental `swift` |"));
     assert.ok(docs.includes("| `*.xcodeproj` | `apple` | `swift`, `objective-c` | Supported by experimental `swift` |"));
+    assert.ok(docs.includes("| `*.xcworkspace` | `apple` | `swift`, `objective-c` | Supported by experimental `swift` |"));
     assert.ok(docs.includes("| `pom.xml` | `jvm` | `java`, `kotlin` | Supported by experimental `kotlin` |"));
     assert.ok(docs.includes("| `build.gradle.kts` | `jvm` | `kotlin`, `java` | Supported by experimental `kotlin` |"));
     assert.ok(docs.includes("| `pyproject.toml` | `python` | `python` | Supported by experimental `python` |"));
