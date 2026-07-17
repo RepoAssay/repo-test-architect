@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 const SOURCE_EXTENSIONS = [".swift", ".m", ".mm"];
+const GENERIC_SOURCE_BASENAMES = new Set(["common", "handler", "helpers", "main", "types", "utilities", "utility", "utils"]);
 
 export function auditSwiftRepo(root, options = {}) {
   const files = readRepoFiles(root);
@@ -384,6 +385,17 @@ function classifySourceFile(file, sourceGraph) {
     );
   }
 
+  if (/\bmacro\s+[A-Za-z_][A-Za-z0-9_]*[\s\S]*#externalMacro\s*\(/.test(content)) {
+    return skipped(
+      "macro-declaration",
+      ["external-macro-declaration"],
+      2,
+      5,
+      "External macro declarations expose compiler wiring but do not contain the expansion behavior themselves.",
+      "Cover through macro expansion tests against the implementation target and representative client compilation."
+    );
+  }
+
   if (isSwiftUIView(content)) {
     return skipped(
       "ui-view",
@@ -588,20 +600,27 @@ function findExistingTestEvidence(sourcePath, testFiles, sourceGraph, sourceSymb
       }];
     }
     if (testBase !== sourceBase) return [];
+    if (GENERIC_SOURCE_BASENAMES.has(sourceBase.toLowerCase()) && !testExplicitlyMatchesSourceOwner(testFile, sourceOwner, sourceGraph)) return [];
     return [{ testPath: testFile.path, kind: "filename-convention", strength: "naming" }];
   });
 }
 
 function testMatchesSourceOwner(testFile, sourceOwner, sourceGraph) {
   if (!sourceOwner) return true;
+  if (testExplicitlyMatchesSourceOwner(testFile, sourceOwner, sourceGraph)) return true;
+  if (sourceGraph.testDependencies.has(testFile.path)) return false;
+  return inferTestOwner(testFile.path) ? false : true;
+}
+
+function testExplicitlyMatchesSourceOwner(testFile, sourceOwner, sourceGraph) {
+  if (!sourceOwner) return false;
   const normalizedSourceOwner = normalizeModuleName(sourceOwner);
   const importedModules = collectImportedModules(testFile.content).map(normalizeModuleName);
   if (importedModules.includes(normalizedSourceOwner)) return true;
   const declaredDependencies = [...(sourceGraph.testDependencies.get(testFile.path) ?? [])].map(normalizeModuleName);
   if (declaredDependencies.includes(normalizedSourceOwner)) return true;
-  if (sourceGraph.testDependencies.has(testFile.path)) return false;
   const testOwner = inferTestOwner(testFile.path);
-  return testOwner ? normalizeModuleName(testOwner) === normalizedSourceOwner : true;
+  return testOwner ? normalizeModuleName(testOwner) === normalizedSourceOwner : false;
 }
 
 function inferSourceOwner(currentPath) {

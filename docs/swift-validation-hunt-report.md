@@ -1,0 +1,74 @@
+# Swift Validation Hunt Report
+
+This report mirrors the JavaScript/TypeScript real-repository workflow for the supported Swift adapter. The deterministic validation finder ranks active public repositories by exact root evidence rather than relying on topics alone, then selected repositories are shallow-cloned and audited locally without uploading source or running their own test suites.
+
+## Discovery Profiles
+
+The repository finder now separates the major supported and legacy Swift shapes:
+
+| Profile | Required root evidence | Validation purpose |
+| --- | --- | --- |
+| `swift` | `Package.swift`, with an additional signal for root `Tests` | conventional SwiftPM packages |
+| `swiftui-xcode` | checked-in `.xcodeproj` or `.xcworkspace` | application layout, schemes, SwiftUI, and app test folders |
+| `swift-vapor` | SwiftPM plus Vapor product or repository markers | server routes, middleware, commands, Fluent, and integration tests |
+| `swift-bazel` | `MODULE.bazel` or workspace content referencing rules_swift/Swift rules | Bazel ownership, fixtures, macros, and `swift_test` |
+| `swift-macro` | SwiftPM macro or plugin declarations | external declarations, implementation targets, and expansion tests |
+| `swift-legacy` | Podfile and/or Xcode project/workspace | older CocoaPods and mixed project layouts |
+
+Example searches:
+
+```powershell
+npm run validation:repos -- --profile swiftui-xcode,swift-vapor,swift-macro --min-stars 50
+npm run validation:repos -- --profile swift-bazel --min-stars 0 --pushed-since 2024-01-01
+```
+
+The SwiftUI/Xcode search surfaced maintained application candidates including FineTune, XcodesApp, Swiftfin, IceCubesApp, and CopilotForXcode. The Bazel profile deliberately searches Starlark-primary repositories because canonical rules_swift workspaces are rarely classified by GitHub as Swift-primary.
+
+## Selected Public Probes
+
+| Repository | Audited commit | Role | Frameworks | Command | Untested | Covered | Skipped | Recommended | High-risk notes |
+| --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: |
+| [FineTune](https://github.com/ronitsingh10/FineTune) | `2285279d36d3f8115c1c2d4aecd904f1bdf96a51` | compact maintained SwiftUI/Xcode application | Swift Testing | `xcodebuild test -project FineTune.xcodeproj -scheme FineTune` | 40 | 46 | 65 | 86 | 3 |
+| [Swift Package Index Server](https://github.com/SwiftPackageIndex/SwiftPackageIndex-Server) | `26943bfd3e62f29348e6a06722ba5fcd9dc11d58` | production Vapor/Fluent service | SnapshotTesting, Swift Testing, VaporTesting | `swift test` | 90 | 94 | 166 | 184 | 77 |
+| [ReerCodable](https://github.com/reers/ReerCodable) | `9e9edc29e1aa6c6c644f5761737506cc243236f7` | macro declarations, implementations, and expansion tests | Swift Testing, XCTest | `swift test` | 17 | 22 | 15 | 39 | 0 |
+| [rules_swift](https://github.com/bazelbuild/rules_swift) | `4428a622d5127737fda3d55752659a657216281a` | canonical Bazel/rules_swift workspace | Swift Testing, XCTest | `bazel test //...` | 29 | 5 | 102 | 34 | 0 |
+| [Quick](https://github.com/Quick/Quick) | `2b4547b230e94d84320724fd6df65e418b058be2` | maintained framework with older Xcode/CocoaPods compatibility structure | Nimble, Quick, XCTest | `swift test` | 14 | 21 | 35 | 35 | 2 |
+
+All five profiles are high confidence and report no blockers. These are adapter audits, not claims that the repositories' own test suites pass at the pinned commits.
+
+## Local No-Meaningful-Tests Cohort
+
+Twelve neighboring `cg-*` Swift packages were also audited. Each currently contains at least one checked-in test source, but most are scaffold or placeholder suites and therefore behave like no-meaningful-tests repositories from the evidence graph.
+
+| Package | Swift files | Test files | Untested | Covered | Skipped | High-risk notes |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| `cg-account` | 6 | 1 | 2 | 0 | 2 | 2 |
+| `cg-apienvironment` | 3 | 1 | 0 | 0 | 1 | 0 |
+| `cg-bff` | 65 | 1 | 24 | 0 | 36 | 20 |
+| `cg-chat` | 5 | 1 | 2 | 0 | 1 | 2 |
+| `cg-configuration` | 4 | 1 | 1 | 0 | 1 | 0 |
+| `cg-finance` | 6 | 1 | 2 | 0 | 2 | 2 |
+| `cg-magicthegathering` | 10 | 1 | 3 | 0 | 5 | 2 |
+| `cg-magicthegathering-ml` | 3 | 1 | 0 | 0 | 1 | 0 |
+| `cg-networking` | 14 | 5 | 4 | 1 | 3 | 2 |
+| `cg-persistence` | 6 | 1 | 4 | 0 | 0 | 0 |
+| `cg-pod` | 6 | 1 | 2 | 0 | 2 | 2 |
+| `cg-tcg-ml` | 3 | 1 | 0 | 0 | 1 | 0 |
+
+This cohort is useful for validating candidate value and placeholder-test honesty: framework detection must not turn an empty or unrelated suite into matching coverage.
+
+## Problems Exposed and Fixed
+
+The first pass found two concrete sources of audit noise:
+
+- unrelated Bazel fixtures named `main.swift` were credited through filename convention when custom Starlark macros left their module ownership unresolved; generic Swift filenames now require an import, declared dependency, or matching test/module owner
+- external macro declaration files containing only `#externalMacro` wiring were recommended as direct utility tests; they are now deferred to macro expansion and representative client-compilation tests while implementation targets remain analyzable
+
+After hardening, three unrelated rules_swift example entrypoints moved from covered to untested instead of borrowing a fixture's `main.swift` test name. ReerCodable's 15 external declaration files moved out of direct recommendations, reducing its recommendations from 54 to 39 without hiding the macro implementation sources.
+
+## Next Validation Pressure
+
+- Swift Package Index Server's 77 high-risk notes are the best next calibration target for broad database/command semantics and report density.
+- FineTune provides a compact app target for checking whether protocol-only references are weighted appropriately against concrete implementation behavior.
+- rules_swift still relies on custom Starlark macros that the static reader does not expand; its examples and fixtures should remain a recurring ownership probe.
+- The local `cg-*` packages should remain a no-meaningful-tests cohort even as real suites are added incrementally, because they expose the difference between framework presence and source coverage.

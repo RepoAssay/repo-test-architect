@@ -50,7 +50,58 @@ export const validationProfiles = {
     repositoryQuery: '"swift package"',
     language: "Swift",
     searches: [
-      { signal: "swift-package", file: "Package.swift", pattern: /swift-tools-version/ }
+      { signal: "swift-package", file: "Package.swift", pattern: /swift-tools-version/ },
+      { signal: "root-tests", entryPattern: /^Tests$/ }
+    ]
+  },
+  "swiftui-xcode": {
+    description: "SwiftUI applications with a checked-in Xcode project or workspace",
+    repositoryQuery: "swiftui",
+    language: "Swift",
+    searches: [
+      { signal: "xcode-project", entryPattern: /\.xcodeproj$/ },
+      { signal: "xcode-workspace", entryPattern: /\.xcworkspace$/ }
+    ]
+  },
+  "swift-vapor": {
+    description: "Server-side Swift packages using Vapor",
+    repositoryQuery: "vapor",
+    language: "Swift",
+    searches: [
+      { signal: "swift-package", file: "Package.swift", pattern: /swift-tools-version/ },
+      { signal: "vapor", file: "Package.swift", pattern: /(?:vapor\/vapor|product\(name:\s*"Vapor")/i },
+      { signal: "root-tests", entryPattern: /^Tests$/ }
+    ]
+  },
+  "swift-bazel": {
+    description: "Swift projects using Bazel and rules_swift",
+    repositoryQuery: "rules_swift",
+    language: "Starlark",
+    searches: [
+      { signal: "bazel-module", file: "MODULE.bazel", pattern: /rules_swift|swift_/i },
+      { signal: "bazel-workspace", file: "WORKSPACE", pattern: /rules_swift|swift_/i },
+      { signal: "bazel-workspace", file: "WORKSPACE.bazel", pattern: /rules_swift|swift_/i }
+    ]
+  },
+  "swift-macro": {
+    description: "Swift packages declaring macros or package plugins",
+    repositoryQuery: '"swift macro"',
+    language: "Swift",
+    searches: [
+      { signal: "swift-package", file: "Package.swift", pattern: /swift-tools-version/ },
+      { signal: "swift-macro", file: "Package.swift", pattern: /\.macro\s*\(/ },
+      { signal: "swift-plugin", file: "Package.swift", pattern: /\.plugin\s*\(/ },
+      { signal: "root-tests", entryPattern: /^Tests$/ }
+    ]
+  },
+  "swift-legacy": {
+    description: "Apple projects retaining CocoaPods-era project structure",
+    repositoryQuery: "cocoapods",
+    language: "Swift",
+    searches: [
+      { signal: "cocoapods", file: "Podfile", pattern: /\b(?:pod|target|platform)\b/ },
+      { signal: "xcode-project", entryPattern: /\.xcodeproj$/ },
+      { signal: "xcode-workspace", entryPattern: /\.xcworkspace$/ }
     ]
   },
   gradle: {
@@ -177,14 +228,16 @@ export function parseArgs(args, now = new Date()) {
   return options;
 }
 
-export function detectManifestSignals(searches, contentsByName) {
+export function detectManifestSignals(searches, contentsByName, entries = []) {
   const signals = [];
   const matchedPaths = [];
   for (const search of searches) {
-    const content = contentsByName[search.file];
-    if (content !== undefined && search.pattern.test(content)) {
+    const content = search.file ? contentsByName[search.file] : undefined;
+    const matchedFile = content !== undefined && search.pattern.test(content);
+    const matchedEntry = search.entryPattern && entries.some((entry) => search.entryPattern.test(entry.name));
+    if (matchedFile || matchedEntry) {
       signals.push(search.signal);
-      matchedPaths.push(search.file);
+      matchedPaths.push(search.file ?? entries.find((entry) => search.entryPattern.test(entry.name)).name);
     }
   }
   return { signals, matchedPaths };
@@ -283,7 +336,7 @@ function inspectRepositoryRoot(repo, searches, run) {
     const entries = JSON.parse(run(["api", `repos/${repo}/contents`]));
     const entryNames = new Set(entries.map((entry) => entry.name));
     const contentsByName = {};
-    for (const file of new Set(searches.map((search) => search.file))) {
+    for (const file of new Set(searches.map((search) => search.file).filter(Boolean))) {
       if (!entryNames.has(file)) continue;
       try {
         contentsByName[file] = run([
@@ -303,7 +356,7 @@ function inspectRepositoryRoot(repo, searches, run) {
         workflows = [];
       }
     }
-    return { ...inspectRootEntries(entries, workflows), ...detectManifestSignals(searches, contentsByName) };
+    return { ...inspectRootEntries(entries, workflows), ...detectManifestSignals(searches, contentsByName, entries) };
   } catch {
     return { hasCi: false, lockfiles: [], signals: [], matchedPaths: [] };
   }

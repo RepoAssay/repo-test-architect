@@ -56,6 +56,22 @@ describe("validation repository finder", () => {
     });
   });
 
+  it("detects exact root project and test directory signals", () => {
+    const searches = [
+      { signal: "xcode-project", entryPattern: /\.xcodeproj$/ },
+      { signal: "root-tests", entryPattern: /^Tests$/ }
+    ];
+
+    assert.deepEqual(detectManifestSignals(searches, {}, [
+      { name: "Checkout.xcodeproj", type: "dir" },
+      { name: "Tests", type: "dir" },
+      { name: "Examples", type: "dir" }
+    ]), {
+      signals: ["xcode-project", "root-tests"],
+      matchedPaths: ["Checkout.xcodeproj", "Tests"]
+    });
+  });
+
   it("defines browser and Bun validation profiles from exact package signals", () => {
     const packageJson = JSON.stringify({
       scripts: { test: "bun test" },
@@ -72,6 +88,21 @@ describe("validation repository finder", () => {
         matchedPaths: ["package.json"]
       });
     }
+  });
+
+  it("defines distinct Swift validation profiles for supported project shapes", () => {
+    assert.deepEqual(
+      ["swift", "swiftui-xcode", "swift-vapor", "swift-bazel", "swift-macro", "swift-legacy"]
+        .map((profile) => [profile, validationProfiles[profile].language]),
+      [
+        ["swift", "Swift"],
+        ["swiftui-xcode", "Swift"],
+        ["swift-vapor", "Swift"],
+        ["swift-bazel", "Starlark"],
+        ["swift-macro", "Swift"],
+        ["swift-legacy", "Swift"]
+      ]
+    );
   });
 
   it("detects root lockfiles and CI configuration", () => {
