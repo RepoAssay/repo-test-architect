@@ -9,6 +9,7 @@ const exampleRoot = path.resolve("examples/swift-spm-xctest");
 const swiftTestingRoot = path.resolve("examples/swift-spm-swift-testing");
 const quickNimbleRoot = path.resolve("examples/swift-spm-quick-nimble");
 const customPathsRoot = path.resolve("examples/swift-spm-custom-paths");
+const alternateRootsRoot = path.resolve("examples/swift-spm-alternate-roots");
 const bazelRoot = path.resolve("examples/swift-bazel-xctest");
 const vaporRoot = path.resolve("examples/vapor-service-tests");
 const vaporMongoRoot = path.resolve("examples/vapor-mongodb-boundaries");
@@ -265,6 +266,29 @@ final class ParserSpec: QuickSpec {
         kind: "filename-convention",
         strength: "naming"
       }
+    ]);
+  });
+
+  it("discovers SwiftPM targets in Source, src, and srcs search roots", () => {
+    const audit = auditSwiftRepo(alternateRootsRoot);
+
+    assert.equal(audit.profile.testCommand, "swift test");
+    assert.ok(audit.profile.setupSignals.includes("swiftpm alternate source root"));
+    assert.ok(audit.profile.existingTestLocations.includes("srcs/CheckoutCoreChecks"));
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), [
+      "Source/CheckoutCore/CheckoutParser.swift"
+    ]);
+    assert.deepEqual(audit.coveredButRisky[0].existingTestEvidence, [
+      {
+        testPath: "srcs/CheckoutCoreChecks/CheckoutBehavior.swift",
+        kind: "swift-symbol-reference",
+        strength: "referenced",
+        usage: "asserted"
+      }
+    ]);
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.path).sort(), [
+      "src/CheckoutSupport/RetryPolicy.swift",
+      "srcs/CheckoutFormatting/PriceFormatter.swift"
     ]);
   });
 

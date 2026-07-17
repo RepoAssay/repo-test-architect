@@ -75,6 +75,11 @@
     "path": "examples/swift-spm-custom-paths"
   },
   {
+    "name": "swift-spm-alternate-roots",
+    "adapter": "swift",
+    "path": "examples/swift-spm-alternate-roots"
+  },
+  {
     "name": "swift-bazel-xctest",
     "adapter": "swift",
     "path": "examples/swift-bazel-xctest"

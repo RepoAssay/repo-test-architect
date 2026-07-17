@@ -255,6 +255,7 @@ function detectSetupSignals(paths, packageText, bazelGraph) {
   if (packageText.includes(".target")) signals.add("swiftpm target");
   if (bazelGraph.hasCustomTargetPaths) signals.add("swiftpm custom target path");
   if (bazelGraph.hasExplicitSources) signals.add("swiftpm explicit sources");
+  if (bazelGraph.hasAlternateSourceRoots) signals.add("swiftpm alternate source root");
   if (bazelGraph.hasSwiftRules) signals.add("bazel swift rules");
   if (bazelGraph.hasSwiftTest) signals.add("bazel swift_test target");
   return [...signals];
@@ -708,6 +709,7 @@ function mergeSourceGraphs(...graphs) {
     hasSwiftTest: graphs.some((graph) => graph.hasSwiftTest),
     hasCustomTargetPaths: graphs.some((graph) => graph.hasCustomTargetPaths),
     hasExplicitSources: graphs.some((graph) => graph.hasExplicitSources),
+    hasAlternateSourceRoots: graphs.some((graph) => graph.hasAlternateSourceRoots),
     sourceOwners,
     testSources,
     ignoredSources,
@@ -717,7 +719,7 @@ function mergeSourceGraphs(...graphs) {
 
 function parseSwiftPmGraph(files) {
   const packageFile = files.find((file) => normalizePath(file.path) === "Package.swift");
-  const emptyGraph = { hasSwiftRules: false, hasSwiftTest: false, hasCustomTargetPaths: false, hasExplicitSources: false, sourceOwners: new Map(), testSources: new Set(), testDependencies: new Map(), ignoredSources: new Set() };
+  const emptyGraph = { hasSwiftRules: false, hasSwiftTest: false, hasCustomTargetPaths: false, hasExplicitSources: false, hasAlternateSourceRoots: false, sourceOwners: new Map(), testSources: new Set(), testDependencies: new Map(), ignoredSources: new Set() };
   if (!packageFile) return emptyGraph;
 
   const swiftPaths = files.map((file) => normalizePath(file.path)).filter((currentPath) => currentPath.endsWith(".swift"));
@@ -732,16 +734,18 @@ function parseSwiftPmGraph(files) {
   const ignoredSources = new Set();
   let hasCustomTargetPaths = false;
   let hasExplicitSourceLists = false;
+  let hasAlternateSourceRoots = false;
 
   for (const rule of rules) {
     const isTest = rule.kind === "testTarget";
     const declaredPath = readStringAttribute(rule.body, "path");
-    const targetPath = declaredPath ?? `${isTest ? "Tests" : "Sources"}/${rule.name}`;
+    const targetPath = declaredPath ?? inferDefaultSwiftPmTargetPath(rule.name, isTest, swiftPaths);
     const sourceEntries = readStringArrayAttribute(rule.body, "sources");
     const excludeEntries = readStringArrayAttribute(rule.body, "exclude");
     const hasExplicitSources = /\bsources\s*:/.test(rule.body);
     if (declaredPath) hasCustomTargetPaths = true;
     if (hasExplicitSources) hasExplicitSourceLists = true;
+    if (!declaredPath && !targetPath.startsWith(`${isTest ? "Tests" : "Sources"}/`)) hasAlternateSourceRoots = true;
     const ownedSources = resolveSwiftPmSources(targetPath, sourceEntries, excludeEntries, hasExplicitSources, swiftPaths);
     if (hasExplicitSources || excludeEntries.length > 0) {
       for (const swiftPath of swiftPaths.filter((candidate) => pathContains(targetPath, candidate))) {
@@ -760,7 +764,7 @@ function parseSwiftPmGraph(files) {
     }
   }
 
-  return { ...emptyGraph, hasCustomTargetPaths, hasExplicitSources: hasExplicitSourceLists, sourceOwners, testSources, testDependencies, ignoredSources };
+  return { ...emptyGraph, hasCustomTargetPaths, hasExplicitSources: hasExplicitSourceLists, hasAlternateSourceRoots, sourceOwners, testSources, testDependencies, ignoredSources };
 }
 
 function extractSwiftPmTargets(content) {
@@ -827,6 +831,13 @@ function resolveSwiftPmSources(targetPath, sourceEntries, excludeEntries, hasExp
     : swiftPaths.filter((swiftPath) => pathContains(normalizedTargetPath, swiftPath));
 
   return new Set(candidates.filter((swiftPath) => !excludeEntries.some((entry) => pathContains(path.posix.join(normalizedTargetPath, entry), swiftPath))));
+}
+
+function inferDefaultSwiftPmTargetPath(targetName, isTest, swiftPaths) {
+  const searchRoots = isTest ? ["Tests", "Sources", "Source", "src", "srcs"] : ["Sources", "Source", "src", "srcs"];
+  return searchRoots
+    .map((root) => `${root}/${targetName}`)
+    .find((candidate) => swiftPaths.some((swiftPath) => pathContains(candidate, swiftPath))) ?? `${isTest ? "Tests" : "Sources"}/${targetName}`;
 }
 
 function pathContains(ownerPath, currentPath) {
