@@ -17,7 +17,9 @@
       "service-layer"
     ],
     "testCommand": "npm run test",
-    "detectedConventions": [],
+    "detectedConventions": [
+      "*.test files"
+    ],
     "existingTestLocations": [
       "colocated with source"
     ],

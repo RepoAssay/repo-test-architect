@@ -33,7 +33,7 @@ This verifies the test suite, golden audit artifacts, model-consistency locks, p
 
 ### Current Readiness Verdict
 
-The deterministic gate passes locally. Repo Test Architect is therefore a private-alpha candidate for its explicitly detected and documented JavaScript/TypeScript stacks, subject to human review of the real-repository reports.
+The deterministic gate passes locally. Repo Test Architect is therefore a private-alpha candidate for the explicitly detected patterns in the [JavaScript/TypeScript Alpha Support](javascript-typescript-alpha-support.md) matrix, subject to human review of the real-repository reports.
 
 This verdict does not mean:
 
@@ -68,6 +68,7 @@ While repository GitHub Actions are disabled under the temporary $0-budget polic
 ### Common Stack Depth
 
 - JavaScript/TypeScript remains the supported proof point
+- the JavaScript/TypeScript support promise is bounded by the checked-in alpha matrix rather than a broad ecosystem claim
 - Kotlin/JVM, Swift, and Python remain experimental but have enough fixture variety to prove the shared audit model
 - adapter support is described by detected frameworks, commands, source layouts, and blockers instead of broad language claims
 - unsupported ecosystems are still reported honestly with detection evidence

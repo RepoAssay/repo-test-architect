@@ -143,8 +143,9 @@ function buildProfile(snapshot: JavaScriptRepoSnapshot): RepoProfile {
   const packageJson = snapshot.files.find((file) => normalizePath(file.path) === "package.json");
   const packageText = packageJson?.content ?? "";
   const packageData = parsePackageJson(packageText);
+  const packageManagers = detectPackageManagers(paths);
   const testFrameworks = detectTestFrameworks(snapshot.files, packageData);
-  const testCommand = detectTestCommand(packageData, testFrameworks);
+  const testCommand = detectTestCommand(packageData, testFrameworks, packageManagers);
   const existingTestLocations = detectExistingTestLocations(paths);
   const detectedConventions = detectConventions(paths);
   const setupSignals = detectSetupSignals(paths, packageData);
@@ -153,7 +154,7 @@ function buildProfile(snapshot: JavaScriptRepoSnapshot): RepoProfile {
   return {
     root: snapshot.root,
     languages: detectLanguages(paths),
-    packageManagers: detectPackageManagers(paths),
+    packageManagers,
     testFrameworks,
     architectures: detectArchitectures(paths, packageData),
     testCommand,
@@ -195,6 +196,7 @@ function detectPackageManagers(paths: string[]): string[] {
   if (paths.includes("package-lock.json")) managers.add("npm");
   if (paths.includes("pnpm-lock.yaml")) managers.add("pnpm");
   if (paths.includes("yarn.lock")) managers.add("yarn");
+  if (paths.includes("bun.lock") || paths.includes("bun.lockb")) managers.add("bun");
   if (paths.includes("package.json") && managers.size === 0) managers.add("npm");
 
   return [...managers];
@@ -220,8 +222,20 @@ function detectTestFrameworks(files: FileSnapshot[], packageData: PackageJsonDat
     frameworks.add("jest");
   }
 
+  if (paths.some((path) => path.includes("playwright.config")) || hasPackageDependency(packageData, "@playwright/test")) {
+    frameworks.add("playwright");
+  }
+
+  if (paths.some((path) => path.includes("cypress.config")) || hasPackageDependency(packageData, "cypress")) {
+    frameworks.add("cypress");
+  }
+
   if (files.some((file) => isTestFile(file.path) && usesNodeTest(file.content))) {
     frameworks.add("node-test");
+  }
+
+  if (files.some((file) => isTestFile(file.path) && usesBunTest(file.content))) {
+    frameworks.add("bun-test");
   }
 
   if (hasPackageDependency(packageData, "@testing-library/react")) {
@@ -246,13 +260,17 @@ function usesNodeTest(content: string): boolean {
   return /(?:from\s+|import\s+|require\(\s*)["']node:test["']/.test(content);
 }
 
-function detectTestCommand(packageData: { scripts?: Record<string, string> }, frameworks: string[]): string | undefined {
+function usesBunTest(content: string): boolean {
+  return /(?:from\s+|import\s+|require\(\s*)["']bun:test["']/.test(content);
+}
+
+function detectTestCommand(packageData: { scripts?: Record<string, string> }, frameworks: string[], packageManagers: string[]): string | undefined {
   const scripts = packageData.scripts ?? {};
 
-  for (const key of ["test", "test:unit", "vitest", "jest"]) {
+  for (const key of ["test", "test:unit", "test:e2e", "e2e", "vitest", "jest", "playwright", "cypress"]) {
     const command = scripts[key];
     if (command && !isPlaceholderTestScript(command)) {
-      return `npm run ${key}`;
+      return formatPackageScriptCommand(packageManagers, key);
     }
   }
 
@@ -261,8 +279,18 @@ function detectTestCommand(packageData: { scripts?: Record<string, string> }, fr
   if (frameworks.includes("node-test")) return "node --test";
   if (frameworks.includes("ava")) return "npx ava";
   if (frameworks.includes("mocha")) return "npx mocha";
+  if (frameworks.includes("bun-test")) return "bun test";
+  if (frameworks.includes("playwright")) return "npx playwright test";
+  if (frameworks.includes("cypress")) return "npx cypress run";
 
   return undefined;
+}
+
+function formatPackageScriptCommand(packageManagers: string[], script: string): string {
+  if (packageManagers.includes("bun")) return `bun run ${script}`;
+  if (packageManagers.includes("pnpm")) return `pnpm run ${script}`;
+  if (packageManagers.includes("yarn")) return `yarn ${script}`;
+  return `npm run ${script}`;
 }
 
 function isPlaceholderTestScript(command: string): boolean {
@@ -293,13 +321,16 @@ function detectExistingTestLocations(paths: string[]): string[] {
 function detectConventions(paths: string[]): string[] {
   const conventions = new Set<string>();
 
-  if (paths.some((path) => path.endsWith(".test.ts") || path.endsWith(".test.js"))) {
+  if (paths.some((path) => /\.test\.[cm]?[jt]sx?$/.test(path))) {
     conventions.add("*.test files");
   }
 
-  if (paths.some((path) => path.endsWith(".spec.ts") || path.endsWith(".spec.js"))) {
+  if (paths.some((path) => /\.spec\.[cm]?[jt]sx?$/.test(path))) {
     conventions.add("*.spec files");
   }
+
+  if (paths.some((path) => /\.cy\.[cm]?[jt]sx?$/.test(path))) conventions.add("*.cy files");
+  if (paths.some((path) => /_(?:test|spec)\.[cm]?[jt]sx?$/.test(path))) conventions.add("Bun-style test files");
 
   if (paths.some((path) => path.includes("__tests__/"))) {
     conventions.add("__tests__ folders");
@@ -324,6 +355,9 @@ function detectSetupSignals(paths: string[], packageData: PackageJsonData): stri
   if (paths.some((path) => path.includes(".mocharc"))) signals.add("mocha config");
   if (paths.some((path) => path.includes("vitest.config"))) signals.add("vitest config");
   if (paths.some((path) => path.includes("jest.config"))) signals.add("jest config");
+  if (paths.some((path) => path.includes("playwright.config"))) signals.add("playwright config");
+  if (paths.some((path) => path.includes("cypress.config"))) signals.add("cypress config");
+  if (paths.includes("bunfig.toml")) signals.add("bunfig");
   if (hasPackageDependency(packageData, "msw")) signals.add("msw");
   if (hasPackageDependency(packageData, "nock")) signals.add("nock");
   if (hasPackageDependency(packageData, "supertest")) signals.add("supertest");
@@ -699,7 +733,8 @@ function isTestFile(path: string): boolean {
   return (
     ((normalized.startsWith("test/") || normalized.startsWith("tests/")) && SOURCE_EXTENSIONS.some((extension) => normalized.endsWith(extension))) ||
     normalized.includes("__tests__/") ||
-    /\.(test|spec)\.[cm]?[jt]sx?$/.test(normalized)
+    /\.(test|spec|cy)\.[cm]?[jt]sx?$/.test(normalized) ||
+    /_(test|spec)\.[cm]?[jt]sx?$/.test(normalized)
   );
 }
 
@@ -731,7 +766,7 @@ function findExistingTestEvidence(
   }
 
   return testFiles.flatMap((testFile) => {
-      const testBase = basenameWithoutExtension(testFile.path).replace(/\.(test|spec)$/, "");
+      const testBase = basenameWithoutExtension(testFile.path).replace(/\.(test|spec|cy)$|_(test|spec)$/, "");
       const filenameMatch =
         hasFilenameMatch(testFile.path, testBase, sourceBase, sourceDir, baseNameCandidates, sourceBaseCandidates, qualifiedBaseCandidates) ||
         testFile.path.startsWith(`${sourceDir}/__tests__/${sourceBase}.`);
@@ -748,9 +783,15 @@ function findExistingTestEvidence(
         const viaUsage = transitiveImports.get(normalized);
         return [{ testPath: testFile.path, kind: "bounded-dependency", strength: "indirect" as const, ...(viaUsage ? { viaUsage } : {}) }];
       }
-      if (filenameMatch) return [{ testPath: testFile.path, kind: "filename-convention", strength: "naming" as const }];
+      if (filenameMatch && !isBrowserE2ETestFile(testFile)) {
+        return [{ testPath: testFile.path, kind: "filename-convention", strength: "naming" as const }];
+      }
       return [];
     });
+}
+
+function isBrowserE2ETestFile(testFile: FileSnapshot): boolean {
+  return /\.cy\.[cm]?[jt]sx?$/.test(testFile.path) || /["']@playwright\/test["']/.test(testFile.content);
 }
 
 function hasFilenameMatch(
