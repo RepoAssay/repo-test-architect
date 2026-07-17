@@ -1,0 +1,11 @@
+{
+  "name": "node-test-typescript",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "tsc --noEmit && node --experimental-transform-types --test test/orderParser.test.ts"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.0"
+  }
+}

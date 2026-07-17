@@ -232,13 +232,16 @@ Source:
 Result:
 
 - project detection found one supported JavaScript/TypeScript project from `package.json`
-- direct ranking found `npm run test` but reported a blocker: `No supported JS test framework detected.`
-- no candidates were emitted because the adapter could not identify a supported test framework
+- direct audit found a high-confidence Node test runner profile with `npm run test` and no blockers
+- `source/index.ts` is covered-but-risky through direct imports from `test/test.ts` and `test/type-tests.ts`
+- the two evidence links distinguish asserted runtime usage from called type-test usage
+- two low-runtime-behavior source modules are skipped instead of promoted as direct test targets
 
 Why it matters:
 
-- This is a useful non-owned blocker example. The tool correctly avoids pretending it can make high-confidence recommendations when test framework support is missing.
-- The report also shows a near-term adapter gap: common JS package test runners outside Vitest/Jest still need explicit detection before alpha claims should broaden.
+- This closes the previous false blocker for a non-owned TypeScript package using Node's built-in runner with an explicit TypeScript execution flag.
+- The probe also locks common `source/` roots and generically named files inside `test/`, rather than requiring `src/` plus `.test` or `.spec` filenames.
+- Runner support remains explicit rather than universal; unsupported frameworks should still produce blockers.
 
 ## Collectors Grimoire App Audit
 
@@ -287,7 +290,7 @@ Heuristic follow-up:
 The real-repo report gate is satisfied for private alpha validation:
 
 - at least three real repositories have local audit summaries: Repo Test Architect, `cg-bff`/Swift package family, and Collectors Grimoire
-- one JavaScript/TypeScript codebase is covered by the self-audit, while non-owned JavaScript/TypeScript coverage now includes the small `unjs/defu` library and the larger `h3js/h3` and `honojs/hono` HTTP frameworks
+- one JavaScript/TypeScript codebase is covered by the self-audit, while non-owned JavaScript/TypeScript coverage now includes the small `unjs/defu` and `sindresorhus/is` libraries plus the larger `h3js/h3` and `honojs/hono` HTTP frameworks
 - Swift package and Xcode-style app repos are covered
 - reports include findings, misses, and follow-up heuristics
 - no report requires source upload or remote service execution
