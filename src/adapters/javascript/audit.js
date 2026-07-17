@@ -1071,9 +1071,20 @@ function isIdentifierAsserted(content, identifier) {
   if (new RegExp(`\\bexpect\\s*\\(\\s*(?:\\(\\s*\\)\\s*=>\\s*)?(?:await\\s+)?(?:new\\s+)?${escaped}\\s*\\(`).test(content)) return true;
   const assignmentPattern = new RegExp(`\\b(?:const|let|var)\\s+([A-Za-z_$][\\w$]*)\\s*=\\s*(?:await\\s+)?(?:new\\s+)?${escaped}\\s*\\(`, "g");
   for (const match of content.matchAll(assignmentPattern)) {
-    if (new RegExp(`\\bexpect\\s*\\(\\s*${match[1].replace(/[$]/g, "\\$")}\\s*\\)`).test(content)) return true;
+    if (isResultIdentifierAsserted(content, match[1])) return true;
+  }
+  const destructuredAssignmentPattern = new RegExp(`\\b(?:const|let|var)\\s+\\{([^}]+)\\}\\s*=\\s*(?:await\\s+)?${escaped}\\s*\\(`, "g");
+  for (const match of content.matchAll(destructuredAssignmentPattern)) {
+    for (const part of match[1].split(",")) {
+      const local = part.trim().split(/\s*:\s*/).at(-1)?.trim();
+      if (local && isResultIdentifierAsserted(content, local)) return true;
+    }
   }
   return false;
+}
+
+function isResultIdentifierAsserted(content, identifier) {
+  return new RegExp(`\\bexpect\\s*\\(\\s*${escapeRegExp(identifier)}\\b`).test(content);
 }
 
 function isIdentifierCalled(content, identifier) {

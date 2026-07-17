@@ -1200,9 +1200,22 @@ function isIdentifierAsserted(content: string, identifier: string): boolean {
   const assignmentPattern = new RegExp(`\\b(?:const|let|var)\\s+([A-Za-z_$][\\w$]*)\\s*=\\s*(?:await\\s+)?(?:new\\s+)?${escaped}\\s*\\(`, "g");
   for (const match of content.matchAll(assignmentPattern)) {
     const resultName = match[1];
-    if (resultName && new RegExp(`\\bexpect\\s*\\(\\s*${resultName.replace(/[$]/g, "\\$")}\\s*\\)`).test(content)) return true;
+    if (resultName && isResultIdentifierAsserted(content, resultName)) return true;
+  }
+  const destructuredAssignmentPattern = new RegExp(`\\b(?:const|let|var)\\s+\\{([^}]+)\\}\\s*=\\s*(?:await\\s+)?${escaped}\\s*\\(`, "g");
+  for (const match of content.matchAll(destructuredAssignmentPattern)) {
+    const bindingList = match[1];
+    if (!bindingList) continue;
+    for (const part of bindingList.split(",")) {
+      const local = part.trim().split(/\s*:\s*/).at(-1)?.trim();
+      if (local && isResultIdentifierAsserted(content, local)) return true;
+    }
   }
   return false;
+}
+
+function isResultIdentifierAsserted(content: string, identifier: string): boolean {
+  return new RegExp(`\\bexpect\\s*\\(\\s*${escapeRegExp(identifier)}\\b`).test(content);
 }
 
 function isIdentifierCalled(content: string, identifier: string): boolean {
