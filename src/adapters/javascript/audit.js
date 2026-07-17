@@ -967,7 +967,8 @@ function collectModuleImports(content) {
   const imports = [];
   const contentWithoutImports = content
     .replace(/\bimport\s+[^;"']*?\s+from\s+["'][^"']+["']\s*;?/g, "")
-    .replace(/\b(?:const|let|var)\s+\{[^}]+\}\s*=\s*require\s*\(\s*["'][^"']+["']\s*\)\s*;?/g, "");
+    .replace(/\b(?:const|let|var)\s+\{[^}]+\}\s*=\s*require\s*\(\s*["'][^"']+["']\s*\)\s*;?/g, "")
+    .replace(/\b(?:const|let|var)\s+[A-Za-z_$][\w$]*\s*=\s*require\s*\(\s*["'][^"']+["']\s*\)\s*;?/g, "");
   const importPattern = /\bimport\s+([^;"']*?)\s+from\s+["']([^"']+)["']/g;
   for (const match of content.matchAll(importPattern)) {
     imports.push({
@@ -982,6 +983,16 @@ function collectModuleImports(content) {
   for (const match of content.matchAll(requirePattern)) {
     const importedNames = collectAliasedNames(match[1], ":");
     imports.push({ specifier: match[2], importedNames, usedImportedNames: collectUsedRequireNames(match[1], contentWithoutImports), calledImportedNames: collectCalledRequireNames(match[1], contentWithoutImports), assertedImportedNames: collectAssertedRequireNames(match[1], contentWithoutImports) });
+  }
+  const namespaceRequirePattern = /\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*require\s*\(\s*["']([^"']+)["']\s*\)/g;
+  for (const match of content.matchAll(namespaceRequirePattern)) {
+    imports.push({
+      specifier: match[2],
+      importedNames: collectNamespaceMemberNames(match[1], contentWithoutImports),
+      usedImportedNames: collectNamespaceMemberNames(match[1], contentWithoutImports),
+      calledImportedNames: collectNamespaceMemberNames(match[1], contentWithoutImports, isIdentifierCalled),
+      assertedImportedNames: collectNamespaceMemberNames(match[1], contentWithoutImports, isIdentifierAsserted)
+    });
   }
   const plainRequirePattern = /\brequire\s*\(\s*["']([^"']+)["']\s*\)/g;
   for (const match of content.matchAll(plainRequirePattern)) {
@@ -1034,10 +1045,16 @@ function collectAssertedImportClauseNames(clause, contentWithoutImports) {
 function collectNamespaceUsageNames(clause, content, predicate, names) {
   const namespace = clause.match(/\*\s+as\s+([A-Za-z_$][\w$]*)/)?.[1];
   if (!namespace) return;
+  for (const name of collectNamespaceMemberNames(namespace, content, predicate)) names.add(name);
+}
+
+function collectNamespaceMemberNames(namespace, content, predicate = isIdentifierReferenced) {
+  const names = new Set();
   const propertyPattern = new RegExp(`\\b${escapeRegExp(namespace)}\\.([A-Za-z_$][\\w$]*)`, "g");
   for (const match of content.matchAll(propertyPattern)) {
     if (predicate(content, `${namespace}.${match[1]}`)) names.add(match[1]);
   }
+  return names;
 }
 
 function collectAssertedRequireNames(clause, contentWithoutImports) {
@@ -1051,8 +1068,8 @@ function collectAssertedRequireNames(clause, contentWithoutImports) {
 
 function isIdentifierAsserted(content, identifier) {
   const escaped = escapeRegExp(identifier);
-  if (new RegExp(`\\bexpect\\s*\\(\\s*(?:\\(\\s*\\)\\s*=>\\s*)?(?:await\\s+)?${escaped}\\s*\\(`).test(content)) return true;
-  const assignmentPattern = new RegExp(`\\b(?:const|let|var)\\s+([A-Za-z_$][\\w$]*)\\s*=\\s*(?:await\\s+)?${escaped}\\s*\\(`, "g");
+  if (new RegExp(`\\bexpect\\s*\\(\\s*(?:\\(\\s*\\)\\s*=>\\s*)?(?:await\\s+)?(?:new\\s+)?${escaped}\\s*\\(`).test(content)) return true;
+  const assignmentPattern = new RegExp(`\\b(?:const|let|var)\\s+([A-Za-z_$][\\w$]*)\\s*=\\s*(?:await\\s+)?(?:new\\s+)?${escaped}\\s*\\(`, "g");
   for (const match of content.matchAll(assignmentPattern)) {
     if (new RegExp(`\\bexpect\\s*\\(\\s*${match[1].replace(/[$]/g, "\\$")}\\s*\\)`).test(content)) return true;
   }
@@ -1060,7 +1077,7 @@ function isIdentifierAsserted(content, identifier) {
 }
 
 function isIdentifierCalled(content, identifier) {
-  return new RegExp(`\\b${escapeRegExp(identifier)}\\s*\\(`).test(content);
+  return new RegExp(`\\b(?:new\\s+)?${escapeRegExp(identifier)}\\s*\\(`).test(content);
 }
 
 function escapeRegExp(value) {

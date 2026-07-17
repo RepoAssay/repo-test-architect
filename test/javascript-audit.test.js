@@ -572,6 +572,45 @@ export function auditKotlin(files) {
     );
   });
 
+  it("tracks constructor and CommonJS namespace usage", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-js-executable-imports-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "src"), { recursive: true });
+    fs.mkdirSync(path.join(root, "test"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "package.json"),
+      JSON.stringify({ scripts: { test: "vitest --run" }, devDependencies: { vitest: "latest" } })
+    );
+    fs.writeFileSync(
+      path.join(root, "src", "service.ts"),
+      `export class Service {\n  constructor(value) {\n    if (!value) throw new Error("missing");\n  }\n}\n`
+    );
+    fs.writeFileSync(
+      path.join(root, "src", "api.ts"),
+      `export function load(value) {\n  if (value) return value;\n  return "empty";\n}\n`
+    );
+    fs.writeFileSync(
+      path.join(root, "src", "parser.ts"),
+      `export function parse(value) {\n  if (value) return value;\n  return "empty";\n}\n`
+    );
+    fs.writeFileSync(
+      path.join(root, "test", "behavior.test.ts"),
+      `import { Service } from "../src/service";\nconst api = require("../src/api");\nconst parser = require("../src/parser");\nnew Service("value");\napi.load("value");\nexpect(parser.parse("value")).toBe("value");\n`
+    );
+
+    const audit = auditJavaScriptRepo(root);
+
+    assert.deepEqual(
+      audit.coveredButRisky.map((target) => [target.path, target.existingTestEvidence[0].usage]),
+      [
+        ["src/parser.ts", "asserted"],
+        ["src/api.ts", "called"],
+        ["src/service.ts", "called"]
+      ]
+    );
+    assert.deepEqual(audit.untestedCandidates, []);
+  });
+
   it("matches tests to source modules re-exported by a relative barrel", (t) => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-js-barrel-tests-"));
     t.after(() => fs.rmSync(root, { recursive: true, force: true }));

@@ -1073,7 +1073,8 @@ function collectModuleImports(content: string): ModuleImport[] {
   const imports: ModuleImport[] = [];
   const contentWithoutImports = content
     .replace(/\bimport\s+[^;"']*?\s+from\s+["'][^"']+["']\s*;?/g, "")
-    .replace(/\b(?:const|let|var)\s+\{[^}]+\}\s*=\s*require\s*\(\s*["'][^"']+["']\s*\)\s*;?/g, "");
+    .replace(/\b(?:const|let|var)\s+\{[^}]+\}\s*=\s*require\s*\(\s*["'][^"']+["']\s*\)\s*;?/g, "")
+    .replace(/\b(?:const|let|var)\s+[A-Za-z_$][\w$]*\s*=\s*require\s*\(\s*["'][^"']+["']\s*\)\s*;?/g, "");
   const importPattern = /\bimport\s+([^;"']*?)\s+from\s+["']([^"']+)["']/g;
   for (const match of content.matchAll(importPattern)) {
     const clause = match[1];
@@ -1096,6 +1097,18 @@ function collectModuleImports(content: string): ModuleImport[] {
       usedImportedNames: collectUsedRequireNames(names, contentWithoutImports),
       calledImportedNames: collectCalledRequireNames(names, contentWithoutImports),
       assertedImportedNames: collectAssertedRequireNames(names, contentWithoutImports)
+    });
+  }
+  const namespaceRequirePattern = /\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*require\s*\(\s*["']([^"']+)["']\s*\)/g;
+  for (const match of content.matchAll(namespaceRequirePattern)) {
+    const namespace = match[1];
+    const specifier = match[2];
+    if (namespace && specifier) imports.push({
+      specifier,
+      importedNames: collectNamespaceMemberNames(namespace, contentWithoutImports),
+      usedImportedNames: collectNamespaceMemberNames(namespace, contentWithoutImports),
+      calledImportedNames: collectNamespaceMemberNames(namespace, contentWithoutImports, isIdentifierCalled),
+      assertedImportedNames: collectNamespaceMemberNames(namespace, contentWithoutImports, isIdentifierAsserted)
     });
   }
   const plainRequirePattern = /\brequire\s*\(\s*["']([^"']+)["']\s*\)/g;
@@ -1155,11 +1168,21 @@ function collectNamespaceUsageNames(
 ): void {
   const namespace = clause.match(/\*\s+as\s+([A-Za-z_$][\w$]*)/)?.[1];
   if (!namespace) return;
+  for (const name of collectNamespaceMemberNames(namespace, content, predicate)) names.add(name);
+}
+
+function collectNamespaceMemberNames(
+  namespace: string,
+  content: string,
+  predicate: (content: string, identifier: string) => boolean = isIdentifierReferenced
+): Set<string> {
+  const names = new Set<string>();
   const propertyPattern = new RegExp(`\\b${escapeRegExp(namespace)}\\.([A-Za-z_$][\\w$]*)`, "g");
   for (const match of content.matchAll(propertyPattern)) {
     const property = match[1];
     if (property && predicate(content, `${namespace}.${property}`)) names.add(property);
   }
+  return names;
 }
 
 function collectAssertedRequireNames(clause: string, contentWithoutImports: string): Set<string> {
@@ -1173,8 +1196,8 @@ function collectAssertedRequireNames(clause: string, contentWithoutImports: stri
 
 function isIdentifierAsserted(content: string, identifier: string): boolean {
   const escaped = escapeRegExp(identifier);
-  if (new RegExp(`\\bexpect\\s*\\(\\s*(?:\\(\\s*\\)\\s*=>\\s*)?(?:await\\s+)?${escaped}\\s*\\(`).test(content)) return true;
-  const assignmentPattern = new RegExp(`\\b(?:const|let|var)\\s+([A-Za-z_$][\\w$]*)\\s*=\\s*(?:await\\s+)?${escaped}\\s*\\(`, "g");
+  if (new RegExp(`\\bexpect\\s*\\(\\s*(?:\\(\\s*\\)\\s*=>\\s*)?(?:await\\s+)?(?:new\\s+)?${escaped}\\s*\\(`).test(content)) return true;
+  const assignmentPattern = new RegExp(`\\b(?:const|let|var)\\s+([A-Za-z_$][\\w$]*)\\s*=\\s*(?:await\\s+)?(?:new\\s+)?${escaped}\\s*\\(`, "g");
   for (const match of content.matchAll(assignmentPattern)) {
     const resultName = match[1];
     if (resultName && new RegExp(`\\bexpect\\s*\\(\\s*${resultName.replace(/[$]/g, "\\$")}\\s*\\)`).test(content)) return true;
@@ -1183,7 +1206,7 @@ function isIdentifierAsserted(content: string, identifier: string): boolean {
 }
 
 function isIdentifierCalled(content: string, identifier: string): boolean {
-  return new RegExp(`\\b${escapeRegExp(identifier)}\\s*\\(`).test(content);
+  return new RegExp(`\\b(?:new\\s+)?${escapeRegExp(identifier)}\\s*\\(`).test(content);
 }
 
 function escapeRegExp(value: string): string {
