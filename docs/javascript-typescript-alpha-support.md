@@ -10,11 +10,11 @@ This matrix is the acceptance boundary for the JavaScript/TypeScript private alp
 | Browser E2E runners | Playwright and Cypress | dependencies, `playwright.config.*`, `cypress.config.*`, `*.spec.*`, and `*.cy.*` files |
 | Test libraries | React Testing Library and Supertest | package dependencies plus source and test structure |
 | Package managers | npm, pnpm, Yarn, and Bun | `package-lock.json`, `pnpm-lock.yaml`, `yarn.lock`, `bun.lock`, and legacy `bun.lockb` |
-| Source roots | `src/`, `source/`, and `lib/` | supported JavaScript and TypeScript module extensions |
+| Source roots | `src/`, `source/`, `lib/`, and declared root package entrypoints | supported module extensions plus `main`, `module`, `exports`, and `bin` paths |
 | Test locations | `test/`, `tests/`, `__tests__/`, colocated tests, and custom recognized test paths | directory and filename conventions |
 | Test names | `*.test.*`, `*.spec.*`, Cypress `*.cy.*`, and Bun `*_test.*`/`*_spec.*` | JavaScript, JSX, TypeScript, and TSX variants including CJS/ESM extensions |
 | Module relationships | relative imports, one-hop barrels, package entrypoints and exports, tsconfig paths, and bounded transitive imports | static import/export analysis with call and assertion usage where detectable |
-| Repository shapes | single packages and detected package/workspace boundaries | root package evidence; nested packages are audited independently |
+| Repository shapes | single packages, detected package/workspace boundaries, and owned nested test harnesses | nested production packages are audited independently; `test/`, `tests/`, and `__tests__/` harness packages remain with their owner |
 
 Recognized package scripts—including common unit and E2E names—take priority over inferred commands. The adapter emits package-manager-native script commands such as `npm run test`, `pnpm run test:e2e`, `yarn test`, or `bun run test`. When no usable script exists, it can infer the conventional runner command for a detected framework.
 
@@ -30,7 +30,7 @@ Recognition of a test framework is separate from evidence that a test covers a s
 
 - A direct import, declared package import, path alias, barrel reference, or bounded dependency can connect a test to source.
 - A conventional unit-test filename can provide weaker naming evidence.
-- Playwright and Cypress filenames alone do not count as module coverage. Browser E2E tests commonly exercise deployed behavior without importing application source, so the adapter requires a static source relationship before crediting one to a module.
+- Playwright and Cypress filenames alone do not count as module coverage. When either runner is present, filename-only evidence is suppressed across the repository because browser tests often use locally extended fixtures. The adapter requires a static source relationship before crediting one to a module.
 - Existing test evidence means “review this tested target for missing behavior,” not “coverage is complete.”
 
 ## Known Alpha Gaps
@@ -47,4 +47,4 @@ These gaps are candidates for evidence-driven hardening when real repositories s
 
 ## Validation Depth
 
-The deterministic suite locks framework, command, naming, package-manager, and evidence behavior. Checked-in fixtures cover the established Node, Express, and React paths, while public-repository reports exercise larger and older codebases. Playwright, Cypress, and Bun begin with focused adapter regressions; they should gain dedicated real-repository reports when browser/Bun validation becomes the next highest-value hardening area.
+The deterministic suite locks framework, command, naming, package-manager, package-entrypoint, nested-harness, and evidence behavior. Checked-in fixtures cover the established Node, Express, and React paths, while public-repository reports exercise larger and older codebases. The pinned [Browser E2E and Bun Audit Report](browser-bun-audit-report.md) covers Playwright MCP, Cypress Terminal Report, and Hono's Bun runtime path.

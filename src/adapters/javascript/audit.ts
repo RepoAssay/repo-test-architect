@@ -26,21 +26,22 @@ export function auditJavaScriptRepo(snapshot: JavaScriptRepoSnapshot): AuditResu
   const files = scopeToPackageRoot(snapshot.files);
   const profile = buildProfile({ ...snapshot, files });
   const changedPaths = snapshot.changedPaths ? new Set(snapshot.changedPaths.map(normalizePath)) : undefined;
-  const sourceFiles = files.filter((file) => isSourceFile(file.path) && isIncludedByChangedPaths(file.path, changedPaths));
   const moduleFiles = files.map((file) => analyzeModuleFile({ ...file, path: normalizePath(file.path) }));
   const testFiles = moduleFiles.filter((file) => isTestFile(file.path));
   const tsconfigData = resolveTsconfigData("tsconfig.json", files);
   const pathAliasEntries = findTsconfigPathAliasEntries(tsconfigData, moduleFiles);
   const boundedTransitiveImports = collectBoundedTransitiveImports(testFiles, moduleFiles, pathAliasEntries);
   const packageData = parsePackageJson(files.find((file) => normalizePath(file.path) === "package.json")?.content ?? "");
+  const packageSourcePaths = findDeclaredPackageSourcePaths(packageData, moduleFiles);
+  const sourceFiles = files.filter((file) => isAuditableSourceFile(file.path, packageSourcePaths) && isIncludedByChangedPaths(file.path, changedPaths));
   const packageEntryFile = findSourcePackageEntry(packageData, moduleFiles);
   const packageSubpathEntries = findSourcePackageSubpathEntries(packageData, moduleFiles);
   const untestedCandidates: AuditTarget[] = [];
   const coveredButRisky: AuditTarget[] = [];
   const skipped: SkippedTarget[] = [];
   const risks: string[] = [];
-  const runtimeSourcePaths = new Set(files.map((file) => normalizePath(file.path)).filter(isRuntimeJavaScriptSource));
-  const sourceJavaScriptRuntime = hasSourceJavaScriptRuntimeEntrypoint(files);
+  const runtimeSourcePaths = new Set(files.map((file) => normalizePath(file.path)).filter((currentPath) => isRuntimeJavaScriptSource(currentPath) || (packageSourcePaths.has(currentPath) && /\.(cjs|mjs|js|jsx)$/.test(currentPath))));
+  const sourceJavaScriptRuntime = hasSourceJavaScriptRuntimeEntrypoint(files) || [...packageSourcePaths].some((currentPath) => /\.(cjs|mjs|js|jsx)$/.test(currentPath));
 
   for (const file of sourceFiles) {
     const name = basenameWithoutExtension(file.path);
@@ -68,7 +69,8 @@ export function auditJavaScriptRepo(snapshot: JavaScriptRepoSnapshot): AuditResu
       packageName: typeof packageData.name === "string" ? packageData.name : undefined,
       packageEntryFile,
       packageSubpathEntries,
-      pathAliasEntries
+      pathAliasEntries,
+      browserE2EFrameworks: new Set(profile.testFrameworks.filter((framework) => framework === "playwright" || framework === "cypress"))
     });
     const existingTestPaths = existingTestEvidence.map((evidence) => evidence.testPath);
 
@@ -128,7 +130,8 @@ function scopeToPackageRoot(files: FileSnapshot[]): FileSnapshot[] {
   const nestedPackageRoots = files
     .map((file) => normalizePath(file.path))
     .filter((path) => path.endsWith("/package.json"))
-    .map((path) => path.slice(0, -"/package.json".length));
+    .map((path) => path.slice(0, -"/package.json".length))
+    .filter((nestedRoot) => !isTestHarnessRoot(nestedRoot));
 
   if (nestedPackageRoots.length === 0) return files;
 
@@ -138,6 +141,10 @@ function scopeToPackageRoot(files: FileSnapshot[]): FileSnapshot[] {
   });
 }
 
+function isTestHarnessRoot(path: string): boolean {
+  return ["test", "tests", "__tests__"].includes(path.split("/")[0]);
+}
+
 function buildProfile(snapshot: JavaScriptRepoSnapshot): RepoProfile {
   const paths = snapshot.files.map((file) => normalizePath(file.path));
   const packageJson = snapshot.files.find((file) => normalizePath(file.path) === "package.json");
@@ -145,7 +152,7 @@ function buildProfile(snapshot: JavaScriptRepoSnapshot): RepoProfile {
   const packageData = parsePackageJson(packageText);
   const packageManagers = detectPackageManagers(paths);
   const testFrameworks = detectTestFrameworks(snapshot.files, packageData);
-  const testCommand = detectTestCommand(packageData, testFrameworks, packageManagers);
+  const testCommand = detectTestCommand(packageData, testFrameworks, packageManagers, paths);
   const existingTestLocations = detectExistingTestLocations(paths);
   const detectedConventions = detectConventions(paths);
   const setupSignals = detectSetupSignals(paths, packageData);
@@ -264,7 +271,7 @@ function usesBunTest(content: string): boolean {
   return /(?:from\s+|import\s+|require\(\s*)["']bun:test["']/.test(content);
 }
 
-function detectTestCommand(packageData: { scripts?: Record<string, string> }, frameworks: string[], packageManagers: string[]): string | undefined {
+function detectTestCommand(packageData: { scripts?: Record<string, string> }, frameworks: string[], packageManagers: string[], paths: string[]): string | undefined {
   const scripts = packageData.scripts ?? {};
 
   for (const key of ["test", "test:unit", "test:e2e", "e2e", "vitest", "jest", "playwright", "cypress"]) {
@@ -280,10 +287,20 @@ function detectTestCommand(packageData: { scripts?: Record<string, string> }, fr
   if (frameworks.includes("ava")) return "npx ava";
   if (frameworks.includes("mocha")) return "npx mocha";
   if (frameworks.includes("bun-test")) return "bun test";
-  if (frameworks.includes("playwright")) return "npx playwright test";
-  if (frameworks.includes("cypress")) return "npx cypress run";
+  if (frameworks.includes("playwright")) {
+    const config = paths.find((path) => /(^|\/)playwright\.config\.[cm]?[jt]s$/.test(path));
+    return config?.includes("/") ? `npx playwright test --config ${quoteCommandPath(config)}` : "npx playwright test";
+  }
+  if (frameworks.includes("cypress")) {
+    const config = paths.find((path) => /(^|\/)cypress\.config\.[cm]?[jt]s$/.test(path));
+    return config?.includes("/") ? `npx cypress run --config-file ${quoteCommandPath(config)}` : "npx cypress run";
+  }
 
   return undefined;
+}
+
+function quoteCommandPath(value: string): string {
+  return /^[A-Za-z0-9_./-]+$/.test(value) ? value : JSON.stringify(value);
 }
 
 function formatPackageScriptCommand(packageManagers: string[], script: string): string {
@@ -679,6 +696,19 @@ function isSourceFile(path: string): boolean {
   return isInSourceRoot(normalized) && isJavaScriptModuleFile(normalized);
 }
 
+function isAuditableSourceFile(path: string, packageSourcePaths: Set<string>): boolean {
+  const normalized = normalizePath(path);
+  return isSourceFile(normalized) || packageSourcePaths.has(normalized);
+}
+
+function findDeclaredPackageSourcePaths(packageData: Record<string, unknown>, moduleFiles: FileSnapshot[]): Set<string> {
+  const entrypoints = collectPackageEntrypoints(packageData).map((entrypoint) => stripCurrentDirectoryPrefix(normalizePath(entrypoint)));
+  return new Set(moduleFiles.filter((file) => {
+    if (file.path.endsWith(".d.ts") || !isJavaScriptModuleFile(file.path)) return false;
+    return entrypoints.some((entrypoint) => moduleSpecifierTargetsSource("package.json", entrypoint, file.path));
+  }).map((file) => file.path));
+}
+
 function isJavaScriptModuleFile(path: string): boolean {
   const normalized = normalizePath(path);
   return SOURCE_EXTENSIONS.some((extension) => normalized.endsWith(extension)) && !isTestFile(normalized);
@@ -730,6 +760,7 @@ function collectEntrypointValue(value: unknown, entrypoints: string[]): void {
 
 function isTestFile(path: string): boolean {
   const normalized = normalizePath(path);
+  if (/(^|\/)(?:playwright|cypress)\.config\.[cm]?[jt]s$/.test(normalized) || /(^|\/)cypress\/support\//.test(normalized)) return false;
   return (
     ((normalized.startsWith("test/") || normalized.startsWith("tests/")) && SOURCE_EXTENSIONS.some((extension) => normalized.endsWith(extension))) ||
     normalized.includes("__tests__/") ||
@@ -743,7 +774,7 @@ function findExistingTestEvidence(
   testFiles: FileSnapshot[],
   moduleFiles: FileSnapshot[],
   boundedTransitiveImports: Map<string, Map<string, "called" | "asserted" | undefined>>,
-  packageEntry: { packageName?: string; packageEntryFile?: FileSnapshot; packageSubpathEntries: Map<string, FileSnapshot>; pathAliasEntries: Map<string, FileSnapshot> }
+  packageEntry: { packageName?: string; packageEntryFile?: FileSnapshot; packageSubpathEntries: Map<string, FileSnapshot>; pathAliasEntries: Map<string, FileSnapshot>; browserE2EFrameworks: Set<string> }
 ): Array<{ testPath: string; kind: string; strength: "naming" | "direct" | "referenced" | "indirect"; usage?: "called" | "asserted"; viaUsage?: "called" | "asserted" }> {
   const normalized = normalizePath(sourcePath);
   const sourceBase = basenameWithoutExtension(normalized);
@@ -783,15 +814,15 @@ function findExistingTestEvidence(
         const viaUsage = transitiveImports.get(normalized);
         return [{ testPath: testFile.path, kind: "bounded-dependency", strength: "indirect" as const, ...(viaUsage ? { viaUsage } : {}) }];
       }
-      if (filenameMatch && !isBrowserE2ETestFile(testFile)) {
+      if (filenameMatch && !isBrowserE2ETestFile(testFile, packageEntry.browserE2EFrameworks)) {
         return [{ testPath: testFile.path, kind: "filename-convention", strength: "naming" as const }];
       }
       return [];
     });
 }
 
-function isBrowserE2ETestFile(testFile: FileSnapshot): boolean {
-  return /\.cy\.[cm]?[jt]sx?$/.test(testFile.path) || /["']@playwright\/test["']/.test(testFile.content);
+function isBrowserE2ETestFile(testFile: FileSnapshot, browserE2EFrameworks?: Set<string>): boolean {
+  return (browserE2EFrameworks?.size ?? 0) > 0 || /(^|\/)cypress\/(?:e2e|integration|component)\//.test(testFile.path) || /\.cy\.[cm]?[jt]sx?$/.test(testFile.path) || /["']@playwright\/test["']/.test(testFile.content);
 }
 
 function hasFilenameMatch(
@@ -980,7 +1011,7 @@ function findSourcePackageEntry(packageData: Record<string, unknown>, moduleFile
 
   for (const candidate of candidates) {
     const entryFile = moduleFiles.find(
-      (file) => isSourceFile(file.path) && moduleSpecifierTargetsSource("package.json", candidate, file.path)
+      (file) => isJavaScriptModuleFile(file.path) && moduleSpecifierTargetsSource("package.json", candidate, file.path)
     );
     if (entryFile) return entryFile;
   }
