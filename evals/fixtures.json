@@ -70,6 +70,11 @@
     "path": "examples/swift-spm-quick-nimble"
   },
   {
+    "name": "swift-spm-custom-paths",
+    "adapter": "swift",
+    "path": "examples/swift-spm-custom-paths"
+  },
+  {
     "name": "swift-bazel-xctest",
     "adapter": "swift",
     "path": "examples/swift-bazel-xctest"

@@ -6,18 +6,20 @@ const SOURCE_EXTENSIONS = [".swift", ".m", ".mm"];
 export function auditSwiftRepo(root, options = {}) {
   const files = readRepoFiles(root);
   const bazelGraph = parseBazelSwiftGraph(files);
-  const profile = buildProfile(root, files, bazelGraph);
+  const swiftPmGraph = parseSwiftPmGraph(files);
+  const sourceGraph = mergeSourceGraphs(bazelGraph, swiftPmGraph);
+  const profile = buildProfile(root, files, sourceGraph);
   const changedPaths = options.changedPaths ? new Set(options.changedPaths.map((currentPath) => normalizeChangedPath(root, currentPath))) : undefined;
-  const testFiles = files.filter((file) => isTestFile(file.path, bazelGraph)).map((file) => ({ ...file, path: normalizePath(file.path) }));
+  const testFiles = files.filter((file) => isTestFile(file.path, sourceGraph)).map((file) => ({ ...file, path: normalizePath(file.path) }));
   const untestedCandidates = [];
   const coveredButRisky = [];
   const skipped = [];
   const risks = [];
 
-  for (const file of files.filter((candidate) => isSourceFile(candidate.path, bazelGraph) && isIncludedByChangedPaths(candidate.path, changedPaths))) {
+  for (const file of files.filter((candidate) => isSourceFile(candidate.path, sourceGraph) && isIncludedByChangedPaths(candidate.path, changedPaths))) {
     const name = basenameWithoutExtension(file.path);
     const classification = classifySourceFile(file);
-    const existingTestEvidence = findExistingTestEvidence(file.path, testFiles, bazelGraph);
+    const existingTestEvidence = findExistingTestEvidence(file.path, testFiles, sourceGraph);
     const existingTestPaths = existingTestEvidence.map((evidence) => evidence.testPath);
 
     if (classification.skipReason) {
@@ -217,7 +219,9 @@ function detectExistingTestLocations(paths, bazelGraph) {
     const testDirectory = firstTestDirectory(currentPath);
     if (testDirectory) locations.add(testDirectory);
   }
-  for (const currentPath of bazelGraph.testSources) locations.add(path.posix.dirname(currentPath));
+  for (const currentPath of bazelGraph.testSources) {
+    if (!currentPath.startsWith("Tests/")) locations.add(path.posix.dirname(currentPath));
+  }
   return [...locations];
 }
 
@@ -245,6 +249,8 @@ function detectSetupSignals(paths, packageText, bazelGraph) {
   if (packageText.includes(".testTarget")) signals.add("swiftpm test target");
   if (packageText.includes(".executableTarget")) signals.add("swiftpm executable target");
   if (packageText.includes(".target")) signals.add("swiftpm target");
+  if (bazelGraph.hasCustomTargetPaths) signals.add("swiftpm custom target path");
+  if (bazelGraph.hasExplicitSources) signals.add("swiftpm explicit sources");
   if (bazelGraph.hasSwiftRules) signals.add("bazel swift rules");
   if (bazelGraph.hasSwiftTest) signals.add("bazel swift_test target");
   return [...signals];
@@ -469,6 +475,7 @@ function isSourceFile(currentPath, bazelGraph) {
   return (
     normalized !== "Package.swift" &&
     !isTestFile(normalized, bazelGraph) &&
+    !bazelGraph.ignoredSources.has(normalized) &&
     SOURCE_EXTENSIONS.some((extension) => normalized.endsWith(extension))
   );
 }
@@ -478,22 +485,25 @@ function isTestFile(currentPath, bazelGraph) {
   return (isTestPath(normalized) || bazelGraph.testSources.has(normalized)) && normalized.endsWith(".swift");
 }
 
-function findExistingTestEvidence(sourcePath, testFiles, bazelGraph) {
+function findExistingTestEvidence(sourcePath, testFiles, sourceGraph) {
   const sourceBase = basenameWithoutExtension(sourcePath);
-  const sourceOwner = bazelGraph.sourceOwners.get(normalizePath(sourcePath)) ?? inferSourceOwner(sourcePath);
+  const sourceOwner = sourceGraph.sourceOwners.get(normalizePath(sourcePath)) ?? inferSourceOwner(sourcePath);
 
   return testFiles.flatMap((testFile) => {
     const testBase = basenameWithoutExtension(testFile.path).replace(/(?:Tests?|Spec)$/, "");
-    if (testBase !== sourceBase || !testMatchesSourceOwner(testFile, sourceOwner)) return [];
+    if (testBase !== sourceBase || !testMatchesSourceOwner(testFile, sourceOwner, sourceGraph)) return [];
     return [{ testPath: testFile.path, kind: "filename-convention", strength: "naming" }];
   });
 }
 
-function testMatchesSourceOwner(testFile, sourceOwner) {
+function testMatchesSourceOwner(testFile, sourceOwner, sourceGraph) {
   if (!sourceOwner) return true;
   const normalizedSourceOwner = normalizeModuleName(sourceOwner);
   const importedModules = collectImportedModules(testFile.content).map(normalizeModuleName);
   if (importedModules.includes(normalizedSourceOwner)) return true;
+  const declaredDependencies = [...(sourceGraph.testDependencies.get(testFile.path) ?? [])].map(normalizeModuleName);
+  if (declaredDependencies.includes(normalizedSourceOwner)) return true;
+  if (sourceGraph.testDependencies.has(testFile.path)) return false;
   const testOwner = inferTestOwner(testFile.path);
   return testOwner ? normalizeModuleName(testOwner) === normalizedSourceOwner : true;
 }
@@ -513,6 +523,151 @@ function inferTestOwner(currentPath) {
 
 function collectImportedModules(content) {
   return [...content.matchAll(/^\s*(?:@testable\s+)?import\s+([A-Za-z_][A-Za-z0-9_]*)\b/gm)].map((match) => match[1]);
+}
+
+function mergeSourceGraphs(...graphs) {
+  const testDependencies = new Map();
+  for (const graph of graphs) {
+    for (const [testPath, dependencies] of graph.testDependencies) {
+      testDependencies.set(testPath, new Set([...(testDependencies.get(testPath) ?? []), ...dependencies]));
+    }
+  }
+
+  const sourceOwners = new Map(graphs.flatMap((graph) => [...graph.sourceOwners]));
+  const testSources = new Set(graphs.flatMap((graph) => [...graph.testSources]));
+  const ignoredSources = new Set(graphs.flatMap((graph) => [...graph.ignoredSources]));
+  for (const ownedPath of [...sourceOwners.keys(), ...testSources]) ignoredSources.delete(ownedPath);
+
+  return {
+    hasSwiftRules: graphs.some((graph) => graph.hasSwiftRules),
+    hasSwiftTest: graphs.some((graph) => graph.hasSwiftTest),
+    hasCustomTargetPaths: graphs.some((graph) => graph.hasCustomTargetPaths),
+    hasExplicitSources: graphs.some((graph) => graph.hasExplicitSources),
+    sourceOwners,
+    testSources,
+    ignoredSources,
+    testDependencies
+  };
+}
+
+function parseSwiftPmGraph(files) {
+  const packageFile = files.find((file) => normalizePath(file.path) === "Package.swift");
+  const emptyGraph = { hasSwiftRules: false, hasSwiftTest: false, hasCustomTargetPaths: false, hasExplicitSources: false, sourceOwners: new Map(), testSources: new Set(), testDependencies: new Map(), ignoredSources: new Set() };
+  if (!packageFile) return emptyGraph;
+
+  const swiftPaths = files.map((file) => normalizePath(file.path)).filter((currentPath) => currentPath.endsWith(".swift"));
+  const rules = extractSwiftPmTargets(packageFile.content).map((rule) => ({
+    ...rule,
+    name: readStringAttribute(rule.body, "name")
+  })).filter((rule) => rule.name);
+  const targetNames = new Set(rules.map((rule) => rule.name));
+  const sourceOwners = new Map();
+  const testSources = new Set();
+  const testDependencies = new Map();
+  const ignoredSources = new Set();
+  let hasCustomTargetPaths = false;
+  let hasExplicitSourceLists = false;
+
+  for (const rule of rules) {
+    const isTest = rule.kind === "testTarget";
+    const declaredPath = readStringAttribute(rule.body, "path");
+    const targetPath = declaredPath ?? `${isTest ? "Tests" : "Sources"}/${rule.name}`;
+    const sourceEntries = readStringArrayAttribute(rule.body, "sources");
+    const excludeEntries = readStringArrayAttribute(rule.body, "exclude");
+    const hasExplicitSources = /\bsources\s*:/.test(rule.body);
+    if (declaredPath) hasCustomTargetPaths = true;
+    if (hasExplicitSources) hasExplicitSourceLists = true;
+    const ownedSources = resolveSwiftPmSources(targetPath, sourceEntries, excludeEntries, hasExplicitSources, swiftPaths);
+    if (hasExplicitSources || excludeEntries.length > 0) {
+      for (const swiftPath of swiftPaths.filter((candidate) => pathContains(targetPath, candidate))) {
+        if (!ownedSources.has(swiftPath)) ignoredSources.add(swiftPath);
+      }
+    }
+    const dependencies = new Set(readStringArrayAttribute(rule.body, "dependencies").filter((dependency) => targetNames.has(dependency)));
+
+    for (const sourcePath of ownedSources) {
+      if (isTest) {
+        testSources.add(sourcePath);
+        testDependencies.set(sourcePath, dependencies);
+      } else {
+        sourceOwners.set(sourcePath, rule.name);
+      }
+    }
+  }
+
+  return { ...emptyGraph, hasCustomTargetPaths, hasExplicitSources: hasExplicitSourceLists, sourceOwners, testSources, testDependencies, ignoredSources };
+}
+
+function extractSwiftPmTargets(content) {
+  return extractCallBodies(content, /\.(testTarget|executableTarget|target)\s*\(/g);
+}
+
+function extractCallBodies(content, matcher) {
+  const calls = [];
+  let match;
+
+  while ((match = matcher.exec(content)) !== null) {
+    let depth = 1;
+    let quote;
+    let escaped = false;
+    let index = matcher.lastIndex;
+    for (; index < content.length && depth > 0; index += 1) {
+      const character = content[index];
+      if (quote) {
+        if (escaped) escaped = false;
+        else if (character === "\\") escaped = true;
+        else if (character === quote) quote = undefined;
+      } else if (character === "\"" || character === "'") quote = character;
+      else if (character === "(") depth += 1;
+      else if (character === ")") depth -= 1;
+    }
+    calls.push({ kind: match[1], body: content.slice(matcher.lastIndex, index - 1) });
+    matcher.lastIndex = index;
+  }
+
+  return calls;
+}
+
+function readStringAttribute(body, attribute) {
+  return body.match(new RegExp(`\\b${attribute}\\s*:\\s*["']([^"']+)["']`))?.[1];
+}
+
+function readStringArrayAttribute(body, attribute) {
+  const start = body.search(new RegExp(`\\b${attribute}\\s*:\\s*\\[`));
+  if (start < 0) return [];
+  const openingBracket = body.indexOf("[", start);
+  let depth = 1;
+  let quote;
+  let escaped = false;
+  let index = openingBracket + 1;
+
+  for (; index < body.length && depth > 0; index += 1) {
+    const character = body[index];
+    if (quote) {
+      if (escaped) escaped = false;
+      else if (character === "\\") escaped = true;
+      else if (character === quote) quote = undefined;
+    } else if (character === "\"" || character === "'") quote = character;
+    else if (character === "[") depth += 1;
+    else if (character === "]") depth -= 1;
+  }
+
+  return [...body.slice(openingBracket + 1, index - 1).matchAll(/["']([^"']+)["']/g)].map((match) => match[1]);
+}
+
+function resolveSwiftPmSources(targetPath, sourceEntries, excludeEntries, hasExplicitSources, swiftPaths) {
+  const normalizedTargetPath = normalizePath(targetPath).replace(/^\.\//, "").replace(/\/$/, "");
+  const candidates = hasExplicitSources
+    ? swiftPaths.filter((swiftPath) => sourceEntries.some((entry) => pathContains(path.posix.join(normalizedTargetPath, entry), swiftPath)))
+    : swiftPaths.filter((swiftPath) => pathContains(normalizedTargetPath, swiftPath));
+
+  return new Set(candidates.filter((swiftPath) => !excludeEntries.some((entry) => pathContains(path.posix.join(normalizedTargetPath, entry), swiftPath))));
+}
+
+function pathContains(ownerPath, currentPath) {
+  const normalizedOwner = normalizePath(ownerPath).replace(/^\.\/?/, "").replace(/\/$/, "");
+  if (!normalizedOwner) return true;
+  return currentPath === normalizedOwner || currentPath.startsWith(`${normalizedOwner}/`);
 }
 
 function parseBazelSwiftGraph(files) {
@@ -551,34 +706,11 @@ function parseBazelSwiftGraph(files) {
     }
   }
 
-  return { hasSwiftRules, hasSwiftTest, sourceOwners, testSources };
+  return { hasSwiftRules, hasSwiftTest, sourceOwners, testSources, testDependencies: new Map(), ignoredSources: new Set() };
 }
 
 function extractBazelSwiftRules(content) {
-  const rules = [];
-  const matcher = /\b(swift_binary|swift_library|swift_test)\s*\(/g;
-  let match;
-
-  while ((match = matcher.exec(content)) !== null) {
-    let depth = 1;
-    let quote;
-    let escaped = false;
-    let index = matcher.lastIndex;
-    for (; index < content.length && depth > 0; index += 1) {
-      const character = content[index];
-      if (quote) {
-        if (escaped) escaped = false;
-        else if (character === "\\") escaped = true;
-        else if (character === quote) quote = undefined;
-      } else if (character === "\"" || character === "'") quote = character;
-      else if (character === "(") depth += 1;
-      else if (character === ")") depth -= 1;
-    }
-    rules.push({ kind: match[1], body: content.slice(matcher.lastIndex, index - 1) });
-    matcher.lastIndex = index;
-  }
-
-  return rules;
+  return extractCallBodies(content, /\b(swift_binary|swift_library|swift_test)\s*\(/g);
 }
 
 function readBazelStringAttribute(body, attribute) {

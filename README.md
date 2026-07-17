@@ -266,6 +266,8 @@ examples/
   swift-spm-xctest/
   swift-spm-swift-testing/
   swift-spm-quick-nimble/
+  swift-spm-custom-paths/
+  swift-bazel-xctest/
   vapor-service-tests/
   vapor-mongodb-boundaries/
 evals/

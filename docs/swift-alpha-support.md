@@ -10,14 +10,14 @@ This matrix defines the evidence boundary for moving the Swift adapter from an e
 | Test frameworks | Swift Testing, XCTest, Quick, Nimble, SnapshotTesting, and XCTVapor | imports, package dependencies, and product declarations |
 | Commands | `swift test`, scheme/test-plan-aware `xcodebuild test`, and `bazel test //...` | package, project, shared scheme, unambiguous test-plan, and `swift_test` markers |
 | Bazel target layout | `swift_binary`, `swift_library`, and `swift_test`, including test sources owned through direct dependencies | BUILD target sources, module names, direct dependencies, imports, and glob patterns |
-| SwiftPM source layout | conventional `Sources/<Target>/` and `Tests/<TestTarget>/` paths | source target and test target directory ownership |
+| SwiftPM source layout | conventional and manifest-declared custom target paths, source lists, excludes, and test dependencies | parsed target declarations plus source and test ownership |
 | Xcode source layout | app/framework source folders plus `*Tests` and `*UITests` folders | project markers and target-like directory names |
 | Test names | `*Test.swift`, `*Tests.swift`, and Quick-style `*Spec.swift` | target-qualified filename evidence |
 | Application boundaries | services, clients, repositories, storage, commands/workers, parsers, URL/query builders, and error mapping | path, declaration, branching, async/concurrency, encoding, and platform API signals |
 | Server boundaries | Vapor routes, middleware, lifecycle files, Fluent models, XCTVapor, and MongoDB operations | imports, protocols, calls, and package products |
 | UI boundaries | SwiftUI architecture, views, Xcode UI test folders, and snapshot support | imports, `View` declarations, test locations, and package products |
 
-Swift Package Manager conventionally collects sources and tests by target name under `Sources` and `Tests`, and each target forms a module or test suite. The adapter uses that target ownership to avoid matching the same source filename across unrelated modules. See the official [Creating a Swift package](https://docs.swift.org/swiftpm/documentation/packagemanagerdocs/creatingswiftpackage/) and [Target](https://docs.swift.org/swiftpm/documentation/packagedescription/target/) documentation.
+Swift Package Manager conventionally collects sources and tests by target name under `Sources` and `Tests`, while `path`, `sources`, and `exclude` can define custom layouts. Each target forms a module or test suite. The adapter parses those static declarations and test-target dependencies to avoid matching the same source filename across unrelated modules. See the official [Creating a Swift package](https://docs.swift.org/swiftpm/documentation/packagemanagerdocs/creatingswiftpackage/), [Target](https://docs.swift.org/swiftpm/documentation/packagedescription/target/), [path](https://docs.swift.org/swiftpm/documentation/packagedescription/target/path/), and [sources](https://docs.swift.org/swiftpm/documentation/packagedescription/target/sources/) documentation.
 
 Bazel's `swift_test` can own test sources directly or discover XCTest cases in direct dependencies. The adapter follows both shapes, including tests outside `Tests` directories, and uses `bazel test //...` as the conservative workspace command. See the official [rules_swift API](https://registry.bazel.build/docs/rules_swift) and [Bazel test command](https://bazel.build/docs/user-manual#running-tests) documentation.
 
@@ -26,7 +26,7 @@ Bazel's `swift_test` can own test sources directly or discover XCTest cases in d
 Swift source-to-test evidence currently remains structural:
 
 - a source/test basename relationship must use a recognized `Test`, `Tests`, or `Spec` suffix
-- conventional SwiftPM target directories, Xcode test directories, and `import`/`@testable import` statements qualify ownership
+- conventional or manifest-declared SwiftPM ownership, target dependencies, Xcode test directories, and `import`/`@testable import` statements qualify ownership
 - the same basename in another target is not credited unless the test imports or belongs to that target
 - emitted evidence uses `filename-convention` with `naming` strength
 - naming evidence does not prove that a symbol is referenced, called, asserted, or behaviorally covered
@@ -35,10 +35,9 @@ This normalized evidence now flows through audit, plan, explanation, findings, p
 
 ## Known Gaps Before Swift Alpha
 
-- custom SwiftPM target paths and explicit source lists are not parsed from the manifest
 - custom Starlark macros, generated BUILD files, `select()` expressions, aliases, and transitive Bazel test-source graphs are not resolved
 - source-to-test symbol references, calls, assertions, and macros are not resolved
-- test target dependencies are inferred from directory ownership and imports rather than a parsed package graph
+- computed Swift manifests, local variables that assemble targets, conditional target graphs, and dependency aliases are not resolved by the static manifest reader
 - multiple Xcode schemes or test plans remain ambiguous when no project-name or single-plan choice exists
 - UI tests, snapshot tests, and XCTVapor tests are detected, but runtime reachability is not mapped back to source modules
 - Objective-C is visible to the adapter and XCTest detection, but direct Objective-C source classification remains deferred
