@@ -10,6 +10,7 @@ const swiftTestingRoot = path.resolve("examples/swift-spm-swift-testing");
 const quickNimbleRoot = path.resolve("examples/swift-spm-quick-nimble");
 const customPathsRoot = path.resolve("examples/swift-spm-custom-paths");
 const alternateRootsRoot = path.resolve("examples/swift-spm-alternate-roots");
+const xcodeTestPlansRoot = path.resolve("examples/swift-xcode-test-plans");
 const bazelRoot = path.resolve("examples/swift-bazel-xctest");
 const vaporRoot = path.resolve("examples/vapor-service-tests");
 const vaporMongoRoot = path.resolve("examples/vapor-mongodb-boundaries");
@@ -1028,5 +1029,55 @@ final class SampleAppTests: XCTestCase {
 
     assert.equal(audit.profile.testCommand, "xcodebuild test -scheme SampleApp -testPlan SampleApp");
     assert.ok(audit.profile.setupSignals.includes("xcode test plan"));
+  });
+
+  it("does not guess between multiple Xcode test plans without a unique default", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-ambiguous-xctestplans-"));
+    const schemesRoot = path.join(root, "SampleApp.xcodeproj", "xcshareddata", "xcschemes");
+    fs.mkdirSync(schemesRoot, { recursive: true });
+    fs.mkdirSync(path.join(root, "SampleAppTests"), { recursive: true });
+
+    fs.writeFileSync(path.join(root, "SampleApp.xcodeproj", "project.pbxproj"), "{}\n");
+    fs.writeFileSync(
+      path.join(schemesRoot, "SampleApp.xcscheme"),
+      `<Scheme><TestAction><TestPlans>
+  <TestPlanReference reference="container:UnitTests.xctestplan"/>
+  <TestPlanReference reference="container:IntegrationTests.xctestplan"/>
+</TestPlans></TestAction></Scheme>\n`
+    );
+    fs.writeFileSync(path.join(root, "UnitTests.xctestplan"), "{}\n");
+    fs.writeFileSync(path.join(root, "IntegrationTests.xctestplan"), "{}\n");
+    fs.writeFileSync(
+      path.join(root, "SampleAppTests", "SampleAppTests.swift"),
+      "import XCTest\nfinal class SampleAppTests: XCTestCase { func testExample() {} }\n"
+    );
+
+    const audit = auditSwiftRepo(root);
+
+    assert.equal(audit.profile.testCommand, "xcodebuild test -scheme SampleApp");
+    assert.ok(audit.profile.setupSignals.includes("xcode test plan"));
+    assert.ok(!audit.profile.setupSignals.includes("xcode scheme test plan"));
+  });
+
+  it("selects the default test plan referenced by the matching Xcode scheme", () => {
+    const audit = auditSwiftRepo(xcodeTestPlansRoot);
+
+    assert.deepEqual(audit.profile.packageManagers, ["xcodebuild"]);
+    assert.equal(audit.profile.testCommand, "xcodebuild test -scheme CheckoutApp -testPlan CheckoutAppTests");
+    assert.ok(audit.profile.setupSignals.includes("xcode shared scheme"));
+    assert.ok(audit.profile.setupSignals.includes("xcode test plan"));
+    assert.ok(audit.profile.setupSignals.includes("xcode scheme test plan"));
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), [
+      "CheckoutApp/Services/SessionService.swift"
+    ]);
+    assert.deepEqual(audit.coveredButRisky[0].existingTestEvidence, [
+      {
+        testPath: "CheckoutAppTests/SessionServiceTests.swift",
+        kind: "swift-symbol-reference",
+        strength: "referenced",
+        usage: "asserted"
+      }
+    ]);
+    assert.deepEqual(audit.skipped.map((target) => target.path), ["CheckoutApp/Views/LoginView.swift"]);
   });
 });

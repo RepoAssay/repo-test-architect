@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Scheme version="1.7">
+  <TestAction>
+    <TestPlans>
+      <TestPlanReference reference="container:CheckoutAppTests.xctestplan" default="YES" />
+      <TestPlanReference reference="container:CheckoutAppUITests.xctestplan" default="NO" />
+    </TestPlans>
+  </TestAction>
+</Scheme>

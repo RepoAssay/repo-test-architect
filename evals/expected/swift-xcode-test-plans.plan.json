@@ -1,0 +1,63 @@
+{
+  "schemaVersion": "plan/v1",
+  "summary": {
+    "confidence": "high",
+    "verificationCommand": "xcodebuild test -scheme CheckoutApp -testPlan CheckoutAppTests",
+    "blockerCount": 0,
+    "addTestCount": 0,
+    "extendTestCount": 1,
+    "deferredCount": 1
+  },
+  "blockers": [],
+  "items": [
+    {
+      "id": "extend-test:CheckoutApp/Services/SessionService.swift",
+      "action": "extend-test",
+      "targetId": "CheckoutApp/Services/SessionService.swift",
+      "target": "SessionService",
+      "path": "CheckoutApp/Services/SessionService.swift",
+      "testLevel": "unit",
+      "priority": 2,
+      "riskReductionScore": 6,
+      "maintenanceCost": 4,
+      "rationale": [
+        "Service boundary",
+        "Existing test file detected; review missing edge cases"
+      ],
+      "sourceSignals": [
+        "service-boundary",
+        "matching-test"
+      ],
+      "existingTestPaths": [
+        "CheckoutAppTests/SessionServiceTests.swift"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "CheckoutAppTests/SessionServiceTests.swift",
+          "kind": "swift-symbol-reference",
+          "strength": "referenced",
+          "usage": "asserted"
+        }
+      ]
+    },
+    {
+      "id": "defer:CheckoutApp/Views/LoginView.swift",
+      "action": "defer",
+      "targetId": "CheckoutApp/Views/LoginView.swift",
+      "target": "LoginView",
+      "path": "CheckoutApp/Views/LoginView.swift",
+      "testLevel": "none",
+      "priority": -3,
+      "riskReductionScore": 2,
+      "maintenanceCost": 5,
+      "rationale": [
+        "SwiftUI views should only get direct tests when the repo already has UI or snapshot conventions.",
+        "Cover through view model, reducer, service, or UI/snapshot tests when a convention exists."
+      ],
+      "sourceSignals": [
+        "swiftui-view"
+      ],
+      "existingTestPaths": []
+    }
+  ]
+}

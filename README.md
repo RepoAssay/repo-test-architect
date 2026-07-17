@@ -269,6 +269,7 @@ examples/
   swift-spm-custom-paths/
   swift-spm-alternate-roots/
   swift-bazel-xctest/
+  swift-xcode-test-plans/
   vapor-service-tests/
   vapor-mongodb-boundaries/
 evals/
