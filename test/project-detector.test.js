@@ -96,6 +96,24 @@ describe("project detector", () => {
     });
   });
 
+  it("skips nested fixture projects while preserving direct fixture audits", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-workspace-fixtures-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "packages", "core"), { recursive: true });
+    fs.mkdirSync(path.join(root, "packages", "integration-tests", "fixtures", "dependency"), { recursive: true });
+    fs.mkdirSync(path.join(root, "packages", "core", "__fixtures__", "sample"), { recursive: true });
+    fs.writeFileSync(path.join(root, "package.json"), "{}\n");
+    fs.writeFileSync(path.join(root, "packages", "core", "package.json"), "{}\n");
+    fs.writeFileSync(path.join(root, "packages", "integration-tests", "fixtures", "dependency", "package.json"), "{}\n");
+    fs.writeFileSync(path.join(root, "packages", "core", "__fixtures__", "sample", "package.json"), "{}\n");
+
+    const workspace = detectProjects(root);
+    const fixture = detectProjects(path.join(root, "packages", "integration-tests", "fixtures", "dependency"));
+
+    assert.deepEqual(workspace.projects.map((project) => project.root), [".", "packages/core"]);
+    assert.deepEqual(fixture.projects.map((project) => project.root), ["."]);
+  });
+
   it("explains experimental JVM adapter matching", () => {
     const detection = detectProjects(path.resolve("examples/kotlin-junit-basic"));
 

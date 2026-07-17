@@ -41,16 +41,18 @@ The detector skips common dependency and build output directories:
 - `.gradle`
 - `.swiftpm`
 - `.venv`
+- `__fixtures__`
 - `bin`
 - `build`
 - `coverage`
 - `dist`
+- `fixtures`
 - `node_modules`
 - `obj`
 - `target`
 - `vendor`
 
-This avoids reporting generated or vendored output as independent projects.
+This avoids reporting generated, vendored, or nested dependency-fixture output as independent projects. A fixture directory audited as the repository root still detects its own root marker; only nested traversal is skipped.
 
 ## Output Contract
 

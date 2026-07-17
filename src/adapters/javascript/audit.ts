@@ -48,13 +48,6 @@ export function auditJavaScriptRepo(snapshot: JavaScriptRepoSnapshot): AuditResu
       runtimeSourcePaths,
       sourceJavaScriptRuntime
     });
-    const existingTestEvidence = findExistingTestEvidence(file.path, testFiles, moduleFiles, boundedTransitiveImports, {
-      packageName: typeof packageData.name === "string" ? packageData.name : undefined,
-      packageEntryFile,
-      packageSubpathEntries,
-      pathAliasEntries
-    });
-    const existingTestPaths = existingTestEvidence.map((evidence) => evidence.testPath);
 
     if (classification.skipReason) {
       skipped.push({
@@ -70,6 +63,14 @@ export function auditJavaScriptRepo(snapshot: JavaScriptRepoSnapshot): AuditResu
       });
       continue;
     }
+
+    const existingTestEvidence = findExistingTestEvidence(file.path, testFiles, moduleFiles, boundedTransitiveImports, {
+      packageName: typeof packageData.name === "string" ? packageData.name : undefined,
+      packageEntryFile,
+      packageSubpathEntries,
+      pathAliasEntries
+    });
+    const existingTestPaths = existingTestEvidence.map((evidence) => evidence.testPath);
 
     const target: AuditTarget = {
       id: file.path,

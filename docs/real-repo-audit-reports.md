@@ -14,6 +14,7 @@ The purpose is product validation, not regression locking. These reports record 
 | `h3js/h3` audit | TypeScript, Vitest | `h3js/h3` at `3eb3a57` | `findings-projects`, direct `javascript` adapter ranking | summarized below |
 | `honojs/hono` audit | TypeScript, Vitest | `honojs/hono` at `cda1af2` | `findings-projects`, direct `javascript` adapter ranking | summarized below |
 | `react-hook-form/react-hook-form` audit | TypeScript, Jest, React Testing Library | `react-hook-form/react-hook-form` at `521adfc` | direct `javascript` adapter audit and timing | summarized below |
+| `typescript-eslint/typescript-eslint` audit | TypeScript, Vitest, pnpm/Nx workspace | `typescript-eslint/typescript-eslint` at `c2386e4` | project detection, project audits, and timing | summarized below |
 | `expressjs/express` audit | JavaScript, Mocha, Supertest | `expressjs/express` at `ae6dd37` | direct `javascript` adapter audit | summarized below |
 | Collectors Grimoire app audit | Swift, Xcode app | `m-stenbe/Collectors-Grimoire` at `a2d4c54` | `findings-projects`, Xcode-style Swift detection | summarized below |
 
@@ -267,6 +268,29 @@ Why it matters:
 - Hook detection now runs before generic component and controller heuristics, but only for hook-shaped declarations inside detected React projects.
 - Precomputing static import analysis removes repeated parsing without weakening the conservative two-hop dependency boundary or dropping complete JSON evidence.
 
+## Workspace Probe: `typescript-eslint/typescript-eslint`
+
+Source:
+
+- repository: `typescript-eslint/typescript-eslint`
+- audited commit: `c2386e4` (`2026-07-16`, `chore(deps): update dependency prettier to v3.9.5 (#12486)`)
+
+Result:
+
+- initial detection reported 30 supported JavaScript/TypeScript projects from the pnpm/Nx workspace
+- nine package manifests under `packages/integration-tests/fixtures/*` were dependency fixtures rather than independently auditable projects, producing 18 meaningless setup blockers
+- treating nested `fixtures` and `__fixtures__` directories as detection traversal boundaries reduced the project graph to 21 roots while preserving direct audits when a fixture itself is passed as the repository root
+- four genuine auxiliary or no-test package blockers remain visible for the website-related packages and `tools/dummypkg`
+- the final project audit reports 43 untested candidates, 581 covered-but-risky targets, and 1,213 skipped targets
+- skipping test-evidence analysis for targets already classified as low-value reduced the full workspace audit from 50.7 seconds to 25.3 seconds; `packages/ast-spec` alone contains 843 skipped targets
+
+Why it matters:
+
+- Package manifests inside integration fixtures describe test inputs, not repository ownership boundaries. Reporting them as projects inflates audit coverage and blocker counts.
+- Direct fixture audits remain possible, so the traversal rule removes workspace noise without making fixture repositories unauditable.
+- Evidence matching cannot affect a skipped target's artifact, making the previous source-by-test analysis pure discarded work in type-heavy packages.
+- Project source-file stats now apply the same nested ownership and fixture boundaries, avoiding double counts from both workspace-root and package-root scans.
+
 ## Additional JavaScript Probe: `expressjs/express`
 
 Source:
@@ -336,7 +360,7 @@ Heuristic follow-up:
 The real-repo report gate is satisfied for private alpha validation:
 
 - at least three real repositories have local audit summaries: Repo Test Architect, `cg-bff`/Swift package family, and Collectors Grimoire
-- one JavaScript/TypeScript codebase is covered by the self-audit, while non-owned JavaScript/TypeScript coverage now includes the small `unjs/defu` and `sindresorhus/is` libraries, React Hook Form, Express, and the `h3js/h3` and `honojs/hono` HTTP frameworks
+- one JavaScript/TypeScript codebase is covered by the self-audit, while non-owned JavaScript/TypeScript coverage now includes the small `unjs/defu` and `sindresorhus/is` libraries, React Hook Form, the TypeScript ESLint monorepo, Express, and the `h3js/h3` and `honojs/hono` HTTP frameworks
 - Swift package and Xcode-style app repos are covered
 - reports include findings, misses, and follow-up heuristics
 - no report requires source upload or remote service execution
