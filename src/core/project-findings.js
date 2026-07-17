@@ -115,6 +115,9 @@ function isAuxiliaryProjectRoot(projectRoot) {
 function toTargetFinding(entry, target, category) {
   const existingTestPaths = target.existingTestPaths ?? [];
   const hasExistingTests = existingTestPaths.length > 0;
+  const evidenceReview = category === "weak-existing-coverage"
+    ? classifyExistingTestEvidence(target.existingTestEvidence)
+    : undefined;
   const title =
     category === "missing-coverage"
       ? `${target.name} lacks matching high-value coverage`
@@ -124,7 +127,7 @@ function toTargetFinding(entry, target, category) {
     id: `${entry.projectId}:${category}:${target.id}`,
     category,
     severity: target.risk === "high" ? "high" : "medium",
-    priority: target.riskReductionScore - target.maintenanceCost,
+    priority: target.riskReductionScore - target.maintenanceCost + (evidenceReview?.priorityAdjustment ?? 0),
     projectId: entry.projectId,
     projectRoot: entry.projectRoot,
     adapterId: entry.adapterId,
@@ -139,10 +142,30 @@ function toTargetFinding(entry, target, category) {
       `signals: ${target.signals.join(", ")}`,
       `risk: ${target.risk}`,
       `testability: ${target.testability}`,
+      ...(evidenceReview ? [`strongest coverage evidence: ${evidenceReview.label}`] : []),
       hasExistingTests ? `existing tests: ${existingTestPaths.join(", ")}` : "existing tests: none detected"
     ],
     existingTestPaths
   };
+}
+
+function classifyExistingTestEvidence(existingTestEvidence) {
+  if (!Array.isArray(existingTestEvidence) || existingTestEvidence.length === 0) {
+    return { label: "unknown provenance", priorityAdjustment: 0 };
+  }
+  if (existingTestEvidence.some((evidence) => evidence.usage === "asserted")) {
+    return { label: "asserted usage", priorityAdjustment: -3 };
+  }
+  if (existingTestEvidence.some((evidence) => evidence.usage === "called")) {
+    return { label: "called usage", priorityAdjustment: -2 };
+  }
+  if (existingTestEvidence.some((evidence) => evidence.strength === "direct")) {
+    return { label: "direct structural reachability", priorityAdjustment: -1 };
+  }
+  if (existingTestEvidence.some((evidence) => evidence.strength === "referenced")) {
+    return { label: "referenced structural reachability", priorityAdjustment: -1 };
+  }
+  return { label: "naming or bounded-indirect reachability", priorityAdjustment: 0 };
 }
 
 function toSkippedFinding(entry, target) {

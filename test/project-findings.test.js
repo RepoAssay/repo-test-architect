@@ -180,6 +180,78 @@ describe("project findings", () => {
     assert.ok(findings.findings.some((finding) => finding.category === "weak-existing-coverage"));
   });
 
+  it("ranks weak coverage by the strongest proven evidence", () => {
+    const evidenceKinds = [
+      {
+        name: "indirect",
+        evidence: [{ testPath: "test/behavior.test.ts", kind: "bounded-dependency", strength: "indirect" }],
+        priority: 3,
+        label: "strongest coverage evidence: naming or bounded-indirect reachability"
+      },
+      {
+        name: "structural",
+        evidence: [{ testPath: "test/behavior.test.ts", kind: "direct-relative-import", strength: "direct" }],
+        priority: 2,
+        label: "strongest coverage evidence: direct structural reachability"
+      },
+      {
+        name: "called",
+        evidence: [{ testPath: "test/behavior.test.ts", kind: "direct-relative-import", strength: "direct", usage: "called" }],
+        priority: 1,
+        label: "strongest coverage evidence: called usage"
+      },
+      {
+        name: "asserted",
+        evidence: [{ testPath: "test/behavior.test.ts", kind: "direct-relative-import", strength: "direct", usage: "asserted" }],
+        priority: 0,
+        label: "strongest coverage evidence: asserted usage"
+      }
+    ];
+    const findings = createProjectFindings({
+      schemaVersion: "project-audits/v1",
+      root: ".",
+      summary: { projectCount: 1, auditedProjectCount: 1, skippedProjectCount: 0 },
+      audits: [{
+        projectId: ".",
+        projectRoot: ".",
+        adapterId: "javascript",
+        adapterMatches: [],
+        audit: {
+          schemaVersion: "audit/v1",
+          profile: { confidence: "high", blockers: [] },
+          untestedCandidates: [],
+          coveredButRisky: evidenceKinds.map(({ name, evidence }) => ({
+            id: `src/${name}.ts`,
+            name,
+            path: `src/${name}.ts`,
+            kind: "utility",
+            signals: ["branching-logic", "matching-test"],
+            risk: "medium",
+            testability: "high",
+            recommendedTestLevel: "unit",
+            riskReductionScore: 7,
+            maintenanceCost: 4,
+            reasons: ["Branching logic"],
+            existingTestPaths: ["test/behavior.test.ts"],
+            existingTestEvidence: evidence
+          })),
+          skipped: [],
+          risks: []
+        }
+      }],
+      skippedProjects: []
+    });
+
+    assert.deepEqual(
+      findings.findings.map((finding) => ({
+        target: finding.target,
+        priority: finding.priority,
+        evidence: finding.evidence.find((item) => item.startsWith("strongest coverage evidence:"))
+      })),
+      evidenceKinds.map(({ name, priority, label }) => ({ target: name, priority, evidence: label }))
+    );
+  });
+
   it("defaults optional target arrays in project findings", () => {
     const findings = createProjectFindings({
       schemaVersion: "project-audits/v1",

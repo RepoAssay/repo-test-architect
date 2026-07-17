@@ -84,6 +84,7 @@ describe("model consistency runner", () => {
         ["polyglot-project-ranking", []],
         ["polyglot-project-stats", []],
         ["polyglot-project-summary", []],
+        ["project-findings-evidence-strength", []],
         ["project-findings-placement-split", []],
         ["project-placement-inferred-package-boundary", []],
         ["project-placement-split", []],
@@ -111,10 +112,10 @@ describe("model consistency runner", () => {
     assert.equal(summary.schemaVersion, "model-consistency-summary/v1");
     assert.equal(summary.profileName, "deterministic-baseline");
     assert.deepEqual(summary.summary, {
-      scenarioCount: 28,
-      passedScenarioCount: 28,
+      scenarioCount: 29,
+      passedScenarioCount: 29,
       failedScenarioCount: 0,
-      checkedFieldCount: 226,
+      checkedFieldCount: 230,
       failureCount: 0
     });
     assert.equal(summary.scenarios[4].scenarioId, "node-jest-service-plan");
@@ -132,8 +133,8 @@ describe("model consistency runner", () => {
     assert.equal(comparison.baselineProfile, "deterministic-baseline");
     assert.equal(comparison.candidateProfile, "local-small");
     assert.deepEqual(comparison.summary, {
-      scenarioCount: 28,
-      alignedScenarioCount: 28,
+      scenarioCount: 29,
+      alignedScenarioCount: 29,
       driftedScenarioCount: 0,
       missingScenarioCount: 0,
       unexpectedScenarioCount: 0,
@@ -175,12 +176,12 @@ describe("model consistency runner", () => {
     const comparison = compareModelConsistencySummaries(baseline, candidate);
 
     assert.deepEqual(comparison.summary, {
-      scenarioCount: 29,
-      alignedScenarioCount: 26,
+      scenarioCount: 30,
+      alignedScenarioCount: 27,
       driftedScenarioCount: 1,
       missingScenarioCount: 1,
       unexpectedScenarioCount: 1,
-      checkedFieldDelta: -71,
+      checkedFieldDelta: -75,
       failureDelta: 3
     });
     assert.deepEqual(
@@ -201,6 +202,7 @@ describe("model consistency runner", () => {
         ["polyglot-project-ranking", "aligned"],
         ["polyglot-project-stats", "aligned"],
         ["polyglot-project-summary", "aligned"],
+        ["project-findings-evidence-strength", "aligned"],
         ["project-findings-placement-split", "aligned"],
         ["project-placement-inferred-package-boundary", "aligned"],
         ["project-placement-split", "aligned"],

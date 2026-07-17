@@ -1,0 +1,76 @@
+{
+  "projectAudits": {
+    "schemaVersion": "project-audits/v1",
+    "root": ".",
+    "summary": {
+      "projectCount": 1,
+      "auditedProjectCount": 1,
+      "skippedProjectCount": 0
+    },
+    "audits": [
+      {
+        "projectId": ".",
+        "projectRoot": ".",
+        "adapterId": "javascript",
+        "adapterMatches": [],
+        "audit": {
+          "schemaVersion": "audit/v1",
+          "profile": {
+            "confidence": "high",
+            "blockers": []
+          },
+          "untestedCandidates": [],
+          "coveredButRisky": [
+            {
+              "id": "src/indirect.ts",
+              "name": "indirect",
+              "path": "src/indirect.ts",
+              "kind": "utility",
+              "signals": ["branching-logic", "matching-test"],
+              "risk": "medium",
+              "testability": "high",
+              "recommendedTestLevel": "unit",
+              "riskReductionScore": 7,
+              "maintenanceCost": 4,
+              "reasons": ["Branching logic"],
+              "existingTestPaths": ["test/behavior.test.ts"],
+              "existingTestEvidence": [
+                {
+                  "testPath": "test/behavior.test.ts",
+                  "kind": "bounded-dependency",
+                  "strength": "indirect"
+                }
+              ]
+            },
+            {
+              "id": "src/asserted.ts",
+              "name": "asserted",
+              "path": "src/asserted.ts",
+              "kind": "utility",
+              "signals": ["branching-logic", "matching-test"],
+              "risk": "medium",
+              "testability": "high",
+              "recommendedTestLevel": "unit",
+              "riskReductionScore": 7,
+              "maintenanceCost": 4,
+              "reasons": ["Branching logic"],
+              "existingTestPaths": ["test/behavior.test.ts"],
+              "existingTestEvidence": [
+                {
+                  "testPath": "test/behavior.test.ts",
+                  "kind": "direct-relative-import",
+                  "strength": "direct",
+                  "usage": "asserted"
+                }
+              ]
+            }
+          ],
+          "recommended": [],
+          "skipped": [],
+          "risks": []
+        }
+      }
+    ],
+    "skippedProjects": []
+  }
+}
