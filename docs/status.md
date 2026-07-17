@@ -9,6 +9,7 @@ Implemented:
 - JavaScript/TypeScript repository profiling
 - JavaScript/TypeScript React hook classification ahead of generic component and HTTP controller heuristics
 - cached JavaScript/TypeScript module-import analysis for real repositories with large test suites
+- skipped-target short-circuiting before JavaScript/TypeScript test-evidence analysis
 - JavaScript/TypeScript package-boundary scoping that excludes nested packages from parent profiles and candidate graphs
 - Node test runner detection from `node:test` imports, alongside AVA, Mocha, Vitest, Jest, React Testing Library, and Supertest dependency/config signals
 - JavaScript/TypeScript `src/`, `source/`, and `lib/` roots plus conventional `test/`, `tests/`, and `__tests__/` test locations
@@ -35,6 +36,7 @@ Implemented:
 - adapter registry capability metadata for maturity, framework signals, project types, and emitted artifacts
 - CLI adapter registry output
 - deterministic project detection for polyglot repository roots
+- project-detection traversal boundaries for nested `fixtures` and `__fixtures__` dependency manifests while preserving direct fixture-root audits
 - project detection adapter match evidence and support status reasons
 - project audit artifacts that preserve adapter match evidence and support status reasons for unsupported projects
 - project audit summaries with complete, partial, or none audit coverage status
@@ -53,6 +55,7 @@ Implemented:
 - weak-existing-coverage review ranking that discounts direct asserted/called evidence ahead of structural and bounded-indirect matches
 - auxiliary workspace-aware blocker ranking that keeps missing test setup in docs, examples, playground, and benchmark projects below actionable product findings
 - project-audits derived local stats artifact for audit coverage, audited versus unsupported source file counts by language, target counts, risk and signal distributions, framework distribution, test commands, and adapter usage
+- workspace source-file stats that count nested project ownership once and exclude dependency fixtures
 - JSDoc contract annotations for core runtime modules, including adapter registry, tool API, project detection, project audit, planning, ranking, explanation, placement, and deferred generation
 - project detection and project audit artifacts for polyglot repository groundwork
 - documented polyglot artifact workflow from project detection through project test planning

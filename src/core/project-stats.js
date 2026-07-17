@@ -9,10 +9,12 @@ const IGNORED_DIRECTORIES = new Set([
   ".gradle",
   ".swiftpm",
   ".venv",
+  "__fixtures__",
   "bin",
   "build",
   "coverage",
   "dist",
+  "fixtures",
   "node_modules",
   "obj",
   "target",
@@ -72,6 +74,10 @@ export function collectProjectStats(projectAudits) {
   const evidenceViaUsage = {};
   const adapters = {};
   const sourceFiles = createSourceFileStats();
+  const projectRoots = [
+    ...projectAudits.audits.map((entry) => entry.projectRoot),
+    ...projectAudits.skippedProjects.map((entry) => entry.projectRoot)
+  ];
 
   for (const entry of projectAudits.audits) {
     const audit = entry.audit;
@@ -91,7 +97,7 @@ export function collectProjectStats(projectAudits) {
     increment(adapters, entry.adapterId);
     mergeSourceFileStats(
       sourceFiles,
-      countProjectSourceFiles(projectAudits.root, entry.projectRoot, audit.profile.languages ?? [], "audited")
+      countProjectSourceFiles(projectAudits.root, entry.projectRoot, audit.profile.languages ?? [], "audited", projectRoots)
     );
 
     for (const framework of audit.profile.testFrameworks ?? []) {
@@ -125,7 +131,7 @@ export function collectProjectStats(projectAudits) {
   for (const project of projectAudits.skippedProjects) {
     mergeSourceFileStats(
       sourceFiles,
-      countProjectSourceFiles(projectAudits.root, project.projectRoot, project.languages ?? [], "unsupported")
+      countProjectSourceFiles(projectAudits.root, project.projectRoot, project.languages ?? [], "unsupported", projectRoots)
     );
   }
 
@@ -178,12 +184,16 @@ function createSourceFileStats() {
   };
 }
 
-function countProjectSourceFiles(repoRoot, projectRoot, languages, coverageKey) {
+function countProjectSourceFiles(repoRoot, projectRoot, languages, coverageKey, projectRoots) {
   const stats = createSourceFileStats();
   const absoluteProjectRoot = path.resolve(repoRoot, projectRoot);
   if (!fs.existsSync(absoluteProjectRoot)) return stats;
+  const nestedProjectRoots = new Set(projectRoots
+    .filter((candidate) => candidate !== projectRoot)
+    .map((candidate) => path.resolve(repoRoot, candidate))
+    .filter((candidate) => candidate.startsWith(`${absoluteProjectRoot}${path.sep}`)));
 
-  for (const filePath of collectSourceFilePaths(absoluteProjectRoot)) {
+  for (const filePath of collectSourceFilePaths(absoluteProjectRoot, nestedProjectRoots)) {
     const language = detectSourceLanguage(filePath, languages);
     if (!language) continue;
 
@@ -197,14 +207,15 @@ function countProjectSourceFiles(repoRoot, projectRoot, languages, coverageKey) 
   return stats;
 }
 
-function collectSourceFilePaths(root) {
+function collectSourceFilePaths(root, excludedRoots) {
   const files = [];
 
   function visit(current) {
     for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
       if (entry.isDirectory()) {
-        if (!IGNORED_DIRECTORIES.has(entry.name)) {
-          visit(path.join(current, entry.name));
+        const absolute = path.join(current, entry.name);
+        if (!IGNORED_DIRECTORIES.has(entry.name) && !excludedRoots.has(absolute)) {
+          visit(absolute);
         }
         continue;
       }

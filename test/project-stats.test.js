@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { describe, it } from "node:test";
 import { auditDetectedProjects } from "../src/core/project-auditor.js";
@@ -65,6 +67,31 @@ describe("project stats", () => {
     assert.deepEqual(stats.distributions.evidenceKinds, { "direct-relative-import": 1 });
     assert.deepEqual(stats.distributions.evidenceUsage, { asserted: 1 });
     assert.deepEqual(stats.distributions.evidenceViaUsage, {});
+  });
+
+  it("counts nested package sources once and excludes dependency fixtures", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-workspace-stats-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "src"), { recursive: true });
+    fs.mkdirSync(path.join(root, "packages", "core", "src"), { recursive: true });
+    fs.mkdirSync(path.join(root, "fixtures", "dependency", "src"), { recursive: true });
+    fs.writeFileSync(path.join(root, "package.json"), "{}\n");
+    fs.writeFileSync(path.join(root, "src", "root.ts"), "export const root = true;\n");
+    fs.writeFileSync(path.join(root, "packages", "core", "package.json"), "{}\n");
+    fs.writeFileSync(path.join(root, "packages", "core", "src", "core.ts"), "export const core = true;\n");
+    fs.writeFileSync(path.join(root, "fixtures", "dependency", "package.json"), "{}\n");
+    fs.writeFileSync(path.join(root, "fixtures", "dependency", "src", "fixture.ts"), "export const fixture = true;\n");
+
+    const stats = collectProjectStats(auditDetectedProjects(root));
+
+    assert.deepEqual(stats.sourceFiles, {
+      total: 2,
+      audited: 2,
+      unsupported: 0,
+      byLanguage: {
+        typescript: { total: 2, audited: 2, unsupported: 0 }
+      }
+    });
   });
 
   it("separates audited and unsupported source file counts", () => {

@@ -32,13 +32,6 @@ export function auditJavaScriptRepo(root, options = {}) {
       runtimeSourcePaths,
       sourceJavaScriptRuntime
     });
-    const existingTestEvidence = findExistingTestEvidence(file.path, testFiles, moduleFiles, boundedTransitiveImports, {
-      packageName: packageData.name,
-      packageEntryFile,
-      packageSubpathEntries,
-      pathAliasEntries
-    });
-    const existingTestPaths = existingTestEvidence.map((evidence) => evidence.testPath);
 
     if (classification.skipReason) {
       skipped.push({
@@ -54,6 +47,14 @@ export function auditJavaScriptRepo(root, options = {}) {
       });
       continue;
     }
+
+    const existingTestEvidence = findExistingTestEvidence(file.path, testFiles, moduleFiles, boundedTransitiveImports, {
+      packageName: packageData.name,
+      packageEntryFile,
+      packageSubpathEntries,
+      pathAliasEntries
+    });
+    const existingTestPaths = existingTestEvidence.map((evidence) => evidence.testPath);
 
     const target = {
       id: file.path,
