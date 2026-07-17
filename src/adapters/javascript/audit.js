@@ -6,7 +6,7 @@ const GENERIC_SOURCE_BASENAMES = new Set(["handler", "index", "types", "utils"])
 const MAX_TRANSITIVE_SOURCE_DEPTH = 2;
 
 export function auditJavaScriptRepo(root, options = {}) {
-  const files = readRepoFiles(root);
+  const files = scopeToPackageRoot(readRepoFiles(root));
   const profile = buildProfile(root, files);
   const changedPaths = options.changedPaths ? new Set(options.changedPaths.map((currentPath) => normalizeChangedPath(root, currentPath))) : undefined;
   const testFiles = files
@@ -139,8 +139,9 @@ function readRepoFiles(root) {
 function shouldRead(relative) {
   return (
     SOURCE_EXTENSIONS.some((extension) => relative.endsWith(extension)) ||
+    relative === "package.json" ||
+    relative.endsWith("/package.json") ||
     [
-      "package.json",
       "package-lock.json",
       "pnpm-lock.yaml",
       "yarn.lock",
@@ -152,16 +153,30 @@ function shouldRead(relative) {
   );
 }
 
+function scopeToPackageRoot(files) {
+  const nestedPackageRoots = files
+    .map((file) => normalizePath(file.path))
+    .filter((currentPath) => currentPath.endsWith("/package.json"))
+    .map((currentPath) => currentPath.slice(0, -"/package.json".length));
+
+  if (nestedPackageRoots.length === 0) return files;
+
+  return files.filter((file) => {
+    const currentPath = normalizePath(file.path);
+    return !nestedPackageRoots.some((nestedRoot) => currentPath === nestedRoot || currentPath.startsWith(`${nestedRoot}/`));
+  });
+}
+
 function buildProfile(root, files) {
   const paths = files.map((file) => normalizePath(file.path));
   const packageJson = files.find((file) => normalizePath(file.path) === "package.json");
   const packageText = packageJson?.content ?? "";
   const packageData = parsePackageJson(packageText);
-  const testFrameworks = detectTestFrameworks(paths, packageText);
+  const testFrameworks = detectTestFrameworks(files, packageData);
   const testCommand = detectTestCommand(packageData, testFrameworks);
   const existingTestLocations = detectExistingTestLocations(paths);
   const detectedConventions = detectConventions(paths);
-  const setupSignals = detectSetupSignals(paths, packageText);
+  const setupSignals = detectSetupSignals(paths, packageData);
   const blockers = detectBlockers(packageJson !== undefined, testCommand, testFrameworks);
 
   return {
@@ -169,7 +184,7 @@ function buildProfile(root, files) {
     languages: detectLanguages(paths),
     packageManagers: detectPackageManagers(paths),
     testFrameworks,
-    architectures: detectArchitectures(paths, packageText),
+    architectures: detectArchitectures(paths, packageData),
     testCommand,
     detectedConventions,
     existingTestLocations,
@@ -205,13 +220,26 @@ function detectPackageManagers(paths) {
   return [...managers];
 }
 
-function detectTestFrameworks(paths, packageText) {
+function detectTestFrameworks(files, packageData) {
+  const paths = files.map((file) => normalizePath(file.path));
   const frameworks = new Set();
-  if (paths.some((item) => item.includes("vitest.config")) || packageText.includes("vitest")) frameworks.add("vitest");
-  if (paths.some((item) => item.includes("jest.config")) || packageText.includes("jest")) frameworks.add("jest");
-  if (packageText.includes("@testing-library/react")) frameworks.add("react-testing-library");
-  if (packageText.includes("supertest")) frameworks.add("supertest");
+  if (paths.some((item) => item.includes("vitest.config")) || hasPackageDependency(packageData, "vitest")) frameworks.add("vitest");
+  if (paths.some((item) => item.includes("jest.config")) || hasPackageDependency(packageData, "jest")) frameworks.add("jest");
+  if (files.some((file) => isTestFile(file.path) && usesNodeTest(file.content))) frameworks.add("node-test");
+  if (hasPackageDependency(packageData, "@testing-library/react")) frameworks.add("react-testing-library");
+  if (hasPackageDependency(packageData, "supertest")) frameworks.add("supertest");
   return [...frameworks];
+}
+
+function hasPackageDependency(packageData, dependencyName) {
+  return ["dependencies", "devDependencies", "peerDependencies", "optionalDependencies"].some((field) => {
+    const dependencies = packageData[field];
+    return dependencies && typeof dependencies === "object" && Object.hasOwn(dependencies, dependencyName);
+  });
+}
+
+function usesNodeTest(content) {
+  return /(?:from\s+|import\s+|require\(\s*)["']node:test["']/.test(content);
 }
 
 function detectTestCommand(packageData, frameworks) {
@@ -226,6 +254,7 @@ function detectTestCommand(packageData, frameworks) {
 
   if (frameworks.includes("vitest")) return "npx vitest run";
   if (frameworks.includes("jest")) return "npx jest";
+  if (frameworks.includes("node-test")) return "node --test";
 
   return undefined;
 }
@@ -281,15 +310,15 @@ function detectConventions(paths) {
   return [...conventions];
 }
 
-function detectSetupSignals(paths, packageText) {
+function detectSetupSignals(paths, packageData) {
   const signals = new Set();
 
   if (paths.includes("tsconfig.json")) signals.add("tsconfig");
   if (paths.some((currentPath) => currentPath.includes("vitest.config"))) signals.add("vitest config");
   if (paths.some((currentPath) => currentPath.includes("jest.config"))) signals.add("jest config");
-  if (packageText.includes("msw")) signals.add("msw");
-  if (packageText.includes("nock")) signals.add("nock");
-  if (packageText.includes("supertest")) signals.add("supertest");
+  if (hasPackageDependency(packageData, "msw")) signals.add("msw");
+  if (hasPackageDependency(packageData, "nock")) signals.add("nock");
+  if (hasPackageDependency(packageData, "supertest")) signals.add("supertest");
 
   return [...signals];
 }
@@ -319,10 +348,10 @@ function scoreProfileConfidence(testFrameworks, existingTestLocations, blockers)
   return "low";
 }
 
-function detectArchitectures(paths, packageText) {
+function detectArchitectures(paths, packageData) {
   const architectures = new Set();
-  if (packageText.includes("react") || paths.some((item) => item.endsWith(".tsx") || item.endsWith(".jsx"))) architectures.add("react");
-  if (packageText.includes("express") || paths.some((item) => item.includes("/routes/"))) architectures.add("http-routes");
+  if (hasPackageDependency(packageData, "react") || paths.some((item) => item.endsWith(".tsx") || item.endsWith(".jsx"))) architectures.add("react");
+  if (hasPackageDependency(packageData, "express") || paths.some((item) => item.includes("/routes/"))) architectures.add("http-routes");
   if (paths.some((item) => item.includes("/services/"))) architectures.add("service-layer");
   return [...architectures];
 }

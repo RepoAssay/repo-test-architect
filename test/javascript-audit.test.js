@@ -29,6 +29,46 @@ describe("JavaScript audit adapter", () => {
     assert.ok(audit.profile.setupSignals.includes("vitest config"));
   });
 
+  it("detects node:test without inheriting nested package signals or candidates", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-js-package-boundary-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "src"), { recursive: true });
+    fs.mkdirSync(path.join(root, "test"), { recursive: true });
+    fs.mkdirSync(path.join(root, "examples", "nested", "src"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "package.json"),
+      JSON.stringify({ name: "root-package", scripts: { demo: "node ./examples/node-vitest-basic/demo.js" } })
+    );
+    fs.writeFileSync(
+      path.join(root, "src", "rootParser.js"),
+      "export function parse(value) { return value ? value.trim() : ''; }\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "test", "rootParser.test.js"),
+      "import assert from 'node:assert/strict';\nimport { test } from 'node:test';\nimport { parse } from '../src/rootParser.js';\ntest('parse', () => assert.equal(parse(' ok '), 'ok'));\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "examples", "nested", "package.json"),
+      JSON.stringify({ devDependencies: { vitest: "latest" } })
+    );
+    fs.writeFileSync(path.join(root, "examples", "nested", "vitest.config.js"), "export default {};\n");
+    fs.writeFileSync(
+      path.join(root, "examples", "nested", "src", "nestedParser.js"),
+      "export function nestedParse(value) { return value ? value.trim() : ''; }\n"
+    );
+
+    const audit = auditJavaScriptRepo(root);
+
+    assert.deepEqual(audit.profile.testFrameworks, ["node-test"]);
+    assert.equal(audit.profile.testCommand, "node --test");
+    assert.equal(audit.profile.confidence, "high");
+    assert.ok(!audit.profile.setupSignals.includes("vitest config"));
+    assert.deepEqual(
+      [...audit.untestedCandidates, ...audit.coveredButRisky, ...audit.skipped].map((target) => target.path),
+      ["src/rootParser.js"]
+    );
+  });
+
   it("separates untested targets from already-tested risky targets", () => {
     const audit = auditJavaScriptRepo(exampleRoot);
 
