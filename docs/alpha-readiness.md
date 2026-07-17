@@ -70,6 +70,7 @@ While repository GitHub Actions are disabled under the temporary $0-budget polic
 - JavaScript/TypeScript remains the supported proof point
 - the JavaScript/TypeScript support promise is bounded by the checked-in alpha matrix rather than a broad ecosystem claim
 - Kotlin/JVM, Swift, and Python remain experimental but have enough fixture variety to prove the shared audit model
+- Swift promotion work is bounded by the checked-in [Swift Alpha Hardening Boundary](swift-alpha-support.md)
 - adapter support is described by detected frameworks, commands, source layouts, and blockers instead of broad language claims
 - unsupported ecosystems are still reported honestly with detection evidence
 

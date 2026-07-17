@@ -32,6 +32,13 @@
       ],
       "existingTestPaths": [
         "Tests/CheckoutCoreTests/CheckoutParserTests.swift"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "Tests/CheckoutCoreTests/CheckoutParserTests.swift",
+          "kind": "filename-convention",
+          "strength": "naming"
+        }
       ]
     },
     {

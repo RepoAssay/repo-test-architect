@@ -50,6 +50,13 @@ describe("Swift audit adapter", () => {
     assert.equal(parser.kind, "pure-logic");
     assert.equal(parser.recommendedTestLevel, "unit");
     assert.deepEqual(parser.existingTestPaths, ["Tests/CheckoutCoreTests/CheckoutParserTests.swift"]);
+    assert.deepEqual(parser.existingTestEvidence, [
+      {
+        testPath: "Tests/CheckoutCoreTests/CheckoutParserTests.swift",
+        kind: "filename-convention",
+        strength: "naming"
+      }
+    ]);
     assert.ok(parser.signals.includes("matching-test"));
 
     const client = audit.untestedCandidates[0];
@@ -168,6 +175,63 @@ describe("Swift audit adapter", () => {
     const validator = audit.coveredButRisky[0];
     assert.ok(validator.signals.includes("matching-test"));
     assert.deepEqual(validator.existingTestPaths, ["Tests/InventoryRulesTests/StockValidatorTests.swift"]);
+  });
+
+  it("qualifies Quick spec evidence by SwiftPM target ownership", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-swift-target-evidence-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "Sources", "Core"), { recursive: true });
+    fs.mkdirSync(path.join(root, "Sources", "UI"), { recursive: true });
+    fs.mkdirSync(path.join(root, "Tests", "CoreSpecs"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "Package.swift"),
+      `// swift-tools-version: 6.0
+import PackageDescription
+
+let package = Package(
+    name: "MultiTarget",
+    dependencies: [
+        .package(url: "https://github.com/Quick/Quick.git", from: "7.0.0")
+    ],
+    targets: [
+        .target(name: "Core"),
+        .target(name: "UI"),
+        .testTarget(
+            name: "CoreSpecs",
+            dependencies: [
+                "Core",
+                .product(name: "Quick", package: "Quick")
+            ]
+        )
+    ]
+)
+`
+    );
+    fs.writeFileSync(path.join(root, "Sources", "Core", "Parser.swift"), "func parse(_ value: String) -> String { if value.isEmpty { return \"missing\" }; return value }\n");
+    fs.writeFileSync(path.join(root, "Sources", "UI", "Parser.swift"), "func parse(_ value: String) -> String { if value.isEmpty { return \"empty\" }; return value }\n");
+    fs.writeFileSync(
+      path.join(root, "Tests", "CoreSpecs", "ParserSpec.swift"),
+      `import Quick
+@testable import Core
+
+final class ParserSpec: QuickSpec {
+    override class func spec() {}
+}
+`
+    );
+
+    const audit = auditSwiftRepo(root);
+
+    assert.deepEqual(audit.profile.testFrameworks, ["Quick"]);
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["Sources/Core/Parser.swift"]);
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.path), ["Sources/UI/Parser.swift"]);
+    assert.deepEqual(audit.coveredButRisky[0].existingTestEvidence, [
+      {
+        testPath: "Tests/CoreSpecs/ParserSpec.swift",
+        kind: "filename-convention",
+        strength: "naming"
+      }
+    ]);
   });
 
   it("detects Vapor service routes without inventing missing test conventions", () => {

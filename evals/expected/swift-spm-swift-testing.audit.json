@@ -54,6 +54,13 @@
       ],
       "existingTestPaths": [
         "Tests/PriceRulesTests/DiscountValidatorTests.swift"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "Tests/PriceRulesTests/DiscountValidatorTests.swift",
+          "kind": "filename-convention",
+          "strength": "naming"
+        }
       ]
     }
   ],
@@ -80,6 +87,13 @@
       ],
       "existingTestPaths": [
         "Tests/PriceRulesTests/DiscountValidatorTests.swift"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "Tests/PriceRulesTests/DiscountValidatorTests.swift",
+          "kind": "filename-convention",
+          "strength": "naming"
+        }
       ]
     }
   ],

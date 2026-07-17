@@ -7,7 +7,7 @@ export function auditSwiftRepo(root, options = {}) {
   const files = readRepoFiles(root);
   const profile = buildProfile(root, files);
   const changedPaths = options.changedPaths ? new Set(options.changedPaths.map((currentPath) => normalizeChangedPath(root, currentPath))) : undefined;
-  const testFiles = files.filter((file) => isTestFile(file.path)).map((file) => normalizePath(file.path));
+  const testFiles = files.filter((file) => isTestFile(file.path)).map((file) => ({ ...file, path: normalizePath(file.path) }));
   const untestedCandidates = [];
   const coveredButRisky = [];
   const skipped = [];
@@ -16,7 +16,8 @@ export function auditSwiftRepo(root, options = {}) {
   for (const file of files.filter((candidate) => isSourceFile(candidate.path) && isIncludedByChangedPaths(candidate.path, changedPaths))) {
     const name = basenameWithoutExtension(file.path);
     const classification = classifySourceFile(file);
-    const existingTestPaths = findExistingTests(file.path, testFiles);
+    const existingTestEvidence = findExistingTestEvidence(file.path, testFiles);
+    const existingTestPaths = existingTestEvidence.map((evidence) => evidence.testPath);
 
     if (classification.skipReason) {
       skipped.push({
@@ -51,7 +52,8 @@ export function auditSwiftRepo(root, options = {}) {
         existingTestPaths.length > 0
           ? [...classification.reasons, "Existing test file detected; review missing edge cases"]
           : classification.reasons,
-      existingTestPaths
+      existingTestPaths,
+      ...(existingTestEvidence.length > 0 ? { existingTestEvidence } : {})
     };
 
     if (existingTestPaths.length > 0) {
@@ -466,9 +468,45 @@ function isTestFile(currentPath) {
   return isTestPath(normalized) && normalized.endsWith(".swift");
 }
 
-function findExistingTests(sourcePath, testPaths) {
+function findExistingTestEvidence(sourcePath, testFiles) {
   const sourceBase = basenameWithoutExtension(sourcePath);
-  return testPaths.filter((testPath) => basenameWithoutExtension(testPath).replace(/Tests?$/, "") === sourceBase);
+  const sourceOwner = inferSourceOwner(sourcePath);
+
+  return testFiles.flatMap((testFile) => {
+    const testBase = basenameWithoutExtension(testFile.path).replace(/(?:Tests?|Spec)$/, "");
+    if (testBase !== sourceBase || !testMatchesSourceOwner(testFile, sourceOwner)) return [];
+    return [{ testPath: testFile.path, kind: "filename-convention", strength: "naming" }];
+  });
+}
+
+function testMatchesSourceOwner(testFile, sourceOwner) {
+  if (!sourceOwner) return true;
+  const normalizedSourceOwner = normalizeModuleName(sourceOwner);
+  const importedModules = collectImportedModules(testFile.content).map(normalizeModuleName);
+  if (importedModules.includes(normalizedSourceOwner)) return true;
+  const testOwner = inferTestOwner(testFile.path);
+  return testOwner ? normalizeModuleName(testOwner) === normalizedSourceOwner : true;
+}
+
+function inferSourceOwner(currentPath) {
+  const segments = normalizePath(currentPath).split("/");
+  if (segments[0] === "Sources" && segments.length > 2) return segments[1];
+  if (segments.length > 1 && !/Tests?$|UITests?$/.test(segments[0])) return segments[0];
+  return undefined;
+}
+
+function inferTestOwner(currentPath) {
+  const segments = normalizePath(currentPath).split("/");
+  const testDirectory = segments[0] === "Tests" && segments.length > 2 ? segments[1] : firstTestDirectory(currentPath);
+  return testDirectory?.replace(/(?:UITests?|Tests?)$/, "") || undefined;
+}
+
+function collectImportedModules(content) {
+  return [...content.matchAll(/^\s*(?:@testable\s+)?import\s+([A-Za-z_][A-Za-z0-9_]*)\b/gm)].map((match) => match[1]);
+}
+
+function normalizeModuleName(value) {
+  return value.replace(/[^A-Za-z0-9]/g, "").toLowerCase();
 }
 
 function normalizePath(currentPath) {
