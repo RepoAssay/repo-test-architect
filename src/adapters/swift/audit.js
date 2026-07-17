@@ -89,7 +89,19 @@ export function auditSwiftRepo(root, options = {}) {
 }
 
 function readRepoFiles(root) {
-  const ignored = new Set([".build", ".git", ".swiftpm", "DerivedData", "build"]);
+  const ignored = new Set([
+    ".build",
+    ".git",
+    ".swiftpm",
+    ".symlinks",
+    "build",
+    "Carthage",
+    "DerivedData",
+    "Pods",
+    "SourcePackages",
+    "Vendor",
+    "vendor"
+  ]);
   const files = [];
 
   function visit(current) {
