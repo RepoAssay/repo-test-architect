@@ -162,10 +162,10 @@ describe("validation repository finder", () => {
     });
   });
 
-  it("defines JVM validation profiles for Gradle, Maven JUnit, and bounded Kotest projects", () => {
+  it("defines JVM validation profiles for Gradle, Maven JUnit, Kotest, and TestNG projects", () => {
     assert.deepEqual(
-      ["gradle", "gradle-junit", "gradle-kotest", "maven", "maven-junit"].map((profile) => validationProfiles[profile].language),
-      ["Kotlin", "Kotlin", "Kotlin", "Java", "Java"]
+      ["gradle", "gradle-junit", "gradle-kotest", "gradle-testng", "maven", "maven-junit", "maven-testng"].map((profile) => validationProfiles[profile].language),
+      ["Kotlin", "Kotlin", "Kotlin", "Kotlin", "Java", "Java", "Java"]
     );
 
     assert.deepEqual(detectManifestSignals(validationProfiles["gradle-junit"].searches, {
@@ -187,6 +187,20 @@ describe("validation repository finder", () => {
     }, [{ name: "gradlew", type: "file" }]), {
       signals: ["gradle-kotest", "gradle-wrapper"],
       matchedPaths: ["build.gradle.kts", "gradlew"]
+    });
+
+    assert.deepEqual(detectManifestSignals(validationProfiles["gradle-testng"].searches, {
+      "build.gradle.kts": 'dependencies { testImplementation("org.testng:testng:7.11.0") }\ntasks.test { useTestNG() }\n'
+    }, [{ name: "gradlew", type: "file" }]), {
+      signals: ["gradle-testng", "gradle-wrapper"],
+      matchedPaths: ["build.gradle.kts", "gradlew"]
+    });
+
+    assert.deepEqual(detectManifestSignals(validationProfiles["maven-testng"].searches, {
+      "pom.xml": "<project><dependency><groupId>org.testng</groupId><artifactId>testng</artifactId></dependency></project>"
+    }, [{ name: "mvnw", type: "file" }]), {
+      signals: ["maven-testng", "maven-wrapper"],
+      matchedPaths: ["pom.xml", "mvnw"]
     });
   });
 

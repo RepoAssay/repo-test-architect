@@ -362,13 +362,13 @@ function detectTestFrameworks(buildText, testText, files, modules) {
   if (/kotlin\s*\(\s*["']test["']\s*\)|\bkotlin-test\b|\bkotlin\.test\b/.test(`${buildText}\n${testText}`)) frameworks.add("kotlin-test");
   if (/\b(?:junit|org\.junit|useJUnitPlatform)\b/i.test(`${buildText}\n${testText}`)) frameworks.add("junit");
   if (modules.some((module) => supportsKotestModule(module, files))) frameworks.add("kotest");
+  if (modules.some((module) => supportsTestNgModule(module, files))) frameworks.add("testng");
   return [...frameworks].sort();
 }
 
 function detectUnsupportedTestFrameworks(buildText) {
   const frameworks = new Set();
   if (/\bspock(?:framework)?\b/i.test(buildText)) frameworks.add("spock");
-  if (/\btestng\b/i.test(buildText)) frameworks.add("testng");
   return [...frameworks].sort();
 }
 
@@ -379,6 +379,37 @@ function usesKotest(content) {
 function supportsKotestModule(module, files) {
   const buildText = moduleBuildText(module, files);
   return module.buildSystem === "gradle" && usesKotest(buildText) && /\buseJUnitPlatform\s*\(/.test(buildText);
+}
+
+function usesTestNg(content) {
+  return /\b(?:org\.testng|testng)\b/i.test(content);
+}
+
+function usesTestNgAnnotations(content) {
+  return /\borg\.testng\.annotations\b|@org\.testng\.annotations\./.test(content);
+}
+
+function supportsTestNgModule(module, files) {
+  const buildText = moduleBuildText(module, files);
+  if (hasAdvancedTestNgExecution(buildText)) return false;
+  if (module.buildSystem === "gradle") return usesTestNg(buildText) && /\buseTestNG\s*\(/.test(buildText);
+  if (module.buildSystem === "maven") {
+    return declaredMavenDependencies(buildText, module.coordinate?.groupId).direct.has("org.testng:testng");
+  }
+  return false;
+}
+
+function declaresTestNgDependency(module, files) {
+  const buildText = moduleBuildText(module, files);
+  if (module.buildSystem === "gradle") return usesTestNg(buildText);
+  if (module.buildSystem === "maven") {
+    return declaredMavenDependencies(buildText, module.coordinate?.groupId).direct.has("org.testng:testng");
+  }
+  return false;
+}
+
+function hasAdvancedTestNgExecution(buildText) {
+  return /\b(?:suiteXmlFiles|suites|includeGroups|excludeGroups|preserveOrder)\s*(?:\(|=)|\b(?:parallel|threadCount)\s*=|<(?:suiteXmlFiles|groups|excludedGroups|parallel|threadCount)>/i.test(buildText);
 }
 
 function detectUnsupportedProjectShapes(buildText, paths) {
@@ -527,6 +558,7 @@ function detectSetupSignals(paths, buildText, testText, testCommandResolution, m
   if (/useJUnitPlatform|org\.junit\.jupiter/i.test(`${buildText}\n${testText}`)) signals.add("junit platform");
   if (/org\.junit(?!\.jupiter)/i.test(`${buildText}\n${testText}`)) signals.add("junit 4");
   if (usesKotest(`${buildText}\n${testText}`)) signals.add("kotest");
+  if (usesTestNg(`${buildText}\n${testText}`)) signals.add("testng");
   if (testCommandResolution.inheritedSignal) signals.add(testCommandResolution.inheritedSignal);
   if (modules.some((module) => module.buildSystem === "gradle" && module.directory !== ".")) signals.add("gradle module graph");
   if (modules.some((module) => module.buildSystem === "maven" && module.directory !== ".")) signals.add("maven reactor graph");
@@ -547,6 +579,7 @@ function detectBlockers(paths, files, modules, testCommand, frameworks, unsuppor
   }
   if (unsupportedTestFrameworks.length > 0) blockers.push(`Unsupported JVM test frameworks detected: ${unsupportedTestFrameworks.join(", ")}.`);
   blockers.push(...detectKotestBlockers(files, modules));
+  blockers.push(...detectTestNgBlockers(files, modules));
   blockers.push(...unsupportedProjectShapes);
   return blockers;
 }
@@ -580,6 +613,38 @@ function detectKotestBlockers(files, modules) {
     blockers.push("Kotest data-driven and property tests are outside the supported evidence boundary.");
   }
   return blockers;
+}
+
+function detectTestNgBlockers(files, modules) {
+  const blockers = [];
+  const testNgModules = modules.filter((module) => declaresTestNgDependency(module, files));
+  const testNgFiles = files.filter((file) => isTestFile(file.path, modules) && usesTestNgAnnotations(file.content));
+  if (testNgModules.length === 0 && testNgFiles.length === 0) return blockers;
+
+  const hasUnsupportedExecution =
+    testNgModules.some((module) => !supportsTestNgModule(module, files)) ||
+    testNgFiles.some((file) => {
+      const module = moduleForPath(file.path, modules, "test");
+      return !module || !supportsTestNgModule(module, files);
+    });
+  if (hasUnsupportedExecution) {
+    blockers.push("TestNG support requires a direct Maven dependency or a Gradle JVM test task using useTestNG().");
+  }
+  if (testNgModules.some((module) => hasAdvancedTestNgExecution(moduleBuildText(module, files)))) {
+    blockers.push("TestNG suite XML, group filters, and parallel or custom execution configuration are outside the supported execution boundary.");
+  }
+  if (testNgFiles.some((file) => hasUnsupportedTestNgSemantics(file.content))) {
+    blockers.push("TestNG class-level tests, lifecycle hooks, generated or parameterized tests, listeners, and dependency or group semantics are outside the supported evidence boundary.");
+  }
+  return blockers;
+}
+
+function hasUnsupportedTestNgSemantics(content) {
+  const stripped = stripJvmCommentsAndStrings(content);
+  const annotation = "(?:org\\.testng\\.annotations\\.)?";
+  const advancedAnnotation = new RegExp(`@${annotation}(?:DataProvider|Factory|Parameters|Listeners|BeforeSuite|AfterSuite|BeforeTest|AfterTest|BeforeClass|AfterClass|BeforeMethod|AfterMethod)\\b`);
+  const classLevelTest = new RegExp(`@${annotation}Test(?:\\s*\\([^)]*\\))?\\s*(?:(?:public|internal|private|protected|open|final|abstract)\\s+)*(?:data\\s+)?class\\b`);
+  return advancedAnnotation.test(stripped) || classLevelTest.test(stripped) || /\b(?:dataProvider|dataProviderClass|dependsOnMethods|dependsOnGroups|groups|invocationCount|threadPoolSize|timeOut|expectedExceptions|retryAnalyzer|priority)\s*=|\benabled\s*=\s*false\b/.test(stripped);
 }
 
 function scoreProfileConfidence(testFrameworks, existingTestLocations, blockers) {
@@ -809,7 +874,7 @@ function collectJvmReferenceAliases(content, escapedReference) {
 
 function jvmAssertionBodies(content) {
   const bodies = [];
-  const matcher = /\b(?:assert[A-Za-z]*|verify|expect|should(?:Not)?[A-Z][A-Za-z]*)\s*(?:<[^>\n]+>\s*)?([({])/g;
+  const matcher = /\b(?:assert[A-Za-z]*|verify|expect[A-Za-z]*|should(?:Not)?[A-Z][A-Za-z]*)\s*(?:<[^>\n]+>\s*)?([({])/g;
   let match;
 
   while ((match = matcher.exec(content)) !== null) {
@@ -843,10 +908,21 @@ function isTestFile(currentPath, modules) {
 function isEvidenceTestFile(file, files, modules, frameworks) {
   if (!isTestFile(file.path, modules)) return false;
   const content = stripJvmCommentsAndStrings(file.content);
-  if (/@(?:[A-Za-z_$][\w$]*\.)*(?:Test|ParameterizedTest|RepeatedTest|TestFactory|TestTemplate|RunWith)\b|\bextends\s+(?:junit\.framework\.)?TestCase\b/.test(content)) return true;
-  if (!frameworks.includes("kotest")) return false;
   const module = moduleForPath(file.path, modules, "test");
-  return Boolean(module && supportsKotestModule(module, files) && isSupportedKotestSpec(file.content));
+  if (usesTestNgAnnotations(file.content)) {
+    return Boolean(frameworks.includes("testng") && module && supportsTestNgModule(module, files) && isSupportedTestNgFile(file.content));
+  }
+  if (frameworks.some((framework) => ["junit", "kotlin-test"].includes(framework)) && /@(?:[A-Za-z_$][\w$]*\.)*(?:Test|ParameterizedTest|RepeatedTest|TestFactory|TestTemplate|RunWith)\b|\bextends\s+(?:junit\.framework\.)?TestCase\b/.test(content)) return true;
+  return Boolean(frameworks.includes("kotest") && module && supportsKotestModule(module, files) && isSupportedKotestSpec(file.content));
+}
+
+function isSupportedTestNgFile(content) {
+  if (hasUnsupportedTestNgSemantics(content)) return false;
+  const stripped = stripJvmCommentsAndStrings(content);
+  const testAnnotation = "@(?:org\\.testng\\.annotations\\.)?Test(?:\\s*\\([^)]*\\))?";
+  const kotlinMethod = new RegExp(`${testAnnotation}\\s*(?:(?:public|internal|private|protected|open|final|override|suspend)\\s+)*fun\\s+[A-Za-z_$][\\w$]*\\s*\\(`);
+  const javaMethod = new RegExp(`${testAnnotation}\\s*(?:(?:public|private|protected|static|final|synchronized)\\s+)*(?:[A-Za-z_$][\\w$]*(?:\\s*<[^>{};\\n]+>)?(?:\\[\\])?)\\s+[A-Za-z_$][\\w$]*\\s*\\(`);
+  return kotlinMethod.test(stripped) || javaMethod.test(stripped);
 }
 
 function isSupportedKotestSpec(content) {

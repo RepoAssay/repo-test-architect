@@ -1,0 +1,69 @@
+{
+  "schemaVersion": "model-consistency-scenario/v1",
+  "id": "kotlin-maven-testng-plan",
+  "description": "Different model profiles should preserve bounded method-level TestNG evidence and Maven execution.",
+  "sourceArtifact": {
+    "path": "evals/expected/kotlin-maven-testng.audit.json",
+    "schemaVersion": "audit/v1"
+  },
+  "toolCall": {
+    "toolName": "generate_test_plan",
+    "arguments": {}
+  },
+  "lockedFields": [
+    {
+      "path": "summary.confidence",
+      "expected": "high",
+      "reason": "A conventional Maven module with a direct TestNG dependency and runnable method should retain high confidence."
+    },
+    {
+      "path": "summary.verificationCommand",
+      "expected": "mvn test",
+      "reason": "The TestNG plan should retain conventional Maven test execution."
+    },
+    {
+      "path": "summary.blockerCount",
+      "expected": 0,
+      "reason": "The method-level fixture stays inside the supported TestNG boundary."
+    },
+    {
+      "path": "summary.addTestCount",
+      "expected": 1,
+      "reason": "The untested formatter should remain a new-test recommendation."
+    },
+    {
+      "path": "summary.extendTestCount",
+      "expected": 1,
+      "reason": "The parser's existing TestNG evidence should produce an extension recommendation."
+    },
+    {
+      "path": "items[0].id",
+      "expected": "add-test:src/main/java/com/example/token/TokenFormatter.java",
+      "reason": "Untested formatter logic should remain the leading add-test item."
+    },
+    {
+      "path": "items[1].id",
+      "expected": "extend-test:src/main/java/com/example/token/TokenParser.java",
+      "reason": "The parser should remain linked to its runnable TestNG method."
+    },
+    {
+      "path": "items[1].existingTestPaths[0]",
+      "expected": "src/test/java/com/example/token/TokenParserTest.java",
+      "reason": "The plan must preserve exact TestNG evidence provenance."
+    },
+    {
+      "path": "items[1].existingTestEvidence[0].usage",
+      "expected": "asserted",
+      "reason": "A parser result consumed by TestNG assertEquals should remain asserted evidence."
+    }
+  ],
+  "allowedVariations": [
+    "summary wording",
+    "optional detail depth"
+  ],
+  "unexpectedVariations": [
+    "TestNG treated as unsupported",
+    "method-level evidence downgraded to called",
+    "Maven verification command removed"
+  ]
+}

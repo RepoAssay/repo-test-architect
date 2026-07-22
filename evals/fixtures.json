@@ -80,6 +80,11 @@
     "path": "examples/kotlin-gradle-aggregate-kotest"
   },
   {
+    "name": "kotlin-maven-testng",
+    "adapter": "kotlin",
+    "path": "examples/kotlin-maven-testng"
+  },
+  {
     "name": "swift-spm-xctest",
     "adapter": "swift",
     "path": "examples/swift-spm-xctest"

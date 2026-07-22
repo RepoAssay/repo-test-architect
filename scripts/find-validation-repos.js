@@ -133,6 +133,16 @@ export const validationProfiles = {
       { signal: "gradle-wrapper", entryPattern: /^gradlew$/ }
     ]
   },
+  "gradle-testng": {
+    description: "Kotlin/JVM Gradle projects with conventional TestNG execution",
+    repositoryQuery: "testng gradle",
+    language: "Kotlin",
+    searches: [
+      { signal: "gradle-testng", file: "build.gradle.kts", pattern: /(?=[\s\S]*\btestng\b)(?=[\s\S]*\buseTestNG\s*\()/i },
+      { signal: "gradle-testng", file: "build.gradle", pattern: /(?=[\s\S]*\btestng\b)(?=[\s\S]*\buseTestNG\s*\()/i },
+      { signal: "gradle-wrapper", entryPattern: /^gradlew$/ }
+    ]
+  },
   maven: {
     description: "Java/JVM projects with a root Maven build",
     repositoryQuery: "maven",
@@ -147,6 +157,15 @@ export const validationProfiles = {
     language: "Java",
     searches: [
       { signal: "maven-junit", file: "pom.xml", pattern: /<(?:groupId|artifactId)>[^<]*junit[^<]*<\//i },
+      { signal: "maven-wrapper", entryPattern: /^mvnw$/ }
+    ]
+  },
+  "maven-testng": {
+    description: "Java/JVM Maven projects with a direct TestNG dependency",
+    repositoryQuery: "testng maven",
+    language: "Java",
+    searches: [
+      { signal: "maven-testng", file: "pom.xml", pattern: /<dependency>[\s\S]*?<groupId>\s*org\.testng\s*<\/groupId>[\s\S]*?<artifactId>\s*testng\s*<\/artifactId>[\s\S]*?<\/dependency>/i },
       { signal: "maven-wrapper", entryPattern: /^mvnw$/ }
     ]
   },

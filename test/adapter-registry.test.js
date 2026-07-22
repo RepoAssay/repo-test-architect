@@ -20,7 +20,7 @@ describe("adapter registry", () => {
         ecosystems: ["jvm"],
         languages: ["kotlin", "java"],
         maturity: "supported",
-        supportedTestFrameworks: ["junit", "kotest", "kotlin-test"],
+        supportedTestFrameworks: ["junit", "kotest", "kotlin-test", "testng"],
         supportedProjectTypes: ["gradle-jvm", "gradle-jvm-multimodule", "maven-jvm", "maven-jvm-reactor"],
         emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"]
       },
@@ -63,7 +63,7 @@ describe("adapter registry", () => {
           ecosystems: ["jvm"],
           languages: ["kotlin", "java"],
           maturity: "supported",
-          supportedTestFrameworks: ["junit", "kotest", "kotlin-test"],
+          supportedTestFrameworks: ["junit", "kotest", "kotlin-test", "testng"],
           supportedProjectTypes: ["gradle-jvm", "gradle-jvm-multimodule", "maven-jvm", "maven-jvm-reactor"],
           emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"]
         },
