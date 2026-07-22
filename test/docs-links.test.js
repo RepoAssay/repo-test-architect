@@ -293,6 +293,8 @@ describe("docs links", () => {
     assert.ok(readme.includes("[Kotlin/JVM alpha support](docs/kotlin-jvm-alpha-support.md)"));
     assert.ok(support.includes("JUnit 4, JUnit 5/Jupiter, `kotlin.test`, and Kotest"));
     assert.ok(support.includes("Kotest styles other than `FunSpec`, `StringSpec`, and `ShouldSpec`"));
+    assert.ok(support.includes("method-level TestNG with a direct Maven dependency or Gradle `useTestNG()`"));
+    assert.ok(support.includes("TestNG class-level tests, lifecycle hooks, data providers"));
     assert.ok(support.includes("Android application/library unit-test semantics"));
     assert.ok(support.includes("registered as `supported`"));
     assert.ok(validation.includes("JUnit 4"));
@@ -301,6 +303,8 @@ describe("docs links", () => {
     assert.ok(validation.includes("KotlinPoet"));
     assert.ok(validation.includes("libcs1"));
     assert.ok(validation.includes("service-apply"));
+    assert.ok(validation.includes("OHC"));
+    assert.ok(validation.includes("FusionAuth java-http"));
     assert.ok(validation.includes("no repository build, plugin, test, or application code was executed"));
   });
 });

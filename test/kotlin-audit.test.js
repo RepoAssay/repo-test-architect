@@ -8,6 +8,7 @@ import { auditKotlinRepo } from "../src/adapters/kotlin/audit.js";
 const exampleRoot = path.resolve("examples/kotlin-junit-basic");
 const gradleGroovyRoot = path.resolve("examples/kotlin-gradle-groovy-junit");
 const mavenRoot = path.resolve("examples/kotlin-maven-junit");
+const testNgRoot = path.resolve("examples/kotlin-maven-testng");
 
 describe("Kotlin audit adapter", () => {
   it("detects Gradle, JVM languages, test framework, and conventions", () => {
@@ -522,6 +523,73 @@ describe("Kotlin audit adapter", () => {
 
     assert.ok(!audit.profile.testFrameworks.includes("kotest"));
     assert.ok(audit.profile.blockers.includes("Kotest support requires a Gradle JVM test task using JUnit Platform."));
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.name), ["TokenParser"]);
+  });
+
+  it("audits method-level Maven TestNG tests with asserted provenance", () => {
+    const audit = auditKotlinRepo(testNgRoot);
+
+    assert.deepEqual(audit.profile.testFrameworks, ["testng"]);
+    assert.equal(audit.profile.testCommand, "mvn test");
+    assert.equal(audit.profile.confidence, "high");
+    assert.deepEqual(audit.profile.blockers, []);
+    assert.ok(audit.profile.setupSignals.includes("testng"));
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.name), ["TokenFormatter"]);
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.name), ["TokenParser"]);
+    assert.equal(audit.coveredButRisky[0].existingTestEvidence[0].usage, "asserted");
+  });
+
+  it("audits method-level Gradle TestNG tests only with useTestNG execution", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-gradle-testng-"));
+    fs.mkdirSync(path.join(root, "src", "main", "kotlin", "com", "example"), { recursive: true });
+    fs.mkdirSync(path.join(root, "src", "test", "kotlin", "com", "example"), { recursive: true });
+    fs.writeFileSync(path.join(root, "settings.gradle.kts"), 'rootProject.name = "testng"\n');
+    fs.writeFileSync(path.join(root, "gradlew"), "#!/usr/bin/env sh\n");
+    fs.writeFileSync(path.join(root, "build.gradle.kts"), 'plugins { kotlin("jvm") version "2.0.0" }\ndependencies { testImplementation("org.testng:testng:7.11.0") }\ntasks.test { useTestNG() }\n');
+    fs.writeFileSync(path.join(root, "src", "main", "kotlin", "com", "example", "TokenParser.kt"), "package com.example\nclass TokenParser { fun parse(value: String) = value.trim() }\n");
+    fs.writeFileSync(path.join(root, "src", "test", "kotlin", "com", "example", "TokenParserTest.kt"), 'package com.example\nimport org.testng.Assert.assertEquals\nimport org.testng.annotations.Test\nclass TokenParserTest { @Test fun parses() { val result = TokenParser().parse(" x "); assertEquals(result, "x") } }\n');
+
+    const audit = auditKotlinRepo(root);
+
+    assert.deepEqual(audit.profile.testFrameworks, ["testng"]);
+    assert.equal(audit.profile.testCommand, "./gradlew test");
+    assert.deepEqual(audit.profile.blockers, []);
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.name), ["TokenParser"]);
+  });
+
+  it("keeps advanced TestNG annotations out of evidence", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-testng-boundary-"));
+    fs.mkdirSync(path.join(root, "src", "main", "java", "com", "example"), { recursive: true });
+    fs.mkdirSync(path.join(root, "src", "test", "java", "com", "example"), { recursive: true });
+    fs.writeFileSync(path.join(root, "pom.xml"), '<project><modelVersion>4.0.0</modelVersion><groupId>com.example</groupId><artifactId>boundary</artifactId><version>1</version><dependencies><dependency><groupId>org.testng</groupId><artifactId>testng</artifactId><version>7.11.0</version><scope>test</scope></dependency></dependencies></project>\n');
+    for (const name of ["TokenFormatter", "TokenParser"]) {
+      fs.writeFileSync(path.join(root, "src", "main", "java", "com", "example", `${name}.java`), `package com.example; public class ${name} { public String run(String value) { return value.trim(); } }\n`);
+    }
+    fs.writeFileSync(path.join(root, "src", "test", "java", "com", "example", "ParserDataTest.java"), 'package com.example; import org.testng.annotations.DataProvider; import org.testng.annotations.Test; class ParserDataTest { @DataProvider Object[][] tokens() { return new Object[][] {{"x"}}; } @Test(dataProvider = "tokens") void parses(String value) { new TokenParser().run(value); } }\n');
+    fs.writeFileSync(path.join(root, "src", "test", "java", "com", "example", "FormatterClassTest.java"), 'package com.example; import org.testng.annotations.Test; @Test public class FormatterClassTest { public void formats() { new TokenFormatter().run("x"); } }\n');
+
+    const audit = auditKotlinRepo(root);
+
+    assert.deepEqual(audit.profile.testFrameworks, ["testng"]);
+    assert.ok(audit.profile.blockers.includes("TestNG class-level tests, lifecycle hooks, generated or parameterized tests, listeners, and dependency or group semantics are outside the supported evidence boundary."));
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.name), ["TokenFormatter", "TokenParser"]);
+    assert.deepEqual(audit.coveredButRisky, []);
+  });
+
+  it("blocks TestNG without conventional execution and with custom selection", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-testng-execution-"));
+    fs.mkdirSync(path.join(root, "src", "main", "kotlin"), { recursive: true });
+    fs.mkdirSync(path.join(root, "src", "test", "kotlin"), { recursive: true });
+    fs.writeFileSync(path.join(root, "settings.gradle.kts"), 'rootProject.name = "testng-execution"\n');
+    fs.writeFileSync(path.join(root, "build.gradle.kts"), 'plugins { kotlin("jvm") version "2.0.0" }\ndependencies { testImplementation("org.testng:testng:7.11.0") }\ntasks.test { useTestNG { includeGroups("fast") } }\n');
+    fs.writeFileSync(path.join(root, "src", "main", "kotlin", "TokenParser.kt"), "class TokenParser { fun parse(value: String) = value.trim() }\n");
+    fs.writeFileSync(path.join(root, "src", "test", "kotlin", "TokenParserTest.kt"), 'import org.testng.annotations.Test\nclass TokenParserTest { @Test fun parses() { TokenParser().parse("x") } }\n');
+
+    const audit = auditKotlinRepo(root);
+
+    assert.ok(!audit.profile.testFrameworks.includes("testng"));
+    assert.ok(audit.profile.blockers.includes("TestNG support requires a direct Maven dependency or a Gradle JVM test task using useTestNG()."));
+    assert.ok(audit.profile.blockers.includes("TestNG suite XML, group filters, and parallel or custom execution configuration are outside the supported execution boundary."));
     assert.deepEqual(audit.untestedCandidates.map((target) => target.name), ["TokenParser"]);
   });
 
