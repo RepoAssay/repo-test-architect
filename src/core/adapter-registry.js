@@ -53,7 +53,7 @@ export const adapters = [
     languages: ["kotlin", "java"],
     maturity: "supported",
     supportedTestFrameworks: ["junit", "kotlin-test"],
-    supportedProjectTypes: ["gradle-jvm", "maven-jvm"],
+    supportedProjectTypes: ["gradle-jvm", "gradle-jvm-multimodule", "maven-jvm"],
     emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"],
     audit(repoRoot, options = {}) {
       return auditKotlinRepo(repoRoot, {

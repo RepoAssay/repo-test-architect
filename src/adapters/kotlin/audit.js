@@ -17,17 +17,25 @@ const BUILD_FILE_NAMES = new Set([
 
 export function auditKotlinRepo(root, options = {}) {
   const files = readRepoFiles(root);
-  const profile = buildProfile(root, files);
+  const modules = resolveJvmModules(files);
+  const profile = buildProfile(root, files, modules);
   const changedPaths = options.changedPaths
     ? new Set(options.changedPaths.map((currentPath) => normalizeChangedPath(root, currentPath)))
     : undefined;
   const testFiles = files
-    .filter((file) => isEvidenceTestFile(file))
-    .map((file) => ({ ...file, path: normalizePath(file.path), analysis: analyzeJvmFile(file.content, file.path) }))
+    .filter((file) => isEvidenceTestFile(file, modules))
+    .map((file) => ({
+      ...file,
+      path: normalizePath(file.path),
+      moduleProjectPath: moduleForPath(file.path, modules, "test")?.projectPath,
+      analysis: analyzeJvmFile(file.content, file.path)
+    }))
     .sort((left, right) => left.path.localeCompare(right.path));
-  const sourceFiles = files.filter((candidate) => isSourceFile(candidate.path));
+  const sourceFiles = files
+    .filter((candidate) => isSourceFile(candidate.path, modules))
+    .map((file) => ({ ...file, moduleProjectPath: moduleForPath(file.path, modules, "main")?.projectPath }));
   const sourceSymbols = collectSourceSymbols(sourceFiles);
-  const testEvidenceBySourcePath = collectJvmTestEvidence(sourceSymbols, testFiles);
+  const testEvidenceBySourcePath = collectJvmTestEvidence(sourceSymbols, testFiles, modules);
   const untestedCandidates = [];
   const coveredButRisky = [];
   const skipped = [];
@@ -123,34 +131,77 @@ function readRepoFiles(root) {
 }
 
 function shouldRead(relative) {
-  return SOURCE_EXTENSIONS.some((extension) => relative.endsWith(extension)) || BUILD_FILE_NAMES.has(relative);
+  const normalized = normalizePath(relative);
+  return SOURCE_EXTENSIONS.some((extension) => normalized.endsWith(extension)) || BUILD_FILE_NAMES.has(normalized.split("/").at(-1));
 }
 
-function buildProfile(root, files) {
-  const paths = files.map((file) => normalizePath(file.path));
-  const buildText = files
-    .filter((file) => ["build.gradle", "build.gradle.kts", "pom.xml"].includes(normalizePath(file.path)))
+function resolveJvmModules(files) {
+  const paths = new Set(files.map((file) => normalizePath(file.path)));
+  const settings = files.find((file) => ["settings.gradle", "settings.gradle.kts"].includes(normalizePath(file.path)));
+  const declarations = settings ? declaredGradleProjectPaths(settings.content) : [];
+  const modules = [{ projectPath: ":", directory: ".", dependencies: new Set() }];
+
+  for (const declaration of declarations) {
+    const hasBuildFile = ["build.gradle", "build.gradle.kts"]
+      .some((name) => paths.has(`${declaration.directory}/${name}`));
+    if (!hasBuildFile) continue;
+    modules.push({ ...declaration, dependencies: new Set() });
+  }
+
+  for (const module of modules) {
+    const buildText = moduleBuildText(module, files);
+    for (const dependency of declaredGradleProjectDependencies(buildText)) module.dependencies.add(dependency);
+  }
+
+  return modules.sort((left, right) => right.directory.length - left.directory.length || left.projectPath.localeCompare(right.projectPath));
+}
+
+function declaredGradleProjectDependencies(content) {
+  const dependencies = new Set();
+  const dependencyPattern = /\b(?:api|implementation|testImplementation|compileOnly|testCompileOnly)\s*(?:\(\s*)?project\s*\(\s*["'](:[^"']+)["']\s*\)/g;
+  for (const match of content.matchAll(dependencyPattern)) dependencies.add(match[1]);
+  return dependencies;
+}
+
+function moduleBuildText(module, files) {
+  const prefix = module.directory === "." ? "" : `${module.directory}/`;
+  return files
+    .filter((file) => ["build.gradle", "build.gradle.kts", "pom.xml"].includes(normalizePath(file.path).replace(prefix, "")))
+    .filter((file) => !normalizePath(file.path).replace(prefix, "").includes("/"))
     .map((file) => file.content)
     .join("\n");
-  const testText = files.filter((file) => isTestFile(file.path)).map((file) => file.content).join("\n");
+}
+
+function moduleForPath(currentPath, modules, sourceSet) {
+  const normalized = normalizePath(currentPath);
+  return modules.find((module) => {
+    const prefix = module.directory === "." ? "" : `${module.directory}/`;
+    return new RegExp(`^${escapeRegExp(prefix)}src/${sourceSet}/(?:kotlin|java)/.+\\.(?:kt|java)$`).test(normalized);
+  });
+}
+
+function buildProfile(root, files, modules) {
+  const paths = files.map((file) => normalizePath(file.path));
+  const buildText = modules.map((module) => moduleBuildText(module, files)).join("\n");
+  const testText = files.filter((file) => isTestFile(file.path, modules)).map((file) => file.content).join("\n");
   const testFrameworks = detectTestFrameworks(buildText, testText);
   const unsupportedTestFrameworks = detectUnsupportedTestFrameworks(buildText);
   const unsupportedProjectShapes = detectUnsupportedProjectShapes(buildText, paths);
   const testCommandResolution = detectTestCommand(root, paths, testFrameworks);
   const testCommand = testCommandResolution.command;
-  const existingTestLocations = detectExistingTestLocations(paths);
-  const blockers = detectBlockers(paths, testCommand, testFrameworks, unsupportedTestFrameworks, unsupportedProjectShapes);
+  const existingTestLocations = detectExistingTestLocations(paths, modules);
+  const blockers = detectBlockers(paths, modules, testCommand, testFrameworks, unsupportedTestFrameworks, unsupportedProjectShapes);
 
   return {
     root,
     languages: detectLanguages(paths),
-    packageManagers: detectPackageManagers(paths),
+    packageManagers: detectPackageManagers(paths, modules),
     testFrameworks,
     architectures: ["jvm"],
     testCommand,
-    detectedConventions: detectConventions(paths),
+    detectedConventions: detectConventions(paths, modules),
     existingTestLocations,
-    setupSignals: detectSetupSignals(paths, buildText, testText, testCommandResolution),
+    setupSignals: detectSetupSignals(paths, buildText, testText, testCommandResolution, modules),
     confidence: scoreProfileConfidence(testFrameworks, existingTestLocations, blockers),
     blockers
   };
@@ -163,9 +214,12 @@ function detectLanguages(paths) {
   return [...languages].sort();
 }
 
-function detectPackageManagers(paths) {
+function detectPackageManagers(paths, modules) {
   const managers = new Set();
-  if (paths.includes("build.gradle") || paths.includes("build.gradle.kts")) managers.add("gradle");
+  if (modules.some((module) => {
+    const prefix = module.directory === "." ? "" : `${module.directory}/`;
+    return paths.includes(`${prefix}build.gradle`) || paths.includes(`${prefix}build.gradle.kts`);
+  })) managers.add("gradle");
   if (paths.includes("pom.xml")) managers.add("maven");
   return [...managers].sort();
 }
@@ -189,9 +243,15 @@ function detectUnsupportedProjectShapes(buildText, paths) {
   const shapes = [];
   if (
     /\bcom\.android\.(?:application|library|test)\b|\bid\s*\(?\s*["']com\.android\./i.test(buildText) ||
-    paths.some((currentPath) => currentPath.startsWith("src/androidTest/"))
+    paths.some((currentPath) => /(?:^|\/)src\/androidTest\//.test(currentPath))
   ) {
     shapes.push("Android unit and instrumentation source sets are outside the supported JVM module boundary.");
+  }
+  if (
+    /\b(?:org\.jetbrains\.kotlin\.)?multiplatform\b|kotlin\s*\(\s*["']multiplatform["']\s*\)/i.test(buildText) ||
+    paths.some((currentPath) => /(?:^|\/)src\/(?:common|jvm)(?:Main|Test)\//.test(currentPath))
+  ) {
+    shapes.push("Kotlin Multiplatform modules and target-specific source sets are outside the supported JVM module boundary.");
   }
   return shapes;
 }
@@ -238,6 +298,10 @@ function declaredGradleProjectPaths(content) {
     .replace(/\/\*[\s\S]*?\*\//g, " ")
     .replace(/\/\/.*$/gm, "");
   const declarations = new Set();
+  const remappedProjects = new Set(
+    [...settingsText.matchAll(/\bproject\s*\(\s*["'](:[^"']+)["']\s*\)\s*\.\s*projectDir\s*=/g)]
+      .map((match) => match[1])
+  );
   for (const match of settingsText.matchAll(/\binclude\s*\(([^)]*)\)/g)) {
     for (const value of quotedValues(match[1])) declarations.add(value);
   }
@@ -247,6 +311,7 @@ function declaredGradleProjectPaths(content) {
   return [...declarations]
     .map((value) => value.replace(/^:/, "").replaceAll("/", ":"))
     .filter((value) => value && !value.includes(".."))
+    .filter((value) => !remappedProjects.has(`:${value}`))
     .map((value) => ({ projectPath: `:${value}`, directory: value.replaceAll(":", "/") }));
 }
 
@@ -292,21 +357,24 @@ function relativeCommandPath(root, target) {
   return relative.startsWith(".") ? relative : `./${relative}`;
 }
 
-function detectExistingTestLocations(paths) {
+function detectExistingTestLocations(paths, modules) {
   const locations = new Set();
-  if (paths.some((item) => item.startsWith("src/test/"))) locations.add("src/test");
-  return [...locations];
+  for (const module of modules) {
+    const location = module.directory === "." ? "src/test" : `${module.directory}/src/test`;
+    if (paths.some((item) => item.startsWith(`${location}/`))) locations.add(location);
+  }
+  return [...locations].sort();
 }
 
-function detectConventions(paths) {
+function detectConventions(paths, modules) {
   const conventions = new Set();
   if (paths.some((item) => /(?:^|\/)(?:Test[^/]*|[^/]*(?:Test|Tests|TestCase))\.(?:kt|java)$/.test(item))) conventions.add("*Test files");
-  if (paths.some((item) => item.startsWith("src/test/kotlin/"))) conventions.add("src/test/kotlin");
-  if (paths.some((item) => item.startsWith("src/test/java/"))) conventions.add("src/test/java");
+  if (paths.some((item) => moduleForPath(item, modules, "test") && /(?:^|\/)src\/test\/kotlin\//.test(item))) conventions.add("src/test/kotlin");
+  if (paths.some((item) => moduleForPath(item, modules, "test") && /(?:^|\/)src\/test\/java\//.test(item))) conventions.add("src/test/java");
   return [...conventions];
 }
 
-function detectSetupSignals(paths, buildText, testText, testCommandResolution) {
+function detectSetupSignals(paths, buildText, testText, testCommandResolution, modules) {
   const signals = new Set();
   if (paths.includes("build.gradle.kts")) signals.add("gradle kotlin dsl");
   if (paths.includes("build.gradle")) signals.add("gradle");
@@ -317,14 +385,15 @@ function detectSetupSignals(paths, buildText, testText, testCommandResolution) {
   if (/useJUnitPlatform|org\.junit\.jupiter/i.test(`${buildText}\n${testText}`)) signals.add("junit platform");
   if (/org\.junit(?!\.jupiter)/i.test(`${buildText}\n${testText}`)) signals.add("junit 4");
   if (testCommandResolution.inheritedSignal) signals.add(testCommandResolution.inheritedSignal);
+  if (modules.some((module) => module.projectPath !== ":")) signals.add("gradle module graph");
   return [...signals];
 }
 
-function detectBlockers(paths, testCommand, frameworks, unsupportedTestFrameworks, unsupportedProjectShapes) {
+function detectBlockers(paths, modules, testCommand, frameworks, unsupportedTestFrameworks, unsupportedProjectShapes) {
   const blockers = [];
   if (frameworks.length === 0) blockers.push("No supported JVM test framework detected.");
   if (!testCommand) blockers.push("No runnable JVM test command detected from Gradle or Maven markers.");
-  if (!paths.some((currentPath) => isSourceFile(currentPath))) {
+  if (!paths.some((currentPath) => isSourceFile(currentPath, modules))) {
     const hasNestedSourceSet = paths.some((currentPath) => /(?:^|\/)src\/main\/(?:kotlin|java)\/.+\.(?:kt|java)$/.test(currentPath));
     blockers.push(
       hasNestedSourceSet
@@ -431,6 +500,7 @@ function collectSourceSymbols(sourceFiles) {
     const symbols = [...new Set([...analysis.declarations, fallbackName])].sort();
     sources.push({
       path: normalizePath(file.path),
+      moduleProjectPath: file.moduleProjectPath,
       packageName: analysis.packageName,
       symbols,
       qualifiedSymbols: symbols.map((symbol) => analysis.packageName ? `${analysis.packageName}.${symbol}` : symbol)
@@ -439,12 +509,13 @@ function collectSourceSymbols(sourceFiles) {
   return sources;
 }
 
-function collectJvmTestEvidence(sourceSymbols, testFiles) {
+function collectJvmTestEvidence(sourceSymbols, testFiles, modules) {
   const evidenceBySourcePath = new Map();
 
   for (const source of sourceSymbols) {
     const evidence = [];
     for (const testFile of testFiles) {
+      if (!canModuleTestSource(testFile.moduleProjectPath, source.moduleProjectPath, modules)) continue;
       const match = findJvmTestMatch(source, testFile.analysis);
       if (!match) continue;
       evidence.push({
@@ -458,6 +529,13 @@ function collectJvmTestEvidence(sourceSymbols, testFiles) {
   }
 
   return evidenceBySourcePath;
+}
+
+function canModuleTestSource(testModuleProjectPath, sourceModuleProjectPath, modules) {
+  if (!testModuleProjectPath || !sourceModuleProjectPath) return false;
+  if (testModuleProjectPath === sourceModuleProjectPath) return true;
+  const testModule = modules.find((module) => module.projectPath === testModuleProjectPath);
+  return testModule?.dependencies.has(sourceModuleProjectPath) ?? false;
 }
 
 function findJvmTestMatch(source, test) {
@@ -574,18 +652,16 @@ function jvmAssertionBodies(content) {
   return bodies;
 }
 
-function isSourceFile(currentPath) {
-  const normalized = normalizePath(currentPath);
-  return /^(?:src\/main\/(?:kotlin|java)\/).+\.(?:kt|java)$/.test(normalized);
+function isSourceFile(currentPath, modules) {
+  return Boolean(moduleForPath(currentPath, modules, "main"));
 }
 
-function isTestFile(currentPath) {
-  const normalized = normalizePath(currentPath);
-  return /^(?:src\/test\/(?:kotlin|java)\/).+\.(?:kt|java)$/.test(normalized);
+function isTestFile(currentPath, modules) {
+  return Boolean(moduleForPath(currentPath, modules, "test"));
 }
 
-function isEvidenceTestFile(file) {
-  if (!isTestFile(file.path)) return false;
+function isEvidenceTestFile(file, modules) {
+  if (!isTestFile(file.path, modules)) return false;
   const content = stripJvmCommentsAndStrings(file.content);
   return /@(?:[A-Za-z_$][\w$]*\.)*(?:Test|ParameterizedTest|RepeatedTest|TestFactory|TestTemplate|RunWith)\b|\bextends\s+(?:junit\.framework\.)?TestCase\b/.test(content);
 }

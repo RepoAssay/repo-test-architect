@@ -189,7 +189,7 @@ export function getProjectDetectionRules() {
  */
 export function detectProjects(repoRoot, options = {}) {
   const absoluteRoot = path.resolve(repoRoot);
-  const markerGroups = collectMarkerGroups(absoluteRoot);
+  const markerGroups = collapseOwnedGradleModules(absoluteRoot, collectMarkerGroups(absoluteRoot));
   const projects = [...markerGroups.values()]
     .map((project) => toDetectedProject(absoluteRoot, project))
     .filter((project) => !isExcludedProjectRoot(project.root, options.excludeProjectRoots))
@@ -205,6 +205,44 @@ export function detectProjects(repoRoot, options = {}) {
       unsupportedProjectCount: projects.filter((project) => !project.supported).length
     }
   };
+}
+
+function collapseOwnedGradleModules(repoRoot, markerGroups) {
+  const collapsed = new Map(markerGroups);
+  for (const group of markerGroups.values()) {
+    const settingsMarker = group.markerFiles.find((markerFile) => /(?:^|\/)settings\.gradle(?:\.kts)?$/.test(markerFile));
+    if (!settingsMarker) continue;
+    const settingsText = fs.readFileSync(path.resolve(repoRoot, settingsMarker), "utf8")
+      .replace(/\/\*[\s\S]*?\*\//g, " ")
+      .replace(/\/\/.*$/gm, "");
+    const declarations = new Set();
+    const remappedProjects = new Set(
+      [...settingsText.matchAll(/\bproject\s*\(\s*["'](:[^"']+)["']\s*\)\s*\.\s*projectDir\s*=/g)]
+        .map((match) => match[1])
+    );
+    for (const match of settingsText.matchAll(/\binclude\s*\(([^)]*)\)/g)) {
+      for (const value of quotedValues(match[1])) declarations.add(value);
+    }
+    for (const match of settingsText.matchAll(/^\s*include\s+(?!\()([^\n]+)$/gm)) {
+      for (const value of quotedValues(match[1])) declarations.add(value);
+    }
+
+    for (const declaration of declarations) {
+      const projectPath = `:${declaration.replace(/^:/, "").replaceAll("/", ":")}`;
+      if (remappedProjects.has(projectPath)) continue;
+      const moduleDirectory = projectPath.slice(1).replaceAll(":", "/");
+      if (!moduleDirectory || moduleDirectory.includes("..")) continue;
+      const projectRoot = group.root === "." ? moduleDirectory : `${group.root}/${moduleDirectory}`;
+      const candidate = markerGroups.get(projectRoot);
+      if (!candidate || !candidate.markerFiles.some((markerFile) => /(?:^|\/)build\.gradle(?:\.kts)?$/.test(markerFile))) continue;
+      collapsed.delete(projectRoot);
+    }
+  }
+  return collapsed;
+}
+
+function quotedValues(content) {
+  return [...content.matchAll(/["']([^"']+)["']/g)].map((match) => match[1]);
 }
 
 function isExcludedProjectRoot(projectRoot, excludeProjectRoots = []) {

@@ -40,6 +40,20 @@ describe("project auditor", () => {
     assert.deepEqual(result.skippedProjects, []);
   });
 
+  it("audits a conventionally owned Gradle module graph once at the aggregate root", () => {
+    const result = auditDetectedProjects(path.resolve("examples/kotlin-gradle-module-graph-junit"));
+
+    assert.deepEqual(result.summary, {
+      projectCount: 1,
+      auditedProjectCount: 1,
+      skippedProjectCount: 0
+    });
+    assert.equal(result.audits[0].projectId, ".");
+    assert.equal(result.audits[0].adapterId, "kotlin");
+    assert.deepEqual(result.audits[0].audit.untestedCandidates.map((target) => target.name), ["TokenFormatter"]);
+    assert.deepEqual(result.audits[0].audit.coveredButRisky.map((target) => target.name), ["TokenParser"]);
+  });
+
   it("passes project-relative changed paths into matching project adapters", () => {
     const result = auditDetectedProjects(path.resolve("examples/polyglot-workspace"), {
       changedPaths: [

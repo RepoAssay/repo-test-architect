@@ -187,6 +187,35 @@ describe("project detector", () => {
     );
   });
 
+  it("collapses conventionally included Gradle modules into their aggregate project root", () => {
+    const detection = detectProjects(path.resolve("examples/kotlin-gradle-module-graph-junit"));
+
+    assert.equal(detection.summary.projectCount, 1);
+    assert.equal(detection.summary.supportedProjectCount, 1);
+    assert.deepEqual(
+      detection.projects.map((project) => ({ root: project.root, markerFiles: project.markerFiles, adapterIds: project.adapterIds })),
+      [{
+        root: ".",
+        markerFiles: ["build.gradle.kts", "settings.gradle.kts"],
+        adapterIds: ["kotlin"]
+      }]
+    );
+  });
+
+  it("does not collapse custom Gradle project-directory remaps", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-gradle-detection-remap-"));
+    fs.mkdirSync(path.join(root, "modules", "token-core"), { recursive: true });
+    fs.mkdirSync(path.join(root, "tokens"), { recursive: true });
+    fs.writeFileSync(path.join(root, "settings.gradle.kts"), 'include(":tokens")\nproject(":tokens").projectDir = file("modules/token-core")\n');
+    fs.writeFileSync(path.join(root, "build.gradle.kts"), "plugins {}\n");
+    fs.writeFileSync(path.join(root, "modules", "token-core", "build.gradle.kts"), "plugins {}\n");
+    fs.writeFileSync(path.join(root, "tokens", "build.gradle.kts"), "plugins {}\n");
+
+    const detection = detectProjects(root);
+
+    assert.deepEqual(detection.projects.map((project) => project.root), [".", "modules/token-core", "tokens"]);
+  });
+
   it("keeps mixed Java and Kotlin sources under one JVM project root", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-mixed-jvm-"));
     fs.mkdirSync(path.join(root, "services", "checkout", "src", "main", "java"), { recursive: true });
