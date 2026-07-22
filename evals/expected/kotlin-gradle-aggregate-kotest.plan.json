@@ -1,17 +1,66 @@
 {
   "schemaVersion": "plan/v1",
   "summary": {
-    "confidence": "low",
-    "blockerCount": 4,
-    "addTestCount": 0,
-    "extendTestCount": 0,
+    "confidence": "high",
+    "verificationCommand": "./gradlew test",
+    "blockerCount": 0,
+    "addTestCount": 1,
+    "extendTestCount": 1,
     "deferredCount": 0
   },
-  "blockers": [
-    "No supported JVM test framework detected.",
-    "No runnable JVM test command detected from Gradle or Maven markers.",
-    "No supported root JVM source set detected; audit a Gradle or Maven module root.",
-    "Unsupported JVM test frameworks detected: kotest."
-  ],
-  "items": []
+  "blockers": [],
+  "items": [
+    {
+      "id": "add-test:token-core/src/main/kotlin/com/example/token/TokenFormatter.kt",
+      "action": "add-test",
+      "targetId": "token-core/src/main/kotlin/com/example/token/TokenFormatter.kt",
+      "target": "TokenFormatter",
+      "path": "token-core/src/main/kotlin/com/example/token/TokenFormatter.kt",
+      "testLevel": "unit",
+      "priority": 7,
+      "riskReductionScore": 9,
+      "maintenanceCost": 2,
+      "rationale": [
+        "Pure transformation logic",
+        "edge-case surface"
+      ],
+      "sourceSignals": [
+        "pure-logic",
+        "edge-case-surface"
+      ],
+      "existingTestPaths": []
+    },
+    {
+      "id": "extend-test:token-core/src/main/kotlin/com/example/token/TokenParser.kt",
+      "action": "extend-test",
+      "targetId": "token-core/src/main/kotlin/com/example/token/TokenParser.kt",
+      "target": "TokenParser",
+      "path": "token-core/src/main/kotlin/com/example/token/TokenParser.kt",
+      "testLevel": "unit",
+      "priority": 7,
+      "riskReductionScore": 9,
+      "maintenanceCost": 2,
+      "rationale": [
+        "Pure transformation logic",
+        "edge-case surface",
+        "Existing test evidence detected; review missing edge cases"
+      ],
+      "sourceSignals": [
+        "pure-logic",
+        "edge-case-surface",
+        "matching-test"
+      ],
+      "existingTestPaths": [
+        "token-core/src/test/kotlin/com/example/token/TokenParserSpec.kt"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "token-core/src/test/kotlin/com/example/token/TokenParserSpec.kt",
+          "kind": "jvm-symbol-reference",
+          "strength": "referenced",
+          "usage": "asserted"
+        }
+      ]
+    }
+  ]
 }

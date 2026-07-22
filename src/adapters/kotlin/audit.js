@@ -23,7 +23,7 @@ export function auditKotlinRepo(root, options = {}) {
     ? new Set(options.changedPaths.map((currentPath) => normalizeChangedPath(root, currentPath)))
     : undefined;
   const testFiles = files
-    .filter((file) => isEvidenceTestFile(file, modules))
+    .filter((file) => isEvidenceTestFile(file, files, modules, profile.testFrameworks))
     .map((file) => ({
       ...file,
       path: normalizePath(file.path),
@@ -317,13 +317,13 @@ function buildProfile(root, files, modules) {
   const paths = files.map((file) => normalizePath(file.path));
   const buildText = modules.map((module) => moduleBuildText(module, files)).join("\n");
   const testText = files.filter((file) => isTestFile(file.path, modules)).map((file) => file.content).join("\n");
-  const testFrameworks = detectTestFrameworks(buildText, testText);
+  const testFrameworks = detectTestFrameworks(buildText, testText, files, modules);
   const unsupportedTestFrameworks = detectUnsupportedTestFrameworks(buildText);
   const unsupportedProjectShapes = detectUnsupportedProjectShapes(buildText, paths);
   const testCommandResolution = detectTestCommand(root, paths, testFrameworks);
   const testCommand = testCommandResolution.command;
   const existingTestLocations = detectExistingTestLocations(paths, modules);
-  const blockers = detectBlockers(paths, modules, testCommand, testFrameworks, unsupportedTestFrameworks, unsupportedProjectShapes);
+  const blockers = detectBlockers(paths, files, modules, testCommand, testFrameworks, unsupportedTestFrameworks, unsupportedProjectShapes);
 
   return {
     root,
@@ -357,10 +357,11 @@ function detectPackageManagers(paths, modules) {
   return [...managers].sort();
 }
 
-function detectTestFrameworks(buildText, testText) {
+function detectTestFrameworks(buildText, testText, files, modules) {
   const frameworks = new Set();
   if (/kotlin\s*\(\s*["']test["']\s*\)|\bkotlin-test\b|\bkotlin\.test\b/.test(`${buildText}\n${testText}`)) frameworks.add("kotlin-test");
   if (/\b(?:junit|org\.junit|useJUnitPlatform)\b/i.test(`${buildText}\n${testText}`)) frameworks.add("junit");
+  if (modules.some((module) => supportsKotestModule(module, files))) frameworks.add("kotest");
   return [...frameworks].sort();
 }
 
@@ -368,8 +369,16 @@ function detectUnsupportedTestFrameworks(buildText) {
   const frameworks = new Set();
   if (/\bspock(?:framework)?\b/i.test(buildText)) frameworks.add("spock");
   if (/\btestng\b/i.test(buildText)) frameworks.add("testng");
-  if (/\b(?:io\.kotest|kotest-runner)\b/i.test(buildText)) frameworks.add("kotest");
   return [...frameworks].sort();
+}
+
+function usesKotest(content) {
+  return /\b(?:io\.kotest|kotest)\b/i.test(content);
+}
+
+function supportsKotestModule(module, files) {
+  const buildText = moduleBuildText(module, files);
+  return module.buildSystem === "gradle" && usesKotest(buildText) && /\buseJUnitPlatform\s*\(/.test(buildText);
 }
 
 function detectUnsupportedProjectShapes(buildText, paths) {
@@ -517,13 +526,14 @@ function detectSetupSignals(paths, buildText, testText, testCommandResolution, m
   if (paths.includes("mvnw") || paths.includes("mvnw.cmd")) signals.add("maven wrapper");
   if (/useJUnitPlatform|org\.junit\.jupiter/i.test(`${buildText}\n${testText}`)) signals.add("junit platform");
   if (/org\.junit(?!\.jupiter)/i.test(`${buildText}\n${testText}`)) signals.add("junit 4");
+  if (usesKotest(`${buildText}\n${testText}`)) signals.add("kotest");
   if (testCommandResolution.inheritedSignal) signals.add(testCommandResolution.inheritedSignal);
   if (modules.some((module) => module.buildSystem === "gradle" && module.directory !== ".")) signals.add("gradle module graph");
   if (modules.some((module) => module.buildSystem === "maven" && module.directory !== ".")) signals.add("maven reactor graph");
   return [...signals];
 }
 
-function detectBlockers(paths, modules, testCommand, frameworks, unsupportedTestFrameworks, unsupportedProjectShapes) {
+function detectBlockers(paths, files, modules, testCommand, frameworks, unsupportedTestFrameworks, unsupportedProjectShapes) {
   const blockers = [];
   if (frameworks.length === 0) blockers.push("No supported JVM test framework detected.");
   if (!testCommand) blockers.push("No runnable JVM test command detected from Gradle or Maven markers.");
@@ -536,7 +546,39 @@ function detectBlockers(paths, modules, testCommand, frameworks, unsupportedTest
     );
   }
   if (unsupportedTestFrameworks.length > 0) blockers.push(`Unsupported JVM test frameworks detected: ${unsupportedTestFrameworks.join(", ")}.`);
+  blockers.push(...detectKotestBlockers(files, modules));
   blockers.push(...unsupportedProjectShapes);
+  return blockers;
+}
+
+function detectKotestBlockers(files, modules) {
+  const blockers = [];
+  const kotestModules = modules.filter((module) => usesKotest(moduleBuildText(module, files)));
+  const kotestTestText = files
+    .filter((file) => isTestFile(file.path, modules) && usesKotest(file.content))
+    .map((file) => file.content)
+    .join("\n");
+  if (kotestModules.length === 0 && !kotestTestText) return blockers;
+  if (kotestModules.some((module) => !supportsKotestModule(module, files))) {
+    blockers.push("Kotest support requires a Gradle JVM test task using JUnit Platform.");
+  }
+
+  const stripped = stripJvmCommentsAndStrings(kotestTestText);
+  const styles = new Set(
+    [...stripped.matchAll(/:\s*(?:io\.kotest\.core\.spec\.style\.)?([A-Z][A-Za-z]*Spec)\s*\(/g)]
+      .map((match) => match[1])
+  );
+  const supportedStyles = new Set(["FunSpec", "ShouldSpec", "StringSpec"]);
+  const unsupportedStyles = [...styles].filter((style) => !supportedStyles.has(style)).sort();
+  if (unsupportedStyles.length > 0) {
+    blockers.push(`Unsupported Kotest spec styles detected: ${unsupportedStyles.join(", ")}.`);
+  }
+  if (/\b(?:before|after|around)(?:Each|Any|Container|Test|Spec|Project)\s*(?:\(|\{)|\b(?:extensions?|listeners?)\s*\(|\bisolationMode\b|\b(?:Abstract)?ProjectConfig\b/.test(stripped)) {
+    blockers.push("Kotest lifecycle hooks, extensions, and isolation configuration are outside the supported evidence boundary.");
+  }
+  if (/\b(?:withData|checkAll|forAll)\s*(?:<[^>\n]+>\s*)?[({]/.test(stripped)) {
+    blockers.push("Kotest data-driven and property tests are outside the supported evidence boundary.");
+  }
   return blockers;
 }
 
@@ -767,7 +809,7 @@ function collectJvmReferenceAliases(content, escapedReference) {
 
 function jvmAssertionBodies(content) {
   const bodies = [];
-  const matcher = /\b(?:assert[A-Za-z]*|verify|expect)\s*(?:<[^>\n]+>\s*)?([({])/g;
+  const matcher = /\b(?:assert[A-Za-z]*|verify|expect|should(?:Not)?[A-Z][A-Za-z]*)\s*(?:<[^>\n]+>\s*)?([({])/g;
   let match;
 
   while ((match = matcher.exec(content)) !== null) {
@@ -783,6 +825,10 @@ function jvmAssertionBodies(content) {
     matcher.lastIndex = index;
   }
 
+  for (const line of content.split("\n")) {
+    if (/\bshould(?:Not)?[A-Z][A-Za-z]*\b/.test(line)) bodies.push(line);
+  }
+
   return bodies;
 }
 
@@ -794,10 +840,23 @@ function isTestFile(currentPath, modules) {
   return Boolean(moduleForPath(currentPath, modules, "test"));
 }
 
-function isEvidenceTestFile(file, modules) {
+function isEvidenceTestFile(file, files, modules, frameworks) {
   if (!isTestFile(file.path, modules)) return false;
   const content = stripJvmCommentsAndStrings(file.content);
-  return /@(?:[A-Za-z_$][\w$]*\.)*(?:Test|ParameterizedTest|RepeatedTest|TestFactory|TestTemplate|RunWith)\b|\bextends\s+(?:junit\.framework\.)?TestCase\b/.test(content);
+  if (/@(?:[A-Za-z_$][\w$]*\.)*(?:Test|ParameterizedTest|RepeatedTest|TestFactory|TestTemplate|RunWith)\b|\bextends\s+(?:junit\.framework\.)?TestCase\b/.test(content)) return true;
+  if (!frameworks.includes("kotest")) return false;
+  const module = moduleForPath(file.path, modules, "test");
+  return Boolean(module && supportsKotestModule(module, files) && isSupportedKotestSpec(file.content));
+}
+
+function isSupportedKotestSpec(content) {
+  const stripped = stripJvmCommentsAndStrings(content);
+  const style = stripped.match(/\bclass\s+[A-Za-z_$][\w$]*(?:\s*<[^>{}\n]+>)?(?:\s*\([^{}]*\))?\s*:\s*(?:io\.kotest\.core\.spec\.style\.)?(FunSpec|ShouldSpec|StringSpec)\s*\(/)?.[1];
+  if (!style) return false;
+  const commentsRemoved = stripJvmComments(content);
+  if (style === "FunSpec") return /\btest\s*\(\s*["']/.test(commentsRemoved);
+  if (style === "ShouldSpec") return /\bshould\s*\(\s*["']/.test(commentsRemoved);
+  return /(?:^|[({\n])\s*["'][^"'\n]+["']\s*\{/m.test(commentsRemoved);
 }
 
 function normalizePath(currentPath) {
@@ -848,6 +907,12 @@ function stripJvmCommentsAndStrings(content) {
     .replace(/"""[\s\S]*?"""/g, '""')
     .replace(/"(?:\\.|[^"\\])*"/g, '""')
     .replace(/'(?:\\.|[^'\\])*'/g, "''");
+}
+
+function stripJvmComments(content) {
+  return content
+    .replace(/\/\*[\s\S]*?\*\//g, " ")
+    .replace(/\/\/.*$/gm, " ");
 }
 
 function escapeRegExp(value) {

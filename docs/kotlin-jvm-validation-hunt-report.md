@@ -13,6 +13,10 @@ This report records static audits of pinned public repositories used to pressure
 | [NightConfig](https://github.com/TheElectronWill/night-config) root | `9d2c9564518666927f29f3059a8772f006444f1a` | multi-module Gradle, Java, JUnit, exported API chains | high; `./gradlew test`; no blockers | 65 | 26 | 86 | about 120 ms |
 | [Apache Maven Surefire](https://github.com/apache/maven-surefire) root | `8dcf263f808c15b00a7064ec6ea3f9268c1d4b51` | multi-module Maven reactor, Java, JUnit 4/5 | high; `mvn test`; no blockers | 24 | 132 | 130 | about 520 ms |
 | [Apache Maven Resolver](https://github.com/apache/maven-resolver) root | `651e7b1d1f43035e94001fddf6afb09d5a060705` | multi-module Maven reactor, Java, JUnit, compile-exported chains | high; `mvn test`; no blockers | 151 | 232 | 245 | about 680 ms |
+| [libcs1](https://github.com/cs124-illinois/libcs1) root | `428d499bc0c78cd90cdbde3783a3ea983ac66eb6` | Gradle Kotlin/JVM, Kotest `StringSpec`, multiline spec declaration | high; `./gradlew test`; no blockers | 1 | 3 | 0 | about 62 ms |
+| [service-apply](https://github.com/woowacourse/service-apply) root | `19c9327266c7c8ddb3f858425057ddd2c5a1370e` | Gradle Kotlin/JVM, Spring, mixed Kotest spec styles/configuration | medium; `./gradlew test`; unsupported-style, lifecycle, and data/property blockers | 56 | 47 | 104 | about 211 ms |
+| [Datadog Synthetic Test Support](https://github.com/personio/datadog-synthetic-test-support) root | `73c2f5c74058f75ba9928e055e272e3955e0418d` | Gradle Kotlin/JVM, JUnit suite with Kotest runtime configured | high; `./gradlew test`; no blockers | 8 | 17 | 38 | about 118 ms |
+| [SimpleCpfValidator](https://github.com/LeoColman/SimpleCpfValidator) root | `5fb0d88620cc3129bab0c254b19d3047ab6afb09` | Kotlin Multiplatform with JVM Kotest `FunSpec` | low; `./gradlew test`; standard-source-set and multiplatform blockers | 0 | 0 | 0 | about 46 ms |
 | [graphql-java](https://github.com/graphql-java/graphql-java) root | `94f398d50cbff7d5810b6ffc5692fa3947482c99` | Gradle, Java, mostly Spock plus JUnit/TestNG | medium; `./gradlew test`; Spock/TestNG blocker | 345 | 0 | 300 | about 70 ms |
 | [KotlinPoet](https://github.com/square/kotlinpoet) root | `be2de914ce6eb3694092ed4e0f28626cbce1ffe0` | mixed conventional JVM and Kotlin Multiplatform Gradle modules | medium; `./gradlew test`; multiplatform blocker | 20 | 5 | 6 | about 21 ms |
 
@@ -34,6 +38,14 @@ Maven Surefire exercised the root-declared reactor boundary at realistic scale. 
 
 Maven Resolver provided exported-transitive Maven pressure. Six new called relationships reach `maven-resolver-api` sources through intermediate reactor modules' non-optional compile dependencies. Target counts remain stable while the evidence graph grows from 711 to 717 relationships; provided/test/optional or exclusion-bearing edges are usable when directly declared by the test module but are not traversed as exports.
 
+libcs1 provided the narrow positive Kotest proof. Its `StringSpec` declaration places the colon and base class on a continuation line, which drove multiline spec recognition. The supported variant recovered three source relationships, all consumed by Kotest `should*` assertions; the pre-variant audit reported four untested targets and the old generic Kotest blocker.
+
+service-apply pressured the negative boundary in a realistic mixed suite. Supported `StringSpec` tests contribute evidence, while `BehaviorSpec`/`ExpectSpec`, lifecycle hooks or extensions, and data/property APIs remain explicit blockers. Relative to the pre-variant audit, supported runnable specs increased covered targets from 24 to 47 and evidence relationships from 25 to 58, including 26 asserted relationships, without claiming the unsupported specs.
+
+Datadog Synthetic Test Support confirmed that a conventional JUnit suite may configure the Kotest runtime without using Kotest spec classes. Its existing JUnit evidence remains stable at 60 relationships while the obsolete blanket Kotest blocker disappears; JUnit `BeforeEach` usage is not misclassified as Kotest lifecycle configuration.
+
+SimpleCpfValidator confirmed that recognizing Kotest configuration does not widen source-set ownership. The root remains outside the JVM adapter because its production and test sources use Kotlin Multiplatform layouts, so the adapter reports the existing multiplatform and missing-standard-source-set blockers and emits no source evidence.
+
 graphql-java demonstrated why framework detection must not equal coverage detection. Its main test suite is Groovy/Spock, with additional TestNG configuration. The adapter reports those unsupported frameworks as blockers and does not interpret Groovy specifications as Java source coverage.
 
 KotlinPoet demonstrated the mixed aggregate boundary. The audit selects only settings-declared modules with conventional JVM source sets, reports their 31 targets, and emits a multiplatform blocker for the larger target-specific graph rather than claiming full support.
@@ -54,17 +66,21 @@ KotlinPoet demonstrated the mixed aggregate boundary. The audit selects only set
 - added Fray as a pinned multi-module Kotlin/Java validation probe with eight dependency-qualified cross-module evidence relationships
 - added Maven Surefire as a pinned reactor validation probe with 143 dependency-qualified cross-module evidence relationships
 - added NightConfig and Maven Resolver as pinned exported-transitive validation probes, recovering nine Gradle and six Maven evidence relationships respectively
-- added explicit aggregate-root, missing standard source-set, Android, Spock, TestNG, and Kotest blockers
-- added discovery profiles for Gradle/JUnit and Maven/JUnit validation candidates
+- replaced the blanket Kotest blocker with bounded Gradle/JUnit Platform support for runnable `FunSpec`, `StringSpec`, and `ShouldSpec` cases
+- added Kotest `should*` and throwable assertion provenance, including receiver/result aliases
+- added explicit blockers for unsupported Kotest spec styles, lifecycle/extensions/isolation configuration, and data/property APIs
+- added multiline Kotest spec declaration recognition after the libcs1 probe
+- retained explicit aggregate-root, missing standard source-set, Android, Spock, TestNG, and unsupported Kotest boundary blockers
+- added discovery profiles for Gradle/JUnit, Gradle/Kotest, and Maven/JUnit validation candidates
 
 ## Remaining Gaps
 
 - Maven profile/computed/nested reactor graphs, inherited/dynamic dependencies, Gradle composite builds, custom module mappings, and non-exported transitive project dependencies
-- Groovy/Spock, Kotest, TestNG, Android, and Kotlin Multiplatform
+- Groovy/Spock, TestNG, Android, Kotlin Multiplatform, Kotest styles beyond `FunSpec`/`StringSpec`/`ShouldSpec`, and Kotest lifecycle/data/property semantics
 - parameterized arguments, dynamic tests, extensions, fixtures, and inherited tests as semantic coverage
 - framework-aware application boot, HTTP, persistence, coroutine scheduling, and dependency-injection boundaries
 - call/assertion depth beyond the currently referenced or direct symbol relationship
 
 ## Verdict
 
-The live probes support conventional single-module or directly selected Gradle/Maven JVM roots, settings-owned conventional Gradle aggregates, directly declared Maven reactors, and cycle-safe traversal through explicitly exported Gradle/Maven module edges using JUnit 4, JUnit 5, or `kotlin.test`. They do not support a broad Kotlin/Java ecosystem claim. The exact boundary is normative in [Kotlin/JVM Alpha Support](kotlin-jvm-alpha-support.md).
+The live probes support conventional single-module or directly selected Gradle/Maven JVM roots, settings-owned conventional Gradle aggregates, directly declared Maven reactors, and cycle-safe traversal through explicitly exported Gradle/Maven module edges using JUnit 4, JUnit 5, `kotlin.test`, or the documented Gradle/JUnit Platform Kotest common-spec variant. They do not support a broad Kotlin/Java or Kotest ecosystem claim. The exact boundary is normative in [Kotlin/JVM Alpha Support](kotlin-jvm-alpha-support.md).
