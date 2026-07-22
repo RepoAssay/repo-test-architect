@@ -162,10 +162,10 @@ describe("validation repository finder", () => {
     });
   });
 
-  it("defines JVM validation profiles for Gradle and Maven JUnit projects", () => {
+  it("defines JVM validation profiles for Gradle, Maven JUnit, and bounded Kotest projects", () => {
     assert.deepEqual(
-      ["gradle", "gradle-junit", "maven", "maven-junit"].map((profile) => validationProfiles[profile].language),
-      ["Kotlin", "Kotlin", "Java", "Java"]
+      ["gradle", "gradle-junit", "gradle-kotest", "maven", "maven-junit"].map((profile) => validationProfiles[profile].language),
+      ["Kotlin", "Kotlin", "Kotlin", "Java", "Java"]
     );
 
     assert.deepEqual(detectManifestSignals(validationProfiles["gradle-junit"].searches, {
@@ -180,6 +180,13 @@ describe("validation repository finder", () => {
     }, [{ name: "mvnw", type: "file" }]), {
       signals: ["maven-junit", "maven-wrapper"],
       matchedPaths: ["pom.xml", "mvnw"]
+    });
+
+    assert.deepEqual(detectManifestSignals(validationProfiles["gradle-kotest"].searches, {
+      "build.gradle.kts": 'dependencies { testImplementation("io.kotest:kotest-runner-junit5:6.0.0") }\ntasks.test { useJUnitPlatform() }\n'
+    }, [{ name: "gradlew", type: "file" }]), {
+      signals: ["gradle-kotest", "gradle-wrapper"],
+      matchedPaths: ["build.gradle.kts", "gradlew"]
     });
   });
 

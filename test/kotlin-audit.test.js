@@ -454,7 +454,7 @@ describe("Kotlin audit adapter", () => {
     assert.equal(audit.coveredButRisky[0].existingTestEvidence[0].usage, "called");
   });
 
-  it("blocks aggregate roots and unsupported test frameworks instead of overstating confidence", () => {
+  it("blocks unowned aggregate roots even when Kotest is declared", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-gradle-aggregate-"));
     fs.mkdirSync(path.join(root, "library", "src", "main", "kotlin"), { recursive: true });
     fs.writeFileSync(path.join(root, "build.gradle.kts"), 'dependencies { testImplementation("io.kotest:kotest-runner-junit5:6.0.0") }\n');
@@ -464,8 +464,65 @@ describe("Kotlin audit adapter", () => {
 
     assert.equal(audit.profile.confidence, "low");
     assert.ok(audit.profile.blockers.includes("No supported root JVM source set detected; audit a Gradle or Maven module root."));
-    assert.ok(audit.profile.blockers.includes("Unsupported JVM test frameworks detected: kotest."));
+    assert.ok(audit.profile.blockers.includes("Kotest support requires a Gradle JVM test task using JUnit Platform."));
     assert.deepEqual(audit.recommended, []);
+  });
+
+  it("recognizes runnable FunSpec, ShouldSpec, and StringSpec evidence with Kotest assertions", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-kotest-specs-"));
+    fs.mkdirSync(path.join(root, "src", "main", "kotlin", "com", "example"), { recursive: true });
+    fs.mkdirSync(path.join(root, "src", "test", "kotlin", "com", "example"), { recursive: true });
+    fs.writeFileSync(path.join(root, "settings.gradle.kts"), 'rootProject.name = "kotest-specs"\n');
+    fs.writeFileSync(path.join(root, "gradlew"), "#!/usr/bin/env sh\n");
+    fs.writeFileSync(path.join(root, "build.gradle.kts"), 'plugins { kotlin("jvm") version "2.0.0" }\ndependencies { testImplementation("io.kotest:kotest-runner-junit5:6.0.0") }\ntasks.test { useJUnitPlatform() }\n');
+    for (const name of ["TokenParser", "TokenValidator", "TokenFormatter"]) {
+      fs.writeFileSync(path.join(root, "src", "main", "kotlin", "com", "example", `${name}.kt`), `package com.example\nclass ${name} { fun run(value: String) = value.trim() }\n`);
+    }
+    fs.writeFileSync(path.join(root, "src", "test", "kotlin", "com", "example", "ParserSpec.kt"), 'package com.example\nimport io.kotest.core.spec.style.FunSpec\nimport io.kotest.matchers.shouldBe\nclass ParserSpec : FunSpec({ test("parses") { val parser = TokenParser(); val result = parser.run("x"); result shouldBe "x" } })\n');
+    fs.writeFileSync(path.join(root, "src", "test", "kotlin", "com", "example", "ValidatorSpec.kt"), 'package com.example\nimport io.kotest.core.spec.style.ShouldSpec\nimport io.kotest.assertions.throwables.shouldNotThrowAny\nclass ValidatorSpec : ShouldSpec({ should("validate") { shouldNotThrowAny { TokenValidator().run("x") } } })\n');
+    fs.writeFileSync(path.join(root, "src", "test", "kotlin", "com", "example", "FormatterSpec.kt"), 'package com.example\nimport io.kotest.core.spec.style.StringSpec\nimport io.kotest.matchers.shouldBe\nclass FormatterSpec :\n    StringSpec({ "formats" { TokenFormatter().run(" x ") shouldBe "x" } })\n');
+
+    const audit = auditKotlinRepo(root);
+
+    assert.deepEqual(audit.profile.testFrameworks, ["junit", "kotest"]);
+    assert.equal(audit.profile.confidence, "high");
+    assert.deepEqual(audit.profile.blockers, []);
+    assert.ok(audit.profile.setupSignals.includes("kotest"));
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.name), ["TokenFormatter", "TokenParser", "TokenValidator"]);
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.existingTestEvidence[0].usage), ["asserted", "asserted", "asserted"]);
+  });
+
+  it("keeps unsupported Kotest styles and lifecycle semantics explicit", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-kotest-boundary-"));
+    fs.mkdirSync(path.join(root, "src", "main", "kotlin", "com", "example"), { recursive: true });
+    fs.mkdirSync(path.join(root, "src", "test", "kotlin", "com", "example"), { recursive: true });
+    fs.writeFileSync(path.join(root, "settings.gradle.kts"), 'rootProject.name = "kotest-boundary"\n');
+    fs.writeFileSync(path.join(root, "build.gradle.kts"), 'plugins { kotlin("jvm") version "2.0.0" }\ndependencies { testImplementation("io.kotest:kotest-runner-junit5:6.0.0") }\ntasks.test { useJUnitPlatform() }\n');
+    fs.writeFileSync(path.join(root, "src", "main", "kotlin", "com", "example", "TokenParser.kt"), "package com.example\nclass TokenParser { fun parse(value: String) = value.trim() }\n");
+    fs.writeFileSync(path.join(root, "src", "test", "kotlin", "com", "example", "ParserSpec.kt"), 'package com.example\nimport io.kotest.core.spec.style.BehaviorSpec\nimport io.kotest.datatest.withData\nclass ParserSpec : BehaviorSpec({ beforeTest { } given("token") { Then("parse") { withData("x") { TokenParser().parse(it) } } } })\n');
+
+    const audit = auditKotlinRepo(root);
+
+    assert.ok(audit.profile.blockers.includes("Unsupported Kotest spec styles detected: BehaviorSpec."));
+    assert.ok(audit.profile.blockers.includes("Kotest lifecycle hooks, extensions, and isolation configuration are outside the supported evidence boundary."));
+    assert.ok(audit.profile.blockers.includes("Kotest data-driven and property tests are outside the supported evidence boundary."));
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.name), ["TokenParser"]);
+    assert.deepEqual(audit.coveredButRisky, []);
+  });
+
+  it("does not accept Kotest dependencies without Gradle JUnit Platform execution", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-kotest-execution-"));
+    fs.mkdirSync(path.join(root, "src", "main", "kotlin"), { recursive: true });
+    fs.mkdirSync(path.join(root, "src", "test", "kotlin"), { recursive: true });
+    fs.writeFileSync(path.join(root, "build.gradle.kts"), 'plugins { kotlin("jvm") version "2.0.0" }\ndependencies { testImplementation("io.kotest:kotest-runner-junit5:6.0.0") }\n');
+    fs.writeFileSync(path.join(root, "src", "main", "kotlin", "TokenParser.kt"), "class TokenParser { fun parse(value: String) = value.trim() }\n");
+    fs.writeFileSync(path.join(root, "src", "test", "kotlin", "ParserSpec.kt"), 'import io.kotest.core.spec.style.FunSpec\nclass ParserSpec : FunSpec({ test("parse") { TokenParser().parse("x") } })\n');
+
+    const audit = auditKotlinRepo(root);
+
+    assert.ok(!audit.profile.testFrameworks.includes("kotest"));
+    assert.ok(audit.profile.blockers.includes("Kotest support requires a Gradle JVM test task using JUnit Platform."));
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.name), ["TokenParser"]);
   });
 
   it("audits conventionally declared Gradle modules with dependency-qualified test evidence", () => {

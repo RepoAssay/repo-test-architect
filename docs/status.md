@@ -33,8 +33,8 @@ Implemented:
 - shared runtime Markdown audit renderer with a TypeScript reference mirror, used directly by the CLI
 - behavioral HTTP framework classifications for routers, routes, handlers, security and general middleware, request access and validation, request bodies, queries, cookies, caching, response construction, request events, proxies, sessions, WebSockets, streaming, client response parsing, and runtime adapters, including flat utility layouts identified through HTTP boundary types
 - runtime adapter registry with supported `javascript`, `kotlin`, `python`, and `swift` adapters
-- bounded Kotlin/JVM Gradle and Maven module audits plus conventional Gradle and root-declared Maven reactor ownership for standard Kotlin/Java source sets, JUnit 4/5, `kotlin.test`, wrapper-aware commands, cycle-safe direct/exported-transitive cross-module evidence, and exact JVM symbol provenance
-- explicit Kotlin/JVM blockers or exclusions for unresolvable aggregate roots, missing standard source sets, Android, Spock, TestNG, Kotest, computed Maven modules, and custom Gradle boundaries
+- bounded Kotlin/JVM Gradle and Maven module audits plus conventional Gradle and root-declared Maven reactor ownership for standard Kotlin/Java source sets, JUnit 4/5, `kotlin.test`, Gradle/JUnit Platform Kotest common specs, wrapper-aware commands, cycle-safe direct/exported-transitive cross-module evidence, and exact JVM symbol provenance
+- explicit Kotlin/JVM blockers or exclusions for unresolvable aggregate roots, missing standard source sets, Android, Spock, TestNG, unsupported Kotest styles/configuration, computed Maven modules, and custom Gradle boundaries
 - adapter registry capability metadata for maturity, framework signals, project types, and emitted artifacts
 - CLI adapter registry output
 - deterministic project detection for polyglot repository roots

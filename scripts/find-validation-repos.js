@@ -123,6 +123,16 @@ export const validationProfiles = {
       { signal: "gradle-wrapper", entryPattern: /^gradlew$/ }
     ]
   },
+  "gradle-kotest": {
+    description: "Kotlin/JVM Gradle projects with Kotest on JUnit Platform",
+    repositoryQuery: "kotest gradle",
+    language: "Kotlin",
+    searches: [
+      { signal: "gradle-kotest", file: "build.gradle.kts", pattern: /(?=[\s\S]*\b(?:io\.kotest|kotest)\b)(?=[\s\S]*\buseJUnitPlatform\s*\()/i },
+      { signal: "gradle-kotest", file: "build.gradle", pattern: /(?=[\s\S]*\b(?:io\.kotest|kotest)\b)(?=[\s\S]*\buseJUnitPlatform\s*\()/i },
+      { signal: "gradle-wrapper", entryPattern: /^gradlew$/ }
+    ]
+  },
   maven: {
     description: "Java/JVM projects with a root Maven build",
     repositoryQuery: "maven",

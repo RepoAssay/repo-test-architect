@@ -1,7 +1,7 @@
 {
   "schemaVersion": "model-consistency-scenario/v1",
   "id": "kotlin-gradle-aggregate-kotest-plan",
-  "description": "Different model profiles should preserve explicit blockers for aggregate Gradle roots and unsupported Kotest evidence.",
+  "description": "Different model profiles should preserve bounded Kotest support, module ownership, and asserted evidence.",
   "sourceArtifact": {
     "path": "evals/expected/kotlin-gradle-aggregate-kotest.audit.json",
     "schemaVersion": "audit/v1"
@@ -13,28 +13,48 @@
   "lockedFields": [
     {
       "path": "summary.confidence",
-      "expected": "low",
-      "reason": "An aggregate root without a root standard source set must stay low confidence."
+      "expected": "high",
+      "reason": "A conventional Gradle module with a runnable Kotest spec should retain high confidence."
+    },
+    {
+      "path": "summary.verificationCommand",
+      "expected": "./gradlew test",
+      "reason": "Kotest execution stays anchored to the checked-in Gradle wrapper and JUnit Platform task."
     },
     {
       "path": "summary.blockerCount",
-      "expected": 4,
-      "reason": "Framework, command, source-root, and unsupported-framework blockers must remain visible."
+      "expected": 0,
+      "reason": "The supported FunSpec fixture should not acquire an unsupported-boundary blocker."
     },
     {
       "path": "summary.addTestCount",
-      "expected": 0,
-      "reason": "Nested module sources must not be misreported as root-owned test targets."
+      "expected": 1,
+      "reason": "The untested formatter should remain a new-test recommendation."
     },
     {
-      "path": "blockers[2]",
-      "expected": "No supported root JVM source set detected; audit a Gradle or Maven module root.",
-      "reason": "The audit should direct users to a module root rather than silently returning an empty result."
+      "path": "summary.extendTestCount",
+      "expected": 1,
+      "reason": "The parser's existing Kotest evidence should produce an extension recommendation."
     },
     {
-      "path": "blockers[3]",
-      "expected": "Unsupported JVM test frameworks detected: kotest.",
-      "reason": "Kotest remains an explicit evidence-boundary blocker."
+      "path": "items[0].id",
+      "expected": "add-test:token-core/src/main/kotlin/com/example/token/TokenFormatter.kt",
+      "reason": "Module-owned untested logic should remain the leading add-test item."
+    },
+    {
+      "path": "items[1].id",
+      "expected": "extend-test:token-core/src/main/kotlin/com/example/token/TokenParser.kt",
+      "reason": "The parser should remain linked to its runnable Kotest spec."
+    },
+    {
+      "path": "items[1].existingTestPaths[0]",
+      "expected": "token-core/src/test/kotlin/com/example/token/TokenParserSpec.kt",
+      "reason": "The plan must preserve exact Kotest evidence provenance."
+    },
+    {
+      "path": "items[1].existingTestEvidence[0].usage",
+      "expected": "asserted",
+      "reason": "A result consumed by shouldBe should remain asserted evidence."
     }
   ],
   "allowedVariations": [
@@ -42,8 +62,8 @@
     "optional detail depth"
   ],
   "unexpectedVariations": [
-    "aggregate source targets",
-    "high confidence",
-    "missing Kotest blocker"
+    "aggregate root ownership loss",
+    "Kotest evidence downgraded to called",
+    "unsupported framework blocker"
   ]
 }
