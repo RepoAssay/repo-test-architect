@@ -105,14 +105,93 @@ describe("validation repository finder", () => {
     );
   });
 
+  it("defines Python validation profiles for package, framework, and advanced pytest shapes", () => {
+    assert.deepEqual(
+      ["python", "python-pytest", "python-fastapi", "python-django", "python-flask", "python-advanced"].map((profile) => validationProfiles[profile].language),
+      ["Python", "Python", "Python", "Python", "Python", "Python"]
+    );
+
+    assert.deepEqual(detectManifestSignals(validationProfiles.python.searches, {
+      "pyproject.toml": "[project]\nname = \"checkout\"\n"
+    }, [{ name: "tests", type: "dir" }]), {
+      signals: ["python-project", "root-python-tests"],
+      matchedPaths: ["pyproject.toml", "tests"]
+    });
+
+    assert.deepEqual(detectManifestSignals(validationProfiles["python-pytest"].searches, {
+      "pyproject.toml": "[project.optional-dependencies]\ntest = [\"pytest\"]\n"
+    }), {
+      signals: ["pyproject-pytest"],
+      matchedPaths: ["pyproject.toml"]
+    });
+
+    assert.deepEqual(detectManifestSignals(validationProfiles["python-pytest"].searches, {
+      "pytest.toml": "[pytest]\ntestpaths = [\"tests\"]\n"
+    }), {
+      signals: ["pytest-toml"],
+      matchedPaths: ["pytest.toml"]
+    });
+
+    assert.deepEqual(detectManifestSignals(validationProfiles["python-fastapi"].searches, {
+      "requirements.txt": "fastapi==0.115.0\nuvicorn==0.34.0\n"
+    }), {
+      signals: ["requirements-fastapi"],
+      matchedPaths: ["requirements.txt"]
+    });
+
+    assert.deepEqual(detectManifestSignals(validationProfiles["python-django"].searches, {
+      "pyproject.toml": "[project]\ndependencies = [\"Django\"]\n"
+    }), {
+      signals: ["pyproject-django"],
+      matchedPaths: ["pyproject.toml"]
+    });
+
+    assert.deepEqual(detectManifestSignals(validationProfiles["python-flask"].searches, {
+      "requirements.txt": "Flask==3.1.0\n"
+    }), {
+      signals: ["requirements-flask"],
+      matchedPaths: ["requirements.txt"]
+    });
+
+    assert.deepEqual(detectManifestSignals(validationProfiles["python-advanced"].searches, {
+      "noxfile.py": "import nox\n@nox.session\ndef tests(session):\n    session.run(\"pytest\")\n",
+      ".coveragerc": "[run]\nbranch = true\n"
+    }), {
+      signals: ["nox-test-session", "coverage-config"],
+      matchedPaths: ["noxfile.py", ".coveragerc"]
+    });
+  });
+
+  it("defines JVM validation profiles for Gradle and Maven JUnit projects", () => {
+    assert.deepEqual(
+      ["gradle", "gradle-junit", "maven", "maven-junit"].map((profile) => validationProfiles[profile].language),
+      ["Kotlin", "Kotlin", "Java", "Java"]
+    );
+
+    assert.deepEqual(detectManifestSignals(validationProfiles["gradle-junit"].searches, {
+      "build.gradle.kts": 'dependencies { testImplementation(kotlin("test")) }\ntasks.test { useJUnitPlatform() }\n'
+    }, [{ name: "gradlew", type: "file" }]), {
+      signals: ["gradle-junit", "gradle-wrapper"],
+      matchedPaths: ["build.gradle.kts", "gradlew"]
+    });
+
+    assert.deepEqual(detectManifestSignals(validationProfiles["maven-junit"].searches, {
+      "pom.xml": "<project><dependency><artifactId>junit-jupiter</artifactId></dependency></project>"
+    }, [{ name: "mvnw", type: "file" }]), {
+      signals: ["maven-junit", "maven-wrapper"],
+      matchedPaths: ["pom.xml", "mvnw"]
+    });
+  });
+
   it("detects root lockfiles and CI configuration", () => {
     assert.deepEqual(inspectRootEntries([
       { name: ".github", type: "dir" },
       { name: "pnpm-lock.yaml", type: "file" },
-      { name: "Package.resolved", type: "file" }
+      { name: "Package.resolved", type: "file" },
+      { name: "uv.lock", type: "file" }
     ], [{ name: "test.yml", type: "file" }]), {
       hasCi: true,
-      lockfiles: ["Package.resolved", "pnpm-lock.yaml"]
+      lockfiles: ["Package.resolved", "pnpm-lock.yaml", "uv.lock"]
     });
   });
 

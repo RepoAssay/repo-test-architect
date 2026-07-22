@@ -73,6 +73,14 @@
       ],
       "existingTestPaths": [
         "tests/test_discounts.py"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "tests/test_discounts.py",
+          "kind": "python-module-import",
+          "strength": "direct",
+          "usage": "asserted"
+        }
       ]
     }
   ],
@@ -99,6 +107,14 @@
       ],
       "existingTestPaths": [
         "tests/test_discounts.py"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "tests/test_discounts.py",
+          "kind": "python-module-import",
+          "strength": "direct",
+          "usage": "asserted"
+        }
       ]
     },
     {

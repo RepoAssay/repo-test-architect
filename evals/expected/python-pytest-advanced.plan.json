@@ -1,0 +1,78 @@
+{
+  "schemaVersion": "plan/v1",
+  "summary": {
+    "confidence": "high",
+    "verificationCommand": "pytest",
+    "blockerCount": 0,
+    "addTestCount": 0,
+    "extendTestCount": 2,
+    "deferredCount": 0
+  },
+  "blockers": [],
+  "items": [
+    {
+      "id": "extend-test:src/advanced/parser.py",
+      "action": "extend-test",
+      "targetId": "src/advanced/parser.py",
+      "target": "parser",
+      "path": "src/advanced/parser.py",
+      "testLevel": "unit",
+      "priority": 7,
+      "riskReductionScore": 9,
+      "maintenanceCost": 2,
+      "rationale": [
+        "Pure transformation logic",
+        "edge-case surface",
+        "Existing test file detected; review missing edge cases"
+      ],
+      "sourceSignals": [
+        "pure-logic",
+        "edge-case-surface",
+        "matching-test"
+      ],
+      "existingTestPaths": [
+        "tests/test_quantities.py"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "tests/test_quantities.py",
+          "kind": "python-pytest-fixture",
+          "strength": "indirect",
+          "viaUsage": "asserted"
+        }
+      ]
+    },
+    {
+      "id": "extend-test:src/advanced/validator.py",
+      "action": "extend-test",
+      "targetId": "src/advanced/validator.py",
+      "target": "validator",
+      "path": "src/advanced/validator.py",
+      "testLevel": "unit",
+      "priority": 7,
+      "riskReductionScore": 9,
+      "maintenanceCost": 2,
+      "rationale": [
+        "Pure transformation logic",
+        "edge-case surface",
+        "Existing test file detected; review missing edge cases"
+      ],
+      "sourceSignals": [
+        "pure-logic",
+        "edge-case-surface",
+        "matching-test"
+      ],
+      "existingTestPaths": [
+        "tests/test_quantities.py"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "tests/test_quantities.py",
+          "kind": "python-module-import",
+          "strength": "direct",
+          "usage": "asserted"
+        }
+      ]
+    }
+  ]
+}

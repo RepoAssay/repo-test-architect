@@ -6,8 +6,8 @@ Repo Test Architect builds a deterministic audit graph before asking any model o
 
 The current implementation can:
 
-- audit JavaScript/TypeScript and Swift projects through supported adapters
-- audit experimental Kotlin/JVM and Python fixtures through the same shared artifact model
+- audit JavaScript/TypeScript, Python, and Swift projects through supported adapters
+- audit supported, bounded Kotlin/JVM fixtures through the same shared artifact model
 - detect polyglot project roots and report unsupported ecosystems without hiding them
 - classify source files by likely test value and defer low-value direct tests
 - rank candidates and generate test plans from the audit graph
@@ -23,12 +23,9 @@ Native test generation is intentionally deferred. `generate_selected_test` retur
 Supported adapters:
 
 - `javascript`: JavaScript/TypeScript repositories with Node's test runner (including TypeScript execution scripts), Bun test, AVA, Mocha/CommonJS, Vitest, Jest, Playwright, Cypress, Express/Supertest, and React Testing Library detection; see the [alpha support matrix](docs/javascript-typescript-alpha-support.md) for evidence boundaries and known gaps
+- `kotlin`: conventional Gradle/Maven JVM module roots with Kotlin and/or Java standard source sets plus JUnit 4, JUnit 5, or `kotlin.test`; see the [Kotlin/JVM alpha support matrix](docs/kotlin-jvm-alpha-support.md)
+- `python`: bounded Python package, FastAPI, Django, and Flask layouts with pytest/unittest, async and property-based pytest extensions, fixture reachability, pip/setuptools, uv, Poetry, Hatch, tox, nox, and coverage configuration; see the [Python alpha support matrix](docs/python-alpha-support.md)
 - `swift`: Swift Package Manager, Xcode-style and Bazel/rules_swift layouts, Swift Testing, XCTest, Quick/Nimble, SnapshotTesting, VaporTesting/XCTVapor, reactive frameworks, and generic Fluent database boundaries with driver-specific qualifiers; see the [Swift alpha support matrix](docs/swift-alpha-support.md)
-
-Experimental adapter spikes:
-
-- `kotlin`: Gradle/Maven JVM projects with JUnit and Kotlin test signals
-- `python`: pytest, unittest, requirements, setuptools, uv, Poetry, Hatch command markers, and no-tests-yet blocker behavior
 
 Project detection also reports unsupported Ruby, PHP, Elixir, Go, Rust, and .NET roots so clients can distinguish "not audited yet" from "not present."
 
@@ -260,6 +257,8 @@ examples/
   kotlin-junit-basic/
   kotlin-gradle-groovy-junit/
   kotlin-maven-junit/
+  kotlin-maven-wrapper-junit4/
+  kotlin-gradle-aggregate-kotest/
   python-pytest-service/
   python-uv-pytest/
   python-poetry-pytest/
@@ -278,7 +277,7 @@ evals/
 schemas/
 ```
 
-JavaScript/TypeScript and Swift are the supported adapter proof points. Kotlin/JVM and Python remain experimental and demonstrate that later adapters can emit the same core audit model instead of inventing language-specific report formats.
+JavaScript/TypeScript, Python, Swift, and bounded Kotlin/JVM modules are supported adapter proof points. Kotlin/JVM support is limited to the conventional Gradle/Maven, JUnit, and standard-source-set boundary in [Kotlin/JVM Alpha Support](docs/kotlin-jvm-alpha-support.md).
 
 Important runtime surfaces:
 
@@ -303,6 +302,8 @@ Important runtime surfaces:
 - [Demo script](docs/demo-script.md)
 - [Decision log](docs/decision-log.md)
 - [Second adapter spike](docs/second-adapter-spike.md)
+- [Kotlin/JVM alpha support](docs/kotlin-jvm-alpha-support.md)
+- [Kotlin/JVM validation hunt report](docs/kotlin-jvm-validation-hunt-report.md)
 - [Adapter contract](docs/adapter-contract.md)
 - [Artifact contract](docs/artifact-contract.md)
 - [Project detection](docs/project-detection.md)

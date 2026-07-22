@@ -55,6 +55,16 @@
     "path": "examples/kotlin-maven-junit"
   },
   {
+    "name": "kotlin-maven-wrapper-junit4",
+    "adapter": "kotlin",
+    "path": "examples/kotlin-maven-wrapper-junit4"
+  },
+  {
+    "name": "kotlin-gradle-aggregate-kotest",
+    "adapter": "kotlin",
+    "path": "examples/kotlin-gradle-aggregate-kotest"
+  },
+  {
     "name": "swift-spm-xctest",
     "adapter": "swift",
     "path": "examples/swift-spm-xctest"
@@ -138,5 +148,20 @@
     "name": "python-no-tests-yet",
     "adapter": "python",
     "path": "examples/python-no-tests-yet"
+  },
+  {
+    "name": "python-pytest-advanced",
+    "adapter": "python",
+    "path": "examples/python-pytest-advanced"
+  },
+  {
+    "name": "python-django-tox",
+    "adapter": "python",
+    "path": "examples/python-django-tox"
+  },
+  {
+    "name": "python-flask-nox-coverage",
+    "adapter": "python",
+    "path": "examples/python-flask-nox-coverage"
   }
 ]

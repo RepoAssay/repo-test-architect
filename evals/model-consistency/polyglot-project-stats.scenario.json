@@ -125,7 +125,7 @@
     {
       "path": "adapters[2].adapterId",
       "expected": "python",
-      "reason": "Stats must preserve experimental Python adapter usage."
+      "reason": "Stats must preserve supported Python adapter usage."
     }
   ],
   "allowedVariations": [

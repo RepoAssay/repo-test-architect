@@ -1,0 +1,74 @@
+{
+  "schemaVersion": "model-consistency-scenario/v1",
+  "id": "python-pytest-advanced-plan",
+  "description": "Advanced pytest planning must preserve fixture reachability separately from direct async, parametrized, and property-based coverage.",
+  "sourceArtifact": {
+    "path": "evals/expected/python-pytest-advanced.audit.json",
+    "schemaVersion": "audit/v1"
+  },
+  "toolCall": {
+    "toolName": "generate_test_plan",
+    "arguments": {}
+  },
+  "lockedFields": [
+    {
+      "path": "summary.verificationCommand",
+      "expected": "pytest",
+      "reason": "Advanced pytest projects should keep their direct verification command."
+    },
+    {
+      "path": "summary.extendTestCount",
+      "expected": 2,
+      "reason": "Both fixture-reached parser logic and directly asserted validator logic remain review targets."
+    },
+    {
+      "path": "items[0].id",
+      "expected": "extend-test:src/advanced/parser.py",
+      "reason": "Fixture-reached parser identity must remain stable."
+    },
+    {
+      "path": "items[0].existingTestEvidence[0].kind",
+      "expected": "python-pytest-fixture",
+      "reason": "A source used by a consumed fixture must not be upgraded to a direct test import."
+    },
+    {
+      "path": "items[0].existingTestEvidence[0].strength",
+      "expected": "indirect",
+      "reason": "Fixture dependency reachability remains indirect evidence."
+    },
+    {
+      "path": "items[0].existingTestEvidence[0].viaUsage",
+      "expected": "asserted",
+      "reason": "The test visibly asserts through the consumed fixture value."
+    },
+    {
+      "path": "items[1].id",
+      "expected": "extend-test:src/advanced/validator.py",
+      "reason": "Direct validator coverage identity must remain stable."
+    },
+    {
+      "path": "items[1].existingTestEvidence[0].kind",
+      "expected": "python-module-import",
+      "reason": "The validator is imported directly by the test module."
+    },
+    {
+      "path": "items[1].existingTestEvidence[0].strength",
+      "expected": "direct",
+      "reason": "Exact module import coverage stays direct."
+    },
+    {
+      "path": "items[1].existingTestEvidence[0].usage",
+      "expected": "asserted",
+      "reason": "The directly imported validator remains asserted."
+    }
+  ],
+  "allowedVariations": [
+    "summary wording",
+    "optional detail depth"
+  ],
+  "unexpectedVariations": [
+    "fixture reachability upgraded to direct evidence",
+    "missing advanced pytest coverage",
+    "missing pytest command"
+  ]
+}

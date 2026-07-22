@@ -84,7 +84,7 @@
           ],
           "skipped": [],
           "risks": [
-            "CheckoutCalculator has pure transformation logic, edge-case surface and has no matching test file."
+            "CheckoutCalculator has pure transformation logic, edge-case surface and has no matching test evidence."
           ]
         }
       },

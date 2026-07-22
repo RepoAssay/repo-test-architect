@@ -42,6 +42,11 @@
       "reason": "The adapter must preserve matching Kotlin test evidence."
     },
     {
+      "path": "items[0].existingTestEvidence[0].usage",
+      "expected": "asserted",
+      "reason": "The calculator receiver consumed by assertEquals should retain asserted JVM provenance."
+    },
+    {
       "path": "items[1].id",
       "expected": "add-test:src/main/java/com/example/checkout/MoneyFormatter.java",
       "reason": "Untested Java source inside the same JVM root should stay in the Kotlin/JVM adapter audit."

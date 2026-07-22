@@ -113,12 +113,99 @@ export const validationProfiles = {
       { signal: "gradle-kotlin-build", file: "build.gradle.kts", pattern: /(?:plugins|dependencies)/i }
     ]
   },
+  "gradle-junit": {
+    description: "Kotlin/JVM Gradle projects with JUnit or kotlin.test configuration",
+    repositoryQuery: "junit gradle",
+    language: "Kotlin",
+    searches: [
+      { signal: "gradle-junit", file: "build.gradle.kts", pattern: /\b(?:junit|kotlin\s*\(\s*["']test["']\s*\)|kotlin-test|useJUnitPlatform)\b/i },
+      { signal: "gradle-junit", file: "build.gradle", pattern: /\b(?:junit|kotlin-test|useJUnitPlatform)\b/i },
+      { signal: "gradle-wrapper", entryPattern: /^gradlew$/ }
+    ]
+  },
   maven: {
     description: "Java/JVM projects with a root Maven build",
     repositoryQuery: "maven",
     language: "Java",
     searches: [
       { signal: "maven-project", file: "pom.xml", pattern: /<project[\s>]/i }
+    ]
+  },
+  "maven-junit": {
+    description: "Java/JVM Maven projects with JUnit configuration",
+    repositoryQuery: "junit maven",
+    language: "Java",
+    searches: [
+      { signal: "maven-junit", file: "pom.xml", pattern: /<(?:groupId|artifactId)>[^<]*junit[^<]*<\//i },
+      { signal: "maven-wrapper", entryPattern: /^mvnw$/ }
+    ]
+  },
+  python: {
+    description: "Python packages with root project metadata and conventional tests",
+    repositoryQuery: "python package pytest",
+    language: "Python",
+    searches: [
+      { signal: "python-project", file: "pyproject.toml", pattern: /^\s*\[(?:project|build-system|tool\.(?:poetry|hatch|uv))\]/m },
+      { signal: "setuptools-project", file: "setup.py", pattern: /\bsetup\s*\(/ },
+      { signal: "setuptools-config", file: "setup.cfg", pattern: /^\s*\[(?:metadata|options)\]/m },
+      { signal: "root-python-tests", entryPattern: /^(?:test|tests)$/ }
+    ]
+  },
+  "python-pytest": {
+    description: "Python projects with explicit pytest configuration or dependencies",
+    repositoryQuery: "pytest",
+    language: "Python",
+    searches: [
+      { signal: "pyproject-pytest", file: "pyproject.toml", pattern: /\bpytest\b|^\s*\[tool\.pytest\./im },
+      { signal: "pytest-toml", file: "pytest.toml", pattern: /^\s*\[pytest\]/m },
+      { signal: "hidden-pytest-toml", file: ".pytest.toml", pattern: /^\s*\[pytest\]/m },
+      { signal: "pytest-ini", file: "pytest.ini", pattern: /^\s*\[pytest\]/m },
+      { signal: "requirements-pytest", file: "requirements.txt", pattern: /^\s*pytest(?:\W|$)/im },
+      { signal: "setuptools-pytest", file: "setup.cfg", pattern: /\bpytest\b|^\s*\[tool:pytest\]/im },
+      { signal: "tox-pytest", file: "tox.ini", pattern: /\bpytest\b/ },
+      { signal: "root-python-tests", entryPattern: /^(?:test|tests)$/ }
+    ]
+  },
+  "python-fastapi": {
+    description: "FastAPI projects with root Python metadata or dependency files",
+    repositoryQuery: "fastapi",
+    language: "Python",
+    searches: [
+      { signal: "pyproject-fastapi", file: "pyproject.toml", pattern: /\bfastapi\b/i },
+      { signal: "requirements-fastapi", file: "requirements.txt", pattern: /^\s*fastapi(?:\W|$)/im },
+      { signal: "root-python-tests", entryPattern: /^(?:test|tests)$/ }
+    ]
+  },
+  "python-django": {
+    description: "Django projects with root Python metadata or dependency files",
+    repositoryQuery: "django pytest",
+    language: "Python",
+    searches: [
+      { signal: "pyproject-django", file: "pyproject.toml", pattern: /\bdjango\b/i },
+      { signal: "requirements-django", file: "requirements.txt", pattern: /^\s*django(?:\W|$)/im },
+      { signal: "root-python-tests", entryPattern: /^(?:test|tests)$/ }
+    ]
+  },
+  "python-flask": {
+    description: "Flask projects with root Python metadata or dependency files",
+    repositoryQuery: "flask pytest",
+    language: "Python",
+    searches: [
+      { signal: "pyproject-flask", file: "pyproject.toml", pattern: /\bflask\b/i },
+      { signal: "requirements-flask", file: "requirements.txt", pattern: /^\s*flask(?:\W|$)/im },
+      { signal: "root-python-tests", entryPattern: /^(?:test|tests)$/ }
+    ]
+  },
+  "python-advanced": {
+    description: "Python projects using async, property-based, multi-environment, or coverage test tooling",
+    repositoryQuery: "pytest hypothesis tox nox",
+    language: "Python",
+    searches: [
+      { signal: "pyproject-advanced-pytest", file: "pyproject.toml", pattern: /\b(?:hypothesis|pytest[-_]asyncio|pytest[-_]anyio|coverage)\b/i },
+      { signal: "tox-test-environment", file: "tox.ini", pattern: /^\s*\[(?:tox|testenv(?::[^\]]+)?)\]/m },
+      { signal: "nox-test-session", file: "noxfile.py", pattern: /\b(?:import\s+nox|from\s+nox\s+import)\b[\s\S]*session\.run\s*\(\s*["']pytest["']/ },
+      { signal: "coverage-config", file: ".coveragerc", pattern: /^\s*\[(?:run|report)\]/m },
+      { signal: "root-python-tests", entryPattern: /^(?:test|tests)$/ }
     ]
   }
 };
@@ -129,7 +216,9 @@ const lockfileNames = new Set([
   "bun.lockb",
   "gradle.lockfile",
   "package-lock.json",
+  "poetry.lock",
   "pnpm-lock.yaml",
+  "uv.lock",
   "yarn.lock"
 ]);
 

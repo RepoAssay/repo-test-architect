@@ -6,17 +6,27 @@ const SOURCE_EXTENSIONS = [".py"];
 export function auditPythonRepo(root, options = {}) {
   const files = readRepoFiles(root);
   const profile = buildProfile(root, files);
+  const sourceRoots = detectOwnedSourceRoots(files);
   const changedPaths = options.changedPaths ? new Set(options.changedPaths.map((currentPath) => normalizeChangedPath(root, currentPath))) : undefined;
-  const testFiles = files.filter((file) => isTestFile(file.path)).map((file) => normalizePath(file.path));
+  const testFiles = files
+    .filter((file) => isTestFile(file.path))
+    .map((file) => ({ path: normalizePath(file.path), content: file.content, analysis: analyzePythonTestFile(file.content) }))
+    .sort((left, right) => left.path.localeCompare(right.path));
+  const sourceFiles = files.filter((candidate) => isSourceFile(candidate.path, sourceRoots));
+  const sourceBasenameCounts = countSourceBasenames(sourceFiles);
+  const packageReexports = collectPythonPackageReexports(files, sourceRoots);
+  const pytestFixtures = collectPytestFixtures(files, sourceRoots);
+  const testEvidenceBySourcePath = collectPythonTestEvidence(sourceFiles, testFiles, sourceRoots, sourceBasenameCounts, packageReexports, pytestFixtures);
   const untestedCandidates = [];
   const coveredButRisky = [];
   const skipped = [];
   const risks = [];
 
-  for (const file of files.filter((candidate) => isSourceFile(candidate.path) && isIncludedByChangedPaths(candidate.path, changedPaths))) {
+  for (const file of sourceFiles.filter((candidate) => isIncludedByChangedPaths(candidate.path, changedPaths))) {
     const name = basenameWithoutExtension(file.path);
     const classification = classifySourceFile(file);
-    const existingTestPaths = findExistingTests(file.path, testFiles);
+    const existingTestEvidence = testEvidenceBySourcePath.get(normalizePath(file.path)) ?? [];
+    const existingTestPaths = existingTestEvidence.map((evidence) => evidence.testPath);
 
     if (classification.skipReason) {
       skipped.push({
@@ -51,7 +61,8 @@ export function auditPythonRepo(root, options = {}) {
         existingTestPaths.length > 0
           ? [...classification.reasons, "Existing test file detected; review missing edge cases"]
           : classification.reasons,
-      existingTestPaths
+      existingTestPaths,
+      ...(existingTestEvidence.length > 0 ? { existingTestEvidence } : {})
     };
 
     if (existingTestPaths.length > 0) {
@@ -116,18 +127,18 @@ function readRepoFiles(root) {
 function shouldRead(relative) {
   return (
     SOURCE_EXTENSIONS.some((extension) => relative.endsWith(extension)) ||
-    ["pyproject.toml", "requirements.txt", "setup.cfg", "setup.py", "tox.ini", "uv.lock", "poetry.lock"].includes(relative)
+    [".coveragerc", ".pytest.toml", "pyproject.toml", "pytest.ini", "pytest.toml", "requirements.txt", "setup.cfg", "setup.py", "tox.ini", "uv.lock", "poetry.lock"].includes(relative)
   );
 }
 
 function buildProfile(root, files) {
   const paths = files.map((file) => normalizePath(file.path));
   const configText = files
-    .filter((file) => ["pyproject.toml", "requirements.txt", "setup.cfg", "setup.py", "tox.ini"].includes(normalizePath(file.path)))
+    .filter((file) => [".coveragerc", ".pytest.toml", "noxfile.py", "pyproject.toml", "pytest.ini", "pytest.toml", "requirements.txt", "setup.cfg", "setup.py", "tox.ini"].includes(normalizePath(file.path)))
     .map((file) => file.content)
     .join("\n");
-  const testFrameworks = detectTestFrameworks(paths, configText);
-  const testCommand = detectTestCommand(paths, configText, testFrameworks);
+  const testFrameworks = detectTestFrameworks(paths, configText, files);
+  const testCommand = detectTestCommand(paths, configText, testFrameworks, files);
   const existingTestLocations = detectExistingTestLocations(paths);
   const blockers = detectBlockers(testCommand, testFrameworks);
 
@@ -136,11 +147,11 @@ function buildProfile(root, files) {
     languages: ["python"],
     packageManagers: detectPackageManagers(paths, configText),
     testFrameworks,
-    architectures: detectArchitectures(paths, files),
+    architectures: detectArchitectures(paths, files, configText),
     testCommand,
-    detectedConventions: detectConventions(paths),
+    detectedConventions: detectConventions(paths, files, configText),
     existingTestLocations,
-    setupSignals: detectSetupSignals(paths, configText),
+    setupSignals: detectSetupSignals(paths, configText, files),
     confidence: scoreProfileConfidence(testFrameworks, existingTestLocations, blockers),
     blockers
   };
@@ -158,15 +169,29 @@ function detectPackageManagers(paths, configText) {
   return [...managers].sort();
 }
 
-function detectTestFrameworks(paths, configText) {
+function detectTestFrameworks(paths, configText, files) {
   const frameworks = new Set();
-  if (/\bpytest\b/i.test(configText) || paths.some((item) => isTestFile(item) && fileNameOf(item).startsWith("test_"))) frameworks.add("pytest");
-  if (/\bunittest\b/i.test(configText) || paths.some((item) => isTestFile(item) && /_test\.py$/.test(item))) frameworks.add("unittest");
+  const testText = files.filter((file) => isPythonTestSupportFile(file.path)).map((file) => file.content).join("\n");
+  const signalText = `${configText}\n${testText}`;
+  if (/\bpytest\b/i.test(configText) || /(?:^|\n)\s*(?:import\s+pytest\b|from\s+pytest\s+import\b)|@pytest\./m.test(testText)) frameworks.add("pytest");
+  if (/\bunittest\b|\bfrom\s+django\.test\s+import\b/i.test(signalText) || paths.some((item) => isTestFile(item) && /_test\.py$/.test(item))) frameworks.add("unittest");
+  if (/\bpytest[-_]asyncio\b|@pytest\.mark\.asyncio\b/i.test(signalText)) frameworks.add("pytest-asyncio");
+  if (/\bpytest[-_]anyio\b|@pytest\.mark\.anyio\b|\bfrom\s+anyio\s+import\b/i.test(signalText)) frameworks.add("anyio");
+  if (/\bhypothesis\b|\bfrom\s+hypothesis\s+import\b|@given\s*\(/i.test(signalText)) frameworks.add("hypothesis");
   return [...frameworks].sort();
 }
 
-function detectTestCommand(paths, configText, frameworks) {
+function detectTestCommand(paths, configText, frameworks, files) {
+  const environmentCommand = detectPythonTestEnvironmentCommand(paths, files);
+  if (environmentCommand) return environmentCommand;
   const tool = detectPythonTool(paths, configText);
+  const hasDjangoTestProject = paths.includes("manage.py") && files.some((file) => /\bDJANGO_SETTINGS_MODULE\b|\bfrom\s+django\b|\bimport\s+django\b/.test(file.content));
+  if (frameworks.includes("unittest") && paths.includes("tests/runtests.py")) return "python tests/runtests.py";
+  if (frameworks.includes("unittest") && hasDjangoTestProject) {
+    if (tool === "uv") return "uv run python manage.py test";
+    if (tool === "poetry") return "poetry run python manage.py test";
+    return "python manage.py test";
+  }
   if (frameworks.includes("pytest")) {
     if (tool === "uv") return "uv run pytest";
     if (tool === "poetry") return "poetry run pytest";
@@ -185,42 +210,92 @@ function detectTestCommand(paths, configText, frameworks) {
 function detectExistingTestLocations(paths) {
   const locations = new Set();
   if (paths.some((item) => item.startsWith("tests/"))) locations.add("tests");
+  if (paths.some((item) => item.startsWith("test/"))) locations.add("test");
+  if (paths.some((item) => item.startsWith("testing/"))) locations.add("testing");
   if (paths.some((item) => item.includes("/tests/"))) locations.add("package-local tests");
+  if (paths.some((item) => item.includes("/test/"))) locations.add("package-local test variants");
+  if (paths.some((item) => fileNameOf(item) === "tests.py")) locations.add("package tests.py");
   return [...locations];
 }
 
-function detectArchitectures(paths, files) {
+function detectArchitectures(paths, files, configText) {
   const architectures = new Set();
   if (files.some((file) => /\bfrom\s+fastapi\s+import\b|\bimport\s+fastapi\b|\bFastAPI\b|\bAPIRouter\b/.test(file.content))) architectures.add("fastapi");
+  if (/\bdjango\b/i.test(configText) || files.some((file) => /\bfrom\s+django\b|\bimport\s+django\b|\bDJANGO_SETTINGS_MODULE\b/.test(file.content))) architectures.add("django");
+  if (/\bflask\b/i.test(configText) || files.some((file) => /\bfrom\s+flask\s+import\b|\bimport\s+flask\b|\bFlask\s*\(|\bBlueprint\s*\(/.test(file.content))) architectures.add("flask");
   if (paths.some((item) => item.includes("/repositories/") || item.includes("/services/"))) architectures.add("service-layer");
   return [...architectures].sort();
 }
 
-function detectConventions(paths) {
+function detectConventions(paths, files, configText) {
   const conventions = new Set();
   if (paths.some((item) => /^tests\/test_.*\.py$/.test(item))) conventions.add("tests/test_*.py");
+  if (paths.some((item) => /^(?:test|testing)\/test_.*\.py$/.test(item))) conventions.add("test variants/test_*.py");
   if (paths.some((item) => item.includes("/tests/test_"))) conventions.add("package-local tests/test_*.py");
   if (paths.some((item) => /_test\.py$/.test(item))) conventions.add("*_test.py");
+  if (paths.some((item) => fileNameOf(item) === "tests.py")) conventions.add("tests.py");
+  if (files.some((file) => /@(?:pytest\.)?fixture(?:\s*\(|\b)/.test(file.content))) conventions.add("pytest fixtures");
+  if (files.some((file) => /\basync\s+def\s+test_|@pytest\.mark\.(?:asyncio|anyio)\b/.test(file.content))) conventions.add("async tests");
+  if (files.some((file) => /@pytest\.mark\.parametrize\s*\(/.test(file.content))) conventions.add("pytest parametrization");
+  if (/\bhypothesis\b|\bfrom\s+hypothesis\s+import\b|@given\s*\(/i.test(configText)) conventions.add("property-based tests");
+  if (hasCoverageConfig(paths, configText)) conventions.add("coverage configured");
+  if (hasCoverageConfig(paths, configText) && hasBranchCoverage(configText)) conventions.add("branch coverage");
   return [...conventions];
 }
 
-function detectSetupSignals(paths, configText) {
+function detectSetupSignals(paths, configText, files) {
   const signals = new Set();
+  const testText = files.filter((file) => isPythonTestSupportFile(file.path)).map((file) => file.content).join("\n");
+  const testSignalText = `${configText}\n${testText}`;
   const tool = detectPythonTool(paths, configText);
   if (paths.includes("pyproject.toml")) signals.add("pyproject");
   if (paths.includes("requirements.txt")) signals.add("requirements");
+  if (paths.includes("pytest.ini") || paths.includes("pytest.toml") || paths.includes(".pytest.toml")) signals.add("pytest config");
   if (tool === "uv") signals.add("uv project");
   if (tool === "poetry") signals.add("poetry project");
   if (tool === "hatch") signals.add("hatch project");
+  const environmentCommand = detectPythonTestEnvironmentCommand(paths, files, configText);
+  if (environmentCommand?.startsWith("tox")) signals.add("tox test environment");
+  if (environmentCommand?.startsWith("nox")) signals.add("nox test session");
+  if (paths.includes("tests/runtests.py")) signals.add("django test runner");
   if (/\bpytest\b/i.test(configText)) signals.add("pytest dependency");
+  if (/\bpytest[-_]asyncio\b|@pytest\.mark\.asyncio\b/i.test(testSignalText)) signals.add("pytest async support");
+  if (/\bpytest[-_]anyio\b|@pytest\.mark\.anyio\b/i.test(testSignalText)) signals.add("anyio test support");
+  if (/\bhypothesis\b|\bfrom\s+hypothesis\s+import\b|@given\s*\(/i.test(testSignalText)) signals.add("hypothesis dependency");
   if (/\bfastapi\b/i.test(configText)) signals.add("fastapi dependency");
+  if (/\bdjango\b/i.test(configText)) signals.add("django dependency");
+  if (/\bflask\b/i.test(configText)) signals.add("flask dependency");
+  if (hasCoverageConfig(paths, configText)) signals.add("coverage config");
+  if (hasCoverageConfig(paths, configText) && hasBranchCoverage(configText)) signals.add("branch coverage");
   return [...signals];
+}
+
+function detectPythonTestEnvironmentCommand(paths, files = [], configText = "") {
+  const toxContent = files.find((file) => normalizePath(file.path) === "tox.ini")?.content ?? (paths.includes("tox.ini") ? configText : "");
+  const hasToxTestCommand = /^\s*commands(?:_pre|_post)?\s*=[\s\S]{0,500}?\b(?:pytest|python\s+-m\s+unittest)\b/im.test(toxContent);
+  if (/^\s*\[(?:tox|testenv(?::[^\]]+)?)\]/m.test(toxContent) && hasToxTestCommand) return "tox";
+
+  const noxContent = files.find((file) => normalizePath(file.path) === "noxfile.py")?.content ?? (paths.includes("noxfile.py") ? configText : "");
+  const hasNoxTestCommand = /session\.run\s*\(\s*["']pytest["']/.test(noxContent) || /session\.run\s*\(\s*["']python["']\s*,\s*["']-m["']\s*,\s*["']unittest["']/.test(noxContent);
+  if (/\bimport\s+nox\b|\bfrom\s+nox\s+import\b/.test(noxContent) && hasNoxTestCommand) {
+    const sessionName = noxContent.match(/@nox\.session[^\n]*\n(?:async\s+)?def\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(/)?.[1];
+    return sessionName ? `nox -s ${sessionName}` : "nox";
+  }
+  return undefined;
+}
+
+function hasCoverageConfig(paths, configText) {
+  return paths.includes(".coveragerc") || /^\s*\[tool\.coverage\./m.test(configText) || /^\s*\[coverage:(?:run|report|html|xml|json)\]\s*$/m.test(configText);
+}
+
+function hasBranchCoverage(configText) {
+  return /^\s*branch\s*=\s*(?:true|1|yes)\b/im.test(configText);
 }
 
 function detectPythonTool(paths, configText) {
   if (paths.includes("uv.lock") || /^\s*\[tool\.uv\]/m.test(configText)) return "uv";
   if (paths.includes("poetry.lock") || /^\s*\[tool\.poetry\]/m.test(configText) || /\bpoetry-core\b/i.test(configText)) return "poetry";
-  if (/^\s*\[tool\.hatch\]/m.test(configText) || /\bhatchling\b|\bhatch\b/i.test(configText)) return "hatch";
+  if (/^\s*\[tool\.hatch\.envs(?:\.|\])/m.test(configText)) return "hatch";
   return undefined;
 }
 
@@ -243,6 +318,15 @@ function classifySourceFile(file) {
   const content = file.content;
   const lowerPath = currentPath.toLowerCase();
 
+  if (isHttpRoute(lowerPath, content)) {
+    const frameworkSignal = isDjangoView(lowerPath, content)
+      ? "django-view"
+      : isFlaskRoute(content)
+        ? "flask-route"
+        : "http-route";
+    return recommended("http-route", [frameworkSignal, "status-handling"], "high", "medium", "integration", 8, 5, ["HTTP route behavior", "request or status handling"]);
+  }
+
   if (isAppWiring(lowerPath, content)) {
     return skipped(
       "app-wiring",
@@ -250,7 +334,7 @@ function classifySourceFile(file) {
       3,
       5,
       "Application wiring is usually better covered through route or integration tests.",
-      "Cover through FastAPI route tests or service integration tests that boot the app."
+      "Cover through framework route tests or service integration tests that boot the app."
     );
   }
 
@@ -263,10 +347,6 @@ function classifySourceFile(file) {
       "DTO-only models are usually better covered through route, parser, or service tests.",
       "Cover through parser, mapper, repository, or route integration tests that consume the model."
     );
-  }
-
-  if (isHttpRoute(lowerPath, content)) {
-    return recommended("http-route", ["http-route", "status-handling"], "high", "medium", "integration", 8, 5, ["HTTP route behavior", "request or status handling"]);
   }
 
   if (matchesAny(lowerPath, ["parser", "mapper", "validator", "formatter", "calculator"]) || /\bdef\s+(parse|map|validate|format|calculate)_/.test(content)) {
@@ -321,27 +401,496 @@ function skipped(kind, signals, riskReductionScore, maintenanceCost, skipReason,
   };
 }
 
-function isSourceFile(currentPath) {
+function isSourceFile(currentPath, sourceRoots) {
   const normalized = normalizePath(currentPath);
-  return SOURCE_EXTENSIONS.some((extension) => normalized.endsWith(extension)) && !isTestFile(normalized) && !basenameWithoutExtension(normalized).startsWith("__init__");
+  return (
+    SOURCE_EXTENSIONS.some((extension) => normalized.endsWith(extension)) &&
+    !isInTestsDirectory(normalized) &&
+    !isTestFile(normalized) &&
+    !basenameWithoutExtension(normalized).startsWith("__init__") &&
+    (sourceRoots.length === 0 || sourceRoots.some((root) => normalized.startsWith(root)))
+  );
+}
+
+function detectOwnedSourceRoots(files) {
+  const paths = files.map((file) => normalizePath(file.path));
+  if (paths.some((currentPath) => currentPath.startsWith("src/") && currentPath.endsWith(".py"))) return ["src/"];
+
+  const pyproject = files.find((file) => normalizePath(file.path) === "pyproject.toml")?.content;
+  const projectName = pyproject ? parseDeclaredProjectName(pyproject) : undefined;
+  if (projectName) {
+    const packageName = projectName.replaceAll("-", "_");
+    if (paths.includes(`${packageName}/__init__.py`)) return [`${packageName}/`];
+  }
+
+  const ignoredTopLevelPackages = new Set(["docs", "docs_src", "example", "examples", "script", "scripts", "test", "tests"]);
+  const topLevelPackages = paths
+    .filter((currentPath) => /^[^/]+\/__init__\.py$/.test(currentPath))
+    .map((currentPath) => currentPath.split("/", 1)[0])
+    .filter((name) => !ignoredTopLevelPackages.has(name));
+  const uniquePackages = [...new Set(topLevelPackages)].sort();
+  return uniquePackages.length === 1 ? [`${uniquePackages[0]}/`] : [];
+}
+
+function parseDeclaredProjectName(content) {
+  let activeSection;
+  for (const line of content.split(/\r?\n/)) {
+    const section = line.match(/^\s*\[([^\]]+)\]\s*$/)?.[1];
+    if (section) {
+      activeSection = section;
+      continue;
+    }
+    if (activeSection === "project" || activeSection === "tool.poetry") {
+      const name = line.match(/^\s*name\s*=\s*["']([^"']+)["']/)?.[1];
+      if (name) return name;
+    }
+  }
+  return undefined;
 }
 
 function isTestFile(currentPath) {
   const normalized = normalizePath(currentPath);
   const fileName = fileNameOf(normalized);
-  return isInTestsDirectory(normalized) && (fileName.startsWith("test_") || fileName.endsWith("_test.py"));
+  return fileName === "tests.py" || (isInTestsDirectory(normalized) && (fileName.startsWith("test_") || fileName.endsWith("_test.py")));
 }
 
-function findExistingTests(sourcePath, testPaths) {
-  const sourceBase = basenameWithoutExtension(sourcePath);
-  return testPaths.filter((testPath) => {
-    const testBase = basenameWithoutExtension(testPath);
-    return testBase === `test_${sourceBase}` || testBase === `${sourceBase}_test`;
-  });
+function analyzePythonTestFile(content) {
+  return {
+    functions: parsePythonFunctions(content),
+    imports: collectPythonModuleImportBindings(content)
+  };
+}
+
+function collectPythonTestEvidence(sourceFiles, testFiles, sourceRoots, sourceBasenameCounts, packageReexports, pytestFixtures) {
+  const moduleToSourcePaths = new Map();
+  const basenameToSourcePaths = new Map();
+  for (const sourceFile of sourceFiles) {
+    const sourcePath = normalizePath(sourceFile.path);
+    for (const moduleName of pythonModuleNames(sourcePath, sourceRoots)) {
+      const current = moduleToSourcePaths.get(moduleName) ?? [];
+      moduleToSourcePaths.set(moduleName, [...current, sourcePath]);
+    }
+    const basename = basenameWithoutExtension(sourcePath);
+    const current = basenameToSourcePaths.get(basename) ?? [];
+    basenameToSourcePaths.set(basename, [...current, sourcePath]);
+  }
+
+  const reexportLookup = new Map();
+  for (const [sourcePath, reexports] of packageReexports) {
+    for (const reexport of reexports) {
+      const key = `${reexport.packageModule}:${reexport.exported}`;
+      const current = reexportLookup.get(key) ?? [];
+      reexportLookup.set(key, [...current, sourcePath]);
+    }
+  }
+
+  const evidenceBySourceAndTest = new Map();
+  for (const testFile of testFiles) {
+    const testFunctions = testFile.analysis.functions.filter((pythonFunction) => pythonFunction.name.startsWith("test_"));
+    const fixtureFunctions = testFile.analysis.functions.filter((pythonFunction) => pythonFunction.decorators.some(isPytestFixtureDecorator));
+
+    for (const currentImport of testFile.analysis.imports) {
+      for (const sourcePath of moduleToSourcePaths.get(currentImport.moduleName) ?? []) {
+        const testUsage = strongestPythonReferenceUsage(testFunctions, currentImport.reference);
+        const fixtureUsesImport = fixtureFunctions.some((pythonFunction) => pythonReferenceAppears(pythonFunction.body, currentImport.reference));
+        if (testUsage || !fixtureUsesImport) {
+          setPythonTestEvidence(evidenceBySourceAndTest, sourcePath, testFile.path, {
+            testPath: testFile.path,
+            kind: "python-module-import",
+            strength: "direct",
+            ...(testUsage ? { usage: testUsage } : {})
+          });
+        }
+      }
+
+      if (currentImport.kind === "from") {
+        for (const sourcePath of reexportLookup.get(`${currentImport.moduleName}:${currentImport.imported}`) ?? []) {
+          const usage = strongestPythonReferenceUsage(testFunctions, currentImport.reference);
+          setPythonTestEvidence(evidenceBySourceAndTest, sourcePath, testFile.path, {
+            testPath: testFile.path,
+            kind: "python-package-reexport",
+            strength: "referenced",
+            ...(usage ? { usage } : {})
+          });
+        }
+      } else {
+        for (const [key, sourcePaths] of reexportLookup) {
+          const [packageModule, exported] = key.split(":");
+          if (packageModule !== currentImport.moduleName) continue;
+          const reference = `${currentImport.reference}.${exported}`;
+          const usage = strongestPythonReferenceUsage(testFunctions, reference);
+          if (!usage && !testFunctions.some((pythonFunction) => pythonReferenceAppears(pythonFunction.body, reference))) continue;
+          for (const sourcePath of sourcePaths) {
+            setPythonTestEvidence(evidenceBySourceAndTest, sourcePath, testFile.path, {
+              testPath: testFile.path,
+              kind: "python-package-reexport",
+              strength: "referenced",
+              ...(usage ? { usage } : {})
+            });
+          }
+        }
+      }
+    }
+
+    for (const { sourcePath, viaUsage } of collectConsumedFixtureSources(testFile, pytestFixtures)) {
+      setPythonTestEvidence(evidenceBySourceAndTest, sourcePath, testFile.path, {
+        testPath: testFile.path,
+        kind: "python-pytest-fixture",
+        strength: "indirect",
+        ...(viaUsage ? { viaUsage } : {})
+      });
+    }
+
+    const testBase = basenameWithoutExtension(testFile.path).replace(/^test_/, "").replace(/_test$/, "");
+    for (const sourcePath of basenameToSourcePaths.get(testBase) ?? []) {
+      const basenameIsUnique = sourceBasenameCounts.get(testBase) === 1;
+      if (!basenameIsUnique && !testPathMatchesSourceOwner(sourcePath, testFile.path, sourceRoots)) continue;
+      setPythonTestEvidence(evidenceBySourceAndTest, sourcePath, testFile.path, {
+        testPath: testFile.path,
+        kind: "filename-convention",
+        strength: "naming"
+      });
+    }
+  }
+
+  const bySourcePath = new Map();
+  for (const [key, evidence] of evidenceBySourceAndTest) {
+    const sourcePath = key.slice(0, key.lastIndexOf("\0"));
+    const current = bySourcePath.get(sourcePath) ?? [];
+    bySourcePath.set(sourcePath, [...current, evidence]);
+  }
+  return new Map([...bySourcePath].map(([sourcePath, evidence]) => [
+    sourcePath,
+    evidence.sort((left, right) => left.testPath.localeCompare(right.testPath))
+  ]));
+}
+
+function collectConsumedFixtureSources(testFile, pytestFixtures) {
+  const consumed = new Map();
+  const tests = testFile.analysis.functions.filter((pythonFunction) => pythonFunction.name.startsWith("test_"));
+  for (const testFunction of tests) {
+    const initialFixtures = new Set([...testFunction.parameters, ...testFunction.decorators.flatMap(parseUsefixturesDecorator)]);
+    const queue = [...initialFixtures].map((name) => ({ name, rootName: name }));
+    const visited = new Set();
+    while (queue.length > 0) {
+      const current = queue.shift();
+      const visitKey = `${current.name}:${current.rootName}`;
+      if (visited.has(visitKey)) continue;
+      visited.add(visitKey);
+      for (const fixture of pytestFixtures.definitionsByName.get(current.name) ?? []) {
+        if (!fixtureIsVisible(fixture, testFile.path)) continue;
+        const viaUsage = findPythonReferenceUsage(testFunction.body, current.rootName);
+        for (const sourcePath of fixture.sourcePaths) {
+          const existing = consumed.get(sourcePath);
+          consumed.set(sourcePath, strongerPythonUsage(existing, viaUsage));
+        }
+        for (const dependency of fixture.dependencies) queue.push({ name: dependency, rootName: current.rootName });
+      }
+    }
+  }
+  return [...consumed].map(([sourcePath, viaUsage]) => ({ sourcePath, viaUsage }));
+}
+
+function strongestPythonReferenceUsage(functions, reference) {
+  let usage;
+  for (const pythonFunction of functions) usage = strongerPythonUsage(usage, findPythonReferenceUsage(pythonFunction.body, reference));
+  return usage;
+}
+
+function strongerPythonUsage(left, right) {
+  const rank = { undefined: 0, called: 1, asserted: 2 };
+  return rank[right] > rank[left] ? right : left;
+}
+
+function setPythonTestEvidence(evidenceBySourceAndTest, sourcePath, testPath, evidence) {
+  const key = `${sourcePath}\0${testPath}`;
+  const existing = evidenceBySourceAndTest.get(key);
+  const rank = { naming: 0, indirect: 1, referenced: 2, direct: 3 };
+  if (!existing || rank[evidence.strength] > rank[existing.strength]) evidenceBySourceAndTest.set(key, evidence);
+}
+
+function isPytestFixtureDecorator(decorator) {
+  return /^@(?:pytest\.)?fixture(?:\s*\(|\b)/.test(decorator);
+}
+
+function collectPytestFixtures(files, sourceRoots) {
+  const sourceFiles = files.filter((file) => isSourceFile(file.path, sourceRoots));
+  const moduleToSourcePaths = new Map();
+  for (const sourceFile of sourceFiles) {
+    for (const moduleName of pythonModuleNames(sourceFile.path, sourceRoots)) {
+      const current = moduleToSourcePaths.get(moduleName) ?? [];
+      moduleToSourcePaths.set(moduleName, [...current, normalizePath(sourceFile.path)]);
+    }
+  }
+
+  const definitions = files
+    .filter((file) => isPythonTestSupportFile(file.path))
+    .flatMap((file) => {
+      const imports = collectPythonModuleImportBindings(file.content);
+      return parsePythonFunctions(file.content)
+        .filter((pythonFunction) => pythonFunction.decorators.some(isPytestFixtureDecorator))
+        .map((pythonFunction) => {
+          const sourcePaths = new Set();
+          for (const currentImport of imports) {
+            const matchingSources = moduleToSourcePaths.get(currentImport.moduleName) ?? [];
+            if (matchingSources.length === 0 || !pythonReferenceAppears(pythonFunction.body, currentImport.reference)) continue;
+            for (const sourcePath of matchingSources) sourcePaths.add(sourcePath);
+          }
+          return {
+            name: pythonFunction.name,
+            path: normalizePath(file.path),
+            dependencies: pythonFunction.parameters,
+            sourcePaths: [...sourcePaths].sort()
+          };
+        });
+    })
+    .sort((left, right) => left.path.localeCompare(right.path) || left.name.localeCompare(right.name));
+
+  const definitionsByName = new Map();
+  for (const definition of definitions) {
+    const current = definitionsByName.get(definition.name) ?? [];
+    definitionsByName.set(definition.name, [...current, definition]);
+  }
+  return { definitions, definitionsByName };
+}
+
+function fixtureIsVisible(fixture, testPath) {
+  if (fileNameOf(fixture.path) !== "conftest.py") return fixture.path === testPath;
+  const directory = fixture.path.slice(0, -"conftest.py".length);
+  return normalizePath(testPath).startsWith(directory);
+}
+
+function parseUsefixturesDecorator(decorator) {
+  if (!/^@pytest\.mark\.usefixtures\s*\(/.test(decorator)) return [];
+  return [...decorator.matchAll(/["']([A-Za-z_][A-Za-z0-9_]*)["']/g)].map((match) => match[1]);
+}
+
+function isPythonTestSupportFile(currentPath) {
+  const normalized = normalizePath(currentPath);
+  return normalized.endsWith(".py") && (isTestFile(normalized) || (isInTestsDirectory(normalized) && fileNameOf(normalized) === "conftest.py"));
+}
+
+function collectPythonModuleImportBindings(content) {
+  const imports = [];
+  const masked = maskPythonCommentsAndStrings(content);
+  for (const match of masked.matchAll(/^\s*from\s+([A-Za-z_][A-Za-z0-9_.]*)\s+import\s+(\([^)]*\)|[^\n]+)/gm)) {
+    for (const binding of parsePythonImportBindings(match[2])) {
+      imports.push({ moduleName: match[1], imported: binding.imported, reference: binding.local, kind: "from" });
+    }
+  }
+  for (const match of masked.matchAll(/^\s*import\s+([^\n]+)/gm)) {
+    for (const currentImport of match[1].split(",").map((item) => item.trim())) {
+      const parsed = currentImport.match(/^([A-Za-z_][A-Za-z0-9_.]*)(?:\s+as\s+([A-Za-z_][A-Za-z0-9_]*))?/);
+      if (parsed) imports.push({ moduleName: parsed[1], reference: parsed[2] ?? parsed[1], kind: "module" });
+    }
+  }
+  return imports;
+}
+
+function parsePythonFunctions(content) {
+  const rawLines = content.split(/\r?\n/);
+  const maskedLines = maskPythonCommentsAndStrings(content).split(/\r?\n/);
+  const functions = [];
+
+  for (let index = 0; index < maskedLines.length; index += 1) {
+    const match = maskedLines[index].match(/^(\s*)(?:async\s+)?def\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(([^)]*)\)\s*(?:->\s*[^:]+)?\s*:/);
+    if (!match) continue;
+    const indent = indentationWidth(match[1]);
+    let decoratorIndex = index - 1;
+    const decorators = [];
+    while (decoratorIndex >= 0 && rawLines[decoratorIndex].trimStart().startsWith("@")) {
+      decorators.unshift(rawLines[decoratorIndex].trim());
+      decoratorIndex -= 1;
+    }
+    let end = index + 1;
+    while (end < maskedLines.length) {
+      const line = maskedLines[end];
+      if (line.trim() && indentationWidth(line.match(/^\s*/)?.[0] ?? "") <= indent) break;
+      end += 1;
+    }
+    functions.push({
+      name: match[2],
+      parameters: parsePythonParameters(match[3]),
+      decorators,
+      body: maskedLines.slice(index + 1, end).join("\n")
+    });
+    index = end - 1;
+  }
+  return functions;
+}
+
+function parsePythonParameters(value) {
+  return value
+    .split(",")
+    .map((parameter) => parameter.trim().replace(/^\*+/, "").split(/[:=]/, 1)[0].trim())
+    .filter((parameter) => /^[A-Za-z_][A-Za-z0-9_]*$/.test(parameter) && !["self", "cls"].includes(parameter));
+}
+
+function indentationWidth(value) {
+  return [...value].reduce((width, character) => width + (character === "\t" ? 4 : 1), 0);
+}
+
+function pythonReferenceAppears(content, reference) {
+  return new RegExp(`\\b${escapeRegex(reference)}(?:\\b|\\.)`).test(content);
+}
+
+function findPythonReferenceUsage(content, reference) {
+  const lines = content.split("\n");
+  const escapedReference = escapeRegex(reference);
+  if (lines.some((line) => /^\s*assert\b|\.assert[A-Z]\w*\s*\(/.test(line) && new RegExp(`\\b${escapedReference}\\b`).test(line))) return "asserted";
+  if (new RegExp(`\\b${escapedReference}(?:\\.[A-Za-z_][A-Za-z0-9_]*)?\\s*\\(`).test(content)) return "called";
+  return undefined;
+}
+
+function collectPythonPackageReexports(files, sourceRoots) {
+  const reexportsByModule = new Map();
+  for (const file of files.filter((candidate) => normalizePath(candidate.path).endsWith("/__init__.py"))) {
+    const packageModule = pythonPackageModule(file.path, sourceRoots);
+    if (!packageModule) continue;
+    const masked = maskPythonCommentsAndStrings(file.content);
+    for (const match of masked.matchAll(/^\s*from\s+(\.+)([A-Za-z_][A-Za-z0-9_.]*)?\s+import\s+(\([^)]*\)|[^\n]+)/gm)) {
+      const importedModule = resolveRelativePythonModule(packageModule, match[1].length, match[2] ?? "");
+      if (!importedModule) continue;
+      const bindings = parsePythonImportBindings(match[3]);
+      for (const sourcePath of files
+        .filter((candidate) => pythonModuleNames(candidate.path, sourceRoots).includes(importedModule))
+        .map((candidate) => normalizePath(candidate.path))) {
+        const current = reexportsByModule.get(sourcePath) ?? [];
+        reexportsByModule.set(sourcePath, [
+          ...current,
+          ...bindings.map(({ imported, local }) => ({ packageModule, imported, exported: local }))
+        ]);
+      }
+    }
+  }
+  return new Map([...reexportsByModule].map(([sourcePath, reexports]) => [
+    sourcePath,
+    reexports.sort((left, right) => left.packageModule.localeCompare(right.packageModule) || left.exported.localeCompare(right.exported))
+  ]));
+}
+
+function pythonPackageModule(initializerPath, sourceRoots) {
+  const withoutInitializer = normalizePath(initializerPath).replace(/\/__init__\.py$/, "");
+  for (const sourceRoot of sourceRoots) {
+    if (withoutInitializer.startsWith(sourceRoot)) return withoutInitializer.slice(sourceRoot.length).replaceAll("/", ".");
+  }
+  return withoutInitializer.replaceAll("/", ".");
+}
+
+function resolveRelativePythonModule(packageModule, level, suffix) {
+  const packageSegments = packageModule.split(".");
+  const base = packageSegments.slice(0, Math.max(0, packageSegments.length - (level - 1)));
+  const suffixSegments = suffix ? suffix.split(".") : [];
+  return [...base, ...suffixSegments].filter(Boolean).join(".");
+}
+
+function countSourceBasenames(sourceFiles) {
+  const counts = new Map();
+  for (const file of sourceFiles) {
+    const basename = basenameWithoutExtension(file.path);
+    counts.set(basename, (counts.get(basename) ?? 0) + 1);
+  }
+  return counts;
+}
+
+function pythonModuleNames(sourcePath, sourceRoots) {
+  const withoutExtension = normalizePath(sourcePath).replace(/\.py$/, "");
+  const names = new Set([withoutExtension.replaceAll("/", ".")]);
+  for (const sourceRoot of sourceRoots) {
+    if (withoutExtension.startsWith(sourceRoot)) names.add(withoutExtension.slice(sourceRoot.length).replaceAll("/", "."));
+  }
+  return [...names].filter(Boolean).sort();
+}
+
+function parsePythonImportBindings(value) {
+  return value
+    .replace(/[()]/g, " ")
+    .split(",")
+    .map((binding) => binding.trim().match(/^([A-Za-z_][A-Za-z0-9_]*)(?:\s+as\s+([A-Za-z_][A-Za-z0-9_]*))?/))
+    .filter(Boolean)
+    .map((match) => ({ imported: match[1], local: match[2] ?? match[1] }));
+}
+
+function testPathMatchesSourceOwner(sourcePath, testPath, sourceRoots) {
+  const primaryModule = pythonModuleNames(sourcePath, sourceRoots).at(-1) ?? "";
+  const sourceOwner = primaryModule.split(".").slice(0, -1).join(".");
+  const testSegments = normalizePath(testPath).split("/");
+  const testsIndex = testSegments.findIndex((segment) => segment === "tests" || segment === "test");
+  if (testsIndex < 0) return false;
+  const testOwner = testSegments.slice(testsIndex + 1, -1).join(".");
+  return Boolean(testOwner) && (sourceOwner === testOwner || sourceOwner.endsWith(`.${testOwner}`));
+}
+
+function maskPythonCommentsAndStrings(content) {
+  let result = "";
+  let index = 0;
+  let quote;
+  let triple = false;
+  let comment = false;
+
+  while (index < content.length) {
+    const current = content[index];
+    if (comment) {
+      if (current === "\n") {
+        comment = false;
+        result += "\n";
+      } else result += " ";
+      index += 1;
+      continue;
+    }
+    if (quote) {
+      if (!triple && current === "\\") {
+        result += "  ";
+        index += 2;
+        continue;
+      }
+      if (triple && content.slice(index, index + 3) === quote.repeat(3)) {
+        result += "   ";
+        index += 3;
+        quote = undefined;
+        triple = false;
+        continue;
+      }
+      if (!triple && current === quote) {
+        result += " ";
+        index += 1;
+        quote = undefined;
+        continue;
+      }
+      result += current === "\n" ? "\n" : " ";
+      index += 1;
+      continue;
+    }
+    if (current === "#") {
+      comment = true;
+      result += " ";
+      index += 1;
+      continue;
+    }
+    if (current === "\"" || current === "'") {
+      quote = current;
+      triple = content.slice(index, index + 3) === current.repeat(3);
+      result += triple ? "   " : " ";
+      index += triple ? 3 : 1;
+      continue;
+    }
+    result += current;
+    index += 1;
+  }
+  return result;
+}
+
+function escapeRegex(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function isAppWiring(currentPath, content) {
-  return /(main|app)\.py$/.test(currentPath) && /\bFastAPI\s*\(|\binclude_router\b/.test(content);
+  if (/(settings|urls|asgi|wsgi)\.py$/.test(currentPath) && /\bdjango\b|\burlpatterns\b|\bDJANGO_SETTINGS_MODULE\b/.test(content)) return true;
+  return (
+    /(main|app|factory)\.py$/.test(currentPath) &&
+    (/\bFastAPI\s*\(|\binclude_router\b|\bFlask\s*\(|\bregister_blueprint\b/.test(content)) &&
+    !isFlaskRoute(content)
+  );
 }
 
 function isDtoLike(currentPath, content) {
@@ -353,9 +902,24 @@ function isDtoLike(currentPath, content) {
 
 function isHttpRoute(currentPath, content) {
   return (
-    (currentPath.includes("/routes/") || currentPath.includes("/routers/") || currentPath.includes("/controllers/")) &&
-    (/\bAPIRouter\s*\(/.test(content) || /@\w+\.(get|post|put|patch|delete)\s*\(/.test(content))
+    ((currentPath.includes("/routes/") || currentPath.includes("/routers/") || currentPath.includes("/controllers/")) &&
+      (/\bAPIRouter\s*\(/.test(content) || /@\w+\.(get|post|put|patch|delete)\s*\(/.test(content))) ||
+    isDjangoView(currentPath, content) ||
+    isFlaskRoute(content)
   );
+}
+
+function isDjangoView(currentPath, content) {
+  return (
+    (/(^|\/)views?\.py$/.test(currentPath) || currentPath.includes("/views/")) &&
+    (/\bfrom\s+django\.(?:http|views)\b|\bHttpResponse\b|\bJsonResponse\b|\bAPIView\b|\bViewSet\b/.test(content))
+  );
+}
+
+function isFlaskRoute(content) {
+  const hasRouteDecorator = /@[A-Za-z_][A-Za-z0-9_]*\.(?:route|get|post|put|patch|delete)\s*\(/.test(content);
+  const hasFlaskSignal = /\bfrom\s+flask\s+import\b|\bimport\s+flask\b|\bFlask\s*\(|\bBlueprint\s*\(|\.(?:route)\s*\(/.test(content);
+  return hasRouteDecorator && hasFlaskSignal;
 }
 
 function normalizePath(currentPath) {
@@ -384,7 +948,7 @@ function fileNameOf(currentPath) {
 
 function isInTestsDirectory(currentPath) {
   const normalized = normalizePath(currentPath);
-  return normalized.startsWith("tests/") || normalized.includes("/tests/");
+  return /^(?:test|testing|tests)\//.test(normalized) || /\/(?:test|tests)\//.test(normalized);
 }
 
 function matchesAny(value, fragments) {

@@ -69,6 +69,14 @@
       ],
       "existingTestPaths": [
         "src/checkout/tests/test_calculator.py"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "src/checkout/tests/test_calculator.py",
+          "kind": "python-module-import",
+          "strength": "direct",
+          "usage": "asserted"
+        }
       ]
     }
   ],
@@ -95,6 +103,14 @@
       ],
       "existingTestPaths": [
         "src/checkout/tests/test_calculator.py"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "src/checkout/tests/test_calculator.py",
+          "kind": "python-module-import",
+          "strength": "direct",
+          "usage": "asserted"
+        }
       ]
     },
     {

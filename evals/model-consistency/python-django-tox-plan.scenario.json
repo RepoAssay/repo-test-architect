@@ -1,0 +1,64 @@
+{
+  "schemaVersion": "model-consistency-scenario/v1",
+  "id": "python-django-tox-plan",
+  "description": "Django planning must preserve tox execution, view integration coverage, and untested async service work.",
+  "sourceArtifact": {
+    "path": "evals/expected/python-django-tox.audit.json",
+    "schemaVersion": "audit/v1"
+  },
+  "toolCall": {
+    "toolName": "generate_test_plan",
+    "arguments": {}
+  },
+  "lockedFields": [
+    {
+      "path": "summary.verificationCommand",
+      "expected": "tox",
+      "reason": "A proven tox test environment should remain the project-native command."
+    },
+    {
+      "path": "summary.addTestCount",
+      "expected": 1,
+      "reason": "The async order service remains untested."
+    },
+    {
+      "path": "summary.extendTestCount",
+      "expected": 1,
+      "reason": "The covered Django view remains an integration review target."
+    },
+    {
+      "path": "items[0].id",
+      "expected": "add-test:shop/services/order_service.py",
+      "reason": "The service candidate identity must remain stable."
+    },
+    {
+      "path": "items[1].id",
+      "expected": "extend-test:shop/views.py",
+      "reason": "The Django view target identity must remain stable."
+    },
+    {
+      "path": "items[1].testLevel",
+      "expected": "integration",
+      "reason": "Django HTTP view behavior belongs at integration level."
+    },
+    {
+      "path": "items[1].sourceSignals[0]",
+      "expected": "django-view",
+      "reason": "The framework-specific view signal must remain visible."
+    },
+    {
+      "path": "items[1].existingTestEvidence[0].usage",
+      "expected": "called",
+      "reason": "The imported view callable remains visibly invoked."
+    }
+  ],
+  "allowedVariations": [
+    "summary wording",
+    "optional detail depth"
+  ],
+  "unexpectedVariations": [
+    "falling back from tox to pytest",
+    "unit-level Django view recommendation",
+    "missing service candidate"
+  ]
+}

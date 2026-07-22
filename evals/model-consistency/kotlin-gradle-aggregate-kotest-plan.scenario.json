@@ -1,0 +1,49 @@
+{
+  "schemaVersion": "model-consistency-scenario/v1",
+  "id": "kotlin-gradle-aggregate-kotest-plan",
+  "description": "Different model profiles should preserve explicit blockers for aggregate Gradle roots and unsupported Kotest evidence.",
+  "sourceArtifact": {
+    "path": "evals/expected/kotlin-gradle-aggregate-kotest.audit.json",
+    "schemaVersion": "audit/v1"
+  },
+  "toolCall": {
+    "toolName": "generate_test_plan",
+    "arguments": {}
+  },
+  "lockedFields": [
+    {
+      "path": "summary.confidence",
+      "expected": "low",
+      "reason": "An aggregate root without a root standard source set must stay low confidence."
+    },
+    {
+      "path": "summary.blockerCount",
+      "expected": 4,
+      "reason": "Framework, command, source-root, and unsupported-framework blockers must remain visible."
+    },
+    {
+      "path": "summary.addTestCount",
+      "expected": 0,
+      "reason": "Nested module sources must not be misreported as root-owned test targets."
+    },
+    {
+      "path": "blockers[2]",
+      "expected": "No supported root JVM source set detected; audit a Gradle or Maven module root.",
+      "reason": "The audit should direct users to a module root rather than silently returning an empty result."
+    },
+    {
+      "path": "blockers[3]",
+      "expected": "Unsupported JVM test frameworks detected: kotest.",
+      "reason": "Kotest remains an explicit evidence-boundary blocker."
+    }
+  ],
+  "allowedVariations": [
+    "summary wording",
+    "optional detail depth"
+  ],
+  "unexpectedVariations": [
+    "aggregate source targets",
+    "high confidence",
+    "missing Kotest blocker"
+  ]
+}

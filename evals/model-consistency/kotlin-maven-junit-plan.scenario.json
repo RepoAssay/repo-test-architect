@@ -42,6 +42,11 @@
       "reason": "Existing JUnit coverage should stay visible to downstream model prompts."
     },
     {
+      "path": "items[0].existingTestEvidence[0].usage",
+      "expected": "asserted",
+      "reason": "The Maven/JUnit validator receiver consumed by assertTrue should retain asserted JVM provenance."
+    },
+    {
       "path": "items[1].id",
       "expected": "add-test:src/main/java/com/example/invoice/MoneyFormatter.java",
       "reason": "The untested formatter should remain a direct unit-test candidate."

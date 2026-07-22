@@ -100,9 +100,9 @@ describe("docs links", () => {
     assert.ok(docs.includes("| `Package.swift` | `swift` | `swift` | Supported by `swift` |"));
     assert.ok(docs.includes("| `*.xcodeproj` | `apple` | `swift`, `objective-c` | Supported by `swift` |"));
     assert.ok(docs.includes("| `*.xcworkspace` | `apple` | `swift`, `objective-c` | Supported by `swift` |"));
-    assert.ok(docs.includes("| `pom.xml` | `jvm` | `java`, `kotlin` | Supported by experimental `kotlin` |"));
-    assert.ok(docs.includes("| `build.gradle.kts` | `jvm` | `kotlin`, `java` | Supported by experimental `kotlin` |"));
-    assert.ok(docs.includes("| `pyproject.toml` | `python` | `python` | Supported by experimental `python` |"));
+    assert.ok(docs.includes("| `pom.xml` | `jvm` | `java`, `kotlin` | Supported by bounded `kotlin` |"));
+    assert.ok(docs.includes("| `build.gradle.kts` | `jvm` | `kotlin`, `java` | Supported by bounded `kotlin` |"));
+    assert.ok(docs.includes("| `pyproject.toml` | `python` | `python` | Supported by `python` |"));
   });
 
   it("documents future test placement findings", () => {
@@ -203,7 +203,7 @@ describe("docs links", () => {
     assert.ok(roadmap.includes("Milestone 3: Adapter Spike Hardening"));
     assert.ok(roadmap.includes("Kotlin/JVM with Gradle/Maven and JUnit"));
     assert.ok(roadmap.includes("Swift Package Manager with XCTest, Swift Testing, Quick/Nimble, and SnapshotTesting signals"));
-    assert.ok(roadmap.includes("Python package layouts, pytest/unittest detection, uv/Poetry/Hatch command markers, and no-tests-yet blocker behavior"));
+    assert.ok(roadmap.includes("Python fixture reachability, async/parametrized/property-based pytest conventions, Django/Flask routes, tox/nox commands, coverage configuration, and no-tests-yet blocker behavior"));
     assert.ok(roadmap.includes("Milestone 4: Placement And Boundary Analysis"));
     assert.ok(roadmap.includes("app-level tests that belong in package-level test targets"));
     assert.ok(roadmap.includes("Milestone 5: Local MCP Transport"));
@@ -273,7 +273,7 @@ describe("docs links", () => {
     assert.ok(adapterContract.includes("Currently registered adapters are:"));
     assert.ok(adapterContract.includes("The repository detector finds multiple project roots"));
     assert.ok(adapterContract.includes("Independent adapter audits are isolated by project root today"));
-    assert.ok(polyglotWorkflow.includes("experimental Kotlin/JVM adapter already handles Java plus Kotlin source ownership"));
+    assert.ok(polyglotWorkflow.includes("bounded Kotlin/JVM adapter handles Java plus Kotlin source ownership"));
     assert.ok(secondAdapterSpike.includes("Kotlin/JVM with Gradle/Maven and JUnit"));
     assert.ok(secondAdapterSpike.includes("Swift Package Manager with XCTest, Swift Testing, Quick/Nimble, and SnapshotTesting signals"));
     assert.ok(secondAdapterSpike.includes("Python package roots with pytest or unittest"));
@@ -283,5 +283,21 @@ describe("docs links", () => {
     assert.ok(secondAdapterSpike.includes("native test generation"));
     assert.ok(secondAdapterSpike.includes("npm run release:check"));
     assert.ok(status.includes("adapter spike checklist"));
+  });
+
+  it("documents the bounded Kotlin/JVM support and live validation boundary", () => {
+    const readme = fs.readFileSync("README.md", "utf8");
+    const support = fs.readFileSync("docs/kotlin-jvm-alpha-support.md", "utf8");
+    const validation = fs.readFileSync("docs/kotlin-jvm-validation-hunt-report.md", "utf8");
+
+    assert.ok(readme.includes("[Kotlin/JVM alpha support](docs/kotlin-jvm-alpha-support.md)"));
+    assert.ok(support.includes("JUnit 4, JUnit 5/Jupiter, and `kotlin.test`"));
+    assert.ok(support.includes("Android application/library unit-test semantics"));
+    assert.ok(support.includes("registered as `supported`"));
+    assert.ok(validation.includes("JUnit 4"));
+    assert.ok(validation.includes("Cash App Barber"));
+    assert.ok(validation.includes("graphql-java"));
+    assert.ok(validation.includes("KotlinPoet"));
+    assert.ok(validation.includes("no repository build, plugin, test, or application code was executed"));
   });
 });

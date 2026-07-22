@@ -70,9 +70,11 @@ describe("model consistency runner", () => {
       results.map((result) => [result.scenarioId, result.failures]),
       [
         ["express-supertest-plan", []],
+        ["kotlin-gradle-aggregate-kotest-plan", []],
         ["kotlin-gradle-groovy-junit-plan", []],
         ["kotlin-junit-basic-plan", []],
         ["kotlin-maven-junit-plan", []],
+        ["kotlin-maven-wrapper-junit4-plan", []],
         ["node-ava-basic-plan", []],
         ["node-jest-service-plan", []],
         ["node-mocha-commonjs-plan", []],
@@ -91,8 +93,11 @@ describe("model consistency runner", () => {
         ["project-findings-placement-split", []],
         ["project-placement-inferred-package-boundary", []],
         ["project-placement-split", []],
+        ["python-django-tox-plan", []],
+        ["python-flask-nox-coverage-plan", []],
         ["python-package-local-tests-plan", []],
         ["python-poetry-pytest-plan", []],
+        ["python-pytest-advanced-plan", []],
         ["python-pytest-service-plan", []],
         ["python-uv-pytest-plan", []],
         ["react-testing-library-plan", []],
@@ -115,14 +120,14 @@ describe("model consistency runner", () => {
     assert.equal(summary.schemaVersion, "model-consistency-summary/v1");
     assert.equal(summary.profileName, "deterministic-baseline");
     assert.deepEqual(summary.summary, {
-      scenarioCount: 32,
-      passedScenarioCount: 32,
+      scenarioCount: 37,
+      passedScenarioCount: 37,
       failedScenarioCount: 0,
-      checkedFieldCount: 258,
+      checkedFieldCount: 309,
       failureCount: 0
     });
-    assert.equal(summary.scenarios[4].scenarioId, "node-ava-basic-plan");
-    assert.equal(summary.scenarios[4].status, "passed");
+    assert.equal(summary.scenarios[6].scenarioId, "node-ava-basic-plan");
+    assert.equal(summary.scenarios[6].status, "passed");
     assert.ok(summary.allowedVariationThemes.includes("Additional non-locked metadata may be added."));
     assert.ok(summary.unexpectedVariationThemes.includes("Generating a direct DTO test recommendation."));
   });
@@ -136,8 +141,8 @@ describe("model consistency runner", () => {
     assert.equal(comparison.baselineProfile, "deterministic-baseline");
     assert.equal(comparison.candidateProfile, "local-small");
     assert.deepEqual(comparison.summary, {
-      scenarioCount: 32,
-      alignedScenarioCount: 32,
+      scenarioCount: 37,
+      alignedScenarioCount: 37,
       driftedScenarioCount: 0,
       missingScenarioCount: 0,
       unexpectedScenarioCount: 0,
@@ -179,21 +184,23 @@ describe("model consistency runner", () => {
     const comparison = compareModelConsistencySummaries(baseline, candidate);
 
     assert.deepEqual(comparison.summary, {
-      scenarioCount: 33,
-      alignedScenarioCount: 30,
+      scenarioCount: 38,
+      alignedScenarioCount: 35,
       driftedScenarioCount: 1,
       missingScenarioCount: 1,
       unexpectedScenarioCount: 1,
-      checkedFieldDelta: -103,
+      checkedFieldDelta: -154,
       failureDelta: 3
     });
     assert.deepEqual(
       comparison.scenarios.map((scenario) => [scenario.scenarioId, scenario.alignment]),
       [
         ["express-supertest-plan", "drifted"],
-        ["kotlin-gradle-groovy-junit-plan", "missing"],
+        ["kotlin-gradle-aggregate-kotest-plan", "missing"],
+        ["kotlin-gradle-groovy-junit-plan", "aligned"],
         ["kotlin-junit-basic-plan", "aligned"],
         ["kotlin-maven-junit-plan", "aligned"],
+        ["kotlin-maven-wrapper-junit4-plan", "aligned"],
         ["node-ava-basic-plan", "aligned"],
         ["node-jest-service-plan", "aligned"],
         ["node-mocha-commonjs-plan", "aligned"],
@@ -212,8 +219,11 @@ describe("model consistency runner", () => {
         ["project-findings-placement-split", "aligned"],
         ["project-placement-inferred-package-boundary", "aligned"],
         ["project-placement-split", "aligned"],
+        ["python-django-tox-plan", "aligned"],
+        ["python-flask-nox-coverage-plan", "aligned"],
         ["python-package-local-tests-plan", "aligned"],
         ["python-poetry-pytest-plan", "aligned"],
+        ["python-pytest-advanced-plan", "aligned"],
         ["python-pytest-service-plan", "aligned"],
         ["python-uv-pytest-plan", "aligned"],
         ["react-testing-library-plan", "aligned"],

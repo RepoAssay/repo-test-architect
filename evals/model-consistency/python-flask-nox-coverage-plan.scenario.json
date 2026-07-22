@@ -1,0 +1,74 @@
+{
+  "schemaVersion": "model-consistency-scenario/v1",
+  "id": "python-flask-nox-coverage-plan",
+  "description": "Flask planning must preserve nox execution and route integration coverage without treating configured branch coverage as proof.",
+  "sourceArtifact": {
+    "path": "evals/expected/python-flask-nox-coverage.audit.json",
+    "schemaVersion": "audit/v1"
+  },
+  "toolCall": {
+    "toolName": "generate_test_plan",
+    "arguments": {}
+  },
+  "lockedFields": [
+    {
+      "path": "summary.verificationCommand",
+      "expected": "nox -s tests",
+      "reason": "The explicit nox tests session should remain the project-native command."
+    },
+    {
+      "path": "summary.addTestCount",
+      "expected": 1,
+      "reason": "Coverage configuration must not hide the untested session service."
+    },
+    {
+      "path": "summary.extendTestCount",
+      "expected": 1,
+      "reason": "The covered Flask route remains an integration review target."
+    },
+    {
+      "path": "items[0].id",
+      "expected": "extend-test:webapp/routes.py",
+      "reason": "The Flask route target identity must remain stable."
+    },
+    {
+      "path": "items[0].testLevel",
+      "expected": "integration",
+      "reason": "Flask route behavior belongs at integration level."
+    },
+    {
+      "path": "items[0].sourceSignals[0]",
+      "expected": "flask-route",
+      "reason": "The framework-specific Flask signal must remain visible."
+    },
+    {
+      "path": "items[0].existingTestEvidence[0].kind",
+      "expected": "python-module-import",
+      "reason": "The route test preserves exact module import evidence."
+    },
+    {
+      "path": "items[0].existingTestEvidence[0].usage",
+      "expected": "called",
+      "reason": "The imported route callable remains visibly invoked."
+    },
+    {
+      "path": "items[1].id",
+      "expected": "add-test:webapp/services/session_service.py",
+      "reason": "The untested service identity must remain stable."
+    },
+    {
+      "path": "items[1].existingTestPaths.length",
+      "expected": 0,
+      "reason": "Configured branch coverage is not source-specific test evidence."
+    }
+  ],
+  "allowedVariations": [
+    "summary wording",
+    "optional detail depth"
+  ],
+  "unexpectedVariations": [
+    "falling back from nox to pytest",
+    "coverage config treated as source coverage",
+    "unit-level Flask route recommendation"
+  ]
+}

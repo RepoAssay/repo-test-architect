@@ -1,0 +1,12 @@
+[project]
+name = "advanced"
+version = "0.1.0"
+dependencies = [
+  "anyio",
+  "hypothesis",
+  "pytest",
+  "pytest-asyncio",
+]
+
+[tool.pytest]
+testpaths = ["tests"]

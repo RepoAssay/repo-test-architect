@@ -23,7 +23,7 @@
       "rationale": [
         "Pure transformation logic",
         "edge-case surface",
-        "Existing test file detected; review missing edge cases"
+        "Existing test evidence detected; review missing edge cases"
       ],
       "sourceSignals": [
         "pure-logic",
@@ -32,6 +32,14 @@
       ],
       "existingTestPaths": [
         "src/test/kotlin/com/example/checkout/CheckoutCalculatorTest.kt"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "src/test/kotlin/com/example/checkout/CheckoutCalculatorTest.kt",
+          "kind": "jvm-symbol-reference",
+          "strength": "referenced",
+          "usage": "asserted"
+        }
       ]
     },
     {

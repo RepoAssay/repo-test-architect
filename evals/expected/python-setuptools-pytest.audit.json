@@ -70,6 +70,14 @@
       ],
       "existingTestPaths": [
         "tests/test_order_validator.py"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "tests/test_order_validator.py",
+          "kind": "python-module-import",
+          "strength": "direct",
+          "usage": "asserted"
+        }
       ]
     }
   ],
@@ -116,6 +124,14 @@
       ],
       "existingTestPaths": [
         "tests/test_order_validator.py"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "tests/test_order_validator.py",
+          "kind": "python-module-import",
+          "strength": "direct",
+          "usage": "asserted"
+        }
       ]
     }
   ],

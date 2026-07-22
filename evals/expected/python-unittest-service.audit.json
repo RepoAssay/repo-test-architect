@@ -68,6 +68,14 @@
       ],
       "existingTestPaths": [
         "tests/inventory_parser_test.py"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "tests/inventory_parser_test.py",
+          "kind": "python-module-import",
+          "strength": "direct",
+          "usage": "asserted"
+        }
       ]
     }
   ],
@@ -94,6 +102,14 @@
       ],
       "existingTestPaths": [
         "tests/inventory_parser_test.py"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "tests/inventory_parser_test.py",
+          "kind": "python-module-import",
+          "strength": "direct",
+          "usage": "asserted"
+        }
       ]
     },
     {

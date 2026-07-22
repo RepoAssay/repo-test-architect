@@ -63,6 +63,10 @@ describe("artifact schema compatibility", () => {
     it(`validates ${fixture.name} target explanation artifact`, () => {
       const audit = getAdapter(fixture.adapter).audit(fixture.root);
       const target = [...audit.untestedCandidates, ...audit.coveredButRisky, ...audit.skipped][0];
+      if (!target) {
+        assert.deepEqual(audit.recommended, []);
+        return;
+      }
       const artifact = explainTarget(audit, target.id);
 
       assertMatchesSchema(artifact, explanationSchema, `${fixture.name}.target-explanation.json`);
