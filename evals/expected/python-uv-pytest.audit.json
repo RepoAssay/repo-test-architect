@@ -75,6 +75,14 @@
       ],
       "existingTestPaths": [
         "tests/test_calculator.py"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "tests/test_calculator.py",
+          "kind": "python-module-import",
+          "strength": "direct",
+          "usage": "asserted"
+        }
       ]
     }
   ],
@@ -101,6 +109,14 @@
       ],
       "existingTestPaths": [
         "tests/test_calculator.py"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "tests/test_calculator.py",
+          "kind": "python-module-import",
+          "strength": "direct",
+          "usage": "asserted"
+        }
       ]
     },
     {

@@ -51,7 +51,7 @@ export const adapters = [
     id: "kotlin",
     ecosystems: ["jvm"],
     languages: ["kotlin", "java"],
-    maturity: "experimental",
+    maturity: "supported",
     supportedTestFrameworks: ["junit", "kotlin-test"],
     supportedProjectTypes: ["gradle-jvm", "maven-jvm"],
     emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"],
@@ -65,9 +65,9 @@ export const adapters = [
     id: "python",
     ecosystems: ["python"],
     languages: ["python"],
-    maturity: "experimental",
-    supportedTestFrameworks: ["pytest", "unittest"],
-    supportedProjectTypes: ["fastapi", "python-package"],
+    maturity: "supported",
+    supportedTestFrameworks: ["anyio", "hypothesis", "pytest", "pytest-asyncio", "unittest"],
+    supportedProjectTypes: ["django", "fastapi", "flask", "python-package"],
     emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"],
     audit(repoRoot, options = {}) {
       return auditPythonRepo(repoRoot, {

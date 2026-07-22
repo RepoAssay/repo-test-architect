@@ -5,8 +5,7 @@ This document tracks what can be shown publicly before the project is ready for 
 ## Ready To Show
 
 - audit-first product thesis
-- deterministic JavaScript/TypeScript and Swift adapter proof points
-- experimental Kotlin/JVM and Python adapter spikes
+- deterministic JavaScript/TypeScript, Python, Swift, and bounded Kotlin/JVM adapter proof points
 - polyglot project detection with unsupported-project reporting
 - local CLI examples
 - local stdio MCP SDK server and dependency-free invoke harness

@@ -80,6 +80,11 @@
     "description": "Database create, update, save, or delete behavior was detected."
   },
   {
+    "id": "django-view",
+    "category": "architecture",
+    "description": "Django request view or view-class behavior was detected."
+  },
+  {
     "id": "dto-only",
     "category": "low-value",
     "description": "File appears to contain DTO, model, schema, request, or response type declarations only."
@@ -93,6 +98,11 @@
     "id": "external-boundary",
     "category": "risk",
     "description": "Code touches network, database, file system, or another external boundary."
+  },
+  {
+    "id": "flask-route",
+    "category": "architecture",
+    "description": "Flask route or blueprint handler behavior was detected."
   },
   {
     "id": "fluent-query",

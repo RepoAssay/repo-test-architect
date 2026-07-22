@@ -1,0 +1,177 @@
+{
+  "schemaVersion": "audit/v1",
+  "profile": {
+    "root": "<fixture>",
+    "languages": [
+      "python"
+    ],
+    "packageManagers": [
+      "pyproject"
+    ],
+    "testFrameworks": [
+      "anyio",
+      "hypothesis",
+      "pytest",
+      "pytest-asyncio"
+    ],
+    "architectures": [],
+    "testCommand": "pytest",
+    "detectedConventions": [
+      "tests/test_*.py",
+      "pytest fixtures",
+      "async tests",
+      "pytest parametrization",
+      "property-based tests"
+    ],
+    "existingTestLocations": [
+      "tests"
+    ],
+    "setupSignals": [
+      "pyproject",
+      "pytest dependency",
+      "pytest async support",
+      "anyio test support",
+      "hypothesis dependency"
+    ],
+    "confidence": "high",
+    "blockers": []
+  },
+  "untestedCandidates": [],
+  "coveredButRisky": [
+    {
+      "id": "src/advanced/parser.py",
+      "name": "parser",
+      "path": "src/advanced/parser.py",
+      "kind": "pure-logic",
+      "signals": [
+        "pure-logic",
+        "edge-case-surface",
+        "matching-test"
+      ],
+      "risk": "high",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 9,
+      "maintenanceCost": 2,
+      "reasons": [
+        "Pure transformation logic",
+        "edge-case surface",
+        "Existing test file detected; review missing edge cases"
+      ],
+      "existingTestPaths": [
+        "tests/test_quantities.py"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "tests/test_quantities.py",
+          "kind": "python-pytest-fixture",
+          "strength": "indirect",
+          "viaUsage": "asserted"
+        }
+      ]
+    },
+    {
+      "id": "src/advanced/validator.py",
+      "name": "validator",
+      "path": "src/advanced/validator.py",
+      "kind": "pure-logic",
+      "signals": [
+        "pure-logic",
+        "edge-case-surface",
+        "matching-test"
+      ],
+      "risk": "high",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 9,
+      "maintenanceCost": 2,
+      "reasons": [
+        "Pure transformation logic",
+        "edge-case surface",
+        "Existing test file detected; review missing edge cases"
+      ],
+      "existingTestPaths": [
+        "tests/test_quantities.py"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "tests/test_quantities.py",
+          "kind": "python-module-import",
+          "strength": "direct",
+          "usage": "asserted"
+        }
+      ]
+    }
+  ],
+  "recommended": [
+    {
+      "id": "src/advanced/parser.py",
+      "name": "parser",
+      "path": "src/advanced/parser.py",
+      "kind": "pure-logic",
+      "signals": [
+        "pure-logic",
+        "edge-case-surface",
+        "matching-test"
+      ],
+      "risk": "high",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 9,
+      "maintenanceCost": 2,
+      "reasons": [
+        "Pure transformation logic",
+        "edge-case surface",
+        "Existing test file detected; review missing edge cases"
+      ],
+      "existingTestPaths": [
+        "tests/test_quantities.py"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "tests/test_quantities.py",
+          "kind": "python-pytest-fixture",
+          "strength": "indirect",
+          "viaUsage": "asserted"
+        }
+      ]
+    },
+    {
+      "id": "src/advanced/validator.py",
+      "name": "validator",
+      "path": "src/advanced/validator.py",
+      "kind": "pure-logic",
+      "signals": [
+        "pure-logic",
+        "edge-case-surface",
+        "matching-test"
+      ],
+      "risk": "high",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 9,
+      "maintenanceCost": 2,
+      "reasons": [
+        "Pure transformation logic",
+        "edge-case surface",
+        "Existing test file detected; review missing edge cases"
+      ],
+      "existingTestPaths": [
+        "tests/test_quantities.py"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "tests/test_quantities.py",
+          "kind": "python-module-import",
+          "strength": "direct",
+          "usage": "asserted"
+        }
+      ]
+    }
+  ],
+  "skipped": [],
+  "risks": [
+    "parser has pure transformation logic, edge-case surface and needs edge-case review.",
+    "validator has pure transformation logic, edge-case surface and needs edge-case review."
+  ]
+}

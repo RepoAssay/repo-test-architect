@@ -42,6 +42,21 @@
       "reason": "The adapter must preserve matching pytest evidence."
     },
     {
+      "path": "items[0].existingTestEvidence[0].kind",
+      "expected": "python-module-import",
+      "reason": "Parser coverage must retain its direct package-qualified Python import proof."
+    },
+    {
+      "path": "items[0].existingTestEvidence[0].strength",
+      "expected": "direct",
+      "reason": "An exact Python source-module import remains direct evidence."
+    },
+    {
+      "path": "items[0].existingTestEvidence[0].usage",
+      "expected": "asserted",
+      "reason": "The imported parser result remains directly asserted."
+    },
+    {
       "path": "items[1].id",
       "expected": "add-test:app/services/user_service.py",
       "reason": "Untested async service code should stay a direct unit-test candidate."

@@ -42,6 +42,16 @@
       "reason": "The adapter must preserve package-local pytest evidence."
     },
     {
+      "path": "items[0].existingTestEvidence[0].kind",
+      "expected": "python-module-import",
+      "reason": "Package-local coverage must retain its package-qualified Python import proof."
+    },
+    {
+      "path": "items[0].existingTestEvidence[0].usage",
+      "expected": "asserted",
+      "reason": "The calculator result remains directly asserted by the package-local test."
+    },
+    {
       "path": "items[1].id",
       "expected": "add-test:src/checkout/discount_service.py",
       "reason": "Untested service code should stay a direct unit-test candidate."

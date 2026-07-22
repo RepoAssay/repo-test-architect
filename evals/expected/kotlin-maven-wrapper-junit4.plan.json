@@ -1,0 +1,46 @@
+{
+  "schemaVersion": "plan/v1",
+  "summary": {
+    "confidence": "high",
+    "verificationCommand": "./mvnw test",
+    "blockerCount": 0,
+    "addTestCount": 0,
+    "extendTestCount": 1,
+    "deferredCount": 0
+  },
+  "blockers": [],
+  "items": [
+    {
+      "id": "extend-test:src/main/java/com/example/token/TokenValidator.java",
+      "action": "extend-test",
+      "targetId": "src/main/java/com/example/token/TokenValidator.java",
+      "target": "TokenValidator",
+      "path": "src/main/java/com/example/token/TokenValidator.java",
+      "testLevel": "unit",
+      "priority": 7,
+      "riskReductionScore": 9,
+      "maintenanceCost": 2,
+      "rationale": [
+        "Pure transformation logic",
+        "edge-case surface",
+        "Existing test evidence detected; review missing edge cases"
+      ],
+      "sourceSignals": [
+        "pure-logic",
+        "edge-case-surface",
+        "matching-test"
+      ],
+      "existingTestPaths": [
+        "src/test/java/com/example/token/TokenValidatorTest.java"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "src/test/java/com/example/token/TokenValidatorTest.java",
+          "kind": "jvm-symbol-reference",
+          "strength": "direct",
+          "usage": "asserted"
+        }
+      ]
+    }
+  ]
+}

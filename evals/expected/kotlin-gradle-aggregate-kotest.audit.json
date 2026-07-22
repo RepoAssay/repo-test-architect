@@ -1,0 +1,34 @@
+{
+  "schemaVersion": "audit/v1",
+  "profile": {
+    "root": "<fixture>",
+    "languages": [
+      "kotlin"
+    ],
+    "packageManagers": [
+      "gradle"
+    ],
+    "testFrameworks": [],
+    "architectures": [
+      "jvm"
+    ],
+    "detectedConventions": [],
+    "existingTestLocations": [],
+    "setupSignals": [
+      "gradle kotlin dsl",
+      "gradle settings"
+    ],
+    "confidence": "low",
+    "blockers": [
+      "No supported JVM test framework detected.",
+      "No runnable JVM test command detected from Gradle or Maven markers.",
+      "No supported root JVM source set detected; audit a Gradle or Maven module root.",
+      "Unsupported JVM test frameworks detected: kotest."
+    ]
+  },
+  "untestedCandidates": [],
+  "coveredButRisky": [],
+  "recommended": [],
+  "skipped": [],
+  "risks": []
+}

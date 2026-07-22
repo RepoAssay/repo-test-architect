@@ -114,7 +114,11 @@
                   "tsconfig-path-import",
                   "package-entry-import",
                   "bounded-dependency",
-                  "swift-symbol-reference"
+                  "swift-symbol-reference",
+                  "python-module-import",
+                  "python-package-reexport",
+                  "python-pytest-fixture",
+                  "jvm-symbol-reference"
                 ]
               },
               "strength": { "enum": ["naming", "direct", "referenced", "indirect"] },

@@ -71,10 +71,18 @@
       "reasons": [
         "Pure transformation logic",
         "edge-case surface",
-        "Existing test file detected; review missing edge cases"
+        "Existing test evidence detected; review missing edge cases"
       ],
       "existingTestPaths": [
         "src/test/java/com/example/shipping/ShipmentValidatorTest.java"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "src/test/java/com/example/shipping/ShipmentValidatorTest.java",
+          "kind": "jvm-symbol-reference",
+          "strength": "referenced",
+          "usage": "asserted"
+        }
       ]
     }
   ],
@@ -97,10 +105,18 @@
       "reasons": [
         "Pure transformation logic",
         "edge-case surface",
-        "Existing test file detected; review missing edge cases"
+        "Existing test evidence detected; review missing edge cases"
       ],
       "existingTestPaths": [
         "src/test/java/com/example/shipping/ShipmentValidatorTest.java"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "src/test/java/com/example/shipping/ShipmentValidatorTest.java",
+          "kind": "jvm-symbol-reference",
+          "strength": "referenced",
+          "usage": "asserted"
+        }
       ]
     },
     {
@@ -141,6 +157,6 @@
   ],
   "risks": [
     "ShipmentValidator has pure transformation logic, edge-case surface and needs edge-case review.",
-    "WeightFormatter has pure transformation logic, edge-case surface and has no matching test file."
+    "WeightFormatter has pure transformation logic, edge-case surface and has no matching test evidence."
   ]
 }

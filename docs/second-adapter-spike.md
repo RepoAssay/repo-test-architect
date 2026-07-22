@@ -8,7 +8,7 @@ Completed spike:
 
 - Kotlin/JVM with Gradle/Maven and JUnit
 
-Follow-up spikes now underway:
+Later completed adapters:
 
 - Swift Package Manager with XCTest, Swift Testing, Quick/Nimble, and SnapshotTesting signals
 - Python package roots with pytest or unittest
@@ -43,18 +43,18 @@ The adapter must:
 
 Current Kotlin/JVM status:
 
-- registered as experimental `kotlin`
-- audits the `kotlin-junit-basic` fixture through the shared audit model
+- promoted to supported `kotlin` within the bounded [Kotlin/JVM Alpha Support](kotlin-jvm-alpha-support.md) matrix
+- audits Gradle Kotlin DSL, Gradle Groovy DSL, Maven, Maven-wrapper/JUnit 4, and explicit aggregate/Kotest boundary fixtures through the shared audit model
 - preserves mixed Java/Kotlin source ownership inside one JVM project root
 - classifies calculator/formatter logic as useful and DTO-style data classes as deferred
 - has golden audit and plan snapshots
-- has a Kotlin-specific model-consistency plan scenario
+- has Kotlin-specific model-consistency scenarios for supported and blocked shapes
 - native generation remains deferred
 
 Current Python status:
 
-- registered as experimental `python`
-- audits pytest, unittest, requirements.txt, setuptools, uv, Poetry, package-local tests, and no-tests-yet fixtures through the shared audit model
+- registered as supported `python` after fixture, model-consistency, and public-repository promotion gates
+- audits pytest, unittest, async/property-based extensions, consumed fixtures, requirements.txt, setuptools, uv, Poetry, Hatch, tox, nox, package-local tests, framework routes, coverage configuration, and no-tests-yet fixtures through the shared audit model
 - classifies parser/service logic as useful and dataclass DTOs as deferred
 - reports no-framework and no-command blockers honestly
 - has golden audit and plan snapshots

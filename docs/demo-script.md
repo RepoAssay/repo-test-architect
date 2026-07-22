@@ -42,14 +42,14 @@ Call out:
 - skipped targets with explicit rationale
 - blockers and remaining risk reported instead of hidden
 
-Show the experimental Kotlin/JVM adapter uses the same audit and plan shape:
+Show the bounded, supported Kotlin/JVM adapter uses the same audit and plan shape:
 
 ```powershell
 npm run audit:kotlin-fixture
 npm run plan:kotlin-fixture
 ```
 
-Call out that Kotlin is still experimental. The useful point is that the shared audit graph carries another ecosystem without changing the report format.
+Call out that Kotlin/JVM support is limited to the checked-in Gradle/Maven, standard-source-set, and JUnit boundary. The useful point is that the shared audit graph carries another ecosystem without changing the report format.
 
 ## Polyglot Audit
 

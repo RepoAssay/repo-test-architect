@@ -114,13 +114,13 @@ describe("project detector", () => {
     assert.deepEqual(fixture.projects.map((project) => project.root), ["."]);
   });
 
-  it("explains experimental JVM adapter matching", () => {
+  it("explains supported JVM adapter matching", () => {
     const detection = detectProjects(path.resolve("examples/kotlin-junit-basic"));
 
     assert.deepEqual(detection.projects[0].adapterMatches, [
       {
         adapterId: "kotlin",
-        maturity: "experimental",
+        maturity: "supported",
         matchedEcosystems: ["jvm"],
         matchedLanguages: ["java", "kotlin"]
       }
@@ -156,7 +156,7 @@ describe("project detector", () => {
     );
   });
 
-  it("detects the Kotlin JUnit fixture as an experimental JVM project", () => {
+  it("detects the Kotlin JUnit fixture as a supported JVM project", () => {
     const detection = detectProjects(path.resolve("examples/kotlin-junit-basic"));
     const fixtureRoot = path.resolve("examples/kotlin-junit-basic");
 

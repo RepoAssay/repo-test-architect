@@ -97,6 +97,14 @@
       ],
       "existingTestPaths": [
         "tests/test_parsers.py"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "tests/test_parsers.py",
+          "kind": "python-module-import",
+          "strength": "direct",
+          "usage": "asserted"
+        }
       ]
     }
   ],
@@ -123,6 +131,14 @@
       ],
       "existingTestPaths": [
         "tests/test_parsers.py"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "tests/test_parsers.py",
+          "kind": "python-module-import",
+          "strength": "direct",
+          "usage": "asserted"
+        }
       ]
     },
     {
@@ -180,7 +196,7 @@
       "riskReductionScore": 3,
       "maintenanceCost": 5,
       "reason": "Application wiring is usually better covered through route or integration tests.",
-      "preferredCoveragePath": "Cover through FastAPI route tests or service integration tests that boot the app."
+      "preferredCoveragePath": "Cover through framework route tests or service integration tests that boot the app."
     },
     {
       "id": "app/models.py",

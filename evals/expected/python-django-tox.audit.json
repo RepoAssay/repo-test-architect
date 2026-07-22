@@ -1,0 +1,149 @@
+{
+  "schemaVersion": "audit/v1",
+  "profile": {
+    "root": "<fixture>",
+    "languages": [
+      "python"
+    ],
+    "packageManagers": [
+      "pip"
+    ],
+    "testFrameworks": [
+      "pytest"
+    ],
+    "architectures": [
+      "django",
+      "service-layer"
+    ],
+    "testCommand": "tox",
+    "detectedConventions": [
+      "tests/test_*.py"
+    ],
+    "existingTestLocations": [
+      "tests"
+    ],
+    "setupSignals": [
+      "requirements",
+      "tox test environment",
+      "pytest dependency",
+      "django dependency"
+    ],
+    "confidence": "high",
+    "blockers": []
+  },
+  "untestedCandidates": [
+    {
+      "id": "shop/services/order_service.py",
+      "name": "order_service",
+      "path": "shop/services/order_service.py",
+      "kind": "service",
+      "signals": [
+        "service-boundary",
+        "async-or-concurrency"
+      ],
+      "risk": "high",
+      "testability": "medium",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 8,
+      "maintenanceCost": 4,
+      "reasons": [
+        "Service boundary",
+        "async or concurrency behavior"
+      ],
+      "existingTestPaths": []
+    }
+  ],
+  "coveredButRisky": [
+    {
+      "id": "shop/views.py",
+      "name": "views",
+      "path": "shop/views.py",
+      "kind": "http-route",
+      "signals": [
+        "django-view",
+        "status-handling",
+        "matching-test"
+      ],
+      "risk": "high",
+      "testability": "medium",
+      "recommendedTestLevel": "integration",
+      "riskReductionScore": 8,
+      "maintenanceCost": 5,
+      "reasons": [
+        "HTTP route behavior",
+        "request or status handling",
+        "Existing test file detected; review missing edge cases"
+      ],
+      "existingTestPaths": [
+        "tests/test_views.py"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "tests/test_views.py",
+          "kind": "python-module-import",
+          "strength": "direct",
+          "usage": "called"
+        }
+      ]
+    }
+  ],
+  "recommended": [
+    {
+      "id": "shop/services/order_service.py",
+      "name": "order_service",
+      "path": "shop/services/order_service.py",
+      "kind": "service",
+      "signals": [
+        "service-boundary",
+        "async-or-concurrency"
+      ],
+      "risk": "high",
+      "testability": "medium",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 8,
+      "maintenanceCost": 4,
+      "reasons": [
+        "Service boundary",
+        "async or concurrency behavior"
+      ],
+      "existingTestPaths": []
+    },
+    {
+      "id": "shop/views.py",
+      "name": "views",
+      "path": "shop/views.py",
+      "kind": "http-route",
+      "signals": [
+        "django-view",
+        "status-handling",
+        "matching-test"
+      ],
+      "risk": "high",
+      "testability": "medium",
+      "recommendedTestLevel": "integration",
+      "riskReductionScore": 8,
+      "maintenanceCost": 5,
+      "reasons": [
+        "HTTP route behavior",
+        "request or status handling",
+        "Existing test file detected; review missing edge cases"
+      ],
+      "existingTestPaths": [
+        "tests/test_views.py"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "tests/test_views.py",
+          "kind": "python-module-import",
+          "strength": "direct",
+          "usage": "called"
+        }
+      ]
+    }
+  ],
+  "skipped": [],
+  "risks": [
+    "order_service has service boundary, async or concurrency behavior and has no matching test file.",
+    "views has http route behavior, request or status handling and needs edge-case review."
+  ]
+}

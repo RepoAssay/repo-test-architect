@@ -1,0 +1,148 @@
+{
+  "schemaVersion": "audit/v1",
+  "profile": {
+    "root": "<fixture>",
+    "languages": [
+      "python"
+    ],
+    "packageManagers": [
+      "pyproject"
+    ],
+    "testFrameworks": [
+      "pytest"
+    ],
+    "architectures": [
+      "flask",
+      "service-layer"
+    ],
+    "testCommand": "nox -s tests",
+    "detectedConventions": [
+      "tests/test_*.py",
+      "coverage configured",
+      "branch coverage"
+    ],
+    "existingTestLocations": [
+      "tests"
+    ],
+    "setupSignals": [
+      "pyproject",
+      "nox test session",
+      "pytest dependency",
+      "flask dependency",
+      "coverage config",
+      "branch coverage"
+    ],
+    "confidence": "high",
+    "blockers": []
+  },
+  "untestedCandidates": [
+    {
+      "id": "webapp/services/session_service.py",
+      "name": "session_service",
+      "path": "webapp/services/session_service.py",
+      "kind": "service",
+      "signals": [
+        "service-boundary"
+      ],
+      "risk": "medium",
+      "testability": "medium",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 6,
+      "maintenanceCost": 4,
+      "reasons": [
+        "Service boundary"
+      ],
+      "existingTestPaths": []
+    }
+  ],
+  "coveredButRisky": [
+    {
+      "id": "webapp/routes.py",
+      "name": "routes",
+      "path": "webapp/routes.py",
+      "kind": "http-route",
+      "signals": [
+        "flask-route",
+        "status-handling",
+        "matching-test"
+      ],
+      "risk": "high",
+      "testability": "medium",
+      "recommendedTestLevel": "integration",
+      "riskReductionScore": 8,
+      "maintenanceCost": 5,
+      "reasons": [
+        "HTTP route behavior",
+        "request or status handling",
+        "Existing test file detected; review missing edge cases"
+      ],
+      "existingTestPaths": [
+        "tests/test_routes.py"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "tests/test_routes.py",
+          "kind": "python-module-import",
+          "strength": "direct",
+          "usage": "called"
+        }
+      ]
+    }
+  ],
+  "recommended": [
+    {
+      "id": "webapp/routes.py",
+      "name": "routes",
+      "path": "webapp/routes.py",
+      "kind": "http-route",
+      "signals": [
+        "flask-route",
+        "status-handling",
+        "matching-test"
+      ],
+      "risk": "high",
+      "testability": "medium",
+      "recommendedTestLevel": "integration",
+      "riskReductionScore": 8,
+      "maintenanceCost": 5,
+      "reasons": [
+        "HTTP route behavior",
+        "request or status handling",
+        "Existing test file detected; review missing edge cases"
+      ],
+      "existingTestPaths": [
+        "tests/test_routes.py"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "tests/test_routes.py",
+          "kind": "python-module-import",
+          "strength": "direct",
+          "usage": "called"
+        }
+      ]
+    },
+    {
+      "id": "webapp/services/session_service.py",
+      "name": "session_service",
+      "path": "webapp/services/session_service.py",
+      "kind": "service",
+      "signals": [
+        "service-boundary"
+      ],
+      "risk": "medium",
+      "testability": "medium",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 6,
+      "maintenanceCost": 4,
+      "reasons": [
+        "Service boundary"
+      ],
+      "existingTestPaths": []
+    }
+  ],
+  "skipped": [],
+  "risks": [
+    "routes has http route behavior, request or status handling and needs edge-case review."
+  ]
+}

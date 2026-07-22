@@ -1,0 +1,64 @@
+{
+  "schemaVersion": "plan/v1",
+  "summary": {
+    "confidence": "high",
+    "verificationCommand": "nox -s tests",
+    "blockerCount": 0,
+    "addTestCount": 1,
+    "extendTestCount": 1,
+    "deferredCount": 0
+  },
+  "blockers": [],
+  "items": [
+    {
+      "id": "extend-test:webapp/routes.py",
+      "action": "extend-test",
+      "targetId": "webapp/routes.py",
+      "target": "routes",
+      "path": "webapp/routes.py",
+      "testLevel": "integration",
+      "priority": 3,
+      "riskReductionScore": 8,
+      "maintenanceCost": 5,
+      "rationale": [
+        "HTTP route behavior",
+        "request or status handling",
+        "Existing test file detected; review missing edge cases"
+      ],
+      "sourceSignals": [
+        "flask-route",
+        "status-handling",
+        "matching-test"
+      ],
+      "existingTestPaths": [
+        "tests/test_routes.py"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "tests/test_routes.py",
+          "kind": "python-module-import",
+          "strength": "direct",
+          "usage": "called"
+        }
+      ]
+    },
+    {
+      "id": "add-test:webapp/services/session_service.py",
+      "action": "add-test",
+      "targetId": "webapp/services/session_service.py",
+      "target": "session_service",
+      "path": "webapp/services/session_service.py",
+      "testLevel": "unit",
+      "priority": 2,
+      "riskReductionScore": 6,
+      "maintenanceCost": 4,
+      "rationale": [
+        "Service boundary"
+      ],
+      "sourceSignals": [
+        "service-boundary"
+      ],
+      "existingTestPaths": []
+    }
+  ]
+}

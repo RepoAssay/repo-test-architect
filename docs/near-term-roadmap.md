@@ -11,7 +11,7 @@ The repository is public-demo ready, but not package-release ready.
 The useful baseline is:
 
 - deterministic JavaScript/TypeScript audit pipeline
-- supported Swift plus experimental Kotlin/JVM and Python adapters
+- supported Swift, Python, and bounded Kotlin/JVM adapters
 - polyglot project detection with unsupported-project reporting
 - project-level ranking, planning, placement, stats, and local MCP tool calls
 - model-consistency scenarios for stable audit and plan outputs
@@ -66,13 +66,15 @@ Markdown and JSON remain the supported formats until each additional renderer ha
 
 Goal: prove the adapter contract keeps holding as additional ecosystems move from detection-only to audited fixtures.
 
-Status: Swift reached supported private-alpha maturity; Kotlin/JVM and Python remain experimental.
+Status: Swift, Python, and bounded Kotlin/JVM modules reached supported private-alpha maturity.
 
 Useful hardening targets:
 
 - Kotlin/JVM with Gradle/Maven and JUnit variants
 - Swift Package Manager with XCTest, Swift Testing, Quick/Nimble, and SnapshotTesting signals
-- Python package layouts, pytest/unittest detection, uv/Poetry/Hatch command markers, and no-tests-yet blocker behavior
+- Python fixture reachability, async/parametrized/property-based pytest conventions, Django/Flask routes, tox/nox commands, coverage configuration, and no-tests-yet blocker behavior
+
+Python's supported boundary and known exclusions are tracked in [Python Alpha Support](python-alpha-support.md). Kotlin/JVM's conventional Gradle/Maven and JUnit boundary is tracked in [Kotlin/JVM Alpha Support](kotlin-jvm-alpha-support.md); aggregate graphs, Android, multiplatform, and additional JVM frameworks are post-promotion pressure.
 
 ### Adapter Reuse Boundary
 

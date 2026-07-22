@@ -1,0 +1,10 @@
+[project]
+name = "webapp"
+version = "0.1.0"
+dependencies = ["flask", "pytest"]
+
+[tool.coverage.run]
+branch = true
+
+[tool.coverage.report]
+fail_under = 85

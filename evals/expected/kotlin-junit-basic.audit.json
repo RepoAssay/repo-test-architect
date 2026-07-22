@@ -73,10 +73,18 @@
       "reasons": [
         "Pure transformation logic",
         "edge-case surface",
-        "Existing test file detected; review missing edge cases"
+        "Existing test evidence detected; review missing edge cases"
       ],
       "existingTestPaths": [
         "src/test/kotlin/com/example/checkout/CheckoutCalculatorTest.kt"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "src/test/kotlin/com/example/checkout/CheckoutCalculatorTest.kt",
+          "kind": "jvm-symbol-reference",
+          "strength": "referenced",
+          "usage": "asserted"
+        }
       ]
     }
   ],
@@ -99,10 +107,18 @@
       "reasons": [
         "Pure transformation logic",
         "edge-case surface",
-        "Existing test file detected; review missing edge cases"
+        "Existing test evidence detected; review missing edge cases"
       ],
       "existingTestPaths": [
         "src/test/kotlin/com/example/checkout/CheckoutCalculatorTest.kt"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "src/test/kotlin/com/example/checkout/CheckoutCalculatorTest.kt",
+          "kind": "jvm-symbol-reference",
+          "strength": "referenced",
+          "usage": "asserted"
+        }
       ]
     },
     {
@@ -142,7 +158,7 @@
     }
   ],
   "risks": [
-    "MoneyFormatter has pure transformation logic, edge-case surface and has no matching test file.",
+    "MoneyFormatter has pure transformation logic, edge-case surface and has no matching test evidence.",
     "CheckoutCalculator has pure transformation logic, edge-case surface and needs edge-case review."
   ]
 }

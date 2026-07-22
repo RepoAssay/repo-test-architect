@@ -15,7 +15,7 @@
     {
       "path": "summary.projectCount",
       "expected": 3,
-      "reason": "The polyglot fixture has one experimental Kotlin project, one supported JS project, and one experimental Python root."
+      "reason": "The polyglot fixture has one experimental Kotlin project plus supported JavaScript and Python roots."
     },
     {
       "path": "summary.auditedProjectCount",

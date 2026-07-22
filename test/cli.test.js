@@ -17,7 +17,7 @@ describe("CLI", () => {
     assert.match(output, /^# Adapter Registry/);
     assert.match(output, /javascript: supported; ecosystems javascript; languages javascript, typescript/);
     assert.match(output, /frameworks ava, bun-test, cypress, jest, mocha, node-test, playwright, react-testing-library, supertest, vitest/);
-    assert.match(output, /kotlin: experimental; ecosystems jvm; languages kotlin, java/);
+    assert.match(output, /kotlin: supported; ecosystems jvm; languages kotlin, java/);
     assert.match(output, /swift: supported; ecosystems apple, bazel, swift; languages objective-c, swift/);
   });
 
@@ -31,7 +31,7 @@ describe("CLI", () => {
     assert.equal(registry.adapters[0].id, "javascript");
     assert.equal(registry.adapters[0].maturity, "supported");
     assert.equal(registry.adapters[1].id, "kotlin");
-    assert.equal(registry.adapters[1].maturity, "experimental");
+    assert.equal(registry.adapters[1].maturity, "supported");
     assert.equal(registry.adapters.find((adapter) => adapter.id === "swift").maturity, "supported");
     assert.deepEqual(registry.adapters[0].supportedTestFrameworks, [
       "ava",

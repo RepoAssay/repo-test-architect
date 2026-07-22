@@ -33,7 +33,7 @@ This verifies the test suite, golden audit artifacts, model-consistency locks, p
 
 ### Current Readiness Verdict
 
-The deterministic gate passes locally. Repo Test Architect is therefore a private-alpha candidate for the explicitly detected patterns in the [JavaScript/TypeScript Alpha Support](javascript-typescript-alpha-support.md) and [Swift Alpha Support](swift-alpha-support.md) matrices, subject to human review of the real-repository reports.
+The deterministic gate passes locally. Repo Test Architect is therefore a private-alpha candidate for the explicitly detected patterns in the [JavaScript/TypeScript Alpha Support](javascript-typescript-alpha-support.md), [Python Alpha Support](python-alpha-support.md), [Swift Alpha Support](swift-alpha-support.md), and [Kotlin/JVM Alpha Support](kotlin-jvm-alpha-support.md) matrices, subject to human review of the real-repository reports.
 
 This verdict does not mean:
 
@@ -67,9 +67,10 @@ While repository GitHub Actions are disabled under the temporary $0-budget polic
 
 ### Common Stack Depth
 
-- JavaScript/TypeScript and Swift are supported proof points
-- both support promises are bounded by checked-in alpha matrices rather than broad ecosystem claims
-- Kotlin/JVM and Python remain experimental but have enough fixture variety to prove the shared audit model
+- JavaScript/TypeScript, Python, Swift, and bounded Kotlin/JVM modules are supported proof points
+- supported adapter promises are bounded by checked-in alpha matrices rather than broad ecosystem claims
+- Kotlin/JVM support is bounded to conventional Gradle/Maven module roots, standard JVM source sets, and JUnit/`kotlin.test`; Android, multiplatform, aggregate roots, and other test frameworks remain excluded or blocked
+- Python support is bounded by the checked-in [Python Alpha Support](python-alpha-support.md), including explicit package-ownership and static-evidence exclusions
 - Swift support is bounded by the checked-in [Swift Alpha Support](swift-alpha-support.md), including explicit Objective-C and computed-build-graph exclusions
 - adapter support is described by detected frameworks, commands, source layouts, and blockers instead of broad language claims
 - unsupported ecosystems are still reported honestly with detection evidence

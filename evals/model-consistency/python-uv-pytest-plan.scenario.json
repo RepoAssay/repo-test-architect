@@ -42,6 +42,16 @@
       "reason": "The adapter must preserve matching pytest evidence."
     },
     {
+      "path": "items[0].existingTestEvidence[0].kind",
+      "expected": "python-module-import",
+      "reason": "uv package coverage must retain its direct Python module import proof."
+    },
+    {
+      "path": "items[0].existingTestEvidence[0].usage",
+      "expected": "asserted",
+      "reason": "The imported calculator result remains directly asserted."
+    },
+    {
       "path": "items[1].id",
       "expected": "add-test:src/pricing/payment_service.py",
       "reason": "Untested service code should stay a direct unit-test candidate."

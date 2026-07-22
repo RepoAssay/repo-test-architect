@@ -1,0 +1,55 @@
+{
+  "schemaVersion": "model-consistency-scenario/v1",
+  "id": "kotlin-maven-wrapper-junit4-plan",
+  "description": "Different model profiles should preserve Maven wrapper, JUnit 4, and static-member JVM evidence decisions.",
+  "sourceArtifact": {
+    "path": "evals/expected/kotlin-maven-wrapper-junit4.audit.json",
+    "schemaVersion": "audit/v1"
+  },
+  "toolCall": {
+    "toolName": "generate_test_plan",
+    "arguments": {}
+  },
+  "lockedFields": [
+    {
+      "path": "summary.verificationCommand",
+      "expected": "./mvnw test",
+      "reason": "Maven wrapper repositories should preserve their repository-native test command."
+    },
+    {
+      "path": "summary.confidence",
+      "expected": "high",
+      "reason": "A standard Maven/JUnit 4 source root with tests and a wrapper is a high-confidence supported shape."
+    },
+    {
+      "path": "summary.extendTestCount",
+      "expected": 1,
+      "reason": "The validator has exact static-import evidence and should remain covered but risky."
+    },
+    {
+      "path": "items[0].id",
+      "expected": "extend-test:src/main/java/com/example/token/TokenValidator.java",
+      "reason": "The covered validator must retain a stable extend-test identity."
+    },
+    {
+      "path": "items[0].existingTestEvidence[0].kind",
+      "expected": "jvm-symbol-reference",
+      "reason": "Static Java member imports should remain explicit JVM symbol evidence."
+    },
+    {
+      "path": "items[0].existingTestEvidence[0].strength",
+      "expected": "direct",
+      "reason": "The exact declaring-class static import is direct evidence."
+    }
+  ],
+  "allowedVariations": [
+    "summary wording",
+    "plan item explanation wording",
+    "optional detail depth"
+  ],
+  "unexpectedVariations": [
+    "mvn instead of wrapper command",
+    "lost static import ownership",
+    "validator reported as untested"
+  ]
+}

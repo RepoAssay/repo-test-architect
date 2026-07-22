@@ -7,7 +7,7 @@ There are two different cases:
 - multiple build roots in one repository, such as a JavaScript frontend plus a Python API
 - multiple languages under one build root, such as Java plus Kotlin in one Gradle module or Swift plus Objective-C in one Apple target
 
-Project detection splits by build/test root. It should not split Java and Kotlin source folders into separate projects when they share the same Gradle or Maven root. The matching ecosystem adapter is responsible for understanding mixed-language source sets inside that root; the experimental Kotlin/JVM adapter already handles Java plus Kotlin source ownership this way.
+Project detection splits by build/test root. It should not split Java and Kotlin source folders into separate projects when they share the same Gradle or Maven root. The matching ecosystem adapter is responsible for understanding mixed-language source sets inside that root; the bounded Kotlin/JVM adapter handles Java plus Kotlin source ownership this way.
 
 The core flow is:
 
@@ -44,8 +44,8 @@ This emits `project-audits/v1`.
 
 For every supported project root, the matching adapter produces a normal audit artifact. Unsupported project roots are reported separately with their ecosystem and language labels, adapter match evidence, and support status reason.
 
-The current runtime audits JavaScript and TypeScript project roots through the supported `javascript` adapter, Swift Package Manager, Apple Xcode, and Swift Bazel roots through the supported `swift` adapter, Kotlin/JVM Gradle or Maven roots through the experimental `kotlin` adapter, and Python package roots through the experimental `python` adapter.
-JavaScript and TypeScript share one adapter domain. Java and Kotlin share one experimental JVM adapter domain. Swift and Objective-C remain inside one Apple project root when they share Xcode metadata, while the supported classification and evidence promise is bounded to Swift source behavior and Objective-C XCTest visibility.
+The current runtime audits JavaScript and TypeScript project roots through the supported `javascript` adapter, Python package roots through the supported `python` adapter, Swift Package Manager, Apple Xcode, and Swift Bazel roots through the supported `swift` adapter, and conventional Kotlin/JVM Gradle or Maven module roots through the supported `kotlin` adapter.
+JavaScript and TypeScript share one adapter domain. Java and Kotlin share one bounded JVM adapter domain. Swift and Objective-C remain inside one Apple project root when they share Xcode metadata, while each supported classification and evidence promise remains limited by its alpha matrix.
 
 For report-style self-audits, project-aware commands can exclude exact roots or subtrees before auditing:
 
@@ -135,8 +135,8 @@ Parallel execution should not change artifact shape. Whether three adapters run 
 
 `examples/polyglot-workspace` contains:
 
-- `apps/android`: Kotlin/JVM project audited by the experimental `kotlin` adapter
+- `apps/android`: fixture-named Kotlin/JVM project audited by the supported `kotlin` adapter; it uses a conventional JVM build rather than Android Gradle/instrumentation semantics
 - `apps/web`: JavaScript/TypeScript project audited by the supported `javascript` adapter
-- `services/api`: Python project audited by the experimental `python` adapter
+- `services/api`: Python project audited by the supported `python` adapter
 
 That fixture now demonstrates complete adapter coverage across multiple project roots. Unsupported project reporting remains part of the artifact contract for ecosystems without registered adapters.
