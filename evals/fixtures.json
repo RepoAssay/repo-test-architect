@@ -45,6 +45,11 @@
     "path": "examples/kotlin-junit-basic"
   },
   {
+    "name": "kotlin-gradle-parent-wrapper-junit",
+    "adapter": "kotlin",
+    "path": "examples/kotlin-gradle-parent-wrapper-junit/libraries/tokens"
+  },
+  {
     "name": "kotlin-gradle-groovy-junit",
     "adapter": "kotlin",
     "path": "examples/kotlin-gradle-groovy-junit"

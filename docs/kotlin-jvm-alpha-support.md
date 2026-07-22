@@ -9,7 +9,7 @@ This matrix defines the bounded private-alpha support claim for the Kotlin/JVM a
 | Project shapes | Single-module or directly audited Gradle/Maven JVM modules | root `build.gradle`, `build.gradle.kts`, or `pom.xml`; standard JVM source sets |
 | Languages | Kotlin, Java, and mixed Kotlin/Java modules | `.kt` and `.java` files under `src/main/kotlin`, `src/main/java`, `src/test/kotlin`, and `src/test/java` |
 | Test frameworks | JUnit 4, JUnit 5/Jupiter, and `kotlin.test` on the JUnit platform | build dependencies/tasks plus test imports and annotations |
-| Commands | Gradle wrapper, Gradle, Maven wrapper, or Maven test commands | `gradlew`, Gradle build files, `mvnw`, and `pom.xml`, in that preference order |
+| Commands | local wrappers, conventionally owned parent Gradle/Maven wrappers with module-qualified tasks/selectors, or system Gradle/Maven test commands | local and nearest parent `gradlew`/`mvnw`, Gradle settings includes, Maven reactor modules, and module build files |
 | Test provenance | exact imported types/functions, Java static-member imports, Kotlin top-level functions, same-package symbol references, wildcard package imports, fully qualified references, and bounded receiver/result aliases consumed by assertions | parsed package/import declarations, exact source-symbol references, calls, assignments, and assertion bodies inside runnable JUnit test files |
 | Test execution boundary | conventional test source files containing JUnit test, parameterized-test, factory/template, repeated-test, or runner annotations; JUnit 3 `TestCase` subclasses | test annotations or `TestCase` inheritance; a filename or helper under `src/test` is not sufficient |
 | Candidate boundaries | parsers, mappers, validators, formatters, converters, calculators, services, clients, repositories, gateways, and branching utilities | path, branching, and external-I/O signals |
@@ -24,7 +24,7 @@ The current support claim does not include:
 
 - Android application/library unit-test semantics, Robolectric, or `src/androidTest` instrumentation tests
 - Kotlin Multiplatform source sets such as `commonMain`, `commonTest`, `jvmMain`, and `jvmTest`
-- aggregate Gradle/Maven roots whose owned sources live only in nested modules; audit the module root instead
+- aggregate Gradle/Maven roots whose owned sources live only in nested modules; audit the module root instead (a conventionally declared module can still recover its parent wrapper command)
 - Groovy production/test sources and Spock
 - Kotest, TestNG, Spek, Cucumber, or other non-JUnit execution models
 - custom Gradle source sets, Gradle TestKit reachability, generated sources, annotation-processor/KSP output, or build-logic projects
@@ -51,7 +51,7 @@ The gates are met for the common patterns above. The adapter is registered as `s
 
 ## Post-Promotion Pressure
 
-1. Add an owned module graph so aggregate roots can preserve wrapper commands and cross-module test evidence.
+1. Add an owned module graph for aggregate-root audits and cross-module test evidence; directly audited conventional modules already recover parent wrapper commands.
 2. Add Kotlin Multiplatform only after source-set ownership and target-specific test commands are deterministic.
 3. Evaluate Kotest and Spock as separate execution/evidence variants rather than inferring them from JUnit Platform presence.
 4. Add framework-specific HTTP, persistence, coroutine, and DI semantics only from representative repository evidence.

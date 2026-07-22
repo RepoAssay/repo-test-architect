@@ -145,6 +145,41 @@ describe("Kotlin audit adapter", () => {
     );
   });
 
+  it("inherits a parent Gradle wrapper for a conventionally included module", () => {
+    const aggregateRoot = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-gradle-parent-wrapper-"));
+    const root = path.join(aggregateRoot, "libraries", "tokens");
+    fs.mkdirSync(path.join(root, "src", "main", "kotlin"), { recursive: true });
+    fs.mkdirSync(path.join(root, "src", "test", "kotlin"), { recursive: true });
+    fs.writeFileSync(path.join(aggregateRoot, "settings.gradle.kts"), 'include(":libraries:tokens")\n');
+    fs.writeFileSync(path.join(aggregateRoot, "gradlew"), "#!/usr/bin/env sh\n");
+    fs.writeFileSync(path.join(root, "build.gradle.kts"), 'dependencies { testImplementation(kotlin("test")) }\n');
+    fs.writeFileSync(path.join(root, "src", "main", "kotlin", "TokenParser.kt"), "class TokenParser { fun parse(value: String) = value.trim() }\n");
+    fs.writeFileSync(path.join(root, "src", "test", "kotlin", "TokenParserTest.kt"), "class TokenParserTest { @Test fun parses() { TokenParser().parse(\"x\") } }\n");
+
+    const audit = auditKotlinRepo(root);
+
+    assert.equal(audit.profile.testCommand, "../../gradlew :libraries:tokens:test");
+    assert.ok(audit.profile.setupSignals.includes("parent gradle wrapper"));
+    assert.deepEqual(audit.profile.blockers, []);
+  });
+
+  it("does not infer a Gradle task for a custom project-directory remap", () => {
+    const aggregateRoot = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-gradle-remap-"));
+    const root = path.join(aggregateRoot, "modules", "token-core");
+    fs.mkdirSync(path.join(root, "src", "main", "kotlin"), { recursive: true });
+    fs.mkdirSync(path.join(root, "src", "test", "kotlin"), { recursive: true });
+    fs.writeFileSync(path.join(aggregateRoot, "settings.gradle.kts"), '// include(":modules:token-core")\ninclude(":tokens")\nproject(":tokens").projectDir = file("modules/token-core")\n');
+    fs.writeFileSync(path.join(aggregateRoot, "gradlew"), "#!/usr/bin/env sh\n");
+    fs.writeFileSync(path.join(root, "build.gradle.kts"), 'dependencies { testImplementation(kotlin("test")) }\n');
+    fs.writeFileSync(path.join(root, "src", "main", "kotlin", "TokenParser.kt"), "class TokenParser { fun parse(value: String) = value.trim() }\n");
+    fs.writeFileSync(path.join(root, "src", "test", "kotlin", "TokenParserTest.kt"), "class TokenParserTest { @Test fun parses() { TokenParser().parse(\"x\") } }\n");
+
+    const audit = auditKotlinRepo(root);
+
+    assert.equal(audit.profile.testCommand, "gradle test");
+    assert.ok(!audit.profile.setupSignals.includes("parent gradle wrapper"));
+  });
+
   it("detects Maven JVM projects with JUnit test commands", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-maven-"));
     fs.mkdirSync(path.join(root, "src", "main", "java", "com", "example"), { recursive: true });
@@ -341,6 +376,24 @@ describe("Kotlin audit adapter", () => {
 
     assert.equal(audit.profile.testCommand, "./mvnw test");
     assert.ok(audit.profile.setupSignals.includes("maven wrapper"));
+  });
+
+  it("inherits a parent Maven wrapper for a declared reactor module", () => {
+    const aggregateRoot = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-maven-parent-wrapper-"));
+    const root = path.join(aggregateRoot, "token-core");
+    fs.mkdirSync(path.join(root, "src", "main", "java"), { recursive: true });
+    fs.mkdirSync(path.join(root, "src", "test", "java"), { recursive: true });
+    fs.writeFileSync(path.join(aggregateRoot, "pom.xml"), "<project><modules><module>token-core</module></modules></project>\n");
+    fs.writeFileSync(path.join(aggregateRoot, "mvnw"), "#!/bin/sh\n");
+    fs.writeFileSync(path.join(root, "pom.xml"), "<project><dependency><groupId>org.junit.jupiter</groupId></dependency></project>\n");
+    fs.writeFileSync(path.join(root, "src", "main", "java", "TokenParser.java"), "class TokenParser { String parse(String value) { return value == null ? \"\" : value; } }\n");
+    fs.writeFileSync(path.join(root, "src", "test", "java", "TokenParserTest.java"), "class TokenParserTest { @Test void parses() { new TokenParser().parse(\"x\"); } }\n");
+
+    const audit = auditKotlinRepo(root);
+
+    assert.equal(audit.profile.testCommand, "../mvnw -f ../pom.xml -pl token-core test");
+    assert.ok(audit.profile.setupSignals.includes("parent maven wrapper"));
+    assert.deepEqual(audit.profile.blockers, []);
   });
 
   it("detects JUnit 4 from test imports without relying on a generic test filename", () => {
