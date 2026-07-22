@@ -74,6 +74,7 @@ describe("model consistency runner", () => {
         ["kotlin-gradle-groovy-junit-plan", []],
         ["kotlin-gradle-module-graph-junit-plan", []],
         ["kotlin-gradle-parent-wrapper-junit-plan", []],
+        ["kotlin-gradle-spock-plan", []],
         ["kotlin-junit-basic-plan", []],
         ["kotlin-maven-junit-plan", []],
         ["kotlin-maven-reactor-junit-plan", []],
@@ -124,14 +125,14 @@ describe("model consistency runner", () => {
     assert.equal(summary.schemaVersion, "model-consistency-summary/v1");
     assert.equal(summary.profileName, "deterministic-baseline");
     assert.deepEqual(summary.summary, {
-      scenarioCount: 41,
-      passedScenarioCount: 41,
+      scenarioCount: 42,
+      passedScenarioCount: 42,
       failedScenarioCount: 0,
-      checkedFieldCount: 344,
+      checkedFieldCount: 353,
       failureCount: 0
     });
-    assert.equal(summary.scenarios[10].scenarioId, "node-ava-basic-plan");
-    assert.equal(summary.scenarios[10].status, "passed");
+    assert.equal(summary.scenarios[11].scenarioId, "node-ava-basic-plan");
+    assert.equal(summary.scenarios[11].status, "passed");
     assert.ok(summary.allowedVariationThemes.includes("Additional non-locked metadata may be added."));
     assert.ok(summary.unexpectedVariationThemes.includes("Generating a direct DTO test recommendation."));
   });
@@ -145,8 +146,8 @@ describe("model consistency runner", () => {
     assert.equal(comparison.baselineProfile, "deterministic-baseline");
     assert.equal(comparison.candidateProfile, "local-small");
     assert.deepEqual(comparison.summary, {
-      scenarioCount: 41,
-      alignedScenarioCount: 41,
+      scenarioCount: 42,
+      alignedScenarioCount: 42,
       driftedScenarioCount: 0,
       missingScenarioCount: 0,
       unexpectedScenarioCount: 0,
@@ -188,12 +189,12 @@ describe("model consistency runner", () => {
     const comparison = compareModelConsistencySummaries(baseline, candidate);
 
     assert.deepEqual(comparison.summary, {
-      scenarioCount: 42,
-      alignedScenarioCount: 39,
+      scenarioCount: 43,
+      alignedScenarioCount: 40,
       driftedScenarioCount: 1,
       missingScenarioCount: 1,
       unexpectedScenarioCount: 1,
-      checkedFieldDelta: -189,
+      checkedFieldDelta: -198,
       failureDelta: 3
     });
     assert.deepEqual(
@@ -204,6 +205,7 @@ describe("model consistency runner", () => {
         ["kotlin-gradle-groovy-junit-plan", "aligned"],
         ["kotlin-gradle-module-graph-junit-plan", "aligned"],
         ["kotlin-gradle-parent-wrapper-junit-plan", "aligned"],
+        ["kotlin-gradle-spock-plan", "aligned"],
         ["kotlin-junit-basic-plan", "aligned"],
         ["kotlin-maven-junit-plan", "aligned"],
         ["kotlin-maven-reactor-junit-plan", "aligned"],

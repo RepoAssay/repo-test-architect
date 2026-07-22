@@ -1,0 +1,69 @@
+{
+  "schemaVersion": "model-consistency-scenario/v1",
+  "id": "kotlin-gradle-spock-plan",
+  "description": "Different model profiles should preserve bounded Spock feature evidence and conventional Gradle execution.",
+  "sourceArtifact": {
+    "path": "evals/expected/kotlin-gradle-spock.audit.json",
+    "schemaVersion": "audit/v1"
+  },
+  "toolCall": {
+    "toolName": "generate_test_plan",
+    "arguments": {}
+  },
+  "lockedFields": [
+    {
+      "path": "summary.confidence",
+      "expected": "high",
+      "reason": "A conventional Gradle module with a runnable Spock feature should retain high confidence."
+    },
+    {
+      "path": "summary.verificationCommand",
+      "expected": "./gradlew test",
+      "reason": "The Spock plan should retain wrapper-backed Gradle test execution."
+    },
+    {
+      "path": "summary.blockerCount",
+      "expected": 0,
+      "reason": "The feature fixture stays inside the supported Spock boundary."
+    },
+    {
+      "path": "summary.addTestCount",
+      "expected": 1,
+      "reason": "The untested formatter should remain a new-test recommendation."
+    },
+    {
+      "path": "summary.extendTestCount",
+      "expected": 1,
+      "reason": "The parser's existing Spock evidence should produce an extension recommendation."
+    },
+    {
+      "path": "items[0].id",
+      "expected": "add-test:src/main/java/com/example/token/TokenFormatter.java",
+      "reason": "Untested formatter logic should remain the leading add-test item."
+    },
+    {
+      "path": "items[1].id",
+      "expected": "extend-test:src/main/java/com/example/token/TokenParser.java",
+      "reason": "The parser should remain linked to its runnable Spock feature."
+    },
+    {
+      "path": "items[1].existingTestPaths[0]",
+      "expected": "src/test/groovy/com/example/token/TokenParserSpec.groovy",
+      "reason": "The plan must preserve exact Groovy specification provenance."
+    },
+    {
+      "path": "items[1].existingTestEvidence[0].usage",
+      "expected": "asserted",
+      "reason": "A parser result consumed by a then-block condition should remain asserted evidence."
+    }
+  ],
+  "allowedVariations": [
+    "summary wording",
+    "optional detail depth"
+  ],
+  "unexpectedVariations": [
+    "Spock treated as unsupported",
+    "then-block evidence downgraded to called",
+    "Gradle wrapper verification command removed"
+  ]
+}

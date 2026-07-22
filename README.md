@@ -23,7 +23,7 @@ Native test generation is intentionally deferred. `generate_selected_test` retur
 Supported adapters:
 
 - `javascript`: JavaScript/TypeScript repositories with Node's test runner (including TypeScript execution scripts), Bun test, AVA, Mocha/CommonJS, Vitest, Jest, Playwright, Cypress, Express/Supertest, and React Testing Library detection; see the [alpha support matrix](docs/javascript-typescript-alpha-support.md) for evidence boundaries and known gaps
-- `kotlin`: conventional Gradle/Maven JVM module roots, settings-owned Gradle aggregates, and root-declared Maven reactors with Kotlin and/or Java standard source sets, dependency-qualified direct/exported-transitive module evidence, JUnit 4/5, `kotlin.test`, bounded Gradle/JUnit Platform Kotest common specs, and method-level TestNG through direct Maven dependencies or Gradle `useTestNG()`; see the [Kotlin/JVM alpha support matrix](docs/kotlin-jvm-alpha-support.md)
+- `kotlin`: conventional Gradle/Maven JVM module roots, settings-owned Gradle aggregates, and root-declared Maven reactors with Kotlin and/or Java standard source sets, dependency-qualified direct/exported-transitive module evidence, JUnit 4/5, `kotlin.test`, bounded Gradle/JUnit Platform Kotest common specs, conventional Gradle/Spock features, and method-level TestNG through direct Maven dependencies or Gradle `useTestNG()`; see the [Kotlin/JVM alpha support matrix](docs/kotlin-jvm-alpha-support.md)
 - `python`: bounded Python package, FastAPI, Django, and Flask layouts with pytest/unittest, async and property-based pytest extensions, fixture reachability, pip/setuptools, uv, Poetry, Hatch, tox, nox, and coverage configuration; see the [Python alpha support matrix](docs/python-alpha-support.md)
 - `swift`: Swift Package Manager, Xcode-style and Bazel/rules_swift layouts, Swift Testing, XCTest, Quick/Nimble, SnapshotTesting, VaporTesting/XCTVapor, reactive frameworks, and generic Fluent database boundaries with driver-specific qualifiers; see the [Swift alpha support matrix](docs/swift-alpha-support.md)
 
@@ -261,6 +261,7 @@ examples/
   kotlin-maven-reactor-junit/
   kotlin-maven-wrapper-junit4/
   kotlin-gradle-aggregate-kotest/
+  kotlin-gradle-spock/
   kotlin-maven-testng/
   python-pytest-service/
   python-uv-pytest/
@@ -280,7 +281,7 @@ evals/
 schemas/
 ```
 
-JavaScript/TypeScript, Python, Swift, and bounded Kotlin/JVM modules are supported adapter proof points. Kotlin/JVM support is limited to conventional Gradle/Maven modules and directly declared aggregate graphs, JUnit, the documented Kotest common-spec variant, or method-level TestNG, and standard source sets as defined in [Kotlin/JVM Alpha Support](docs/kotlin-jvm-alpha-support.md).
+JavaScript/TypeScript, Python, Swift, and bounded Kotlin/JVM modules are supported adapter proof points. Kotlin/JVM support is limited to conventional Gradle/Maven modules and directly declared aggregate graphs, JUnit, the documented Kotest common-spec and Spock feature variants, or method-level TestNG, and standard source sets as defined in [Kotlin/JVM Alpha Support](docs/kotlin-jvm-alpha-support.md).
 
 Important runtime surfaces:
 

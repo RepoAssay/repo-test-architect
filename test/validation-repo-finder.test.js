@@ -162,10 +162,10 @@ describe("validation repository finder", () => {
     });
   });
 
-  it("defines JVM validation profiles for Gradle, Maven JUnit, Kotest, and TestNG projects", () => {
+  it("defines JVM validation profiles for Gradle, Maven JUnit, Kotest, Spock, and TestNG projects", () => {
     assert.deepEqual(
-      ["gradle", "gradle-junit", "gradle-kotest", "gradle-testng", "maven", "maven-junit", "maven-testng"].map((profile) => validationProfiles[profile].language),
-      ["Kotlin", "Kotlin", "Kotlin", "Kotlin", "Java", "Java", "Java"]
+      ["gradle", "gradle-junit", "gradle-kotest", "gradle-spock", "gradle-testng", "maven", "maven-junit", "maven-testng"].map((profile) => validationProfiles[profile].language),
+      ["Kotlin", "Kotlin", "Kotlin", "Java", "Kotlin", "Java", "Java", "Java"]
     );
 
     assert.deepEqual(detectManifestSignals(validationProfiles["gradle-junit"].searches, {
@@ -187,6 +187,13 @@ describe("validation repository finder", () => {
     }, [{ name: "gradlew", type: "file" }]), {
       signals: ["gradle-kotest", "gradle-wrapper"],
       matchedPaths: ["build.gradle.kts", "gradlew"]
+    });
+
+    assert.deepEqual(detectManifestSignals(validationProfiles["gradle-spock"].searches, {
+      "build.gradle": "dependencies { testImplementation 'org.spockframework:spock-core:2.4-groovy-4.0' }\ntest { useJUnitPlatform() }\n"
+    }, [{ name: "gradlew", type: "file" }]), {
+      signals: ["gradle-spock", "gradle-wrapper"],
+      matchedPaths: ["build.gradle", "gradlew"]
     });
 
     assert.deepEqual(detectManifestSignals(validationProfiles["gradle-testng"].searches, {

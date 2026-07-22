@@ -201,7 +201,7 @@ describe("docs links", () => {
     assert.ok(roadmap.includes("one concise repo-level summary can show top findings with evidence"));
     assert.ok(roadmap.includes("Milestone 2: Public Demo Polish"));
     assert.ok(roadmap.includes("Milestone 3: Adapter Spike Hardening"));
-    assert.ok(roadmap.includes("Kotlin/JVM with Gradle/Maven, JUnit variants, and bounded Kotest common specs"));
+    assert.ok(roadmap.includes("Kotlin/JVM with Gradle/Maven, JUnit variants, bounded Kotest common specs, conventional Spock features"));
     assert.ok(roadmap.includes("Swift Package Manager with XCTest, Swift Testing, Quick/Nimble, and SnapshotTesting signals"));
     assert.ok(roadmap.includes("Python fixture reachability, async/parametrized/property-based pytest conventions, Django/Flask routes, tox/nox commands, coverage configuration, and no-tests-yet blocker behavior"));
     assert.ok(roadmap.includes("Milestone 4: Placement And Boundary Analysis"));
@@ -295,11 +295,15 @@ describe("docs links", () => {
     assert.ok(support.includes("Kotest styles other than `FunSpec`, `StringSpec`, and `ShouldSpec`"));
     assert.ok(support.includes("method-level TestNG with a direct Maven dependency or Gradle `useTestNG()`"));
     assert.ok(support.includes("TestNG class-level tests, lifecycle hooks, data providers"));
+    assert.ok(support.includes("conventional Spock feature methods in direct `Specification` subclasses"));
+    assert.ok(support.includes("Spock fixture methods, annotations/extensions, `where:`/`filter:` data-driven features"));
     assert.ok(support.includes("Android application/library unit-test semantics"));
     assert.ok(support.includes("registered as `supported`"));
     assert.ok(validation.includes("JUnit 4"));
     assert.ok(validation.includes("Cash App Barber"));
     assert.ok(validation.includes("graphql-java"));
+    assert.ok(validation.includes("Micronaut Core"));
+    assert.ok(validation.includes("Ratpack"));
     assert.ok(validation.includes("KotlinPoet"));
     assert.ok(validation.includes("libcs1"));
     assert.ok(validation.includes("service-apply"));

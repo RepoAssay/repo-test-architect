@@ -20,7 +20,9 @@ This report records static audits of pinned public repositories used to pressure
 | [OHC](https://github.com/snazy/ohc) root | `7f59c264fe8ae4c859b9662c8cea15620f0f55f8` | Maven reactor, Java, mixed simple and advanced TestNG methods | medium; `mvn test`; advanced TestNG evidence blocker | 36 | 11 | 28 | about 81 ms |
 | [FusionAuth java-http](https://github.com/FusionAuth/java-http) root | `70aec888ef179954dad5b5b54e2fbc86a9444f41` | Maven, Java, TestNG listener and excluded-group execution | low; no command; custom execution and advanced evidence blockers | 34 | 0 | 31 | about 70 ms |
 | [ReportPortal TestNG agent](https://github.com/reportportal/agent-java-testNG) root | `ae2b0beb07314f2dfb3473b28f481257d0bd175b` | Gradle, Java, JUnit Platform execution plus TestNG integration fixtures | medium; `./gradlew test`; TestNG execution and advanced evidence blockers | 0 | 4 | 3 | about 68 ms |
-| [graphql-java](https://github.com/graphql-java/graphql-java) root | `94f398d50cbff7d5810b6ffc5692fa3947482c99` | Gradle, Java, mostly Spock plus JUnit/TestNG | medium; `./gradlew test`; Spock blocker | 350 | 0 | 303 | about 137 ms |
+| [graphql-java](https://github.com/graphql-java/graphql-java) root | `94f398d50cbff7d5810b6ffc5692fa3947482c99` | Gradle, Java, mostly Spock plus JUnit/TestNG | medium; `./gradlew test`; advanced Spock/TestNG evidence blockers | 186 | 164 | 303 | about 968 ms |
+| [Micronaut Core](https://github.com/micronaut-projects/micronaut-core) root | `bbfae6eb35121ff5268ee391c0bbedbd4ab9bd97` | large Gradle aggregate, Java/Kotlin, mixed direct and inherited Spock/Kotest configuration | medium; `./gradlew test`; inherited execution and advanced evidence blockers | 1,260 | 59 | 1,318 | about 7.6 s |
+| [Ratpack](https://github.com/ratpack/ratpack) root | `cc0e5a87474154cdab9b86397cb72f2ede39757b` | Gradle aggregate with renamed per-project build files and custom source sets | low; no command; framework, command, and owned-source blockers | 0 | 0 | 0 | about 74 ms |
 | [KotlinPoet](https://github.com/square/kotlinpoet) root | `be2de914ce6eb3694092ed4e0f28626cbce1ffe0` | mixed conventional JVM and Kotlin Multiplatform Gradle modules | medium; `./gradlew test`; multiplatform blocker | 20 | 5 | 6 | about 21 ms |
 
 Timing is an observed local static-analysis duration, not a performance guarantee. Counts describe heuristic audit targets, not runtime line or branch coverage.
@@ -55,7 +57,11 @@ FusionAuth java-http exercised custom Maven execution. Its Surefire listener and
 
 The ReportPortal TestNG agent confirmed mixed-framework isolation. Its build executes JUnit Platform rather than Gradle `useTestNG()`, so TestNG integration fixtures remain excluded while independently runnable JUnit evidence stays available. The evidence graph narrows from 32 to 29 relationships and keeps precise execution blockers rather than treating every `@Test` annotation alike.
 
-graphql-java demonstrated why framework detection must not equal coverage detection. Its main test suite is Groovy/Spock, with additional conventional JUnit/TestNG configuration. The adapter reports Spock as unsupported and does not interpret Groovy specifications as Java source coverage merely because the JVM test command is runnable.
+graphql-java provided the strongest positive Spock pressure. Its directly declared `spock-core` dependency and conventional JUnit Platform task admit simple direct `Specification` feature methods while excluding files that use fixtures, data tables, extensions, helper assertions, or interaction mocking. The supported subset produces 701 exact source relationships across 164 covered targets, including 318 assertion-traced relationships; the pre-variant audit reported all 350 actionable targets as untested and no evidence. Advanced Spock and TestNG files keep the profile medium-confidence rather than being silently counted.
+
+Micronaut Core pressured mixed direct and inherited framework configuration across a very large aggregate. The bounded variant adds five Spock relationships and moves four targets into covered evidence where module-local execution is directly visible, while modules relying on inherited Spock setup remain blocked. Existing JUnit/Kotest evidence stays available, and advanced specifications keep a separate evidence blocker.
+
+Ratpack confirmed that Spock recognition does not widen Gradle module ownership. Its settings file renames project build files to `ratpack-*.gradle` and its tests use custom source sets, so the conventional adapter owns no modules, infers no command, and emits no evidence—the same conservative result as before the Spock variant.
 
 KotlinPoet demonstrated the mixed aggregate boundary. The audit selects only settings-declared modules with conventional JVM source sets, reports their 31 targets, and emits a multiplatform blocker for the larger target-specific graph rather than claiming full support.
 
@@ -82,17 +88,20 @@ KotlinPoet demonstrated the mixed aggregate boundary. The audit selects only set
 - replaced the blanket TestNG blocker and framework-agnostic `@Test` evidence with method-level TestNG support for direct Maven dependencies or Gradle `useTestNG()` tasks
 - added explicit TestNG blockers for class-level tests, lifecycle hooks, providers/factories/parameters, listeners, dependency/group attributes, suite XML, group filters, and parallel/custom execution
 - added OHC, FusionAuth java-http, and the ReportPortal TestNG agent as pinned positive/negative execution-boundary probes
-- retained explicit aggregate-root, missing standard source-set, Android, Spock, advanced TestNG, and unsupported Kotest boundary blockers
-- added discovery profiles for Gradle/JUnit, Gradle/Kotest, Gradle/TestNG, Maven/JUnit, and Maven/TestNG validation candidates
+- replaced the blanket Spock blocker with bounded `src/test/groovy` support for direct `Specification` subclasses containing conventional feature methods and `then:`/`expect:` conditions
+- added Spock condition provenance through `given`/`when` aliases, plus explicit blockers for fixtures, data tables, extensions, helper assertions, interaction mocking, configuration files, and custom JUnit Platform selection
+- added graphql-java, Micronaut Core, and Ratpack as pinned positive, mixed-configuration, and ownership-boundary Spock probes
+- retained explicit aggregate-root, missing standard source-set, Android, advanced Spock/TestNG, and unsupported Kotest boundary blockers
+- added discovery profiles for Gradle/JUnit, Gradle/Kotest, Gradle/Spock, Gradle/TestNG, Maven/JUnit, and Maven/TestNG validation candidates
 
 ## Remaining Gaps
 
 - Maven profile/computed/nested reactor graphs, inherited/dynamic dependencies, Gradle composite builds, custom module mappings, and non-exported transitive project dependencies
-- Groovy/Spock, Android, Kotlin Multiplatform, TestNG class-level/lifecycle/generated/configured execution semantics, Kotest styles beyond `FunSpec`/`StringSpec`/`ShouldSpec`, and Kotest lifecycle/data/property semantics
+- Groovy production and nonstandard test source sets, Maven/inherited/test-suite Spock execution, Spock fixture/data/extension/mock semantics, Android, Kotlin Multiplatform, TestNG class-level/lifecycle/generated/configured execution semantics, Kotest styles beyond `FunSpec`/`StringSpec`/`ShouldSpec`, and Kotest lifecycle/data/property semantics
 - parameterized arguments, dynamic tests, extensions, fixtures, and inherited tests as semantic coverage
 - framework-aware application boot, HTTP, persistence, coroutine scheduling, and dependency-injection boundaries
 - call/assertion depth beyond the currently referenced or direct symbol relationship
 
 ## Verdict
 
-The live probes support conventional single-module or directly selected Gradle/Maven JVM roots, settings-owned conventional Gradle aggregates, directly declared Maven reactors, and cycle-safe traversal through explicitly exported Gradle/Maven module edges using JUnit 4, JUnit 5, `kotlin.test`, the documented Gradle/JUnit Platform Kotest common-spec variant, or method-level TestNG under direct conventional Maven/Gradle execution. They do not support a broad Kotlin/Java, Kotest, or TestNG ecosystem claim. The exact boundary is normative in [Kotlin/JVM Alpha Support](kotlin-jvm-alpha-support.md).
+The live probes support conventional single-module or directly selected Gradle/Maven JVM roots, settings-owned conventional Gradle aggregates, directly declared Maven reactors, and cycle-safe traversal through explicitly exported Gradle/Maven module edges using JUnit 4, JUnit 5, `kotlin.test`, the documented Gradle/JUnit Platform Kotest common-spec and Spock feature variants, or method-level TestNG under direct conventional Maven/Gradle execution. They do not support a broad Kotlin/Java, Kotest, Spock, or TestNG ecosystem claim. The exact boundary is normative in [Kotlin/JVM Alpha Support](kotlin-jvm-alpha-support.md).
