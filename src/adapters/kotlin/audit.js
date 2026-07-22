@@ -136,16 +136,23 @@ function shouldRead(relative) {
 }
 
 function resolveJvmModules(files) {
-  const paths = new Set(files.map((file) => normalizePath(file.path)));
   const settings = files.find((file) => ["settings.gradle", "settings.gradle.kts"].includes(normalizePath(file.path)));
-  const declarations = settings ? declaredGradleProjectPaths(settings.content) : [];
-  const modules = [{ projectPath: ":", directory: ".", dependencies: new Set() }];
+  if (settings) return resolveGradleModules(files, settings);
+  const rootPom = files.find((file) => normalizePath(file.path) === "pom.xml");
+  if (rootPom) return resolveMavenModules(files, rootPom);
+  return [{ projectPath: ":", directory: ".", dependencies: new Set(), buildSystem: undefined }];
+}
+
+function resolveGradleModules(files, settings) {
+  const paths = new Set(files.map((file) => normalizePath(file.path)));
+  const declarations = declaredGradleProjectPaths(settings.content);
+  const modules = [{ projectPath: ":", directory: ".", dependencies: new Set(), buildSystem: "gradle" }];
 
   for (const declaration of declarations) {
     const hasBuildFile = ["build.gradle", "build.gradle.kts"]
       .some((name) => paths.has(`${declaration.directory}/${name}`));
     if (!hasBuildFile) continue;
-    modules.push({ ...declaration, dependencies: new Set() });
+    modules.push({ ...declaration, dependencies: new Set(), buildSystem: "gradle" });
   }
 
   for (const module of modules) {
@@ -154,6 +161,91 @@ function resolveJvmModules(files) {
   }
 
   return modules.sort((left, right) => right.directory.length - left.directory.length || left.projectPath.localeCompare(right.projectPath));
+}
+
+function resolveMavenModules(files, rootPom) {
+  const paths = new Set(files.map((file) => normalizePath(file.path)));
+  const rootCoordinate = readMavenCoordinate(rootPom.content);
+  const rootProjectPath = rootCoordinate?.id ?? "maven:.";
+  const modules = [{
+    projectPath: rootProjectPath,
+    directory: ".",
+    dependencies: new Set(),
+    buildSystem: "maven",
+    coordinate: rootCoordinate
+  }];
+
+  for (const directory of declaredMavenModules(rootPom.content)) {
+    const pomPath = `${directory}/pom.xml`;
+    if (!paths.has(pomPath)) continue;
+    const pom = files.find((file) => normalizePath(file.path) === pomPath);
+    const coordinate = readMavenCoordinate(pom?.content ?? "", rootCoordinate?.groupId);
+    if (!coordinate) continue;
+    modules.push({
+      projectPath: coordinate.id,
+      directory,
+      dependencies: new Set(),
+      buildSystem: "maven",
+      coordinate
+    });
+  }
+
+  for (const module of modules) {
+    const buildText = moduleBuildText(module, files);
+    for (const dependency of declaredMavenDependencies(buildText, module.coordinate?.groupId)) {
+      module.dependencies.add(dependency);
+    }
+  }
+
+  return modules.sort((left, right) => right.directory.length - left.directory.length || left.projectPath.localeCompare(right.projectPath));
+}
+
+function declaredMavenModules(content) {
+  const pomText = stripMavenComments(content)
+    .replace(/<(?:profiles|build|reporting|dependencies|dependencyManagement)>[\s\S]*?<\/(?:profiles|build|reporting|dependencies|dependencyManagement)>/g, " ");
+  const moduleText = [...pomText.matchAll(/<modules>([\s\S]*?)<\/modules>/g)].map((match) => match[1]).join("\n");
+  return [...moduleText.matchAll(/<module>\s*([^<]+?)\s*<\/module>/g)]
+    .map((match) => normalizePath(match[1].trim()).replace(/^\.\//, "").replace(/\/$/, ""))
+    .filter((modulePath) => modulePath && !modulePath.startsWith("/") && !modulePath.split("/").includes("..") && !modulePath.includes("${"));
+}
+
+function readMavenCoordinate(content, fallbackGroupId) {
+  const pomText = stripMavenComments(content);
+  const parentText = pomText.match(/<parent>([\s\S]*?)<\/parent>/)?.[1] ?? "";
+  const projectText = pomText
+    .replace(/<parent>[\s\S]*?<\/parent>/, " ")
+    .replace(/<(?:dependencies|dependencyManagement|build|profiles|modules|properties|repositories|pluginRepositories|reporting)>[\s\S]*?<\/(?:dependencies|dependencyManagement|build|profiles|modules|properties|repositories|pluginRepositories|reporting)>/g, " ");
+  const artifactId = mavenElement(projectText, "artifactId");
+  const groupId = mavenElement(projectText, "groupId") ?? mavenElement(parentText, "groupId") ?? fallbackGroupId;
+  if (!artifactId || !groupId || artifactId.includes("${") || groupId.includes("${")) return undefined;
+  return { groupId, artifactId, id: `${groupId}:${artifactId}` };
+}
+
+function declaredMavenDependencies(content, moduleGroupId) {
+  const dependencies = new Set();
+  const pomText = stripMavenComments(content)
+    .replace(/<profiles>[\s\S]*?<\/profiles>/g, " ")
+    .replace(/<dependencyManagement>[\s\S]*?<\/dependencyManagement>/g, " ")
+    .replace(/<plugin>[\s\S]*?<\/plugin>/g, " ");
+  for (const match of pomText.matchAll(/<dependency>([\s\S]*?)<\/dependency>/g)) {
+    const dependency = match[1];
+    const artifactId = mavenElement(dependency, "artifactId");
+    let groupId = mavenElement(dependency, "groupId");
+    const scope = mavenElement(dependency, "scope") ?? "compile";
+    if (["${project.groupId}", "${project.parent.groupId}", "${groupId}"].includes(groupId)) groupId = moduleGroupId;
+    if (!artifactId || !groupId || !["compile", "provided", "test"].includes(scope)) continue;
+    if (artifactId.includes("${") || groupId.includes("${")) continue;
+    dependencies.add(`${groupId}:${artifactId}`);
+  }
+  return dependencies;
+}
+
+function mavenElement(content, name) {
+  return content.match(new RegExp(`<${name}>\\s*([^<]+?)\\s*</${name}>`))?.[1].trim();
+}
+
+function stripMavenComments(content) {
+  return content.replace(/<!--[\s\S]*?-->/g, " ");
 }
 
 function declaredGradleProjectDependencies(content) {
@@ -385,7 +477,8 @@ function detectSetupSignals(paths, buildText, testText, testCommandResolution, m
   if (/useJUnitPlatform|org\.junit\.jupiter/i.test(`${buildText}\n${testText}`)) signals.add("junit platform");
   if (/org\.junit(?!\.jupiter)/i.test(`${buildText}\n${testText}`)) signals.add("junit 4");
   if (testCommandResolution.inheritedSignal) signals.add(testCommandResolution.inheritedSignal);
-  if (modules.some((module) => module.projectPath !== ":")) signals.add("gradle module graph");
+  if (modules.some((module) => module.buildSystem === "gradle" && module.directory !== ".")) signals.add("gradle module graph");
+  if (modules.some((module) => module.buildSystem === "maven" && module.directory !== ".")) signals.add("maven reactor graph");
   return [...signals];
 }
 

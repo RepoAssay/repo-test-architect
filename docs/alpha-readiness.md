@@ -69,7 +69,7 @@ While repository GitHub Actions are disabled under the temporary $0-budget polic
 
 - JavaScript/TypeScript, Python, Swift, and bounded Kotlin/JVM modules are supported proof points
 - supported adapter promises are bounded by checked-in alpha matrices rather than broad ecosystem claims
-- Kotlin/JVM support is bounded to conventional Gradle/Maven module roots and settings-owned Gradle aggregates with standard JVM source sets and JUnit/`kotlin.test`; Maven aggregates, custom/composite Gradle graphs, Android, multiplatform, and other test frameworks remain excluded or blocked
+- Kotlin/JVM support is bounded to conventional Gradle/Maven module roots, settings-owned Gradle aggregates, and directly declared Maven reactors with standard JVM source sets and JUnit/`kotlin.test`; computed/nested Maven reactors, custom/composite Gradle graphs, Android, multiplatform, and other test frameworks remain excluded or blocked
 - Python support is bounded by the checked-in [Python Alpha Support](python-alpha-support.md), including explicit package-ownership and static-evidence exclusions
 - Swift support is bounded by the checked-in [Swift Alpha Support](swift-alpha-support.md), including explicit Objective-C and computed-build-graph exclusions
 - adapter support is described by detected frameworks, commands, source layouts, and blockers instead of broad language claims

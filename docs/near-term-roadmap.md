@@ -74,7 +74,7 @@ Useful hardening targets:
 - Swift Package Manager with XCTest, Swift Testing, Quick/Nimble, and SnapshotTesting signals
 - Python fixture reachability, async/parametrized/property-based pytest conventions, Django/Flask routes, tox/nox commands, coverage configuration, and no-tests-yet blocker behavior
 
-Python's supported boundary and known exclusions are tracked in [Python Alpha Support](python-alpha-support.md). Kotlin/JVM's conventional Gradle/Maven and JUnit boundary is tracked in [Kotlin/JVM Alpha Support](kotlin-jvm-alpha-support.md); Maven reactors, custom/composite Gradle graphs, Android, multiplatform, and additional JVM frameworks remain post-promotion pressure.
+Python's supported boundary and known exclusions are tracked in [Python Alpha Support](python-alpha-support.md). Kotlin/JVM's conventional Gradle/Maven, directly declared aggregate, and JUnit boundary is tracked in [Kotlin/JVM Alpha Support](kotlin-jvm-alpha-support.md); computed/nested Maven reactors, custom/composite Gradle graphs, Android, multiplatform, and additional JVM frameworks remain post-promotion pressure.
 
 ### Adapter Reuse Boundary
 
