@@ -1,0 +1,149 @@
+{
+  "schemaVersion": "audit/v1",
+  "profile": {
+    "root": "<fixture>",
+    "languages": [
+      "java"
+    ],
+    "packageManagers": [
+      "maven"
+    ],
+    "testFrameworks": [
+      "junit"
+    ],
+    "architectures": [
+      "jvm"
+    ],
+    "testCommand": "./mvnw test",
+    "detectedConventions": [
+      "*Test files",
+      "src/test/java"
+    ],
+    "existingTestLocations": [
+      "token-tests/src/test"
+    ],
+    "setupSignals": [
+      "maven",
+      "maven wrapper",
+      "junit platform",
+      "maven reactor graph"
+    ],
+    "confidence": "high",
+    "blockers": []
+  },
+  "untestedCandidates": [
+    {
+      "id": "token-core/src/main/java/com/example/token/TokenFormatter.java",
+      "name": "TokenFormatter",
+      "path": "token-core/src/main/java/com/example/token/TokenFormatter.java",
+      "kind": "pure-logic",
+      "signals": [
+        "pure-logic",
+        "edge-case-surface"
+      ],
+      "risk": "high",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 9,
+      "maintenanceCost": 2,
+      "reasons": [
+        "Pure transformation logic",
+        "edge-case surface"
+      ],
+      "existingTestPaths": []
+    }
+  ],
+  "coveredButRisky": [
+    {
+      "id": "token-core/src/main/java/com/example/token/TokenParser.java",
+      "name": "TokenParser",
+      "path": "token-core/src/main/java/com/example/token/TokenParser.java",
+      "kind": "pure-logic",
+      "signals": [
+        "pure-logic",
+        "edge-case-surface",
+        "matching-test"
+      ],
+      "risk": "high",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 9,
+      "maintenanceCost": 2,
+      "reasons": [
+        "Pure transformation logic",
+        "edge-case surface",
+        "Existing test evidence detected; review missing edge cases"
+      ],
+      "existingTestPaths": [
+        "token-tests/src/test/java/com/example/token/TokenParserTest.java"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "token-tests/src/test/java/com/example/token/TokenParserTest.java",
+          "kind": "jvm-symbol-reference",
+          "strength": "referenced",
+          "usage": "asserted"
+        }
+      ]
+    }
+  ],
+  "recommended": [
+    {
+      "id": "token-core/src/main/java/com/example/token/TokenFormatter.java",
+      "name": "TokenFormatter",
+      "path": "token-core/src/main/java/com/example/token/TokenFormatter.java",
+      "kind": "pure-logic",
+      "signals": [
+        "pure-logic",
+        "edge-case-surface"
+      ],
+      "risk": "high",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 9,
+      "maintenanceCost": 2,
+      "reasons": [
+        "Pure transformation logic",
+        "edge-case surface"
+      ],
+      "existingTestPaths": []
+    },
+    {
+      "id": "token-core/src/main/java/com/example/token/TokenParser.java",
+      "name": "TokenParser",
+      "path": "token-core/src/main/java/com/example/token/TokenParser.java",
+      "kind": "pure-logic",
+      "signals": [
+        "pure-logic",
+        "edge-case-surface",
+        "matching-test"
+      ],
+      "risk": "high",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 9,
+      "maintenanceCost": 2,
+      "reasons": [
+        "Pure transformation logic",
+        "edge-case surface",
+        "Existing test evidence detected; review missing edge cases"
+      ],
+      "existingTestPaths": [
+        "token-tests/src/test/java/com/example/token/TokenParserTest.java"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "token-tests/src/test/java/com/example/token/TokenParserTest.java",
+          "kind": "jvm-symbol-reference",
+          "strength": "referenced",
+          "usage": "asserted"
+        }
+      ]
+    }
+  ],
+  "skipped": [],
+  "risks": [
+    "TokenFormatter has pure transformation logic, edge-case surface and has no matching test evidence.",
+    "TokenParser has pure transformation logic, edge-case surface and needs edge-case review."
+  ]
+}

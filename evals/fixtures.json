@@ -65,6 +65,11 @@
     "path": "examples/kotlin-maven-junit"
   },
   {
+    "name": "kotlin-maven-reactor-junit",
+    "adapter": "kotlin",
+    "path": "examples/kotlin-maven-reactor-junit"
+  },
+  {
     "name": "kotlin-maven-wrapper-junit4",
     "adapter": "kotlin",
     "path": "examples/kotlin-maven-wrapper-junit4"

@@ -60,6 +60,8 @@ This avoids reporting generated, vendored, or nested dependency-fixture output a
 
 Conventionally included Gradle modules with their own build files collapse into the settings-owning aggregate project. Custom `projectDir` remaps and composite builds remain separate because a plain include path does not prove their directory ownership.
 
+Conventionally declared Maven `<module>` paths with child POMs collapse into the POM-owning reactor project. Profile-activated modules, property-expanded paths, directory escapes, and plugin configuration `<modules>` remain separate because the root POM does not statically prove their ownership.
+
 ## Output Contract
 
 Detection emits `project-detection/v1` with:

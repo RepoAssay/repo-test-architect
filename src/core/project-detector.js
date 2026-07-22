@@ -189,7 +189,10 @@ export function getProjectDetectionRules() {
  */
 export function detectProjects(repoRoot, options = {}) {
   const absoluteRoot = path.resolve(repoRoot);
-  const markerGroups = collapseOwnedGradleModules(absoluteRoot, collectMarkerGroups(absoluteRoot));
+  const markerGroups = collapseOwnedMavenModules(
+    absoluteRoot,
+    collapseOwnedGradleModules(absoluteRoot, collectMarkerGroups(absoluteRoot))
+  );
   const projects = [...markerGroups.values()]
     .map((project) => toDetectedProject(absoluteRoot, project))
     .filter((project) => !isExcludedProjectRoot(project.root, options.excludeProjectRoots))
@@ -205,6 +208,36 @@ export function detectProjects(repoRoot, options = {}) {
       unsupportedProjectCount: projects.filter((project) => !project.supported).length
     }
   };
+}
+
+function collapseOwnedMavenModules(repoRoot, markerGroups) {
+  const collapsed = new Map(markerGroups);
+  for (const group of markerGroups.values()) {
+    const pomMarker = group.markerFiles.find((markerFile) => /(?:^|\/)pom\.xml$/.test(markerFile));
+    if (!pomMarker) continue;
+    const pomText = fs.readFileSync(path.resolve(repoRoot, pomMarker), "utf8")
+      .replace(/<!--[\s\S]*?-->/g, " ")
+      .replace(/<(?:profiles|build|reporting|dependencies|dependencyManagement)>[\s\S]*?<\/(?:profiles|build|reporting|dependencies|dependencyManagement)>/g, " ");
+    const moduleText = [...pomText.matchAll(/<modules>([\s\S]*?)<\/modules>/g)]
+      .map((match) => match[1])
+      .join("\n");
+
+    for (const match of moduleText.matchAll(/<module>\s*([^<]+?)\s*<\/module>/g)) {
+      const moduleDirectory = normalizeProjectPattern(match[1].trim());
+      if (
+        !moduleDirectory ||
+        moduleDirectory === "." ||
+        moduleDirectory.startsWith("/") ||
+        moduleDirectory.split("/").includes("..") ||
+        moduleDirectory.includes("${")
+      ) continue;
+      const projectRoot = group.root === "." ? moduleDirectory : `${group.root}/${moduleDirectory}`;
+      const candidate = markerGroups.get(projectRoot);
+      if (!candidate || !candidate.markerFiles.some((markerFile) => /(?:^|\/)pom\.xml$/.test(markerFile))) continue;
+      collapsed.delete(projectRoot);
+    }
+  }
+  return collapsed;
 }
 
 function collapseOwnedGradleModules(repoRoot, markerGroups) {

@@ -238,6 +238,21 @@ describe("Kotlin audit adapter", () => {
     );
   });
 
+  it("audits the checked-in Maven reactor fixture as one dependency-qualified graph", () => {
+    const audit = auditKotlinRepo(path.resolve("examples/kotlin-maven-reactor-junit"));
+
+    assert.equal(audit.profile.testCommand, "./mvnw test");
+    assert.equal(audit.profile.confidence, "high");
+    assert.ok(audit.profile.setupSignals.includes("maven reactor graph"));
+    assert.deepEqual(audit.profile.existingTestLocations, ["token-tests/src/test"]);
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), [
+      "token-core/src/main/java/com/example/token/TokenParser.java"
+    ]);
+    assert.deepEqual(audit.coveredButRisky[0].existingTestPaths, [
+      "token-tests/src/test/java/com/example/token/TokenParserTest.java"
+    ]);
+  });
+
   it("detects Gradle Groovy JVM projects with Java test conventions", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-gradle-groovy-"));
     fs.mkdirSync(path.join(root, "src", "main", "java"), { recursive: true });
@@ -480,6 +495,39 @@ describe("Kotlin audit adapter", () => {
     assert.ok(audit.profile.setupSignals.includes("gradle module graph"));
     assert.deepEqual(audit.profile.existingTestLocations, ["token-tests/src/test", "unrelated-tests/src/test"]);
     assert.deepEqual(audit.coveredButRisky[0].existingTestPaths, ["token-tests/src/test/kotlin/com/example/tests/ParsingTest.kt"]);
+  });
+
+  it("audits conventional Maven reactor modules with dependency-qualified test evidence", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-maven-reactor-"));
+    for (const moduleName of ["token-core", "token-tests", "unrelated-tests", "profile-only"]) {
+      fs.mkdirSync(path.join(root, moduleName), { recursive: true });
+    }
+    fs.mkdirSync(path.join(root, "token-core", "src", "main", "java", "com", "example", "token"), { recursive: true });
+    fs.mkdirSync(path.join(root, "token-tests", "src", "test", "java", "com", "example", "tests"), { recursive: true });
+    fs.mkdirSync(path.join(root, "unrelated-tests", "src", "test", "java", "com", "example", "tests"), { recursive: true });
+    fs.mkdirSync(path.join(root, "profile-only", "src", "main", "java"), { recursive: true });
+    fs.writeFileSync(path.join(root, "pom.xml"), '<project><groupId>com.example</groupId><artifactId>tokens</artifactId><version>1</version><packaging>pom</packaging><modules><module>token-core</module><module>token-tests</module><module>unrelated-tests</module></modules><profiles><profile><modules><module>profile-only</module></modules></profile></profiles><build><plugins><plugin><configuration><modules><module>profile-only</module></modules></configuration></plugin></plugins></build></project>\n');
+    fs.writeFileSync(path.join(root, "mvnw"), "#!/bin/sh\n");
+    const childPrefix = '<project><parent><groupId>com.example</groupId><artifactId>tokens</artifactId><version>1</version></parent>';
+    fs.writeFileSync(path.join(root, "token-core", "pom.xml"), `${childPrefix}<artifactId>token-core</artifactId></project>\n`);
+    fs.writeFileSync(path.join(root, "token-tests", "pom.xml"), `${childPrefix}<artifactId>token-tests</artifactId><dependencies><dependency><groupId>${"${project.groupId}"}</groupId><artifactId>token-core</artifactId><scope>test</scope></dependency><dependency><groupId>org.junit.jupiter</groupId><artifactId>junit-jupiter</artifactId><scope>test</scope></dependency></dependencies></project>\n`);
+    fs.writeFileSync(path.join(root, "unrelated-tests", "pom.xml"), `${childPrefix}<artifactId>unrelated-tests</artifactId><dependencies><dependency><groupId>org.junit.jupiter</groupId><artifactId>junit-jupiter</artifactId><scope>test</scope></dependency></dependencies></project>\n`);
+    fs.writeFileSync(path.join(root, "profile-only", "pom.xml"), `${childPrefix}<artifactId>profile-only</artifactId></project>\n`);
+    fs.writeFileSync(path.join(root, "token-core", "src", "main", "java", "com", "example", "token", "TokenParser.java"), "package com.example.token; public class TokenParser { public String parse(String value) { return value == null ? \"\" : value.trim(); } }\n");
+    const testContent = "package com.example.tests; import com.example.token.TokenParser; class ParsingTest { @Test void parses() { new TokenParser().parse(\"x\"); } }\n";
+    fs.writeFileSync(path.join(root, "token-tests", "src", "test", "java", "com", "example", "tests", "ParsingTest.java"), testContent);
+    fs.writeFileSync(path.join(root, "unrelated-tests", "src", "test", "java", "com", "example", "tests", "PretendCoverageTest.java"), testContent);
+    fs.writeFileSync(path.join(root, "profile-only", "src", "main", "java", "ProfileParser.java"), "class ProfileParser { String parse(String value) { return value.trim(); } }\n");
+
+    const audit = auditKotlinRepo(root);
+
+    assert.equal(audit.profile.testCommand, "./mvnw test");
+    assert.equal(audit.profile.confidence, "high");
+    assert.deepEqual(audit.profile.blockers, []);
+    assert.ok(audit.profile.setupSignals.includes("maven reactor graph"));
+    assert.deepEqual(audit.profile.existingTestLocations, ["token-tests/src/test", "unrelated-tests/src/test"]);
+    assert.deepEqual(audit.coveredButRisky[0].existingTestPaths, ["token-tests/src/test/java/com/example/tests/ParsingTest.java"]);
+    assert.ok(!audit.recommended.some((target) => target.path.includes("profile-only")));
   });
 
   it("keeps custom Gradle project-directory remaps outside aggregate ownership", () => {

@@ -1,0 +1,65 @@
+{
+  "schemaVersion": "model-consistency-scenario/v1",
+  "id": "kotlin-maven-reactor-junit-plan",
+  "description": "Different model profiles should preserve dependency-qualified cross-module Maven evidence and the reactor command.",
+  "sourceArtifact": {
+    "path": "evals/expected/kotlin-maven-reactor-junit.audit.json",
+    "schemaVersion": "audit/v1"
+  },
+  "toolCall": {
+    "toolName": "generate_test_plan",
+    "arguments": {}
+  },
+  "lockedFields": [
+    {
+      "path": "summary.verificationCommand",
+      "expected": "./mvnw test",
+      "reason": "The root-owned reactor should preserve its Maven wrapper command."
+    },
+    {
+      "path": "summary.confidence",
+      "expected": "high",
+      "reason": "The conventional reactor modules, supported test framework, and dependency graph form a high-confidence shape."
+    },
+    {
+      "path": "summary.addTestCount",
+      "expected": 1,
+      "reason": "The formatter remains visibly untested across the owned reactor."
+    },
+    {
+      "path": "summary.extendTestCount",
+      "expected": 1,
+      "reason": "The parser keeps dependency-qualified cross-module test evidence."
+    },
+    {
+      "path": "items[0].id",
+      "expected": "add-test:token-core/src/main/java/com/example/token/TokenFormatter.java",
+      "reason": "The untested module-owned formatter must retain a stable plan identity."
+    },
+    {
+      "path": "items[1].id",
+      "expected": "extend-test:token-core/src/main/java/com/example/token/TokenParser.java",
+      "reason": "The covered module-owned parser must retain a stable plan identity."
+    },
+    {
+      "path": "items[1].existingTestEvidence[0].testPath",
+      "expected": "token-tests/src/test/java/com/example/token/TokenParserTest.java",
+      "reason": "The explicit dependent test module must remain the parser evidence owner."
+    },
+    {
+      "path": "items[1].existingTestEvidence[0].usage",
+      "expected": "asserted",
+      "reason": "The cross-module parser result remains consumed by a JUnit assertion."
+    }
+  ],
+  "allowedVariations": [
+    "summary wording",
+    "plan item explanation wording",
+    "optional detail depth"
+  ],
+  "unexpectedVariations": [
+    "child modules emitted as duplicate projects",
+    "unrelated module tests credited as evidence",
+    "cross-module parser evidence removed"
+  ]
+}

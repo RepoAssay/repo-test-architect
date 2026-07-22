@@ -1,0 +1,66 @@
+{
+  "schemaVersion": "plan/v1",
+  "summary": {
+    "confidence": "high",
+    "verificationCommand": "./mvnw test",
+    "blockerCount": 0,
+    "addTestCount": 1,
+    "extendTestCount": 1,
+    "deferredCount": 0
+  },
+  "blockers": [],
+  "items": [
+    {
+      "id": "add-test:token-core/src/main/java/com/example/token/TokenFormatter.java",
+      "action": "add-test",
+      "targetId": "token-core/src/main/java/com/example/token/TokenFormatter.java",
+      "target": "TokenFormatter",
+      "path": "token-core/src/main/java/com/example/token/TokenFormatter.java",
+      "testLevel": "unit",
+      "priority": 7,
+      "riskReductionScore": 9,
+      "maintenanceCost": 2,
+      "rationale": [
+        "Pure transformation logic",
+        "edge-case surface"
+      ],
+      "sourceSignals": [
+        "pure-logic",
+        "edge-case-surface"
+      ],
+      "existingTestPaths": []
+    },
+    {
+      "id": "extend-test:token-core/src/main/java/com/example/token/TokenParser.java",
+      "action": "extend-test",
+      "targetId": "token-core/src/main/java/com/example/token/TokenParser.java",
+      "target": "TokenParser",
+      "path": "token-core/src/main/java/com/example/token/TokenParser.java",
+      "testLevel": "unit",
+      "priority": 7,
+      "riskReductionScore": 9,
+      "maintenanceCost": 2,
+      "rationale": [
+        "Pure transformation logic",
+        "edge-case surface",
+        "Existing test evidence detected; review missing edge cases"
+      ],
+      "sourceSignals": [
+        "pure-logic",
+        "edge-case-surface",
+        "matching-test"
+      ],
+      "existingTestPaths": [
+        "token-tests/src/test/java/com/example/token/TokenParserTest.java"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "token-tests/src/test/java/com/example/token/TokenParserTest.java",
+          "kind": "jvm-symbol-reference",
+          "strength": "referenced",
+          "usage": "asserted"
+        }
+      ]
+    }
+  ]
+}

@@ -156,6 +156,58 @@ describe("project detector", () => {
     );
   });
 
+  it("collapses conventional Maven reactor modules into their aggregate project root", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-maven-reactor-detection-"));
+    fs.mkdirSync(path.join(root, "core"), { recursive: true });
+    fs.mkdirSync(path.join(root, "integration-tests"), { recursive: true });
+    fs.writeFileSync(path.join(root, "pom.xml"), "<project><modules><module>core</module><module>integration-tests</module></modules></project>\n");
+    fs.writeFileSync(path.join(root, "core", "pom.xml"), "<project />\n");
+    fs.writeFileSync(path.join(root, "integration-tests", "pom.xml"), "<project />\n");
+
+    const detection = detectProjects(root);
+
+    assert.equal(detection.summary.projectCount, 1);
+    assert.deepEqual(detection.projects.map((project) => ({ root: project.root, markerFiles: project.markerFiles })), [{
+      root: ".",
+      markerFiles: ["pom.xml"]
+    }]);
+  });
+
+  it("detects the checked-in Maven reactor fixture as one supported project", () => {
+    const detection = detectProjects(path.resolve("examples/kotlin-maven-reactor-junit"));
+
+    assert.deepEqual(detection.summary, {
+      projectCount: 1,
+      supportedProjectCount: 1,
+      unsupportedProjectCount: 0
+    });
+    assert.deepEqual(detection.projects.map((project) => ({
+      root: project.root,
+      markerFiles: project.markerFiles,
+      adapterIds: project.adapterIds
+    })), [{
+      root: ".",
+      markerFiles: ["pom.xml"],
+      adapterIds: ["kotlin"]
+    }]);
+  });
+
+  it("does not collapse Maven profile, property, or escaping module declarations", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-maven-reactor-exclusions-"));
+    for (const moduleName of ["profile-only", "property-module", "sibling"]) {
+      fs.mkdirSync(path.join(root, moduleName), { recursive: true });
+      fs.writeFileSync(path.join(root, moduleName, "pom.xml"), "<project />\n");
+    }
+    fs.writeFileSync(
+      path.join(root, "pom.xml"),
+      "<project><modules><module>${module.name}</module><module>../sibling</module></modules><profiles><profile><modules><module>profile-only</module></modules></profile></profiles><build><plugins><plugin><configuration><modules><module>property-module</module></modules></configuration></plugin></plugins></build></project>\n"
+    );
+
+    const detection = detectProjects(root);
+
+    assert.deepEqual(detection.projects.map((project) => project.root), [".", "profile-only", "property-module", "sibling"]);
+  });
+
   it("detects the Kotlin JUnit fixture as a supported JVM project", () => {
     const detection = detectProjects(path.resolve("examples/kotlin-junit-basic"));
     const fixtureRoot = path.resolve("examples/kotlin-junit-basic");
