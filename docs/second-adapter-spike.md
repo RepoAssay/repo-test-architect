@@ -44,7 +44,7 @@ The adapter must:
 Current Kotlin/JVM status:
 
 - promoted to supported `kotlin` within the bounded [Kotlin/JVM Alpha Support](kotlin-jvm-alpha-support.md) matrix
-- audits Gradle Kotlin DSL, Gradle Groovy DSL, conventional dependency-qualified Gradle module graphs, Maven, dependency-qualified Maven reactors, Maven-wrapper/JUnit 4, and explicit aggregate/Kotest boundary fixtures through the shared audit model
+- audits Gradle Kotlin DSL, Gradle Groovy DSL, conventional dependency-qualified Gradle module graphs, Maven, dependency-qualified Maven reactors, cycle-safe exported-transitive module edges, Maven-wrapper/JUnit 4, and explicit aggregate/Kotest boundary fixtures through the shared audit model
 - preserves mixed Java/Kotlin source ownership inside one JVM project root
 - classifies calculator/formatter logic as useful and DTO-style data classes as deferred
 - has golden audit and plan snapshots

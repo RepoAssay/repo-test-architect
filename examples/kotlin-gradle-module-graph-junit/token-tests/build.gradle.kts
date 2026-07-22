@@ -3,7 +3,7 @@ plugins {
 }
 
 dependencies {
-  testImplementation(project(":token-core"))
+  testImplementation(project(":token-api"))
   testImplementation(kotlin("test"))
 }
 
