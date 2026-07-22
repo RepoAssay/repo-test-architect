@@ -7,11 +7,11 @@ This matrix defines the bounded private-alpha support claim for the Kotlin/JVM a
 | Area | Current support | Evidence used |
 | --- | --- | --- |
 | Project shapes | Single-module or directly audited Gradle/Maven JVM modules; conventional Gradle aggregates; root-declared Maven reactors | root/module build files, settings `include(...)` declarations, root POM `<modules>`, static Maven coordinates, and standard JVM source sets |
-| Languages | Kotlin, Java, and mixed Kotlin/Java modules | `.kt` and `.java` files under `src/main/kotlin`, `src/main/java`, `src/test/kotlin`, and `src/test/java` |
-| Test frameworks | JUnit 4, JUnit 5/Jupiter, `kotlin.test`, and Kotest `FunSpec`, `StringSpec`, or `ShouldSpec` in Gradle JVM modules using JUnit Platform; method-level TestNG with a direct Maven dependency or Gradle `useTestNG()` | build dependencies/tasks, test imports and annotations, supported Kotest base classes and runnable cases, and exact TestNG method annotations |
+| Languages | Kotlin, Java, and mixed Kotlin/Java production modules, plus Groovy only for bounded Spock test evidence | `.kt` and `.java` files under standard `src/main` and `src/test` roots; `.groovy` files under `src/test/groovy` only when they are supported Spock specifications |
+| Test frameworks | JUnit 4, JUnit 5/Jupiter, `kotlin.test`, and Kotest `FunSpec`, `StringSpec`, or `ShouldSpec` in Gradle JVM modules using JUnit Platform; conventional Spock feature methods in direct `Specification` subclasses with a direct `spock-core` dependency and JUnit Platform; method-level TestNG with a direct Maven dependency or Gradle `useTestNG()` | build dependencies/tasks, test imports and annotations, supported Kotest base classes and runnable cases, direct Spock specification inheritance plus feature/condition blocks, and exact TestNG method annotations |
 | Commands | local wrappers, conventionally owned parent Gradle/Maven wrappers with module-qualified tasks/selectors, or system Gradle/Maven test commands | local and nearest parent `gradlew`/`mvnw`, Gradle settings includes, Maven reactor modules, and module build files |
-| Test provenance | exact imported types/functions, Java static-member imports, Kotlin top-level functions, same-package symbol references, wildcard package imports, fully qualified references, bounded receiver/result aliases consumed by JUnit, Kotest, or TestNG assertions, and dependency-qualified cross-module test reachability | parsed package/import declarations, exact source-symbol references, calls, assignments, assertion bodies including `shouldBe`/`shouldThrow`, TestNG `assert*`, and `expectThrows` forms, owning modules, direct Gradle project dependencies plus exported `api(...)` chains, and direct Maven compile/provided/test dependencies plus non-optional compile chains |
-| Test execution boundary | conventional test source files containing JUnit test, parameterized-test, factory/template, repeated-test, or runner annotations; JUnit 3 `TestCase` subclasses; runnable cases in the three supported Kotest spec styles; method-level TestNG tests without advanced annotations/attributes | supported framework markers plus a runnable case or method; a filename, empty spec, class-level TestNG annotation, advanced TestNG file, or helper under `src/test` is not sufficient |
+| Test provenance | exact imported types/functions, Java static-member imports, Kotlin top-level functions, same-package symbol references, wildcard package imports, fully qualified references, bounded receiver/result aliases consumed by JUnit, Kotest, Spock, or TestNG conditions/assertions, and dependency-qualified cross-module test reachability | parsed package/import declarations, exact source-symbol references, calls, assignments, assertion bodies including `shouldBe`/`shouldThrow`, Spock `then:`/`expect:` conditions, TestNG `assert*`, and `expectThrows` forms, owning modules, direct Gradle project dependencies plus exported `api(...)` chains, and direct Maven compile/provided/test dependencies plus non-optional compile chains |
+| Test execution boundary | conventional test source files containing JUnit test, parameterized-test, factory/template, repeated-test, or runner annotations; JUnit 3 `TestCase` subclasses; runnable cases in the three supported Kotest spec styles; direct Spock specifications with quoted feature methods and `then:` or `expect:` conditions; method-level TestNG tests without advanced annotations/attributes | supported framework markers plus a runnable case, feature, or method; a filename, empty spec, advanced Spock/TestNG file, class-level TestNG annotation, or helper under `src/test` is not sufficient |
 | Candidate boundaries | parsers, mappers, validators, formatters, converters, calculators, services, clients, repositories, gateways, and branching utilities | path, branching, and external-I/O signals |
 | Low-value boundaries | Kotlin data classes, Java records, declaration-only interfaces/enums, and files without detected runtime behavior | declarations, path, and source content |
 | Changed-file audits | repository-relative, current-directory-relative, absolute, and Windows-style paths | normalized paths passed through the shared audit API |
@@ -26,7 +26,8 @@ The current support claim does not include:
 - Kotlin Multiplatform source sets such as `commonMain`, `commonTest`, `jvmMain`, and `jvmTest`
 - Maven profile-activated modules, property-expanded or escaping module paths, nested reactor expansion, inherited dependencies, non-compile/optional/exclusion-bearing transitive edges, dynamic coordinates, and nonstandard module layouts
 - Gradle composite builds, custom `projectDir` remaps, non-`api` transitive project dependencies, modules containing explicit dependency exclusions, and modules without conventional build files/source sets
-- Groovy production/test sources and Spock
+- Groovy production sources, non-Spock Groovy tests, Maven Spock execution, Gradle `useSpock()` test-suite inference, inherited/dynamic Spock dependencies, and custom Groovy source sets
+- Spock fixture methods, annotations/extensions, `where:`/`filter:` data-driven features, helper assertions such as `with`/`verifyAll`, mocks/stubs/spies and interaction expressions, configuration files, and custom JUnit Platform engine/tag/test filters
 - Kotest on Maven or without a directly visible Gradle `useJUnitPlatform()` task; Kotest styles other than `FunSpec`, `StringSpec`, and `ShouldSpec`; Kotest lifecycle hooks, listeners/extensions, isolation/project configuration, data-driven tests, and property tests
 - TestNG class-level tests, lifecycle hooks, data providers, factories, parameters, listeners, dependency/group attributes, disabled/generated tests, suite XML, group filters, parallel configuration, or other custom execution selection
 - Spek, Cucumber, or other unsupported execution models
@@ -35,7 +36,7 @@ The current support claim does not include:
 - reflection, service loaders, runtime classpath scanning, test inheritance across modules, fixtures/extensions that create source objects indirectly, or dynamically generated tests
 - branch or assertion completeness; a direct test reference is evidence of a relationship, not proof that important behavior is asserted
 
-Unsupported test frameworks or Kotest variants, Android or multiplatform markers, missing owned standard source sets, and unresolvable aggregate shapes are emitted as blockers instead of silently upgraded to supported coverage.
+Unsupported test frameworks or Kotest/Spock/TestNG variants, Android or multiplatform markers, missing owned standard source sets, and unresolvable aggregate shapes are emitted as blockers instead of silently upgraded to supported coverage.
 
 ## Promotion Gates
 
@@ -44,7 +45,7 @@ The bounded adapter is promoted only when all of these remain true:
 1. Gradle Kotlin DSL, Gradle Groovy DSL, Maven, Gradle wrapper, Maven wrapper, and conventional Gradle/Maven aggregate behavior is fixture-locked.
 2. Mixed Kotlin/Java ownership and exact JVM symbol evidence are deterministic.
 3. Duplicate basenames, empty test shells, and `src/test` helper files cannot create false coverage.
-4. Conventional Gradle and Maven module graphs are dependency-qualified through direct or explicitly exported edges with cycle protection; supported Kotest specs require Gradle/JUnit Platform execution and supported TestNG files require direct conventional execution; custom mappings, computed/nested reactors, non-exported dependencies, Android, multiplatform, and unsupported framework/spec shapes remain visibly blocked or excluded.
+4. Conventional Gradle and Maven module graphs are dependency-qualified through direct or explicitly exported edges with cycle protection; supported Kotest and Spock specs require directly visible Gradle/JUnit Platform execution and supported TestNG files require direct conventional execution; custom mappings, computed/nested reactors, non-exported dependencies, Android, multiplatform, and unsupported framework/spec shapes remain visibly blocked or excluded.
 5. Representative public Kotlin and Java repositories produce explainable results without executing repository code.
 6. Golden artifacts, model-consistency locks, schema validation, and the full local release gate pass.
 
@@ -56,5 +57,5 @@ The gates are met for the common patterns above. The adapter is registered as `s
 
 1. Pressure nested/computed Maven reactors and additional statically provable dependency syntax without widening ownership implicitly.
 2. Add Kotlin Multiplatform only after source-set ownership and target-specific test commands are deterministic.
-3. Evaluate additional Kotest and TestNG semantics plus Spock as separate execution/evidence variants without inferring their semantics from a generic test marker.
+3. Evaluate additional Kotest, Spock, and TestNG semantics as separate execution/evidence variants without inferring their semantics from a generic test marker.
 4. Add framework-specific HTTP, persistence, coroutine, and DI semantics only from representative repository evidence.

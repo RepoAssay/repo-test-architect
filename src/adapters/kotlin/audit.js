@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
-const SOURCE_EXTENSIONS = [".kt", ".java"];
+const SOURCE_EXTENSIONS = [".kt", ".java", ".groovy"];
 const BUILD_FILE_NAMES = new Set([
   "build.gradle",
   "build.gradle.kts",
@@ -307,9 +307,11 @@ function moduleBuildText(module, files) {
 
 function moduleForPath(currentPath, modules, sourceSet) {
   const normalized = normalizePath(currentPath);
+  const sourceDirectory = sourceSet === "test" ? "(?:kotlin|java|groovy)" : "(?:kotlin|java)";
+  const sourceExtension = sourceSet === "test" ? "(?:kt|java|groovy)" : "(?:kt|java)";
   return modules.find((module) => {
     const prefix = module.directory === "." ? "" : `${module.directory}/`;
-    return new RegExp(`^${escapeRegExp(prefix)}src/${sourceSet}/(?:kotlin|java)/.+\\.(?:kt|java)$`).test(normalized);
+    return new RegExp(`^${escapeRegExp(prefix)}src/${sourceSet}/${sourceDirectory}/.+\\.${sourceExtension}$`).test(normalized);
   });
 }
 
@@ -318,12 +320,11 @@ function buildProfile(root, files, modules) {
   const buildText = modules.map((module) => moduleBuildText(module, files)).join("\n");
   const testText = files.filter((file) => isTestFile(file.path, modules)).map((file) => file.content).join("\n");
   const testFrameworks = detectTestFrameworks(buildText, testText, files, modules);
-  const unsupportedTestFrameworks = detectUnsupportedTestFrameworks(buildText);
   const unsupportedProjectShapes = detectUnsupportedProjectShapes(buildText, paths);
   const testCommandResolution = detectTestCommand(root, paths, testFrameworks);
   const testCommand = testCommandResolution.command;
   const existingTestLocations = detectExistingTestLocations(paths, modules);
-  const blockers = detectBlockers(paths, files, modules, testCommand, testFrameworks, unsupportedTestFrameworks, unsupportedProjectShapes);
+  const blockers = detectBlockers(paths, files, modules, testCommand, testFrameworks, unsupportedProjectShapes);
 
   return {
     root,
@@ -362,13 +363,8 @@ function detectTestFrameworks(buildText, testText, files, modules) {
   if (/kotlin\s*\(\s*["']test["']\s*\)|\bkotlin-test\b|\bkotlin\.test\b/.test(`${buildText}\n${testText}`)) frameworks.add("kotlin-test");
   if (/\b(?:junit|org\.junit|useJUnitPlatform)\b/i.test(`${buildText}\n${testText}`)) frameworks.add("junit");
   if (modules.some((module) => supportsKotestModule(module, files))) frameworks.add("kotest");
+  if (modules.some((module) => supportsSpockModule(module, files))) frameworks.add("spock");
   if (modules.some((module) => supportsTestNgModule(module, files))) frameworks.add("testng");
-  return [...frameworks].sort();
-}
-
-function detectUnsupportedTestFrameworks(buildText) {
-  const frameworks = new Set();
-  if (/\bspock(?:framework)?\b/i.test(buildText)) frameworks.add("spock");
   return [...frameworks].sort();
 }
 
@@ -379,6 +375,26 @@ function usesKotest(content) {
 function supportsKotestModule(module, files) {
   const buildText = moduleBuildText(module, files);
   return module.buildSystem === "gradle" && usesKotest(buildText) && /\buseJUnitPlatform\s*\(/.test(buildText);
+}
+
+function usesSpock(content) {
+  return /\b(?:org\.spockframework|spock-core|spock\.lang\.Specification|useSpock\s*\()/i.test(content);
+}
+
+function usesSpockSpecification(content) {
+  return /\b(?:import\s+spock\.lang\.Specification|extends\s+(?:spock\.lang\.)?Specification)\b/.test(content);
+}
+
+function supportsSpockModule(module, files) {
+  const buildText = moduleBuildText(module, files);
+  return module.buildSystem === "gradle" && /\b(?:org\.spockframework|spock-core)\b/i.test(buildText) && /\buseJUnitPlatform\s*\(\s*\)/.test(buildText) && !hasAdvancedSpockExecution(module, files);
+}
+
+function hasAdvancedSpockExecution(module, files) {
+  const buildText = moduleBuildText(module, files);
+  const prefix = module.directory === "." ? "" : `${module.directory}/`;
+  return /\b(?:includeTags|excludeTags|includeEngines|excludeEngines|includeTestsMatching|excludeTestsMatching)\s*(?:\(|["'])|\bscanForTestClasses\s*=/.test(buildText) ||
+    files.some((file) => normalizePath(file.path).startsWith(`${prefix}src/test/resources/`) && normalizePath(file.path).endsWith("SpockConfig.groovy"));
 }
 
 function usesTestNg(content) {
@@ -542,8 +558,10 @@ function detectExistingTestLocations(paths, modules) {
 function detectConventions(paths, modules) {
   const conventions = new Set();
   if (paths.some((item) => /(?:^|\/)(?:Test[^/]*|[^/]*(?:Test|Tests|TestCase))\.(?:kt|java)$/.test(item))) conventions.add("*Test files");
+  if (paths.some((item) => /(?:^|\/)[^/]*Spec\.groovy$/.test(item))) conventions.add("*Spec files");
   if (paths.some((item) => moduleForPath(item, modules, "test") && /(?:^|\/)src\/test\/kotlin\//.test(item))) conventions.add("src/test/kotlin");
   if (paths.some((item) => moduleForPath(item, modules, "test") && /(?:^|\/)src\/test\/java\//.test(item))) conventions.add("src/test/java");
+  if (paths.some((item) => moduleForPath(item, modules, "test") && /(?:^|\/)src\/test\/groovy\//.test(item))) conventions.add("src/test/groovy");
   return [...conventions];
 }
 
@@ -556,8 +574,9 @@ function detectSetupSignals(paths, buildText, testText, testCommandResolution, m
   if (paths.includes("pom.xml")) signals.add("maven");
   if (paths.includes("mvnw") || paths.includes("mvnw.cmd")) signals.add("maven wrapper");
   if (/useJUnitPlatform|org\.junit\.jupiter/i.test(`${buildText}\n${testText}`)) signals.add("junit platform");
-  if (/org\.junit(?!\.jupiter)/i.test(`${buildText}\n${testText}`)) signals.add("junit 4");
+  if (/org\.junit(?!\.(?:jupiter|platform))/i.test(`${buildText}\n${testText}`)) signals.add("junit 4");
   if (usesKotest(`${buildText}\n${testText}`)) signals.add("kotest");
+  if (usesSpock(`${buildText}\n${testText}`)) signals.add("spock");
   if (usesTestNg(`${buildText}\n${testText}`)) signals.add("testng");
   if (testCommandResolution.inheritedSignal) signals.add(testCommandResolution.inheritedSignal);
   if (modules.some((module) => module.buildSystem === "gradle" && module.directory !== ".")) signals.add("gradle module graph");
@@ -565,7 +584,7 @@ function detectSetupSignals(paths, buildText, testText, testCommandResolution, m
   return [...signals];
 }
 
-function detectBlockers(paths, files, modules, testCommand, frameworks, unsupportedTestFrameworks, unsupportedProjectShapes) {
+function detectBlockers(paths, files, modules, testCommand, frameworks, unsupportedProjectShapes) {
   const blockers = [];
   if (frameworks.length === 0) blockers.push("No supported JVM test framework detected.");
   if (!testCommand) blockers.push("No runnable JVM test command detected from Gradle or Maven markers.");
@@ -577,8 +596,8 @@ function detectBlockers(paths, files, modules, testCommand, frameworks, unsuppor
         : "No supported src/main/java or src/main/kotlin source set detected."
     );
   }
-  if (unsupportedTestFrameworks.length > 0) blockers.push(`Unsupported JVM test frameworks detected: ${unsupportedTestFrameworks.join(", ")}.`);
   blockers.push(...detectKotestBlockers(files, modules));
+  blockers.push(...detectSpockBlockers(files, modules));
   blockers.push(...detectTestNgBlockers(files, modules));
   blockers.push(...unsupportedProjectShapes);
   return blockers;
@@ -637,6 +656,39 @@ function detectTestNgBlockers(files, modules) {
     blockers.push("TestNG class-level tests, lifecycle hooks, generated or parameterized tests, listeners, and dependency or group semantics are outside the supported evidence boundary.");
   }
   return blockers;
+}
+
+function detectSpockBlockers(files, modules) {
+  const blockers = [];
+  const spockModules = modules.filter((module) => usesSpock(moduleBuildText(module, files)));
+  const spockFiles = files.filter((file) => isTestFile(file.path, modules) && usesSpockSpecification(file.content));
+  if (spockModules.length === 0 && spockFiles.length === 0) return blockers;
+
+  if (
+    spockModules.some((module) => !supportsSpockModule(module, files)) ||
+    spockFiles.some((file) => {
+      const module = moduleForPath(file.path, modules, "test");
+      return !module || !supportsSpockModule(module, files);
+    })
+  ) {
+    blockers.push("Spock support requires a Gradle JVM module with a direct spock-core dependency and conventional JUnit Platform execution.");
+  }
+  if (spockModules.some((module) => hasAdvancedSpockExecution(module, files))) {
+    blockers.push("Spock configuration files and custom JUnit Platform engine, tag, or test filters are outside the supported execution boundary.");
+  }
+  if (spockFiles.some((file) => hasUnsupportedSpockSemantics(file.content))) {
+    blockers.push("Spock fixtures, data-driven features, extensions, helper assertions, and interaction-based mocking are outside the supported evidence boundary.");
+  }
+  return blockers;
+}
+
+function hasUnsupportedSpockSemantics(content) {
+  const stripped = stripJvmCommentsAndStrings(content);
+  return /^\s*@/m.test(stripped) ||
+    /^\s*(?:where|filter)\s*:/m.test(stripped) ||
+    /\b(?:def|void)\s+(?:setup|cleanup|setupSpec|cleanupSpec)\s*\(/.test(stripped) ||
+    /\b(?:Mock|Stub|Spy|GroovyMock|GroovyStub|GroovySpy|DetachedMockFactory|with|verifyAll)\s*\(/.test(stripped) ||
+    /(?:^|[;\n])\s*(?:\d+|_)\s*\*|>{2,3}/m.test(stripped);
 }
 
 function hasUnsupportedTestNgSemantics(content) {
@@ -894,6 +946,31 @@ function jvmAssertionBodies(content) {
     if (/\bshould(?:Not)?[A-Z][A-Za-z]*\b/.test(line)) bodies.push(line);
   }
 
+  bodies.push(...spockConditionBodies(content));
+
+  return bodies;
+}
+
+function spockConditionBodies(content) {
+  if (!usesSpockSpecification(content)) return [];
+  const bodies = [];
+  let active = false;
+  let body = [];
+  for (const line of stripJvmCommentsAndStrings(content).split("\n")) {
+    const blockMatch = line.match(/^\s*(given|setup|when|then|expect|cleanup|where|filter|and)\s*:\s*(.*)$/);
+    if (blockMatch) {
+      const [, block, inlineBody] = blockMatch;
+      if (block !== "and") {
+        if (active && body.length > 0) bodies.push(body.join("\n"));
+        active = ["then", "expect"].includes(block);
+        body = [];
+      }
+      if (active && inlineBody) body.push(inlineBody);
+      continue;
+    }
+    if (active) body.push(line);
+  }
+  if (active && body.length > 0) bodies.push(body.join("\n"));
   return bodies;
 }
 
@@ -912,6 +989,9 @@ function isEvidenceTestFile(file, files, modules, frameworks) {
   if (usesTestNgAnnotations(file.content)) {
     return Boolean(frameworks.includes("testng") && module && supportsTestNgModule(module, files) && isSupportedTestNgFile(file.content));
   }
+  if (usesSpockSpecification(file.content)) {
+    return Boolean(frameworks.includes("spock") && module && supportsSpockModule(module, files) && isSupportedSpockSpec(file.content));
+  }
   if (frameworks.some((framework) => ["junit", "kotlin-test"].includes(framework)) && /@(?:[A-Za-z_$][\w$]*\.)*(?:Test|ParameterizedTest|RepeatedTest|TestFactory|TestTemplate|RunWith)\b|\bextends\s+(?:junit\.framework\.)?TestCase\b/.test(content)) return true;
   return Boolean(frameworks.includes("kotest") && module && supportsKotestModule(module, files) && isSupportedKotestSpec(file.content));
 }
@@ -923,6 +1003,14 @@ function isSupportedTestNgFile(content) {
   const kotlinMethod = new RegExp(`${testAnnotation}\\s*(?:(?:public|internal|private|protected|open|final|override|suspend)\\s+)*fun\\s+[A-Za-z_$][\\w$]*\\s*\\(`);
   const javaMethod = new RegExp(`${testAnnotation}\\s*(?:(?:public|private|protected|static|final|synchronized)\\s+)*(?:[A-Za-z_$][\\w$]*(?:\\s*<[^>{};\\n]+>)?(?:\\[\\])?)\\s+[A-Za-z_$][\\w$]*\\s*\\(`);
   return kotlinMethod.test(stripped) || javaMethod.test(stripped);
+}
+
+function isSupportedSpockSpec(content) {
+  if (hasUnsupportedSpockSemantics(content)) return false;
+  const commentsRemoved = stripJvmComments(content);
+  return /\bclass\s+[A-Za-z_$][\w$]*\s+extends\s+(?:spock\.lang\.)?Specification\b/.test(commentsRemoved) &&
+    /\bdef\s+["'][^"'\n]+["']\s*\([^)]*\)\s*\{/.test(commentsRemoved) &&
+    /^\s*(?:then|expect)\s*:/m.test(commentsRemoved);
 }
 
 function isSupportedKotestSpec(content) {

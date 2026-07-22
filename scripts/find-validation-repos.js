@@ -133,6 +133,16 @@ export const validationProfiles = {
       { signal: "gradle-wrapper", entryPattern: /^gradlew$/ }
     ]
   },
+  "gradle-spock": {
+    description: "Java/JVM Gradle projects with conventional Spock execution",
+    repositoryQuery: "spock gradle",
+    language: "Java",
+    searches: [
+      { signal: "gradle-spock", file: "build.gradle.kts", pattern: /(?=[\s\S]*\b(?:org\.spockframework|spock-core)\b)(?=[\s\S]*\buseJUnitPlatform\s*\(\s*\))/i },
+      { signal: "gradle-spock", file: "build.gradle", pattern: /(?=[\s\S]*\b(?:org\.spockframework|spock-core)\b)(?=[\s\S]*\buseJUnitPlatform\s*\(\s*\))/i },
+      { signal: "gradle-wrapper", entryPattern: /^gradlew$/ }
+    ]
+  },
   "gradle-testng": {
     description: "Kotlin/JVM Gradle projects with conventional TestNG execution",
     repositoryQuery: "testng gradle",

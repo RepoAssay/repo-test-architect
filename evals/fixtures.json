@@ -80,6 +80,11 @@
     "path": "examples/kotlin-gradle-aggregate-kotest"
   },
   {
+    "name": "kotlin-gradle-spock",
+    "adapter": "kotlin",
+    "path": "examples/kotlin-gradle-spock"
+  },
+  {
     "name": "kotlin-maven-testng",
     "adapter": "kotlin",
     "path": "examples/kotlin-maven-testng"

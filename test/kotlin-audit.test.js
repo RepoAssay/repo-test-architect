@@ -8,6 +8,7 @@ import { auditKotlinRepo } from "../src/adapters/kotlin/audit.js";
 const exampleRoot = path.resolve("examples/kotlin-junit-basic");
 const gradleGroovyRoot = path.resolve("examples/kotlin-gradle-groovy-junit");
 const mavenRoot = path.resolve("examples/kotlin-maven-junit");
+const spockRoot = path.resolve("examples/kotlin-gradle-spock");
 const testNgRoot = path.resolve("examples/kotlin-maven-testng");
 
 describe("Kotlin audit adapter", () => {
@@ -523,6 +524,55 @@ describe("Kotlin audit adapter", () => {
 
     assert.ok(!audit.profile.testFrameworks.includes("kotest"));
     assert.ok(audit.profile.blockers.includes("Kotest support requires a Gradle JVM test task using JUnit Platform."));
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.name), ["TokenParser"]);
+  });
+
+  it("audits conventional Spock features with asserted condition provenance", () => {
+    const audit = auditKotlinRepo(spockRoot);
+
+    assert.deepEqual(audit.profile.testFrameworks, ["junit", "spock"]);
+    assert.equal(audit.profile.testCommand, "./gradlew test");
+    assert.equal(audit.profile.confidence, "high");
+    assert.deepEqual(audit.profile.blockers, []);
+    assert.ok(audit.profile.setupSignals.includes("spock"));
+    assert.ok(audit.profile.detectedConventions.includes("*Spec files"));
+    assert.ok(audit.profile.detectedConventions.includes("src/test/groovy"));
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.name), ["TokenFormatter"]);
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.name), ["TokenParser"]);
+    assert.equal(audit.coveredButRisky[0].existingTestEvidence[0].usage, "asserted");
+  });
+
+  it("keeps advanced Spock semantics out of evidence", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-spock-boundary-"));
+    fs.mkdirSync(path.join(root, "src", "main", "java", "com", "example"), { recursive: true });
+    fs.mkdirSync(path.join(root, "src", "test", "groovy", "com", "example"), { recursive: true });
+    fs.writeFileSync(path.join(root, "settings.gradle"), "rootProject.name = 'spock-boundary'\n");
+    fs.writeFileSync(path.join(root, "build.gradle"), "plugins { id 'java'; id 'groovy' }\ndependencies { testImplementation 'org.spockframework:spock-core:2.4-groovy-4.0' }\ntest { useJUnitPlatform() }\n");
+    fs.writeFileSync(path.join(root, "src", "main", "java", "com", "example", "TokenParser.java"), "package com.example; public class TokenParser { public String parse(String value) { return value.trim(); } }\n");
+    fs.writeFileSync(path.join(root, "src", "test", "groovy", "com", "example", "TokenParserSpec.groovy"), "package com.example\nimport spock.lang.Specification\nclass TokenParserSpec extends Specification { def 'parses rows'() { expect: new TokenParser().parse(value) == expected\nwhere:\nvalue | expected\n' x ' | 'x' } }\n");
+
+    const audit = auditKotlinRepo(root);
+
+    assert.deepEqual(audit.profile.testFrameworks, ["junit", "spock"]);
+    assert.ok(audit.profile.blockers.includes("Spock fixtures, data-driven features, extensions, helper assertions, and interaction-based mocking are outside the supported evidence boundary."));
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.name), ["TokenParser"]);
+    assert.deepEqual(audit.coveredButRisky, []);
+  });
+
+  it("blocks Spock without conventional JUnit Platform execution and with custom selection", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-spock-execution-"));
+    fs.mkdirSync(path.join(root, "src", "main", "java"), { recursive: true });
+    fs.mkdirSync(path.join(root, "src", "test", "groovy"), { recursive: true });
+    fs.writeFileSync(path.join(root, "settings.gradle"), "rootProject.name = 'spock-execution'\n");
+    fs.writeFileSync(path.join(root, "build.gradle"), "plugins { id 'java'; id 'groovy' }\ndependencies { testImplementation 'org.spockframework:spock-core:2.4-groovy-4.0' }\ntest { useJUnitPlatform { includeTags 'fast' } }\n");
+    fs.writeFileSync(path.join(root, "src", "main", "java", "TokenParser.java"), "class TokenParser { String parse(String value) { return value.trim(); } }\n");
+    fs.writeFileSync(path.join(root, "src", "test", "groovy", "TokenParserSpec.groovy"), "import spock.lang.Specification\nclass TokenParserSpec extends Specification { def 'parses'() { expect: new TokenParser().parse(' x ') == 'x' } }\n");
+
+    const audit = auditKotlinRepo(root);
+
+    assert.ok(!audit.profile.testFrameworks.includes("spock"));
+    assert.ok(audit.profile.blockers.includes("Spock support requires a Gradle JVM module with a direct spock-core dependency and conventional JUnit Platform execution."));
+    assert.ok(audit.profile.blockers.includes("Spock configuration files and custom JUnit Platform engine, tag, or test filters are outside the supported execution boundary."));
     assert.deepEqual(audit.untestedCandidates.map((target) => target.name), ["TokenParser"]);
   });
 

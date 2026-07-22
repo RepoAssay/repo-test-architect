@@ -70,11 +70,11 @@ Status: Swift, Python, and bounded Kotlin/JVM modules reached supported private-
 
 Useful hardening targets:
 
-- Kotlin/JVM with Gradle/Maven, JUnit variants, and bounded Kotest common specs plus method-level TestNG
+- Kotlin/JVM with Gradle/Maven, JUnit variants, bounded Kotest common specs, conventional Spock features, and method-level TestNG
 - Swift Package Manager with XCTest, Swift Testing, Quick/Nimble, and SnapshotTesting signals
 - Python fixture reachability, async/parametrized/property-based pytest conventions, Django/Flask routes, tox/nox commands, coverage configuration, and no-tests-yet blocker behavior
 
-Python's supported boundary and known exclusions are tracked in [Python Alpha Support](python-alpha-support.md). Kotlin/JVM's conventional Gradle/Maven, directly declared aggregate, exported-transitive dependency, JUnit, bounded Kotest common-spec, and method-level TestNG boundary is tracked in [Kotlin/JVM Alpha Support](kotlin-jvm-alpha-support.md); computed/nested Maven reactors, inherited/dynamic dependencies, custom/composite Gradle graphs, Android, multiplatform, additional Kotest/TestNG semantics, and other JVM frameworks remain post-promotion pressure.
+Python's supported boundary and known exclusions are tracked in [Python Alpha Support](python-alpha-support.md). Kotlin/JVM's conventional Gradle/Maven, directly declared aggregate, exported-transitive dependency, JUnit, bounded Kotest common-spec, conventional Spock feature, and method-level TestNG boundary is tracked in [Kotlin/JVM Alpha Support](kotlin-jvm-alpha-support.md); computed/nested Maven reactors, inherited/dynamic dependencies, custom/composite Gradle graphs, Android, multiplatform, and additional Kotest/Spock/TestNG semantics remain post-promotion pressure.
 
 ### Adapter Reuse Boundary
 
