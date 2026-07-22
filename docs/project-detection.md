@@ -58,6 +58,8 @@ The detector skips common dependency and build output directories:
 
 This avoids reporting generated, vendored, or nested dependency-fixture output as independent projects. A fixture directory audited as the repository root still detects its own root marker; only nested traversal is skipped.
 
+Conventionally included Gradle modules with their own build files collapse into the settings-owning aggregate project. Custom `projectDir` remaps and composite builds remain separate because a plain include path does not prove their directory ownership.
+
 ## Output Contract
 
 Detection emits `project-detection/v1` with:

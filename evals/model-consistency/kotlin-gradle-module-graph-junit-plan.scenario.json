@@ -1,0 +1,65 @@
+{
+  "schemaVersion": "model-consistency-scenario/v1",
+  "id": "kotlin-gradle-module-graph-junit-plan",
+  "description": "Different model profiles should preserve dependency-qualified cross-module JVM evidence and aggregate commands.",
+  "sourceArtifact": {
+    "path": "evals/expected/kotlin-gradle-module-graph-junit.audit.json",
+    "schemaVersion": "audit/v1"
+  },
+  "toolCall": {
+    "toolName": "generate_test_plan",
+    "arguments": {}
+  },
+  "lockedFields": [
+    {
+      "path": "summary.verificationCommand",
+      "expected": "./gradlew test",
+      "reason": "The settings-owned aggregate should preserve its root wrapper command."
+    },
+    {
+      "path": "summary.confidence",
+      "expected": "high",
+      "reason": "The conventional modules, supported test framework, and dependency graph form a high-confidence shape."
+    },
+    {
+      "path": "summary.addTestCount",
+      "expected": 1,
+      "reason": "The formatter remains visibly untested across the owned module graph."
+    },
+    {
+      "path": "summary.extendTestCount",
+      "expected": 1,
+      "reason": "The parser keeps dependency-qualified cross-module test evidence."
+    },
+    {
+      "path": "items[0].id",
+      "expected": "add-test:token-core/src/main/kotlin/com/example/token/TokenFormatter.kt",
+      "reason": "The untested module-owned formatter must retain a stable plan identity."
+    },
+    {
+      "path": "items[1].id",
+      "expected": "extend-test:token-core/src/main/kotlin/com/example/token/TokenParser.kt",
+      "reason": "The covered module-owned parser must retain a stable plan identity."
+    },
+    {
+      "path": "items[1].existingTestEvidence[0].testPath",
+      "expected": "token-tests/src/test/kotlin/com/example/token/TokenParserTest.kt",
+      "reason": "The explicit dependent test module must remain the parser evidence owner."
+    },
+    {
+      "path": "items[1].existingTestEvidence[0].usage",
+      "expected": "asserted",
+      "reason": "The cross-module parser result remains consumed by a Kotlin assertion."
+    }
+  ],
+  "allowedVariations": [
+    "summary wording",
+    "plan item explanation wording",
+    "optional detail depth"
+  ],
+  "unexpectedVariations": [
+    "child modules emitted as duplicate projects",
+    "unrelated module tests credited as evidence",
+    "cross-module parser evidence removed"
+  ]
+}

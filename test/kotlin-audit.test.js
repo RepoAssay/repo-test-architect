@@ -453,6 +453,56 @@ describe("Kotlin audit adapter", () => {
     assert.deepEqual(audit.recommended, []);
   });
 
+  it("audits conventionally declared Gradle modules with dependency-qualified test evidence", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-gradle-module-graph-"));
+    for (const moduleName of ["token-core", "token-tests", "unrelated-tests"]) {
+      fs.mkdirSync(path.join(root, moduleName), { recursive: true });
+    }
+    fs.mkdirSync(path.join(root, "token-core", "src", "main", "kotlin", "com", "example", "token"), { recursive: true });
+    fs.mkdirSync(path.join(root, "token-tests", "src", "test", "kotlin", "com", "example", "tests"), { recursive: true });
+    fs.mkdirSync(path.join(root, "unrelated-tests", "src", "test", "kotlin", "com", "example", "tests"), { recursive: true });
+    fs.writeFileSync(path.join(root, "settings.gradle.kts"), 'include(":token-core", ":token-tests", ":unrelated-tests")\n');
+    fs.writeFileSync(path.join(root, "build.gradle.kts"), 'plugins { kotlin("jvm") version "2.0.0" apply false }\n');
+    fs.writeFileSync(path.join(root, "gradlew"), "#!/usr/bin/env sh\n");
+    fs.writeFileSync(path.join(root, "token-core", "build.gradle.kts"), 'plugins { kotlin("jvm") }\n');
+    fs.writeFileSync(path.join(root, "token-tests", "build.gradle.kts"), 'plugins { kotlin("jvm") }\ndependencies { testImplementation(project(":token-core")); testImplementation(kotlin("test")) }\ntasks.test { useJUnitPlatform() }\n');
+    fs.writeFileSync(path.join(root, "unrelated-tests", "build.gradle.kts"), 'plugins { kotlin("jvm") }\ndependencies { testImplementation(kotlin("test")) }\n');
+    fs.writeFileSync(path.join(root, "token-core", "src", "main", "kotlin", "com", "example", "token", "TokenParser.kt"), "package com.example.token\nclass TokenParser { fun parse(value: String) = if (value.isBlank()) null else value }\n");
+    const testContent = "package com.example.tests\nimport com.example.token.TokenParser\nimport kotlin.test.Test\nclass ParsingTest { @Test fun parses() { TokenParser().parse(\"x\") } }\n";
+    fs.writeFileSync(path.join(root, "token-tests", "src", "test", "kotlin", "com", "example", "tests", "ParsingTest.kt"), testContent);
+    fs.writeFileSync(path.join(root, "unrelated-tests", "src", "test", "kotlin", "com", "example", "tests", "PretendCoverageTest.kt"), testContent);
+
+    const audit = auditKotlinRepo(root);
+
+    assert.equal(audit.profile.testCommand, "./gradlew test");
+    assert.equal(audit.profile.confidence, "high");
+    assert.deepEqual(audit.profile.blockers, []);
+    assert.ok(audit.profile.setupSignals.includes("gradle module graph"));
+    assert.deepEqual(audit.profile.existingTestLocations, ["token-tests/src/test", "unrelated-tests/src/test"]);
+    assert.deepEqual(audit.coveredButRisky[0].existingTestPaths, ["token-tests/src/test/kotlin/com/example/tests/ParsingTest.kt"]);
+  });
+
+  it("keeps custom Gradle project-directory remaps outside aggregate ownership", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-gradle-aggregate-remap-"));
+    fs.mkdirSync(path.join(root, "modules", "token-core", "src", "main", "kotlin"), { recursive: true });
+    fs.mkdirSync(path.join(root, "modules", "token-core", "src", "test", "kotlin"), { recursive: true });
+    fs.mkdirSync(path.join(root, "tokens", "src", "main", "kotlin"), { recursive: true });
+    fs.writeFileSync(path.join(root, "settings.gradle.kts"), 'include(":tokens")\nproject(":tokens").projectDir = file("modules/token-core")\n');
+    fs.writeFileSync(path.join(root, "build.gradle.kts"), 'plugins { kotlin("jvm") version "2.0.0" apply false }\ndependencies { testImplementation(kotlin("test")) }\n');
+    fs.writeFileSync(path.join(root, "modules", "token-core", "build.gradle.kts"), 'plugins { kotlin("jvm") }\n');
+    fs.writeFileSync(path.join(root, "tokens", "build.gradle.kts"), 'plugins { kotlin("jvm") }\n');
+    fs.writeFileSync(path.join(root, "modules", "token-core", "src", "main", "kotlin", "TokenParser.kt"), "class TokenParser { fun parse(value: String) = value.trim() }\n");
+    fs.writeFileSync(path.join(root, "modules", "token-core", "src", "test", "kotlin", "TokenParserTest.kt"), "class TokenParserTest { @Test fun parses() { TokenParser().parse(\"x\") } }\n");
+    fs.writeFileSync(path.join(root, "tokens", "src", "main", "kotlin", "CoincidentalParser.kt"), "class CoincidentalParser { fun parse(value: String) = value.trim() }\n");
+
+    const audit = auditKotlinRepo(root);
+
+    assert.equal(audit.profile.confidence, "low");
+    assert.ok(audit.profile.blockers.includes("No supported root JVM source set detected; audit a Gradle or Maven module root."));
+    assert.deepEqual(audit.recommended, []);
+    assert.ok(!audit.profile.setupSignals.includes("gradle module graph"));
+  });
+
   it("marks Android source sets outside the supported JVM module boundary", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-android-"));
     fs.mkdirSync(path.join(root, "src", "main", "kotlin", "com", "example"), { recursive: true });
@@ -467,6 +517,27 @@ describe("Kotlin audit adapter", () => {
 
     assert.equal(audit.profile.confidence, "medium");
     assert.ok(audit.profile.blockers.includes("Android unit and instrumentation source sets are outside the supported JVM module boundary."));
+  });
+
+  it("marks Kotlin Multiplatform modules outside the supported JVM module boundary", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-multiplatform-"));
+    fs.mkdirSync(path.join(root, "jvm-tools", "src", "main", "kotlin"), { recursive: true });
+    fs.mkdirSync(path.join(root, "jvm-tools", "src", "test", "kotlin"), { recursive: true });
+    fs.mkdirSync(path.join(root, "library", "src", "commonMain", "kotlin"), { recursive: true });
+    fs.writeFileSync(path.join(root, "settings.gradle.kts"), 'include(":jvm-tools", ":library")\n');
+    fs.writeFileSync(path.join(root, "build.gradle.kts"), 'plugins { kotlin("multiplatform") version "2.0.0" apply false }\n');
+    fs.writeFileSync(path.join(root, "jvm-tools", "build.gradle.kts"), 'plugins { kotlin("jvm") }\ndependencies { testImplementation(kotlin("test")) }\n');
+    fs.writeFileSync(path.join(root, "library", "build.gradle.kts"), 'plugins { kotlin("multiplatform") }\n');
+    fs.writeFileSync(path.join(root, "jvm-tools", "src", "main", "kotlin", "TokenParser.kt"), "class TokenParser { fun parse(value: String) = value.trim() }\n");
+    fs.writeFileSync(path.join(root, "jvm-tools", "src", "test", "kotlin", "TokenParserTest.kt"), "class TokenParserTest { @Test fun parses() { TokenParser().parse(\"x\") } }\n");
+    fs.writeFileSync(path.join(root, "library", "src", "commonMain", "kotlin", "CommonToken.kt"), "class CommonToken\n");
+
+    const audit = auditKotlinRepo(root);
+
+    assert.equal(audit.profile.confidence, "medium");
+    assert.ok(audit.profile.blockers.includes("Kotlin Multiplatform modules and target-specific source sets are outside the supported JVM module boundary."));
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["jvm-tools/src/main/kotlin/TokenParser.kt"]);
+    assert.ok(!audit.recommended.some((target) => target.path.includes("commonMain")));
   });
 
   it("does not treat unexecuted src/test support code as coverage evidence", () => {
