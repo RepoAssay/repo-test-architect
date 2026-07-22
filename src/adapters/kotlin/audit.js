@@ -136,7 +136,8 @@ function buildProfile(root, files) {
   const testFrameworks = detectTestFrameworks(buildText, testText);
   const unsupportedTestFrameworks = detectUnsupportedTestFrameworks(buildText);
   const unsupportedProjectShapes = detectUnsupportedProjectShapes(buildText, paths);
-  const testCommand = detectTestCommand(paths, testFrameworks);
+  const testCommandResolution = detectTestCommand(root, paths, testFrameworks);
+  const testCommand = testCommandResolution.command;
   const existingTestLocations = detectExistingTestLocations(paths);
   const blockers = detectBlockers(paths, testCommand, testFrameworks, unsupportedTestFrameworks, unsupportedProjectShapes);
 
@@ -149,7 +150,7 @@ function buildProfile(root, files) {
     testCommand,
     detectedConventions: detectConventions(paths),
     existingTestLocations,
-    setupSignals: detectSetupSignals(paths, buildText, testText),
+    setupSignals: detectSetupSignals(paths, buildText, testText, testCommandResolution),
     confidence: scoreProfileConfidence(testFrameworks, existingTestLocations, blockers),
     blockers
   };
@@ -195,13 +196,100 @@ function detectUnsupportedProjectShapes(buildText, paths) {
   return shapes;
 }
 
-function detectTestCommand(paths, frameworks) {
-  if (frameworks.length === 0) return undefined;
-  if (paths.includes("gradlew") || paths.includes("gradlew.bat")) return "./gradlew test";
-  if (paths.includes("build.gradle") || paths.includes("build.gradle.kts")) return "gradle test";
-  if (paths.includes("mvnw") || paths.includes("mvnw.cmd")) return "./mvnw test";
-  if (paths.includes("pom.xml")) return "mvn test";
+function detectTestCommand(root, paths, frameworks) {
+  if (frameworks.length === 0) return {};
+  if (paths.includes("gradlew") || paths.includes("gradlew.bat")) return { command: "./gradlew test" };
+  if (paths.includes("build.gradle") || paths.includes("build.gradle.kts")) {
+    return findParentGradleCommand(root) ?? { command: "gradle test" };
+  }
+  if (paths.includes("mvnw") || paths.includes("mvnw.cmd")) return { command: "./mvnw test" };
+  if (paths.includes("pom.xml")) {
+    return findParentMavenCommand(root) ?? { command: "mvn test" };
+  }
+  return {};
+}
+
+function findParentGradleCommand(root) {
+  for (const ancestor of parentDirectories(root)) {
+    const settingsPath = ["settings.gradle.kts", "settings.gradle"]
+      .map((name) => path.join(ancestor, name))
+      .find((candidate) => fs.existsSync(candidate));
+    const wrapperPath = ["gradlew", "gradlew.bat"]
+      .map((name) => path.join(ancestor, name))
+      .find((candidate) => fs.existsSync(candidate));
+    if (!settingsPath || !wrapperPath) continue;
+
+    const moduleDirectory = normalizePath(path.relative(ancestor, root));
+    if (!moduleDirectory || moduleDirectory.startsWith("../")) continue;
+    const projectPath = declaredGradleProjectPaths(fs.readFileSync(settingsPath, "utf8"))
+      .find((candidate) => candidate.directory === moduleDirectory)?.projectPath;
+    if (!projectPath) continue;
+
+    return {
+      command: `${relativeCommandPath(root, wrapperPath)} ${projectPath}:test`,
+      inheritedSignal: "parent gradle wrapper"
+    };
+  }
   return undefined;
+}
+
+function declaredGradleProjectPaths(content) {
+  const settingsText = content
+    .replace(/\/\*[\s\S]*?\*\//g, " ")
+    .replace(/\/\/.*$/gm, "");
+  const declarations = new Set();
+  for (const match of settingsText.matchAll(/\binclude\s*\(([^)]*)\)/g)) {
+    for (const value of quotedValues(match[1])) declarations.add(value);
+  }
+  for (const match of settingsText.matchAll(/^\s*include\s+(?!\()([^\n]+)$/gm)) {
+    for (const value of quotedValues(match[1])) declarations.add(value);
+  }
+  return [...declarations]
+    .map((value) => value.replace(/^:/, "").replaceAll("/", ":"))
+    .filter((value) => value && !value.includes(".."))
+    .map((value) => ({ projectPath: `:${value}`, directory: value.replaceAll(":", "/") }));
+}
+
+function quotedValues(content) {
+  return [...content.matchAll(/["']([^"']+)["']/g)].map((match) => match[1]);
+}
+
+function findParentMavenCommand(root) {
+  for (const ancestor of parentDirectories(root)) {
+    const pomPath = path.join(ancestor, "pom.xml");
+    const wrapperPath = ["mvnw", "mvnw.cmd"]
+      .map((name) => path.join(ancestor, name))
+      .find((candidate) => fs.existsSync(candidate));
+    if (!fs.existsSync(pomPath) || !wrapperPath) continue;
+
+    const moduleDirectory = normalizePath(path.relative(ancestor, root));
+    if (!moduleDirectory || moduleDirectory.startsWith("../") || /\s/.test(moduleDirectory)) continue;
+    const pomText = fs.readFileSync(pomPath, "utf8").replace(/<!--[\s\S]*?-->/g, " ");
+    const declaredModules = [...pomText.matchAll(/<module>\s*([^<]+?)\s*<\/module>/g)]
+      .map((match) => normalizePath(match[1].trim()).replace(/^\.\//, ""));
+    if (!declaredModules.includes(moduleDirectory)) continue;
+
+    return {
+      command: `${relativeCommandPath(root, wrapperPath)} -f ${relativeCommandPath(root, pomPath)} -pl ${moduleDirectory} test`,
+      inheritedSignal: "parent maven wrapper"
+    };
+  }
+  return undefined;
+}
+
+function parentDirectories(root) {
+  const directories = [];
+  let current = path.dirname(path.resolve(root));
+  while (current !== path.dirname(current)) {
+    directories.push(current);
+    current = path.dirname(current);
+  }
+  return directories;
+}
+
+function relativeCommandPath(root, target) {
+  const relative = normalizePath(path.relative(root, target));
+  return relative.startsWith(".") ? relative : `./${relative}`;
 }
 
 function detectExistingTestLocations(paths) {
@@ -218,7 +306,7 @@ function detectConventions(paths) {
   return [...conventions];
 }
 
-function detectSetupSignals(paths, buildText, testText) {
+function detectSetupSignals(paths, buildText, testText, testCommandResolution) {
   const signals = new Set();
   if (paths.includes("build.gradle.kts")) signals.add("gradle kotlin dsl");
   if (paths.includes("build.gradle")) signals.add("gradle");
@@ -228,6 +316,7 @@ function detectSetupSignals(paths, buildText, testText) {
   if (paths.includes("mvnw") || paths.includes("mvnw.cmd")) signals.add("maven wrapper");
   if (/useJUnitPlatform|org\.junit\.jupiter/i.test(`${buildText}\n${testText}`)) signals.add("junit platform");
   if (/org\.junit(?!\.jupiter)/i.test(`${buildText}\n${testText}`)) signals.add("junit 4");
+  if (testCommandResolution.inheritedSignal) signals.add(testCommandResolution.inheritedSignal);
   return [...signals];
 }
 

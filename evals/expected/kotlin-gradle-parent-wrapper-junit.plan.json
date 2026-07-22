@@ -1,0 +1,46 @@
+{
+  "schemaVersion": "plan/v1",
+  "summary": {
+    "confidence": "high",
+    "verificationCommand": "../../gradlew :libraries:tokens:test",
+    "blockerCount": 0,
+    "addTestCount": 0,
+    "extendTestCount": 1,
+    "deferredCount": 0
+  },
+  "blockers": [],
+  "items": [
+    {
+      "id": "extend-test:src/main/kotlin/com/example/tokens/TokenParser.kt",
+      "action": "extend-test",
+      "targetId": "src/main/kotlin/com/example/tokens/TokenParser.kt",
+      "target": "TokenParser",
+      "path": "src/main/kotlin/com/example/tokens/TokenParser.kt",
+      "testLevel": "unit",
+      "priority": 7,
+      "riskReductionScore": 9,
+      "maintenanceCost": 2,
+      "rationale": [
+        "Pure transformation logic",
+        "edge-case surface",
+        "Existing test evidence detected; review missing edge cases"
+      ],
+      "sourceSignals": [
+        "pure-logic",
+        "edge-case-surface",
+        "matching-test"
+      ],
+      "existingTestPaths": [
+        "src/test/kotlin/com/example/tokens/TokenParserTest.kt"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "src/test/kotlin/com/example/tokens/TokenParserTest.kt",
+          "kind": "jvm-symbol-reference",
+          "strength": "referenced",
+          "usage": "asserted"
+        }
+      ]
+    }
+  ]
+}

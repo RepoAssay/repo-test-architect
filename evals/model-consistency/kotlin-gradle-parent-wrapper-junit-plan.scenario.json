@@ -1,0 +1,55 @@
+{
+  "schemaVersion": "model-consistency-scenario/v1",
+  "id": "kotlin-gradle-parent-wrapper-junit-plan",
+  "description": "Different model profiles should preserve the settings-owned parent wrapper command and asserted JVM evidence.",
+  "sourceArtifact": {
+    "path": "evals/expected/kotlin-gradle-parent-wrapper-junit.audit.json",
+    "schemaVersion": "audit/v1"
+  },
+  "toolCall": {
+    "toolName": "generate_test_plan",
+    "arguments": {}
+  },
+  "lockedFields": [
+    {
+      "path": "summary.verificationCommand",
+      "expected": "../../gradlew :libraries:tokens:test",
+      "reason": "A conventionally included nested module should preserve its parent wrapper and qualified Gradle task."
+    },
+    {
+      "path": "summary.confidence",
+      "expected": "high",
+      "reason": "The standard module source sets, supported tests, and resolved command form a high-confidence shape."
+    },
+    {
+      "path": "summary.extendTestCount",
+      "expected": 1,
+      "reason": "The parser has exact same-package test evidence and should remain covered but risky."
+    },
+    {
+      "path": "items[0].id",
+      "expected": "extend-test:src/main/kotlin/com/example/tokens/TokenParser.kt",
+      "reason": "The covered parser must retain a stable extend-test identity."
+    },
+    {
+      "path": "items[0].existingTestEvidence[0].kind",
+      "expected": "jvm-symbol-reference",
+      "reason": "The Kotlin test relationship should remain explicit JVM symbol evidence."
+    },
+    {
+      "path": "items[0].existingTestEvidence[0].usage",
+      "expected": "asserted",
+      "reason": "The parser result remains consumed by a Kotlin assertion."
+    }
+  ],
+  "allowedVariations": [
+    "summary wording",
+    "plan item explanation wording",
+    "optional detail depth"
+  ],
+  "unexpectedVariations": [
+    "system Gradle instead of the parent wrapper command",
+    "unqualified root test task",
+    "parser reported as untested"
+  ]
+}
