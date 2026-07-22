@@ -1,7 +1,7 @@
 {
   "schemaVersion": "model-consistency-scenario/v1",
   "id": "kotlin-gradle-module-graph-junit-plan",
-  "description": "Different model profiles should preserve dependency-qualified cross-module JVM evidence and aggregate commands.",
+  "description": "Different model profiles should preserve exported-transitive cross-module JVM evidence and aggregate commands.",
   "sourceArtifact": {
     "path": "evals/expected/kotlin-gradle-module-graph-junit.audit.json",
     "schemaVersion": "audit/v1"
@@ -29,7 +29,7 @@
     {
       "path": "summary.extendTestCount",
       "expected": 1,
-      "reason": "The parser keeps dependency-qualified cross-module test evidence."
+      "reason": "The parser keeps evidence through an explicitly exported Gradle module dependency."
     },
     {
       "path": "items[0].id",
@@ -44,7 +44,7 @@
     {
       "path": "items[1].existingTestEvidence[0].testPath",
       "expected": "token-tests/src/test/kotlin/com/example/token/TokenParserTest.kt",
-      "reason": "The explicit dependent test module must remain the parser evidence owner."
+      "reason": "The test module reaching core through the exported API bridge must remain the parser evidence owner."
     },
     {
       "path": "items[1].existingTestEvidence[0].usage",
@@ -60,6 +60,6 @@
   "unexpectedVariations": [
     "child modules emitted as duplicate projects",
     "unrelated module tests credited as evidence",
-    "cross-module parser evidence removed"
+    "exported-transitive parser evidence removed"
   ]
 }

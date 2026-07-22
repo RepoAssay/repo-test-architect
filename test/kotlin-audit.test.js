@@ -497,6 +497,39 @@ describe("Kotlin audit adapter", () => {
     assert.deepEqual(audit.coveredButRisky[0].existingTestPaths, ["token-tests/src/test/kotlin/com/example/tests/ParsingTest.kt"]);
   });
 
+  it("follows only exported Gradle dependencies beyond the direct test-module edge", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-gradle-transitive-"));
+    const modules = ["token-core", "exported-bridge", "private-bridge", "excluded-top", "cycle-a", "cycle-b", "exported-tests", "private-tests", "excluded-tests", "cycle-tests"];
+    for (const moduleName of modules) fs.mkdirSync(path.join(root, moduleName), { recursive: true });
+    fs.mkdirSync(path.join(root, "token-core", "src", "main", "kotlin", "com", "example", "token"), { recursive: true });
+    for (const moduleName of ["exported-tests", "private-tests", "excluded-tests", "cycle-tests"]) {
+      fs.mkdirSync(path.join(root, moduleName, "src", "test", "kotlin", "com", "example", "tests"), { recursive: true });
+    }
+    fs.writeFileSync(path.join(root, "settings.gradle.kts"), `include(${modules.map((name) => `":${name}"`).join(", ")})\n`);
+    fs.writeFileSync(path.join(root, "build.gradle.kts"), 'plugins { kotlin("jvm") version "2.0.0" apply false }\n');
+    fs.writeFileSync(path.join(root, "gradlew"), "#!/usr/bin/env sh\n");
+    fs.writeFileSync(path.join(root, "token-core", "build.gradle.kts"), 'plugins { kotlin("jvm") }\n');
+    fs.writeFileSync(path.join(root, "exported-bridge", "build.gradle.kts"), 'plugins { `java-library` }\ndependencies { api(project(":token-core")) }\n');
+    fs.writeFileSync(path.join(root, "private-bridge", "build.gradle.kts"), 'plugins { kotlin("jvm") }\ndependencies { implementation(project(":token-core")); constraints { api(project(":token-core")) }; /* api(project(":token-core")) */ }\n// api(project(":token-core"))\n');
+    fs.writeFileSync(path.join(root, "excluded-top", "build.gradle.kts"), 'plugins { `java-library` }\ndependencies { api(project(":exported-bridge")) { exclude(group = "com.example", module = "token-core") } }\n');
+    fs.writeFileSync(path.join(root, "cycle-a", "build.gradle.kts"), 'plugins { `java-library` }\ndependencies { api(project(":cycle-b")) }\n');
+    fs.writeFileSync(path.join(root, "cycle-b", "build.gradle.kts"), 'plugins { `java-library` }\ndependencies { api(project(":cycle-a")) }\n');
+    fs.writeFileSync(path.join(root, "exported-tests", "build.gradle.kts"), 'plugins { kotlin("jvm") }\ndependencies { testImplementation(project(":exported-bridge")); testImplementation(kotlin("test")) }\n');
+    fs.writeFileSync(path.join(root, "private-tests", "build.gradle.kts"), 'plugins { kotlin("jvm") }\ndependencies { testImplementation(project(":private-bridge")); testImplementation(kotlin("test")) }\n');
+    fs.writeFileSync(path.join(root, "excluded-tests", "build.gradle.kts"), 'plugins { kotlin("jvm") }\ndependencies { testImplementation(project(":excluded-top")); testImplementation(kotlin("test")) }\n');
+    fs.writeFileSync(path.join(root, "cycle-tests", "build.gradle.kts"), 'plugins { kotlin("jvm") }\ndependencies { testImplementation(project(":cycle-a")); testImplementation(kotlin("test")) }\n');
+    fs.writeFileSync(path.join(root, "token-core", "src", "main", "kotlin", "com", "example", "token", "TokenParser.kt"), "package com.example.token\nclass TokenParser { fun parse(value: String) = value.trim() }\n");
+    const testContent = "package com.example.tests\nimport com.example.token.TokenParser\nimport kotlin.test.Test\nclass ParsingTest { @Test fun parses() { TokenParser().parse(\"x\") } }\n";
+    fs.writeFileSync(path.join(root, "exported-tests", "src", "test", "kotlin", "com", "example", "tests", "ParsingTest.kt"), testContent);
+    fs.writeFileSync(path.join(root, "private-tests", "src", "test", "kotlin", "com", "example", "tests", "PretendCoverageTest.kt"), testContent);
+    fs.writeFileSync(path.join(root, "excluded-tests", "src", "test", "kotlin", "com", "example", "tests", "PretendExcludedCoverageTest.kt"), testContent);
+    fs.writeFileSync(path.join(root, "cycle-tests", "src", "test", "kotlin", "com", "example", "tests", "PretendCyclicCoverageTest.kt"), testContent);
+
+    const audit = auditKotlinRepo(root);
+
+    assert.deepEqual(audit.coveredButRisky[0].existingTestPaths, ["exported-tests/src/test/kotlin/com/example/tests/ParsingTest.kt"]);
+  });
+
   it("audits conventional Maven reactor modules with dependency-qualified test evidence", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-maven-reactor-"));
     for (const moduleName of ["token-core", "token-tests", "unrelated-tests", "profile-only"]) {
@@ -528,6 +561,39 @@ describe("Kotlin audit adapter", () => {
     assert.deepEqual(audit.profile.existingTestLocations, ["token-tests/src/test", "unrelated-tests/src/test"]);
     assert.deepEqual(audit.coveredButRisky[0].existingTestPaths, ["token-tests/src/test/java/com/example/tests/ParsingTest.java"]);
     assert.ok(!audit.recommended.some((target) => target.path.includes("profile-only")));
+  });
+
+  it("follows only exported Maven dependencies beyond the direct test-module edge", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-maven-transitive-"));
+    const modules = ["token-core", "exported-bridge", "provided-bridge", "optional-bridge", "excluded-top", "exported-tests", "provided-tests", "optional-tests", "excluded-tests"];
+    for (const moduleName of modules) fs.mkdirSync(path.join(root, moduleName), { recursive: true });
+    fs.mkdirSync(path.join(root, "token-core", "src", "main", "java", "com", "example", "token"), { recursive: true });
+    for (const moduleName of ["exported-tests", "provided-tests", "optional-tests", "excluded-tests"]) {
+      fs.mkdirSync(path.join(root, moduleName, "src", "test", "java", "com", "example", "tests"), { recursive: true });
+    }
+    fs.writeFileSync(path.join(root, "pom.xml"), `<project><groupId>com.example</groupId><artifactId>tokens</artifactId><version>1</version><packaging>pom</packaging><modules>${modules.map((name) => `<module>${name}</module>`).join("")}</modules></project>\n`);
+    fs.writeFileSync(path.join(root, "mvnw"), "#!/bin/sh\n");
+    const childPrefix = '<project><parent><groupId>com.example</groupId><artifactId>tokens</artifactId><version>1</version></parent>';
+    const dependency = (artifactId, extra = "") => `<dependencies><dependency><groupId>${"${project.groupId}"}</groupId><artifactId>${artifactId}</artifactId>${extra}</dependency></dependencies>`;
+    fs.writeFileSync(path.join(root, "token-core", "pom.xml"), `${childPrefix}<artifactId>token-core</artifactId></project>\n`);
+    fs.writeFileSync(path.join(root, "exported-bridge", "pom.xml"), `${childPrefix}<artifactId>exported-bridge</artifactId>${dependency("token-core")}</project>\n`);
+    fs.writeFileSync(path.join(root, "provided-bridge", "pom.xml"), `${childPrefix}<artifactId>provided-bridge</artifactId>${dependency("token-core", "<scope>provided</scope>")}</project>\n`);
+    fs.writeFileSync(path.join(root, "optional-bridge", "pom.xml"), `${childPrefix}<artifactId>optional-bridge</artifactId>${dependency("token-core", '<optional>${core.optional}</optional>')}</project>\n`);
+    fs.writeFileSync(path.join(root, "excluded-top", "pom.xml"), `${childPrefix}<artifactId>excluded-top</artifactId>${dependency("exported-bridge", "<exclusions><exclusion><groupId>com.example</groupId><artifactId>token-core</artifactId></exclusion></exclusions>")}</project>\n`);
+    for (const prefix of ["exported", "provided", "optional"]) {
+      fs.writeFileSync(path.join(root, `${prefix}-tests`, "pom.xml"), `${childPrefix}<artifactId>${prefix}-tests</artifactId>${dependency(`${prefix}-bridge`, "<scope>test</scope>")}</project>\n`);
+    }
+    fs.writeFileSync(path.join(root, "excluded-tests", "pom.xml"), `${childPrefix}<artifactId>excluded-tests</artifactId>${dependency("excluded-top", "<scope>test</scope>")}</project>\n`);
+    fs.writeFileSync(path.join(root, "token-core", "src", "main", "java", "com", "example", "token", "TokenParser.java"), "package com.example.token; public class TokenParser { public String parse(String value) { return value.trim(); } }\n");
+    const testContent = "package com.example.tests; import com.example.token.TokenParser; import org.junit.jupiter.api.Test; class ParsingTest { @Test void parses() { new TokenParser().parse(\"x\"); } }\n";
+    fs.writeFileSync(path.join(root, "exported-tests", "src", "test", "java", "com", "example", "tests", "ParsingTest.java"), testContent);
+    fs.writeFileSync(path.join(root, "provided-tests", "src", "test", "java", "com", "example", "tests", "PretendProvidedCoverageTest.java"), testContent);
+    fs.writeFileSync(path.join(root, "optional-tests", "src", "test", "java", "com", "example", "tests", "PretendOptionalCoverageTest.java"), testContent);
+    fs.writeFileSync(path.join(root, "excluded-tests", "src", "test", "java", "com", "example", "tests", "PretendExcludedCoverageTest.java"), testContent);
+
+    const audit = auditKotlinRepo(root);
+
+    assert.deepEqual(audit.coveredButRisky[0].existingTestPaths, ["exported-tests/src/test/java/com/example/tests/ParsingTest.java"]);
   });
 
   it("keeps custom Gradle project-directory remaps outside aggregate ownership", () => {

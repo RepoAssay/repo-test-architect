@@ -140,26 +140,29 @@ function resolveJvmModules(files) {
   if (settings) return resolveGradleModules(files, settings);
   const rootPom = files.find((file) => normalizePath(file.path) === "pom.xml");
   if (rootPom) return resolveMavenModules(files, rootPom);
-  return [{ projectPath: ":", directory: ".", dependencies: new Set(), buildSystem: undefined }];
+  return [{ projectPath: ":", directory: ".", dependencies: new Set(), exportedDependencies: new Set(), reachableDependencies: new Set(), buildSystem: undefined }];
 }
 
 function resolveGradleModules(files, settings) {
   const paths = new Set(files.map((file) => normalizePath(file.path)));
   const declarations = declaredGradleProjectPaths(settings.content);
-  const modules = [{ projectPath: ":", directory: ".", dependencies: new Set(), buildSystem: "gradle" }];
+  const modules = [{ projectPath: ":", directory: ".", dependencies: new Set(), exportedDependencies: new Set(), buildSystem: "gradle" }];
 
   for (const declaration of declarations) {
     const hasBuildFile = ["build.gradle", "build.gradle.kts"]
       .some((name) => paths.has(`${declaration.directory}/${name}`));
     if (!hasBuildFile) continue;
-    modules.push({ ...declaration, dependencies: new Set(), buildSystem: "gradle" });
+    modules.push({ ...declaration, dependencies: new Set(), exportedDependencies: new Set(), buildSystem: "gradle" });
   }
 
   for (const module of modules) {
     const buildText = moduleBuildText(module, files);
-    for (const dependency of declaredGradleProjectDependencies(buildText)) module.dependencies.add(dependency);
+    const declaredDependencies = declaredGradleProjectDependencies(buildText);
+    for (const dependency of declaredDependencies.direct) module.dependencies.add(dependency);
+    for (const dependency of declaredDependencies.exported) module.exportedDependencies.add(dependency);
   }
 
+  populateReachableModuleDependencies(modules);
   return modules.sort((left, right) => right.directory.length - left.directory.length || left.projectPath.localeCompare(right.projectPath));
 }
 
@@ -171,6 +174,7 @@ function resolveMavenModules(files, rootPom) {
     projectPath: rootProjectPath,
     directory: ".",
     dependencies: new Set(),
+    exportedDependencies: new Set(),
     buildSystem: "maven",
     coordinate: rootCoordinate
   }];
@@ -185,6 +189,7 @@ function resolveMavenModules(files, rootPom) {
       projectPath: coordinate.id,
       directory,
       dependencies: new Set(),
+      exportedDependencies: new Set(),
       buildSystem: "maven",
       coordinate
     });
@@ -192,12 +197,34 @@ function resolveMavenModules(files, rootPom) {
 
   for (const module of modules) {
     const buildText = moduleBuildText(module, files);
-    for (const dependency of declaredMavenDependencies(buildText, module.coordinate?.groupId)) {
-      module.dependencies.add(dependency);
-    }
+    const declaredDependencies = declaredMavenDependencies(buildText, module.coordinate?.groupId);
+    for (const dependency of declaredDependencies.direct) module.dependencies.add(dependency);
+    for (const dependency of declaredDependencies.exported) module.exportedDependencies.add(dependency);
   }
 
+  populateReachableModuleDependencies(modules);
   return modules.sort((left, right) => right.directory.length - left.directory.length || left.projectPath.localeCompare(right.projectPath));
+}
+
+function populateReachableModuleDependencies(modules) {
+  const modulesByProjectPath = new Map(modules.map((module) => [module.projectPath, module]));
+  for (const module of modules) {
+    const reachable = new Set(module.dependencies);
+    const pending = [...module.dependencies];
+    const visited = new Set([module.projectPath]);
+    for (let index = 0; index < pending.length; index += 1) {
+      const currentProjectPath = pending[index];
+      if (visited.has(currentProjectPath)) continue;
+      visited.add(currentProjectPath);
+      const currentModule = modulesByProjectPath.get(currentProjectPath);
+      if (!currentModule) continue;
+      for (const dependency of currentModule.exportedDependencies) {
+        reachable.add(dependency);
+        if (!visited.has(dependency)) pending.push(dependency);
+      }
+    }
+    module.reachableDependencies = reachable;
+  }
 }
 
 function declaredMavenModules(content) {
@@ -222,7 +249,8 @@ function readMavenCoordinate(content, fallbackGroupId) {
 }
 
 function declaredMavenDependencies(content, moduleGroupId) {
-  const dependencies = new Set();
+  const direct = new Set();
+  const exported = new Set();
   const pomText = stripMavenComments(content)
     .replace(/<profiles>[\s\S]*?<\/profiles>/g, " ")
     .replace(/<dependencyManagement>[\s\S]*?<\/dependencyManagement>/g, " ")
@@ -232,12 +260,16 @@ function declaredMavenDependencies(content, moduleGroupId) {
     const artifactId = mavenElement(dependency, "artifactId");
     let groupId = mavenElement(dependency, "groupId");
     const scope = mavenElement(dependency, "scope") ?? "compile";
+    const optional = mavenElement(dependency, "optional");
     if (["${project.groupId}", "${project.parent.groupId}", "${groupId}"].includes(groupId)) groupId = moduleGroupId;
     if (!artifactId || !groupId || !["compile", "provided", "test"].includes(scope)) continue;
     if (artifactId.includes("${") || groupId.includes("${")) continue;
-    dependencies.add(`${groupId}:${artifactId}`);
+    const coordinate = `${groupId}:${artifactId}`;
+    direct.add(coordinate);
+    const hasExclusions = /<exclusions>[\s\S]*?<\/exclusions>/.test(dependency);
+    if (scope === "compile" && (!optional || optional === "false") && !hasExclusions) exported.add(coordinate);
   }
-  return dependencies;
+  return { direct, exported };
 }
 
 function mavenElement(content, name) {
@@ -249,10 +281,19 @@ function stripMavenComments(content) {
 }
 
 function declaredGradleProjectDependencies(content) {
-  const dependencies = new Set();
-  const dependencyPattern = /\b(?:api|implementation|testImplementation|compileOnly|testCompileOnly)\s*(?:\(\s*)?project\s*\(\s*["'](:[^"']+)["']\s*\)/g;
-  for (const match of content.matchAll(dependencyPattern)) dependencies.add(match[1]);
-  return dependencies;
+  const direct = new Set();
+  const exported = new Set();
+  const buildText = content
+    .replace(/\/\*[\s\S]*?\*\//g, " ")
+    .replace(/\/\/.*$/gm, "")
+    .replace(/\bconstraints\s*\{[\s\S]*?\}/g, " ");
+  const hasExclusions = /\bexclude\b/.test(buildText);
+  const dependencyPattern = /\b(api|implementation|testImplementation|compileOnly|testCompileOnly)\s*(?:\(\s*)?project\s*\(\s*["'](:[^"']+)["']\s*\)/g;
+  for (const match of buildText.matchAll(dependencyPattern)) {
+    direct.add(match[2]);
+    if (match[1] === "api" && !hasExclusions) exported.add(match[2]);
+  }
+  return { direct, exported };
 }
 
 function moduleBuildText(module, files) {
@@ -628,7 +669,7 @@ function canModuleTestSource(testModuleProjectPath, sourceModuleProjectPath, mod
   if (!testModuleProjectPath || !sourceModuleProjectPath) return false;
   if (testModuleProjectPath === sourceModuleProjectPath) return true;
   const testModule = modules.find((module) => module.projectPath === testModuleProjectPath);
-  return testModule?.dependencies.has(sourceModuleProjectPath) ?? false;
+  return testModule?.reachableDependencies.has(sourceModuleProjectPath) ?? false;
 }
 
 function findJvmTestMatch(source, test) {

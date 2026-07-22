@@ -1,2 +1,2 @@
 rootProject.name = "token-platform"
-include(":token-core", ":token-tests")
+include(":token-core", ":token-api", ":token-tests")
