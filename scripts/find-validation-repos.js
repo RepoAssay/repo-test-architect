@@ -124,11 +124,11 @@ export const validationProfiles = {
     ]
   },
   "gradle-kmp-jvm": {
-    description: "Single-module Kotlin Multiplatform projects with a default JVM target",
+    description: "Single-module Kotlin Multiplatform projects with one literal JVM target",
     repositoryQuery: '"kotlin multiplatform" jvm',
     language: "Kotlin",
     searches: [
-      { signal: "gradle-kmp-jvm", file: "build.gradle.kts", pattern: /(?=[\s\S]*(?:kotlin\s*\(\s*["']multiplatform["']\s*\)|org\.jetbrains\.kotlin\.multiplatform))(?=[\s\S]*\bjvm\s*(?:\(\s*\)|\{))/i },
+      { signal: "gradle-kmp-jvm", file: "build.gradle.kts", pattern: /(?=[\s\S]*(?:kotlin\s*\(\s*["']multiplatform["']\s*\)|org\.jetbrains\.kotlin\.multiplatform))(?=[\s\S]*\bjvm\s*(?:\(\s*(?:["'][A-Za-z][A-Za-z0-9_]*["']\s*)?\)|\{))/i },
       { signal: "gradle-wrapper", entryPattern: /^gradlew$/ }
     ]
   },

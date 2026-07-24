@@ -158,13 +158,15 @@ function resolveGradleModules(files, settings) {
   for (const module of modules) {
     const buildText = moduleBuildText(module, files);
     module.isKmp = usesKmpBuild(buildText);
-    module.hasDefaultKmpJvmTarget = module.isKmp && hasDefaultKmpJvmTarget(buildText);
+    module.kmpJvmTargets = module.isKmp ? detectKmpJvmTargets(buildText) : [];
+    module.hasKmpJvmTarget = module.kmpJvmTargets.length === 1;
+    module.kmpJvmTargetName = module.hasKmpJvmTarget ? module.kmpJvmTargets[0] : undefined;
     const declaredDependencies = declaredGradleProjectDependencies(buildText);
     for (const dependency of declaredDependencies.direct) module.dependencies.add(dependency);
     for (const dependency of declaredDependencies.exported) module.exportedDependencies.add(dependency);
   }
 
-  if (declarations.length === 0 && modules.length === 1 && modules[0].hasDefaultKmpJvmTarget) {
+  if (declarations.length === 0 && modules.length === 1 && modules[0].hasKmpJvmTarget) {
     modules[0].supportsKmpJvm = true;
   }
 
@@ -315,11 +317,11 @@ function usesKmpBuild(content) {
   return /\b(?:org\.jetbrains\.kotlin\.)?multiplatform\b|kotlin\s*\(\s*["']multiplatform["']\s*\)/i.test(content);
 }
 
-function hasDefaultKmpJvmTarget(content) {
-  const commentsRemoved = content
-    .replace(/\/\*[\s\S]*?\*\//g, " ")
-    .replace(/\/\/.*$/gm, "");
-  return /\bjvm\s*(?:\(\s*\)|\{)/.test(commentsRemoved);
+function detectKmpJvmTargets(content) {
+  const tokenPattern = /\/\*[\s\S]*?\*\/|\/\/[^\r\n]*|"""[\s\S]*?"""|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\bjvm\s*(?:\(\s*(?:(["'])([A-Za-z][A-Za-z0-9_]*)\1\s*)?\)|\{)/g;
+  return [...content.matchAll(tokenPattern)]
+    .filter((match) => match[0].startsWith("jvm"))
+    .map((match) => match[2] ?? "jvm");
 }
 
 function moduleForPath(currentPath, modules, sourceSet) {
@@ -329,9 +331,10 @@ function moduleForPath(currentPath, modules, sourceSet) {
   return modules.find((module) => {
     const prefix = module.directory === "." ? "" : `${module.directory}/`;
     if (module.supportsKmpJvm) {
+      const targetName = escapeRegExp(module.kmpJvmTargetName);
       const kmpSource = sourceSet === "test"
-        ? "(?:commonTest/kotlin/.+\\.kt|jvmTest/(?:kotlin/.+\\.kt|java/.+\\.java))"
-        : "(?:commonMain/kotlin/.+\\.kt|jvmMain/(?:kotlin/.+\\.kt|java/.+\\.java))";
+        ? `(?:commonTest/kotlin/.+\\.kt|${targetName}Test/(?:kotlin/.+\\.kt|java/.+\\.java))`
+        : `(?:commonMain/kotlin/.+\\.kt|${targetName}Main/(?:kotlin/.+\\.kt|java/.+\\.java))`;
       return new RegExp(`^${escapeRegExp(prefix)}src/${kmpSource}$`).test(normalized);
     }
     return new RegExp(`^${escapeRegExp(prefix)}src/${sourceSet}/${sourceDirectory}/.+\\.${sourceExtension}$`).test(normalized);
@@ -465,16 +468,18 @@ function detectUnsupportedProjectShapes(buildText, paths, modules) {
     usesKmpBuild(buildText) ||
     paths.some((currentPath) => /(?:^|\/)src\/(?:common|jvm)(?:Main|Test)\//.test(currentPath));
   if (hasKmpMarkers && !modules.some((module) => module.supportsKmpJvm)) {
-    shapes.push("Kotlin Multiplatform support requires a single Gradle module with an explicit default jvm() target and conventional commonMain/jvmMain source sets.");
+    shapes.push("Kotlin Multiplatform support requires a single Gradle module with exactly one literal jvm() or jvm(\"name\") target and conventional common/target source sets.");
   }
   return shapes;
 }
 
 function detectTestCommand(root, paths, frameworks, modules) {
   if (frameworks.length === 0) return {};
-  if (modules.some((module) => module.supportsKmpJvm)) {
-    if (paths.includes("gradlew") || paths.includes("gradlew.bat")) return { command: "./gradlew jvmTest" };
-    return { command: "gradle jvmTest" };
+  const kmpJvmModule = modules.find((module) => module.supportsKmpJvm);
+  if (kmpJvmModule) {
+    const task = `${kmpJvmModule.kmpJvmTargetName}Test`;
+    if (paths.includes("gradlew") || paths.includes("gradlew.bat")) return { command: `./gradlew ${task}` };
+    return { command: `gradle ${task}` };
   }
   if (paths.includes("gradlew") || paths.includes("gradlew.bat")) return { command: "./gradlew test" };
   if (paths.includes("build.gradle") || paths.includes("build.gradle.kts")) {
@@ -579,7 +584,7 @@ function detectExistingTestLocations(paths, modules) {
   const locations = new Set();
   for (const module of modules) {
     if (module.supportsKmpJvm) {
-      for (const sourceSet of ["commonTest", "jvmTest"]) {
+      for (const sourceSet of ["commonTest", `${module.kmpJvmTargetName}Test`]) {
         const location = module.directory === "." ? `src/${sourceSet}` : `${module.directory}/src/${sourceSet}`;
         if (paths.some((item) => item.startsWith(`${location}/`))) locations.add(location);
       }
@@ -599,7 +604,13 @@ function detectConventions(paths, modules) {
   if (paths.some((item) => moduleForPath(item, modules, "test") && /(?:^|\/)src\/test\/java\//.test(item))) conventions.add("src/test/java");
   if (paths.some((item) => moduleForPath(item, modules, "test") && /(?:^|\/)src\/test\/groovy\//.test(item))) conventions.add("src/test/groovy");
   if (paths.some((item) => moduleForPath(item, modules, "test") && /(?:^|\/)src\/commonTest\/kotlin\//.test(item))) conventions.add("src/commonTest/kotlin");
-  if (paths.some((item) => moduleForPath(item, modules, "test") && /(?:^|\/)src\/jvmTest\/(?:kotlin|java)\//.test(item))) conventions.add("src/jvmTest");
+  for (const module of modules.filter((candidate) => candidate.supportsKmpJvm)) {
+    const prefix = module.directory === "." ? "" : `${module.directory}/`;
+    const location = `${prefix}src/${module.kmpJvmTargetName}Test`;
+    if (paths.some((item) => item.startsWith(`${location}/`) && moduleForPath(item, modules, "test"))) {
+      conventions.add(location);
+    }
+  }
   return [...conventions];
 }
 
@@ -617,7 +628,8 @@ function detectSetupSignals(paths, buildText, testText, testCommandResolution, m
   if (usesSpock(`${buildText}\n${testText}`)) signals.add("spock");
   if (usesTestNg(`${buildText}\n${testText}`)) signals.add("testng");
   if (modules.some((module) => module.isKmp)) signals.add("kotlin multiplatform");
-  if (modules.some((module) => module.hasDefaultKmpJvmTarget)) signals.add("jvm target");
+  if (modules.some((module) => module.hasKmpJvmTarget)) signals.add("jvm target");
+  if (modules.some((module) => module.hasKmpJvmTarget && module.kmpJvmTargetName !== "jvm")) signals.add("named jvm target");
   if (testCommandResolution.inheritedSignal) signals.add(testCommandResolution.inheritedSignal);
   if (modules.some((module) => module.buildSystem === "gradle" && module.directory !== ".")) signals.add("gradle module graph");
   if (modules.some((module) => module.buildSystem === "maven" && module.directory !== ".")) signals.add("maven reactor graph");
@@ -875,12 +887,13 @@ function collectJvmTestEvidence(sourceSymbols, testFiles, modules) {
 }
 
 function canTestSourceSet(testPath, sourcePath) {
-  const testSourceSet = normalizePath(testPath).match(/(?:^|\/)src\/(commonTest|jvmTest)\//)?.[1];
-  const productionSourceSet = normalizePath(sourcePath).match(/(?:^|\/)src\/(commonMain|jvmMain)\//)?.[1];
+  const testSourceSet = normalizePath(testPath).match(/(?:^|\/)src\/([A-Za-z][A-Za-z0-9_]*Test)\//)?.[1];
+  const productionSourceSet = normalizePath(sourcePath).match(/(?:^|\/)src\/([A-Za-z][A-Za-z0-9_]*Main)\//)?.[1];
   if (!testSourceSet && !productionSourceSet) return true;
   if (!testSourceSet || !productionSourceSet) return false;
   if (testSourceSet === "commonTest") return productionSourceSet === "commonMain";
-  return ["commonMain", "jvmMain"].includes(productionSourceSet);
+  const targetName = testSourceSet.slice(0, -"Test".length);
+  return ["commonMain", `${targetName}Main`].includes(productionSourceSet);
 }
 
 function canModuleTestSource(testModuleProjectPath, sourceModuleProjectPath, modules) {

@@ -1,0 +1,75 @@
+{
+  "schemaVersion": "model-consistency-scenario/v1",
+  "id": "kotlin-multiplatform-named-jvm-plan",
+  "description": "Different model profiles should preserve literal named KMP JVM ownership, target-derived source sets, and the named test task.",
+  "sourceArtifact": {
+    "path": "evals/expected/kotlin-multiplatform-named-jvm.audit.json",
+    "schemaVersion": "audit/v1"
+  },
+  "toolCall": {
+    "toolName": "generate_test_plan",
+    "arguments": {}
+  },
+  "lockedFields": [
+    {
+      "path": "summary.verificationCommand",
+      "expected": "./gradlew desktopTest",
+      "reason": "The named desktop JVM target creates a target-specific desktopTest task."
+    },
+    {
+      "path": "summary.confidence",
+      "expected": "high",
+      "reason": "One literal named JVM target with conventional derived source sets is fully inside this slice."
+    },
+    {
+      "path": "summary.addTestCount",
+      "expected": 1,
+      "reason": "The uncovered common formatter remains the only add-test item."
+    },
+    {
+      "path": "summary.extendTestCount",
+      "expected": 2,
+      "reason": "Common and desktop-specific covered sources retain extend-test recommendations."
+    },
+    {
+      "path": "items[0].id",
+      "expected": "extend-test:src/desktopMain/java/com/example/token/DesktopTokenValidator.java",
+      "reason": "The named-target validator keeps its target-derived source identity."
+    },
+    {
+      "path": "items[0].existingTestEvidence[0].testPath",
+      "expected": "src/desktopTest/kotlin/com/example/token/DesktopTokenValidatorTest.kt",
+      "reason": "Desktop production evidence must remain owned by desktopTest."
+    },
+    {
+      "path": "items[0].existingTestEvidence[0].usage",
+      "expected": "asserted",
+      "reason": "The desktop validator result is consumed by a kotlin.test assertion."
+    },
+    {
+      "path": "items[1].id",
+      "expected": "add-test:src/commonMain/kotlin/com/example/token/TokenFormatter.kt",
+      "reason": "The uncovered common formatter remains an add-test item."
+    },
+    {
+      "path": "items[2].id",
+      "expected": "extend-test:src/commonMain/kotlin/com/example/token/TokenParser.kt",
+      "reason": "The common parser remains covered through commonTest."
+    },
+    {
+      "path": "items[2].existingTestEvidence[0].testPath",
+      "expected": "src/commonTest/kotlin/com/example/token/TokenParserTest.kt",
+      "reason": "The common source retains its commonTest owner."
+    }
+  ],
+  "allowedVariations": [
+    "summary wording",
+    "plan item explanation wording",
+    "optional detail depth"
+  ],
+  "unexpectedVariations": [
+    "generic or default JVM test task",
+    "commonTest claiming desktopMain",
+    "loss of named target source-set ownership"
+  ]
+}

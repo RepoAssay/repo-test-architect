@@ -70,11 +70,11 @@ Revisit when: multiple MCP hosts support a stable interoperable routing-hint con
 
 ## Kotlin Multiplatform JVM As A Bounded Target Slice
 
-Decision: own Kotlin Multiplatform only when the audited root is one Gradle module with conventional `commonMain`/`commonTest` and `jvmMain`/`jvmTest` layouts plus an explicit unnamed/default `jvm()` target.
+Decision: own Kotlin Multiplatform only when the audited root is one Gradle module with conventional `commonMain`/`commonTest` and target-derived main/test layouts plus exactly one literal `jvm()` or `jvm("name")` declaration.
 
-Rationale: the default JVM target provides a deterministic `jvmTest` command and a small source-set graph: `commonTest` reaches only `commonMain`, while `jvmTest` reaches both common and JVM production code. Named targets, custom hierarchies, and multi-module KMP builds change task names and ownership enough to require separate evidence rather than generic multiplatform inference.
+Rationale: a literal JVM target provides a deterministic `<targetName>Test` command and a small source-set graph: `commonTest` reaches only `commonMain`, while the target-derived test source set reaches both common and target-specific production code. Computed or multiple target declarations, custom hierarchies, and multi-module KMP builds change tasks and ownership enough to require separate evidence rather than generic multiplatform inference.
 
-Revisit when: representative public repositories justify deterministic support for named JVM targets, custom source-set hierarchies, or multi-module KMP graphs.
+Revisit when: representative public repositories justify deterministic support for computed or multiple JVM targets, custom source-set hierarchies, or multi-module KMP graphs.
 
 ## Native Generation Deferred
 
