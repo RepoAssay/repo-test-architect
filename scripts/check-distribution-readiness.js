@@ -18,16 +18,16 @@ if (isMainModule()) {
     console.log(JSON.stringify(report, null, 2));
   } else if (!report.preparationReady) {
     console.error(`Distribution preparation blockers: ${report.preparationBlockers.join(", ")}`);
-  } else if (publishMode && !report.publishReady) {
+  } else if (publishMode && !report.localPublishReady) {
     console.error(`Distribution publish blockers: ${report.publishBlockers.join(", ")}`);
   } else {
-    const suffix = report.publishReady
-      ? "publish-ready"
+    const suffix = report.localPublishReady
+      ? "local publish metadata ready; manual checks remain"
       : `publish blockers: ${report.publishBlockers.join(", ")}`;
     console.log(`Distribution preparation check passed (${suffix}).`);
   }
 
-  if (!report.preparationReady || (publishMode && !report.publishReady)) {
+  if (!report.preparationReady || (publishMode && !report.localPublishReady)) {
     process.exitCode = 1;
   }
 }
@@ -117,7 +117,7 @@ export function inspectDistributionReadiness(options = {}) {
       private: packageJson.private === true
     },
     preparationReady: preparationBlockers.length === 0,
-    publishReady: publishBlockers.length === 0,
+    localPublishReady: publishBlockers.length === 0,
     preparationChecks,
     publishChecks,
     preparationBlockers,

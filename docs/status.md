@@ -89,7 +89,7 @@ Implemented:
 - package contents dry-run checker for required runtime files and publish allowlist hygiene
 - package binary entrypoint checker for CLI, MCP invoke, and stdio MCP boot paths
 - installed-package tarball smoke checker for published CLI and MCP binary boot paths
-- reversible distribution preparation reporting with a strict publication gate that remains blocked until public identity metadata is approved
+- reversible distribution preparation reporting with a strict local publication gate that remains blocked until the explicit public-release switch
 - release-readiness check runner for tests, evals, model consistency, demo path, smoke, package, bin, installed-package, and distribution preparation checks
 - GitHub Actions CI workflow that runs the release-readiness check on Ubuntu, macOS, and Windows for pushes and pull requests
 - GitHub pull request template that calls out audit impact, release verification, and risk notes

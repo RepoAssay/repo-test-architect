@@ -13,7 +13,7 @@ describe("distribution readiness", () => {
 
     assert.equal(report.schemaVersion, "distribution-readiness/v1");
     assert.equal(report.preparationReady, true);
-    assert.equal(report.publishReady, false);
+    assert.equal(report.localPublishReady, false);
     assert.deepEqual(report.preparationBlockers, []);
     assert.deepEqual(report.publishBlockers, ["package-public"]);
     assert.ok(report.manualPublishChecks.some((entry) => entry.includes("npm")));
@@ -73,7 +73,7 @@ describe("distribution readiness", () => {
     });
 
     assert.equal(report.preparationReady, true);
-    assert.equal(report.publishReady, true);
+    assert.equal(report.localPublishReady, true);
     assert.deepEqual(report.publishBlockers, []);
   });
 
