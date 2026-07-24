@@ -5,7 +5,7 @@ Use this checklist for the first public `0.1.0` release and every later package 
 ## Package Readiness
 
 - keep the approved unscoped npm identity `repo-test-architect`
-- keep the approved MCP Registry identity `io.github.repoassay/repo-test-architect`
+- keep the approved MCP Registry identity `io.github.RepoAssay/repo-test-architect`
 - require `private: false` only on commits explicitly approved for public publication
 - re-confirm the npm package name or intended version is available immediately before publishing
 - keep these binary names stable:

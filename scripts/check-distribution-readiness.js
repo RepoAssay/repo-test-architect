@@ -167,7 +167,7 @@ function normalizeRepositoryUrl(value) {
 }
 
 function isRegistryName(value) {
-  return typeof value === "string" && /^io\.github\.[a-z0-9-]+\/[a-z0-9._-]+$/.test(value);
+  return typeof value === "string" && /^io\.github\.[A-Za-z0-9-]+\/[A-Za-z0-9._-]+$/.test(value);
 }
 
 function hasMcpPackageArgument(npmPackage) {

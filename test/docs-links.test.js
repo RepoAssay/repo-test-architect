@@ -150,7 +150,8 @@ describe("docs links", () => {
     assert.ok(publicReadiness.includes("Public Repository Ready"));
     assert.ok(publicReadiness.includes("First Package Publication"));
     assert.ok(publicReadiness.includes("repository visibility is public"));
-    assert.ok(publicReadiness.includes("authenticate npm and re-confirm `repo-test-architect` availability"));
+    assert.ok(publicReadiness.includes("`repo-test-architect@0.1.0` was published to npm"));
+    assert.ok(publicReadiness.includes("registry-compatible patch is `0.1.1`"));
     assert.ok(publicReadiness.includes("`LICENSE` ownership is verified as Mikael Stenberg"));
     assert.ok(publicReadiness.includes("Native test generation remains deferred"));
     assert.ok(publicReadiness.includes("alpha-readiness acceptance gates"));
@@ -159,7 +160,7 @@ describe("docs links", () => {
     assert.ok(publicReadiness.includes("organization-wide 2FA is enabled with secure methods only"));
     assert.ok(publicReadiness.includes("Avoid presenting native test generation as available"));
     assert.ok(releaseChecklist.includes("approved unscoped npm identity `repo-test-architect`"));
-    assert.ok(releaseChecklist.includes("approved MCP Registry identity `io.github.repoassay/repo-test-architect`"));
+    assert.ok(releaseChecklist.includes("approved MCP Registry identity `io.github.RepoAssay/repo-test-architect`"));
     assert.ok(releaseChecklist.includes("keep `master` protected with pull requests"));
     assert.ok(releaseChecklist.includes("required Linux `pr-gate` green"));
     assert.ok(releaseChecklist.includes("manually dispatched three-OS release matrix"));
