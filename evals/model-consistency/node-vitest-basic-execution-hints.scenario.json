@@ -1,0 +1,75 @@
+{
+  "schemaVersion": "model-consistency-scenario/v1",
+  "id": "node-vitest-basic-execution-hints",
+  "description": "Different hosts should preserve JavaScript execution hints for existing-test extension, service implementation, and deferred DTO review.",
+  "sourceArtifact": {
+    "path": "evals/expected/node-vitest-basic.plan.json",
+    "schemaVersion": "plan/v1"
+  },
+  "toolCall": {
+    "toolName": "get_plan_execution_hints",
+    "arguments": {}
+  },
+  "lockedFields": [
+    {
+      "path": "summary.itemCount",
+      "expected": 3,
+      "reason": "Every JavaScript plan item should receive a deterministic hint."
+    },
+    {
+      "path": "summary.highComplexityCount",
+      "expected": 0,
+      "reason": "This compact fixture has no infrastructure-sensitive plan item."
+    },
+    {
+      "path": "items[0].planItemId",
+      "expected": "extend-test:src/deckParser.ts",
+      "reason": "The hint remains attached to the stable parser extension item."
+    },
+    {
+      "path": "items[0].complexity",
+      "expected": "medium",
+      "reason": "Existing-test extension is conservatively medium complexity."
+    },
+    {
+      "path": "items[0].contextScope.mode",
+      "expected": "target-and-tests",
+      "reason": "The parser source and existing Vitest file are both required context."
+    },
+    {
+      "path": "items[0].parallelizable",
+      "expected": false,
+      "reason": "Existing test edits are serialized to avoid shared-file collisions."
+    },
+    {
+      "path": "items[1].recommendedAgentRole",
+      "expected": "implementation",
+      "reason": "The auth service remains ordinary implementation work without naming a model."
+    },
+    {
+      "path": "items[1].requiresRepositoryReasoning",
+      "expected": false,
+      "reason": "The unit-level service item has no framework or build boundary signal."
+    },
+    {
+      "path": "items[2].recommendedAgentRole",
+      "expected": "review",
+      "reason": "The DTO defer item should not be routed to implementation."
+    },
+    {
+      "path": "items[2].contextScope.includeRepositoryInstructions",
+      "expected": true,
+      "reason": "Hosts should always retain repository instructions even for review-only items."
+    }
+  ],
+  "allowedVariations": [
+    "execution rationale wording",
+    "additional provider-neutral context detail"
+  ],
+  "unexpectedVariations": [
+    "vendor or model selection",
+    "hidden subagent execution",
+    "parallelizing existing-test edits",
+    "implementing deferred DTO coverage"
+  ]
+}

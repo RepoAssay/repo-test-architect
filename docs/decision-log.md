@@ -62,11 +62,13 @@ Revisit when: SDK transport behavior conflicts with required client compatibilit
 
 ## Host-Owned Model And Subagent Orchestration
 
-Decision: keep model routing, token and cost budgets, permissions, context management, and subagent lifecycle in the MCP client or agent host. Repo Test Architect may eventually emit deterministic advisory routing hints, but its MCP tools do not silently invoke paid models or spawn opaque workers.
+Decision: keep model routing, token and cost budgets, permissions, context management, and subagent lifecycle in the MCP client or agent host. Repo Test Architect emits deterministic advisory `plan-execution-hints/v1` metadata, but its MCP tools do not silently invoke paid models or spawn opaque workers.
 
 Rationale: Codex, Claude Code, Cursor, local agents, and future clients already have different orchestration and permission systems. Duplicating that control inside the MCP server would create double orchestration, hidden cost, provider coupling, and harder-to-reproduce behavior. The audit graph can reduce cost more effectively by proving repository facts before any model is selected and by describing task complexity, minimal context, parallel safety, and review needs in a provider-neutral form.
 
-Revisit when: multiple MCP hosts support a stable interoperable routing-hint contract, or a separately authorized executor service is introduced with explicit budgets and observable model calls.
+The companion hint artifact is derived from existing plan fields and leaves `plan/v1` and `project-test-plan/v1` unchanged. It describes bounded complexity, known context, parallel safety, a provider-neutral role, and repository-reasoning need. Clients may ignore it without changing audit or plan semantics.
+
+Revisit when: multiple MCP hosts provide evidence that the current hint vocabulary is insufficient, or a separately authorized executor service is introduced with explicit budgets and observable model calls.
 
 ## Kotlin Multiplatform JVM As A Bounded Module-Graph Slice
 

@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://repo-test-architect.local/schemas/plan-execution-hints-v1.schema.json",
+  "title": "Repo Test Architect Plan Execution Hints",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "source", "summary", "items"],
+  "properties": {
+    "schemaVersion": { "const": "plan-execution-hints/v1" },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schemaVersion", "itemCount"],
+      "properties": {
+        "schemaVersion": { "enum": ["plan/v1", "project-test-plan/v1"] },
+        "itemCount": { "type": "integer", "minimum": 0 },
+        "root": { "type": "string", "minLength": 1 }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "itemCount",
+        "lowComplexityCount",
+        "mediumComplexityCount",
+        "highComplexityCount",
+        "parallelizableCount",
+        "repositoryReasoningCount"
+      ],
+      "properties": {
+        "itemCount": { "type": "integer", "minimum": 0 },
+        "lowComplexityCount": { "type": "integer", "minimum": 0 },
+        "mediumComplexityCount": { "type": "integer", "minimum": 0 },
+        "highComplexityCount": { "type": "integer", "minimum": 0 },
+        "parallelizableCount": { "type": "integer", "minimum": 0 },
+        "repositoryReasoningCount": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "planItemId",
+          "action",
+          "target",
+          "path",
+          "complexity",
+          "contextScope",
+          "parallelizable",
+          "recommendedAgentRole",
+          "requiresRepositoryReasoning",
+          "reasons"
+        ],
+        "properties": {
+          "planItemId": { "type": "string", "minLength": 1 },
+          "action": { "enum": ["add-test", "extend-test", "defer"] },
+          "target": { "type": "string", "minLength": 1 },
+          "path": { "type": "string", "minLength": 1 },
+          "projectId": { "type": "string", "minLength": 1 },
+          "projectRoot": { "type": "string", "minLength": 1 },
+          "adapterId": { "type": "string", "minLength": 1 },
+          "complexity": { "enum": ["low", "medium", "high"] },
+          "contextScope": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "mode",
+              "paths",
+              "includeBuildConfiguration",
+              "includeRepositoryInstructions"
+            ],
+            "properties": {
+              "mode": { "enum": ["target-only", "target-and-tests", "project-boundary"] },
+              "paths": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": { "type": "string", "minLength": 1 }
+              },
+              "includeBuildConfiguration": { "type": "boolean" },
+              "includeRepositoryInstructions": { "const": true }
+            }
+          },
+          "parallelizable": { "type": "boolean" },
+          "recommendedAgentRole": { "enum": ["implementation", "repository-reasoning", "review"] },
+          "requiresRepositoryReasoning": { "type": "boolean" },
+          "reasons": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    }
+  }
+}

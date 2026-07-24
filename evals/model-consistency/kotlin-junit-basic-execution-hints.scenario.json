@@ -1,0 +1,75 @@
+{
+  "schemaVersion": "model-consistency-scenario/v1",
+  "id": "kotlin-junit-basic-execution-hints",
+  "description": "Different hosts should receive the same provider-neutral routing hints for Kotlin extension, isolated unit, and deferred plan items.",
+  "sourceArtifact": {
+    "path": "evals/expected/kotlin-junit-basic.plan.json",
+    "schemaVersion": "plan/v1"
+  },
+  "toolCall": {
+    "toolName": "get_plan_execution_hints",
+    "arguments": {}
+  },
+  "lockedFields": [
+    {
+      "path": "summary.itemCount",
+      "expected": 3,
+      "reason": "Every Kotlin plan item should receive an advisory execution hint."
+    },
+    {
+      "path": "summary.parallelizableCount",
+      "expected": 1,
+      "reason": "Only the isolated new MoneyFormatter unit test is safe to assign independently."
+    },
+    {
+      "path": "items[0].complexity",
+      "expected": "medium",
+      "reason": "Extending the existing calculator test requires reviewing current coverage."
+    },
+    {
+      "path": "items[0].contextScope.mode",
+      "expected": "target-and-tests",
+      "reason": "Extension work needs both the Kotlin source and its existing test."
+    },
+    {
+      "path": "items[0].recommendedAgentRole",
+      "expected": "implementation",
+      "reason": "The bounded unit-test extension does not require broader repository reasoning."
+    },
+    {
+      "path": "items[1].planItemId",
+      "expected": "add-test:src/main/java/com/example/checkout/MoneyFormatter.java",
+      "reason": "Routing hints stay keyed to the stable plan item identifier."
+    },
+    {
+      "path": "items[1].parallelizable",
+      "expected": true,
+      "reason": "A new isolated Java unit test with low maintenance cost can run independently."
+    },
+    {
+      "path": "items[1].complexity",
+      "expected": "low",
+      "reason": "The formatter is a bounded pure unit-test target."
+    },
+    {
+      "path": "items[2].recommendedAgentRole",
+      "expected": "review",
+      "reason": "A deferred DTO recommendation should be reviewed rather than implemented."
+    },
+    {
+      "path": "items[2].parallelizable",
+      "expected": false,
+      "reason": "Deferred work is not an independent implementation assignment."
+    }
+  ],
+  "allowedVariations": [
+    "execution rationale wording",
+    "additional provider-neutral context detail"
+  ],
+  "unexpectedVariations": [
+    "vendor or model selection",
+    "hidden subagent execution",
+    "parallelizing existing-test edits",
+    "implementing deferred DTO coverage"
+  ]
+}

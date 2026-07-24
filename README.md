@@ -11,6 +11,7 @@ The current implementation can:
 - detect polyglot project roots and report unsupported ecosystems without hiding them
 - classify source files by likely test value and defer low-value direct tests
 - rank candidates and generate test plans from the audit graph
+- derive provider-neutral execution, context, parallel-safety, and repository-reasoning hints without selecting models or spawning subagents
 - analyze conservative test placement findings across project boundaries
 - collect project-level stats for coverage, candidate counts, frameworks, commands, and adapter usage
 - expose the same deterministic behavior through CLI commands, a local invoke harness, and a stdio MCP SDK server
@@ -65,6 +66,8 @@ npm run rank-projects:example
 npm run rank-projects:example:json
 npm run plan-projects:example
 npm run plan-projects:example:json
+npm run hints-projects:example
+npm run hints-projects:example:json
 npm run findings-projects:example
 npm run findings-projects:example:json
 npm run placement-projects:example
@@ -109,12 +112,23 @@ Generate an actionable test plan from the audit graph:
 ```powershell
 npm run plan:example
 npm run plan:example:json
+npm run hints:example
+npm run hints:example:json
 npm run plan:kotlin-fixture
 npm run plan:kotlin-fixture:json
 npm run plan:item:example
 npm run plan:changed
 npm run plan:changed-since
 ```
+
+Derive advisory execution hints while leaving the plan artifact unchanged:
+
+```powershell
+node ./src/cli/index.js hints ./examples/node-vitest-basic --item add-test:src/authService.ts
+node ./src/cli/index.js hints-projects ./examples/polyglot-workspace --format json
+```
+
+The installing CLI or agent host remains responsible for model choice, budgets, permissions, context loading, and subagent lifecycle.
 
 Explain one audited target by stable target ID:
 
@@ -236,6 +250,8 @@ npm run release:check
 src/
   core/
     audit-model.ts
+    plan-execution-hints.js
+    plan-execution-hints.ts
     report.js
     report.ts
   adapters/

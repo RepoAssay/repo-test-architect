@@ -293,6 +293,30 @@ describe("CLI", () => {
     );
   });
 
+  it("emits project plan execution hints with project-qualified context", () => {
+    const output = execFileSync(
+      process.execPath,
+      [
+        cliPath,
+        "hints-projects",
+        "examples/polyglot-workspace",
+        "--item=apps/android:add-test:src/main/kotlin/CheckoutCalculator.kt",
+        "--format=json"
+      ],
+      {
+        encoding: "utf8"
+      }
+    );
+    const hints = JSON.parse(output);
+
+    assert.equal(hints.schemaVersion, "plan-execution-hints/v1");
+    assert.equal(hints.source.schemaVersion, "project-test-plan/v1");
+    assert.equal(hints.source.itemCount, 3);
+    assert.equal(hints.summary.itemCount, 1);
+    assert.equal(hints.items[0].projectId, "apps/android");
+    assert.equal(hints.items[0].path, "apps/android/src/main/kotlin/CheckoutCalculator.kt");
+  });
+
   it("supports changed-since project plan mode", () => {
     const output = execFileSync(
       process.execPath,
@@ -695,6 +719,35 @@ describe("CLI", () => {
       plan.items.map((item) => `${item.action}:${item.target}`),
       ["extend-test:deckParser", "add-test:authService", "defer:userDto"]
     );
+  });
+
+  it("emits provider-neutral plan execution hints in markdown", () => {
+    const output = execFileSync(process.execPath, [cliPath, "hints", fixturePath], {
+      encoding: "utf8"
+    });
+
+    assert.match(output, /^# Plan Execution Hints/);
+    assert.match(output, /Source: plan\/v1 \(3 item\(s\)\)/);
+    assert.match(output, /deckParser \[extend-test:src\/deckParser\.ts\]: medium complexity; role implementation; serialize/);
+    assert.match(output, /Context: target-and-tests; paths src\/deckParser\.ts, src\/deckParser\.test\.ts/);
+    assert.match(output, /userDto \[defer:src\/userDto\.ts\]: low complexity; role review/);
+  });
+
+  it("filters JSON plan execution hints by stable item id", () => {
+    const output = execFileSync(
+      process.execPath,
+      [cliPath, "hints", fixturePath, "--item=add-test:src/authService.ts", "--format=json"],
+      {
+        encoding: "utf8"
+      }
+    );
+    const hints = JSON.parse(output);
+
+    assert.equal(hints.schemaVersion, "plan-execution-hints/v1");
+    assert.equal(hints.source.itemCount, 3);
+    assert.equal(hints.summary.itemCount, 1);
+    assert.equal(hints.items[0].planItemId, "add-test:src/authService.ts");
+    assert.equal(hints.items[0].recommendedAgentRole, "implementation");
   });
 
   it("emits a JSON target explanation", () => {

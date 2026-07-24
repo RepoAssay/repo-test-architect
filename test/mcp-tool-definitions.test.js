@@ -77,6 +77,7 @@ describe("MCP tool definitions", () => {
     });
     const graph = callTool("get_audit_graph", { audit });
     const plan = callTool("generate_test_plan", { audit, itemId: "add-test:src/authService.ts" });
+    const executionHints = callTool("get_plan_execution_hints", { plan });
     const explanation = callTool("explain_target", { audit, targetId: "src/authService.ts" });
     const ranking = callTool("rank_test_candidates", { audit });
     const placement = callTool("analyze_test_placement", { audit, owner: "node-vitest-basic" });
@@ -107,6 +108,10 @@ describe("MCP tool definitions", () => {
     assert.equal(graph, audit);
     assert.equal(plan.schemaVersion, "plan/v1");
     assert.deepEqual(plan.items.map((item) => item.id), ["add-test:src/authService.ts"]);
+    assert.equal(executionHints.schemaVersion, "plan-execution-hints/v1");
+    assert.equal(executionHints.items[0].planItemId, "add-test:src/authService.ts");
+    assert.equal(executionHints.items[0].parallelizable, false);
+    assert.equal(executionHints.items[0].recommendedAgentRole, "implementation");
     assert.equal(explanation.schemaVersion, "target-explanation/v1");
     assert.equal(ranking.schemaVersion, "candidate-ranking/v1");
     assert.equal(placement.schemaVersion, "test-placement-findings/v1");
@@ -268,6 +273,7 @@ function minimalArgsFor(toolName) {
   if (toolName === "analyze_project_test_placement") return { projectAudits: { schemaVersion: "project-audits/v1", audits: [], skippedProjects: [], summary: {} } };
   if (toolName === "collect_project_stats") return { projectAudits: { schemaVersion: "project-audits/v1", audits: [], skippedProjects: [], summary: {} } };
   if (toolName === "audit_repo") return { repoRoot: "." };
+  if (toolName === "get_plan_execution_hints") return { plan: { schemaVersion: "plan/v1", items: [] } };
   if (toolName === "explain_target") return { audit: {}, targetId: "src/example.ts" };
   if (toolName === "analyze_test_placement") return { audit: {} };
   if (toolName === "generate_selected_test") return { planItemId: "add-test:src/example.ts" };

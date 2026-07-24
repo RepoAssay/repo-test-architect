@@ -83,6 +83,19 @@ try {
       }
     }
   });
+  const planArtifact = parseToolArtifact(projectPlan);
+  const executionHintsResponse = await sendRequest({
+    jsonrpc: "2.0",
+    id: 12,
+    method: "tools/call",
+    params: {
+      name: "get_plan_execution_hints",
+      arguments: {
+        plan: planArtifact,
+        itemId: planArtifact.items[0].projectItemId
+      }
+    }
+  });
 
   const missingTool = await sendRequest({
     jsonrpc: "2.0",
@@ -133,6 +146,7 @@ try {
   assert.ok(tools.result.tools.some((tool) => tool.name === "detect_projects"));
   assert.ok(tools.result.tools.some((tool) => tool.name === "audit_projects"));
   assert.ok(tools.result.tools.some((tool) => tool.name === "generate_project_test_plan"));
+  assert.ok(tools.result.tools.some((tool) => tool.name === "get_plan_execution_hints"));
 
   const detectionArtifact = parseToolArtifact(detectedProjects);
   assert.equal(detectionArtifact.schemaVersion, "project-detection/v1");
@@ -144,12 +158,18 @@ try {
   assert.equal(projectAudits.summary.auditedProjectCount, 3);
   assert.equal(projectAudits.summary.skippedProjectCount, 0);
 
-  const planArtifact = parseToolArtifact(projectPlan);
   assert.equal(planArtifact.schemaVersion, "project-test-plan/v1");
   assert.equal(planArtifact.summary.plannedProjectCount, 3);
   assert.equal(planArtifact.summary.unsupportedProjectCount, 0);
   assert.equal(planArtifact.summary.itemCount, 3);
   assert.equal(planArtifact.items[0].projectId, "apps/android");
+
+  const executionHints = parseToolArtifact(executionHintsResponse);
+  assert.equal(executionHintsResponse.id, 12);
+  assert.equal(executionHints.schemaVersion, "plan-execution-hints/v1");
+  assert.equal(executionHints.source.schemaVersion, "project-test-plan/v1");
+  assert.equal(executionHints.summary.itemCount, 1);
+  assert.equal(executionHints.items[0].projectId, "apps/android");
 
   assert.equal(missingTool.id, 6);
   assert.equal(missingTool.error.code, -32000);

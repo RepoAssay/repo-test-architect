@@ -80,6 +80,27 @@ describe("MCP invoke harness", () => {
     assert.equal(summary.summary.projectCount, 3);
   });
 
+  it("calls plan execution hints with a plan artifact", () => {
+    const plan = JSON.parse(fs.readFileSync("evals/expected/node-vitest-basic.plan.json", "utf8"));
+    const output = execFileSync(
+      process.execPath,
+      [
+        invokePath,
+        "call",
+        "get_plan_execution_hints",
+        JSON.stringify({ plan, itemId: "extend-test:src/deckParser.ts" })
+      ],
+      {
+        encoding: "utf8"
+      }
+    );
+    const hints = JSON.parse(output);
+
+    assert.equal(hints.schemaVersion, "plan-execution-hints/v1");
+    assert.equal(hints.summary.itemCount, 1);
+    assert.equal(hints.items[0].contextScope.mode, "target-and-tests");
+  });
+
   it("calls placement tools with JSON args", () => {
     const audit = {
       schemaVersion: "audit/v1",

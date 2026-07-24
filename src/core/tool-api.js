@@ -8,6 +8,7 @@ import { createProjectFindings } from "./project-findings.js";
 import { analyzeProjectTestPlacement } from "./project-test-placement-analysis.js";
 import { createProjectTestPlan } from "./project-test-plan.js";
 import { collectProjectStats } from "./project-stats.js";
+import { createPlanExecutionHints } from "./plan-execution-hints.js";
 import { rankTestCandidates } from "./rank-test-candidates.js";
 import { analyzeTestPlacement } from "./test-placement-analysis.js";
 import { createTestPlacementFindings } from "./test-placement-findings.js";
@@ -25,6 +26,7 @@ export { validateProjectAudits } from "./project-audits-validation.js";
  * @typedef {import("./project-findings.js").ProjectFindings} ProjectFindings
  * @typedef {import("./project-test-plan.js").ProjectTestPlan} ProjectTestPlan
  * @typedef {import("./project-stats.js").ProjectStats} ProjectStats
+ * @typedef {import("./plan-execution-hints.js").PlanExecutionHints} PlanExecutionHints
  * @typedef {import("./test-placement-findings.js").TestPlacementFindings} TestPlacementFindings
  * @typedef {import("./test-placement-findings.js").TestPlacementFinding} TestPlacementFinding
  * @typedef {import("./test-plan.js").TestPlan} TestPlan
@@ -170,6 +172,15 @@ export function getAuditGraph(audit) {
 export function generateTestPlan(audit, options = {}) {
   validateAudit(audit);
   return filterPlan(createTestPlan(audit), options.itemId);
+}
+
+/**
+ * @param {TestPlan | ProjectTestPlan} plan
+ * @param {GenerateTestPlanOptions} [options]
+ * @returns {PlanExecutionHints}
+ */
+export function getPlanExecutionHints(plan, options = {}) {
+  return createPlanExecutionHints(plan, options);
 }
 
 /**

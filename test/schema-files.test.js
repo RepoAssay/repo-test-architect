@@ -29,6 +29,21 @@ describe("schema files", () => {
     assert.ok(schema.properties.items.items.required.includes("sourceSignals"));
   });
 
+  it("documents plan-execution-hints/v1", () => {
+    const schema = readSchema("schemas/plan-execution-hints-v1.schema.json");
+
+    assert.equal(schema.properties.schemaVersion.const, "plan-execution-hints/v1");
+    assert.ok(schema.required.includes("source"));
+    assert.ok(schema.required.includes("summary"));
+    assert.ok(schema.required.includes("items"));
+    assert.deepEqual(schema.properties.source.properties.schemaVersion.enum, ["plan/v1", "project-test-plan/v1"]);
+    assert.ok(schema.properties.items.items.required.includes("complexity"));
+    assert.ok(schema.properties.items.items.required.includes("contextScope"));
+    assert.ok(schema.properties.items.items.required.includes("parallelizable"));
+    assert.ok(schema.properties.items.items.required.includes("recommendedAgentRole"));
+    assert.ok(schema.properties.items.items.required.includes("requiresRepositoryReasoning"));
+  });
+
   it("documents target-explanation/v1", () => {
     const schema = readSchema("schemas/target-explanation-v1.schema.json");
 

@@ -29,6 +29,7 @@ export const requiredFiles = [
   "src/mcp/invoke.js",
   "src/mcp/tool-definitions.js",
   "schemas/audit-v1.schema.json",
+  "schemas/plan-execution-hints-v1.schema.json",
   "schemas/project-findings-v1.schema.json",
   "schemas/project-stats-v1.schema.json",
   "schemas/model-consistency-stats-v1.schema.json",

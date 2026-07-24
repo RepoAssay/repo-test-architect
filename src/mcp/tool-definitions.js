@@ -10,6 +10,7 @@ import {
   generateTestPlan,
   generateRepoProjectTestPlan,
   getAuditGraph,
+  getPlanExecutionHints,
   getProjectDetectionRules,
   rankRepoProjectCandidates,
   rankAuditTestCandidates,
@@ -143,6 +144,15 @@ export const mcpTools = [
     }, ["audit"])
   },
   {
+    name: "get_plan_execution_hints",
+    description: "Derive provider-neutral execution, context, parallel-safety, and repository-reasoning hints from a plan without invoking models or subagents.",
+    outputArtifact: artifact("plan-execution-hints/v1", "schemas/plan-execution-hints-v1.schema.json"),
+    inputSchema: objectSchema({
+      plan: { type: "object", description: "A plan/v1 or project-test-plan/v1 artifact." },
+      itemId: { type: "string", description: "Optional stable plan item or project item id to select." }
+    }, ["plan"])
+  },
+  {
     name: "explain_target",
     description: "Explain one audit target by stable target id.",
     outputArtifact: artifact("target-explanation/v1", "schemas/target-explanation-v1.schema.json"),
@@ -224,6 +234,10 @@ export function callTool(name, args = {}) {
         return getAuditGraph(requireObject(args.audit, "audit"));
       case "generate_test_plan":
         return generateTestPlan(requireObject(args.audit, "audit"), {
+          itemId: optionalString(args.itemId, "itemId")
+        });
+      case "get_plan_execution_hints":
+        return getPlanExecutionHints(requireObject(args.plan, "plan"), {
           itemId: optionalString(args.itemId, "itemId")
         });
       case "explain_target":
