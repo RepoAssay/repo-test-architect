@@ -75,6 +75,7 @@ describe("model consistency runner", () => {
         ["kotlin-gradle-module-graph-junit-plan", []],
         ["kotlin-gradle-parent-wrapper-junit-plan", []],
         ["kotlin-gradle-spock-plan", []],
+        ["kotlin-junit-basic-execution-hints", []],
         ["kotlin-junit-basic-plan", []],
         ["kotlin-maven-junit-plan", []],
         ["kotlin-maven-reactor-junit-plan", []],
@@ -91,6 +92,7 @@ describe("model consistency runner", () => {
         ["node-test-typescript-plan", []],
         ["node-vitest-basic-auth-explanation", []],
         ["node-vitest-basic-deck-explanation", []],
+        ["node-vitest-basic-execution-hints", []],
         ["node-vitest-basic-plan", []],
         ["node-vitest-basic-ranking", []],
         ["polyglot-project-findings", []],
@@ -107,12 +109,14 @@ describe("model consistency runner", () => {
         ["python-package-local-tests-plan", []],
         ["python-poetry-pytest-plan", []],
         ["python-pytest-advanced-plan", []],
+        ["python-pytest-service-execution-hints", []],
         ["python-pytest-service-plan", []],
         ["python-uv-pytest-plan", []],
         ["react-testing-library-plan", []],
         ["swift-spm-quick-nimble-plan", []],
         ["swift-spm-swift-testing-plan", []],
         ["swift-spm-xctest-plan", []],
+        ["vapor-mongodb-boundaries-execution-hints", []],
         ["vapor-mongodb-boundaries-plan", []],
         ["vapor-service-tests-plan", []]
       ]
@@ -129,14 +133,14 @@ describe("model consistency runner", () => {
     assert.equal(summary.schemaVersion, "model-consistency-summary/v1");
     assert.equal(summary.profileName, "deterministic-baseline");
     assert.deepEqual(summary.summary, {
-      scenarioCount: 46,
-      passedScenarioCount: 46,
+      scenarioCount: 50,
+      passedScenarioCount: 50,
       failedScenarioCount: 0,
-      checkedFieldCount: 393,
+      checkedFieldCount: 433,
       failureCount: 0
     });
-    assert.equal(summary.scenarios[15].scenarioId, "node-ava-basic-plan");
-    assert.equal(summary.scenarios[15].status, "passed");
+    assert.equal(summary.scenarios[16].scenarioId, "node-ava-basic-plan");
+    assert.equal(summary.scenarios[16].status, "passed");
     assert.ok(summary.allowedVariationThemes.includes("Additional non-locked metadata may be added."));
     assert.ok(summary.unexpectedVariationThemes.includes("Generating a direct DTO test recommendation."));
   });
@@ -150,8 +154,8 @@ describe("model consistency runner", () => {
     assert.equal(comparison.baselineProfile, "deterministic-baseline");
     assert.equal(comparison.candidateProfile, "local-small");
     assert.deepEqual(comparison.summary, {
-      scenarioCount: 46,
-      alignedScenarioCount: 46,
+      scenarioCount: 50,
+      alignedScenarioCount: 50,
       driftedScenarioCount: 0,
       missingScenarioCount: 0,
       unexpectedScenarioCount: 0,
@@ -193,12 +197,12 @@ describe("model consistency runner", () => {
     const comparison = compareModelConsistencySummaries(baseline, candidate);
 
     assert.deepEqual(comparison.summary, {
-      scenarioCount: 47,
-      alignedScenarioCount: 44,
+      scenarioCount: 51,
+      alignedScenarioCount: 48,
       driftedScenarioCount: 1,
       missingScenarioCount: 1,
       unexpectedScenarioCount: 1,
-      checkedFieldDelta: -238,
+      checkedFieldDelta: -278,
       failureDelta: 3
     });
     assert.deepEqual(
@@ -210,6 +214,7 @@ describe("model consistency runner", () => {
         ["kotlin-gradle-module-graph-junit-plan", "aligned"],
         ["kotlin-gradle-parent-wrapper-junit-plan", "aligned"],
         ["kotlin-gradle-spock-plan", "aligned"],
+        ["kotlin-junit-basic-execution-hints", "aligned"],
         ["kotlin-junit-basic-plan", "aligned"],
         ["kotlin-maven-junit-plan", "aligned"],
         ["kotlin-maven-reactor-junit-plan", "aligned"],
@@ -226,6 +231,7 @@ describe("model consistency runner", () => {
         ["node-test-typescript-plan", "aligned"],
         ["node-vitest-basic-auth-explanation", "aligned"],
         ["node-vitest-basic-deck-explanation", "aligned"],
+        ["node-vitest-basic-execution-hints", "aligned"],
         ["node-vitest-basic-plan", "aligned"],
         ["node-vitest-basic-ranking", "aligned"],
         ["polyglot-project-findings", "aligned"],
@@ -242,6 +248,7 @@ describe("model consistency runner", () => {
         ["python-package-local-tests-plan", "aligned"],
         ["python-poetry-pytest-plan", "aligned"],
         ["python-pytest-advanced-plan", "aligned"],
+        ["python-pytest-service-execution-hints", "aligned"],
         ["python-pytest-service-plan", "aligned"],
         ["python-uv-pytest-plan", "aligned"],
         ["react-testing-library-plan", "aligned"],
@@ -249,6 +256,7 @@ describe("model consistency runner", () => {
         ["swift-spm-swift-testing-plan", "aligned"],
         ["swift-spm-xctest-plan", "aligned"],
         ["unexpected-extra-scenario", "unexpected"],
+        ["vapor-mongodb-boundaries-execution-hints", "aligned"],
         ["vapor-mongodb-boundaries-plan", "aligned"],
         ["vapor-service-tests-plan", "aligned"]
       ]

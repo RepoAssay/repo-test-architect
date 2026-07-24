@@ -27,6 +27,7 @@ Descriptor schema:
 - `audit_repo`
 - `get_audit_graph`
 - `generate_test_plan`
+- `get_plan_execution_hints`
 - `explain_target`
 - `rank_test_candidates`
 - `analyze_test_placement`
@@ -53,6 +54,7 @@ The model should consume these artifacts directly:
 - candidate ordering comes from `rank_test_candidates`
 - advisory test placement findings come from `analyze_test_placement`
 - actionable plan items come from `generate_test_plan`
+- provider-neutral complexity, context, parallel-safety, role, and repository-reasoning guidance comes from `get_plan_execution_hints`
 - selected test generation currently returns `generation-deferred/v1`
 
 The MCP layer should not reclassify code, rerank candidates, or infer repository facts from raw source files.
@@ -77,6 +79,7 @@ Each tool descriptor includes `outputArtifact` metadata:
 | `audit_repo` | `audit/v1` |
 | `get_audit_graph` | `audit/v1` |
 | `generate_test_plan` | `plan/v1` |
+| `get_plan_execution_hints` | `plan-execution-hints/v1` |
 | `explain_target` | `target-explanation/v1` |
 | `rank_test_candidates` | `candidate-ranking/v1` |
 | `analyze_test_placement` | `test-placement-findings/v1` |
@@ -89,6 +92,7 @@ Use `audit_projects` to audit detected supported project roots while reporting u
 Use `summarize_project_audits` when a client needs compact audit coverage status, unsupported reasons, and counts before asking for detailed per-project audit data.
 Use `rank_project_candidates` when a client needs ordered candidates across audited project roots while preserving project identity.
 Use `generate_project_test_plan` when a client needs project-aware plan items before selecting future generation targets.
+Use `get_plan_execution_hints` with a `plan/v1` or `project-test-plan/v1` artifact when a host wants deterministic advisory routing metadata. The MCP server does not select a model, budget, provider, permission mode, or subagent lifecycle.
 Use `collect_project_findings` when a client needs a concise top-findings test architecture audit across projects.
 Use `analyze_project_test_placement` when a client needs advisory placement findings derived from audited project roots.
 Use `collect_project_stats` when a client needs local artifact-derived counts and distributions for reporting or model-profile comparisons.

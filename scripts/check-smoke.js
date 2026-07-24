@@ -98,6 +98,7 @@ const smokeSignalChecks = [
       "audit_repo",
       "get_audit_graph",
       "generate_test_plan",
+      "get_plan_execution_hints",
       "explain_target",
       "rank_test_candidates",
       "analyze_test_placement",

@@ -51,6 +51,7 @@ Implemented:
 - CLI output for project detection marker rules
 - fixture-based regression coverage
 - audit, plan, explanation, ranking, and deferred-generation artifacts
+- provider-neutral `plan-execution-hints/v1` companion artifacts for `plan/v1` and `project-test-plan/v1`, with deterministic complexity, known context, conservative parallel safety, agent-role, and repository-reasoning guidance while model and subagent orchestration remains host-owned
 - test placement findings artifact with a conservative audit-based `keep` analyzer
 - project-audits derived placement analysis that preserves project owner identity and reports conservative cross-owner `move` and `split` findings for test paths that escape the audited project root
 - project-level top findings report with category counts for missing coverage, weak existing coverage, misplaced coverage, low-value direct targets, and blocked projects
@@ -154,6 +155,7 @@ Current tool names:
 - `collect_project_stats`
 - `get_audit_graph`
 - `generate_test_plan`
+- `get_plan_execution_hints`
 - `explain_target`
 - `rank_test_candidates`
 - `analyze_test_placement`

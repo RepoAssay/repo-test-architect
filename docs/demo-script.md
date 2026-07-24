@@ -101,6 +101,7 @@ npm run mcp:placement-split:example
 ```
 
 Call out that the current MCP surface has a real local stdio SDK wrapper plus a dependency-free invoke harness for deterministic checks.
+`get_plan_execution_hints` can optionally show provider-neutral complexity, context, parallel-safety, and repository-reasoning guidance while leaving model choice and subagent orchestration to the host.
 
 ## Close
 

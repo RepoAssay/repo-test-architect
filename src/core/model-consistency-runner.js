@@ -252,6 +252,10 @@ function buildToolArgs(scenario, sourceArtifact) {
     return { projectAudits: sourceArtifact, ...args };
   }
 
+  if (["plan/v1", "project-test-plan/v1"].includes(scenario.sourceArtifact.schemaVersion)) {
+    return { plan: sourceArtifact, ...args };
+  }
+
   throw new Error(`Unsupported source artifact for model consistency: ${scenario.sourceArtifact.schemaVersion}.`);
 }
 

@@ -300,6 +300,31 @@
       }
     },
     {
+      "name": "get_plan_execution_hints",
+      "description": "Derive provider-neutral execution, context, parallel-safety, and repository-reasoning hints from a plan without invoking models or subagents.",
+      "outputArtifact": {
+        "schemaVersion": "plan-execution-hints/v1",
+        "schemaPath": "schemas/plan-execution-hints-v1.schema.json"
+      },
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "plan"
+        ],
+        "properties": {
+          "plan": {
+            "type": "object",
+            "description": "A plan/v1 or project-test-plan/v1 artifact."
+          },
+          "itemId": {
+            "type": "string",
+            "description": "Optional stable plan item or project item id to select."
+          }
+        }
+      }
+    },
+    {
       "name": "explain_target",
       "description": "Explain one audit target by stable target id.",
       "outputArtifact": {

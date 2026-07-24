@@ -97,6 +97,7 @@ The MCP server should expose stable tools around the deterministic audit graph:
 - `summarize_project_audits`
 - `rank_project_candidates`
 - `generate_project_test_plan`
+- `get_plan_execution_hints`
 - `analyze_project_test_placement`
 - `collect_project_stats`
 - `audit_repo`
@@ -109,7 +110,7 @@ The MCP server should expose stable tools around the deterministic audit graph:
 
 The model should call tools and act on structured evidence. It should not own repository fact discovery.
 
-The internal tool API now mirrors the first five MCP-shaped operations:
+The internal tool API mirrors the deterministic MCP-shaped operations:
 
 - `detectRepoProjects`
 - `auditRepoProjects`
@@ -123,14 +124,15 @@ The internal tool API now mirrors the first five MCP-shaped operations:
 - `explainAuditTarget`
 - `rankAuditTestCandidates`
 - `generateTestPlan`
+- `getPlanExecutionHints`
 - `analyzeRepoTestPlacement`
 
-The later MCP server should wrap that API rather than duplicate audit, ranking, or planning logic.
+The MCP server wraps that API rather than duplicating audit, ranking, planning, or execution-hint logic.
 
 `generate_selected_test` exists in the MCP tool surface but returns a structured deferred artifact until native generation has adapter-specific fixtures and repair-loop coverage.
 
 The dependency-free MCP tool surface lives in `src/mcp/tool-definitions.js`, is mounted by `src/mcp/stdio.js`, and is documented in `docs/mcp-tools.md`.
-It defines tool names, input schemas, and dispatch behavior without committing to a specific transport package yet.
+It defines tool names, input schemas, and dispatch behavior independently of the SDK transport wrapper.
 
 The default deployment target is local stdio MCP because repository audits need local source, Git, and test execution context.
 Remote hosting is a later option for shared evals, policy packs, team reporting, or model-consistency runs, not the first path for raw repo access.
@@ -234,7 +236,7 @@ Unexpected variation:
 
 Longer term, add model-consistency evaluations that run the same audit graph through multiple model profiles and compare whether recommendations stay aligned.
 
-Current deterministic scenarios lock selected fields for single-project planning, ranking, target explanation, no-framework blocker handling, route/component/service fixtures, the Kotlin/JVM adapter spike, and polyglot project-summary/ranking/plan/stats coverage.
+Current deterministic scenarios lock selected fields for single-project planning, provider-neutral execution hints across JavaScript, Python, Swift, and Kotlin, ranking, target explanation, no-framework blocker handling, route/component/service fixtures, the Kotlin/JVM adapter spike, and polyglot project-summary/ranking/plan/stats coverage.
 
 ## Optional Executor Direction
 
@@ -250,7 +252,7 @@ Executor behavior should be split into reusable layers:
 
 Different models may need different executor profiles. Those profiles should be evaluated against the same audit item and adapter guidance rather than being allowed to reinterpret the underlying facts.
 
-The installing CLI or agent host owns model choice and subagent orchestration. A future plan schema may provide provider-neutral complexity, minimal-context, parallel-safety, agent-role, and repository-reasoning hints, but the MCP server should not turn those hints into hidden model calls. This lets inexpensive models handle routine work while stronger models remain available for ambiguity, repair, and review without changing the deterministic audit.
+The installing CLI or agent host owns model choice and subagent orchestration. The companion `plan-execution-hints/v1` artifact provides provider-neutral complexity, minimal-context, parallel-safety, agent-role, and repository-reasoning hints, but the MCP server does not turn those hints into hidden model calls. This lets inexpensive models handle routine work while stronger models remain available for ambiguity, repair, and review without changing the deterministic audit or plan.
 
 Generation evaluation should record at least:
 

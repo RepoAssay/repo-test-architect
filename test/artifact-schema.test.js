@@ -21,12 +21,14 @@ import {
 import { createTestPlacementFindings } from "../src/core/test-placement-findings.js";
 import { collectProjectStats } from "../src/core/project-stats.js";
 import { collectModelConsistencyStats } from "../src/core/model-consistency-stats.js";
+import { createPlanExecutionHints } from "../src/core/plan-execution-hints.js";
 import { loadEvalFixtures } from "./support/eval-fixtures.js";
 import { assertMatchesSchema } from "./support/json-schema-validator.js";
 
 const expectedDir = path.resolve("evals/expected");
 const auditSchema = readJson("schemas/audit-v1.schema.json");
 const planSchema = readJson("schemas/plan-v1.schema.json");
+const planExecutionHintsSchema = readJson("schemas/plan-execution-hints-v1.schema.json");
 const explanationSchema = readJson("schemas/target-explanation-v1.schema.json");
 const rankingSchema = readJson("schemas/candidate-ranking-v1.schema.json");
 const generationDeferredSchema = readJson("schemas/generation-deferred-v1.schema.json");
@@ -92,6 +94,27 @@ describe("deferred generation artifact schema compatibility", () => {
     };
 
     assertMatchesSchema(artifact, generationDeferredSchema, "generation-deferred.json");
+  });
+});
+
+describe("plan execution hints artifact schema compatibility", () => {
+  it("validates plan-execution-hints/v1 from single and project plans", () => {
+    const audit = getAdapter("javascript").audit(path.resolve("examples/node-vitest-basic"));
+    const plan = readJson(path.join(expectedDir, "node-vitest-basic.plan.json"));
+    const projectAudits = auditDetectedProjects(path.resolve("examples/polyglot-workspace"));
+    const projectPlan = createProjectTestPlan(projectAudits);
+
+    assert.equal(audit.schemaVersion, "audit/v1");
+    assertMatchesSchema(
+      createPlanExecutionHints(plan),
+      planExecutionHintsSchema,
+      "plan-execution-hints.json"
+    );
+    assertMatchesSchema(
+      createPlanExecutionHints(projectPlan),
+      planExecutionHintsSchema,
+      "project-plan-execution-hints.json"
+    );
   });
 });
 

@@ -265,6 +265,19 @@ describe("docs links", () => {
     assert.ok(status.includes("decision log for audit-first architecture"));
   });
 
+  it("documents host-owned model and subagent routing hints", () => {
+    const artifactContract = fs.readFileSync("docs/artifact-contract.md", "utf8");
+    const decisionLog = fs.readFileSync("docs/decision-log.md", "utf8");
+    const roadmap = fs.readFileSync("docs/near-term-roadmap.md", "utf8");
+
+    for (const contents of [artifactContract, decisionLog, roadmap]) {
+      assert.ok(contents.includes("plan-execution-hints/v1"));
+    }
+    assert.ok(artifactContract.includes("They do not select a vendor, model, price tier, token budget, permission mode, or subagent implementation."));
+    assert.ok(decisionLog.includes("model routing, token and cost budgets, permissions, context management, and subagent lifecycle in the MCP client or agent host"));
+    assert.ok(roadmap.includes("Host-specific routing policy and actual subagent lifecycle remain outside Repo Test Architect."));
+  });
+
   it("documents the acceptance gate for a second adapter spike", () => {
     const readme = fs.readFileSync("README.md", "utf8");
     const adapterContract = fs.readFileSync("docs/adapter-contract.md", "utf8");

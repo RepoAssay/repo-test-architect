@@ -1,0 +1,75 @@
+{
+  "schemaVersion": "model-consistency-scenario/v1",
+  "id": "python-pytest-service-execution-hints",
+  "description": "Different hosts should preserve Python routing hints that separate bounded parser extension from external service and route boundaries.",
+  "sourceArtifact": {
+    "path": "evals/expected/python-pytest-service.plan.json",
+    "schemaVersion": "plan/v1"
+  },
+  "toolCall": {
+    "toolName": "get_plan_execution_hints",
+    "arguments": {}
+  },
+  "lockedFields": [
+    {
+      "path": "summary.itemCount",
+      "expected": 5,
+      "reason": "Every Python plan item should receive a deterministic hint."
+    },
+    {
+      "path": "summary.highComplexityCount",
+      "expected": 2,
+      "reason": "The external service and HTTP route require broader repository context."
+    },
+    {
+      "path": "summary.repositoryReasoningCount",
+      "expected": 2,
+      "reason": "Only the two implementation boundaries should request repository reasoning."
+    },
+    {
+      "path": "items[0].complexity",
+      "expected": "medium",
+      "reason": "Extending the existing parser test remains bounded implementation work."
+    },
+    {
+      "path": "items[0].recommendedAgentRole",
+      "expected": "implementation",
+      "reason": "The parser extension does not need a repository-reasoning role."
+    },
+    {
+      "path": "items[1].complexity",
+      "expected": "high",
+      "reason": "The external service boundary is infrastructure-sensitive."
+    },
+    {
+      "path": "items[1].contextScope.includeBuildConfiguration",
+      "expected": true,
+      "reason": "External-boundary tests need project and test configuration context."
+    },
+    {
+      "path": "items[1].recommendedAgentRole",
+      "expected": "repository-reasoning",
+      "reason": "The host should reserve broader reasoning for the external service boundary."
+    },
+    {
+      "path": "items[2].contextScope.mode",
+      "expected": "project-boundary",
+      "reason": "The HTTP route needs framework and build context."
+    },
+    {
+      "path": "items[4].recommendedAgentRole",
+      "expected": "review",
+      "reason": "The deferred model remains review-only."
+    }
+  ],
+  "allowedVariations": [
+    "execution rationale wording",
+    "additional provider-neutral context detail"
+  ],
+  "unexpectedVariations": [
+    "vendor or model selection",
+    "hidden subagent execution",
+    "routing external boundaries as isolated low-cost work",
+    "implementing deferred model coverage"
+  ]
+}

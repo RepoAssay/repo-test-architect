@@ -1,5 +1,6 @@
 import type { AuditResult } from "./audit-model";
 import { explainTarget } from "./explain-target";
+import { createPlanExecutionHints, type PlanExecutionHints } from "./plan-execution-hints";
 import { rankTestCandidates } from "./rank-test-candidates";
 import { createTestPlan, type TestPlan } from "./test-plan";
 
@@ -339,6 +340,13 @@ export function getAuditGraph(audit: AuditResult): AuditResult {
 export function generateTestPlan(audit: AuditResult, options: GenerateTestPlanOptions = {}): TestPlan {
   validateAudit(audit);
   return filterPlan(createTestPlan(audit), options.itemId);
+}
+
+export function getPlanExecutionHints(
+  plan: TestPlan | ProjectTestPlan,
+  options: GenerateTestPlanOptions = {}
+): PlanExecutionHints {
+  return createPlanExecutionHints(plan, options);
 }
 
 export function explainAuditTarget(audit: AuditResult, targetId: string) {

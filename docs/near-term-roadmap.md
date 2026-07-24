@@ -13,7 +13,7 @@ The useful baseline is:
 - deterministic JavaScript/TypeScript audit pipeline
 - supported Swift, Python, and bounded Kotlin/JVM adapters
 - polyglot project detection with unsupported-project reporting
-- project-level ranking, planning, placement, stats, and local MCP tool calls
+- project-level ranking, planning, provider-neutral execution hints, placement, stats, and local MCP tool calls
 - model-consistency scenarios for stable audit and plan outputs
 - release gate through `npm run release:check`
 - native test generation intentionally deferred
@@ -143,7 +143,7 @@ Acceptance:
 
 The MCP server should expose deterministic repository evidence and advisory execution hints, while the installing CLI or agent host owns model selection, token and cost budgets, permissions, context management, and subagent lifecycle. Repo Test Architect must not silently call paid models or spawn opaque workers behind an MCP tool invocation.
 
-Future versioned planning metadata may help capable hosts route work without naming a provider or forcing one orchestration strategy. Candidate hints include:
+The first companion `plan-execution-hints/v1` artifact now helps capable hosts route `plan/v1` or `project-test-plan/v1` work without naming a provider or forcing one orchestration strategy. It includes:
 
 - `complexity`: bounded low, medium, or high implementation difficulty
 - `contextScope`: the minimum source, test, build, and documentation paths needed
@@ -151,15 +151,17 @@ Future versioned planning metadata may help capable hosts route work without nam
 - `recommendedAgentRole`: implementation, repository reasoning, or review
 - `requiresRepositoryReasoning`: whether deterministic evidence is insufficient by itself
 
-These fields would remain advisory. Clients may ignore them and must receive the same audit facts either way. The intended cost shape is deterministic MCP analysis first, inexpensive summarization or routine implementation where appropriate, and stronger reasoning models only for ambiguous architecture, difficult generation, repair, or final review.
+These fields remain advisory. Clients may ignore them and receive the same audit and plan facts either way. The intended cost shape is deterministic MCP analysis first, inexpensive summarization or routine implementation where appropriate, and stronger reasoning models only for ambiguous architecture, difficult generation, repair, or final review.
 
-Acceptance before adding routing fields to an artifact schema:
+Acceptance for the first routing artifact:
 
 - hints derive deterministically from existing audit evidence
 - no hint selects a vendor, model name, or price tier
 - the MCP server performs no hidden model or subagent calls
 - clients that ignore hints preserve identical audit and plan semantics
 - model-consistency fixtures lock the routing fields before clients depend on them
+
+Status: met for the companion artifact through shared derivation, CLI and MCP exposure, and JavaScript, Python, Swift, and Kotlin model-consistency locks. Host-specific routing policy and actual subagent lifecycle remain outside Repo Test Architect.
 
 ## Milestone 6: Generation Readiness Gate
 

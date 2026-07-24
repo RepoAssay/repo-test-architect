@@ -15,6 +15,7 @@ import {
   generateRepoProjectTestPlan,
   getAdapterRegistry,
   getProjectDetectionRules,
+  getPlanExecutionHints,
   rankRepoProjectCandidates,
   getAuditGraph,
   rankAuditTestCandidates,
@@ -61,6 +62,17 @@ describe("tool API", () => {
     assert.equal(rules.schemaVersion, "project-detection-rules/v1");
     assert.ok(rules.markers.some((marker) => marker.fileName === "package.json"));
     assert.ok(rules.ignoredDirectories.includes("node_modules"));
+  });
+
+  it("derives provider-neutral execution hints from generated plans", () => {
+    const audit = auditRepo(path.resolve("examples/node-vitest-basic"));
+    const plan = generateTestPlan(audit, { itemId: "extend-test:src/deckParser.ts" });
+    const hints = getPlanExecutionHints(plan);
+
+    assert.equal(hints.schemaVersion, "plan-execution-hints/v1");
+    assert.equal(hints.source.schemaVersion, "plan/v1");
+    assert.equal(hints.items[0].complexity, "medium");
+    assert.equal(hints.items[0].recommendedAgentRole, "implementation");
   });
 
   it("audits detected repository projects", () => {

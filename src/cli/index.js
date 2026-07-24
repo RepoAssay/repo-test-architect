@@ -15,6 +15,7 @@ import {
   generateRepoProjectTestPlan,
   generateTestPlan,
   getAdapterRegistry,
+  getPlanExecutionHints,
   getProjectDetectionRules,
   rankRepoProjectCandidates,
   rankAuditTestCandidates,
@@ -27,8 +28,8 @@ const MAX_DISPLAYED_EXISTING_TEST_PATHS = 5;
 
 const options = parseArgs(process.argv.slice(2));
 
-if (!["adapters", "detect-rules", "detect", "audit-projects", "summarize-projects", "rank-projects", "plan-projects", "findings-projects", "placement-projects", "stats-projects", "audit", "plan", "explain", "rank", "placement"].includes(options.command)) {
-  console.error("Usage: repo-test-architect <adapters|detect-rules|detect|audit-projects|summarize-projects|rank-projects|plan-projects|findings-projects|placement-projects|stats-projects|audit|plan|explain|rank|placement> <repo> [--adapter id] [--format markdown|json] [--from-audit audit.json] [--from-project-audits project-audits.json] [--item id] [--target id] [--owner label] [--changed] [--changed-since ref] [--exclude-project root-or-pattern]");
+if (!["adapters", "detect-rules", "detect", "audit-projects", "summarize-projects", "rank-projects", "plan-projects", "hints-projects", "findings-projects", "placement-projects", "stats-projects", "audit", "plan", "hints", "explain", "rank", "placement"].includes(options.command)) {
+  console.error("Usage: repo-test-architect <adapters|detect-rules|detect|audit-projects|summarize-projects|rank-projects|plan-projects|hints-projects|findings-projects|placement-projects|stats-projects|audit|plan|hints|explain|rank|placement> <repo> [--adapter id] [--format markdown|json] [--from-audit audit.json] [--from-project-audits project-audits.json] [--item id] [--target id] [--owner label] [--changed] [--changed-since ref] [--exclude-project root-or-pattern]");
   process.exit(1);
 }
 
@@ -37,13 +38,13 @@ if (!["markdown", "json"].includes(options.format)) {
   process.exit(1);
 }
 
-if (options.fromAuditPath && !["plan", "explain", "rank", "placement"].includes(options.command)) {
-  console.error("--from-audit is only supported with plan, explain, rank, and placement commands.");
+if (options.fromAuditPath && !["plan", "hints", "explain", "rank", "placement"].includes(options.command)) {
+  console.error("--from-audit is only supported with plan, hints, explain, rank, and placement commands.");
   process.exit(1);
 }
 
-if (options.fromProjectAuditsPath && !["audit-projects", "summarize-projects", "rank-projects", "plan-projects", "findings-projects", "placement-projects", "stats-projects"].includes(options.command)) {
-  console.error("--from-project-audits is only supported with audit-projects, summarize-projects, rank-projects, plan-projects, findings-projects, placement-projects, and stats-projects commands.");
+if (options.fromProjectAuditsPath && !["audit-projects", "summarize-projects", "rank-projects", "plan-projects", "hints-projects", "findings-projects", "placement-projects", "stats-projects"].includes(options.command)) {
+  console.error("--from-project-audits is only supported with audit-projects, summarize-projects, rank-projects, plan-projects, hints-projects, findings-projects, placement-projects, and stats-projects commands.");
   process.exit(1);
 }
 
@@ -55,7 +56,7 @@ const detection = options.command === "detect" ? detectRepoProjects(repoRoot, {
 }) : undefined;
 const projectAudits = options.fromProjectAuditsPath
   ? readProjectAuditsJson(options.fromProjectAuditsPath)
-  : ["audit-projects", "summarize-projects", "rank-projects", "plan-projects", "findings-projects", "placement-projects", "stats-projects"].includes(options.command)
+  : ["audit-projects", "summarize-projects", "rank-projects", "plan-projects", "hints-projects", "findings-projects", "placement-projects", "stats-projects"].includes(options.command)
     ? auditRepoProjects(repoRoot, {
       changedPaths: readSelectedChangedPaths(repoRoot, options),
       excludeProjectRoots: options.excludeProjectRoots
@@ -87,6 +88,8 @@ if (options.format === "json") {
   console.log(renderMarkdownProjectCandidateRanking(output));
 } else if (options.command === "plan-projects") {
   console.log(renderMarkdownProjectTestPlan(output));
+} else if (options.command === "hints-projects") {
+  console.log(renderMarkdownPlanExecutionHints(output));
 } else if (options.command === "findings-projects") {
   console.log(renderMarkdownProjectFindings(output));
 } else if (options.command === "placement-projects") {
@@ -95,6 +98,8 @@ if (options.format === "json") {
   console.log(renderMarkdownProjectStats(output));
 } else if (options.command === "plan") {
   console.log(renderMarkdownPlan(output));
+} else if (options.command === "hints") {
+  console.log(renderMarkdownPlanExecutionHints(output));
 } else if (options.command === "explain") {
   console.log(renderMarkdownExplanation(output));
 } else if (options.command === "rank") {
@@ -323,6 +328,15 @@ function selectOutput(audit, options) {
     }
   }
 
+  if (options.command === "hints") {
+    try {
+      return getPlanExecutionHints(generateTestPlan(audit), { itemId: options.itemId });
+    } catch (error) {
+      console.error(error.message);
+      process.exit(1);
+    }
+  }
+
   if (options.command === "explain") {
     try {
       return explainAuditTarget(audit, options.targetId);
@@ -344,6 +358,9 @@ function selectProjectOutput(projectAudits, options) {
   if (options.command === "summarize-projects") return summarizeRepoProjectAudits(projectAudits);
   if (options.command === "rank-projects") return rankRepoProjectCandidates(projectAudits);
   if (options.command === "plan-projects") return generateRepoProjectTestPlan(projectAudits);
+  if (options.command === "hints-projects") {
+    return getPlanExecutionHints(generateRepoProjectTestPlan(projectAudits), { itemId: options.itemId });
+  }
   if (options.command === "findings-projects") return collectRepoProjectFindings(projectAudits);
   if (options.command === "placement-projects") return analyzeRepoProjectTestPlacement(projectAudits);
   if (options.command === "stats-projects") return collectRepoProjectStats(projectAudits);
@@ -727,6 +744,38 @@ function renderMarkdownPlan(plan) {
       lines.push(
         `- ${item.action}: ${item.target} [${item.id}] (${item.testLevel}, priority ${item.priority}, risk reduction ${item.riskReductionScore}/10, maintenance ${item.maintenanceCost}/10). ${rationale}.${existingTests}${evidenceStrengths}`
       );
+    }
+  }
+
+  return lines.join("\n");
+}
+
+function renderMarkdownPlanExecutionHints(hints) {
+  const lines = [];
+
+  lines.push("# Plan Execution Hints");
+  lines.push("");
+  lines.push("## Summary");
+  lines.push(`- Source: ${hints.source.schemaVersion} (${hints.source.itemCount} item(s))`);
+  lines.push(`- Selected items: ${hints.summary.itemCount}`);
+  lines.push(`- Complexity: ${hints.summary.lowComplexityCount} low, ${hints.summary.mediumComplexityCount} medium, ${hints.summary.highComplexityCount} high`);
+  lines.push(`- Parallelizable: ${hints.summary.parallelizableCount}`);
+  lines.push(`- Repository reasoning: ${hints.summary.repositoryReasoningCount}`);
+  lines.push("");
+  lines.push("## Items");
+
+  if (hints.items.length === 0) {
+    lines.push("- No execution hints generated.");
+  } else {
+    for (const item of hints.items) {
+      const rationale = item.reasons.map(trimTrailingPeriod).join(". ");
+      lines.push(
+        `- ${item.target} [${item.planItemId}]: ${item.complexity} complexity; role ${item.recommendedAgentRole}; ${item.parallelizable ? "parallel-safe" : "serialize"}; ${item.requiresRepositoryReasoning ? "repository reasoning required" : "repository reasoning not required"}.`
+      );
+      lines.push(
+        `  Context: ${item.contextScope.mode}; paths ${item.contextScope.paths.join(", ")}; build configuration ${item.contextScope.includeBuildConfiguration ? "required" : "not required"}; repository instructions required.`
+      );
+      lines.push(`  Reasons: ${rationale}.`);
     }
   }
 

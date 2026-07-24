@@ -62,12 +62,14 @@ Expected tools:
 - `collect_project_stats`
 - `audit_repo`
 - `generate_test_plan`
+- `get_plan_execution_hints`
 - `explain_target`
 - `rank_test_candidates`
 - `analyze_test_placement`
 - `generate_selected_test`
 
 `generate_selected_test` remains a deferred response until native generation has adapter-specific repair-loop evidence.
+`get_plan_execution_hints` is advisory: the host may use it for context and routing decisions, but remains responsible for model choice, budgets, permissions, and subagent lifecycle.
 
 ## Codex
 
@@ -75,7 +77,7 @@ Preferred future path:
 
 - install the package globally after publish
 - add a local stdio MCP server config using `repo-test-architect-mcp`
-- use the MCP tools for audit, ranking, planning, placement, and stats
+- use the MCP tools for audit, ranking, planning, execution hints, placement, and stats
 
 Current development path:
 

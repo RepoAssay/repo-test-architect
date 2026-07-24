@@ -94,6 +94,35 @@ Future generation should target these IDs rather than array positions or display
 Audit targets also expose a stable `id`, currently the repository-relative source path.
 Plan items carry that value as `targetId` so model and MCP layers can link plan actions back to audit evidence.
 
+## Plan Execution Hints Artifact
+
+Schema:
+
+- `schemas/plan-execution-hints-v1.schema.json`
+- `schemaVersion: "plan-execution-hints/v1"`
+
+Commands:
+
+```powershell
+node ./src/cli/index.js hints ./examples/node-vitest-basic --format json
+node ./src/cli/index.js hints-projects ./examples/polyglot-workspace --format json
+```
+
+MCP tool:
+
+- `get_plan_execution_hints`
+
+The companion artifact accepts `plan/v1` or `project-test-plan/v1` without modifying either source plan. Each hint remains keyed by the stable plan item or project item ID and contains:
+
+- bounded `low`, `medium`, or `high` complexity
+- a context mode, known source/test paths, and booleans for build configuration and repository instructions
+- conservative parallel safety
+- a provider-neutral implementation, repository-reasoning, or review role
+- whether broader repository reasoning is required
+- deterministic reasons derived from plan action, test level, maintenance cost, signals, and existing-test paths
+
+Hints are advisory. They do not select a vendor, model, price tier, token budget, permission mode, or subagent implementation. A host that ignores them receives identical audit and plan semantics, and Repo Test Architect performs no hidden model or subagent calls.
+
 ## Target Explanation Artifact
 
 Target explanations preserve optional `existingTestEvidence` from the selected audit target so a consumer can assess evidence quality without reopening the complete audit.

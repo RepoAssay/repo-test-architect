@@ -1,0 +1,75 @@
+{
+  "schemaVersion": "model-consistency-scenario/v1",
+  "id": "vapor-mongodb-boundaries-execution-hints",
+  "description": "Different hosts should preserve high-complexity repository-reasoning hints for Vapor and MongoDB integration boundaries.",
+  "sourceArtifact": {
+    "path": "evals/expected/vapor-mongodb-boundaries.plan.json",
+    "schemaVersion": "plan/v1"
+  },
+  "toolCall": {
+    "toolName": "get_plan_execution_hints",
+    "arguments": {}
+  },
+  "lockedFields": [
+    {
+      "path": "summary.itemCount",
+      "expected": 3,
+      "reason": "All three Vapor MongoDB plan items should receive hints."
+    },
+    {
+      "path": "summary.highComplexityCount",
+      "expected": 3,
+      "reason": "Database-backed route and job work remains high complexity."
+    },
+    {
+      "path": "summary.parallelizableCount",
+      "expected": 0,
+      "reason": "Infrastructure-sensitive integration work should not be advertised as independently parallel-safe."
+    },
+    {
+      "path": "summary.repositoryReasoningCount",
+      "expected": 3,
+      "reason": "Every MongoDB integration item requires repository reasoning."
+    },
+    {
+      "path": "items[0].complexity",
+      "expected": "high",
+      "reason": "The aggregation route remains a high-complexity integration task."
+    },
+    {
+      "path": "items[0].contextScope.mode",
+      "expected": "project-boundary",
+      "reason": "The route needs project configuration and repository conventions."
+    },
+    {
+      "path": "items[0].contextScope.includeBuildConfiguration",
+      "expected": true,
+      "reason": "Vapor and MongoDB test configuration is required context."
+    },
+    {
+      "path": "items[0].recommendedAgentRole",
+      "expected": "repository-reasoning",
+      "reason": "The host should route the aggregation boundary to repository reasoning."
+    },
+    {
+      "path": "items[1].requiresRepositoryReasoning",
+      "expected": true,
+      "reason": "Dynamic BSON filter coverage needs broader repository reasoning."
+    },
+    {
+      "path": "items[2].parallelizable",
+      "expected": false,
+      "reason": "The database write job is not advertised as isolated parallel work."
+    }
+  ],
+  "allowedVariations": [
+    "execution rationale wording",
+    "additional provider-neutral context detail"
+  ],
+  "unexpectedVariations": [
+    "vendor or model selection",
+    "hidden subagent execution",
+    "routing database integration as low complexity",
+    "parallelizing shared infrastructure work"
+  ]
+}
