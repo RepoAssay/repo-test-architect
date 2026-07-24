@@ -1,0 +1,98 @@
+{
+  "schemaVersion": "plan/v1",
+  "summary": {
+    "confidence": "high",
+    "verificationCommand": "./gradlew desktopTest",
+    "blockerCount": 0,
+    "addTestCount": 1,
+    "extendTestCount": 2,
+    "deferredCount": 0
+  },
+  "blockers": [],
+  "items": [
+    {
+      "id": "extend-test:src/desktopMain/java/com/example/token/DesktopTokenValidator.java",
+      "action": "extend-test",
+      "targetId": "src/desktopMain/java/com/example/token/DesktopTokenValidator.java",
+      "target": "DesktopTokenValidator",
+      "path": "src/desktopMain/java/com/example/token/DesktopTokenValidator.java",
+      "testLevel": "unit",
+      "priority": 7,
+      "riskReductionScore": 9,
+      "maintenanceCost": 2,
+      "rationale": [
+        "Pure transformation logic",
+        "edge-case surface",
+        "Existing test evidence detected; review missing edge cases"
+      ],
+      "sourceSignals": [
+        "pure-logic",
+        "edge-case-surface",
+        "matching-test"
+      ],
+      "existingTestPaths": [
+        "src/desktopTest/kotlin/com/example/token/DesktopTokenValidatorTest.kt"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "src/desktopTest/kotlin/com/example/token/DesktopTokenValidatorTest.kt",
+          "kind": "jvm-symbol-reference",
+          "strength": "referenced",
+          "usage": "asserted"
+        }
+      ]
+    },
+    {
+      "id": "add-test:src/commonMain/kotlin/com/example/token/TokenFormatter.kt",
+      "action": "add-test",
+      "targetId": "src/commonMain/kotlin/com/example/token/TokenFormatter.kt",
+      "target": "TokenFormatter",
+      "path": "src/commonMain/kotlin/com/example/token/TokenFormatter.kt",
+      "testLevel": "unit",
+      "priority": 7,
+      "riskReductionScore": 9,
+      "maintenanceCost": 2,
+      "rationale": [
+        "Pure transformation logic",
+        "edge-case surface"
+      ],
+      "sourceSignals": [
+        "pure-logic",
+        "edge-case-surface"
+      ],
+      "existingTestPaths": []
+    },
+    {
+      "id": "extend-test:src/commonMain/kotlin/com/example/token/TokenParser.kt",
+      "action": "extend-test",
+      "targetId": "src/commonMain/kotlin/com/example/token/TokenParser.kt",
+      "target": "TokenParser",
+      "path": "src/commonMain/kotlin/com/example/token/TokenParser.kt",
+      "testLevel": "unit",
+      "priority": 7,
+      "riskReductionScore": 9,
+      "maintenanceCost": 2,
+      "rationale": [
+        "Pure transformation logic",
+        "edge-case surface",
+        "Existing test evidence detected; review missing edge cases"
+      ],
+      "sourceSignals": [
+        "pure-logic",
+        "edge-case-surface",
+        "matching-test"
+      ],
+      "existingTestPaths": [
+        "src/commonTest/kotlin/com/example/token/TokenParserTest.kt"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "src/commonTest/kotlin/com/example/token/TokenParserTest.kt",
+          "kind": "jvm-symbol-reference",
+          "strength": "referenced",
+          "usage": "asserted"
+        }
+      ]
+    }
+  ]
+}

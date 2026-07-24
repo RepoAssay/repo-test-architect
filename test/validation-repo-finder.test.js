@@ -182,6 +182,13 @@ describe("validation repository finder", () => {
       matchedPaths: ["build.gradle.kts", "gradlew"]
     });
 
+    assert.deepEqual(detectManifestSignals(validationProfiles["gradle-kmp-jvm"].searches, {
+      "build.gradle.kts": 'plugins { kotlin("multiplatform") version "2.2.20" }\nkotlin { jvm("desktop") }\n'
+    }), {
+      signals: ["gradle-kmp-jvm"],
+      matchedPaths: ["build.gradle.kts"]
+    });
+
     assert.deepEqual(detectManifestSignals(validationProfiles["maven-junit"].searches, {
       "pom.xml": "<project><dependency><artifactId>junit-jupiter</artifactId></dependency></project>"
     }, [{ name: "mvnw", type: "file" }]), {

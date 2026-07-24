@@ -80,6 +80,11 @@
     "path": "examples/kotlin-multiplatform-jvm"
   },
   {
+    "name": "kotlin-multiplatform-named-jvm",
+    "adapter": "kotlin",
+    "path": "examples/kotlin-multiplatform-named-jvm"
+  },
+  {
     "name": "kotlin-gradle-aggregate-kotest",
     "adapter": "kotlin",
     "path": "examples/kotlin-gradle-aggregate-kotest"

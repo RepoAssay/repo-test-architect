@@ -201,7 +201,7 @@ describe("docs links", () => {
     assert.ok(roadmap.includes("one concise repo-level summary can show top findings with evidence"));
     assert.ok(roadmap.includes("Milestone 2: Public Demo Polish"));
     assert.ok(roadmap.includes("Milestone 3: Adapter Spike Hardening"));
-    assert.ok(roadmap.includes("Kotlin/JVM with Gradle/Maven, a bounded single-module Kotlin Multiplatform default-JVM slice"));
+    assert.ok(roadmap.includes("bounded single-module Kotlin Multiplatform default and literal named-JVM slices"));
     assert.ok(roadmap.includes("Swift Package Manager with XCTest, Swift Testing, Quick/Nimble, and SnapshotTesting signals"));
     assert.ok(roadmap.includes("Python fixture reachability, async/parametrized/property-based pytest conventions, Django/Flask routes, tox/nox commands, coverage configuration, and no-tests-yet blocker behavior"));
     assert.ok(roadmap.includes("Milestone 4: Placement And Boundary Analysis"));
@@ -302,8 +302,8 @@ describe("docs links", () => {
     assert.ok(support.includes("conventional Spock feature methods in direct `Specification` subclasses"));
     assert.ok(support.includes("Spock fixture methods, annotations/extensions, `where:`/`filter:` data-driven features"));
     assert.ok(support.includes("Android application/library unit-test semantics"));
-    assert.ok(support.includes("one single-module Kotlin Multiplatform Gradle build with an unnamed/default `jvm()` target"));
-    assert.ok(support.includes("`commonTest` can cover only `commonMain` while `jvmTest` can cover `commonMain` and `jvmMain`"));
+    assert.ok(support.includes("one single-module Kotlin Multiplatform Gradle build with exactly one literal `jvm()` or `jvm(\"name\")` target"));
+    assert.ok(support.includes("`commonTest` can cover only `commonMain` while `<targetName>Test` can cover `commonMain` and `<targetName>Main`"));
     assert.ok(support.includes("registered as `supported`"));
     assert.ok(validation.includes("JUnit 4"));
     assert.ok(validation.includes("Cash App Barber"));
@@ -317,6 +317,9 @@ describe("docs links", () => {
     assert.ok(validation.includes("FusionAuth java-http"));
     assert.ok(validation.includes("OpenTest4K"));
     assert.ok(validation.includes("`./gradlew jvmTest`"));
+    assert.ok(validation.includes("KVision RealWorld"));
+    assert.ok(validation.includes("`./gradlew backendTest`"));
+    assert.ok(validation.includes("ktor-io-perf"));
     assert.ok(validation.includes("no repository build, plugin, test, or application code was executed"));
   });
 });

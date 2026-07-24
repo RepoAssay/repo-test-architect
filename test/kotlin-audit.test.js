@@ -824,7 +824,7 @@ describe("Kotlin audit adapter", () => {
     const audit = auditKotlinRepo(root);
 
     assert.equal(audit.profile.confidence, "medium");
-    assert.ok(audit.profile.blockers.includes("Kotlin Multiplatform support requires a single Gradle module with an explicit default jvm() target and conventional commonMain/jvmMain source sets."));
+    assert.ok(audit.profile.blockers.includes('Kotlin Multiplatform support requires a single Gradle module with exactly one literal jvm() or jvm("name") target and conventional common/target source sets.'));
     assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["jvm-tools/src/main/kotlin/TokenParser.kt"]);
     assert.ok(!audit.recommended.some((target) => target.path.includes("commonMain")));
   });
@@ -871,18 +871,66 @@ describe("Kotlin audit adapter", () => {
     assert.deepEqual(audit.untestedCandidates.map((target) => target.name), ["JvmTokenParser"]);
   });
 
-  it("requires the default unnamed KMP JVM target", () => {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-kmp-named-jvm-"));
+  it("audits a literal named KMP JVM target and derives its source sets and test task", () => {
+    const audit = auditKotlinRepo(path.resolve("examples/kotlin-multiplatform-named-jvm"));
+
+    assert.deepEqual(audit.profile.languages, ["java", "kotlin"]);
+    assert.deepEqual(audit.profile.testFrameworks, ["kotlin-test"]);
+    assert.equal(audit.profile.testCommand, "./gradlew desktopTest");
+    assert.equal(audit.profile.confidence, "high");
+    assert.deepEqual(audit.profile.blockers, []);
+    assert.deepEqual(audit.profile.existingTestLocations, ["src/commonTest", "src/desktopTest"]);
+    assert.ok(audit.profile.detectedConventions.includes("src/commonTest/kotlin"));
+    assert.ok(audit.profile.detectedConventions.includes("src/desktopTest"));
+    assert.ok(audit.profile.setupSignals.includes("named jvm target"));
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.path), [
+      "src/commonMain/kotlin/com/example/token/TokenFormatter.kt"
+    ]);
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), [
+      "src/desktopMain/java/com/example/token/DesktopTokenValidator.java",
+      "src/commonMain/kotlin/com/example/token/TokenParser.kt"
+    ]);
+  });
+
+  it("does not infer computed KMP JVM target names", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-kmp-computed-jvm-"));
     fs.mkdirSync(path.join(root, "src", "jvmMain", "kotlin"), { recursive: true });
-    fs.writeFileSync(path.join(root, "settings.gradle.kts"), 'rootProject.name = "named-jvm"\n');
-    fs.writeFileSync(path.join(root, "build.gradle.kts"), 'plugins { kotlin("multiplatform") version "2.2.20" }\nkotlin { jvm("desktop") }\n');
+    fs.writeFileSync(path.join(root, "settings.gradle.kts"), 'rootProject.name = "computed-jvm"\n');
+    fs.writeFileSync(path.join(root, "build.gradle.kts"), 'plugins { kotlin("multiplatform") version "2.2.20" }\nval targetName = "jvm"\nkotlin { jvm(targetName) }\n');
     fs.writeFileSync(path.join(root, "src", "jvmMain", "kotlin", "TokenParser.kt"), "class TokenParser { fun parse(value: String) = value.trim() }\n");
 
     const audit = auditKotlinRepo(root);
 
     assert.equal(audit.profile.confidence, "low");
-    assert.ok(audit.profile.blockers.includes("Kotlin Multiplatform support requires a single Gradle module with an explicit default jvm() target and conventional commonMain/jvmMain source sets."));
+    assert.ok(audit.profile.blockers.includes('Kotlin Multiplatform support requires a single Gradle module with exactly one literal jvm() or jvm("name") target and conventional common/target source sets.'));
     assert.deepEqual(audit.recommended, []);
+  });
+
+  it("does not infer ownership across multiple KMP JVM targets", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-kmp-multiple-jvm-"));
+    fs.mkdirSync(path.join(root, "src", "desktopMain", "kotlin"), { recursive: true });
+    fs.writeFileSync(path.join(root, "settings.gradle.kts"), 'rootProject.name = "multiple-jvm"\n');
+    fs.writeFileSync(path.join(root, "build.gradle.kts"), 'plugins { kotlin("multiplatform") version "2.2.20" }\nkotlin { jvm("desktop"); jvm("server") }\n');
+    fs.writeFileSync(path.join(root, "src", "desktopMain", "kotlin", "TokenParser.kt"), "class TokenParser { fun parse(value: String) = value.trim() }\n");
+
+    const audit = auditKotlinRepo(root);
+
+    assert.ok(audit.profile.blockers.includes('Kotlin Multiplatform support requires a single Gradle module with exactly one literal jvm() or jvm("name") target and conventional common/target source sets.'));
+    assert.deepEqual(audit.recommended, []);
+  });
+
+  it("ignores quoted and commented named JVM target examples", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-kmp-target-comments-"));
+    fs.mkdirSync(path.join(root, "src", "desktopMain", "kotlin"), { recursive: true });
+    fs.writeFileSync(path.join(root, "settings.gradle.kts"), 'rootProject.name = "target-comments"\n');
+    fs.writeFileSync(path.join(root, "build.gradle.kts"), 'plugins { kotlin("multiplatform") version "2.2.20" }\nval example = """jvm("server")"""\n// jvm("legacy")\nkotlin { jvm("desktop"); sourceSets { commonTest.dependencies { implementation(kotlin("test")) } } }\n');
+    fs.writeFileSync(path.join(root, "src", "desktopMain", "kotlin", "TokenParser.kt"), "class TokenParser { fun parse(value: String) = value.trim() }\n");
+
+    const audit = auditKotlinRepo(root);
+
+    assert.equal(audit.profile.testCommand, "gradle desktopTest");
+    assert.ok(!audit.profile.blockers.some((blocker) => blocker.startsWith("Kotlin Multiplatform support requires")));
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.name), ["TokenParser"]);
   });
 
   it("keeps KMP Kotest execution outside the first JVM target slice", () => {
