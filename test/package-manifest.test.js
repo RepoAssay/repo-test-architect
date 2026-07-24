@@ -5,6 +5,7 @@ import { releaseChecks } from "../scripts/check-release-readiness.js";
 import { alphaChecks } from "../scripts/check-alpha-readiness.js";
 
 const packageJson = JSON.parse(fs.readFileSync("package.json", "utf8"));
+const packageLock = JSON.parse(fs.readFileSync("package-lock.json", "utf8"));
 
 describe("package manifest", () => {
   it("keeps the package private until release readiness is complete", () => {
@@ -40,6 +41,19 @@ describe("package manifest", () => {
     assert.match(packageJson.dependencies["@modelcontextprotocol/sdk"], /^\^1\./);
   });
 
+  it("overrides the MCP SDK's vulnerable Hono adapter range", () => {
+    assert.equal(packageJson.overrides["@hono/node-server"], "^2.0.11");
+    assert.match(packageLock.packages["node_modules/@hono/node-server"].version, /^2\./);
+  });
+
+  it("keeps the overridden Hono adapter compatible with the MCP SDK HTTP wrapper", async () => {
+    const { StreamableHTTPServerTransport } = await import("@modelcontextprotocol/sdk/server/streamableHttp.js");
+    const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
+
+    assert.ok(transport instanceof StreamableHTTPServerTransport);
+    await transport.close();
+  });
+
   it("keeps stable CLI and MCP binary entry points", () => {
     assert.deepEqual(Object.keys(packageJson.bin).sort(), [
       "repo-test-architect",
@@ -52,6 +66,13 @@ describe("package manifest", () => {
       assert.ok(fs.existsSync(binPath), `Missing bin entry point for ${name}: ${binPath}`);
       assert.match(fs.readFileSync(binPath, "utf8"), /^#!\/usr\/bin\/env node/, `Missing node shebang for ${name}`);
     }
+  });
+
+  it("keeps root lockfile binary metadata aligned with package.json", () => {
+    const normalizeBins = (bins) =>
+      Object.fromEntries(Object.entries(bins).map(([name, binPath]) => [name, binPath.replace(/^\.\//, "")]));
+
+    assert.deepEqual(normalizeBins(packageLock.packages[""].bin), normalizeBins(packageJson.bin));
   });
 
   it("keeps publish contents focused on runtime, docs, schemas, fixtures, and scripts", () => {
@@ -81,6 +102,7 @@ describe("package manifest", () => {
     assert.ok(packageJson.scripts["model-consistency:stats"]);
     assert.equal(packageJson.scripts["demo:check"], "node ./scripts/check-demo-script.js");
     assert.equal(packageJson.scripts["mcp:smoke"], "node ./scripts/check-mcp-stdio-smoke.js");
+    assert.equal(packageJson.scripts["audit:prod"], "npm audit --omit=dev");
     assert.ok(packageJson.scripts["pack:check"]);
     assert.ok(packageJson.scripts["bin:check"]);
     assert.equal(packageJson.scripts["installed-package:check"], "node ./scripts/check-installed-package.js");
@@ -109,6 +131,7 @@ describe("package manifest", () => {
     const releaseRunner = fs.readFileSync("scripts/check-release-readiness.js", "utf8");
     const status = fs.readFileSync("docs/status.md", "utf8");
     const expectedChecks = [
+      "audit:prod",
       "test",
       "eval:check",
       "model-consistency:check",

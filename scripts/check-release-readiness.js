@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { runNpmScripts } from "./support/npm-runner.js";
 
 export const releaseChecks = [
+  "audit:prod",
   "test",
   "eval:check",
   "model-consistency:check",

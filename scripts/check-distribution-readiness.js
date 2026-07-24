@@ -48,10 +48,10 @@ export function inspectDistributionReadiness(options = {}) {
     ),
     check(
       "verification-scripts",
-      ["release:check", "pack:check", "bin:check", "installed-package:check"].every(
+      ["release:check", "audit:prod", "pack:check", "bin:check", "installed-package:check"].every(
         (scriptName) => typeof packageJson.scripts?.[scriptName] === "string"
       ),
-      "Release, package, binary, and clean-install checks are declared."
+      "Production audit, release, package, binary, and clean-install checks are declared."
     ),
     check("license-alignment", packageJson.license === "MIT" && fileExists("LICENSE"), "MIT metadata matches the license file."),
     check(

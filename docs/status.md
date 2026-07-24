@@ -204,6 +204,7 @@ npm run model-consistency:compare:profiles
 npm run model-consistency:compare -- baseline-summary.json candidate-summary.json
 npm run model-consistency:stats
 npm run smoke
+npm run audit:prod
 npm run pack:dry-run
 npm run pack:check
 npm run bin:check
