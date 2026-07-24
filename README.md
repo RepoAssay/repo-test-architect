@@ -256,8 +256,11 @@ Check package contents before publishing:
 npm run pack:check
 npm run bin:check
 npm run installed-package:check
+npm run distribution:check
 npm run release:check
 ```
+
+`distribution:check` validates reversible packaging and MCP metadata preparation. The approved public identity and registry manifest are aligned; the stricter `distribution:check:publish` remains blocked by `private: true` until publication is explicitly approved. See [Distribution](docs/distribution.md).
 
 ## Shape
 

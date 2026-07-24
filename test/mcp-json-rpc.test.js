@@ -19,6 +19,7 @@ describe("MCP JSON-RPC scaffold", () => {
     assert.equal(response.id, 1);
     assert.equal(response.result.protocolVersion, "test-protocol");
     assert.equal(response.result.serverInfo.name, "repo-test-architect");
+    assert.equal(response.result.serverInfo.version, "0.1.0");
   });
 
   it("lists tools", () => {
@@ -29,6 +30,13 @@ describe("MCP JSON-RPC scaffold", () => {
     });
 
     assert.deepEqual(response.result.tools.map((tool) => tool.name), expectedMcpToolNames);
+    assert.equal(response.result.tools.find((tool) => tool.name === "audit_repo").title, "Audit Repository");
+    assert.deepEqual(response.result.tools.find((tool) => tool.name === "audit_repo").annotations, {
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false
+    });
   });
 
   it("calls tools with MCP-style content results", () => {

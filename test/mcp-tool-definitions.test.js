@@ -14,6 +14,14 @@ describe("MCP tool definitions", () => {
     assert.deepEqual(mcpToolNames, expectedMcpToolNames);
 
     for (const tool of mcpTools) {
+      assert.equal(typeof tool.title, "string");
+      assert.ok(tool.title.length > 0);
+      assert.deepEqual(tool.annotations, {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false
+      });
       assert.equal(tool.inputSchema.type, "object");
       assert.equal(tool.inputSchema.additionalProperties, false);
       assert.ok(Array.isArray(tool.inputSchema.required));

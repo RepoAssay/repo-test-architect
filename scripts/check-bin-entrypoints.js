@@ -40,6 +40,27 @@ function checkCli(binPath) {
   assertEqual(artifact.schemaVersion, "adapter-registry/v1", "CLI adapter registry schema version");
   assertTrue(Array.isArray(artifact.adapters), "CLI adapter registry should include adapters");
   assertTrue(artifact.adapters.some((adapter) => adapter.id === "javascript"), "CLI should list the JavaScript adapter");
+
+  const request = {
+    jsonrpc: "2.0",
+    id: 2,
+    method: "tools/list"
+  };
+  const result = spawnSync(process.execPath, [binPath, "mcp"], {
+    input: `${JSON.stringify(request)}\n`,
+    encoding: "utf8",
+    timeout: 5000
+  });
+
+  if (result.error) {
+    throw result.error;
+  }
+
+  assertEqual(result.status, 0, "default npm binary MCP command exit status");
+
+  const response = parseJson(result.stdout.trim(), "default npm binary MCP tools/list response");
+  assertEqual(response.id, 2, "default npm binary MCP response id");
+  assertTrue(response.result?.tools?.some((tool) => tool.name === "audit_repo"), "default npm binary MCP command should list audit_repo");
 }
 
 function checkMcpInvoke(binPath) {

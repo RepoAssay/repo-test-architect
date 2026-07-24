@@ -12,6 +12,13 @@
         "additionalProperties": false,
         "required": [],
         "properties": {}
+      },
+      "title": "List Adapters",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
       }
     },
     {
@@ -26,6 +33,13 @@
         "additionalProperties": false,
         "required": [],
         "properties": {}
+      },
+      "title": "List Project Detection Rules",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
       }
     },
     {
@@ -55,6 +69,13 @@
             }
           }
         }
+      },
+      "title": "Detect Projects",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
       }
     },
     {
@@ -92,6 +113,13 @@
             }
           }
         }
+      },
+      "title": "Audit Projects",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
       }
     },
     {
@@ -113,6 +141,13 @@
             "description": "A project-audits/v1 artifact."
           }
         }
+      },
+      "title": "Summarize Project Audits",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
       }
     },
     {
@@ -134,6 +169,13 @@
             "description": "A project-audits/v1 artifact."
           }
         }
+      },
+      "title": "Rank Project Test Candidates",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
       }
     },
     {
@@ -155,6 +197,13 @@
             "description": "A project-audits/v1 artifact."
           }
         }
+      },
+      "title": "Generate Project Test Plan",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
       }
     },
     {
@@ -176,6 +225,13 @@
             "description": "A project-audits/v1 artifact."
           }
         }
+      },
+      "title": "Collect Project Findings",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
       }
     },
     {
@@ -197,6 +253,13 @@
             "description": "A project-audits/v1 artifact."
           }
         }
+      },
+      "title": "Analyze Project Test Placement",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
       }
     },
     {
@@ -218,6 +281,13 @@
             "description": "A project-audits/v1 artifact."
           }
         }
+      },
+      "title": "Collect Project Stats",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
       }
     },
     {
@@ -251,6 +321,13 @@
             }
           }
         }
+      },
+      "title": "Audit Repository",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
       }
     },
     {
@@ -272,6 +349,13 @@
             "description": "An audit/v1 artifact."
           }
         }
+      },
+      "title": "Get Audit Graph",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
       }
     },
     {
@@ -297,6 +381,13 @@
             "description": "Optional stable plan item id to select."
           }
         }
+      },
+      "title": "Generate Test Plan",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
       }
     },
     {
@@ -322,6 +413,13 @@
             "description": "Optional stable plan item or project item id to select."
           }
         }
+      },
+      "title": "Get Plan Execution Hints",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
       }
     },
     {
@@ -348,6 +446,13 @@
             "description": "Stable audit target id."
           }
         }
+      },
+      "title": "Explain Audit Target",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
       }
     },
     {
@@ -369,6 +474,13 @@
             "description": "An audit/v1 artifact."
           }
         }
+      },
+      "title": "Rank Test Candidates",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
       }
     },
     {
@@ -394,6 +506,13 @@
             "description": "Optional owner label for the audited project. Defaults to audit.profile.root."
           }
         }
+      },
+      "title": "Analyze Test Placement",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
       }
     },
     {
@@ -415,6 +534,13 @@
             "description": "Stable plan item id selected for future generation."
           }
         }
+      },
+      "title": "Generate Selected Test (Deferred)",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
       }
     }
   ]

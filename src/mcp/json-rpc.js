@@ -1,6 +1,7 @@
 import { toMcpToolResult } from "./responses.js";
 import { callTool, mcpTools } from "./tool-definitions.js";
 import { toSafeMcpError } from "./errors.js";
+import { mcpServerInfo } from "./server-info.js";
 
 export function handleJsonRpcMessage(message) {
   if (!Array.isArray(message)) {
@@ -31,10 +32,7 @@ export function handleJsonRpcRequest(request) {
     if (request.method === "initialize") {
       return successResponse(request.id, {
         protocolVersion: request.params?.protocolVersion ?? "local-dev",
-        serverInfo: {
-          name: "repo-test-architect",
-          version: "0.1.0"
-        },
+        serverInfo: mcpServerInfo,
         capabilities: {
           tools: {}
         }

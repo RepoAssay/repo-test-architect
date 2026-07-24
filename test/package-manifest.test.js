@@ -11,15 +11,21 @@ describe("package manifest", () => {
     assert.equal(packageJson.private, true);
   });
 
-  it("does not declare public repository metadata before the final remote is configured", () => {
-    assert.equal(packageJson.repository, undefined);
-    assert.equal(packageJson.homepage, undefined);
-    assert.equal(packageJson.bugs, undefined);
+  it("locks the approved npm, MCP, and GitHub identities without enabling publication", () => {
+    assert.equal(packageJson.name, "repo-test-architect");
+    assert.equal(packageJson.mcpName, "io.github.m-stenbe/repo-test-architect");
+    assert.deepEqual(packageJson.repository, {
+      type: "git",
+      url: "https://github.com/m-stenbe/repo-test-architect.git"
+    });
+    assert.equal(packageJson.homepage, "https://github.com/m-stenbe/repo-test-architect#readme");
+    assert.deepEqual(packageJson.bugs, {
+      url: "https://github.com/m-stenbe/repo-test-architect/issues"
+    });
   });
 
-  it("keeps pre-release keywords generic until package positioning is finalized", () => {
-    assert.deepEqual(packageJson.keywords, ["testing", "audit", "agent", "strategy"]);
-    assert.ok(!packageJson.keywords.includes("mcp"));
+  it("includes the approved MCP positioning without framework-specific claims", () => {
+    assert.deepEqual(packageJson.keywords, ["testing", "audit", "agent", "mcp", "strategy"]);
     assert.ok(!packageJson.keywords.includes("swift"));
     assert.ok(!packageJson.keywords.includes("kotlin"));
     assert.ok(!packageJson.keywords.includes("jest"));
@@ -40,6 +46,7 @@ describe("package manifest", () => {
       "repo-test-architect-mcp",
       "repo-test-architect-mcp-invoke",
     ]);
+    assert.equal(packageJson.bin["repo-test-architect"], "./src/cli/package-entry.js");
 
     for (const [name, binPath] of Object.entries(packageJson.bin)) {
       assert.ok(fs.existsSync(binPath), `Missing bin entry point for ${name}: ${binPath}`);
@@ -51,6 +58,7 @@ describe("package manifest", () => {
     assert.deepEqual(packageJson.files, [
       "SECURITY.md",
       "SUPPORT.md",
+      "server.json",
       "docs/",
       "evals/",
       "examples/",
@@ -76,6 +84,8 @@ describe("package manifest", () => {
     assert.ok(packageJson.scripts["pack:check"]);
     assert.ok(packageJson.scripts["bin:check"]);
     assert.equal(packageJson.scripts["installed-package:check"], "node ./scripts/check-installed-package.js");
+    assert.equal(packageJson.scripts["distribution:check"], "node ./scripts/check-distribution-readiness.js");
+    assert.equal(packageJson.scripts["distribution:check:publish"], "node ./scripts/check-distribution-readiness.js --publish");
     assert.equal(packageJson.scripts["alpha:check"], "node ./scripts/check-alpha-readiness.js");
     assert.ok(packageJson.scripts["release:check"]);
   });
@@ -108,6 +118,7 @@ describe("package manifest", () => {
       "pack:check",
       "bin:check",
       "installed-package:check",
+      "distribution:check",
     ];
 
     assert.deepEqual(releaseChecks, expectedChecks);
@@ -127,6 +138,7 @@ describe("package manifest", () => {
     assert.ok(status.includes("npm run release:check"));
     assert.ok(releaseChecklist.includes("npm run mcp:smoke"));
     assert.ok(releaseChecklist.includes("npm run installed-package:check"));
+    assert.ok(releaseChecklist.includes("npm run distribution:check"));
   });
 
   it("keeps smoke checks aligned with packaged release verification scripts", () => {
@@ -136,6 +148,7 @@ describe("package manifest", () => {
     assert.ok(smoke.includes("scripts/check-pack-contents.js"));
     assert.ok(smoke.includes("scripts/check-bin-entrypoints.js"));
     assert.ok(smoke.includes("scripts/check-demo-script.js"));
+    assert.ok(smoke.includes("scripts/check-distribution-readiness.js"));
     assert.ok(smoke.includes("scripts/check-installed-package.js"));
     assert.ok(smoke.includes("scripts/check-mcp-stdio-smoke.js"));
     assert.ok(smoke.includes("scripts/check-release-readiness.js"));
@@ -143,6 +156,7 @@ describe("package manifest", () => {
     assert.ok(nodeSmoke.includes("scripts/check-pack-contents.js"));
     assert.ok(nodeSmoke.includes("scripts/check-bin-entrypoints.js"));
     assert.ok(nodeSmoke.includes("scripts/check-demo-script.js"));
+    assert.ok(nodeSmoke.includes("scripts/check-distribution-readiness.js"));
     assert.ok(nodeSmoke.includes("scripts/check-installed-package.js"));
     assert.ok(nodeSmoke.includes("scripts/check-mcp-stdio-smoke.js"));
     assert.ok(nodeSmoke.includes("scripts/check-release-readiness.js"));

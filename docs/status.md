@@ -70,6 +70,7 @@ Implemented:
 - deterministic model-consistency scenario runner, summary artifact, comparison artifact, and stats artifact for checking locked fields and drift counts against tool output
 - changed-file workflows with `--changed` and `--changed-since`
 - MCP tool descriptors, local invoke harness, and stdio MCP SDK server
+- MCP tool titles and explicit read-only, non-destructive, idempotent, closed-world annotations
 - MCP stdio smoke check that exercises initialize, notifications, tools/list, project detection, project audit, project planning, structured tool errors, and recovery through one server process
 - deterministic JSON-RPC harness tests that keep parser, batch request, and local dispatcher behavior covered separately from the SDK transport
 - release-readiness checklist, npm package dry-run script, and package contents allowlist
@@ -88,7 +89,8 @@ Implemented:
 - package contents dry-run checker for required runtime files and publish allowlist hygiene
 - package binary entrypoint checker for CLI, MCP invoke, and stdio MCP boot paths
 - installed-package tarball smoke checker for published CLI and MCP binary boot paths
-- release-readiness check runner for tests, evals, model consistency, demo path, smoke, package, bin, and installed-package checks
+- reversible distribution preparation reporting with a strict publication gate that remains blocked until public identity metadata is approved
+- release-readiness check runner for tests, evals, model consistency, demo path, smoke, package, bin, installed-package, and distribution preparation checks
 - GitHub Actions CI workflow that runs the release-readiness check on Ubuntu, macOS, and Windows for pushes and pull requests
 - GitHub pull request template that calls out audit impact, release verification, and risk notes
 - GitHub bug report issue form for audit, planning, MCP, and release-check defects
@@ -206,6 +208,7 @@ npm run pack:dry-run
 npm run pack:check
 npm run bin:check
 npm run installed-package:check
+npm run distribution:check
 npm run alpha:check
 npm run release:check
 ```

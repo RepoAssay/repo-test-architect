@@ -13,6 +13,7 @@ This document tracks what can be shown publicly before the project is ready for 
 - golden audit and plan snapshots
 - model-consistency locked-field scenarios
 - package, binary, smoke, eval, and release-readiness checks
+- a reversible distribution preparation gate and an intentionally blocked public-publish gate
 - contribution, support, and security policies
 - product positioning for audit-first differentiation and plausible business paths
 - alpha-readiness acceptance gates for local test architecture audit
@@ -20,20 +21,20 @@ This document tracks what can be shown publicly before the project is ready for 
 ## Not Ready To Publish
 
 - package remains `private: true`
-- final public repository URL is not configured
-- package metadata still needs final repository, homepage, bugs, and keyword decisions
-- package manifest declares MIT and the repository includes the matching license file
+- GitHub repository remains private
+- npm authentication and final name-availability verification are still required
+- copyright owner in `LICENSE` still needs explicit verification
+- public npm and MCP Registry publication still require separate approval
 - native test generation is still deferred
 - remote MCP hosting is out of scope for the first release
 
 ## Before A Public Repository
 
-- choose the final GitHub repository owner and name
-- add the remote URL
-- update package metadata with public repository links
+- confirm `m-stenbe/repo-test-architect` should change from private to public
 - decide whether issue template contact links should point to support and security docs
 - verify the copyright owner before publishing
 - run `npm run release:check`
+- run `npm run distribution:check:publish` after the approved `private: false` change
 
 ## First Public Demo
 

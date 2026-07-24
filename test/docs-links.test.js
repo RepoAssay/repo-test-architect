@@ -145,21 +145,21 @@ describe("docs links", () => {
     assert.ok(publicReadiness.includes("Ready To Show"));
     assert.ok(publicReadiness.includes("Not Ready To Publish"));
     assert.ok(publicReadiness.includes("package remains `private: true`"));
-    assert.ok(publicReadiness.includes("final public repository URL is not configured"));
-    assert.ok(publicReadiness.includes("package metadata still needs final repository, homepage, bugs, and keyword decisions"));
-    assert.ok(publicReadiness.includes("package manifest declares MIT and the repository includes the matching license file"));
+    assert.ok(publicReadiness.includes("GitHub repository remains private"));
+    assert.ok(publicReadiness.includes("npm authentication and final name-availability verification are still required"));
+    assert.ok(publicReadiness.includes("copyright owner in `LICENSE` still needs explicit verification"));
     assert.ok(publicReadiness.includes("native test generation is still deferred"));
     assert.ok(publicReadiness.includes("alpha-readiness acceptance gates"));
     assert.ok(publicReadiness.includes("local stdio MCP SDK server and dependency-free invoke harness"));
     assert.ok(!publicReadiness.includes("real MCP SDK transport wrapper is still pending"));
     assert.ok(publicReadiness.includes("verify the copyright owner before publishing"));
     assert.ok(publicReadiness.includes("Avoid presenting native test generation as available"));
-    assert.ok(releaseChecklist.includes("add package metadata before publishing"));
-    assert.ok(releaseChecklist.includes("final `keywords`"));
+    assert.ok(releaseChecklist.includes("approved unscoped npm identity `repo-test-architect`"));
+    assert.ok(releaseChecklist.includes("approved MCP Registry identity `io.github.m-stenbe/repo-test-architect`"));
+    assert.ok(releaseChecklist.includes("repository, homepage, bugs, MCP identity, and keywords aligned"));
 
     for (const field of ["repository", "homepage", "bugs"]) {
-      assert.equal(packageJson[field], undefined);
-      assert.ok(releaseChecklist.includes(`\`${field}\``), `Missing release checklist metadata field: ${field}`);
+      assert.ok(packageJson[field], `Missing approved package metadata field: ${field}`);
     }
 
     assert.ok(status.includes("public-readiness checklist"));

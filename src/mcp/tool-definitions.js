@@ -20,7 +20,35 @@ import { getAdapterRegistry } from "../core/adapter-registry.js";
 import { createGenerationDeferredResult } from "../core/generation-deferred.js";
 import { McpToolError } from "./errors.js";
 
-export const mcpTools = [
+const readOnlyAnnotations = Object.freeze({
+  readOnlyHint: true,
+  destructiveHint: false,
+  idempotentHint: true,
+  openWorldHint: false
+});
+
+const toolTitles = Object.freeze({
+  list_adapters: "List Adapters",
+  list_project_detection_rules: "List Project Detection Rules",
+  detect_projects: "Detect Projects",
+  audit_projects: "Audit Projects",
+  summarize_project_audits: "Summarize Project Audits",
+  rank_project_candidates: "Rank Project Test Candidates",
+  generate_project_test_plan: "Generate Project Test Plan",
+  collect_project_findings: "Collect Project Findings",
+  analyze_project_test_placement: "Analyze Project Test Placement",
+  collect_project_stats: "Collect Project Stats",
+  audit_repo: "Audit Repository",
+  get_audit_graph: "Get Audit Graph",
+  generate_test_plan: "Generate Test Plan",
+  get_plan_execution_hints: "Get Plan Execution Hints",
+  explain_target: "Explain Audit Target",
+  rank_test_candidates: "Rank Test Candidates",
+  analyze_test_placement: "Analyze Test Placement",
+  generate_selected_test: "Generate Selected Test (Deferred)"
+});
+
+const toolDefinitions = [
   {
     name: "list_adapters",
     description: "List registered language adapters available to audit repositories.",
@@ -188,6 +216,12 @@ export const mcpTools = [
   }
 ];
 
+export const mcpTools = toolDefinitions.map((tool) => ({
+  ...tool,
+  title: requireToolTitle(tool.name),
+  annotations: { ...readOnlyAnnotations }
+}));
+
 export const mcpToolNames = mcpTools.map((tool) => tool.name);
 
 export function callTool(name, args = {}) {
@@ -282,6 +316,16 @@ function artifact(schemaVersion, schemaPath) {
     schemaVersion,
     schemaPath
   };
+}
+
+function requireToolTitle(name) {
+  const title = toolTitles[name];
+
+  if (!title) {
+    throw new Error(`Missing MCP tool title for ${name}.`);
+  }
+
+  return title;
 }
 
 function requireString(value, name) {
