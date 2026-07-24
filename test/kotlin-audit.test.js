@@ -808,7 +808,7 @@ describe("Kotlin audit adapter", () => {
     assert.ok(audit.profile.blockers.includes("Android unit and instrumentation source sets are outside the supported JVM module boundary."));
   });
 
-  it("keeps multi-module Kotlin Multiplatform roots outside the bounded JVM ownership slice", () => {
+  it("keeps mixed JVM and Kotlin Multiplatform aggregates outside the bounded KMP ownership slice", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-multiplatform-"));
     fs.mkdirSync(path.join(root, "jvm-tools", "src", "main", "kotlin"), { recursive: true });
     fs.mkdirSync(path.join(root, "jvm-tools", "src", "test", "kotlin"), { recursive: true });
@@ -824,9 +824,88 @@ describe("Kotlin audit adapter", () => {
     const audit = auditKotlinRepo(root);
 
     assert.equal(audit.profile.confidence, "medium");
-    assert.ok(audit.profile.blockers.includes('Kotlin Multiplatform support requires a single Gradle module with exactly one literal jvm() or jvm("name") target and conventional common/target source sets.'));
+    assert.ok(audit.profile.blockers.includes('Kotlin Multiplatform support requires either a single Gradle module or a settings-owned all-KMP aggregate whose source modules each declare exactly one literal jvm() or jvm("name") target and conventional common/target source sets.'));
     assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["jvm-tools/src/main/kotlin/TokenParser.kt"]);
     assert.ok(!audit.recommended.some((target) => target.path.includes("commonMain")));
+  });
+
+  it("does not partially own an all-KMP aggregate with a missing child build", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-kmp-incomplete-"));
+    fs.mkdirSync(path.join(root, "core", "src", "commonMain", "kotlin"), { recursive: true });
+    fs.mkdirSync(path.join(root, "core", "src", "commonTest", "kotlin"), { recursive: true });
+    fs.mkdirSync(path.join(root, "tests", "src", "commonMain", "kotlin"), { recursive: true });
+    fs.writeFileSync(path.join(root, "settings.gradle.kts"), 'include(":core", ":tests")\n');
+    fs.writeFileSync(path.join(root, "build.gradle.kts"), 'plugins { kotlin("multiplatform") version "2.2.20" apply false }\n');
+    fs.writeFileSync(path.join(root, "core", "build.gradle.kts"), 'plugins { kotlin("multiplatform") }\nkotlin { jvm(); sourceSets { commonTest.dependencies { implementation(kotlin("test")) } } }\n');
+    fs.writeFileSync(path.join(root, "core", "src", "commonMain", "kotlin", "TokenParser.kt"), "class TokenParser { fun parse(value: String) = value.trim() }\n");
+    fs.writeFileSync(path.join(root, "core", "src", "commonTest", "kotlin", "TokenParserTest.kt"), "import kotlin.test.Test\nclass TokenParserTest { @Test fun parses() { TokenParser().parse(\"x\") } }\n");
+    fs.writeFileSync(path.join(root, "tests", "src", "commonMain", "kotlin", "MissingBuild.kt"), "class MissingBuild\n");
+
+    const audit = auditKotlinRepo(root);
+
+    assert.equal(audit.profile.confidence, "low");
+    assert.ok(audit.profile.blockers.includes('Kotlin Multiplatform support requires either a single Gradle module or a settings-owned all-KMP aggregate whose source modules each declare exactly one literal jvm() or jvm("name") target and conventional common/target source sets.'));
+    assert.deepEqual(audit.recommended, []);
+  });
+
+  it("audits a settings-owned all-KMP module graph with qualified JVM target tasks", () => {
+    const audit = auditKotlinRepo(path.resolve("examples/kotlin-multiplatform-module-graph"));
+
+    assert.deepEqual(audit.profile.languages, ["java", "kotlin"]);
+    assert.deepEqual(audit.profile.packageManagers, ["gradle"]);
+    assert.deepEqual(audit.profile.testFrameworks, ["kotlin-test"]);
+    assert.equal(audit.profile.testCommand, "./gradlew :token-core:jvmTest :token-tests:desktopTest");
+    assert.equal(audit.profile.confidence, "high");
+    assert.deepEqual(audit.profile.blockers, []);
+    assert.deepEqual(audit.profile.existingTestLocations, [
+      "token-tests/src/commonTest",
+      "token-tests/src/desktopTest"
+    ]);
+    assert.ok(audit.profile.setupSignals.includes("gradle module graph"));
+    assert.ok(audit.profile.setupSignals.includes("named jvm target"));
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.path), [
+      "token-core/src/commonMain/kotlin/com/example/token/TokenFormatter.kt"
+    ]);
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), [
+      "token-core/src/jvmMain/java/com/example/token/JvmTokenValidator.java",
+      "token-core/src/commonMain/kotlin/com/example/token/TokenParser.kt"
+    ]);
+    assert.deepEqual(
+      audit.coveredButRisky.map((target) => target.existingTestEvidence[0].testPath),
+      [
+        "token-tests/src/desktopTest/kotlin/com/example/token/JvmTokenValidatorTest.kt",
+        "token-tests/src/commonTest/kotlin/com/example/token/TokenParserTest.kt"
+      ]
+    );
+  });
+
+  it("requires a cross-module KMP dependency to reach the test's source set", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-kmp-module-source-set-"));
+    for (const directory of [
+      "core/src/commonMain/kotlin",
+      "tests/src/commonTest/kotlin"
+    ]) {
+      fs.mkdirSync(path.join(root, directory), { recursive: true });
+    }
+    fs.writeFileSync(path.join(root, "settings.gradle.kts"), 'include(":core", ":tests")\n');
+    fs.writeFileSync(path.join(root, "build.gradle.kts"), 'plugins { kotlin("multiplatform") version "2.2.20" apply false }\n');
+    fs.writeFileSync(path.join(root, "core", "build.gradle.kts"), 'plugins { kotlin("multiplatform") }\nkotlin { jvm() }\n');
+    fs.writeFileSync(
+      path.join(root, "tests", "build.gradle.kts"),
+      'plugins { kotlin("multiplatform") }\nkotlin { jvm("desktop"); sourceSets { commonTest.dependencies { implementation(kotlin("test")) }; desktopTest.dependencies { implementation(project(":core")) } } }\n'
+    );
+    fs.writeFileSync(path.join(root, "core", "src", "commonMain", "kotlin", "TokenParser.kt"), "class TokenParser { fun parse(value: String) = value.trim() }\n");
+    fs.writeFileSync(
+      path.join(root, "tests", "src", "commonTest", "kotlin", "TokenParserTest.kt"),
+      'import kotlin.test.Test\nimport kotlin.test.assertEquals\nclass TokenParserTest { @Test fun parses() { assertEquals("x", TokenParser().parse("x")) } }\n'
+    );
+
+    const audit = auditKotlinRepo(root);
+
+    assert.deepEqual(audit.coveredButRisky, []);
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.path), [
+      "core/src/commonMain/kotlin/TokenParser.kt"
+    ]);
   });
 
   it("audits a single Kotlin Multiplatform module through its default JVM target", () => {
@@ -902,7 +981,7 @@ describe("Kotlin audit adapter", () => {
     const audit = auditKotlinRepo(root);
 
     assert.equal(audit.profile.confidence, "low");
-    assert.ok(audit.profile.blockers.includes('Kotlin Multiplatform support requires a single Gradle module with exactly one literal jvm() or jvm("name") target and conventional common/target source sets.'));
+    assert.ok(audit.profile.blockers.includes('Kotlin Multiplatform support requires either a single Gradle module or a settings-owned all-KMP aggregate whose source modules each declare exactly one literal jvm() or jvm("name") target and conventional common/target source sets.'));
     assert.deepEqual(audit.recommended, []);
   });
 
@@ -915,7 +994,7 @@ describe("Kotlin audit adapter", () => {
 
     const audit = auditKotlinRepo(root);
 
-    assert.ok(audit.profile.blockers.includes('Kotlin Multiplatform support requires a single Gradle module with exactly one literal jvm() or jvm("name") target and conventional common/target source sets.'));
+    assert.ok(audit.profile.blockers.includes('Kotlin Multiplatform support requires either a single Gradle module or a settings-owned all-KMP aggregate whose source modules each declare exactly one literal jvm() or jvm("name") target and conventional common/target source sets.'));
     assert.deepEqual(audit.recommended, []);
   });
 

@@ -80,6 +80,11 @@
     "path": "examples/kotlin-multiplatform-jvm"
   },
   {
+    "name": "kotlin-multiplatform-module-graph",
+    "adapter": "kotlin",
+    "path": "examples/kotlin-multiplatform-module-graph"
+  },
+  {
     "name": "kotlin-multiplatform-named-jvm",
     "adapter": "kotlin",
     "path": "examples/kotlin-multiplatform-named-jvm"

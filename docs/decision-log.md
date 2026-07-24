@@ -68,13 +68,13 @@ Rationale: Codex, Claude Code, Cursor, local agents, and future clients already 
 
 Revisit when: multiple MCP hosts support a stable interoperable routing-hint contract, or a separately authorized executor service is introduced with explicit budgets and observable model calls.
 
-## Kotlin Multiplatform JVM As A Bounded Target Slice
+## Kotlin Multiplatform JVM As A Bounded Module-Graph Slice
 
-Decision: own Kotlin Multiplatform only when the audited root is one Gradle module with conventional `commonMain`/`commonTest` and target-derived main/test layouts plus exactly one literal `jvm()` or `jvm("name")` declaration.
+Decision: own Kotlin Multiplatform when the audited root is one Gradle module, or a settings-owned aggregate whose complete set of conventional child modules are KMP modules, with conventional `commonMain`/`commonTest` and target-derived main/test layouts plus exactly one literal `jvm()` or `jvm("name")` declaration per source module. Aggregate verification uses module-qualified target tasks. Cross-module evidence additionally requires a direct project dependency visible from the test source set.
 
-Rationale: a literal JVM target provides a deterministic `<targetName>Test` command and a small source-set graph: `commonTest` reaches only `commonMain`, while the target-derived test source set reaches both common and target-specific production code. Computed or multiple target declarations, custom hierarchies, and multi-module KMP builds change tasks and ownership enough to require separate evidence rather than generic multiplatform inference.
+Rationale: a literal JVM target provides a deterministic `<targetName>Test` task and a small source-set graph: `commonTest` reaches only `commonMain`, while the target-derived test source set reaches both common and target-specific production code. Kotlin's documented common-source-set dependency propagation lets a direct `commonTest` project dependency select the dependency module's JVM variant for the target test. Requiring complete settings ownership and direct source-set-local dependencies keeps the aggregate graph deterministic without treating mixed, remapped, computed, or custom-hierarchy builds as generic multiplatform support.
 
-Revisit when: representative public repositories justify deterministic support for computed or multiple JVM targets, custom source-set hierarchies, or multi-module KMP graphs.
+Revisit when: representative public repositories justify deterministic support for computed or multiple JVM targets, custom source-set hierarchies, mixed aggregates, or exported-transitive KMP source-set dependencies.
 
 ## Native Generation Deferred
 

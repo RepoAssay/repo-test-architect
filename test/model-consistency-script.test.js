@@ -19,7 +19,7 @@ describe("model consistency script", () => {
 
     assert.equal(summary.schemaVersion, "model-consistency-summary/v1");
     assert.equal(summary.profileName, "local-small");
-    assert.equal(summary.summary.scenarioCount, 44);
+    assert.equal(summary.summary.scenarioCount, 45);
     assert.equal(summary.summary.failureCount, 0);
   });
 
@@ -41,8 +41,8 @@ describe("model consistency script", () => {
     assert.equal(comparison.schemaVersion, "model-consistency-comparison/v1");
     assert.equal(comparison.baselineProfile, "deterministic-baseline");
     assert.equal(comparison.candidateProfile, "local-small");
-    assert.equal(comparison.summary.scenarioCount, 44);
-    assert.equal(comparison.summary.alignedScenarioCount, 44);
+    assert.equal(comparison.summary.scenarioCount, 45);
+    assert.equal(comparison.summary.alignedScenarioCount, 45);
     assert.equal(comparison.summary.driftedScenarioCount, 0);
   });
 
@@ -66,7 +66,7 @@ describe("model consistency script", () => {
     const comparison = JSON.parse(output);
 
     assert.equal(comparison.schemaVersion, "model-consistency-comparison/v1");
-    assert.equal(comparison.summary.alignedScenarioCount, 44);
+    assert.equal(comparison.summary.alignedScenarioCount, 45);
     assert.equal(comparison.summary.driftedScenarioCount, 0);
   });
 

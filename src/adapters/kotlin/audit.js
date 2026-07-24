@@ -164,10 +164,29 @@ function resolveGradleModules(files, settings) {
     const declaredDependencies = declaredGradleProjectDependencies(buildText);
     for (const dependency of declaredDependencies.direct) module.dependencies.add(dependency);
     for (const dependency of declaredDependencies.exported) module.exportedDependencies.add(dependency);
+    module.kmpCommonTestDependencies = declaredKmpTestProjectDependencies(buildText, "common");
+    module.kmpJvmTestDependencies = module.hasKmpJvmTarget
+      ? declaredKmpTestProjectDependencies(buildText, module.kmpJvmTargetName)
+      : new Set();
   }
 
   if (declarations.length === 0 && modules.length === 1 && modules[0].hasKmpJvmTarget) {
     modules[0].supportsKmpJvm = true;
+    modules[0].supportsKmpShape = true;
+  }
+
+  const rootModule = modules.find((module) => module.projectPath === ":");
+  const childModules = modules.filter((module) => module.projectPath !== ":");
+  const supportsKmpAggregate =
+    declarations.length > 0 &&
+    modules.length === declarations.length + 1 &&
+    rootModule &&
+    !rootModule.hasKmpJvmTarget &&
+    !hasOwnedJvmSources(rootModule, paths) &&
+    childModules.every((module) => module.isKmp && module.hasKmpJvmTarget);
+  if (supportsKmpAggregate) {
+    for (const module of childModules) module.supportsKmpJvm = true;
+    for (const module of modules) module.supportsKmpShape = true;
   }
 
   populateReachableModuleDependencies(modules);
@@ -302,6 +321,61 @@ function declaredGradleProjectDependencies(content) {
     if (match[1] === "api" && !hasExclusions) exported.add(match[2]);
   }
   return { direct, exported };
+}
+
+function declaredKmpTestProjectDependencies(content, sourceSetName) {
+  const dependencies = new Set();
+  const buildText = content
+    .replace(/\/\*[\s\S]*?\*\//g, " ")
+    .replace(/\/\/.*$/gm, "");
+  const escapedSourceSet = escapeRegExp(`${sourceSetName}Test`);
+  const blockPattern = new RegExp(
+    `(?:\\bval\\s+)?\\b${escapedSourceSet}\\b(?:\\s+by\\s+getting)?(?:\\s*\\.\\s*dependencies)?\\s*\\{`,
+    "g"
+  );
+  for (const match of buildText.matchAll(blockPattern)) {
+    const openingBrace = match.index + match[0].lastIndexOf("{");
+    const block = balancedGradleBlock(buildText, openingBrace);
+    for (const dependency of declaredGradleProjectDependencies(block).direct) dependencies.add(dependency);
+  }
+  const configurationPattern = new RegExp(
+    `\\b${escapedSourceSet}(?:Implementation|Api|CompileOnly)\\s*(?:\\(\\s*)?project\\s*\\(\\s*["'](:[^"']+)["']\\s*\\)`,
+    "g"
+  );
+  for (const match of buildText.matchAll(configurationPattern)) dependencies.add(match[1]);
+  return dependencies;
+}
+
+function balancedGradleBlock(content, openingBrace) {
+  let depth = 0;
+  let quote;
+  for (let index = openingBrace; index < content.length; index += 1) {
+    const character = content[index];
+    if (quote) {
+      if (character === "\\") index += 1;
+      else if (character === quote) quote = undefined;
+      continue;
+    }
+    if (character === '"' || character === "'") {
+      quote = character;
+      continue;
+    }
+    if (character === "{") depth += 1;
+    if (character === "}") {
+      depth -= 1;
+      if (depth === 0) return content.slice(openingBrace + 1, index);
+    }
+  }
+  return "";
+}
+
+function hasOwnedJvmSources(module, paths) {
+  const prefix = module.directory === "." ? "" : `${escapeRegExp(module.directory)}/`;
+  return [...paths].some((currentPath) =>
+    new RegExp(
+      `^${prefix}src/(?:main|test)/(?:kotlin|java|groovy)/|^${prefix}src/[A-Za-z][A-Za-z0-9_]*(?:Main|Test)/(?:kotlin|java)/`
+    ).test(currentPath)
+  );
 }
 
 function moduleBuildText(module, files) {
@@ -467,19 +541,25 @@ function detectUnsupportedProjectShapes(buildText, paths, modules) {
     modules.some((module) => module.isKmp) ||
     usesKmpBuild(buildText) ||
     paths.some((currentPath) => /(?:^|\/)src\/(?:common|jvm)(?:Main|Test)\//.test(currentPath));
-  if (hasKmpMarkers && !modules.some((module) => module.supportsKmpJvm)) {
-    shapes.push("Kotlin Multiplatform support requires a single Gradle module with exactly one literal jvm() or jvm(\"name\") target and conventional common/target source sets.");
+  if (hasKmpMarkers && !modules.some((module) => module.supportsKmpShape)) {
+    shapes.push("Kotlin Multiplatform support requires either a single Gradle module or a settings-owned all-KMP aggregate whose source modules each declare exactly one literal jvm() or jvm(\"name\") target and conventional common/target source sets.");
   }
   return shapes;
 }
 
 function detectTestCommand(root, paths, frameworks, modules) {
   if (frameworks.length === 0) return {};
-  const kmpJvmModule = modules.find((module) => module.supportsKmpJvm);
-  if (kmpJvmModule) {
-    const task = `${kmpJvmModule.kmpJvmTargetName}Test`;
-    if (paths.includes("gradlew") || paths.includes("gradlew.bat")) return { command: `./gradlew ${task}` };
-    return { command: `gradle ${task}` };
+  const kmpJvmModules = modules
+    .filter((module) => module.supportsKmpJvm)
+    .sort((left, right) => left.projectPath.localeCompare(right.projectPath));
+  if (kmpJvmModules.length > 0) {
+    const tasks = kmpJvmModules.map((module) =>
+      module.projectPath === ":"
+        ? `${module.kmpJvmTargetName}Test`
+        : `${module.projectPath}:${module.kmpJvmTargetName}Test`
+    );
+    if (paths.includes("gradlew") || paths.includes("gradlew.bat")) return { command: `./gradlew ${tasks.join(" ")}` };
+    return { command: `gradle ${tasks.join(" ")}` };
   }
   if (paths.includes("gradlew") || paths.includes("gradlew.bat")) return { command: "./gradlew test" };
   if (paths.includes("build.gradle") || paths.includes("build.gradle.kts")) {
@@ -870,7 +950,7 @@ function collectJvmTestEvidence(sourceSymbols, testFiles, modules) {
     const evidence = [];
     for (const testFile of testFiles) {
       if (!canModuleTestSource(testFile.moduleProjectPath, source.moduleProjectPath, modules)) continue;
-      if (!canTestSourceSet(testFile.path, source.path)) continue;
+      if (!canTestSourceSet(testFile, source, modules)) continue;
       const match = findJvmTestMatch(source, testFile.analysis);
       if (!match) continue;
       evidence.push({
@@ -886,14 +966,30 @@ function collectJvmTestEvidence(sourceSymbols, testFiles, modules) {
   return evidenceBySourcePath;
 }
 
-function canTestSourceSet(testPath, sourcePath) {
-  const testSourceSet = normalizePath(testPath).match(/(?:^|\/)src\/([A-Za-z][A-Za-z0-9_]*Test)\//)?.[1];
-  const productionSourceSet = normalizePath(sourcePath).match(/(?:^|\/)src\/([A-Za-z][A-Za-z0-9_]*Main)\//)?.[1];
+function canTestSourceSet(testFile, source, modules) {
+  const testSourceSet = normalizePath(testFile.path).match(/(?:^|\/)src\/([A-Za-z][A-Za-z0-9_]*Test)\//)?.[1];
+  const productionSourceSet = normalizePath(source.path).match(/(?:^|\/)src\/([A-Za-z][A-Za-z0-9_]*Main)\//)?.[1];
   if (!testSourceSet && !productionSourceSet) return true;
   if (!testSourceSet || !productionSourceSet) return false;
+  const sameModule = testFile.moduleProjectPath === source.moduleProjectPath;
+  if (sameModule && testSourceSet === "commonTest") return productionSourceSet === "commonMain";
+  if (sameModule) {
+    const targetName = testSourceSet.slice(0, -"Test".length);
+    return ["commonMain", `${targetName}Main`].includes(productionSourceSet);
+  }
+
+  const testModule = modules.find((module) => module.projectPath === testFile.moduleProjectPath);
+  const sourceModule = modules.find((module) => module.projectPath === source.moduleProjectPath);
+  if (!testModule?.supportsKmpJvm || !sourceModule?.supportsKmpJvm) return true;
+  const sourceSetDependency =
+    testModule.kmpCommonTestDependencies.has(source.moduleProjectPath) ||
+    (testSourceSet !== "commonTest" && testModule.kmpJvmTestDependencies.has(source.moduleProjectPath));
+  if (!sourceSetDependency) return false;
   if (testSourceSet === "commonTest") return productionSourceSet === "commonMain";
   const targetName = testSourceSet.slice(0, -"Test".length);
-  return ["commonMain", `${targetName}Main`].includes(productionSourceSet);
+  return productionSourceSet === "commonMain" ||
+    productionSourceSet === `${targetName}Main` ||
+    productionSourceSet === `${sourceModule.kmpJvmTargetName}Main`;
 }
 
 function canModuleTestSource(testModuleProjectPath, sourceModuleProjectPath, modules) {
