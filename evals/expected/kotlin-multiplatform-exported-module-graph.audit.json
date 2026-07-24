@@ -1,0 +1,220 @@
+{
+  "schemaVersion": "audit/v1",
+  "profile": {
+    "root": "<fixture>",
+    "languages": [
+      "java",
+      "kotlin"
+    ],
+    "packageManagers": [
+      "gradle"
+    ],
+    "testFrameworks": [
+      "kotlin-test"
+    ],
+    "architectures": [
+      "jvm"
+    ],
+    "testCommand": "./gradlew :token-api:jvmTest :token-core:jvmTest :token-tests:desktopTest",
+    "detectedConventions": [
+      "*Test files",
+      "src/commonTest/kotlin",
+      "token-tests/src/desktopTest"
+    ],
+    "existingTestLocations": [
+      "token-tests/src/commonTest",
+      "token-tests/src/desktopTest"
+    ],
+    "setupSignals": [
+      "gradle kotlin dsl",
+      "gradle settings",
+      "gradle wrapper",
+      "kotlin multiplatform",
+      "jvm target",
+      "named jvm target",
+      "gradle module graph"
+    ],
+    "confidence": "high",
+    "blockers": []
+  },
+  "untestedCandidates": [
+    {
+      "id": "token-core/src/commonMain/kotlin/com/example/token/TokenFormatter.kt",
+      "name": "TokenFormatter",
+      "path": "token-core/src/commonMain/kotlin/com/example/token/TokenFormatter.kt",
+      "kind": "pure-logic",
+      "signals": [
+        "pure-logic",
+        "edge-case-surface"
+      ],
+      "risk": "high",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 9,
+      "maintenanceCost": 2,
+      "reasons": [
+        "Pure transformation logic",
+        "edge-case surface"
+      ],
+      "existingTestPaths": []
+    }
+  ],
+  "coveredButRisky": [
+    {
+      "id": "token-core/src/jvmMain/java/com/example/token/JvmTokenValidator.java",
+      "name": "JvmTokenValidator",
+      "path": "token-core/src/jvmMain/java/com/example/token/JvmTokenValidator.java",
+      "kind": "pure-logic",
+      "signals": [
+        "pure-logic",
+        "edge-case-surface",
+        "matching-test"
+      ],
+      "risk": "high",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 9,
+      "maintenanceCost": 2,
+      "reasons": [
+        "Pure transformation logic",
+        "edge-case surface",
+        "Existing test evidence detected; review missing edge cases"
+      ],
+      "existingTestPaths": [
+        "token-tests/src/desktopTest/kotlin/com/example/token/JvmTokenValidatorTest.kt"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "token-tests/src/desktopTest/kotlin/com/example/token/JvmTokenValidatorTest.kt",
+          "kind": "jvm-symbol-reference",
+          "strength": "referenced",
+          "usage": "asserted"
+        }
+      ]
+    },
+    {
+      "id": "token-core/src/commonMain/kotlin/com/example/token/TokenParser.kt",
+      "name": "TokenParser",
+      "path": "token-core/src/commonMain/kotlin/com/example/token/TokenParser.kt",
+      "kind": "pure-logic",
+      "signals": [
+        "pure-logic",
+        "edge-case-surface",
+        "matching-test"
+      ],
+      "risk": "high",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 9,
+      "maintenanceCost": 2,
+      "reasons": [
+        "Pure transformation logic",
+        "edge-case surface",
+        "Existing test evidence detected; review missing edge cases"
+      ],
+      "existingTestPaths": [
+        "token-tests/src/commonTest/kotlin/com/example/token/TokenParserTest.kt"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "token-tests/src/commonTest/kotlin/com/example/token/TokenParserTest.kt",
+          "kind": "jvm-symbol-reference",
+          "strength": "referenced",
+          "usage": "asserted"
+        }
+      ]
+    }
+  ],
+  "recommended": [
+    {
+      "id": "token-core/src/jvmMain/java/com/example/token/JvmTokenValidator.java",
+      "name": "JvmTokenValidator",
+      "path": "token-core/src/jvmMain/java/com/example/token/JvmTokenValidator.java",
+      "kind": "pure-logic",
+      "signals": [
+        "pure-logic",
+        "edge-case-surface",
+        "matching-test"
+      ],
+      "risk": "high",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 9,
+      "maintenanceCost": 2,
+      "reasons": [
+        "Pure transformation logic",
+        "edge-case surface",
+        "Existing test evidence detected; review missing edge cases"
+      ],
+      "existingTestPaths": [
+        "token-tests/src/desktopTest/kotlin/com/example/token/JvmTokenValidatorTest.kt"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "token-tests/src/desktopTest/kotlin/com/example/token/JvmTokenValidatorTest.kt",
+          "kind": "jvm-symbol-reference",
+          "strength": "referenced",
+          "usage": "asserted"
+        }
+      ]
+    },
+    {
+      "id": "token-core/src/commonMain/kotlin/com/example/token/TokenFormatter.kt",
+      "name": "TokenFormatter",
+      "path": "token-core/src/commonMain/kotlin/com/example/token/TokenFormatter.kt",
+      "kind": "pure-logic",
+      "signals": [
+        "pure-logic",
+        "edge-case-surface"
+      ],
+      "risk": "high",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 9,
+      "maintenanceCost": 2,
+      "reasons": [
+        "Pure transformation logic",
+        "edge-case surface"
+      ],
+      "existingTestPaths": []
+    },
+    {
+      "id": "token-core/src/commonMain/kotlin/com/example/token/TokenParser.kt",
+      "name": "TokenParser",
+      "path": "token-core/src/commonMain/kotlin/com/example/token/TokenParser.kt",
+      "kind": "pure-logic",
+      "signals": [
+        "pure-logic",
+        "edge-case-surface",
+        "matching-test"
+      ],
+      "risk": "high",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 9,
+      "maintenanceCost": 2,
+      "reasons": [
+        "Pure transformation logic",
+        "edge-case surface",
+        "Existing test evidence detected; review missing edge cases"
+      ],
+      "existingTestPaths": [
+        "token-tests/src/commonTest/kotlin/com/example/token/TokenParserTest.kt"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "token-tests/src/commonTest/kotlin/com/example/token/TokenParserTest.kt",
+          "kind": "jvm-symbol-reference",
+          "strength": "referenced",
+          "usage": "asserted"
+        }
+      ]
+    }
+  ],
+  "skipped": [],
+  "risks": [
+    "TokenFormatter has pure transformation logic, edge-case surface and has no matching test evidence.",
+    "TokenParser has pure transformation logic, edge-case surface and needs edge-case review.",
+    "JvmTokenValidator has pure transformation logic, edge-case surface and needs edge-case review."
+  ]
+}

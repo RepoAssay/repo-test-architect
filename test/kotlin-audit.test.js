@@ -908,6 +908,90 @@ describe("Kotlin audit adapter", () => {
     ]);
   });
 
+  it("follows cycle-safe KMP api exports but not implementation dependencies", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-kmp-exports-"));
+    for (const directory of [
+      "core/src/commonMain/kotlin",
+      "hidden/src/commonMain/kotlin",
+      "tests/src/commonTest/kotlin"
+    ]) {
+      fs.mkdirSync(path.join(root, directory), { recursive: true });
+    }
+    fs.writeFileSync(path.join(root, "settings.gradle.kts"), 'include(":api", ":core", ":hidden", ":loop", ":tests")\n');
+    fs.writeFileSync(path.join(root, "build.gradle.kts"), 'plugins { kotlin("multiplatform") version "2.2.20" apply false }\n');
+    fs.mkdirSync(path.join(root, "api"));
+    fs.mkdirSync(path.join(root, "loop"));
+    fs.writeFileSync(path.join(root, "api", "build.gradle.kts"), 'plugins { kotlin("multiplatform") }\nkotlin { jvm(); sourceSets { commonMain.dependencies { api(project(":core")); api(project(":loop")); implementation(project(":hidden")) } } }\n');
+    fs.writeFileSync(path.join(root, "core", "build.gradle.kts"), 'plugins { kotlin("multiplatform") }\nkotlin { jvm() }\n');
+    fs.writeFileSync(path.join(root, "hidden", "build.gradle.kts"), 'plugins { kotlin("multiplatform") }\nkotlin { jvm() }\n');
+    fs.writeFileSync(path.join(root, "loop", "build.gradle.kts"), 'plugins { kotlin("multiplatform") }\nkotlin { jvm(); sourceSets { commonMain.dependencies { api(project(":api")) } } }\n');
+    fs.writeFileSync(path.join(root, "tests", "build.gradle.kts"), 'plugins { kotlin("multiplatform") }\nkotlin { jvm(); sourceSets { commonMain.dependencies { api(project(":api")) }; commonTest.dependencies { implementation(kotlin("test")) } } }\n');
+    fs.writeFileSync(path.join(root, "core", "src", "commonMain", "kotlin", "TokenParser.kt"), "class TokenParser { fun parse(value: String) = value.trim() }\n");
+    fs.writeFileSync(path.join(root, "hidden", "src", "commonMain", "kotlin", "HiddenFormatter.kt"), "class HiddenFormatter { fun format(value: String) = value.trim() }\n");
+    fs.writeFileSync(
+      path.join(root, "tests", "src", "commonTest", "kotlin", "TokenTest.kt"),
+      'import kotlin.test.Test\nimport kotlin.test.assertEquals\nclass TokenTest { @Test fun parses() { assertEquals("x", TokenParser().parse("x")); assertEquals("x", HiddenFormatter().format("x")) } }\n'
+    );
+
+    const audit = auditKotlinRepo(root);
+
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.name), ["TokenParser"]);
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.name), ["HiddenFormatter"]);
+  });
+
+  it("keeps target-specific KMP api exports out of commonTest", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-kmp-target-exports-"));
+    for (const directory of [
+      "core/src/commonMain/kotlin",
+      "tests/src/commonTest/kotlin",
+      "tests/src/clientTest/kotlin"
+    ]) {
+      fs.mkdirSync(path.join(root, directory), { recursive: true });
+    }
+    fs.writeFileSync(path.join(root, "settings.gradle.kts"), 'include(":bridge", ":core", ":tests")\n');
+    fs.writeFileSync(path.join(root, "build.gradle.kts"), 'plugins { kotlin("multiplatform") version "2.2.20" apply false }\n');
+    fs.mkdirSync(path.join(root, "bridge"));
+    fs.writeFileSync(path.join(root, "bridge", "build.gradle.kts"), 'plugins { kotlin("multiplatform") }\nkotlin { jvm("desktop"); sourceSets { desktopMain.dependencies { api(project(":core")) } } }\n');
+    fs.writeFileSync(path.join(root, "core", "build.gradle.kts"), 'plugins { kotlin("multiplatform") }\nkotlin { jvm() }\n');
+    fs.writeFileSync(path.join(root, "tests", "build.gradle.kts"), 'plugins { kotlin("multiplatform") }\nkotlin { jvm("client"); sourceSets { commonTest.dependencies { implementation(kotlin("test")); implementation(project(":bridge")) } } }\n');
+    fs.writeFileSync(path.join(root, "core", "src", "commonMain", "kotlin", "TokenParser.kt"), "class TokenParser { fun parse(value: String) = value.trim() }\n");
+    for (const sourceSet of ["commonTest", "clientTest"]) {
+      const testClass = sourceSet === "commonTest" ? "CommonTokenParserTest" : "ClientTokenParserTest";
+      fs.writeFileSync(
+        path.join(root, "tests", "src", sourceSet, "kotlin", "TokenParserTest.kt"),
+        `import kotlin.test.Test\nimport kotlin.test.assertEquals\nclass ${testClass} { @Test fun parses() { assertEquals("x", TokenParser().parse("x")) } }\n`
+      );
+    }
+
+    const audit = auditKotlinRepo(root);
+
+    assert.deepEqual(audit.coveredButRisky[0].existingTestPaths, [
+      "tests/src/clientTest/kotlin/TokenParserTest.kt"
+    ]);
+  });
+
+  it("audits exported KMP source-set dependencies across an aggregate", () => {
+    const audit = auditKotlinRepo(path.resolve("examples/kotlin-multiplatform-exported-module-graph"));
+
+    assert.equal(audit.profile.testCommand, "./gradlew :token-api:jvmTest :token-core:jvmTest :token-tests:desktopTest");
+    assert.equal(audit.profile.confidence, "high");
+    assert.deepEqual(audit.profile.blockers, []);
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.path), [
+      "token-core/src/commonMain/kotlin/com/example/token/TokenFormatter.kt"
+    ]);
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), [
+      "token-core/src/jvmMain/java/com/example/token/JvmTokenValidator.java",
+      "token-core/src/commonMain/kotlin/com/example/token/TokenParser.kt"
+    ]);
+    assert.deepEqual(
+      audit.coveredButRisky.map((target) => target.existingTestEvidence[0].testPath),
+      [
+        "token-tests/src/desktopTest/kotlin/com/example/token/JvmTokenValidatorTest.kt",
+        "token-tests/src/commonTest/kotlin/com/example/token/TokenParserTest.kt"
+      ]
+    );
+  });
+
   it("audits a single Kotlin Multiplatform module through its default JVM target", () => {
     const audit = auditKotlinRepo(path.resolve("examples/kotlin-multiplatform-jvm"));
 
