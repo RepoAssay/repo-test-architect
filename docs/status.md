@@ -95,7 +95,8 @@ Implemented:
 - GitHub pull request template that calls out audit impact, release verification, and risk notes
 - GitHub bug report issue form for audit, planning, MCP, and release-check defects
 - GitHub feature request issue form for audit-first adapter, MCP, evaluation, and reporting proposals
-- GitHub issue template config that disables blank issues so public reports use structured forms
+- GitHub issue template config that disables blank issues, adds structured support questions, and routes security reports privately
+- monthly grouped Dependabot version updates, with GitHub security updates enabled separately for vulnerable dependencies
 - contributor guide for traceable workflow, audit changes, adapter boundaries, generation deferral, and release checks
 - support policy for questions, bugs, feature requests, security boundaries, and regression verification
 - security policy for local-first repo access, vulnerability reports, and sensitive artifact handling

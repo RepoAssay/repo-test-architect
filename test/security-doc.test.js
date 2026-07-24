@@ -15,6 +15,8 @@ describe("security docs", () => {
     assert.match(security, /unexpected network access or source upload/);
     assert.match(security, /MCP tool behavior that grants broader file, command, or write access than documented/);
     assert.match(security, /package contents that include private, generated, or unintended files/);
+    assert.match(security, /GitHub private vulnerability reporting/);
+    assert.match(security, /security\/advisories\/new/);
     assert.match(security, /Do not include:/);
     assert.match(security, /npm run release:check/);
     assert.match(readme, /\[Security policy\]\(SECURITY\.md\)/);

@@ -13,6 +13,7 @@ This document tracks what can be shown publicly before the project is ready for 
 - golden audit and plan snapshots
 - model-consistency locked-field scenarios
 - package, binary, smoke, eval, and release-readiness checks
+- a production dependency audit that blocks release readiness
 - a reversible distribution preparation gate and an intentionally blocked public-publish gate
 - contribution, support, and security policies
 - product positioning for audit-first differentiation and plausible business paths
@@ -31,10 +32,21 @@ This document tracks what can be shown publicly before the project is ready for 
 ## Before A Public Repository
 
 - confirm `repoassay/repo-test-architect` should change from private to public
-- decide whether issue template contact links should point to support and security docs
+- confirm the existing personal commit-email exposure is acceptable or explicitly approve a history rewrite
+- confirm personal account 2FA, then enable the organization-wide 2FA requirement
+- establish a private conduct-reporting contact before adding a code of conduct
 - verify the copyright owner before publishing
 - run `npm run release:check`
 - run `npm run distribution:check:publish` after the approved `private: false` change
+
+## Repository Preparation Completed
+
+- GitHub organization and MCP identities use the RepoAssay namespace
+- repository and organization descriptions plus repository topics are configured
+- repository changes use squash-only merges with protected, up-to-date branches
+- stale merged remote branches are removed
+- Dependabot alerts, security updates, and grouped monthly version updates are configured
+- issue forms route support questions and private vulnerability reports without enabling blank issues
 
 ## First Public Demo
 

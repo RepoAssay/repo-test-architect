@@ -4,7 +4,7 @@ Repo Test Architect is early audit-first tooling. Useful reports include the com
 
 ## Questions
 
-Use a discussion thread or issue for usage questions about:
+Use the support question issue form for usage questions about:
 
 - CLI commands
 - MCP client setup

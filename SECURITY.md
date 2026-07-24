@@ -16,9 +16,9 @@ The audit tools read repository files, package metadata, test files, and eventua
 
 ## Reporting a Vulnerability
 
-Until a dedicated security contact exists, open a private report through GitHub security advisories when available.
+Use [GitHub private vulnerability reporting](https://github.com/RepoAssay/repo-test-architect/security/advisories/new) when it is available. This channel should be enabled as part of the public-repository launch.
 
-If private advisories are not available, open a minimal public issue that avoids exploit details and private source content, then request a private follow-up channel.
+If private reporting is not yet available, open a minimal public issue that avoids exploit details and private source content, then request a private follow-up channel.
 
 ## What to Report
 
