@@ -30,7 +30,7 @@ describe("tool API", () => {
     assert.equal(registry.schemaVersion, "adapter-registry/v1");
     assert.deepEqual(registry.adapters.map((adapter) => adapter.id), ["javascript", "kotlin", "python", "swift"]);
     assert.deepEqual(registry.adapters[0].supportedProjectTypes, ["node", "express", "react", "browser-e2e"]);
-    assert.deepEqual(registry.adapters[1].supportedProjectTypes, ["gradle-jvm", "gradle-jvm-multimodule", "maven-jvm", "maven-jvm-reactor"]);
+    assert.deepEqual(registry.adapters[1].supportedProjectTypes, ["gradle-jvm", "gradle-jvm-multimodule", "gradle-kmp-jvm", "maven-jvm", "maven-jvm-reactor"]);
     assert.deepEqual(registry.adapters[2].supportedProjectTypes, ["django", "fastapi", "flask", "python-package"]);
     assert.deepEqual(registry.adapters[3].supportedProjectTypes, ["swift-package", "apple-xcode", "bazel-swift", "vapor"]);
   });

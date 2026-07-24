@@ -1,0 +1,75 @@
+{
+  "schemaVersion": "model-consistency-scenario/v1",
+  "id": "kotlin-multiplatform-jvm-plan",
+  "description": "Different model profiles should preserve bounded Kotlin Multiplatform JVM ownership, source-set reachability, and jvmTest verification.",
+  "sourceArtifact": {
+    "path": "evals/expected/kotlin-multiplatform-jvm.audit.json",
+    "schemaVersion": "audit/v1"
+  },
+  "toolCall": {
+    "toolName": "generate_test_plan",
+    "arguments": {}
+  },
+  "lockedFields": [
+    {
+      "path": "summary.verificationCommand",
+      "expected": "./gradlew jvmTest",
+      "reason": "The default KMP JVM target has a target-specific test task."
+    },
+    {
+      "path": "summary.confidence",
+      "expected": "high",
+      "reason": "A single conventional KMP module with kotlin.test evidence and a default JVM target is fully inside the bounded slice."
+    },
+    {
+      "path": "summary.addTestCount",
+      "expected": 1,
+      "reason": "The untested common formatter remains the only add-test item."
+    },
+    {
+      "path": "summary.extendTestCount",
+      "expected": 2,
+      "reason": "Common and JVM-specific covered sources both retain extend-test recommendations."
+    },
+    {
+      "path": "items[0].id",
+      "expected": "extend-test:src/jvmMain/java/com/example/token/JvmTokenValidator.java",
+      "reason": "The higher-risk JVM validator keeps its stable target identity."
+    },
+    {
+      "path": "items[0].existingTestEvidence[0].testPath",
+      "expected": "src/jvmTest/kotlin/com/example/token/JvmTokenValidatorTest.kt",
+      "reason": "JVM-only production evidence must come from jvmTest."
+    },
+    {
+      "path": "items[0].existingTestEvidence[0].usage",
+      "expected": "asserted",
+      "reason": "The JVM validator result is consumed by a kotlin.test assertion."
+    },
+    {
+      "path": "items[1].id",
+      "expected": "add-test:src/commonMain/kotlin/com/example/token/TokenFormatter.kt",
+      "reason": "The uncovered common formatter remains an add-test item."
+    },
+    {
+      "path": "items[2].id",
+      "expected": "extend-test:src/commonMain/kotlin/com/example/token/TokenParser.kt",
+      "reason": "The common parser remains covered through commonTest."
+    },
+    {
+      "path": "items[2].existingTestEvidence[0].testPath",
+      "expected": "src/commonTest/kotlin/com/example/token/TokenParserTest.kt",
+      "reason": "Common production evidence should preserve its commonTest owner."
+    }
+  ],
+  "allowedVariations": [
+    "summary wording",
+    "plan item explanation wording",
+    "optional detail depth"
+  ],
+  "unexpectedVariations": [
+    "generic test task instead of jvmTest",
+    "commonTest claiming jvmMain",
+    "loss of KMP source-set ownership"
+  ]
+}

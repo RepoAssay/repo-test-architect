@@ -808,7 +808,7 @@ describe("Kotlin audit adapter", () => {
     assert.ok(audit.profile.blockers.includes("Android unit and instrumentation source sets are outside the supported JVM module boundary."));
   });
 
-  it("marks Kotlin Multiplatform modules outside the supported JVM module boundary", () => {
+  it("keeps multi-module Kotlin Multiplatform roots outside the bounded JVM ownership slice", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-multiplatform-"));
     fs.mkdirSync(path.join(root, "jvm-tools", "src", "main", "kotlin"), { recursive: true });
     fs.mkdirSync(path.join(root, "jvm-tools", "src", "test", "kotlin"), { recursive: true });
@@ -824,9 +824,81 @@ describe("Kotlin audit adapter", () => {
     const audit = auditKotlinRepo(root);
 
     assert.equal(audit.profile.confidence, "medium");
-    assert.ok(audit.profile.blockers.includes("Kotlin Multiplatform modules and target-specific source sets are outside the supported JVM module boundary."));
+    assert.ok(audit.profile.blockers.includes("Kotlin Multiplatform support requires a single Gradle module with an explicit default jvm() target and conventional commonMain/jvmMain source sets."));
     assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["jvm-tools/src/main/kotlin/TokenParser.kt"]);
     assert.ok(!audit.recommended.some((target) => target.path.includes("commonMain")));
+  });
+
+  it("audits a single Kotlin Multiplatform module through its default JVM target", () => {
+    const audit = auditKotlinRepo(path.resolve("examples/kotlin-multiplatform-jvm"));
+
+    assert.deepEqual(audit.profile.languages, ["java", "kotlin"]);
+    assert.deepEqual(audit.profile.packageManagers, ["gradle"]);
+    assert.deepEqual(audit.profile.testFrameworks, ["kotlin-test"]);
+    assert.equal(audit.profile.testCommand, "./gradlew jvmTest");
+    assert.equal(audit.profile.confidence, "high");
+    assert.deepEqual(audit.profile.blockers, []);
+    assert.deepEqual(audit.profile.existingTestLocations, ["src/commonTest", "src/jvmTest"]);
+    assert.ok(audit.profile.detectedConventions.includes("src/commonTest/kotlin"));
+    assert.ok(audit.profile.detectedConventions.includes("src/jvmTest"));
+    assert.ok(audit.profile.setupSignals.includes("kotlin multiplatform"));
+    assert.ok(audit.profile.setupSignals.includes("jvm target"));
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.path), [
+      "src/commonMain/kotlin/com/example/token/TokenFormatter.kt"
+    ]);
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), [
+      "src/jvmMain/java/com/example/token/JvmTokenValidator.java",
+      "src/commonMain/kotlin/com/example/token/TokenParser.kt"
+    ]);
+    assert.deepEqual(
+      audit.coveredButRisky.map((target) => target.existingTestEvidence[0].usage),
+      ["asserted", "asserted"]
+    );
+  });
+
+  it("does not let commonTest claim JVM-only production evidence", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-kmp-reachability-"));
+    fs.mkdirSync(path.join(root, "src", "jvmMain", "kotlin"), { recursive: true });
+    fs.mkdirSync(path.join(root, "src", "commonTest", "kotlin"), { recursive: true });
+    fs.writeFileSync(path.join(root, "settings.gradle.kts"), 'rootProject.name = "reachability"\n');
+    fs.writeFileSync(path.join(root, "build.gradle.kts"), 'plugins { kotlin("multiplatform") version "2.2.20" }\nkotlin { jvm() }\ndependencies { commonTestImplementation(kotlin("test")) }\n');
+    fs.writeFileSync(path.join(root, "src", "jvmMain", "kotlin", "JvmTokenParser.kt"), "class JvmTokenParser { fun parse(value: String) = value.trim() }\n");
+    fs.writeFileSync(path.join(root, "src", "commonTest", "kotlin", "JvmTokenParserTest.kt"), "import kotlin.test.Test\nimport kotlin.test.assertEquals\nclass JvmTokenParserTest { @Test fun parses() { assertEquals(\"x\", JvmTokenParser().parse(\"x\")) } }\n");
+
+    const audit = auditKotlinRepo(root);
+
+    assert.deepEqual(audit.coveredButRisky, []);
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.name), ["JvmTokenParser"]);
+  });
+
+  it("requires the default unnamed KMP JVM target", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-kmp-named-jvm-"));
+    fs.mkdirSync(path.join(root, "src", "jvmMain", "kotlin"), { recursive: true });
+    fs.writeFileSync(path.join(root, "settings.gradle.kts"), 'rootProject.name = "named-jvm"\n');
+    fs.writeFileSync(path.join(root, "build.gradle.kts"), 'plugins { kotlin("multiplatform") version "2.2.20" }\nkotlin { jvm("desktop") }\n');
+    fs.writeFileSync(path.join(root, "src", "jvmMain", "kotlin", "TokenParser.kt"), "class TokenParser { fun parse(value: String) = value.trim() }\n");
+
+    const audit = auditKotlinRepo(root);
+
+    assert.equal(audit.profile.confidence, "low");
+    assert.ok(audit.profile.blockers.includes("Kotlin Multiplatform support requires a single Gradle module with an explicit default jvm() target and conventional commonMain/jvmMain source sets."));
+    assert.deepEqual(audit.recommended, []);
+  });
+
+  it("keeps KMP Kotest execution outside the first JVM target slice", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-kmp-kotest-"));
+    fs.mkdirSync(path.join(root, "src", "commonMain", "kotlin"), { recursive: true });
+    fs.mkdirSync(path.join(root, "src", "jvmTest", "kotlin"), { recursive: true });
+    fs.writeFileSync(path.join(root, "settings.gradle.kts"), 'rootProject.name = "kmp-kotest"\n');
+    fs.writeFileSync(path.join(root, "build.gradle.kts"), 'plugins { kotlin("multiplatform") version "2.2.20" }\nkotlin { jvm(); sourceSets { jvmTest.dependencies { implementation("io.kotest:kotest-runner-junit5:6.0.0") } } }\ntasks.withType<Test> { useJUnitPlatform() }\n');
+    fs.writeFileSync(path.join(root, "src", "commonMain", "kotlin", "TokenParser.kt"), "class TokenParser { fun parse(value: String) = value.trim() }\n");
+    fs.writeFileSync(path.join(root, "src", "jvmTest", "kotlin", "TokenParserSpec.kt"), 'import io.kotest.core.spec.style.FunSpec\nclass TokenParserSpec : FunSpec({ test("parses") { TokenParser().parse("x") } })\n');
+
+    const audit = auditKotlinRepo(root);
+
+    assert.ok(audit.profile.blockers.includes("Kotest execution inside Kotlin Multiplatform builds is outside the supported evidence boundary."));
+    assert.ok(!audit.profile.blockers.includes("Kotest support requires a Gradle JVM test task using JUnit Platform."));
+    assert.deepEqual(audit.coveredButRisky, []);
   });
 
   it("does not treat unexecuted src/test support code as coverage evidence", () => {

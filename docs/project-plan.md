@@ -64,9 +64,10 @@ Initial JS/TS fixtures:
 - `express-supertest`
 - `react-testing-library`
 
-Current non-JavaScript adapter fixture:
+Early non-JavaScript adapter fixtures:
 
 - `kotlin-junit-basic`
+- `kotlin-multiplatform-jvm`
 
 Later adapter fixtures:
 
@@ -245,6 +246,8 @@ Executor behavior should be split into reusable layers:
 - verification result: files changed, commands run, failures, repairs, and remaining risk
 
 Different models may need different executor profiles. Those profiles should be evaluated against the same audit item and adapter guidance rather than being allowed to reinterpret the underlying facts.
+
+The installing CLI or agent host owns model choice and subagent orchestration. A future plan schema may provide provider-neutral complexity, minimal-context, parallel-safety, agent-role, and repository-reasoning hints, but the MCP server should not turn those hints into hidden model calls. This lets inexpensive models handle routine work while stronger models remain available for ambiguity, repair, and review without changing the deterministic audit.
 
 Generation evaluation should record at least:
 

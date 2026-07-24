@@ -75,6 +75,11 @@
     "path": "examples/kotlin-maven-wrapper-junit4"
   },
   {
+    "name": "kotlin-multiplatform-jvm",
+    "adapter": "kotlin",
+    "path": "examples/kotlin-multiplatform-jvm"
+  },
+  {
     "name": "kotlin-gradle-aggregate-kotest",
     "adapter": "kotlin",
     "path": "examples/kotlin-gradle-aggregate-kotest"

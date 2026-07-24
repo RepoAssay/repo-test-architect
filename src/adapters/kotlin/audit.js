@@ -157,9 +157,15 @@ function resolveGradleModules(files, settings) {
 
   for (const module of modules) {
     const buildText = moduleBuildText(module, files);
+    module.isKmp = usesKmpBuild(buildText);
+    module.hasDefaultKmpJvmTarget = module.isKmp && hasDefaultKmpJvmTarget(buildText);
     const declaredDependencies = declaredGradleProjectDependencies(buildText);
     for (const dependency of declaredDependencies.direct) module.dependencies.add(dependency);
     for (const dependency of declaredDependencies.exported) module.exportedDependencies.add(dependency);
+  }
+
+  if (declarations.length === 0 && modules.length === 1 && modules[0].hasDefaultKmpJvmTarget) {
+    modules[0].supportsKmpJvm = true;
   }
 
   populateReachableModuleDependencies(modules);
@@ -305,12 +311,29 @@ function moduleBuildText(module, files) {
     .join("\n");
 }
 
+function usesKmpBuild(content) {
+  return /\b(?:org\.jetbrains\.kotlin\.)?multiplatform\b|kotlin\s*\(\s*["']multiplatform["']\s*\)/i.test(content);
+}
+
+function hasDefaultKmpJvmTarget(content) {
+  const commentsRemoved = content
+    .replace(/\/\*[\s\S]*?\*\//g, " ")
+    .replace(/\/\/.*$/gm, "");
+  return /\bjvm\s*(?:\(\s*\)|\{)/.test(commentsRemoved);
+}
+
 function moduleForPath(currentPath, modules, sourceSet) {
   const normalized = normalizePath(currentPath);
   const sourceDirectory = sourceSet === "test" ? "(?:kotlin|java|groovy)" : "(?:kotlin|java)";
   const sourceExtension = sourceSet === "test" ? "(?:kt|java|groovy)" : "(?:kt|java)";
   return modules.find((module) => {
     const prefix = module.directory === "." ? "" : `${module.directory}/`;
+    if (module.supportsKmpJvm) {
+      const kmpSource = sourceSet === "test"
+        ? "(?:commonTest/kotlin/.+\\.kt|jvmTest/(?:kotlin/.+\\.kt|java/.+\\.java))"
+        : "(?:commonMain/kotlin/.+\\.kt|jvmMain/(?:kotlin/.+\\.kt|java/.+\\.java))";
+      return new RegExp(`^${escapeRegExp(prefix)}src/${kmpSource}$`).test(normalized);
+    }
     return new RegExp(`^${escapeRegExp(prefix)}src/${sourceSet}/${sourceDirectory}/.+\\.${sourceExtension}$`).test(normalized);
   });
 }
@@ -320,8 +343,8 @@ function buildProfile(root, files, modules) {
   const buildText = modules.map((module) => moduleBuildText(module, files)).join("\n");
   const testText = files.filter((file) => isTestFile(file.path, modules)).map((file) => file.content).join("\n");
   const testFrameworks = detectTestFrameworks(buildText, testText, files, modules);
-  const unsupportedProjectShapes = detectUnsupportedProjectShapes(buildText, paths);
-  const testCommandResolution = detectTestCommand(root, paths, testFrameworks);
+  const unsupportedProjectShapes = detectUnsupportedProjectShapes(buildText, paths, modules);
+  const testCommandResolution = detectTestCommand(root, paths, testFrameworks, modules);
   const testCommand = testCommandResolution.command;
   const existingTestLocations = detectExistingTestLocations(paths, modules);
   const blockers = detectBlockers(paths, files, modules, testCommand, testFrameworks, unsupportedProjectShapes);
@@ -374,7 +397,7 @@ function usesKotest(content) {
 
 function supportsKotestModule(module, files) {
   const buildText = moduleBuildText(module, files);
-  return module.buildSystem === "gradle" && usesKotest(buildText) && /\buseJUnitPlatform\s*\(/.test(buildText);
+  return module.buildSystem === "gradle" && !module.isKmp && usesKotest(buildText) && /\buseJUnitPlatform\s*\(/.test(buildText);
 }
 
 function usesSpock(content) {
@@ -387,7 +410,7 @@ function usesSpockSpecification(content) {
 
 function supportsSpockModule(module, files) {
   const buildText = moduleBuildText(module, files);
-  return module.buildSystem === "gradle" && /\b(?:org\.spockframework|spock-core)\b/i.test(buildText) && /\buseJUnitPlatform\s*\(\s*\)/.test(buildText) && !hasAdvancedSpockExecution(module, files);
+  return module.buildSystem === "gradle" && !module.isKmp && /\b(?:org\.spockframework|spock-core)\b/i.test(buildText) && /\buseJUnitPlatform\s*\(\s*\)/.test(buildText) && !hasAdvancedSpockExecution(module, files);
 }
 
 function hasAdvancedSpockExecution(module, files) {
@@ -407,6 +430,7 @@ function usesTestNgAnnotations(content) {
 
 function supportsTestNgModule(module, files) {
   const buildText = moduleBuildText(module, files);
+  if (module.isKmp) return false;
   if (hasAdvancedTestNgExecution(buildText)) return false;
   if (module.buildSystem === "gradle") return usesTestNg(buildText) && /\buseTestNG\s*\(/.test(buildText);
   if (module.buildSystem === "maven") {
@@ -428,7 +452,7 @@ function hasAdvancedTestNgExecution(buildText) {
   return /\b(?:suiteXmlFiles|suites|includeGroups|excludeGroups|preserveOrder)\s*(?:\(|=)|\b(?:parallel|threadCount)\s*=|<(?:suiteXmlFiles|groups|excludedGroups|parallel|threadCount)>/i.test(buildText);
 }
 
-function detectUnsupportedProjectShapes(buildText, paths) {
+function detectUnsupportedProjectShapes(buildText, paths, modules) {
   const shapes = [];
   if (
     /\bcom\.android\.(?:application|library|test)\b|\bid\s*\(?\s*["']com\.android\./i.test(buildText) ||
@@ -436,17 +460,22 @@ function detectUnsupportedProjectShapes(buildText, paths) {
   ) {
     shapes.push("Android unit and instrumentation source sets are outside the supported JVM module boundary.");
   }
-  if (
-    /\b(?:org\.jetbrains\.kotlin\.)?multiplatform\b|kotlin\s*\(\s*["']multiplatform["']\s*\)/i.test(buildText) ||
-    paths.some((currentPath) => /(?:^|\/)src\/(?:common|jvm)(?:Main|Test)\//.test(currentPath))
-  ) {
-    shapes.push("Kotlin Multiplatform modules and target-specific source sets are outside the supported JVM module boundary.");
+  const hasKmpMarkers =
+    modules.some((module) => module.isKmp) ||
+    usesKmpBuild(buildText) ||
+    paths.some((currentPath) => /(?:^|\/)src\/(?:common|jvm)(?:Main|Test)\//.test(currentPath));
+  if (hasKmpMarkers && !modules.some((module) => module.supportsKmpJvm)) {
+    shapes.push("Kotlin Multiplatform support requires a single Gradle module with an explicit default jvm() target and conventional commonMain/jvmMain source sets.");
   }
   return shapes;
 }
 
-function detectTestCommand(root, paths, frameworks) {
+function detectTestCommand(root, paths, frameworks, modules) {
   if (frameworks.length === 0) return {};
+  if (modules.some((module) => module.supportsKmpJvm)) {
+    if (paths.includes("gradlew") || paths.includes("gradlew.bat")) return { command: "./gradlew jvmTest" };
+    return { command: "gradle jvmTest" };
+  }
   if (paths.includes("gradlew") || paths.includes("gradlew.bat")) return { command: "./gradlew test" };
   if (paths.includes("build.gradle") || paths.includes("build.gradle.kts")) {
     return findParentGradleCommand(root) ?? { command: "gradle test" };
@@ -549,6 +578,13 @@ function relativeCommandPath(root, target) {
 function detectExistingTestLocations(paths, modules) {
   const locations = new Set();
   for (const module of modules) {
+    if (module.supportsKmpJvm) {
+      for (const sourceSet of ["commonTest", "jvmTest"]) {
+        const location = module.directory === "." ? `src/${sourceSet}` : `${module.directory}/src/${sourceSet}`;
+        if (paths.some((item) => item.startsWith(`${location}/`))) locations.add(location);
+      }
+      continue;
+    }
     const location = module.directory === "." ? "src/test" : `${module.directory}/src/test`;
     if (paths.some((item) => item.startsWith(`${location}/`))) locations.add(location);
   }
@@ -562,6 +598,8 @@ function detectConventions(paths, modules) {
   if (paths.some((item) => moduleForPath(item, modules, "test") && /(?:^|\/)src\/test\/kotlin\//.test(item))) conventions.add("src/test/kotlin");
   if (paths.some((item) => moduleForPath(item, modules, "test") && /(?:^|\/)src\/test\/java\//.test(item))) conventions.add("src/test/java");
   if (paths.some((item) => moduleForPath(item, modules, "test") && /(?:^|\/)src\/test\/groovy\//.test(item))) conventions.add("src/test/groovy");
+  if (paths.some((item) => moduleForPath(item, modules, "test") && /(?:^|\/)src\/commonTest\/kotlin\//.test(item))) conventions.add("src/commonTest/kotlin");
+  if (paths.some((item) => moduleForPath(item, modules, "test") && /(?:^|\/)src\/jvmTest\/(?:kotlin|java)\//.test(item))) conventions.add("src/jvmTest");
   return [...conventions];
 }
 
@@ -578,6 +616,8 @@ function detectSetupSignals(paths, buildText, testText, testCommandResolution, m
   if (usesKotest(`${buildText}\n${testText}`)) signals.add("kotest");
   if (usesSpock(`${buildText}\n${testText}`)) signals.add("spock");
   if (usesTestNg(`${buildText}\n${testText}`)) signals.add("testng");
+  if (modules.some((module) => module.isKmp)) signals.add("kotlin multiplatform");
+  if (modules.some((module) => module.hasDefaultKmpJvmTarget)) signals.add("jvm target");
   if (testCommandResolution.inheritedSignal) signals.add(testCommandResolution.inheritedSignal);
   if (modules.some((module) => module.buildSystem === "gradle" && module.directory !== ".")) signals.add("gradle module graph");
   if (modules.some((module) => module.buildSystem === "maven" && module.directory !== ".")) signals.add("maven reactor graph");
@@ -589,7 +629,7 @@ function detectBlockers(paths, files, modules, testCommand, frameworks, unsuppor
   if (frameworks.length === 0) blockers.push("No supported JVM test framework detected.");
   if (!testCommand) blockers.push("No runnable JVM test command detected from Gradle or Maven markers.");
   if (!paths.some((currentPath) => isSourceFile(currentPath, modules))) {
-    const hasNestedSourceSet = paths.some((currentPath) => /(?:^|\/)src\/main\/(?:kotlin|java)\/.+\.(?:kt|java)$/.test(currentPath));
+    const hasNestedSourceSet = paths.some((currentPath) => /(?:^|\/)src\/(?:main\/(?:kotlin|java)|(?:common|jvm)Main\/(?:kotlin|java))\/.+\.(?:kt|java)$/.test(currentPath));
     blockers.push(
       hasNestedSourceSet
         ? "No supported root JVM source set detected; audit a Gradle or Maven module root."
@@ -611,7 +651,10 @@ function detectKotestBlockers(files, modules) {
     .map((file) => file.content)
     .join("\n");
   if (kotestModules.length === 0 && !kotestTestText) return blockers;
-  if (kotestModules.some((module) => !supportsKotestModule(module, files))) {
+  if (kotestModules.some((module) => module.isKmp)) {
+    blockers.push("Kotest execution inside Kotlin Multiplatform builds is outside the supported evidence boundary.");
+  }
+  if (kotestModules.some((module) => !module.isKmp && !supportsKotestModule(module, files))) {
     blockers.push("Kotest support requires a Gradle JVM test task using JUnit Platform.");
   }
 
@@ -641,11 +684,14 @@ function detectTestNgBlockers(files, modules) {
   if (testNgModules.length === 0 && testNgFiles.length === 0) return blockers;
 
   const hasUnsupportedExecution =
-    testNgModules.some((module) => !supportsTestNgModule(module, files)) ||
+    testNgModules.some((module) => !module.isKmp && !supportsTestNgModule(module, files)) ||
     testNgFiles.some((file) => {
       const module = moduleForPath(file.path, modules, "test");
-      return !module || !supportsTestNgModule(module, files);
+      return !module || (!module.isKmp && !supportsTestNgModule(module, files));
     });
+  if (testNgModules.some((module) => module.isKmp) || testNgFiles.some((file) => moduleForPath(file.path, modules, "test")?.isKmp)) {
+    blockers.push("TestNG execution inside Kotlin Multiplatform builds is outside the supported evidence boundary.");
+  }
   if (hasUnsupportedExecution) {
     blockers.push("TestNG support requires a direct Maven dependency or a Gradle JVM test task using useTestNG().");
   }
@@ -665,13 +711,16 @@ function detectSpockBlockers(files, modules) {
   if (spockModules.length === 0 && spockFiles.length === 0) return blockers;
 
   if (
-    spockModules.some((module) => !supportsSpockModule(module, files)) ||
+    spockModules.some((module) => !module.isKmp && !supportsSpockModule(module, files)) ||
     spockFiles.some((file) => {
       const module = moduleForPath(file.path, modules, "test");
-      return !module || !supportsSpockModule(module, files);
+      return !module || (!module.isKmp && !supportsSpockModule(module, files));
     })
   ) {
     blockers.push("Spock support requires a Gradle JVM module with a direct spock-core dependency and conventional JUnit Platform execution.");
+  }
+  if (spockModules.some((module) => module.isKmp) || spockFiles.some((file) => moduleForPath(file.path, modules, "test")?.isKmp)) {
+    blockers.push("Spock execution inside Kotlin Multiplatform builds is outside the supported evidence boundary.");
   }
   if (spockModules.some((module) => hasAdvancedSpockExecution(module, files))) {
     blockers.push("Spock configuration files and custom JUnit Platform engine, tag, or test filters are outside the supported execution boundary.");
@@ -809,6 +858,7 @@ function collectJvmTestEvidence(sourceSymbols, testFiles, modules) {
     const evidence = [];
     for (const testFile of testFiles) {
       if (!canModuleTestSource(testFile.moduleProjectPath, source.moduleProjectPath, modules)) continue;
+      if (!canTestSourceSet(testFile.path, source.path)) continue;
       const match = findJvmTestMatch(source, testFile.analysis);
       if (!match) continue;
       evidence.push({
@@ -822,6 +872,15 @@ function collectJvmTestEvidence(sourceSymbols, testFiles, modules) {
   }
 
   return evidenceBySourcePath;
+}
+
+function canTestSourceSet(testPath, sourcePath) {
+  const testSourceSet = normalizePath(testPath).match(/(?:^|\/)src\/(commonTest|jvmTest)\//)?.[1];
+  const productionSourceSet = normalizePath(sourcePath).match(/(?:^|\/)src\/(commonMain|jvmMain)\//)?.[1];
+  if (!testSourceSet && !productionSourceSet) return true;
+  if (!testSourceSet || !productionSourceSet) return false;
+  if (testSourceSet === "commonTest") return productionSourceSet === "commonMain";
+  return ["commonMain", "jvmMain"].includes(productionSourceSet);
 }
 
 function canModuleTestSource(testModuleProjectPath, sourceModuleProjectPath, modules) {

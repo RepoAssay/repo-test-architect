@@ -33,7 +33,7 @@ Implemented:
 - shared runtime Markdown audit renderer with a TypeScript reference mirror, used directly by the CLI
 - behavioral HTTP framework classifications for routers, routes, handlers, security and general middleware, request access and validation, request bodies, queries, cookies, caching, response construction, request events, proxies, sessions, WebSockets, streaming, client response parsing, and runtime adapters, including flat utility layouts identified through HTTP boundary types
 - runtime adapter registry with supported `javascript`, `kotlin`, `python`, and `swift` adapters
-- bounded Kotlin/JVM Gradle and Maven module audits plus conventional Gradle and root-declared Maven reactor ownership for standard Kotlin/Java sources, JUnit 4/5, `kotlin.test`, Gradle/JUnit Platform Kotest common specs, conventional Gradle/Spock features under `src/test/groovy`, method-level TestNG, wrapper-aware commands, cycle-safe direct/exported-transitive cross-module evidence, and exact JVM symbol provenance
+- bounded Kotlin/JVM Gradle and Maven module audits plus conventional Gradle and root-declared Maven reactor ownership for standard Kotlin/Java sources; single-module Kotlin Multiplatform ownership for conventional `commonMain`/`commonTest` and `jvmMain`/`jvmTest` with a default `jvm()` target; JUnit 4/5, `kotlin.test`, Gradle/JUnit Platform Kotest common specs, conventional Gradle/Spock features under `src/test/groovy`, method-level TestNG, wrapper-aware commands, cycle-safe direct/exported-transitive cross-module evidence, source-set-qualified KMP evidence, and exact JVM symbol provenance
 - explicit Kotlin/JVM blockers or exclusions for unresolvable aggregate roots, missing standard source sets, Android, advanced Spock/TestNG execution or evidence semantics, unsupported Kotest styles/configuration, computed Maven modules, and custom Gradle boundaries
 - adapter registry capability metadata for maturity, framework signals, project types, and emitted artifacts
 - CLI adapter registry output
@@ -113,6 +113,7 @@ Implemented:
 - `kotlin-maven-junit`
 - `kotlin-maven-reactor-junit`
 - `kotlin-maven-wrapper-junit4`
+- `kotlin-multiplatform-jvm`
 - `kotlin-gradle-aggregate-kotest`
 - `kotlin-gradle-spock`
 - `kotlin-maven-testng`

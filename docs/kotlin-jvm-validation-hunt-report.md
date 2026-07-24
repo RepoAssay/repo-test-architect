@@ -16,7 +16,8 @@ This report records static audits of pinned public repositories used to pressure
 | [libcs1](https://github.com/cs124-illinois/libcs1) root | `428d499bc0c78cd90cdbde3783a3ea983ac66eb6` | Gradle Kotlin/JVM, Kotest `StringSpec`, multiline spec declaration | high; `./gradlew test`; no blockers | 1 | 3 | 0 | about 62 ms |
 | [service-apply](https://github.com/woowacourse/service-apply) root | `19c9327266c7c8ddb3f858425057ddd2c5a1370e` | Gradle Kotlin/JVM, Spring, mixed Kotest spec styles/configuration | medium; `./gradlew test`; unsupported-style, lifecycle, and data/property blockers | 56 | 47 | 104 | about 211 ms |
 | [Datadog Synthetic Test Support](https://github.com/personio/datadog-synthetic-test-support) root | `73c2f5c74058f75ba9928e055e272e3955e0418d` | Gradle Kotlin/JVM, JUnit suite with Kotest runtime configured | high; `./gradlew test`; no blockers | 8 | 17 | 38 | about 118 ms |
-| [SimpleCpfValidator](https://github.com/LeoColman/SimpleCpfValidator) root | `5fb0d88620cc3129bab0c254b19d3047ab6afb09` | Kotlin Multiplatform with JVM Kotest `FunSpec` | low; `./gradlew test`; standard-source-set and multiplatform blockers | 0 | 0 | 0 | about 46 ms |
+| [OpenTest4K](https://github.com/willowtreeapps/opentest4k) root | `5b9854f9bfa13d9dda4d73d0984a9b8871986cb9` | single-module Kotlin Multiplatform, default JVM target, `kotlin.test`, common and JVM tests | high; `./gradlew jvmTest`; no blockers | 1 | 1 | 0 | about 50 ms |
+| [SimpleCpfValidator](https://github.com/LeoColman/SimpleCpfValidator) root | `5fb0d88620cc3129bab0c254b19d3047ab6afb09` | single-module Kotlin Multiplatform with a default JVM target and Kotest property tests | medium; `./gradlew jvmTest`; KMP Kotest execution/property blockers | 1 | 0 | 0 | about 40 ms |
 | [OHC](https://github.com/snazy/ohc) root | `7f59c264fe8ae4c859b9662c8cea15620f0f55f8` | Maven reactor, Java, mixed simple and advanced TestNG methods | medium; `mvn test`; advanced TestNG evidence blocker | 36 | 11 | 28 | about 81 ms |
 | [FusionAuth java-http](https://github.com/FusionAuth/java-http) root | `70aec888ef179954dad5b5b54e2fbc86a9444f41` | Maven, Java, TestNG listener and excluded-group execution | low; no command; custom execution and advanced evidence blockers | 34 | 0 | 31 | about 70 ms |
 | [ReportPortal TestNG agent](https://github.com/reportportal/agent-java-testNG) root | `ae2b0beb07314f2dfb3473b28f481257d0bd175b` | Gradle, Java, JUnit Platform execution plus TestNG integration fixtures | medium; `./gradlew test`; TestNG execution and advanced evidence blockers | 0 | 4 | 3 | about 68 ms |
@@ -49,7 +50,9 @@ service-apply pressured the negative boundary in a realistic mixed suite. Suppor
 
 Datadog Synthetic Test Support confirmed that a conventional JUnit suite may configure the Kotest runtime without using Kotest spec classes. Its existing JUnit evidence remains stable at 60 relationships while the obsolete blanket Kotest blocker disappears; JUnit `BeforeEach` usage is not misclassified as Kotest lifecycle configuration.
 
-SimpleCpfValidator confirmed that recognizing Kotest configuration does not widen source-set ownership. The root remains outside the JVM adapter because its production and test sources use Kotlin Multiplatform layouts, so the adapter reports the existing multiplatform and missing-standard-source-set blockers and emits no source evidence.
+OpenTest4K provided the positive single-module KMP JVM proof. The adapter owns its conventional `commonMain`, `commonTest`, `jvmMain`, and `jvmTest` roots, selects `./gradlew jvmTest`, and emits five relationships from common tests to the common implementation. The JVM implementation remains visibly untested rather than being credited from `commonTest`. Before this slice the same pinned root was low-confidence, selected the generic `./gradlew test` task, reported missing-standard-source-set and blanket multiplatform blockers, and emitted no targets.
+
+SimpleCpfValidator provided the negative framework-pressure proof. Its default JVM target is now owned and the command narrows from `./gradlew test` to `./gradlew jvmTest`, exposing one production candidate. Its KMP Kotest property suite remains outside the evidence boundary, so the adapter reports explicit execution/property blockers and emits no false coverage. Before this slice the root emitted no targets behind blanket source-set and multiplatform blockers.
 
 OHC provided the positive TestNG reactor probe. A direct TestNG dependency in its owned `ohc-core` module recovers `mvn test` and 11 source relationships from simple method-level tests, including four assertion-traced relationships. Files using lifecycle or generated/parameterized semantics are excluded and keep the profile medium-confidence. The pre-variant generic `@Test` heuristic emitted 70 relationships across 21 targets, so the bounded variant deliberately removes 59 relationships that could not be tied to the supported execution/evidence subset.
 
@@ -77,7 +80,9 @@ KotlinPoet demonstrated the mixed aggregate boundary. The audit selects only set
 - added settings-owned Gradle aggregate graphs, direct `project(":source")` dependency qualification for cross-module test evidence, and project-detection collapse for owned child modules
 - added root-declared Maven reactor graphs, static coordinate and direct dependency qualification, and project-detection collapse for conventionally owned child POMs
 - added cycle-safe traversal through Gradle `api(...)` and Maven non-optional compile exports while retaining direct test-visible dependency scopes
-- added an explicit Kotlin Multiplatform blocker for mixed aggregate roots that also contain auditable conventional JVM modules
+- replaced blanket Kotlin Multiplatform exclusion with a bounded single-module default-`jvm()` slice and retained a precise blocker for multi-module, named-target, and otherwise unowned KMP shapes
+- added `commonMain`/`commonTest` and `jvmMain`/`jvmTest` ownership, source-set-qualified evidence reachability, and wrapper-aware `jvmTest` selection
+- added OpenTest4K as the positive KMP JVM probe and reused SimpleCpfValidator as the unsupported-Kotest pressure probe
 - added Fray as a pinned multi-module Kotlin/Java validation probe with eight dependency-qualified cross-module evidence relationships
 - added Maven Surefire as a pinned reactor validation probe with 143 dependency-qualified cross-module evidence relationships
 - added NightConfig and Maven Resolver as pinned exported-transitive validation probes, recovering nine Gradle and six Maven evidence relationships respectively
@@ -91,17 +96,17 @@ KotlinPoet demonstrated the mixed aggregate boundary. The audit selects only set
 - replaced the blanket Spock blocker with bounded `src/test/groovy` support for direct `Specification` subclasses containing conventional feature methods and `then:`/`expect:` conditions
 - added Spock condition provenance through `given`/`when` aliases, plus explicit blockers for fixtures, data tables, extensions, helper assertions, interaction mocking, configuration files, and custom JUnit Platform selection
 - added graphql-java, Micronaut Core, and Ratpack as pinned positive, mixed-configuration, and ownership-boundary Spock probes
-- retained explicit aggregate-root, missing standard source-set, Android, advanced Spock/TestNG, and unsupported Kotest boundary blockers
-- added discovery profiles for Gradle/JUnit, Gradle/Kotest, Gradle/Spock, Gradle/TestNG, Maven/JUnit, and Maven/TestNG validation candidates
+- retained explicit aggregate-root, missing owned source-set, Android, broader KMP, advanced Spock/TestNG, and unsupported Kotest boundary blockers
+- added discovery profiles for Gradle/JUnit, single-module Gradle/KMP JVM, Gradle/Kotest, Gradle/Spock, Gradle/TestNG, Maven/JUnit, and Maven/TestNG validation candidates
 
 ## Remaining Gaps
 
 - Maven profile/computed/nested reactor graphs, inherited/dynamic dependencies, Gradle composite builds, custom module mappings, and non-exported transitive project dependencies
-- Groovy production and nonstandard test source sets, Maven/inherited/test-suite Spock execution, Spock fixture/data/extension/mock semantics, Android, Kotlin Multiplatform, TestNG class-level/lifecycle/generated/configured execution semantics, Kotest styles beyond `FunSpec`/`StringSpec`/`ShouldSpec`, and Kotest lifecycle/data/property semantics
+- Groovy production and nonstandard test source sets, Maven/inherited/test-suite Spock execution, Spock fixture/data/extension/mock semantics, Android, multi-module or named-target/custom-hierarchy Kotlin Multiplatform, KMP Kotest/Spock/TestNG execution, TestNG class-level/lifecycle/generated/configured execution semantics, Kotest styles beyond `FunSpec`/`StringSpec`/`ShouldSpec`, and Kotest lifecycle/data/property semantics
 - parameterized arguments, dynamic tests, extensions, fixtures, and inherited tests as semantic coverage
 - framework-aware application boot, HTTP, persistence, coroutine scheduling, and dependency-injection boundaries
 - call/assertion depth beyond the currently referenced or direct symbol relationship
 
 ## Verdict
 
-The live probes support conventional single-module or directly selected Gradle/Maven JVM roots, settings-owned conventional Gradle aggregates, directly declared Maven reactors, and cycle-safe traversal through explicitly exported Gradle/Maven module edges using JUnit 4, JUnit 5, `kotlin.test`, the documented Gradle/JUnit Platform Kotest common-spec and Spock feature variants, or method-level TestNG under direct conventional Maven/Gradle execution. They do not support a broad Kotlin/Java, Kotest, Spock, or TestNG ecosystem claim. The exact boundary is normative in [Kotlin/JVM Alpha Support](kotlin-jvm-alpha-support.md).
+The live probes support conventional single-module or directly selected Gradle/Maven JVM roots, settings-owned conventional Gradle aggregates, directly declared Maven reactors, cycle-safe traversal through explicitly exported Gradle/Maven module edges, and a single-module KMP build with conventional common/JVM source sets and a default `jvm()` target. Supported evidence uses JUnit 4, JUnit 5, `kotlin.test`, the documented conventional-Gradle Kotest common-spec and Spock feature variants, or method-level TestNG under direct conventional Maven/Gradle execution. They do not support a broad Kotlin/Java, Kotlin Multiplatform, Kotest, Spock, or TestNG ecosystem claim. The exact boundary is normative in [Kotlin/JVM Alpha Support](kotlin-jvm-alpha-support.md).

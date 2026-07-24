@@ -21,7 +21,7 @@ describe("adapter registry", () => {
         languages: ["kotlin", "java"],
         maturity: "supported",
         supportedTestFrameworks: ["junit", "kotest", "kotlin-test", "spock", "testng"],
-        supportedProjectTypes: ["gradle-jvm", "gradle-jvm-multimodule", "maven-jvm", "maven-jvm-reactor"],
+        supportedProjectTypes: ["gradle-jvm", "gradle-jvm-multimodule", "gradle-kmp-jvm", "maven-jvm", "maven-jvm-reactor"],
         emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"]
       },
       {
@@ -64,7 +64,7 @@ describe("adapter registry", () => {
           languages: ["kotlin", "java"],
           maturity: "supported",
           supportedTestFrameworks: ["junit", "kotest", "kotlin-test", "spock", "testng"],
-          supportedProjectTypes: ["gradle-jvm", "gradle-jvm-multimodule", "maven-jvm", "maven-jvm-reactor"],
+          supportedProjectTypes: ["gradle-jvm", "gradle-jvm-multimodule", "gradle-kmp-jvm", "maven-jvm", "maven-jvm-reactor"],
           emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"]
         },
       {
