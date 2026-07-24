@@ -2,7 +2,7 @@
 
 Repo Test Architect should document install paths by agent host because MCP support, plugin support, and instruction-only fallbacks differ by tool.
 
-This page is a public-readiness placeholder until the package is no longer private and the final repository URL is configured.
+The package is distributed through npm as a local CLI and stdio MCP server.
 
 ## Shared Requirements
 
@@ -16,7 +16,7 @@ This page is a public-readiness placeholder until the package is no longer priva
 
 Use this path when the host can launch a local stdio MCP server.
 
-Published package target:
+Published package:
 
 macOS/Linux terminal:
 
@@ -52,15 +52,18 @@ node C:/path/to/repo-test-architect/src/mcp/stdio.js
 
 Expected tools:
 
+- `list_adapters`
 - `list_project_detection_rules`
 - `detect_projects`
 - `audit_projects`
 - `summarize_project_audits`
 - `rank_project_candidates`
 - `generate_project_test_plan`
+- `collect_project_findings`
 - `analyze_project_test_placement`
 - `collect_project_stats`
 - `audit_repo`
+- `get_audit_graph`
 - `generate_test_plan`
 - `get_plan_execution_hints`
 - `explain_target`
@@ -73,13 +76,13 @@ Expected tools:
 
 ## Codex
 
-Preferred future path:
+Preferred path:
 
-- install the package globally after publish
+- install the package globally
 - add a local stdio MCP server config using `repo-test-architect-mcp`
 - use the MCP tools for audit, ranking, planning, execution hints, placement, and stats
 
-Current development path:
+Development path:
 
 - run from a local checkout
 - point the client config at `src/mcp/stdio.js`
@@ -87,7 +90,7 @@ Current development path:
 
 ## Claude Desktop Or Claude Code
 
-Preferred future path:
+Preferred path:
 
 - add `repo-test-architect-mcp` as a local stdio MCP server
 - keep repository access local
@@ -114,23 +117,23 @@ Generic agents can use the CLI without MCP:
 macOS/Linux terminal:
 
 ```sh
-npm run detect:example:json
-npm run audit-projects:example:json
-npm run rank-projects:example:json
-npm run plan-projects:example:json
-npm run placement-projects:example:json
-npm run stats-projects:example:json
+repo-test-architect detect . --format json
+repo-test-architect audit-projects . --format json
+repo-test-architect rank-projects . --format json
+repo-test-architect plan-projects . --format json
+repo-test-architect placement-projects . --format json
+repo-test-architect stats-projects . --format json
 ```
 
 Windows PowerShell:
 
 ```powershell
-npm run detect:example:json
-npm run audit-projects:example:json
-npm run rank-projects:example:json
-npm run plan-projects:example:json
-npm run placement-projects:example:json
-npm run stats-projects:example:json
+repo-test-architect detect . --format json
+repo-test-architect audit-projects . --format json
+repo-test-architect rank-projects . --format json
+repo-test-architect plan-projects . --format json
+repo-test-architect placement-projects . --format json
+repo-test-architect stats-projects . --format json
 ```
 
 This path is also useful for demos, bug reports, and reproducible eval fixtures.

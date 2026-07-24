@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { describe, it } from "node:test";
 import { getProjectDetectionRules } from "../src/core/project-detector.js";
+import { mcpTools } from "../src/mcp/tool-definitions.js";
 
 describe("docs links", () => {
   it("keeps README doc links valid", () => {
@@ -77,6 +78,10 @@ describe("docs links", () => {
     for (const binName of Object.keys(packageJson.bin)) {
       assert.ok(releaseChecklist.includes(`\`${binName}\``), `Missing release checklist binary: ${binName}`);
     }
+
+    for (const tool of mcpTools) {
+      assert.ok(agentInstallPaths.includes(`\`${tool.name}\``), `Missing documented MCP tool: ${tool.name}`);
+    }
   });
 
   it("keeps project detection docs aligned with detector rules", () => {
@@ -142,17 +147,16 @@ describe("docs links", () => {
     assert.ok(realRepoReports.includes("Collectors Grimoire app audit"));
     assert.ok(realRepoReports.includes("cg-bff"));
     assert.ok(realRepoReports.includes("one JavaScript/TypeScript codebase"));
-    assert.ok(publicReadiness.includes("Ready To Show"));
-    assert.ok(publicReadiness.includes("Not Ready To Publish"));
-    assert.ok(publicReadiness.includes("package remains `private: true`"));
-    assert.ok(publicReadiness.includes("GitHub repository remains private"));
-    assert.ok(publicReadiness.includes("npm authentication and final name-availability verification are still required"));
-    assert.ok(publicReadiness.includes("copyright owner in `LICENSE` still needs explicit verification"));
-    assert.ok(publicReadiness.includes("native test generation is still deferred"));
+    assert.ok(publicReadiness.includes("Public Repository Ready"));
+    assert.ok(publicReadiness.includes("First Package Publication"));
+    assert.ok(publicReadiness.includes("repository visibility is public"));
+    assert.ok(publicReadiness.includes("authenticate npm and re-confirm `repo-test-architect` availability"));
+    assert.ok(publicReadiness.includes("`LICENSE` ownership is verified as Mikael Stenberg"));
+    assert.ok(publicReadiness.includes("Native test generation remains deferred"));
     assert.ok(publicReadiness.includes("alpha-readiness acceptance gates"));
     assert.ok(publicReadiness.includes("local stdio MCP SDK server and dependency-free invoke harness"));
     assert.ok(!publicReadiness.includes("real MCP SDK transport wrapper is still pending"));
-    assert.ok(publicReadiness.includes("verify the copyright owner before publishing"));
+    assert.ok(publicReadiness.includes("organization-wide 2FA is enabled with secure methods only"));
     assert.ok(publicReadiness.includes("Avoid presenting native test generation as available"));
     assert.ok(releaseChecklist.includes("approved unscoped npm identity `repo-test-architect`"));
     assert.ok(releaseChecklist.includes("approved MCP Registry identity `io.github.repoassay/repo-test-architect`"));
@@ -199,7 +203,7 @@ describe("docs links", () => {
 
     assert.ok(readme.includes("[Near-term roadmap](docs/near-term-roadmap.md)"));
     assert.ok(roadmap.includes("Alpha Readiness"));
-    assert.ok(roadmap.includes("public-demo ready, but not package-release ready"));
+    assert.ok(roadmap.includes("repository is public and the npm/MCP distribution is a release candidate"));
     assert.ok(roadmap.includes("Milestone 1: Alpha Test Architecture Audit"));
     assert.ok(roadmap.includes("one concise repo-level summary can show top findings with evidence"));
     assert.ok(roadmap.includes("Milestone 2: Public Demo Polish"));

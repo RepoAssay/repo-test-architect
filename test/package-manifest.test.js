@@ -8,16 +8,16 @@ const packageJson = JSON.parse(fs.readFileSync("package.json", "utf8"));
 const packageLock = JSON.parse(fs.readFileSync("package-lock.json", "utf8"));
 
 describe("package manifest", () => {
-  it("keeps the package private until release readiness is complete", () => {
-    assert.equal(packageJson.private, true);
+  it("permits the explicitly approved public package release", () => {
+    assert.equal(packageJson.private, false);
   });
 
-  it("locks the approved npm, MCP, and GitHub identities without enabling publication", () => {
+  it("locks the approved npm, MCP, and GitHub identities for publication", () => {
     assert.equal(packageJson.name, "repo-test-architect");
     assert.equal(packageJson.mcpName, "io.github.repoassay/repo-test-architect");
     assert.deepEqual(packageJson.repository, {
       type: "git",
-      url: "https://github.com/repoassay/repo-test-architect.git"
+      url: "git+https://github.com/repoassay/repo-test-architect.git"
     });
     assert.equal(packageJson.homepage, "https://github.com/repoassay/repo-test-architect#readme");
     assert.deepEqual(packageJson.bugs, {
@@ -60,7 +60,7 @@ describe("package manifest", () => {
       "repo-test-architect-mcp",
       "repo-test-architect-mcp-invoke",
     ]);
-    assert.equal(packageJson.bin["repo-test-architect"], "./src/cli/package-entry.js");
+    assert.equal(packageJson.bin["repo-test-architect"], "src/cli/package-entry.js");
 
     for (const [name, binPath] of Object.entries(packageJson.bin)) {
       assert.ok(fs.existsSync(binPath), `Missing bin entry point for ${name}: ${binPath}`);

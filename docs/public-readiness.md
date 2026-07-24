@@ -1,8 +1,8 @@
 # Public Readiness
 
-This document tracks what can be shown publicly before the project is ready for a first npm release.
+This document records the public-repository launch and the remaining first-package publication work.
 
-## Ready To Show
+## Public Repository Ready
 
 - audit-first product thesis
 - deterministic JavaScript/TypeScript, Python, Swift, and bounded Kotlin/JVM adapter proof points
@@ -18,26 +18,27 @@ This document tracks what can be shown publicly before the project is ready for 
 - contribution, support, and security policies
 - product positioning for audit-first differentiation and plausible business paths
 - alpha-readiness acceptance gates for local test architecture audit
+- protected `master` with the required Linux `pr-gate`
+- organization-wide 2FA restricted to secure methods
+- secret scanning, push protection, Dependabot security updates, and private vulnerability reporting
+- accepted historical commit-email exposure and verified MIT copyright ownership
 
-## Not Ready To Publish
+## First Package Publication
 
-- package remains `private: true`
-- GitHub repository remains private
-- npm authentication and final name-availability verification are still required
-- copyright owner in `LICENSE` still needs explicit verification
-- public npm and MCP Registry publication still require separate approval
-- native test generation is still deferred
-- remote MCP hosting is out of scope for the first release
+The first npm and official MCP Registry publication is approved. Before publishing:
 
-## Before A Public Repository
-
-- confirm `repoassay/repo-test-architect` should change from private to public
-- confirm the existing personal commit-email exposure is acceptable or explicitly approve a history rewrite
-- confirm personal account 2FA, then enable the organization-wide 2FA requirement
-- establish a private conduct-reporting contact before adding a code of conduct
-- verify the copyright owner before publishing
+- authenticate npm and re-confirm `repo-test-architect` availability
 - run `npm run release:check`
-- run `npm run distribution:check:publish` after the approved `private: false` change
+- run `npm run distribution:check:publish`
+- run the manually dispatched three-OS release matrix
+- publish and verify `repo-test-architect@0.1.0` from a clean environment
+- authenticate the official `mcp-publisher`, validate `server.json`, publish it, and verify registry discovery
+
+Native test generation remains deferred, and remote MCP hosting remains out of scope for the first release.
+
+## Conduct Reporting
+
+A Code of Conduct is intentionally deferred until the project has a genuine private conduct-reporting channel. GitHub reported-content moderation can cover disruptive GitHub comments, but it does not replace a private contact for incidents that require confidential context.
 
 ## Repository Preparation Completed
 
@@ -47,6 +48,11 @@ This document tracks what can be shown publicly before the project is ready for 
 - stale merged remote branches are removed
 - Dependabot alerts, security updates, and grouped monthly version updates are configured
 - issue forms route support questions and private vulnerability reports without enabling blank issues
+- repository visibility is public and anonymous cloning is verified
+- the existing personal commit-email exposure was accepted without rewriting history
+- organization-wide 2FA is enabled with secure methods only
+- `LICENSE` ownership is verified as Mikael Stenberg
+- secret scanning, push protection, and private vulnerability reporting are enabled
 
 ## First Public Demo
 

@@ -152,7 +152,7 @@ function hasSafeReadOnlyMetadata(tool) {
 
 function hasRepositoryMetadata(packageJson) {
   return (
-    /^https:\/\/github\.com\//.test(repositoryUrl(packageJson) ?? "") &&
+    /^https:\/\/github\.com\//.test(normalizeRepositoryUrl(repositoryUrl(packageJson)) ?? "") &&
     /^https:\/\/github\.com\//.test(packageJson.homepage ?? "") &&
     /^https:\/\/github\.com\//.test(packageJson.bugs?.url ?? "")
   );

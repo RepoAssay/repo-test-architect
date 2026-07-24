@@ -2,11 +2,11 @@
 
 This roadmap tracks the next practical milestones before Repo Test Architect should claim broader adapter support or native test generation.
 
-The first product milestone is a credible private alpha for local test architecture audit. See [Alpha Readiness](alpha-readiness.md) for the acceptance gates.
+The first product milestone is a credible public alpha for local test architecture audit. See [Alpha Readiness](alpha-readiness.md) for the acceptance gates.
 
 ## Current Baseline
 
-The repository is public-demo ready, but not package-release ready.
+The repository is public and the npm/MCP distribution is a release candidate.
 
 The useful baseline is:
 
@@ -40,7 +40,7 @@ Acceptance:
 - demo commands stay covered by `npm run demo:check`
 - docs explain that generation is deferred
 - README points to the demo path, product positioning, and release gate
-- package remains private until ownership and publish targets are confirmed
+- package and MCP Registry identities stay locked by the distribution checks
 
 ### Output Format Roadmap
 

@@ -1,6 +1,6 @@
 # Distribution
 
-Repo Test Architect is prepared as a local stdio MCP server distributed through npm. Public publication is a separate, explicitly approved step.
+Repo Test Architect is distributed as a local CLI and stdio MCP server through npm. The official MCP Registry records the npm launch metadata; it does not host the package itself.
 
 ## Distribution Targets
 
@@ -19,17 +19,17 @@ Remote hosting and an MCPB bundle are not part of the first release.
 - MCP Registry server: `io.github.repoassay/repo-test-architect`
 - GitHub repository: `https://github.com/repoassay/repo-test-architect`
 
-The repository and package remain private/unpublished until the separate public-release approval.
+The GitHub repository is public. The first npm and MCP Registry release has been approved and must pass the release gates below before publication.
 
 ## Repository Protection
 
-The private GitHub repository uses `master` as its protected default branch. Changes, including administrator changes, must arrive through pull requests. Linear history and resolved review conversations are required, while force pushes and branch deletion are disabled.
+The public GitHub repository uses `master` as its protected default branch. Changes, including administrator changes, must arrive through pull requests. Linear history and resolved review conversations are required, while force pushes and branch deletion are disabled.
 
 The stable Linux `pr-gate` is required before merge. It promotes release-sensitive changes from `npm run alpha:check` to `npm run release:check`; Windows portability and macOS Swift jobs run only for matching paths. Every merge to `master` receives a full Linux release check, and a manual dispatch provides the complete three-OS release matrix.
 
 ## Local Gates
 
-Run the reversible preparation gate during normal development:
+Run the preparation gate during normal development:
 
 ```powershell
 npm run distribution:check
@@ -51,31 +51,32 @@ That command additionally requires:
 - a `server.json` pinned to the supported MCP Registry schema
 - matching npm package, server name, version, repository, and stdio transport metadata
 
-The identity and manifest are now aligned. The strict gate intentionally remains blocked by `private: true` until public publication is explicitly approved.
+The public identity and manifest are aligned. The strict gate must pass against the exact release commit and version before npm or MCP Registry publication.
 
 ## Human Checkpoints
 
-Local automation cannot authorize or safely infer these decisions:
+Local automation cannot perform account authentication or replace release-owner review:
 
-1. Approve changing the GitHub repository from private to public.
+1. Confirm the GitHub repository is public.
 2. Authenticate npm and re-check package-name availability.
 3. Verify the copyright owner in `LICENSE`.
-4. Approve changing `private` to `false` and running `npm publish --access public`.
+4. Approve and run `npm publish --access public`.
 5. Authenticate `mcp-publisher` with the intended GitHub identity.
-6. Approve publication to the official MCP Registry.
+6. Approve and publish to the official MCP Registry.
 
-Treat npm and MCP Registry publication as irreversible release events. Always run `npm run release:check` and `npm run distribution:check:publish` against the exact commit and version first.
+The repository visibility, copyright owner, npm publication, and MCP Registry publication have been explicitly approved for the first release. npm and `mcp-publisher` authentication still require the release owner. Treat both publications as irreversible release events, and always run `npm run release:check` and `npm run distribution:check:publish` against the exact commit and version first.
 
 ## Publication Order
 
-After all checkpoints are approved:
+For each public version:
 
-1. make the intended GitHub repository public
+1. confirm the intended GitHub repository and release commit are public
 2. run the complete local release and strict distribution gates
-3. publish the npm package
-4. verify a clean install from the public npm registry
-5. validate and publish `server.json` with the official `mcp-publisher` (the preparation manifest validates with v1.8.0)
-6. query the official registry for the exact server name and version
-7. consider downstream marketplace submissions
+3. run the manually dispatched three-OS release matrix
+4. publish the npm package
+5. verify a clean install from the public npm registry
+6. validate and publish `server.json` with the official `mcp-publisher`
+7. query the official registry for the exact server name and version
+8. consider downstream marketplace submissions
 
 The official MCP Registry hosts metadata rather than the npm artifact, so npm publication and verification come first.

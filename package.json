@@ -1,12 +1,12 @@
 {
   "name": "repo-test-architect",
   "version": "0.1.0",
-  "private": true,
+  "private": false,
   "mcpName": "io.github.repoassay/repo-test-architect",
   "description": "Audit-first test strategy agent for repository-native test planning.",
   "repository": {
     "type": "git",
-    "url": "https://github.com/repoassay/repo-test-architect.git"
+    "url": "git+https://github.com/repoassay/repo-test-architect.git"
   },
   "homepage": "https://github.com/repoassay/repo-test-architect#readme",
   "bugs": {
@@ -17,9 +17,9 @@
     "node": ">=20"
   },
   "bin": {
-    "repo-test-architect": "./src/cli/package-entry.js",
-    "repo-test-architect-mcp": "./src/mcp/stdio.js",
-    "repo-test-architect-mcp-invoke": "./src/mcp/invoke.js"
+    "repo-test-architect": "src/cli/package-entry.js",
+    "repo-test-architect-mcp": "src/mcp/stdio.js",
+    "repo-test-architect-mcp-invoke": "src/mcp/invoke.js"
   },
   "files": [
     "SECURITY.md",

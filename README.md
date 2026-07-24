@@ -20,6 +20,46 @@ The current implementation can:
 
 Native test generation is intentionally deferred. `generate_selected_test` returns a structured deferred artifact until adapter-specific generation policy and repair-loop fixtures exist.
 
+Repo Test Architect is an early public alpha. Treat its findings as evidence-backed review input rather than an automatic instruction to change a repository.
+
+## Install
+
+Node.js 20 or newer is required.
+
+Run the CLI without a global install:
+
+```sh
+npx --yes repo-test-architect doctor
+npx --yes repo-test-architect audit .
+```
+
+Or install the CLI and MCP server binaries:
+
+```sh
+npm install --global repo-test-architect
+repo-test-architect doctor
+repo-test-architect audit .
+```
+
+Add the local stdio MCP server to an MCP-capable client:
+
+```json
+{
+  "mcpServers": {
+    "repo-test-architect": {
+      "command": "npx",
+      "args": [
+        "--yes",
+        "repo-test-architect",
+        "mcp"
+      ]
+    }
+  }
+}
+```
+
+The client launches the server locally. Repository source stays on the machine unless the client or another configured tool sends it elsewhere. See [MCP client config](docs/mcp-client-config.md) and [agent install paths](docs/agent-install-paths.md) for global-install, local-checkout, and host-specific guidance.
+
 ## Current Scope
 
 Supported adapters:
@@ -31,7 +71,7 @@ Supported adapters:
 
 Project detection also reports unsupported Ruby, PHP, Elixir, Go, Rust, and .NET roots so clients can distinguish "not audited yet" from "not present."
 
-The package remains private while public repository metadata and publish targets are finalized.
+The public package exposes the audit CLI, the stdio MCP server, and a deterministic MCP invoke harness under the stable binary names documented below.
 
 ## Working CLI
 
@@ -212,7 +252,7 @@ npm run validation:repos -- --profile swift,gradle,maven --format json
 
 The finder uses authenticated GitHub repository search, verifies exact ecosystem markers in root manifests, and ranks candidates using maintenance recency, stars, repository size, lockfiles, CI, and license metadata. Run `npm run validation:repos -- --list-profiles` for the available profiles and `--help` for quality-filter options.
 
-Use `alpha:check` for the private audit milestone. `release:check` additionally covers packaging and installed-binary readiness.
+Use `alpha:check` for the adapter-support milestone. `release:check` additionally covers packaging and installed-binary readiness.
 
 The CI workflow keeps one stable Linux `pr-gate`: documentation-only changes run focused contract tests, normal changes run `npm run alpha:check`, and distribution-sensitive changes run `npm run release:check`. Windows runs only for runtime and portability changes; macOS runs only for Swift-sensitive changes. A merge to `master` runs the complete release gate on Linux, while manual dispatch runs the full release gate on all three operating systems.
 
@@ -260,7 +300,7 @@ npm run distribution:check
 npm run release:check
 ```
 
-`distribution:check` validates reversible packaging and MCP metadata preparation. The approved public identity and registry manifest are aligned; the stricter `distribution:check:publish` remains blocked by `private: true` until publication is explicitly approved. See [Distribution](docs/distribution.md).
+`distribution:check` validates packaging and MCP metadata preparation. The stricter `distribution:check:publish` verifies that the public npm and MCP Registry identities are aligned before a release. See [Distribution](docs/distribution.md).
 
 ## Shape
 
