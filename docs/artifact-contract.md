@@ -547,6 +547,39 @@ It contains:
 - existing-test evidence strength, evidence kind, direct call/assertion usage, and bounded-indirect entrypoint usage distributions
 - audited adapter usage counts
 
+## Local Diagnostic Artifacts
+
+Schemas:
+
+- `schemas/diagnostic-event-v1.schema.json`
+- `schemas/doctor-report-v1.schema.json`
+- `schemas/diagnostic-bundle-v1.schema.json`
+
+Schema versions:
+
+- `diagnostic-event/v1`
+- `doctor-report/v1`
+- `diagnostic-bundle/v1`
+
+Commands:
+
+```powershell
+npm run doctor
+npm run doctor:json
+node ./src/cli/index.js diagnostic-bundle --diagnostics-file ./.repo-test-architect/diagnostics.jsonl
+node ./src/cli/index.js diagnostic-bundle --diagnostics-file ./.repo-test-architect/diagnostics.jsonl --format json
+```
+
+`diagnostic-event/v1` is an opt-in local MCP operational event. It contains fixed transport metadata: timestamp, event ID, event type, server version, allowlisted tool name, success/error status, rounded duration, optional stable error kind, and optional report ID plus one-way grouping fingerprint for internal errors.
+
+It does not contain tool arguments, prompts, environment values, repository paths, source content, stack traces, model usage, or subagent activity.
+
+`doctor-report/v1` reports local Node, repository-readability, Git-worktree, diagnostics-configuration, and configured file-destination writability checks. It does not echo the repository path, diagnostics file path, or environment values.
+
+`diagnostic-bundle/v1` rebuilds up to 200 local JSONL events from the strict event allowlist, counts invalid lines, and declares its privacy properties. Unknown fields are discarded. The bundle is inspectable output only; it does not transmit itself and external reporting remains disabled.
+
+See [Local Diagnostics](diagnostics.md) for configuration, privacy, and error-handling behavior.
+
 ## Changed-Only Flow
 
 For PR-style workflows, use `--changed`:

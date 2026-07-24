@@ -278,6 +278,24 @@ describe("docs links", () => {
     assert.ok(roadmap.includes("Host-specific routing policy and actual subagent lifecycle remain outside Repo Test Architect."));
   });
 
+  it("documents local-only MCP diagnostics and external reporting boundaries", () => {
+    const diagnostics = fs.readFileSync("docs/diagnostics.md", "utf8");
+    const artifactContract = fs.readFileSync("docs/artifact-contract.md", "utf8");
+    const decisionLog = fs.readFileSync("docs/decision-log.md", "utf8");
+    const mcpTools = fs.readFileSync("docs/mcp-tools.md", "utf8");
+
+    for (const contents of [diagnostics, artifactContract]) {
+      assert.ok(contents.includes("diagnostic-event/v1"));
+      assert.ok(contents.includes("doctor-report/v1"));
+      assert.ok(contents.includes("diagnostic-bundle/v1"));
+    }
+    assert.ok(diagnostics.includes("It never contains tool arguments, prompts, environment values, repository paths, source content, stack traces, model names, token usage, or subagent activity."));
+    assert.ok(diagnostics.includes("Diagnostics do not make network requests."));
+    assert.ok(diagnostics.includes("External error reporting and product analytics are not implemented."));
+    assert.ok(decisionLog.includes("Local Diagnostics Without Automatic Reporting"));
+    assert.ok(mcpTools.includes("MCP stdout remains JSON-RPC-only."));
+  });
+
   it("documents the acceptance gate for a second adapter spike", () => {
     const readme = fs.readFileSync("README.md", "utf8");
     const adapterContract = fs.readFileSync("docs/adapter-contract.md", "utf8");

@@ -52,6 +52,7 @@ Implemented:
 - fixture-based regression coverage
 - audit, plan, explanation, ranking, and deferred-generation artifacts
 - provider-neutral `plan-execution-hints/v1` companion artifacts for `plan/v1` and `project-test-plan/v1`, with deterministic complexity, known context, conservative parallel safety, agent-role, and repository-reasoning guidance while model and subagent orchestration remains host-owned
+- disabled-by-default local MCP diagnostics with strict `diagnostic-event/v1` metadata, stderr or bounded JSONL sinks, safe internal-error report IDs, `doctor-report/v1`, and sanitized `diagnostic-bundle/v1` output without network reporting
 - test placement findings artifact with a conservative audit-based `keep` analyzer
 - project-audits derived placement analysis that preserves project owner identity and reports conservative cross-owner `move` and `split` findings for test paths that escape the audited project root
 - project-level top findings report with category counts for missing coverage, weak existing coverage, misplaced coverage, low-value direct targets, and blocked projects
@@ -226,5 +227,5 @@ npm run eval:test
 2. Maintain Python, Swift, and bounded Kotlin/JVM support with evidence-driven real-repository probes while expanding only explicitly owned adapter variants.
 3. Add more model-consistency fixtures and model profile output comparisons.
 4. Expand package-aware test placement analysis from package/app root inference into richer adapter-owned package boundary signals.
-5. Add local-first stats artifacts for audit coverage, candidate/risk counts, model-consistency drift, and later repair-loop trends.
+5. Extend local diagnostics and stats into future generation/repair-loop results without adding automatic external reporting.
 6. Add native test generation only after adapter-specific generation rules and repair-loop tests exist.

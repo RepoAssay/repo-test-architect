@@ -135,6 +135,10 @@ Known tool errors may also include:
 `toolName` identifies the tool that failed. `argument` identifies the missing, unsupported, or invalid argument when the failure is argument-specific.
 For example, `changedPaths: [""]` on `audit_repo` returns `kind: "invalid-arguments"`, `toolName: "audit_repo"`, and `argument: "changedPaths"`.
 
+Unexpected exceptions return JSON-RPC code `-32603`, the generic message `Internal server error.`, `kind: "internal-error"`, and a locally generated `reportId`. Raw exception messages and stack traces are not returned to the client.
+
+Optional MCP call diagnostics are disabled by default and documented in [Local Diagnostics](diagnostics.md). Events never contain tool arguments, repository paths, source content, prompts, environment values, or stack traces. MCP stdout remains JSON-RPC-only.
+
 ## Local Harness
 
 Use the local invoke harness for deterministic descriptor and dispatcher checks without starting the stdio transport:

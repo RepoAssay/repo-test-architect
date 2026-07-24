@@ -10,6 +10,7 @@ dist/
 .env
 .env.*
 *.log
+.repo-test-architect/
 
 # Local model-consistency comparison artifacts
 baseline-summary.json

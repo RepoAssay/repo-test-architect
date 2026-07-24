@@ -4,6 +4,10 @@ import { execFileSync } from "node:child_process";
 import path from "node:path";
 import { renderMarkdownReport } from "../core/report.js";
 import {
+  createDiagnosticBundle,
+  createDoctorReport
+} from "../diagnostics/diagnostics.js";
+import {
   analyzeRepoProjectTestPlacement,
   analyzeRepoTestPlacement,
   auditRepoProjects,
@@ -25,11 +29,32 @@ import {
 } from "../core/tool-api.js";
 
 const MAX_DISPLAYED_EXISTING_TEST_PATHS = 5;
+const COMMANDS = [
+  "doctor",
+  "diagnostic-bundle",
+  "adapters",
+  "detect-rules",
+  "detect",
+  "audit-projects",
+  "summarize-projects",
+  "rank-projects",
+  "plan-projects",
+  "hints-projects",
+  "findings-projects",
+  "placement-projects",
+  "stats-projects",
+  "audit",
+  "plan",
+  "hints",
+  "explain",
+  "rank",
+  "placement"
+];
 
 const options = parseArgs(process.argv.slice(2));
 
-if (!["adapters", "detect-rules", "detect", "audit-projects", "summarize-projects", "rank-projects", "plan-projects", "hints-projects", "findings-projects", "placement-projects", "stats-projects", "audit", "plan", "hints", "explain", "rank", "placement"].includes(options.command)) {
-  console.error("Usage: repo-test-architect <adapters|detect-rules|detect|audit-projects|summarize-projects|rank-projects|plan-projects|hints-projects|findings-projects|placement-projects|stats-projects|audit|plan|hints|explain|rank|placement> <repo> [--adapter id] [--format markdown|json] [--from-audit audit.json] [--from-project-audits project-audits.json] [--item id] [--target id] [--owner label] [--changed] [--changed-since ref] [--exclude-project root-or-pattern]");
+if (!COMMANDS.includes(options.command)) {
+  console.error(`Usage: repo-test-architect <${COMMANDS.join("|")}> <repo> [--diagnostics-file diagnostics.jsonl] [--adapter id] [--format markdown|json] [--from-audit audit.json] [--from-project-audits project-audits.json] [--item id] [--target id] [--owner label] [--changed] [--changed-since ref] [--exclude-project root-or-pattern]`);
   process.exit(1);
 }
 
@@ -49,6 +74,7 @@ if (options.fromProjectAuditsPath && !["audit-projects", "summarize-projects", "
 }
 
 const repoRoot = path.resolve(process.cwd(), options.repoPath);
+const diagnosticsOutput = selectDiagnosticsOutput(repoRoot, options);
 const adapterRegistry = options.command === "adapters" ? getAdapterRegistry() : undefined;
 const detectionRules = options.command === "detect-rules" ? getProjectDetectionRules() : undefined;
 const detection = options.command === "detect" ? detectRepoProjects(repoRoot, {
@@ -64,16 +90,20 @@ const projectAudits = options.fromProjectAuditsPath
     : undefined;
 const audit = options.fromAuditPath
   ? readAuditJson(options.fromAuditPath)
-  : adapterRegistry || detectionRules || detection || projectAudits
+  : diagnosticsOutput || adapterRegistry || detectionRules || detection || projectAudits
     ? undefined
     : auditRepo(repoRoot, {
       adapterId: options.adapterId,
       changedPaths: readSelectedChangedPaths(repoRoot, options)
     });
-const output = adapterRegistry ?? detectionRules ?? detection ?? selectProjectOutput(projectAudits, options) ?? selectOutput(audit, options);
+const output = diagnosticsOutput ?? adapterRegistry ?? detectionRules ?? detection ?? selectProjectOutput(projectAudits, options) ?? selectOutput(audit, options);
 
 if (options.format === "json") {
   console.log(JSON.stringify(output, null, 2));
+} else if (options.command === "doctor") {
+  console.log(renderMarkdownDoctorReport(output));
+} else if (options.command === "diagnostic-bundle") {
+  console.log(renderMarkdownDiagnosticBundle(output));
 } else if (options.command === "adapters") {
   console.log(renderMarkdownAdapterRegistry(output));
 } else if (options.command === "detect-rules") {
@@ -122,6 +152,7 @@ function parseArgs(args) {
   let owner;
   let changedOnly = false;
   let changedSinceRef;
+  let diagnosticsFilePath;
   const excludeProjectRoots = [];
 
   for (let index = 0; index < rest.length; index += 1) {
@@ -231,12 +262,43 @@ function parseArgs(args) {
       continue;
     }
 
+    if (arg === "--diagnostics-file") {
+      diagnosticsFilePath = rest[index + 1] ?? "";
+      index += 1;
+      continue;
+    }
+
+    if (arg.startsWith("--diagnostics-file=")) {
+      diagnosticsFilePath = arg.slice("--diagnostics-file=".length);
+      continue;
+    }
+
     if (!arg.startsWith("-")) {
       repoPath = arg;
     }
   }
 
-  return { command, repoPath, format, fromAuditPath, fromProjectAuditsPath, adapterId, itemId, targetId, owner, changedOnly, changedSinceRef, excludeProjectRoots };
+  return { command, repoPath, format, fromAuditPath, fromProjectAuditsPath, adapterId, itemId, targetId, owner, changedOnly, changedSinceRef, diagnosticsFilePath, excludeProjectRoots };
+}
+
+function selectDiagnosticsOutput(repoRoot, options) {
+  if (options.command === "doctor") {
+    return createDoctorReport(repoRoot);
+  }
+
+  if (options.command !== "diagnostic-bundle") return undefined;
+
+  if (!options.diagnosticsFilePath) {
+    console.error("diagnostic-bundle requires --diagnostics-file.");
+    process.exit(1);
+  }
+
+  try {
+    return createDiagnosticBundle(path.resolve(process.cwd(), options.diagnosticsFilePath));
+  } catch {
+    console.error("Failed to read the local diagnostics file.");
+    process.exit(1);
+  }
 }
 
 function readAuditJson(auditPath) {
@@ -365,6 +427,52 @@ function selectProjectOutput(projectAudits, options) {
   if (options.command === "placement-projects") return analyzeRepoProjectTestPlacement(projectAudits);
   if (options.command === "stats-projects") return collectRepoProjectStats(projectAudits);
   return projectAudits;
+}
+
+function renderMarkdownDoctorReport(report) {
+  const lines = [
+    "# Repo Test Architect Doctor",
+    "",
+    `Status: ${report.status}`,
+    `Diagnostics: ${report.diagnostics.mode}`,
+    `External reporting: ${report.diagnostics.externalReporting ? "enabled" : "disabled"}`,
+    "",
+    "## Checks"
+  ];
+
+  for (const check of report.checks) {
+    lines.push(`- ${check.id}: ${check.status} — ${check.detail}`);
+  }
+
+  return lines.join("\n");
+}
+
+function renderMarkdownDiagnosticBundle(bundle) {
+  const lines = [
+    "# Diagnostic Bundle",
+    "",
+    `Events: ${bundle.summary.eventCount}`,
+    `Successful calls: ${bundle.summary.successCount}`,
+    `Failed calls: ${bundle.summary.errorCount}`,
+    `Internal errors: ${bundle.summary.internalErrorCount}`,
+    `Invalid input lines omitted: ${bundle.summary.invalidLineCount}`,
+    "",
+    "The bundle contains no tool arguments, repository paths, source content, or external reporting payload.",
+    "",
+    "## Events"
+  ];
+
+  if (bundle.events.length === 0) {
+    lines.push("- No diagnostic events.");
+  } else {
+    for (const event of bundle.events) {
+      const error = event.errorKind ? `; ${event.errorKind}${event.reportId ? ` (${event.reportId})` : ""}` : "";
+      const fingerprint = event.errorFingerprint ? `; ${event.errorFingerprint}` : "";
+      lines.push(`- ${event.timestamp}: ${event.toolName}; ${event.status}; ${event.durationMs} ms${error}${fingerprint}`);
+    }
+  }
+
+  return lines.join("\n");
 }
 
 function renderMarkdownAdapterRegistry(registry) {

@@ -33,6 +33,8 @@ Current local transport:
 - `src/mcp/json-rpc.js`
 - `src/mcp/tool-definitions.js`
 
+Operational diagnostics remain local and disabled by default. Opt-in MCP events use stderr or an explicitly configured bounded JSONL file so stdout remains reserved for JSON-RPC. See [Local Diagnostics](diagnostics.md).
+
 Client config examples:
 
 - `docs/mcp-client-config.md`
@@ -107,3 +109,5 @@ Remote MCP exposure should wait until there is a clear hosted use case and a pro
 - clear separation between local repo access and remote reporting/eval features
 
 Remote hosting may make sense later for shared evals, model-consistency comparisons, policy packs, and dashboards.
+
+Local diagnostics do not imply remote telemetry. There is currently no analytics SDK, crash-reporting endpoint, or automatic upload path.

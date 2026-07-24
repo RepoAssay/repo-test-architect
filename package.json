@@ -23,6 +23,9 @@
     "src/"
   ],
   "scripts": {
+    "doctor": "node ./src/cli/index.js doctor",
+    "doctor:json": "node ./src/cli/index.js doctor --format json",
+    "diagnostic-bundle": "node ./src/cli/index.js diagnostic-bundle",
     "adapters": "node ./src/cli/index.js adapters",
     "adapters:json": "node ./src/cli/index.js adapters --format json",
     "detect-rules": "node ./src/cli/index.js detect-rules",

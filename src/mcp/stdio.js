@@ -6,11 +6,16 @@ import {
   ListToolsRequestSchema,
   McpError
 } from "@modelcontextprotocol/sdk/types.js";
-import { toJsonRpcErrorData } from "./errors.js";
+import { performance } from "node:perf_hooks";
+import {
+  createDiagnosticRecorderFromEnv,
+  createErrorFingerprint
+} from "../diagnostics/diagnostics.js";
+import { toSafeMcpError } from "./errors.js";
 import { toMcpToolResult } from "./responses.js";
 import { callTool, mcpTools } from "./tool-definitions.js";
 
-const TOOL_ERROR_CODE = -32000;
+const diagnostics = createDiagnosticRecorderFromEnv();
 
 const server = new Server({
   name: "repo-test-architect",
@@ -26,20 +31,29 @@ server.setRequestHandler(ListToolsRequestSchema, () => ({
 }));
 
 server.setRequestHandler(CallToolRequestSchema, (request) => {
+  const startedAt = performance.now();
+
   try {
-    return toMcpToolResult(callTool(request.params.name, request.params.arguments ?? {}));
+    const result = toMcpToolResult(callTool(request.params.name, request.params.arguments ?? {}));
+    diagnostics.recordToolCall({
+      toolName: request.params.name,
+      status: "success",
+      durationMs: performance.now() - startedAt
+    });
+    return result;
   } catch (error) {
-    throw toMcpError(error);
+    const safeError = toSafeMcpError(error);
+    diagnostics.recordToolCall({
+      toolName: request.params.name,
+      status: "error",
+      durationMs: performance.now() - startedAt,
+      errorKind: safeError.data.kind,
+      reportId: safeError.data.reportId,
+      errorFingerprint: safeError.data.kind === "internal-error" ? createErrorFingerprint(error) : undefined
+    });
+    throw new McpError(safeError.code, safeError.message, safeError.data);
   }
 });
 
 const transport = new StdioServerTransport();
 await server.connect(transport);
-
-function toMcpError(error) {
-  return new McpError(
-    TOOL_ERROR_CODE,
-    error instanceof Error ? error.message : String(error),
-    toJsonRpcErrorData(error)
-  );
-}

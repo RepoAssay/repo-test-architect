@@ -68,6 +68,7 @@ describe("MCP JSON-RPC scaffold", () => {
 
   it("documents stable MCP tool error kinds", () => {
     assert.deepEqual(mcpToolErrorKinds, [
+      "internal-error",
       "unknown-tool",
       "invalid-arguments",
       "missing-required-argument",

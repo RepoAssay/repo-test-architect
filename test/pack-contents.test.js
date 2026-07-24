@@ -18,6 +18,10 @@ describe("package contents", () => {
   });
 
   it("requires check script dependencies needed by packaged release verification", () => {
+    assert.ok(requiredFiles.includes("src/diagnostics/diagnostics.js"));
+    assert.ok(requiredFiles.includes("schemas/diagnostic-event-v1.schema.json"));
+    assert.ok(requiredFiles.includes("schemas/doctor-report-v1.schema.json"));
+    assert.ok(requiredFiles.includes("schemas/diagnostic-bundle-v1.schema.json"));
     assert.ok(requiredFiles.includes("scripts/check-bin-entrypoints.js"));
     assert.ok(requiredFiles.includes("scripts/check-demo-script.js"));
     assert.ok(requiredFiles.includes("scripts/check-installed-package.js"));

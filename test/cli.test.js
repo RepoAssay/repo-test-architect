@@ -9,6 +9,53 @@ const cliPath = "src/cli/index.js";
 const fixturePath = "examples/node-vitest-basic";
 
 describe("CLI", () => {
+  it("reports local diagnostic readiness without enabling external reporting", () => {
+    const output = execFileSync(process.execPath, [cliPath, "doctor", ".", "--format=json"], {
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        REPO_TEST_ARCHITECT_DIAGNOSTICS: "off"
+      }
+    });
+    const report = JSON.parse(output);
+
+    assert.equal(report.schemaVersion, "doctor-report/v1");
+    assert.equal(report.status, "ready");
+    assert.equal(report.diagnostics.mode, "off");
+    assert.equal(report.diagnostics.externalReporting, false);
+  });
+
+  it("renders a sanitized local diagnostic bundle", () => {
+    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-cli-diagnostics-"));
+    const filePath = path.join(tempRoot, "diagnostics.jsonl");
+    fs.writeFileSync(filePath, `${JSON.stringify({
+      schemaVersion: "diagnostic-event/v1",
+      timestamp: "2026-07-24T12:00:00.000Z",
+      eventId: "event-00000000-0000-4000-8000-000000000001",
+      eventType: "mcp-tool-call",
+      serverVersion: "0.1.0",
+      toolName: "audit_repo",
+      status: "error",
+      durationMs: 4,
+      errorKind: "internal-error",
+      reportId: "report-00000000-0000-4000-8000-000000000002",
+      source: "proprietary source",
+      token: "secret-token"
+    })}\n`);
+
+    const output = execFileSync(
+      process.execPath,
+      [cliPath, "diagnostic-bundle", "--diagnostics-file", filePath, "--format=json"],
+      { encoding: "utf8" }
+    );
+    const bundle = JSON.parse(output);
+
+    assert.equal(bundle.schemaVersion, "diagnostic-bundle/v1");
+    assert.equal(bundle.summary.eventCount, 1);
+    assert.equal(bundle.summary.internalErrorCount, 1);
+    assert.doesNotMatch(output, /proprietary|secret-token|repo-test-architect-cli-diagnostics/);
+  });
+
   it("lists adapters in markdown", () => {
     const output = execFileSync(process.execPath, [cliPath, "adapters"], {
       encoding: "utf8"

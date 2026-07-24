@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://repo-test-architect.dev/schemas/doctor-report-v1.schema.json",
+  "title": "Repo Test Architect Doctor Report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "generatedAt", "status", "diagnostics", "summary", "checks"],
+  "properties": {
+    "schemaVersion": { "const": "doctor-report/v1" },
+    "generatedAt": { "type": "string" },
+    "status": { "enum": ["ready", "warning", "error"] },
+    "diagnostics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "fileConfigured", "eventLimit", "externalReporting"],
+      "properties": {
+        "mode": { "enum": ["off", "stderr", "file"] },
+        "fileConfigured": { "type": "boolean" },
+        "eventLimit": { "type": "integer", "minimum": 1 },
+        "externalReporting": { "const": false }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["checkCount", "passedCount", "warningCount", "failureCount"],
+      "properties": {
+        "checkCount": { "type": "integer", "minimum": 0 },
+        "passedCount": { "type": "integer", "minimum": 0 },
+        "warningCount": { "type": "integer", "minimum": 0 },
+        "failureCount": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "status", "detail"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "status": { "enum": ["pass", "warning", "fail"] },
+          "detail": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  }
+}
