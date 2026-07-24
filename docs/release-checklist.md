@@ -21,10 +21,10 @@ This project is not ready to publish yet. Keep `private: true` in `package.json`
 - keep `npm run distribution:check` passing during private preparation
 - require `npm run distribution:check:publish` to pass before any public publication
 - keep `npm run release:check` passing before tagging or publishing
-- keep GitHub Actions CI green for the release-readiness workflow on Ubuntu, macOS, and Windows
+- keep the required Linux `pr-gate` green and preserve path-selected Windows portability and macOS Swift coverage
 - keep repository, homepage, bugs, MCP identity, and keywords aligned with `server.json`
 - keep `master` protected with pull requests, administrator enforcement, linear history, resolved conversations, and no force pushes or deletion
-- keep local `npm run release:check` authoritative until required GitHub Actions checks are intentionally enabled
+- run the manually dispatched three-OS release matrix before public publication
 - validate `server.json` with the official `mcp-publisher`
 - keep the package manifest license aligned with `LICENSE` and verify the copyright owner before publishing
 

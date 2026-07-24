@@ -157,7 +157,8 @@ describe("docs links", () => {
     assert.ok(releaseChecklist.includes("approved unscoped npm identity `repo-test-architect`"));
     assert.ok(releaseChecklist.includes("approved MCP Registry identity `io.github.auditquest/repo-test-architect`"));
     assert.ok(releaseChecklist.includes("keep `master` protected with pull requests"));
-    assert.ok(releaseChecklist.includes("local `npm run release:check` authoritative"));
+    assert.ok(releaseChecklist.includes("required Linux `pr-gate` green"));
+    assert.ok(releaseChecklist.includes("manually dispatched three-OS release matrix"));
     assert.ok(releaseChecklist.includes("repository, homepage, bugs, MCP identity, and keywords aligned"));
 
     for (const field of ["repository", "homepage", "bugs"]) {

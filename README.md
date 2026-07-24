@@ -214,7 +214,7 @@ The finder uses authenticated GitHub repository search, verifies exact ecosystem
 
 Use `alpha:check` for the private audit milestone. `release:check` additionally covers packaging and installed-binary readiness.
 
-The CI workflow runs `npm run release:check` on Ubuntu, macOS, and Windows for pushes to `master` and `main`, and on pull requests.
+The CI workflow keeps one stable Linux `pr-gate`: documentation-only changes run focused contract tests, normal changes run `npm run alpha:check`, and distribution-sensitive changes run `npm run release:check`. Windows runs only for runtime and portability changes; macOS runs only for Swift-sensitive changes. A merge to `master` runs the complete release gate on Linux, while manual dispatch runs the full release gate on all three operating systems.
 
 The tests include golden audit and plan snapshots under `evals/expected`, driven by `evals/fixtures.json`.
 JSON schemas and the signal registry for versioned artifacts live under `schemas/`.

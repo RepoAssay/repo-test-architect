@@ -91,7 +91,7 @@ Implemented:
 - installed-package tarball smoke checker for published CLI and MCP binary boot paths
 - reversible distribution preparation reporting with a strict local publication gate that remains blocked until the explicit public-release switch
 - release-readiness check runner for tests, evals, model consistency, demo path, smoke, package, bin, installed-package, and distribution preparation checks
-- GitHub Actions CI workflow that runs the release-readiness check on Ubuntu, macOS, and Windows for pushes and pull requests
+- required Linux pull-request gate with path-selected release, Windows portability, and macOS Swift validation, plus post-merge and manually dispatched release checks
 - GitHub pull request template that calls out audit impact, release verification, and risk notes
 - GitHub bug report issue form for audit, planning, MCP, and release-check defects
 - GitHub feature request issue form for audit-first adapter, MCP, evaluation, and reporting proposals

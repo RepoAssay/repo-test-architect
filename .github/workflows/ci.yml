@@ -1,36 +1,163 @@
 name: CI
 
 on:
+  pull_request:
   push:
     branches:
       - master
-      - main
-  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  release-check:
-    name: release-check (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-
-    strategy:
-      fail-fast: false
-      matrix:
-        os:
-          - ubuntu-latest
-          - macos-latest
-          - windows-latest
+  classify:
+    name: classify changes
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    outputs:
+      docs_only: ${{ steps.paths.outputs.docs_only }}
+      release: ${{ steps.paths.outputs.release }}
+      windows: ${{ steps.paths.outputs.windows }}
+      macos: ${{ steps.paths.outputs.macos }}
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Classify changed paths
+        id: paths
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        shell: bash
+        run: |
+          gh api --paginate \
+            "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/files?per_page=100" \
+            --jq '.[].filename' |
+            node scripts/classify-ci-paths.js >> "$GITHUB_OUTPUT"
+
+  pr-gate:
+    name: pr-gate
+    if: ${{ always() && github.event_name == 'pull_request' }}
+    needs: classify
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Require successful path classification
+        if: needs.classify.result != 'success'
+        run: exit 1
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: "20"
+          cache: npm
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
+
+      - name: Documentation checks
+        if: needs.classify.outputs.docs_only == 'true'
+        run: node --test test/docs-links.test.js test/ci-workflow.test.js test/ci-path-classifier.test.js
+
+      - name: Alpha readiness
+        if: needs.classify.outputs.docs_only != 'true' && needs.classify.outputs.release != 'true'
+        run: npm run alpha:check
+
+      - name: Release readiness
+        if: needs.classify.outputs.release == 'true'
+        run: npm run release:check
+
+  windows-portability:
+    name: windows portability
+    if: ${{ always() && (github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && needs.classify.outputs.windows == 'true')) }}
+    needs: classify
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Alpha readiness
+        if: github.event_name == 'pull_request'
+        run: npm run alpha:check
+
+      - name: Release readiness
+        if: github.event_name == 'workflow_dispatch'
+        run: npm run release:check
+
+  macos-swift:
+    name: macOS Swift
+    if: ${{ always() && (github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && needs.classify.outputs.macos == 'true')) }}
+    needs: classify
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Alpha readiness
+        if: github.event_name == 'pull_request'
+        run: npm run alpha:check
+
+      - name: Release readiness
+        if: github.event_name == 'workflow_dispatch'
+        run: npm run release:check
+
+  release-check:
+    name: release check
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
 
       - name: Release readiness
         run: npm run release:check
