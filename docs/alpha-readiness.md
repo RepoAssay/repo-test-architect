@@ -42,7 +42,7 @@ This verdict does not mean:
 - proof that structural test evidence asserts every important branch
 - native test generation readiness
 
-While repository GitHub Actions are disabled under the temporary $0-budget policy, alpha changes require a passing local `npm run alpha:check` and a PR that records the local-verification exception.
+The protected `master` branch requires the stable Linux `pr-gate`. Normal alpha changes run `npm run alpha:check`; documentation-only changes use focused contract tests, while release-sensitive changes use `npm run release:check`. Windows and macOS jobs are path-selected for portability and Swift-sensitive changes instead of consuming runner minutes on every pull request.
 
 ### Real Repo Audit Reports
 

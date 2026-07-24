@@ -52,7 +52,7 @@ These are useful foundation items, but they should not block adapter work:
 - local stats and history tracking from saved audit artifacts
 - keep the real MCP SDK transport wrapper aligned with the dependency-free tool surface
 - installed-package tarball smoke checks before a first public npm release
-- CI matrix coverage for Windows, macOS, and Linux once the public repo is configured
+- keep required Linux PR validation fast, select Windows and macOS coverage by portability risk, and run the full three-OS matrix before releases
 
 ## Fixture Roadmap
 

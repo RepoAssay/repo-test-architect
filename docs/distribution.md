@@ -25,7 +25,7 @@ The repository and package remain private/unpublished until the separate public-
 
 The private GitHub repository uses `master` as its protected default branch. Changes, including administrator changes, must arrive through pull requests. Linear history and resolved review conversations are required, while force pushes and branch deletion are disabled.
 
-Required GitHub Actions checks are intentionally deferred while development volume is high and Actions quota is constrained. `npm run release:check` remains the authoritative gate before merging release-oriented changes.
+The stable Linux `pr-gate` is required before merge. It promotes release-sensitive changes from `npm run alpha:check` to `npm run release:check`; Windows portability and macOS Swift jobs run only for matching paths. Every merge to `master` receives a full Linux release check, and a manual dispatch provides the complete three-OS release matrix.
 
 ## Local Gates
 
