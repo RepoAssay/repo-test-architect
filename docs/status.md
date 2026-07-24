@@ -75,6 +75,7 @@ Implemented:
 - deterministic JSON-RPC harness tests that keep parser, batch request, and local dispatcher behavior covered separately from the SDK transport
 - release-readiness checklist, npm package dry-run script, and package contents allowlist
 - public-readiness record covering the completed npm and official MCP Registry launch
+- adapter-hardening plan that prioritizes shared conformance and deeper JavaScript/TypeScript, Python, Swift, and bounded Kotlin/JVM validation before adding ecosystems
 - alpha-readiness checklist for the test architecture audit milestone before native generation
 - deterministic `npm run alpha:check` gate for tests, golden audits, model consistency, demo behavior, and local MCP transport without npm packaging requirements
 - real-repo audit reports for owned JavaScript/TypeScript and Swift repositories, including Collectors Grimoire and `cg-*` sibling packages
@@ -228,9 +229,13 @@ npm run eval:test
 
 ## Next Useful Milestones
 
-1. Consolidate repeated JSDoc artifact shapes into shared TS reference files when the runtime API stabilizes further.
-2. Maintain Python, Swift, and bounded Kotlin/JVM support with evidence-driven real-repository probes while expanding only explicitly owned adapter variants.
-3. Add more model-consistency fixtures and model profile output comparisons.
-4. Expand package-aware test placement analysis from package/app root inference into richer adapter-owned package boundary signals.
-5. Extend local diagnostics and stats into future generation/repair-loop results without adding automatic external reporting.
-6. Add native test generation only after adapter-specific generation rules and repair-loop tests exist.
+The active sequence is defined in the [Adapter Hardening Plan](adapter-hardening-plan.md):
+
+1. Add the shared validation-corpus manifest, scorecard, and adapter-conformance helper.
+2. Harden JavaScript/TypeScript workspace command ownership and configuration boundaries.
+3. Harden Python multi-package ownership, relative imports, and pytest discovery configuration.
+4. Harden Kotlin/JVM Gradle/Maven ownership and conservative unsupported-graph behavior.
+5. Harden SwiftPM/Xcode ownership ambiguity and symbol-evidence boundaries.
+6. Complete a cross-adapter trust pass and set measured performance regression budgets.
+
+Another adapter and native test generation remain behind this hardening phase. Placement, model-consistency, diagnostics, and stats work should be included when an adapter slice exposes a concrete cross-cutting need rather than expanding independently.

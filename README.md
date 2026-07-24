@@ -379,6 +379,7 @@ Important runtime surfaces:
 - [Real repository audit reports](docs/real-repo-audit-reports.md)
 - [Product positioning](docs/product-positioning.md)
 - [Near-term roadmap](docs/near-term-roadmap.md)
+- [Adapter hardening plan](docs/adapter-hardening-plan.md)
 - [Demo script](docs/demo-script.md)
 - [Decision log](docs/decision-log.md)
 - [Second adapter spike](docs/second-adapter-spike.md)
