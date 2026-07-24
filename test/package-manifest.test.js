@@ -14,7 +14,7 @@ describe("package manifest", () => {
 
   it("locks the approved npm, MCP, and GitHub identities for publication", () => {
     assert.equal(packageJson.name, "repo-test-architect");
-    assert.equal(packageJson.mcpName, "io.github.repoassay/repo-test-architect");
+    assert.equal(packageJson.mcpName, "io.github.RepoAssay/repo-test-architect");
     assert.deepEqual(packageJson.repository, {
       type: "git",
       url: "git+https://github.com/repoassay/repo-test-architect.git"

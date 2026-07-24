@@ -1,6 +1,6 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "io.github.repoassay/repo-test-architect",
+  "name": "io.github.RepoAssay/repo-test-architect",
   "title": "Repo Test Architect",
   "description": "Audit-first test strategy MCP server for repository-native test planning.",
   "repository": {
@@ -8,13 +8,13 @@
     "source": "github",
     "id": "1285319114"
   },
-  "version": "0.1.0",
+  "version": "0.1.1",
   "packages": [
     {
       "registryType": "npm",
       "registryBaseUrl": "https://registry.npmjs.org",
       "identifier": "repo-test-architect",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "transport": {
         "type": "stdio"
       },

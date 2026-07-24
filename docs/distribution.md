@@ -16,7 +16,7 @@ Remote hosting and an MCPB bundle are not part of the first release.
 ## Locked Identity
 
 - npm package: `repo-test-architect`
-- MCP Registry server: `io.github.repoassay/repo-test-architect`
+- MCP Registry server: `io.github.RepoAssay/repo-test-architect`
 - GitHub repository: `https://github.com/repoassay/repo-test-architect`
 
 The GitHub repository is public. The first npm and MCP Registry release has been approved and must pass the release gates below before publication.

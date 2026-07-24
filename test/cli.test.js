@@ -33,7 +33,7 @@ describe("CLI", () => {
       timestamp: "2026-07-24T12:00:00.000Z",
       eventId: "event-00000000-0000-4000-8000-000000000001",
       eventType: "mcp-tool-call",
-      serverVersion: "0.1.0",
+      serverVersion: "0.1.1",
       toolName: "audit_repo",
       status: "error",
       durationMs: 4,

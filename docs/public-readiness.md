@@ -1,6 +1,6 @@
 # Public Readiness
 
-This document records the public-repository launch and the remaining first-package publication work.
+This document records the public-repository launch and first-package publication work.
 
 ## Public Repository Ready
 
@@ -25,14 +25,14 @@ This document records the public-repository launch and the remaining first-packa
 
 ## First Package Publication
 
-The first npm and official MCP Registry publication is approved. Before publishing:
+`repo-test-architect@0.1.0` was published to npm and verified from a clean environment. The official MCP Registry grants organization namespaces using GitHub's exact case, so the registry-compatible patch is `0.1.1` with `io.github.RepoAssay/repo-test-architect`.
 
-- authenticate npm and re-confirm `repo-test-architect` availability
+Before publishing the patch and Registry entry:
+
 - run `npm run release:check`
 - run `npm run distribution:check:publish`
-- run the manually dispatched three-OS release matrix
-- publish and verify `repo-test-architect@0.1.0` from a clean environment
-- authenticate the official `mcp-publisher`, validate `server.json`, publish it, and verify registry discovery
+- publish and verify `repo-test-architect@0.1.1` from a clean environment
+- validate and publish `server.json`, then verify official Registry discovery
 
 Native test generation remains deferred, and remote MCP hosting remains out of scope for the first release.
 

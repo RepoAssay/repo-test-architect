@@ -1,8 +1,8 @@
 {
   "name": "repo-test-architect",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": false,
-  "mcpName": "io.github.repoassay/repo-test-architect",
+  "mcpName": "io.github.RepoAssay/repo-test-architect",
   "description": "Audit-first test strategy agent for repository-native test planning.",
   "repository": {
     "type": "git",
