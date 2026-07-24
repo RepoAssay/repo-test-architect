@@ -150,8 +150,10 @@ describe("docs links", () => {
     assert.ok(publicReadiness.includes("Public Repository Ready"));
     assert.ok(publicReadiness.includes("First Package Publication"));
     assert.ok(publicReadiness.includes("repository visibility is public"));
-    assert.ok(publicReadiness.includes("`repo-test-architect@0.1.0` was published to npm"));
-    assert.ok(publicReadiness.includes("registry-compatible patch is `0.1.1`"));
+    assert.ok(publicReadiness.includes("The first public distribution is complete"));
+    assert.ok(publicReadiness.includes("`repo-test-architect@0.1.1`"));
+    assert.ok(publicReadiness.includes("`io.github.RepoAssay/repo-test-architect@0.1.1`"));
+    assert.ok(publicReadiness.includes("GitHub release `v0.1.1`"));
     assert.ok(publicReadiness.includes("`LICENSE` ownership is verified as Mikael Stenberg"));
     assert.ok(publicReadiness.includes("Native test generation remains deferred"));
     assert.ok(publicReadiness.includes("alpha-readiness acceptance gates"));
@@ -170,7 +172,7 @@ describe("docs links", () => {
       assert.ok(packageJson[field], `Missing approved package metadata field: ${field}`);
     }
 
-    assert.ok(status.includes("public-readiness checklist"));
+    assert.ok(status.includes("public-readiness record"));
     assert.ok(status.includes("alpha-readiness checklist"));
     assert.ok(status.includes("real-repo audit reports"));
   });

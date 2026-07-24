@@ -14,7 +14,7 @@ This document records the public-repository launch and first-package publication
 - model-consistency locked-field scenarios
 - package, binary, smoke, eval, and release-readiness checks
 - a production dependency audit that blocks release readiness
-- a reversible distribution preparation gate and an intentionally blocked public-publish gate
+- a reversible distribution preparation gate and a strict public-publish gate
 - contribution, support, and security policies
 - product positioning for audit-first differentiation and plausible business paths
 - alpha-readiness acceptance gates for local test architecture audit
@@ -25,14 +25,15 @@ This document records the public-repository launch and first-package publication
 
 ## First Package Publication
 
-`repo-test-architect@0.1.0` was published to npm and verified from a clean environment. The official MCP Registry grants organization namespaces using GitHub's exact case, so the registry-compatible patch is `0.1.1` with `io.github.RepoAssay/repo-test-architect`.
+The first public distribution is complete:
 
-Before publishing the patch and Registry entry:
+- [`repo-test-architect@0.1.1`](https://www.npmjs.com/package/repo-test-architect/v/0.1.1) is published with the `latest` tag
+- [`io.github.RepoAssay/repo-test-architect@0.1.1`](https://registry.modelcontextprotocol.io/?search=io.github.RepoAssay%2Frepo-test-architect) is active and latest in the official MCP Registry
+- the npm package was installed in a clean environment, where all four adapters loaded and the stdio MCP server initialized as `0.1.1`
+- the release passed `npm run release:check`, `npm run distribution:check:publish`, the three-OS pull-request matrix, and the post-merge Linux release check
+- [GitHub release `v0.1.1`](https://github.com/RepoAssay/repo-test-architect/releases/tag/v0.1.1) points to the exact npm and Registry release commit
 
-- run `npm run release:check`
-- run `npm run distribution:check:publish`
-- publish and verify `repo-test-architect@0.1.1` from a clean environment
-- validate and publish `server.json`, then verify official Registry discovery
+The initial npm-only `0.1.0` package exposed a case-sensitivity mismatch in the Registry namespace. Patch `0.1.1` preserves GitHub's exact `RepoAssay` casing and is the first Registry-compatible release.
 
 Native test generation remains deferred, and remote MCP hosting remains out of scope for the first release.
 

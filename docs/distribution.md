@@ -19,7 +19,7 @@ Remote hosting and an MCPB bundle are not part of the first release.
 - MCP Registry server: `io.github.RepoAssay/repo-test-architect`
 - GitHub repository: `https://github.com/repoassay/repo-test-architect`
 
-The GitHub repository is public. The first npm and MCP Registry release has been approved and must pass the release gates below before publication.
+The GitHub repository is public. Version `0.1.1` is published to npm and active in the official MCP Registry under the locked identities above.
 
 ## Repository Protection
 
@@ -64,7 +64,7 @@ Local automation cannot perform account authentication or replace release-owner 
 5. Authenticate `mcp-publisher` with the intended GitHub identity.
 6. Approve and publish to the official MCP Registry.
 
-The repository visibility, copyright owner, npm publication, and MCP Registry publication have been explicitly approved for the first release. npm and `mcp-publisher` authentication still require the release owner. Treat both publications as irreversible release events, and always run `npm run release:check` and `npm run distribution:check:publish` against the exact commit and version first.
+The first npm and MCP Registry publication is complete. Future npm and `mcp-publisher` authentication still require the release owner. Treat both publications as irreversible release events, and always run `npm run release:check` and `npm run distribution:check:publish` against the exact commit and version first.
 
 ## Publication Order
 
