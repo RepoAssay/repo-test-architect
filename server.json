@@ -1,10 +1,10 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "io.github.auditquest/repo-test-architect",
+  "name": "io.github.repoassay/repo-test-architect",
   "title": "Repo Test Architect",
   "description": "Audit-first test strategy MCP server for repository-native test planning.",
   "repository": {
-    "url": "https://github.com/auditquest/repo-test-architect",
+    "url": "https://github.com/repoassay/repo-test-architect",
     "source": "github",
     "id": "1285319114"
   },

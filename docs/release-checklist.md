@@ -5,7 +5,7 @@ This project is not ready to publish yet. Keep `private: true` in `package.json`
 ## Package Readiness
 
 - keep the approved unscoped npm identity `repo-test-architect`
-- keep the approved MCP Registry identity `io.github.auditquest/repo-test-architect`
+- keep the approved MCP Registry identity `io.github.repoassay/repo-test-architect`
 - re-confirm the npm package name is available immediately before publishing
 - keep these binary names stable:
   - `repo-test-architect`

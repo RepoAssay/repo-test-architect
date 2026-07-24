@@ -2,15 +2,15 @@
   "name": "repo-test-architect",
   "version": "0.1.0",
   "private": true,
-  "mcpName": "io.github.auditquest/repo-test-architect",
+  "mcpName": "io.github.repoassay/repo-test-architect",
   "description": "Audit-first test strategy agent for repository-native test planning.",
   "repository": {
     "type": "git",
-    "url": "https://github.com/auditquest/repo-test-architect.git"
+    "url": "https://github.com/repoassay/repo-test-architect.git"
   },
-  "homepage": "https://github.com/auditquest/repo-test-architect#readme",
+  "homepage": "https://github.com/repoassay/repo-test-architect#readme",
   "bugs": {
-    "url": "https://github.com/auditquest/repo-test-architect/issues"
+    "url": "https://github.com/repoassay/repo-test-architect/issues"
   },
   "type": "module",
   "engines": {
