@@ -164,9 +164,13 @@ function resolveGradleModules(files, settings) {
     const declaredDependencies = declaredGradleProjectDependencies(buildText);
     for (const dependency of declaredDependencies.direct) module.dependencies.add(dependency);
     for (const dependency of declaredDependencies.exported) module.exportedDependencies.add(dependency);
-    module.kmpCommonTestDependencies = declaredKmpTestProjectDependencies(buildText, "common");
+    module.kmpCommonTestDependencies = declaredKmpSourceSetProjectDependencies(buildText, "commonTest").direct;
     module.kmpJvmTestDependencies = module.hasKmpJvmTarget
-      ? declaredKmpTestProjectDependencies(buildText, module.kmpJvmTargetName)
+      ? declaredKmpSourceSetProjectDependencies(buildText, `${module.kmpJvmTargetName}Test`).direct
+      : new Set();
+    module.kmpCommonMainExports = declaredKmpSourceSetProjectDependencies(buildText, "commonMain").exported;
+    module.kmpJvmMainExports = module.hasKmpJvmTarget
+      ? declaredKmpSourceSetProjectDependencies(buildText, `${module.kmpJvmTargetName}Main`).exported
       : new Set();
   }
 
@@ -189,6 +193,7 @@ function resolveGradleModules(files, settings) {
     for (const module of modules) module.supportsKmpShape = true;
   }
 
+  populateKmpReachableTestDependencies(modules);
   populateReachableModuleDependencies(modules);
   return modules.sort((left, right) => right.directory.length - left.directory.length || left.projectPath.localeCompare(right.projectPath));
 }
@@ -323,12 +328,14 @@ function declaredGradleProjectDependencies(content) {
   return { direct, exported };
 }
 
-function declaredKmpTestProjectDependencies(content, sourceSetName) {
-  const dependencies = new Set();
+function declaredKmpSourceSetProjectDependencies(content, sourceSetName) {
+  const direct = new Set();
+  const exported = new Set();
   const buildText = content
     .replace(/\/\*[\s\S]*?\*\//g, " ")
     .replace(/\/\/.*$/gm, "");
-  const escapedSourceSet = escapeRegExp(`${sourceSetName}Test`);
+  const hasExclusions = /\bexclude\b/.test(buildText);
+  const escapedSourceSet = escapeRegExp(sourceSetName);
   const blockPattern = new RegExp(
     `(?:\\bval\\s+)?\\b${escapedSourceSet}\\b(?:\\s+by\\s+getting)?(?:\\s*\\.\\s*dependencies)?\\s*\\{`,
     "g"
@@ -336,14 +343,61 @@ function declaredKmpTestProjectDependencies(content, sourceSetName) {
   for (const match of buildText.matchAll(blockPattern)) {
     const openingBrace = match.index + match[0].lastIndexOf("{");
     const block = balancedGradleBlock(buildText, openingBrace);
-    for (const dependency of declaredGradleProjectDependencies(block).direct) dependencies.add(dependency);
+    const declaredDependencies = declaredGradleProjectDependencies(block);
+    for (const dependency of declaredDependencies.direct) direct.add(dependency);
+    for (const dependency of declaredDependencies.exported) exported.add(dependency);
   }
   const configurationPattern = new RegExp(
-    `\\b${escapedSourceSet}(?:Implementation|Api|CompileOnly)\\s*(?:\\(\\s*)?project\\s*\\(\\s*["'](:[^"']+)["']\\s*\\)`,
+    `\\b${escapedSourceSet}(Api|Implementation|CompileOnly)\\s*(?:\\(\\s*)?project\\s*\\(\\s*["'](:[^"']+)["']\\s*\\)`,
     "g"
   );
-  for (const match of buildText.matchAll(configurationPattern)) dependencies.add(match[1]);
-  return dependencies;
+  for (const match of buildText.matchAll(configurationPattern)) {
+    direct.add(match[2]);
+    if (match[1] === "Api" && !hasExclusions) exported.add(match[2]);
+  }
+  return { direct, exported };
+}
+
+function populateKmpReachableTestDependencies(modules) {
+  const modulesByProjectPath = new Map(modules.map((module) => [module.projectPath, module]));
+  for (const module of modules.filter((candidate) => candidate.supportsKmpJvm)) {
+    module.kmpCommonTestReachableDependencies = reachableKmpDependencies(
+      new Set([...module.kmpCommonTestDependencies, ...module.kmpCommonMainExports]),
+      modulesByProjectPath,
+      false
+    );
+    module.kmpJvmTestReachableDependencies = reachableKmpDependencies(
+      new Set([
+        ...module.kmpCommonTestDependencies,
+        ...module.kmpJvmTestDependencies,
+        ...module.kmpCommonMainExports,
+        ...module.kmpJvmMainExports
+      ]),
+      modulesByProjectPath,
+      true
+    );
+  }
+}
+
+function reachableKmpDependencies(directDependencies, modulesByProjectPath, includeJvmExports) {
+  const reachable = new Set(directDependencies);
+  const pending = [...directDependencies];
+  const visited = new Set();
+  for (let index = 0; index < pending.length; index += 1) {
+    const projectPath = pending[index];
+    if (visited.has(projectPath)) continue;
+    visited.add(projectPath);
+    const module = modulesByProjectPath.get(projectPath);
+    if (!module?.supportsKmpJvm) continue;
+    const exportedDependencies = includeJvmExports
+      ? new Set([...module.kmpCommonMainExports, ...module.kmpJvmMainExports])
+      : module.kmpCommonMainExports;
+    for (const dependency of exportedDependencies) {
+      reachable.add(dependency);
+      if (!visited.has(dependency)) pending.push(dependency);
+    }
+  }
+  return reachable;
 }
 
 function balancedGradleBlock(content, openingBrace) {
@@ -981,10 +1035,10 @@ function canTestSourceSet(testFile, source, modules) {
   const testModule = modules.find((module) => module.projectPath === testFile.moduleProjectPath);
   const sourceModule = modules.find((module) => module.projectPath === source.moduleProjectPath);
   if (!testModule?.supportsKmpJvm || !sourceModule?.supportsKmpJvm) return true;
-  const sourceSetDependency =
-    testModule.kmpCommonTestDependencies.has(source.moduleProjectPath) ||
-    (testSourceSet !== "commonTest" && testModule.kmpJvmTestDependencies.has(source.moduleProjectPath));
-  if (!sourceSetDependency) return false;
+  const reachableDependencies = testSourceSet === "commonTest"
+    ? testModule.kmpCommonTestReachableDependencies
+    : testModule.kmpJvmTestReachableDependencies;
+  if (!reachableDependencies.has(source.moduleProjectPath)) return false;
   if (testSourceSet === "commonTest") return productionSourceSet === "commonMain";
   const targetName = testSourceSet.slice(0, -"Test".length);
   return productionSourceSet === "commonMain" ||
@@ -996,6 +1050,8 @@ function canModuleTestSource(testModuleProjectPath, sourceModuleProjectPath, mod
   if (!testModuleProjectPath || !sourceModuleProjectPath) return false;
   if (testModuleProjectPath === sourceModuleProjectPath) return true;
   const testModule = modules.find((module) => module.projectPath === testModuleProjectPath);
+  const sourceModule = modules.find((module) => module.projectPath === sourceModuleProjectPath);
+  if (testModule?.supportsKmpJvm && sourceModule?.supportsKmpJvm) return true;
   return testModule?.reachableDependencies.has(sourceModuleProjectPath) ?? false;
 }
 

@@ -75,6 +75,11 @@
     "path": "examples/kotlin-maven-wrapper-junit4"
   },
   {
+    "name": "kotlin-multiplatform-exported-module-graph",
+    "adapter": "kotlin",
+    "path": "examples/kotlin-multiplatform-exported-module-graph"
+  },
+  {
     "name": "kotlin-multiplatform-jvm",
     "adapter": "kotlin",
     "path": "examples/kotlin-multiplatform-jvm"

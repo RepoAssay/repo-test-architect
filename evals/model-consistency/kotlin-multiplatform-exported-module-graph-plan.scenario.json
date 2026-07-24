@@ -1,0 +1,75 @@
+{
+  "schemaVersion": "model-consistency-scenario/v1",
+  "id": "kotlin-multiplatform-exported-module-graph-plan",
+  "description": "Different model profiles should preserve cycle-safe KMP api export traversal, source-set visibility, and qualified target tasks.",
+  "sourceArtifact": {
+    "path": "evals/expected/kotlin-multiplatform-exported-module-graph.audit.json",
+    "schemaVersion": "audit/v1"
+  },
+  "toolCall": {
+    "toolName": "generate_test_plan",
+    "arguments": {}
+  },
+  "lockedFields": [
+    {
+      "path": "summary.verificationCommand",
+      "expected": "./gradlew :token-api:jvmTest :token-core:jvmTest :token-tests:desktopTest",
+      "reason": "Every supported child contributes its module-qualified JVM target test task."
+    },
+    {
+      "path": "summary.confidence",
+      "expected": "high",
+      "reason": "The complete all-KMP aggregate and its literal source-set api edge are inside the bounded slice."
+    },
+    {
+      "path": "summary.addTestCount",
+      "expected": 1,
+      "reason": "The untested common formatter remains the only add-test item."
+    },
+    {
+      "path": "summary.extendTestCount",
+      "expected": 2,
+      "reason": "Common and JVM-specific transitively exported sources retain extend-test recommendations."
+    },
+    {
+      "path": "items[0].id",
+      "expected": "extend-test:token-core/src/jvmMain/java/com/example/token/JvmTokenValidator.java",
+      "reason": "The transitively exported JVM validator keeps its stable target identity."
+    },
+    {
+      "path": "items[0].existingTestEvidence[0].testPath",
+      "expected": "token-tests/src/desktopTest/kotlin/com/example/token/JvmTokenValidatorTest.kt",
+      "reason": "The named JVM test source set sees the dependency module's JVM variant through the common api chain."
+    },
+    {
+      "path": "items[0].existingTestEvidence[0].usage",
+      "expected": "asserted",
+      "reason": "The JVM validator result is consumed by a kotlin.test assertion."
+    },
+    {
+      "path": "items[1].id",
+      "expected": "add-test:token-core/src/commonMain/kotlin/com/example/token/TokenFormatter.kt",
+      "reason": "The uncovered transitively exported formatter remains an add-test item."
+    },
+    {
+      "path": "items[2].id",
+      "expected": "extend-test:token-core/src/commonMain/kotlin/com/example/token/TokenParser.kt",
+      "reason": "The common parser is covered through the intermediate module's commonMain api edge."
+    },
+    {
+      "path": "items[2].existingTestEvidence[0].testPath",
+      "expected": "token-tests/src/commonTest/kotlin/com/example/token/TokenParserTest.kt",
+      "reason": "Common transitive evidence must preserve its commonTest owner."
+    }
+  ],
+  "allowedVariations": [
+    "summary wording",
+    "plan item explanation wording",
+    "optional detail depth"
+  ],
+  "unexpectedVariations": [
+    "generic or unqualified test tasks",
+    "traversal through implementation-only KMP dependencies",
+    "commonTest claiming a target-specific export"
+  ]
+}
