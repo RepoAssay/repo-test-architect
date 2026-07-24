@@ -10,6 +10,7 @@ describe("support docs", () => {
     assert.match(support, /Repo Test Architect is early audit-first tooling/);
     assert.match(support, /CLI commands/);
     assert.match(support, /MCP client setup/);
+    assert.match(support, /support question issue form/);
     assert.match(support, /Use the bug report issue form/);
     assert.match(support, /Use the feature request issue form/);
     assert.match(support, /Use the security policy/);

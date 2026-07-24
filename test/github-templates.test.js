@@ -44,13 +44,38 @@ describe("GitHub templates", () => {
     assert.match(template, /adapter-boundary concerns/);
   });
 
-  it("keeps issue template routing structured until a public remote is configured", () => {
+  it("keeps support questions structured and free of sensitive repository data", () => {
+    const template = fs.readFileSync(".github/ISSUE_TEMPLATE/support_question.yml", "utf8");
+
+    assert.match(template, /name: Support question/);
+    assert.match(template, /CLI usage, MCP setup, audit artifacts, or adapter behavior/);
+    assert.match(template, /id: goal/);
+    assert.match(template, /id: command/);
+    assert.match(template, /id: repo-shape/);
+    assert.match(template, /id: output/);
+    assert.match(template, /credentials, private source, proprietary artifacts, prompts, environment values, and machine-local paths/);
+  });
+
+  it("routes issue creation through structured support and private security channels", () => {
     const config = fs.readFileSync(".github/ISSUE_TEMPLATE/config.yml", "utf8");
     const status = fs.readFileSync("docs/status.md", "utf8");
 
     assert.match(config, /blank_issues_enabled: false/);
-    assert.doesNotMatch(config, /contact_links:/);
+    assert.match(config, /contact_links:/);
+    assert.match(config, /security\/advisories\/new/);
+    assert.match(config, /blob\/master\/SUPPORT\.md/);
     assert.match(status, /GitHub issue template config/);
-    assert.match(status, /structured forms/);
+    assert.match(status, /structured support questions/);
+  });
+
+  it("keeps Dependabot version updates grouped and bounded", () => {
+    const dependabot = fs.readFileSync(".github/dependabot.yml", "utf8");
+
+    assert.match(dependabot, /package-ecosystem: npm/);
+    assert.match(dependabot, /interval: monthly/);
+    assert.match(dependabot, /timezone: Europe\/Stockholm/);
+    assert.match(dependabot, /open-pull-requests-limit: 3/);
+    assert.match(dependabot, /production-minor-patch:/);
+    assert.match(dependabot, /dependency-type: production/);
   });
 });

@@ -1,0 +1,38 @@
+name: Support question
+description: Ask about CLI usage, MCP setup, audit artifacts, or adapter behavior.
+title: "[Question]: "
+body:
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: What are you trying to audit, configure, or understand?
+    validations:
+      required: true
+
+  - type: textarea
+    id: command
+    attributes:
+      label: Command or MCP Configuration
+      description: Share the smallest relevant command or sanitized MCP configuration.
+      render: shell
+
+  - type: textarea
+    id: repo-shape
+    attributes:
+      label: Repository Shape
+      description: Relevant languages, package managers, frameworks, and test frameworks.
+
+  - type: textarea
+    id: output
+    attributes:
+      label: Sanitized Output
+      description: Include only the minimal output needed to explain the question.
+
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Sensitive Data Check
+      options:
+        - label: I removed credentials, private source, proprietary artifacts, prompts, environment values, and machine-local paths.
+          required: true
