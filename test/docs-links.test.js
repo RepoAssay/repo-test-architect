@@ -201,12 +201,24 @@ describe("docs links", () => {
 
   it("documents near-term milestones before claiming broader adapter support", () => {
     const readme = fs.readFileSync("README.md", "utf8");
+    const hardeningPlan = fs.readFileSync("docs/adapter-hardening-plan.md", "utf8");
     const roadmap = fs.readFileSync("docs/near-term-roadmap.md", "utf8");
     const status = fs.readFileSync("docs/status.md", "utf8");
 
     assert.ok(readme.includes("[Near-term roadmap](docs/near-term-roadmap.md)"));
+    assert.ok(readme.includes("[Adapter hardening plan](docs/adapter-hardening-plan.md)"));
+    assert.ok(hardeningPlan.includes("Quality Scorecard"));
+    assert.ok(hardeningPlan.includes("Workstream 1: Shared Conformance"));
+    assert.ok(hardeningPlan.includes("JavaScript And TypeScript"));
+    assert.ok(hardeningPlan.includes("Python"));
+    assert.ok(hardeningPlan.includes("Kotlin And JVM"));
+    assert.ok(hardeningPlan.includes("Swift"));
+    assert.ok(hardeningPlan.includes("Slice And Pull-Request Routine"));
+    assert.ok(hardeningPlan.includes("Definition Of Done"));
+    assert.ok(hardeningPlan.includes("Native test generation"));
     assert.ok(roadmap.includes("Alpha Readiness"));
-    assert.ok(roadmap.includes("repository is public and the npm/MCP distribution is a release candidate"));
+    assert.ok(roadmap.includes("repository is public, `repo-test-architect@0.1.1` is available through npm"));
+    assert.ok(roadmap.includes("[Adapter Hardening Plan](adapter-hardening-plan.md)"));
     assert.ok(roadmap.includes("Milestone 1: Alpha Test Architecture Audit"));
     assert.ok(roadmap.includes("one concise repo-level summary can show top findings with evidence"));
     assert.ok(roadmap.includes("Milestone 2: Public Demo Polish"));

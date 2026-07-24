@@ -2,11 +2,11 @@
 
 This roadmap tracks the next practical milestones before Repo Test Architect should claim broader adapter support or native test generation.
 
-The first product milestone is a credible public alpha for local test architecture audit. See [Alpha Readiness](alpha-readiness.md) for the acceptance gates.
+The first public alpha is shipped. The active phase is to deepen the four supported adapters through the measurable [Adapter Hardening Plan](adapter-hardening-plan.md). See [Alpha Readiness](alpha-readiness.md) for the standing product acceptance gates.
 
 ## Current Baseline
 
-The repository is public and the npm/MCP distribution is a release candidate.
+The repository is public, `repo-test-architect@0.1.1` is available through npm, and `io.github.RepoAssay/repo-test-architect@0.1.1` is active in the Official MCP Registry.
 
 The useful baseline is:
 
@@ -67,7 +67,7 @@ Markdown and JSON remain the supported formats until each additional renderer ha
 
 Goal: prove the adapter contract keeps holding as additional ecosystems move from detection-only to audited fixtures.
 
-Status: Swift, Python, and bounded Kotlin/JVM modules reached supported private-alpha maturity.
+Status: Swift, Python, and bounded Kotlin/JVM modules reached supported alpha maturity. New adapter expansion is paused while JavaScript/TypeScript, Python, Swift, and Kotlin/JVM complete the corpus, conformance, ecosystem, and cross-adapter work in the [Adapter Hardening Plan](adapter-hardening-plan.md).
 
 Useful hardening targets:
 

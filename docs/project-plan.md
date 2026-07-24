@@ -34,14 +34,15 @@ Models can explain, prioritize, or generate from this graph, but the graph is th
 
 ## Near-Term Milestones
 
-1. Strengthen JavaScript/TypeScript repo profiling.
-2. Add fixtures for common repository shapes.
-3. Lock behavior with regression tests.
-4. Add JSON audit output.
-5. Improve scoring and skip rationale.
-6. Add selected test-plan generation from the audit graph.
-7. Add native test generation only after audit behavior is trustworthy.
-8. Prepare public MCP distribution: GitHub repo, npm package, install snippets, fixture demos, and directory submissions.
+The first public npm and MCP Registry distribution is complete. The active milestone is [adapter hardening](adapter-hardening-plan.md):
+
+1. Add a shared validation corpus, scorecard, and adapter-conformance helper.
+2. Harden JavaScript/TypeScript workspace ownership, command selection, configuration boundaries, evidence, and performance.
+3. Harden Python package ownership, imports, pytest discovery, framework boundaries, and command selection.
+4. Harden bounded Kotlin/JVM Gradle/Maven ownership, dependency visibility, supported test-framework evidence, and unsupported-graph blockers.
+5. Harden SwiftPM, Xcode, and Bazel ownership plus conservative Swift symbol evidence.
+6. Run a cross-adapter trust pass across polyglot ownership, artifact semantics, model consistency, placement, and measured performance.
+7. Reconsider another adapter or native generation only after the four supported adapters meet the hardening definition of done.
 
 ## General Backlog
 

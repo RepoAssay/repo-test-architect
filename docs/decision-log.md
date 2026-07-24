@@ -44,6 +44,14 @@ Planning assumption: approximately 70-80% of the product architecture should rem
 
 Revisit when: a supported non-JavaScript adapter demonstrates that shared semantics prevent accurate ecosystem-specific evidence, or measured implementation effort differs materially from the planning assumption.
 
+## Harden Supported Adapters Before Adding Ecosystems
+
+Decision: after the first public alpha, prioritize deeper validation and conservative evidence for JavaScript/TypeScript, Python, Swift, and bounded Kotlin/JVM before adding another language adapter.
+
+Rationale: the current four adapters cover a broad share of likely repositories. Improving project ownership, command accuracy, source-to-test evidence, blocker behavior, real-repository validation, and performance now creates more user trust than adding a shallow fifth adapter. The [Adapter Hardening Plan](adapter-hardening-plan.md) defines the corpus, scorecard, bounded slices, and pull-request routine.
+
+Revisit when: all four adapters meet the hardening definition of done, or repeated user demand identifies an unsupported ecosystem whose value clearly exceeds the remaining trust work.
+
 ## Local Stdio MCP First
 
 Decision: start with local stdio MCP distribution rather than hosted remote MCP.
