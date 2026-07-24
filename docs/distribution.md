@@ -16,10 +16,16 @@ Remote hosting and an MCPB bundle are not part of the first release.
 ## Locked Identity
 
 - npm package: `repo-test-architect`
-- MCP Registry server: `io.github.m-stenbe/repo-test-architect`
-- GitHub repository: `https://github.com/m-stenbe/repo-test-architect`
+- MCP Registry server: `io.github.auditquest/repo-test-architect`
+- GitHub repository: `https://github.com/auditquest/repo-test-architect`
 
 The repository and package remain private/unpublished until the separate public-release approval.
+
+## Repository Protection
+
+The private GitHub repository uses `master` as its protected default branch. Changes, including administrator changes, must arrive through pull requests. Linear history and resolved review conversations are required, while force pushes and branch deletion are disabled.
+
+Required GitHub Actions checks are intentionally deferred while development volume is high and Actions quota is constrained. `npm run release:check` remains the authoritative gate before merging release-oriented changes.
 
 ## Local Gates
 
