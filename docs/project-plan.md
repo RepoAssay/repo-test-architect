@@ -68,6 +68,7 @@ Early non-JavaScript adapter fixtures:
 
 - `kotlin-junit-basic`
 - `kotlin-multiplatform-jvm`
+- `kotlin-multiplatform-module-graph`
 - `kotlin-multiplatform-named-jvm`
 
 Later adapter fixtures:

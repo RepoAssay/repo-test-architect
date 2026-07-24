@@ -1,0 +1,75 @@
+{
+  "schemaVersion": "model-consistency-scenario/v1",
+  "id": "kotlin-multiplatform-module-graph-plan",
+  "description": "Different model profiles should preserve settings-owned KMP module ownership, qualified target tasks, and source-set-aware cross-module evidence.",
+  "sourceArtifact": {
+    "path": "evals/expected/kotlin-multiplatform-module-graph.audit.json",
+    "schemaVersion": "audit/v1"
+  },
+  "toolCall": {
+    "toolName": "generate_test_plan",
+    "arguments": {}
+  },
+  "lockedFields": [
+    {
+      "path": "summary.verificationCommand",
+      "expected": "./gradlew :token-core:jvmTest :token-tests:desktopTest",
+      "reason": "Every supported KMP child contributes its module-qualified JVM target test task."
+    },
+    {
+      "path": "summary.confidence",
+      "expected": "high",
+      "reason": "The settings-owned all-KMP aggregate and its direct source-set dependency are inside the bounded slice."
+    },
+    {
+      "path": "summary.addTestCount",
+      "expected": 1,
+      "reason": "The untested common formatter remains the only add-test item."
+    },
+    {
+      "path": "summary.extendTestCount",
+      "expected": 2,
+      "reason": "Common and JVM-specific dependency sources both retain extend-test recommendations."
+    },
+    {
+      "path": "items[0].id",
+      "expected": "extend-test:token-core/src/jvmMain/java/com/example/token/JvmTokenValidator.java",
+      "reason": "The dependency module's JVM validator keeps its stable target identity."
+    },
+    {
+      "path": "items[0].existingTestEvidence[0].testPath",
+      "expected": "token-tests/src/desktopTest/kotlin/com/example/token/JvmTokenValidatorTest.kt",
+      "reason": "The dependent module's named JVM test source set supplies target-specific evidence."
+    },
+    {
+      "path": "items[0].existingTestEvidence[0].usage",
+      "expected": "asserted",
+      "reason": "The JVM validator result is consumed by a kotlin.test assertion."
+    },
+    {
+      "path": "items[1].id",
+      "expected": "add-test:token-core/src/commonMain/kotlin/com/example/token/TokenFormatter.kt",
+      "reason": "The uncovered dependency-module formatter remains an add-test item."
+    },
+    {
+      "path": "items[2].id",
+      "expected": "extend-test:token-core/src/commonMain/kotlin/com/example/token/TokenParser.kt",
+      "reason": "The common parser is covered through the dependent module's commonTest source set."
+    },
+    {
+      "path": "items[2].existingTestEvidence[0].testPath",
+      "expected": "token-tests/src/commonTest/kotlin/com/example/token/TokenParserTest.kt",
+      "reason": "Common cross-module evidence must preserve its commonTest owner."
+    }
+  ],
+  "allowedVariations": [
+    "summary wording",
+    "plan item explanation wording",
+    "optional detail depth"
+  ],
+  "unexpectedVariations": [
+    "generic or unqualified test tasks",
+    "cross-module evidence without a source-set-visible project dependency",
+    "loss of KMP child-module ownership"
+  ]
+}

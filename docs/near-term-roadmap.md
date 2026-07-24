@@ -70,11 +70,11 @@ Status: Swift, Python, and bounded Kotlin/JVM modules reached supported private-
 
 Useful hardening targets:
 
-- Kotlin/JVM with Gradle/Maven, bounded single-module Kotlin Multiplatform default and literal named-JVM slices, JUnit variants, bounded Kotest common specs, conventional Spock features, and method-level TestNG
+- Kotlin/JVM with Gradle/Maven, bounded single-module and settings-owned all-KMP literal-JVM-target graphs, JUnit variants, bounded Kotest common specs, conventional Spock features, and method-level TestNG
 - Swift Package Manager with XCTest, Swift Testing, Quick/Nimble, and SnapshotTesting signals
 - Python fixture reachability, async/parametrized/property-based pytest conventions, Django/Flask routes, tox/nox commands, coverage configuration, and no-tests-yet blocker behavior
 
-Python's supported boundary and known exclusions are tracked in [Python Alpha Support](python-alpha-support.md). Kotlin/JVM's conventional Gradle/Maven, directly declared aggregate, exported-transitive dependency, single-module KMP literal-JVM-target source-set ownership, JUnit, bounded Kotest common-spec, conventional Spock feature, and method-level TestNG boundary is tracked in [Kotlin/JVM Alpha Support](kotlin-jvm-alpha-support.md); computed/nested Maven reactors, inherited/dynamic dependencies, custom/composite Gradle graphs, Android, broader KMP shapes, and additional Kotest/Spock/TestNG semantics remain post-promotion pressure.
+Python's supported boundary and known exclusions are tracked in [Python Alpha Support](python-alpha-support.md). Kotlin/JVM's conventional Gradle/Maven, directly declared aggregate, exported-transitive dependency, single-module and settings-owned all-KMP literal-JVM-target source-set ownership, JUnit, bounded Kotest common-spec, conventional Spock feature, and method-level TestNG boundary is tracked in [Kotlin/JVM Alpha Support](kotlin-jvm-alpha-support.md); computed/nested Maven reactors, inherited/dynamic dependencies, custom/composite or mixed KMP Gradle graphs, Android, broader KMP shapes, and additional Kotest/Spock/TestNG semantics remain post-promotion pressure.
 
 ### Adapter Reuse Boundary
 
