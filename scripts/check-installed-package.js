@@ -34,6 +34,12 @@ export function runInstalledPackageCheck() {
   assertEqual(cliArtifact.schemaVersion, "adapter-registry/v1", "installed CLI adapter registry schema version");
   assertTrue(cliArtifact.adapters.some((adapter) => adapter.id === "javascript"), "installed CLI should list javascript");
 
+  const doctorOutput = execInstalledBin(binDir, "repo-test-architect", ["doctor", ".", "--format", "json"]);
+  const doctorArtifact = JSON.parse(doctorOutput);
+
+  assertEqual(doctorArtifact.schemaVersion, "doctor-report/v1", "installed CLI doctor report schema version");
+  assertEqual(doctorArtifact.diagnostics.externalReporting, false, "installed CLI doctor external reporting");
+
   const invokeOutput = execInstalledBin(binDir, "repo-test-architect-mcp-invoke", ["tools"]);
   const invokeArtifact = JSON.parse(invokeOutput);
 

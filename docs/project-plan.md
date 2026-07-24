@@ -322,3 +322,7 @@ Coverage reporting should avoid claims like "X% correct." A safer first report i
 - qualitative confidence distribution from adapter evidence
 
 Repository telemetry should be opt-in only. Hosted or product analytics must avoid source content and should default to aggregate metadata only.
+
+The first operational diagnostics slice is local-only and disabled by default. It adds allowlisted `diagnostic-event/v1` MCP call metadata, bounded file storage, `doctor-report/v1`, sanitized `diagnostic-bundle/v1`, and report IDs for unexpected internal errors. It does not add product analytics or any network reporter.
+
+Any future external reporting must remain independently opt-in, show the exact outgoing payload before transmission, and document endpoint, retention, deletion, and ownership.

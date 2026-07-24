@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { describe, it } from "node:test";
 import { getAdapter, getAdapterRegistry } from "../src/core/adapter-registry.js";
@@ -22,6 +23,11 @@ import { createTestPlacementFindings } from "../src/core/test-placement-findings
 import { collectProjectStats } from "../src/core/project-stats.js";
 import { collectModelConsistencyStats } from "../src/core/model-consistency-stats.js";
 import { createPlanExecutionHints } from "../src/core/plan-execution-hints.js";
+import {
+  createDiagnosticBundle,
+  createDiagnosticEvent,
+  createDoctorReport
+} from "../src/diagnostics/diagnostics.js";
 import { loadEvalFixtures } from "./support/eval-fixtures.js";
 import { assertMatchesSchema } from "./support/json-schema-validator.js";
 
@@ -46,6 +52,9 @@ const modelConsistencyScenarioSchema = readJson("schemas/model-consistency-scena
 const modelConsistencySummarySchema = readJson("schemas/model-consistency-summary-v1.schema.json");
 const modelConsistencyComparisonSchema = readJson("schemas/model-consistency-comparison-v1.schema.json");
 const modelConsistencyStatsSchema = readJson("schemas/model-consistency-stats-v1.schema.json");
+const diagnosticEventSchema = readJson("schemas/diagnostic-event-v1.schema.json");
+const doctorReportSchema = readJson("schemas/doctor-report-v1.schema.json");
+const diagnosticBundleSchema = readJson("schemas/diagnostic-bundle-v1.schema.json");
 const fixtures = loadEvalFixtures();
 
 describe("artifact schema compatibility", () => {
@@ -94,6 +103,33 @@ describe("deferred generation artifact schema compatibility", () => {
     };
 
     assertMatchesSchema(artifact, generationDeferredSchema, "generation-deferred.json");
+  });
+});
+
+describe("diagnostic artifact schema compatibility", () => {
+  it("validates diagnostic-event/v1, doctor-report/v1, and diagnostic-bundle/v1", () => {
+    const now = () => new Date("2026-07-24T12:00:00.000Z");
+    const event = createDiagnosticEvent({
+      toolName: "audit_repo",
+      status: "success",
+      durationMs: 4
+    }, {
+      now,
+      createId: () => "00000000-0000-4000-8000-000000000001"
+    });
+    const doctor = createDoctorReport(process.cwd(), {
+      now,
+      fsAccess() {},
+      runGit: () => "true\n"
+    });
+    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-schema-"));
+    const filePath = path.join(tempRoot, "diagnostics.jsonl");
+    fs.writeFileSync(filePath, `${JSON.stringify(event)}\n`);
+    const bundle = createDiagnosticBundle(filePath, { now });
+
+    assertMatchesSchema(event, diagnosticEventSchema, "diagnostic-event.json");
+    assertMatchesSchema(doctor, doctorReportSchema, "doctor-report.json");
+    assertMatchesSchema(bundle, diagnosticBundleSchema, "diagnostic-bundle.json");
   });
 });
 

@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://repo-test-architect.dev/schemas/diagnostic-bundle-v1.schema.json",
+  "title": "Repo Test Architect Diagnostic Bundle",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "generatedAt", "source", "summary", "privacy", "events"],
+  "properties": {
+    "schemaVersion": { "const": "diagnostic-bundle/v1" },
+    "generatedAt": { "type": "string" },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "eventLimit", "truncated"],
+      "properties": {
+        "kind": { "const": "local-jsonl" },
+        "eventLimit": { "type": "integer", "minimum": 1 },
+        "truncated": { "type": "boolean" }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["eventCount", "successCount", "errorCount", "internalErrorCount", "invalidLineCount"],
+      "properties": {
+        "eventCount": { "type": "integer", "minimum": 0 },
+        "successCount": { "type": "integer", "minimum": 0 },
+        "errorCount": { "type": "integer", "minimum": 0 },
+        "internalErrorCount": { "type": "integer", "minimum": 0 },
+        "invalidLineCount": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "privacy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["containsToolArguments", "containsRepositoryPaths", "containsSourceContent", "externalReporting"],
+      "properties": {
+        "containsToolArguments": { "const": false },
+        "containsRepositoryPaths": { "const": false },
+        "containsSourceContent": { "const": false },
+        "externalReporting": { "const": false }
+      }
+    },
+    "events": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/diagnosticEvent" }
+    }
+  },
+  "$defs": {
+    "diagnosticEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "timestamp",
+        "eventId",
+        "eventType",
+        "serverVersion",
+        "toolName",
+        "status",
+        "durationMs"
+      ],
+      "properties": {
+        "schemaVersion": { "const": "diagnostic-event/v1" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "eventId": { "type": "string", "pattern": "^event-[0-9a-f-]{36}$" },
+        "eventType": { "const": "mcp-tool-call" },
+        "serverVersion": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+(?:-[a-z0-9.-]+)?$" },
+        "toolName": { "type": "string", "pattern": "^[a-z][a-z0-9_-]{0,63}$" },
+        "status": { "enum": ["success", "error"] },
+        "durationMs": { "type": "integer", "minimum": 0 },
+        "errorKind": {
+          "enum": [
+            "internal-error",
+            "invalid-arguments",
+            "missing-required-argument",
+            "unknown-tool",
+            "unsupported-argument"
+          ]
+        },
+        "reportId": { "type": "string", "pattern": "^report-[0-9a-f-]{36}$" },
+        "errorFingerprint": { "type": "string", "pattern": "^sha256:[0-9a-f]{16}$" }
+      }
+    }
+  }
+}

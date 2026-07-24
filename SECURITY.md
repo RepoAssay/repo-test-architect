@@ -11,6 +11,8 @@ The audit tools read repository files, package metadata, test files, and eventua
 - Remote or hosted features should be limited to evals, policy packs, aggregate reporting, or model-consistency comparisons.
 - Any future remote feature must separate local repository access from hosted reporting or evaluation features.
 - Telemetry must be opt-in and avoid source content by default.
+- Local MCP diagnostics are disabled by default, use an allowlist that excludes arguments, source, repository paths, prompts, stack traces, credentials, and environment values, and never enable external reporting.
+- Unexpected MCP exceptions must return a safe report ID instead of raw exception text.
 
 ## Reporting a Vulnerability
 

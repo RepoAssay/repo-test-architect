@@ -193,7 +193,9 @@ export const mcpToolNames = mcpTools.map((tool) => tool.name);
 export function callTool(name, args = {}) {
   const tool = mcpTools.find((candidate) => candidate.name === name);
   if (!tool) {
-    throw new McpToolError("unknown-tool", `Unknown MCP tool: ${name}`, { toolName: name });
+    throw new McpToolError("unknown-tool", "Unknown MCP tool.", {
+      toolName: isSafeToolName(name) ? name : "invalid-tool-name"
+    });
   }
 
   validateToolArgs(tool, args);
@@ -260,6 +262,10 @@ export function callTool(name, args = {}) {
 
     throw error;
   }
+}
+
+function isSafeToolName(value) {
+  return typeof value === "string" && /^[a-z][a-z0-9_]{0,63}$/.test(value);
 }
 
 function objectSchema(properties, required) {

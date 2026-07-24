@@ -83,4 +83,40 @@ describe("MCP SDK stdio server", () => {
     assert.equal(response.error.data.toolName, "audit_repo");
     assert.equal(response.error.data.argument, "changedPaths");
   });
+
+  it("emits opt-in allowlisted diagnostics to stderr while keeping stdout as JSON-RPC", () => {
+    const request = {
+      jsonrpc: "2.0",
+      id: 5,
+      method: "tools/call",
+      params: {
+        name: "audit_repo",
+        arguments: {
+          repoRoot: "secret/repository/path",
+          changedPaths: [""],
+          source: "proprietary source"
+        }
+      }
+    };
+    const result = spawnSync(process.execPath, [stdioPath], {
+      input: `${JSON.stringify(request)}\n`,
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        REPO_TEST_ARCHITECT_DIAGNOSTICS: "stderr"
+      }
+    });
+
+    assert.equal(result.status, 0);
+    const response = JSON.parse(result.stdout.trim());
+    const event = JSON.parse(result.stderr.trim());
+
+    assert.equal(response.id, 5);
+    assert.equal(response.error.data.kind, "unsupported-argument");
+    assert.equal(event.schemaVersion, "diagnostic-event/v1");
+    assert.equal(event.toolName, "audit_repo");
+    assert.equal(event.status, "error");
+    assert.equal(event.errorKind, "unsupported-argument");
+    assert.doesNotMatch(result.stderr, /secret\/repository|proprietary|changedPaths/);
+  });
 });

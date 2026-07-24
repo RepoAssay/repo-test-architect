@@ -14,6 +14,7 @@ The current implementation can:
 - derive provider-neutral execution, context, parallel-safety, and repository-reasoning hints without selecting models or spawning subagents
 - analyze conservative test placement findings across project boundaries
 - collect project-level stats for coverage, candidate counts, frameworks, commands, and adapter usage
+- provide disabled-by-default local MCP diagnostics, safe internal-error report IDs, runtime checks, and inspectable sanitized bundles without external reporting
 - expose the same deterministic behavior through CLI commands, a local invoke harness, and a stdio MCP SDK server
 - lock behavior with golden snapshots, model-consistency scenarios, package checks, and cross-OS CI
 
@@ -33,6 +34,20 @@ Project detection also reports unsupported Ruby, PHP, Elixir, Go, Rust, and .NET
 The package remains private while public repository metadata and publish targets are finalized.
 
 ## Working CLI
+
+Check runtime and diagnostics readiness:
+
+```powershell
+npm run doctor
+npm run doctor:json
+```
+
+Local MCP diagnostics are disabled by default. They can be explicitly directed to stderr or a bounded local JSONL file; see [Local diagnostics](docs/diagnostics.md). Build a sanitized, inspectable bundle with:
+
+```powershell
+npm run diagnostic-bundle -- --diagnostics-file ./.repo-test-architect/diagnostics.jsonl --format json
+node ./src/cli/index.js diagnostic-bundle --diagnostics-file ./.repo-test-architect/diagnostics.jsonl --format json
+```
 
 List registered adapters:
 
@@ -254,6 +269,8 @@ src/
     plan-execution-hints.ts
     report.js
     report.ts
+  diagnostics/
+    diagnostics.js
   adapters/
     javascript/
       audit.js
@@ -331,5 +348,6 @@ Important runtime surfaces:
 - [MCP tool surface](docs/mcp-tools.md)
 - [MCP client config](docs/mcp-client-config.md)
 - [MCP deployment](docs/mcp-deployment.md)
+- [Local diagnostics](docs/diagnostics.md)
 - [Agent install paths](docs/agent-install-paths.md)
 - [Release checklist](docs/release-checklist.md)

@@ -9,6 +9,7 @@ $required = @(
   "src/mcp/json-rpc.js",
   "src/mcp/responses.js",
   "src/mcp/stdio.js",
+  "src/diagnostics/diagnostics.js",
   "src/adapters/javascript/audit.js",
   "src/adapters/javascript/audit.ts",
   "src/core/audit-model.ts",

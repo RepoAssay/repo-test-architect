@@ -14,6 +14,7 @@ The useful baseline is:
 - supported Swift, Python, and bounded Kotlin/JVM adapters
 - polyglot project detection with unsupported-project reporting
 - project-level ranking, planning, provider-neutral execution hints, placement, stats, and local MCP tool calls
+- disabled-by-default local MCP diagnostics, safe internal-error report IDs, runtime checks, and inspectable sanitized bundles
 - model-consistency scenarios for stable audit and plan outputs
 - release gate through `npm run release:check`
 - native test generation intentionally deferred

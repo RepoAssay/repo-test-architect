@@ -44,6 +44,24 @@ describe("schema files", () => {
     assert.ok(schema.properties.items.items.required.includes("requiresRepositoryReasoning"));
   });
 
+  it("documents local diagnostic artifacts", () => {
+    const eventSchema = readSchema("schemas/diagnostic-event-v1.schema.json");
+    const doctorSchema = readSchema("schemas/doctor-report-v1.schema.json");
+    const bundleSchema = readSchema("schemas/diagnostic-bundle-v1.schema.json");
+
+    assert.equal(eventSchema.properties.schemaVersion.const, "diagnostic-event/v1");
+    assert.equal(eventSchema.properties.eventType.const, "mcp-tool-call");
+    assert.ok(eventSchema.required.includes("toolName"));
+    assert.ok(eventSchema.required.includes("durationMs"));
+    assert.equal(doctorSchema.properties.schemaVersion.const, "doctor-report/v1");
+    assert.equal(doctorSchema.properties.diagnostics.properties.externalReporting.const, false);
+    assert.equal(bundleSchema.properties.schemaVersion.const, "diagnostic-bundle/v1");
+    assert.equal(bundleSchema.properties.privacy.properties.containsToolArguments.const, false);
+    assert.equal(bundleSchema.properties.privacy.properties.containsRepositoryPaths.const, false);
+    assert.equal(bundleSchema.properties.privacy.properties.containsSourceContent.const, false);
+    assert.equal(bundleSchema.properties.privacy.properties.externalReporting.const, false);
+  });
+
   it("documents target-explanation/v1", () => {
     const schema = readSchema("schemas/target-explanation-v1.schema.json");
 

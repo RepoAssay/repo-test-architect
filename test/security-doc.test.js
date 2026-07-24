@@ -10,11 +10,14 @@ describe("security docs", () => {
     assert.match(security, /local-first/i);
     assert.match(security, /Raw private repository upload is not required/);
     assert.match(security, /Telemetry must be opt-in and avoid source content by default/);
+    assert.match(security, /Local MCP diagnostics are disabled by default/);
+    assert.match(security, /Unexpected MCP exceptions must return a safe report ID/);
     assert.match(security, /unexpected network access or source upload/);
     assert.match(security, /MCP tool behavior that grants broader file, command, or write access than documented/);
     assert.match(security, /package contents that include private, generated, or unintended files/);
     assert.match(security, /Do not include:/);
     assert.match(security, /npm run release:check/);
     assert.match(readme, /\[Security policy\]\(SECURITY\.md\)/);
+    assert.match(readme, /\[Local diagnostics\]\(docs\/diagnostics\.md\)/);
   });
 });

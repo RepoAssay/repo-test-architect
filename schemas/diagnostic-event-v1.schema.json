@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://repo-test-architect.dev/schemas/diagnostic-event-v1.schema.json",
+  "title": "Repo Test Architect Diagnostic Event",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "timestamp",
+    "eventId",
+    "eventType",
+    "serverVersion",
+    "toolName",
+    "status",
+    "durationMs"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "diagnostic-event/v1" },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "eventId": { "type": "string", "pattern": "^event-[0-9a-f-]{36}$" },
+    "eventType": { "const": "mcp-tool-call" },
+    "serverVersion": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+(?:-[a-z0-9.-]+)?$" },
+    "toolName": { "type": "string", "pattern": "^[a-z][a-z0-9_-]{0,63}$" },
+    "status": { "enum": ["success", "error"] },
+    "durationMs": { "type": "integer", "minimum": 0 },
+    "errorKind": {
+      "enum": [
+        "internal-error",
+        "invalid-arguments",
+        "missing-required-argument",
+        "unknown-tool",
+        "unsupported-argument"
+      ]
+    },
+    "reportId": { "type": "string", "pattern": "^report-[0-9a-f-]{36}$" },
+    "errorFingerprint": { "type": "string", "pattern": "^sha256:[0-9a-f]{16}$" }
+  }
+}

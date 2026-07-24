@@ -14,6 +14,8 @@ Use a discussion thread or issue for usage questions about:
 
 Keep examples minimal and avoid private source content.
 
+For MCP runtime failures, run `npm run doctor` first. If local file diagnostics were explicitly enabled, generate a sanitized bundle with `diagnostic-bundle` and inspect it before sharing. Never attach the raw repository, environment, credentials, or proprietary tool arguments.
+
 ## Bugs
 
 Use the bug report issue form for incorrect behavior in:

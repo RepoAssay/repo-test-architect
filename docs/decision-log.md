@@ -117,3 +117,11 @@ Decision: derive stats from local artifacts before considering external telemetr
 Rationale: stats are useful for audit coverage, fixture quality, model-consistency drift, and later repair-loop trends, but repository source and proprietary artifacts should not leave the local environment by default.
 
 Revisit when: opt-in telemetry has clear source-content exclusions, aggregate-only defaults, and documented retention boundaries.
+
+## Local Diagnostics Without Automatic Reporting
+
+Decision: keep MCP operational diagnostics disabled by default and local-only. When explicitly enabled, record only allowlisted tool name, status, duration, stable error kind, server version, event ID, timestamp, internal-error report ID, and a truncated SHA-256 fingerprint for grouping repeated internal errors. Exclude tool arguments, repository paths, source content, prompts, stack traces, credentials, environment values, model usage, and subagent activity.
+
+Rationale: operators need enough evidence to correlate failures and latency without turning a local repository tool into an undeclared analytics or source-exfiltration surface. Stderr and bounded local JSONL preserve stdio protocol integrity and give users control of the diagnostic record. Sanitized bundles are rebuilt from the allowlist and remain inspectable before sharing.
+
+Revisit when: a real alpha support loop demonstrates that opt-in external reporting is necessary and can provide an exact payload preview plus documented endpoint, retention, deletion, and ownership.
