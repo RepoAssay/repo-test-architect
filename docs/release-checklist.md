@@ -4,26 +4,26 @@ This project is not ready to publish yet. Keep `private: true` in `package.json`
 
 ## Package Readiness
 
-- choose the final package name and confirm it is available on npm
-- decide package scope, for example unscoped `repo-test-architect` or scoped `@owner/repo-test-architect`
+- keep the approved unscoped npm identity `repo-test-architect`
+- keep the approved MCP Registry identity `io.github.m-stenbe/repo-test-architect`
+- re-confirm the npm package name is available immediately before publishing
 - keep these binary names stable:
   - `repo-test-architect`
   - `repo-test-architect-mcp`
   - `repo-test-architect-mcp-invoke`
 - review the existing `files` allowlist before publishing
-- add the intended npm package name to MCP client config examples
+- keep the intended npm package name and `mcp` launch command in MCP client config examples
 - verify `npm run pack:dry-run` includes only intended files
 - keep `npm run pack:check` passing so package contents stay inside the intended allowlist
 - keep `npm run mcp:smoke` passing so the stdio MCP flow keeps booting
 - keep `npm run bin:check` passing so packaged CLI and MCP entry points keep booting
 - keep `npm run installed-package:check` passing so the packed tarball installs and exposes working binaries
+- keep `npm run distribution:check` passing during private preparation
+- require `npm run distribution:check:publish` to pass before any public publication
 - keep `npm run release:check` passing before tagging or publishing
 - keep GitHub Actions CI green for the release-readiness workflow on Ubuntu, macOS, and Windows
-- add package metadata before publishing:
-  - `repository`
-  - `homepage`
-  - `bugs`
-  - final `keywords`
+- keep repository, homepage, bugs, MCP identity, and keywords aligned with `server.json`
+- validate `server.json` with the official `mcp-publisher`
 - keep the package manifest license aligned with `LICENSE` and verify the copyright owner before publishing
 
 ## Public Docs
@@ -49,6 +49,8 @@ npm run pack:dry-run
 npm run pack:check
 npm run bin:check
 npm run installed-package:check
+npm run distribution:check
+npm run distribution:check:publish
 npm run release:check
 ```
 

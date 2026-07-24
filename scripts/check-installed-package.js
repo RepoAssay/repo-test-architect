@@ -42,18 +42,30 @@ export function runInstalledPackageCheck() {
 
   const invokeOutput = execInstalledBin(binDir, "repo-test-architect-mcp-invoke", ["tools"]);
   const invokeArtifact = JSON.parse(invokeOutput);
+  const invokedAuditTool = invokeArtifact.tools.find((tool) => tool.name === "audit_repo");
 
-  assertTrue(invokeArtifact.tools.some((tool) => tool.name === "audit_repo"), "installed MCP invoke should list audit_repo");
+  assertTrue(invokedAuditTool, "installed MCP invoke should list audit_repo");
+  assertEqual(invokedAuditTool.title, "Audit Repository", "installed MCP invoke audit_repo title");
+  assertReadOnlyAnnotations(invokedAuditTool.annotations, "installed MCP invoke audit_repo");
 
   const stdioRequest = `${JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" })}\n`;
   const stdioOutput = execInstalledBin(binDir, "repo-test-architect-mcp", [], { input: stdioRequest });
   const stdioResponse = JSON.parse(stdioOutput.trim());
+  const stdioAuditTool = stdioResponse.result?.tools?.find((tool) => tool.name === "audit_repo");
 
   assertEqual(stdioResponse.id, 1, "installed MCP stdio response id");
-  assertTrue(
-    stdioResponse.result?.tools?.some((tool) => tool.name === "audit_repo"),
-    "installed MCP stdio should list audit_repo"
-  );
+  assertTrue(stdioAuditTool, "installed MCP stdio should list audit_repo");
+  assertEqual(stdioAuditTool.title, "Audit Repository", "installed MCP stdio audit_repo title");
+  assertReadOnlyAnnotations(stdioAuditTool.annotations, "installed MCP stdio audit_repo");
+
+  const defaultBinOutput = execInstalledBin(binDir, "repo-test-architect", ["mcp"], { input: stdioRequest });
+  const defaultBinResponse = JSON.parse(defaultBinOutput.trim());
+  const defaultBinAuditTool = defaultBinResponse.result?.tools?.find((tool) => tool.name === "audit_repo");
+
+  assertEqual(defaultBinResponse.id, 1, "installed default npm binary MCP response id");
+  assertTrue(defaultBinAuditTool, "installed default npm binary MCP command should list audit_repo");
+  assertEqual(defaultBinAuditTool.title, "Audit Repository", "installed default npm binary MCP audit_repo title");
+  assertReadOnlyAnnotations(defaultBinAuditTool.annotations, "installed default npm binary MCP audit_repo");
 
   console.log(`Installed package check passed (${packageJson.name}@${packageJson.version}).`);
 }
@@ -104,6 +116,13 @@ function assertTrue(condition, message) {
   if (!condition) {
     throw new Error(message);
   }
+}
+
+function assertReadOnlyAnnotations(annotations, label) {
+  assertEqual(annotations?.readOnlyHint, true, `${label} readOnlyHint`);
+  assertEqual(annotations?.destructiveHint, false, `${label} destructiveHint`);
+  assertEqual(annotations?.idempotentHint, true, `${label} idempotentHint`);
+  assertEqual(annotations?.openWorldHint, false, `${label} openWorldHint`);
 }
 
 function isMainModule() {

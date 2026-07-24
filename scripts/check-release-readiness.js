@@ -12,7 +12,8 @@ export const releaseChecks = [
   "smoke",
   "pack:check",
   "bin:check",
-  "installed-package:check"
+  "installed-package:check",
+  "distribution:check"
 ];
 
 if (isMainModule()) {

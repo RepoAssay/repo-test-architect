@@ -140,6 +140,7 @@ try {
 
   assert.equal(initialize.id, 1);
   assert.equal(initialize.result.serverInfo.name, "repo-test-architect");
+  assert.equal(initialize.result.serverInfo.version, "0.1.0");
   assert.deepEqual(initialize.result.capabilities.tools, {});
 
   assert.equal(tools.id, 2);

@@ -38,7 +38,7 @@ On Windows, prefer forward slashes in JSON paths or escape backslashes:
 }
 ```
 
-## Future NPM Package
+## NPM Package Identity
 
 After publishing, the intended install flow is:
 
@@ -60,6 +60,25 @@ Then MCP clients can start the installed stdio binary:
 ```
 
 The package should keep this binary stable because client configs will depend on it.
+
+Clients that launch directly through npm can use the registry-aligned package command:
+
+```json
+{
+  "mcpServers": {
+    "repo-test-architect": {
+      "command": "npx",
+      "args": [
+        "--yes",
+        "repo-test-architect",
+        "mcp"
+      ]
+    }
+  }
+}
+```
+
+The fixed `mcp` argument selects the stdio server instead of the package's audit CLI. `server.json` declares the same package argument for registry clients.
 
 ## Smoke Test
 

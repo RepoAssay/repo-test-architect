@@ -3,11 +3,13 @@ $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
 $required = @(
   "package.json",
+  "src/cli/package-entry.js",
   "src/cli/index.js",
   "src/mcp/tool-definitions.js",
   "src/mcp/invoke.js",
   "src/mcp/json-rpc.js",
   "src/mcp/responses.js",
+  "src/mcp/server-info.js",
   "src/mcp/stdio.js",
   "src/diagnostics/diagnostics.js",
   "src/adapters/javascript/audit.js",
@@ -27,6 +29,7 @@ $required = @(
   "scripts/check-pack-contents.js",
   "scripts/check-bin-entrypoints.js",
   "scripts/check-demo-script.js",
+  "scripts/check-distribution-readiness.js",
   "scripts/check-installed-package.js",
   "scripts/check-mcp-stdio-smoke.js",
   "scripts/check-smoke.js",

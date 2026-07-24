@@ -37,6 +37,8 @@ Descriptor schema:
 
 Each tool returns one of the stable artifacts documented in `docs/artifact-contract.md`.
 
+Every descriptor also declares a human-readable `title` and explicit MCP safety hints. The current surface is read-only, non-destructive, repeatable for the same repository state and arguments, and closed-world: tools inspect local repository inputs and compute artifacts without contacting external services. These annotations are client-facing hints; deterministic local controls remain the security boundary.
+
 The model should consume these artifacts directly:
 
 - available language adapters come from `list_adapters`

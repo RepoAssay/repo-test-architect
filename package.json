@@ -2,19 +2,29 @@
   "name": "repo-test-architect",
   "version": "0.1.0",
   "private": true,
+  "mcpName": "io.github.m-stenbe/repo-test-architect",
   "description": "Audit-first test strategy agent for repository-native test planning.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/m-stenbe/repo-test-architect.git"
+  },
+  "homepage": "https://github.com/m-stenbe/repo-test-architect#readme",
+  "bugs": {
+    "url": "https://github.com/m-stenbe/repo-test-architect/issues"
+  },
   "type": "module",
   "engines": {
     "node": ">=20"
   },
   "bin": {
-    "repo-test-architect": "./src/cli/index.js",
+    "repo-test-architect": "./src/cli/package-entry.js",
     "repo-test-architect-mcp": "./src/mcp/stdio.js",
     "repo-test-architect-mcp-invoke": "./src/mcp/invoke.js"
   },
   "files": [
     "SECURITY.md",
     "SUPPORT.md",
+    "server.json",
     "docs/",
     "evals/",
     "examples/",
@@ -108,6 +118,8 @@
     "pack:check": "node ./scripts/check-pack-contents.js",
     "bin:check": "node ./scripts/check-bin-entrypoints.js",
     "installed-package:check": "node ./scripts/check-installed-package.js",
+    "distribution:check": "node ./scripts/check-distribution-readiness.js",
+    "distribution:check:publish": "node ./scripts/check-distribution-readiness.js --publish",
     "alpha:check": "node ./scripts/check-alpha-readiness.js",
     "release:check": "node ./scripts/check-release-readiness.js"
   },
@@ -115,6 +127,7 @@
     "testing",
     "audit",
     "agent",
+    "mcp",
     "strategy"
   ],
   "license": "MIT",

@@ -15,6 +15,8 @@ describe("package contents", () => {
   it("requires the top-level license file", () => {
     assert.ok(allowedTopLevelEntries.has("LICENSE"));
     assert.ok(requiredFiles.includes("LICENSE"));
+    assert.ok(allowedTopLevelEntries.has("server.json"));
+    assert.ok(requiredFiles.includes("server.json"));
   });
 
   it("requires check script dependencies needed by packaged release verification", () => {
@@ -24,6 +26,7 @@ describe("package contents", () => {
     assert.ok(requiredFiles.includes("schemas/diagnostic-bundle-v1.schema.json"));
     assert.ok(requiredFiles.includes("scripts/check-bin-entrypoints.js"));
     assert.ok(requiredFiles.includes("scripts/check-demo-script.js"));
+    assert.ok(requiredFiles.includes("scripts/check-distribution-readiness.js"));
     assert.ok(requiredFiles.includes("scripts/check-installed-package.js"));
     assert.ok(requiredFiles.includes("scripts/check-mcp-stdio-smoke.js"));
     assert.ok(requiredFiles.includes("scripts/check-smoke.js"));
