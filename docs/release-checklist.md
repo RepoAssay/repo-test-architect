@@ -18,6 +18,7 @@ This project is not ready to publish yet. Keep `private: true` in `package.json`
 - keep `npm run mcp:smoke` passing so the stdio MCP flow keeps booting
 - keep `npm run bin:check` passing so packaged CLI and MCP entry points keep booting
 - keep `npm run installed-package:check` passing so the packed tarball installs and exposes working binaries
+- keep `npm run audit:prod` passing so known production dependency advisories block release readiness
 - keep `npm run distribution:check` passing during private preparation
 - require `npm run distribution:check:publish` to pass before any public publication
 - keep `npm run release:check` passing before tagging or publishing
@@ -51,6 +52,7 @@ npm run pack:dry-run
 npm run pack:check
 npm run bin:check
 npm run installed-package:check
+npm run audit:prod
 npm run distribution:check
 npm run distribution:check:publish
 npm run release:check

@@ -114,6 +114,7 @@
     "demo:check": "node ./scripts/check-demo-script.js",
     "test": "node ./scripts/run-tests.js",
     "smoke": "node ./scripts/check-smoke.js",
+    "audit:prod": "npm audit --omit=dev",
     "pack:dry-run": "npm pack --dry-run",
     "pack:check": "node ./scripts/check-pack-contents.js",
     "bin:check": "node ./scripts/check-bin-entrypoints.js",
@@ -133,5 +134,8 @@
   "license": "MIT",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0"
+  },
+  "overrides": {
+    "@hono/node-server": "^2.0.11"
   }
 }
