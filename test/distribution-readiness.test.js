@@ -8,14 +8,14 @@ import { mcpTools } from "../src/mcp/tool-definitions.js";
 const packageJson = JSON.parse(fs.readFileSync("package.json", "utf8"));
 
 describe("distribution readiness", () => {
-  it("passes the reversible preparation gate while publication remains blocked", () => {
+  it("passes the preparation and local publication metadata gates", () => {
     const report = inspectDistributionReadiness();
 
     assert.equal(report.schemaVersion, "distribution-readiness/v1");
     assert.equal(report.preparationReady, true);
-    assert.equal(report.localPublishReady, false);
+    assert.equal(report.localPublishReady, true);
     assert.deepEqual(report.preparationBlockers, []);
-    assert.deepEqual(report.publishBlockers, ["package-public"]);
+    assert.deepEqual(report.publishBlockers, []);
     assert.ok(report.manualPublishChecks.some((entry) => entry.includes("npm")));
     assert.ok(report.manualPublishChecks.some((entry) => entry.includes("public")));
   });
@@ -29,7 +29,7 @@ describe("distribution readiness", () => {
       mcpName: "io.github.repoassay/repo-test-architect",
       repository: {
         type: "git",
-        url: "https://github.com/repoassay/repo-test-architect.git"
+        url: "git+https://github.com/repoassay/repo-test-architect.git"
       },
       homepage: "https://github.com/repoassay/repo-test-architect#readme",
       bugs: {
@@ -77,18 +77,31 @@ describe("distribution readiness", () => {
     assert.deepEqual(report.publishBlockers, []);
   });
 
-  it("exposes a successful preparation command and a failing publish command", () => {
+  it("accepts npm's canonical git+https repository URL", () => {
+    const report = inspectDistributionReadiness({
+      packageJson: {
+        ...packageJson,
+        private: false,
+        repository: {
+          type: "git",
+          url: "git+https://github.com/repoassay/repo-test-architect.git"
+        }
+      }
+    });
+
+    assert.equal(report.localPublishReady, true);
+    assert.deepEqual(report.publishBlockers, []);
+  });
+
+  it("exposes successful preparation and strict publish commands", () => {
     const preparationOutput = execFileSync(process.execPath, ["scripts/check-distribution-readiness.js"], {
       encoding: "utf8"
     });
+    const publishOutput = execFileSync(process.execPath, ["scripts/check-distribution-readiness.js", "--publish"], {
+      encoding: "utf8"
+    });
 
-    assert.match(preparationOutput, /^Distribution preparation check passed \(publish blockers:/);
-    assert.throws(
-      () => execFileSync(process.execPath, ["scripts/check-distribution-readiness.js", "--publish"], {
-        encoding: "utf8",
-        stdio: ["ignore", "pipe", "pipe"]
-      }),
-      (error) => error.status === 1 && /Distribution publish blockers:/.test(error.stderr)
-    );
+    assert.match(preparationOutput, /^Distribution preparation check passed \(local publish metadata ready; manual checks remain\)/);
+    assert.match(publishOutput, /^Distribution preparation check passed \(local publish metadata ready; manual checks remain\)/);
   });
 });

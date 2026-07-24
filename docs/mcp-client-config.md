@@ -38,9 +38,9 @@ On Windows, prefer forward slashes in JSON paths or escape backslashes:
 }
 ```
 
-## NPM Package Identity
+## NPM Package
 
-After publishing, the intended install flow is:
+Install the published package globally:
 
 ```powershell
 npm install -g repo-test-architect
@@ -59,9 +59,9 @@ Then MCP clients can start the installed stdio binary:
 }
 ```
 
-The package should keep this binary stable because client configs will depend on it.
+The package keeps this binary stable because client configs depend on it.
 
-Clients that launch directly through npm can use the registry-aligned package command:
+Clients can instead launch directly through npm without a global install:
 
 ```json
 {

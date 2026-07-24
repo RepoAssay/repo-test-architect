@@ -1,12 +1,13 @@
 # Release Checklist
 
-This project is not ready to publish yet. Keep `private: true` in `package.json` until the checklist below is complete.
+Use this checklist for the first public `0.1.0` release and every later package or MCP Registry version.
 
 ## Package Readiness
 
 - keep the approved unscoped npm identity `repo-test-architect`
 - keep the approved MCP Registry identity `io.github.repoassay/repo-test-architect`
-- re-confirm the npm package name is available immediately before publishing
+- require `private: false` only on commits explicitly approved for public publication
+- re-confirm the npm package name or intended version is available immediately before publishing
 - keep these binary names stable:
   - `repo-test-architect`
   - `repo-test-architect-mcp`
@@ -28,6 +29,8 @@ This project is not ready to publish yet. Keep `private: true` in `package.json`
 - run the manually dispatched three-OS release matrix before public publication
 - validate `server.json` with the official `mcp-publisher`
 - keep the package manifest license aligned with `LICENSE` and verify the copyright owner before publishing
+- verify the public npm package from a clean temporary install before publishing the matching MCP Registry entry
+- query the official MCP Registry for the exact server name and version after publication
 
 ## Public Docs
 
@@ -62,12 +65,15 @@ The repository also keeps `scripts/smoke.ps1` as a manual PowerShell fallback fo
 
 Also verify the installed package entry points from a packed tarball before first public release with `npm run installed-package:check`.
 
+After npm publication, repeat the install and MCP smoke path against the registry package rather than the local tarball.
+
 ## Distribution
 
 First public release should be:
 
-- GitHub repository
-- npm package exposing the CLI and stdio MCP binaries
+- public GitHub repository
+- public npm package exposing the CLI and stdio MCP binaries
+- official MCP Registry metadata for the npm stdio launch
 - local stdio MCP install docs
 - fixture-based examples
 
