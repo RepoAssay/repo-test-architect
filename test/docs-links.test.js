@@ -155,7 +155,9 @@ describe("docs links", () => {
     assert.ok(publicReadiness.includes("verify the copyright owner before publishing"));
     assert.ok(publicReadiness.includes("Avoid presenting native test generation as available"));
     assert.ok(releaseChecklist.includes("approved unscoped npm identity `repo-test-architect`"));
-    assert.ok(releaseChecklist.includes("approved MCP Registry identity `io.github.m-stenbe/repo-test-architect`"));
+    assert.ok(releaseChecklist.includes("approved MCP Registry identity `io.github.auditquest/repo-test-architect`"));
+    assert.ok(releaseChecklist.includes("keep `master` protected with pull requests"));
+    assert.ok(releaseChecklist.includes("local `npm run release:check` authoritative"));
     assert.ok(releaseChecklist.includes("repository, homepage, bugs, MCP identity, and keywords aligned"));
 
     for (const field of ["repository", "homepage", "bugs"]) {

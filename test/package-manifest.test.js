@@ -13,14 +13,14 @@ describe("package manifest", () => {
 
   it("locks the approved npm, MCP, and GitHub identities without enabling publication", () => {
     assert.equal(packageJson.name, "repo-test-architect");
-    assert.equal(packageJson.mcpName, "io.github.m-stenbe/repo-test-architect");
+    assert.equal(packageJson.mcpName, "io.github.auditquest/repo-test-architect");
     assert.deepEqual(packageJson.repository, {
       type: "git",
-      url: "https://github.com/m-stenbe/repo-test-architect.git"
+      url: "https://github.com/auditquest/repo-test-architect.git"
     });
-    assert.equal(packageJson.homepage, "https://github.com/m-stenbe/repo-test-architect#readme");
+    assert.equal(packageJson.homepage, "https://github.com/auditquest/repo-test-architect#readme");
     assert.deepEqual(packageJson.bugs, {
-      url: "https://github.com/m-stenbe/repo-test-architect/issues"
+      url: "https://github.com/auditquest/repo-test-architect/issues"
     });
   });
 

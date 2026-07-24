@@ -5,7 +5,7 @@ This project is not ready to publish yet. Keep `private: true` in `package.json`
 ## Package Readiness
 
 - keep the approved unscoped npm identity `repo-test-architect`
-- keep the approved MCP Registry identity `io.github.m-stenbe/repo-test-architect`
+- keep the approved MCP Registry identity `io.github.auditquest/repo-test-architect`
 - re-confirm the npm package name is available immediately before publishing
 - keep these binary names stable:
   - `repo-test-architect`
@@ -23,6 +23,8 @@ This project is not ready to publish yet. Keep `private: true` in `package.json`
 - keep `npm run release:check` passing before tagging or publishing
 - keep GitHub Actions CI green for the release-readiness workflow on Ubuntu, macOS, and Windows
 - keep repository, homepage, bugs, MCP identity, and keywords aligned with `server.json`
+- keep `master` protected with pull requests, administrator enforcement, linear history, resolved conversations, and no force pushes or deletion
+- keep local `npm run release:check` authoritative until required GitHub Actions checks are intentionally enabled
 - validate `server.json` with the official `mcp-publisher`
 - keep the package manifest license aligned with `LICENSE` and verify the copyright owner before publishing
 
