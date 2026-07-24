@@ -164,14 +164,21 @@ describe("validation repository finder", () => {
 
   it("defines JVM validation profiles for Gradle, Maven JUnit, Kotest, Spock, and TestNG projects", () => {
     assert.deepEqual(
-      ["gradle", "gradle-junit", "gradle-kotest", "gradle-spock", "gradle-testng", "maven", "maven-junit", "maven-testng"].map((profile) => validationProfiles[profile].language),
-      ["Kotlin", "Kotlin", "Kotlin", "Java", "Kotlin", "Java", "Java", "Java"]
+      ["gradle", "gradle-junit", "gradle-kmp-jvm", "gradle-kotest", "gradle-spock", "gradle-testng", "maven", "maven-junit", "maven-testng"].map((profile) => validationProfiles[profile].language),
+      ["Kotlin", "Kotlin", "Kotlin", "Kotlin", "Java", "Kotlin", "Java", "Java", "Java"]
     );
 
     assert.deepEqual(detectManifestSignals(validationProfiles["gradle-junit"].searches, {
       "build.gradle.kts": 'dependencies { testImplementation(kotlin("test")) }\ntasks.test { useJUnitPlatform() }\n'
     }, [{ name: "gradlew", type: "file" }]), {
       signals: ["gradle-junit", "gradle-wrapper"],
+      matchedPaths: ["build.gradle.kts", "gradlew"]
+    });
+
+    assert.deepEqual(detectManifestSignals(validationProfiles["gradle-kmp-jvm"].searches, {
+      "build.gradle.kts": 'plugins { kotlin("multiplatform") version "2.2.20" }\nkotlin { jvm() }\n'
+    }, [{ name: "gradlew", type: "file" }]), {
+      signals: ["gradle-kmp-jvm", "gradle-wrapper"],
       matchedPaths: ["build.gradle.kts", "gradlew"]
     });
 

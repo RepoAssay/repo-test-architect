@@ -201,12 +201,16 @@ describe("docs links", () => {
     assert.ok(roadmap.includes("one concise repo-level summary can show top findings with evidence"));
     assert.ok(roadmap.includes("Milestone 2: Public Demo Polish"));
     assert.ok(roadmap.includes("Milestone 3: Adapter Spike Hardening"));
-    assert.ok(roadmap.includes("Kotlin/JVM with Gradle/Maven, JUnit variants, bounded Kotest common specs, conventional Spock features"));
+    assert.ok(roadmap.includes("Kotlin/JVM with Gradle/Maven, a bounded single-module Kotlin Multiplatform default-JVM slice"));
     assert.ok(roadmap.includes("Swift Package Manager with XCTest, Swift Testing, Quick/Nimble, and SnapshotTesting signals"));
     assert.ok(roadmap.includes("Python fixture reachability, async/parametrized/property-based pytest conventions, Django/Flask routes, tox/nox commands, coverage configuration, and no-tests-yet blocker behavior"));
     assert.ok(roadmap.includes("Milestone 4: Placement And Boundary Analysis"));
     assert.ok(roadmap.includes("app-level tests that belong in package-level test targets"));
     assert.ok(roadmap.includes("Milestone 5: Local MCP Transport"));
+    assert.ok(roadmap.includes("Host-Owned Model And Subagent Orchestration"));
+    assert.ok(roadmap.includes("the installing CLI or agent host owns model selection"));
+    assert.ok(roadmap.includes("The MCP server performs no hidden model or subagent calls") || roadmap.includes("the MCP server performs no hidden model or subagent calls"));
+    assert.ok(roadmap.includes("inexpensive summarization or routine implementation"));
     assert.ok(roadmap.includes("Milestone 6: Generation Readiness Gate"));
     assert.ok(roadmap.includes("Native generation should remain off until this gate is met"));
     assert.ok(roadmap.includes("npm run release:check"));
@@ -298,6 +302,8 @@ describe("docs links", () => {
     assert.ok(support.includes("conventional Spock feature methods in direct `Specification` subclasses"));
     assert.ok(support.includes("Spock fixture methods, annotations/extensions, `where:`/`filter:` data-driven features"));
     assert.ok(support.includes("Android application/library unit-test semantics"));
+    assert.ok(support.includes("one single-module Kotlin Multiplatform Gradle build with an unnamed/default `jvm()` target"));
+    assert.ok(support.includes("`commonTest` can cover only `commonMain` while `jvmTest` can cover `commonMain` and `jvmMain`"));
     assert.ok(support.includes("registered as `supported`"));
     assert.ok(validation.includes("JUnit 4"));
     assert.ok(validation.includes("Cash App Barber"));
@@ -309,6 +315,8 @@ describe("docs links", () => {
     assert.ok(validation.includes("service-apply"));
     assert.ok(validation.includes("OHC"));
     assert.ok(validation.includes("FusionAuth java-http"));
+    assert.ok(validation.includes("OpenTest4K"));
+    assert.ok(validation.includes("`./gradlew jvmTest`"));
     assert.ok(validation.includes("no repository build, plugin, test, or application code was executed"));
   });
 });

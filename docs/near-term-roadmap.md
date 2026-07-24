@@ -70,11 +70,11 @@ Status: Swift, Python, and bounded Kotlin/JVM modules reached supported private-
 
 Useful hardening targets:
 
-- Kotlin/JVM with Gradle/Maven, JUnit variants, bounded Kotest common specs, conventional Spock features, and method-level TestNG
+- Kotlin/JVM with Gradle/Maven, a bounded single-module Kotlin Multiplatform default-JVM slice, JUnit variants, bounded Kotest common specs, conventional Spock features, and method-level TestNG
 - Swift Package Manager with XCTest, Swift Testing, Quick/Nimble, and SnapshotTesting signals
 - Python fixture reachability, async/parametrized/property-based pytest conventions, Django/Flask routes, tox/nox commands, coverage configuration, and no-tests-yet blocker behavior
 
-Python's supported boundary and known exclusions are tracked in [Python Alpha Support](python-alpha-support.md). Kotlin/JVM's conventional Gradle/Maven, directly declared aggregate, exported-transitive dependency, JUnit, bounded Kotest common-spec, conventional Spock feature, and method-level TestNG boundary is tracked in [Kotlin/JVM Alpha Support](kotlin-jvm-alpha-support.md); computed/nested Maven reactors, inherited/dynamic dependencies, custom/composite Gradle graphs, Android, multiplatform, and additional Kotest/Spock/TestNG semantics remain post-promotion pressure.
+Python's supported boundary and known exclusions are tracked in [Python Alpha Support](python-alpha-support.md). Kotlin/JVM's conventional Gradle/Maven, directly declared aggregate, exported-transitive dependency, single-module KMP default-`jvm()` source-set ownership, JUnit, bounded Kotest common-spec, conventional Spock feature, and method-level TestNG boundary is tracked in [Kotlin/JVM Alpha Support](kotlin-jvm-alpha-support.md); computed/nested Maven reactors, inherited/dynamic dependencies, custom/composite Gradle graphs, Android, broader KMP shapes, and additional Kotest/Spock/TestNG semantics remain post-promotion pressure.
 
 ### Adapter Reuse Boundary
 
@@ -138,6 +138,28 @@ Acceptance:
 - no remote repo upload is required
 - client config docs stay aligned with package binaries
 - smoke and release checks cover the boot path
+
+### Host-Owned Model And Subagent Orchestration
+
+The MCP server should expose deterministic repository evidence and advisory execution hints, while the installing CLI or agent host owns model selection, token and cost budgets, permissions, context management, and subagent lifecycle. Repo Test Architect must not silently call paid models or spawn opaque workers behind an MCP tool invocation.
+
+Future versioned planning metadata may help capable hosts route work without naming a provider or forcing one orchestration strategy. Candidate hints include:
+
+- `complexity`: bounded low, medium, or high implementation difficulty
+- `contextScope`: the minimum source, test, build, and documentation paths needed
+- `parallelizable`: whether the item can safely run independently of other plan items
+- `recommendedAgentRole`: implementation, repository reasoning, or review
+- `requiresRepositoryReasoning`: whether deterministic evidence is insufficient by itself
+
+These fields would remain advisory. Clients may ignore them and must receive the same audit facts either way. The intended cost shape is deterministic MCP analysis first, inexpensive summarization or routine implementation where appropriate, and stronger reasoning models only for ambiguous architecture, difficult generation, repair, or final review.
+
+Acceptance before adding routing fields to an artifact schema:
+
+- hints derive deterministically from existing audit evidence
+- no hint selects a vendor, model name, or price tier
+- the MCP server performs no hidden model or subagent calls
+- clients that ignore hints preserve identical audit and plan semantics
+- model-consistency fixtures lock the routing fields before clients depend on them
 
 ## Milestone 6: Generation Readiness Gate
 
