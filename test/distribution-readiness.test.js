@@ -26,14 +26,14 @@ describe("distribution readiness", () => {
       private: false,
       name: "repo-test-architect",
       version: "0.1.0",
-      mcpName: "io.github.auditquest/repo-test-architect",
+      mcpName: "io.github.repoassay/repo-test-architect",
       repository: {
         type: "git",
-        url: "https://github.com/auditquest/repo-test-architect.git"
+        url: "https://github.com/repoassay/repo-test-architect.git"
       },
-      homepage: "https://github.com/auditquest/repo-test-architect#readme",
+      homepage: "https://github.com/repoassay/repo-test-architect#readme",
       bugs: {
-        url: "https://github.com/auditquest/repo-test-architect/issues"
+        url: "https://github.com/repoassay/repo-test-architect/issues"
       },
       keywords: [...packageJson.keywords, "mcp"]
     };
@@ -43,7 +43,7 @@ describe("distribution readiness", () => {
       title: "Repo Test Architect",
       description: publicPackage.description,
       repository: {
-        url: "https://github.com/auditquest/repo-test-architect",
+        url: "https://github.com/repoassay/repo-test-architect",
         source: "github",
         id: "1285319114"
       },

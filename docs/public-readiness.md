@@ -30,7 +30,7 @@ This document tracks what can be shown publicly before the project is ready for 
 
 ## Before A Public Repository
 
-- confirm `auditquest/repo-test-architect` should change from private to public
+- confirm `repoassay/repo-test-architect` should change from private to public
 - decide whether issue template contact links should point to support and security docs
 - verify the copyright owner before publishing
 - run `npm run release:check`
