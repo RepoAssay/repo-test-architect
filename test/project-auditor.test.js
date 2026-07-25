@@ -56,6 +56,30 @@ describe("project auditor", () => {
     assert.deepEqual(result.audits[0].audit.coveredButRisky.map((target) => target.name), ["TokenParser"]);
   });
 
+  it("audits nested Maven reactor children separately from the blocked root", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-project-nested-maven-"));
+    const coreRoot = path.join(root, "platform", "core");
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(coreRoot, "src", "main", "java"), { recursive: true });
+    fs.mkdirSync(path.join(coreRoot, "src", "test", "java"), { recursive: true });
+    fs.writeFileSync(path.join(root, "pom.xml"), "<project><groupId>com.example</groupId><artifactId>root</artifactId><modules><module>platform</module></modules></project>\n");
+    fs.writeFileSync(path.join(root, "mvnw"), "#!/bin/sh\n");
+    fs.writeFileSync(path.join(root, "platform", "pom.xml"), "<project><groupId>com.example</groupId><artifactId>platform</artifactId><modules><module>core</module></modules></project>\n");
+    fs.writeFileSync(path.join(coreRoot, "pom.xml"), "<project><groupId>com.example</groupId><artifactId>core</artifactId><dependencies><dependency><groupId>org.junit.jupiter</groupId><artifactId>junit-jupiter</artifactId></dependency></dependencies></project>\n");
+    fs.writeFileSync(path.join(coreRoot, "src", "main", "java", "TokenParser.java"), "class TokenParser { String parse(String value) { return value.trim(); } }\n");
+    fs.writeFileSync(path.join(coreRoot, "src", "test", "java", "TokenParserTest.java"), "import org.junit.jupiter.api.Test; class TokenParserTest { @Test void parses() { new TokenParser().parse(\"x\"); } }\n");
+
+    const result = auditDetectedProjects(root);
+    const rootAudit = result.audits.find((entry) => entry.projectId === ".")?.audit;
+    const coreAudit = result.audits.find((entry) => entry.projectId === "platform/core")?.audit;
+
+    assert.deepEqual(result.summary, { projectCount: 2, auditedProjectCount: 2, skippedProjectCount: 0 });
+    assert.equal(rootAudit.profile.testCommand, undefined);
+    assert.ok(rootAudit.profile.blockers.includes("Nested Maven reactor expansion is outside the supported ownership boundary: platform."));
+    assert.equal(coreAudit.profile.testCommand, "mvn test");
+    assert.deepEqual(coreAudit.coveredButRisky.map((target) => target.path), ["src/main/java/TokenParser.java"]);
+  });
+
   it("preserves owning workspace package-manager commands in project audits", (t) => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-project-pnpm-workspace-"));
     const packageRoot = path.join(root, "packages", "checkout");

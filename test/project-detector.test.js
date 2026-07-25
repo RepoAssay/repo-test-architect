@@ -173,6 +173,18 @@ describe("project detector", () => {
     }]);
   });
 
+  it("keeps nested Maven reactor children visible outside the root ownership boundary", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-maven-nested-reactor-detection-"));
+    fs.mkdirSync(path.join(root, "platform", "core"), { recursive: true });
+    fs.writeFileSync(path.join(root, "pom.xml"), "<project><modules><module>platform</module></modules></project>\n");
+    fs.writeFileSync(path.join(root, "platform", "pom.xml"), "<project><modules><module>core</module></modules></project>\n");
+    fs.writeFileSync(path.join(root, "platform", "core", "pom.xml"), "<project />\n");
+
+    const detection = detectProjects(root);
+
+    assert.deepEqual(detection.projects.map((project) => project.root), [".", "platform/core"]);
+  });
+
   it("detects the checked-in Maven reactor fixture as one supported project", () => {
     const detection = detectProjects(path.resolve("examples/kotlin-maven-reactor-junit"));
 

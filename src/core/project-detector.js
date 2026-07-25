@@ -212,7 +212,10 @@ export function detectProjects(repoRoot, options = {}) {
 
 function collapseOwnedMavenModules(repoRoot, markerGroups) {
   const collapsed = new Map(markerGroups);
-  for (const group of markerGroups.values()) {
+  const groups = [...markerGroups.values()]
+    .sort((left, right) => projectRootDepth(left.root) - projectRootDepth(right.root) || left.root.localeCompare(right.root));
+  for (const group of groups) {
+    if (!collapsed.has(group.root)) continue;
     const pomMarker = group.markerFiles.find((markerFile) => /(?:^|\/)pom\.xml$/.test(markerFile));
     if (!pomMarker) continue;
     const pomText = fs.readFileSync(path.resolve(repoRoot, pomMarker), "utf8")
@@ -238,6 +241,10 @@ function collapseOwnedMavenModules(repoRoot, markerGroups) {
     }
   }
   return collapsed;
+}
+
+function projectRootDepth(root) {
+  return root === "." ? 0 : normalizeProjectPattern(root).split("/").filter(Boolean).length;
 }
 
 function collapseOwnedGradleModules(repoRoot, markerGroups) {
