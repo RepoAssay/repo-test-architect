@@ -71,7 +71,8 @@ export function auditJavaScriptRepo(root, options = {}) {
       packageEntryFiles,
       packageSubpathEntries,
       pathAliasEntries,
-      browserE2EFrameworks: new Set(profile.testFrameworks.filter((framework) => framework === "playwright" || framework === "cypress"))
+      browserE2EFrameworks: new Set(profile.testFrameworks.filter((framework) => framework === "playwright" || framework === "cypress")),
+      sourceKind: classification.kind
     });
     const existingTestPaths = existingTestEvidence.map((evidence) => evidence.testPath);
 
@@ -1337,6 +1338,9 @@ function findExistingTestEvidence(sourcePath, testFiles, moduleIndex, boundedTra
         const viaUsage = transitiveImports.get(normalized);
         return [{ testPath: testFile.path, kind: "bounded-dependency", strength: "indirect", ...(viaUsage ? { viaUsage } : {}) }];
       }
+      if (hasStaticBrowserRouteMatch(testFile, normalized, moduleIndex, packageEntry)) {
+        return [{ testPath: testFile.path, kind: "browser-route-match", strength: "indirect" }];
+      }
       if (filenameMatch && !isBrowserE2ETestFile(testFile, packageEntry.browserE2EFrameworks)) {
         return [{ testPath: testFile.path, kind: "filename-convention", strength: "naming" }];
       }
@@ -1346,6 +1350,103 @@ function findExistingTestEvidence(sourcePath, testFiles, moduleIndex, boundedTra
 
 function isBrowserE2ETestFile(testFile, browserE2EFrameworks) {
   return browserE2EFrameworks?.size > 0 || /(^|\/)cypress\/(?:e2e|integration|component)\//.test(testFile.path) || /\.cy\.[cm]?[jt]sx?$/.test(testFile.path) || /["']@playwright\/test["']/.test(testFile.content);
+}
+
+function hasStaticBrowserRouteMatch(testFile, sourcePath, moduleIndex, packageEntry) {
+  if (packageEntry.sourceKind !== "http-route" || !isBrowserE2ETestFile(testFile, packageEntry.browserE2EFrameworks)) return false;
+  const sourceFile = moduleIndex.byPath.get(sourcePath);
+  if (!sourceFile) return false;
+
+  const sourceRoutes = collectStaticHttpRouteRegistrations(sourceFile.content);
+  if (sourceRoutes.size === 0) return false;
+  return collectStaticBrowserRequests(testFile, packageEntry.browserE2EFrameworks)
+    .some(({ method, routePath }) => sourceRoutes.has(`${method} ${routePath}`));
+}
+
+function collectStaticHttpRouteRegistrations(content) {
+  const routes = new Set();
+  const code = stripStaticConfigComments(content);
+  const routePattern = /\b(?:app|router|server|fastify|hono|[A-Za-z_$][\w$]*Router)\s*\.\s*(get|post|put|patch|delete|options|head)\s*\(\s*(["'])(\/[^"'\\\r\n]*)\2/g;
+  for (const match of code.matchAll(routePattern)) {
+    if (!matchStartsInJavaScriptCode(code, match.index)) continue;
+    const routePath = normalizeStaticBrowserRoutePath(match[3]);
+    if (routePath) routes.add(`${match[1].toUpperCase()} ${routePath}`);
+  }
+  return routes;
+}
+
+function collectStaticBrowserRequests(testFile, browserE2EFrameworks) {
+  const requests = [];
+  const content = stripStaticConfigComments(testFile.content);
+  const playwrightDetected = browserE2EFrameworks?.has("playwright") || /["']@playwright\/test["']/.test(content);
+  const cypressDetected = browserE2EFrameworks?.has("cypress") || /(^|\/)cypress\/(?:e2e|integration|component)\//.test(testFile.path) || /\.cy\.[cm]?[jt]sx?$/.test(testFile.path);
+
+  if (playwrightDetected && hasPlaywrightFixture(content, "page")) {
+    collectLiteralBrowserCalls(content, /\bpage\s*\.\s*goto\s*\(\s*(["'])(\/[^"'\\\r\n]*)\1/g, "GET", requests);
+  }
+  if (playwrightDetected && hasPlaywrightFixture(content, "request")) {
+    const requestPattern = /\brequest\s*\.\s*(get|post|put|patch|delete|head)\s*\(\s*(["'])(\/[^"'\\\r\n]*)\2/g;
+    for (const match of content.matchAll(requestPattern)) {
+      if (!matchStartsInJavaScriptCode(content, match.index)) continue;
+      addStaticBrowserRequest(requests, match[1].toUpperCase(), match[3]);
+    }
+  }
+  if (cypressDetected) {
+    collectLiteralBrowserCalls(content, /\bcy\s*\.\s*visit\s*\(\s*(["'])(\/[^"'\\\r\n]*)\1/g, "GET", requests);
+    collectLiteralBrowserCalls(content, /\bcy\s*\.\s*request\s*\(\s*(["'])(\/[^"'\\\r\n]*)\1/g, "GET", requests);
+    const cypressMethodPattern = /\bcy\s*\.\s*request\s*\(\s*(["'])(GET|POST|PUT|PATCH|DELETE|HEAD)\1\s*,\s*(["'])(\/[^"'\\\r\n]*)\3/g;
+    for (const match of content.matchAll(cypressMethodPattern)) {
+      if (!matchStartsInJavaScriptCode(content, match.index)) continue;
+      addStaticBrowserRequest(requests, match[2], match[4]);
+    }
+  }
+
+  return requests;
+}
+
+function hasPlaywrightFixture(content, fixtureName) {
+  const fixturePattern = new RegExp(`\\(\\s*\\{[^}]*\\b${fixtureName}\\b[^}]*\\}\\s*\\)\\s*=>`);
+  return fixturePattern.test(content);
+}
+
+function collectLiteralBrowserCalls(content, pattern, method, requests) {
+  for (const match of content.matchAll(pattern)) {
+    if (!matchStartsInJavaScriptCode(content, match.index)) continue;
+    addStaticBrowserRequest(requests, method, match[2]);
+  }
+}
+
+function matchStartsInJavaScriptCode(content, targetIndex) {
+  let quote;
+  let escaped = false;
+
+  for (let index = 0; index < targetIndex; index += 1) {
+    const character = content[index];
+    if (quote) {
+      if (escaped) {
+        escaped = false;
+      } else if (character === "\\") {
+        escaped = true;
+      } else if (character === quote) {
+        quote = undefined;
+      }
+    } else if (character === "'" || character === "\"" || character === "`") {
+      quote = character;
+    }
+  }
+
+  return quote === undefined;
+}
+
+function addStaticBrowserRequest(requests, method, rawPath) {
+  const routePath = normalizeStaticBrowserRoutePath(rawPath);
+  if (routePath) requests.push({ method, routePath });
+}
+
+function normalizeStaticBrowserRoutePath(rawPath) {
+  if (!rawPath?.startsWith("/")) return undefined;
+  const routePath = rawPath.split(/[?#]/, 1)[0];
+  return routePath || "/";
 }
 
 function hasFilenameMatch(testPath, testBase, sourceBase, sourceDir, baseNameCandidates, sourceBaseCandidates, qualifiedBaseCandidates) {

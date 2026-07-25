@@ -114,6 +114,7 @@
                   "tsconfig-path-import",
                   "package-entry-import",
                   "bounded-dependency",
+                  "browser-route-match",
                   "swift-symbol-reference",
                   "python-module-import",
                   "python-package-reexport",

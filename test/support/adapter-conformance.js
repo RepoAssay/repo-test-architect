@@ -8,6 +8,7 @@ import { createTestPlan } from "../../src/core/test-plan.js";
 
 const portableEvidenceStrengths = {
   "bounded-dependency": ["indirect"],
+  "browser-route-match": ["indirect"],
   "direct-relative-import": ["direct"],
   "filename-convention": ["naming"],
   "jvm-symbol-reference": ["direct", "referenced"],

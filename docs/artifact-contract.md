@@ -45,7 +45,9 @@ The JavaScript/TypeScript adapter currently emits these evidence strengths:
 - `naming` for filename conventions
 - `direct` for relative or `tsconfig`-aliased module imports
 - `referenced` for referenced symbols reached through relative barrels or package entrypoints
-- `indirect` for modules reached through the bounded dependency graph
+- `indirect` for modules reached through the bounded dependency graph and for exact literal Playwright/Cypress request-to-HTTP-route matches
+
+`browser-route-match` is emitted only for the route-registration source file. It does not claim direct usage, assertion usage, or transitive browser reachability.
 
 ## Plan Artifact
 
