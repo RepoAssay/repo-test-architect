@@ -48,6 +48,7 @@ Repository code remains unexecuted during ordinary static validation. Comparing 
 
 Before ecosystem-specific expansion, lock the behavior every supported adapter must share:
 
+- instrumented line, branch, and function coverage floors for each adapter-owned audit implementation
 - deterministic project identity, paths, ordering, artifact versions, and Markdown/JSON agreement
 - explicit capability and maturity metadata
 - positive and negative fixtures for no-tests-yet, duplicate basenames, nested projects, unsupported frameworks, changed-file filtering, and ambiguous commands
@@ -159,6 +160,7 @@ User reports or a demonstrated false high-confidence claim can move a slice earl
 An adapter hardening pass is complete when:
 
 - its validation corpus meets the scorecard
+- its adapter-owned implementation remains above the checked-in line, branch, and function coverage floors
 - every accepted behavior change has positive and negative regression coverage
 - known limitations are current and visible in the adapter support matrix
 - golden artifacts and model-consistency locks cover externally meaningful changes

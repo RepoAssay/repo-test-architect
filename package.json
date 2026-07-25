@@ -112,6 +112,7 @@
     "model-consistency:stats": "node ./scripts/collect-model-consistency-stats.js",
     "validation:repos": "node ./scripts/find-validation-repos.js",
     "corpus:check": "node ./scripts/check-validation-corpus.js",
+    "adapter:coverage:check": "node ./scripts/check-adapter-coverage.js",
     "javascript:performance:check": "node ./scripts/check-javascript-performance.js",
     "demo:check": "node ./scripts/check-demo-script.js",
     "test": "node ./scripts/run-tests.js",

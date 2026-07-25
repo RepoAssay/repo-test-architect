@@ -6,6 +6,7 @@ import { runNpmScripts } from "./support/npm-runner.js";
 export const releaseChecks = [
   "audit:prod",
   "test",
+  "adapter:coverage:check",
   "corpus:check",
   "javascript:performance:check",
   "eval:check",
