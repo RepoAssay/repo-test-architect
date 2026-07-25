@@ -9,6 +9,7 @@ The current implementation can:
 - audit JavaScript/TypeScript, Python, and Swift projects through supported adapters
 - audit supported, bounded Kotlin/JVM fixtures through the same shared artifact model
 - detect polyglot project roots and report unsupported ecosystems without hiding them
+- produce a complete repository analysis, findings, ranking, plan, execution hints, and verification commands in one audit pass
 - classify source files by likely test value and defer low-value direct tests
 - rank candidates and generate test plans from the audit graph
 - derive provider-neutral execution, context, parallel-safety, and repository-reasoning hints without selecting models or spawning subagents
@@ -30,7 +31,7 @@ Run the CLI without a global install:
 
 ```sh
 npx --yes repo-test-architect doctor
-npx --yes repo-test-architect audit .
+npx --yes repo-test-architect analyze .
 ```
 
 Or install the CLI and MCP server binaries:
@@ -38,7 +39,7 @@ Or install the CLI and MCP server binaries:
 ```sh
 npm install --global repo-test-architect
 repo-test-architect doctor
-repo-test-architect audit .
+repo-test-architect analyze .
 ```
 
 Add the local stdio MCP server to an MCP-capable client:
@@ -58,7 +59,36 @@ Add the local stdio MCP server to an MCP-capable client:
 }
 ```
 
-The client launches the server locally. Repository source stays on the machine unless the client or another configured tool sends it elsewhere. See [MCP client config](docs/mcp-client-config.md) and [agent install paths](docs/agent-install-paths.md) for global-install, local-checkout, and host-specific guidance.
+The client launches the server locally. Repository source stays on the machine unless the client or another configured tool sends it elsewhere. Connected models receive instructions to start with `analyze_repository` for a general repository review. See [MCP client config](docs/mcp-client-config.md) and [agent install paths](docs/agent-install-paths.md) for global-install, local-checkout, and host-specific guidance.
+
+## Quick Start
+
+For a human-readable review of the current repository:
+
+```sh
+npx --yes repo-test-architect analyze .
+```
+
+`analyze` detects every project root, runs each supported adapter once, and derives the audit summary, top findings, candidate ranking, test plan, execution hints, project stats, and verification commands. Markdown stays compact; JSON preserves the complete evidence bundle:
+
+```sh
+npx --yes repo-test-architect analyze . --format json
+npx --yes repo-test-architect analyze . --changed
+```
+
+Useful focused views:
+
+| Goal | Command |
+| --- | --- |
+| Complete repository review | `repo-test-architect analyze .` |
+| Concise architecture findings | `repo-test-architect findings-projects .` |
+| Actionable cross-project plan | `repo-test-architect plan-projects .` |
+| Raw reusable project audits | `repo-test-architect audit-projects . --format json` |
+| Runtime readiness | `repo-test-architect doctor` |
+
+Run `repo-test-architect --help` for the short command map or `repo-test-architect <command> --help` for options. The [CLI reference](docs/cli-reference.md) documents the full surface.
+
+For an MCP-connected model, the equivalent default is `analyze_repository`. Use narrower tools only when the request asks for one artifact or already supplies an audit artifact.
 
 ## Current Scope
 
@@ -73,7 +103,21 @@ Project detection also reports unsupported Ruby, PHP, Elixir, Go, Rust, and .NET
 
 The public package exposes the audit CLI, the stdio MCP server, and a deterministic MCP invoke harness under the stable binary names documented below.
 
-## Working CLI
+## Advanced CLI and Contributor Reference
+
+The commands below expose focused artifacts, fixtures, evals, diagnostics, and release checks for advanced use and repository development.
+
+<details>
+<summary>Show the complete command and development reference</summary>
+
+Run the complete analysis directly or against the polyglot example:
+
+```powershell
+npm run analyze
+npm run analyze:json
+npm run analyze:example
+npm run analyze:example:json
+```
 
 Check runtime and diagnostics readiness:
 
@@ -209,6 +253,7 @@ Exercise the MCP-style tool surface:
 
 ```powershell
 npm run mcp:tools
+npm run mcp:analyze:example
 npm run mcp:adapters
 npm run mcp:detect-rules
 npm run mcp:detect:example
@@ -319,6 +364,8 @@ npm run release:check
 
 `distribution:check` validates packaging and MCP metadata preparation. The stricter `distribution:check:publish` verifies that the public npm and MCP Registry identities are aligned before a release. See [Distribution](docs/distribution.md).
 
+</details>
+
 ## Shape
 
 ```txt
@@ -404,6 +451,7 @@ Important runtime surfaces:
 - [Kotlin/JVM validation hunt report](docs/kotlin-jvm-validation-hunt-report.md)
 - [Adapter contract](docs/adapter-contract.md)
 - [Artifact contract](docs/artifact-contract.md)
+- [CLI reference](docs/cli-reference.md)
 - [Project detection](docs/project-detection.md)
 - [Polyglot workflow](docs/polyglot-workflow.md)
 - [MCP tool surface](docs/mcp-tools.md)

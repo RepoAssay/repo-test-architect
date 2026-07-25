@@ -10,6 +10,7 @@ import { createProjectTestPlan } from "./project-test-plan.js";
 import { collectProjectStats } from "./project-stats.js";
 import { createPlanExecutionHints } from "./plan-execution-hints.js";
 import { rankTestCandidates } from "./rank-test-candidates.js";
+import { createRepositoryAnalysis } from "./repository-analysis.js";
 import { analyzeTestPlacement } from "./test-placement-analysis.js";
 import { createTestPlacementFindings } from "./test-placement-findings.js";
 import { createTestPlan } from "./test-plan.js";
@@ -26,6 +27,7 @@ export { validateProjectAudits } from "./project-audits-validation.js";
  * @typedef {import("./project-findings.js").ProjectFindings} ProjectFindings
  * @typedef {import("./project-test-plan.js").ProjectTestPlan} ProjectTestPlan
  * @typedef {import("./project-stats.js").ProjectStats} ProjectStats
+ * @typedef {import("./repository-analysis.js").RepositoryAnalysis} RepositoryAnalysis
  * @typedef {import("./plan-execution-hints.js").PlanExecutionHints} PlanExecutionHints
  * @typedef {import("./test-placement-findings.js").TestPlacementFindings} TestPlacementFindings
  * @typedef {import("./test-placement-findings.js").TestPlacementFinding} TestPlacementFinding
@@ -87,6 +89,25 @@ export function auditRepoProjects(repoRoot, options = {}) {
     changedPaths: validateChangedPaths(options.changedPaths),
     excludeProjectRoots: validateProjectRootPatterns(options.excludeProjectRoots)
   });
+}
+
+/**
+ * Canonical one-shot repository analysis for human and model consumers.
+ *
+ * @param {string} repoRoot
+ * @param {AuditRepoProjectsOptions} [options]
+ * @returns {RepositoryAnalysis}
+ */
+export function analyzeRepository(repoRoot, options = {}) {
+  return createRepositoryAnalysis(auditRepoProjects(repoRoot, options));
+}
+
+/**
+ * @param {ProjectAudits} projectAudits
+ * @returns {RepositoryAnalysis}
+ */
+export function analyzeProjectAudits(projectAudits) {
+  return createRepositoryAnalysis(projectAudits);
 }
 
 /**

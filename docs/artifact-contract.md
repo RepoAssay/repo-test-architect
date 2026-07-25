@@ -5,6 +5,37 @@ Repo Test Architect produces deterministic JSON artifacts that other tools, futu
 JSON artifacts always preserve complete `existingTestPaths` evidence. Markdown output displays at most five paths per item and reports how many additional paths remain available in JSON, keeping human review concise without weakening the machine-readable audit trail.
 When provenance is available, Markdown also summarizes evidence counts by strength (`direct`, `referenced`, `indirect`, and `naming`) without expanding the complete per-path evidence objects.
 
+## Repository Analysis Artifact
+
+Schema:
+
+- `schemas/repository-analysis-v1.schema.json`
+- `schemaVersion: "repository-analysis/v1"`
+
+Commands:
+
+```powershell
+node ./src/cli/index.js analyze . --format json
+node ./src/cli/index.js analyze --from-project-audits ./project-audits.json --format json
+```
+
+MCP tool:
+
+- `analyze_repository`
+
+This is the canonical complete review artifact. One project-audit pass supplies all deterministic inputs; the remaining views are derived without rescanning.
+
+It contains:
+
+- the source `project-audits/v1` artifact
+- compact audit coverage and blocker counts
+- concise project findings
+- project-aware candidate ranking and test plan
+- provider-neutral plan execution hints
+- repository statistics and detected verification commands
+
+Human-readable CLI output selects the most useful overview, findings, plan items, and commands. JSON preserves every child artifact for agents, automation, saved review evidence, and later focused transformations.
+
 ## Audit Artifact
 
 Schema:

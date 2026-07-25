@@ -13,7 +13,7 @@ import {
 } from "../diagnostics/diagnostics.js";
 import { toSafeMcpError } from "./errors.js";
 import { toMcpToolResult } from "./responses.js";
-import { mcpServerInfo } from "./server-info.js";
+import { mcpServerInfo, mcpServerInstructions } from "./server-info.js";
 import { callTool, mcpTools } from "./tool-definitions.js";
 
 const diagnostics = createDiagnosticRecorderFromEnv();
@@ -21,7 +21,8 @@ const diagnostics = createDiagnosticRecorderFromEnv();
 const server = new Server(mcpServerInfo, {
   capabilities: {
     tools: {}
-  }
+  },
+  instructions: mcpServerInstructions
 });
 
 server.setRequestHandler(ListToolsRequestSchema, () => ({

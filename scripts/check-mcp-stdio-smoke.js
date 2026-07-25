@@ -42,6 +42,18 @@ try {
     method: "tools/list"
   });
 
+  const repositoryAnalysisResponse = await sendRequest({
+    jsonrpc: "2.0",
+    id: 13,
+    method: "tools/call",
+    params: {
+      name: "analyze_repository",
+      arguments: {
+        repoRoot: "./examples/polyglot-workspace"
+      }
+    }
+  });
+
   await sendNotification({
     jsonrpc: "2.0",
     method: "notifications/initialized"
@@ -142,12 +154,20 @@ try {
   assert.equal(initialize.result.serverInfo.name, "repo-test-architect");
   assert.equal(initialize.result.serverInfo.version, "0.1.1");
   assert.deepEqual(initialize.result.capabilities.tools, {});
+  assert.match(initialize.result.instructions, /Start with analyze_repository/i);
 
   assert.equal(tools.id, 2);
+  assert.equal(tools.result.tools[0].name, "analyze_repository");
   assert.ok(tools.result.tools.some((tool) => tool.name === "detect_projects"));
   assert.ok(tools.result.tools.some((tool) => tool.name === "audit_projects"));
   assert.ok(tools.result.tools.some((tool) => tool.name === "generate_project_test_plan"));
   assert.ok(tools.result.tools.some((tool) => tool.name === "get_plan_execution_hints"));
+
+  const repositoryAnalysis = parseToolArtifact(repositoryAnalysisResponse);
+  assert.equal(repositoryAnalysisResponse.id, 13);
+  assert.equal(repositoryAnalysis.schemaVersion, "repository-analysis/v1");
+  assert.equal(repositoryAnalysis.summary.projectCount, 3);
+  assert.equal(repositoryAnalysis.testPlan.schemaVersion, "project-test-plan/v1");
 
   const detectionArtifact = parseToolArtifact(detectedProjects);
   assert.equal(detectionArtifact.schemaVersion, "project-detection/v1");

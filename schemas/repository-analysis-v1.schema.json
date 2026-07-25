@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "repository-analysis-v1.schema.json",
+  "title": "Repository Analysis Artifact",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "root",
+    "summary",
+    "verificationCommands",
+    "projectAudits",
+    "auditSummary",
+    "findings",
+    "candidateRanking",
+    "testPlan",
+    "executionHints",
+    "stats"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "repository-analysis/v1" },
+    "root": { "type": "string", "minLength": 1 },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "projectCount",
+        "auditedProjectCount",
+        "unsupportedProjectCount",
+        "auditCoverage",
+        "blockerCount",
+        "findingCount",
+        "candidateCount",
+        "planItemCount",
+        "verificationCommandCount"
+      ],
+      "properties": {
+        "projectCount": { "type": "integer", "minimum": 0 },
+        "auditedProjectCount": { "type": "integer", "minimum": 0 },
+        "unsupportedProjectCount": { "type": "integer", "minimum": 0 },
+        "auditCoverage": { "enum": ["complete", "partial", "none"] },
+        "blockerCount": { "type": "integer", "minimum": 0 },
+        "findingCount": { "type": "integer", "minimum": 0 },
+        "candidateCount": { "type": "integer", "minimum": 0 },
+        "planItemCount": { "type": "integer", "minimum": 0 },
+        "verificationCommandCount": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "verificationCommands": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["command", "projectCount"],
+        "properties": {
+          "command": { "type": "string", "minLength": 1 },
+          "projectCount": { "type": "integer", "minimum": 1 }
+        }
+      }
+    },
+    "projectAudits": { "$ref": "#/$defs/projectAudits" },
+    "auditSummary": { "$ref": "#/$defs/auditSummary" },
+    "findings": { "$ref": "#/$defs/findings" },
+    "candidateRanking": { "$ref": "#/$defs/candidateRanking" },
+    "testPlan": { "$ref": "#/$defs/testPlan" },
+    "executionHints": { "$ref": "#/$defs/executionHints" },
+    "stats": { "$ref": "#/$defs/stats" }
+  },
+  "$defs": {
+    "projectAudits": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["schemaVersion"],
+      "properties": { "schemaVersion": { "const": "project-audits/v1" } }
+    },
+    "auditSummary": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["schemaVersion"],
+      "properties": { "schemaVersion": { "const": "project-audit-summary/v1" } }
+    },
+    "findings": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["schemaVersion"],
+      "properties": { "schemaVersion": { "const": "project-findings/v1" } }
+    },
+    "candidateRanking": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["schemaVersion"],
+      "properties": { "schemaVersion": { "const": "project-candidate-ranking/v1" } }
+    },
+    "testPlan": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["schemaVersion"],
+      "properties": { "schemaVersion": { "const": "project-test-plan/v1" } }
+    },
+    "executionHints": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["schemaVersion"],
+      "properties": { "schemaVersion": { "const": "plan-execution-hints/v1" } }
+    },
+    "stats": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["schemaVersion"],
+      "properties": { "schemaVersion": { "const": "project-stats/v1" } }
+    }
+  }
+}

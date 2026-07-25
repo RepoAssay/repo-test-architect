@@ -6,6 +6,8 @@ Repo Test Architect currently has supported deterministic JavaScript/TypeScript,
 
 Implemented:
 
+- canonical `analyze` CLI and `analyze_repository` MCP entrypoints that audit detected projects once and return `repository-analysis/v1` with the summary, findings, ranking, plan, execution hints, stats, and verification commands
+- compact global and command-specific CLI help plus MCP initialization guidance that directs humans and connected models toward the appropriate general or focused workflow
 - JavaScript/TypeScript repository profiling
 - JavaScript/TypeScript React hook classification ahead of generic component and HTTP controller heuristics
 - cached JavaScript/TypeScript module-import analysis for real repositories with large test suites

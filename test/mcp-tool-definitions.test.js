@@ -45,7 +45,7 @@ describe("MCP tool definitions", () => {
   });
 
   it("declares non-empty changed path items", () => {
-    const changedPathTools = ["audit_projects", "audit_repo"];
+    const changedPathTools = ["analyze_repository", "audit_projects", "audit_repo"];
 
     for (const toolName of changedPathTools) {
       const tool = mcpTools.find((candidate) => candidate.name === toolName);
@@ -55,7 +55,7 @@ describe("MCP tool definitions", () => {
   });
 
   it("declares non-empty project exclusion items", () => {
-    const projectExclusionTools = ["detect_projects", "audit_projects"];
+    const projectExclusionTools = ["analyze_repository", "detect_projects", "audit_projects"];
 
     for (const toolName of projectExclusionTools) {
       const tool = mcpTools.find((candidate) => candidate.name === toolName);
@@ -65,6 +65,9 @@ describe("MCP tool definitions", () => {
   });
 
   it("dispatches adapter registry, project detection rules, project detection, project audits, audit, plan, explanation, and ranking tools", () => {
+    const repositoryAnalysis = callTool("analyze_repository", {
+      repoRoot: path.resolve("examples/polyglot-workspace")
+    });
     const adapterRegistry = callTool("list_adapters");
     const projectDetectionRules = callTool("list_project_detection_rules");
     const projectDetection = callTool("detect_projects", {
@@ -91,6 +94,15 @@ describe("MCP tool definitions", () => {
     const placement = callTool("analyze_test_placement", { audit, owner: "node-vitest-basic" });
     const deferredGeneration = callTool("generate_selected_test", { planItemId: "add-test:src/authService.ts" });
 
+    assert.equal(repositoryAnalysis.schemaVersion, "repository-analysis/v1");
+    assert.equal(repositoryAnalysis.summary.projectCount, 3);
+    assert.equal(repositoryAnalysis.summary.planItemCount, 3);
+    assert.deepEqual(repositoryAnalysis.verificationCommands, [
+      { command: "gradle test", projectCount: 1 },
+      { command: "npm run test", projectCount: 1 }
+    ]);
+    assert.equal(repositoryAnalysis.projectAudits.schemaVersion, "project-audits/v1");
+    assert.equal(repositoryAnalysis.findings.schemaVersion, "project-findings/v1");
     assert.equal(adapterRegistry.schemaVersion, "adapter-registry/v1");
     assert.deepEqual(adapterRegistry.adapters.map((adapter) => adapter.id), ["javascript", "kotlin", "python", "swift"]);
     assert.equal(projectDetectionRules.schemaVersion, "project-detection-rules/v1");
@@ -171,6 +183,21 @@ describe("MCP tool definitions", () => {
           untested: []
         }
       ]
+    );
+  });
+
+  it("passes repository scope controls through analyze_repository", () => {
+    const analysis = callTool("analyze_repository", {
+      repoRoot: path.resolve("examples/polyglot-workspace"),
+      changedPaths: ["services/api/app.py"],
+      excludeProjectRoots: ["apps/**"]
+    });
+
+    assert.equal(analysis.schemaVersion, "repository-analysis/v1");
+    assert.deepEqual(analysis.projectAudits.audits.map((entry) => entry.projectId), ["services/api"]);
+    assert.deepEqual(
+      analysis.candidateRanking.candidates.map((candidate) => candidate.projectId),
+      ["services/api"]
     );
   });
 
@@ -270,6 +297,7 @@ describe("MCP tool definitions", () => {
 });
 
 function minimalArgsFor(toolName) {
+  if (toolName === "analyze_repository") return { repoRoot: "." };
   if (toolName === "list_adapters") return {};
   if (toolName === "list_project_detection_rules") return {};
   if (toolName === "detect_projects") return { repoRoot: "." };

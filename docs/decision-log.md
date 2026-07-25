@@ -141,3 +141,11 @@ Decision: keep MCP operational diagnostics disabled by default and local-only. W
 Rationale: operators need enough evidence to correlate failures and latency without turning a local repository tool into an undeclared analytics or source-exfiltration surface. Stderr and bounded local JSONL preserve stdio protocol integrity and give users control of the diagnostic record. Sanitized bundles are rebuilt from the allowlist and remain inspectable before sharing.
 
 Revisit when: a real alpha support loop demonstrates that opt-in external reporting is necessary and can provide an exact payload preview plus documented endpoint, retention, deletion, and ownership.
+
+## One Canonical Repository Analysis Entrypoint
+
+Decision: make `analyze` in the CLI and `analyze_repository` in MCP the recommended start for an unfamiliar repository or a general test-architecture review. The operation audits detected project roots once and derives a versioned `repository-analysis/v1` bundle containing the summary, findings, ranking, plan, execution hints, stats, and verification commands. Keep specialist commands available for focused requests and saved artifacts.
+
+Rationale: the focused artifact surface is valuable for advanced users and deterministic model workflows, but requiring humans or models to discover and sequence many similarly weighted commands creates avoidable routing errors. A canonical complete artifact preserves the audit-first boundary while giving both audiences one reliable entrypoint.
+
+Revisit when: measured usage shows that the complete artifact is too large for common clients, or a different small set of entrypoints produces more reliable human and model outcomes without hiding unsupported projects or rescanning repositories.

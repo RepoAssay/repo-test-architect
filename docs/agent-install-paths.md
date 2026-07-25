@@ -52,6 +52,7 @@ node C:/path/to/repo-test-architect/src/mcp/stdio.js
 
 Expected tools:
 
+- `analyze_repository`
 - `list_adapters`
 - `list_project_detection_rules`
 - `detect_projects`
@@ -73,6 +74,7 @@ Expected tools:
 
 `generate_selected_test` remains a deferred response until native generation has adapter-specific repair-loop evidence.
 `get_plan_execution_hints` is advisory: the host may use it for context and routing decisions, but remains responsible for model choice, budgets, permissions, and subagent lifecycle.
+For a general repository review, start with `analyze_repository`; use the remaining tools for focused questions or existing artifacts.
 
 ## Codex
 
@@ -118,6 +120,7 @@ macOS/Linux terminal:
 
 ```sh
 repo-test-architect detect . --format json
+repo-test-architect analyze . --format json
 repo-test-architect audit-projects . --format json
 repo-test-architect rank-projects . --format json
 repo-test-architect plan-projects . --format json
@@ -129,6 +132,7 @@ Windows PowerShell:
 
 ```powershell
 repo-test-architect detect . --format json
+repo-test-architect analyze . --format json
 repo-test-architect audit-projects . --format json
 repo-test-architect rank-projects . --format json
 repo-test-architect plan-projects . --format json

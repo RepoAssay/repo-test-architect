@@ -33,6 +33,10 @@
     "src/"
   ],
   "scripts": {
+    "analyze": "node ./src/cli/index.js analyze",
+    "analyze:json": "node ./src/cli/index.js analyze --format json",
+    "analyze:example": "node ./src/cli/index.js analyze ./examples/polyglot-workspace",
+    "analyze:example:json": "node ./src/cli/index.js analyze ./examples/polyglot-workspace --format json",
     "doctor": "node ./src/cli/index.js doctor",
     "doctor:json": "node ./src/cli/index.js doctor --format json",
     "diagnostic-bundle": "node ./src/cli/index.js diagnostic-bundle",
@@ -84,6 +88,7 @@
     "placement:example:json": "node ./src/cli/index.js placement ./examples/node-vitest-basic --owner node-vitest-basic --format json",
     "placement:from-audit:example": "node ./src/cli/index.js placement --from-audit ./evals/expected/node-vitest-basic.audit.json",
     "mcp:tools": "node ./src/mcp/invoke.js tools",
+    "mcp:analyze:example": "node ./src/mcp/invoke.js call analyze_repository \"{\\\"repoRoot\\\":\\\"./examples/polyglot-workspace\\\"}\"",
     "mcp:adapters": "node ./src/mcp/invoke.js call list_adapters \"{}\"",
     "mcp:detect-rules": "node ./src/mcp/invoke.js call list_project_detection_rules \"{}\"",
     "mcp:detect:example": "node ./src/mcp/invoke.js call detect_projects \"{\\\"repoRoot\\\":\\\"./examples/polyglot-workspace\\\"}\"",

@@ -14,6 +14,7 @@ Descriptor schema:
 
 ## Tools
 
+- `analyze_repository` — recommended start for an unfamiliar repository or general review
 - `list_adapters`
 - `list_project_detection_rules`
 - `detect_projects`
@@ -41,6 +42,7 @@ Every descriptor also declares a human-readable `title` and explicit MCP safety 
 
 The model should consume these artifacts directly:
 
+- the complete repository audit, findings, ranking, plan, execution hints, stats, and verification commands come from `analyze_repository`
 - available language adapters come from `list_adapters`
 - project marker rules and ignored directories come from `list_project_detection_rules`
 - project roots and adapter matches come from `detect_projects`
@@ -68,6 +70,7 @@ Each tool descriptor includes `outputArtifact` metadata:
 
 | Tool | Output |
 | --- | --- |
+| `analyze_repository` | `repository-analysis/v1` |
 | `list_adapters` | `adapter-registry/v1` |
 | `list_project_detection_rules` | `project-detection-rules/v1` |
 | `detect_projects` | `project-detection/v1` |
@@ -87,6 +90,7 @@ Each tool descriptor includes `outputArtifact` metadata:
 | `analyze_test_placement` | `test-placement-findings/v1` |
 | `generate_selected_test` | `generation-deferred/v1` |
 
+Use `analyze_repository` first for a general review. It detects project roots, audits each supported root once, keeps blockers and unsupported roots visible, and derives the complete repository analysis without asking the model to stitch together specialist calls.
 Use `list_adapters` before `audit_repo` when a client needs to discover supported adapter IDs.
 Use `list_project_detection_rules` when a client needs to explain what project markers the deterministic detector recognizes.
 Use `detect_projects` when a repository may contain multiple language or package roots. It accepts optional `excludeProjectRoots` entries for exact roots or subtree patterns such as `"examples/**"`.
@@ -98,7 +102,9 @@ Use `get_plan_execution_hints` with a `plan/v1` or `project-test-plan/v1` artifa
 Use `collect_project_findings` when a client needs a concise top-findings test architecture audit across projects.
 Use `analyze_project_test_placement` when a client needs advisory placement findings derived from audited project roots.
 Use `collect_project_stats` when a client needs local artifact-derived counts and distributions for reporting or model-profile comparisons.
-`audit_repo` accepts an optional `adapterId` and optional repository-relative `changedPaths`. The current supported adapters are `javascript`, `kotlin`, `python`, and `swift`; Kotlin/JVM is bounded by [Kotlin/JVM Alpha Support](kotlin-jvm-alpha-support.md).
+`audit_repo` is for an explicitly selected single project root and adapter. It accepts an optional `adapterId` and optional repository-relative `changedPaths`, and defaults to `javascript` for compatibility. The current supported adapters are `javascript`, `kotlin`, `python`, and `swift`; Kotlin/JVM is bounded by [Kotlin/JVM Alpha Support](kotlin-jvm-alpha-support.md).
+
+The server also publishes workflow instructions during MCP initialization. They direct connected models toward `analyze_repository`, distinguish repository scanning from existing-artifact transformations, preserve deterministic facts, and state that native generation remains deferred.
 
 ## SDK Transport
 
@@ -147,6 +153,7 @@ Use the local invoke harness for deterministic descriptor and dispatcher checks 
 
 ```powershell
 npm run mcp:tools
+npm run mcp:analyze:example
 npm run mcp:adapters
 npm run mcp:detect-rules
 npm run mcp:detect:example
@@ -167,6 +174,7 @@ Direct form:
 
 ```powershell
 node ./src/mcp/invoke.js tools
+node ./src/mcp/invoke.js call analyze_repository "{\"repoRoot\":\".\",\"excludeProjectRoots\":[\"examples/**\"]}"
 node ./src/mcp/invoke.js call list_adapters "{}"
 node ./src/mcp/invoke.js call list_project_detection_rules "{}"
 node ./src/mcp/invoke.js call detect_projects "{\"repoRoot\":\".\",\"excludeProjectRoots\":[\"examples/**\"]}"

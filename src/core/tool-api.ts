@@ -163,6 +163,30 @@ export interface ProjectStats {
   }>;
 }
 
+export interface RepositoryAnalysis {
+  schemaVersion: "repository-analysis/v1";
+  root: string;
+  summary: {
+    projectCount: number;
+    auditedProjectCount: number;
+    unsupportedProjectCount: number;
+    auditCoverage: "complete" | "partial" | "none";
+    blockerCount: number;
+    findingCount: number;
+    candidateCount: number;
+    planItemCount: number;
+    verificationCommandCount: number;
+  };
+  verificationCommands: Array<{ command: string; projectCount: number }>;
+  projectAudits: ProjectAudits;
+  auditSummary: ProjectAuditSummary;
+  findings: ProjectFindings;
+  candidateRanking: ProjectCandidateRanking;
+  testPlan: ProjectTestPlan;
+  executionHints: PlanExecutionHints;
+  stats: ProjectStats;
+}
+
 export interface ProjectPlanEntry {
   projectId: string;
   projectRoot: string;
@@ -300,6 +324,10 @@ export interface AnalyzeTestPlacementOptions {
 export declare function detectRepoProjects(repoRoot: string, options?: DetectRepoProjectsOptions): ProjectDetection;
 
 export declare function auditRepoProjects(repoRoot: string, options?: AuditRepoProjectsOptions): ProjectAudits;
+
+export declare function analyzeRepository(repoRoot: string, options?: AuditRepoProjectsOptions): RepositoryAnalysis;
+
+export declare function analyzeProjectAudits(projectAudits: ProjectAudits): RepositoryAnalysis;
 
 export declare function getAdapterRegistry(): {
   schemaVersion: "adapter-registry/v1";
