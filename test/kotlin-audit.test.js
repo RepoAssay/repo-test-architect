@@ -920,10 +920,80 @@ describe("Kotlin audit adapter", () => {
 
     const audit = auditKotlinRepo(root);
 
+    assert.equal(audit.profile.testCommand, undefined);
     assert.equal(audit.profile.confidence, "low");
+    assert.ok(audit.profile.setupSignals.includes("gradle aggregate ownership blocked"));
+    assert.ok(audit.profile.blockers.includes("Custom Gradle projectDir remaps are outside the supported aggregate ownership boundary: :tokens."));
     assert.ok(audit.profile.blockers.includes("No supported root JVM source set detected; audit a Gradle or Maven module root."));
+    assert.ok(!audit.profile.blockers.includes("No runnable JVM test command detected from Gradle or Maven markers."));
     assert.deepEqual(audit.recommended, []);
     assert.ok(!audit.profile.setupSignals.includes("gradle module graph"));
+  });
+
+  it("blocks computed and incomplete Gradle includes without partially owning valid children", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-gradle-aggregate-incomplete-"));
+    fs.mkdirSync(path.join(root, "src", "main", "kotlin"), { recursive: true });
+    fs.mkdirSync(path.join(root, "src", "test", "kotlin"), { recursive: true });
+    fs.mkdirSync(path.join(root, "core", "src", "main", "kotlin"), { recursive: true });
+    fs.writeFileSync(path.join(root, "settings.gradle.kts"), 'val moduleName = ":dynamic"\ninclude(":core", moduleName, ":missing")\n');
+    fs.writeFileSync(path.join(root, "build.gradle.kts"), 'plugins { kotlin("jvm") version "2.0.0" }\ndependencies { testImplementation(kotlin("test")) }\n');
+    fs.writeFileSync(path.join(root, "gradlew"), "#!/bin/sh\n");
+    fs.writeFileSync(path.join(root, "core", "build.gradle.kts"), 'plugins { kotlin("jvm") }\n');
+    fs.writeFileSync(path.join(root, "src", "main", "kotlin", "RootParser.kt"), "class RootParser { fun parse(value: String) = value.trim() }\n");
+    fs.writeFileSync(path.join(root, "src", "test", "kotlin", "RootParserTest.kt"), "import kotlin.test.Test\nclass RootParserTest { @Test fun parses() { RootParser().parse(\"x\") } }\n");
+    fs.writeFileSync(path.join(root, "core", "src", "main", "kotlin", "HiddenCoreParser.kt"), "class HiddenCoreParser { fun parse(value: String) = value.trim() }\n");
+
+    const audit = auditKotlinRepo(root);
+
+    assert.equal(audit.profile.testCommand, undefined);
+    assert.ok(audit.profile.setupSignals.includes("gradle aggregate ownership blocked"));
+    assert.ok(audit.profile.blockers.includes("Gradle settings include declarations must use literal repository-contained project paths."));
+    assert.ok(audit.profile.blockers.includes("Gradle aggregate ownership is incomplete because declared projects lack conventional build files: :missing."));
+    assert.ok(!audit.profile.blockers.includes("No runnable JVM test command detected from Gradle or Maven markers."));
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["src/main/kotlin/RootParser.kt"]);
+    assert.ok(!audit.recommended.some((target) => target.path.startsWith("core/")));
+  });
+
+  it("blocks unowned nested Gradle settings expansion", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-gradle-aggregate-nested-"));
+    fs.mkdirSync(path.join(root, "src", "main", "kotlin"), { recursive: true });
+    fs.mkdirSync(path.join(root, "src", "test", "kotlin"), { recursive: true });
+    fs.mkdirSync(path.join(root, "platform", "core", "src", "main", "kotlin"), { recursive: true });
+    fs.writeFileSync(path.join(root, "settings.gradle.kts"), 'include(":platform")\n');
+    fs.writeFileSync(path.join(root, "build.gradle.kts"), 'plugins { kotlin("jvm") version "2.0.0" }\ndependencies { testImplementation(kotlin("test")) }\n');
+    fs.writeFileSync(path.join(root, "gradlew"), "#!/bin/sh\n");
+    fs.writeFileSync(path.join(root, "platform", "settings.gradle.kts"), 'include(":core")\n');
+    fs.writeFileSync(path.join(root, "platform", "build.gradle.kts"), "plugins {}\n");
+    fs.writeFileSync(path.join(root, "platform", "core", "build.gradle.kts"), 'plugins { kotlin("jvm") }\n');
+    fs.writeFileSync(path.join(root, "src", "main", "kotlin", "RootParser.kt"), "class RootParser { fun parse(value: String) = value.trim() }\n");
+    fs.writeFileSync(path.join(root, "src", "test", "kotlin", "RootParserTest.kt"), "import kotlin.test.Test\nclass RootParserTest { @Test fun parses() { RootParser().parse(\"x\") } }\n");
+    fs.writeFileSync(path.join(root, "platform", "core", "src", "main", "kotlin", "HiddenCoreParser.kt"), "class HiddenCoreParser\n");
+
+    const audit = auditKotlinRepo(root);
+
+    assert.equal(audit.profile.testCommand, undefined);
+    assert.ok(audit.profile.blockers.includes("Nested Gradle settings expansion is outside the supported aggregate ownership boundary: :platform."));
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["src/main/kotlin/RootParser.kt"]);
+  });
+
+  it("owns nested Gradle paths when every project is declared directly by the root", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-gradle-aggregate-explicit-nested-"));
+    fs.mkdirSync(path.join(root, "platform", "core", "src", "main", "kotlin"), { recursive: true });
+    fs.mkdirSync(path.join(root, "platform", "core", "src", "test", "kotlin"), { recursive: true });
+    fs.writeFileSync(path.join(root, "settings.gradle.kts"), 'include(":platform", ":platform:core")\n');
+    fs.writeFileSync(path.join(root, "build.gradle.kts"), 'plugins { kotlin("jvm") version "2.0.0" apply false }\n');
+    fs.writeFileSync(path.join(root, "gradlew"), "#!/bin/sh\n");
+    fs.writeFileSync(path.join(root, "platform", "settings.gradle.kts"), 'include(":core")\n');
+    fs.writeFileSync(path.join(root, "platform", "build.gradle.kts"), "plugins {}\n");
+    fs.writeFileSync(path.join(root, "platform", "core", "build.gradle.kts"), 'plugins { kotlin("jvm") }\ndependencies { testImplementation(kotlin("test")) }\n');
+    fs.writeFileSync(path.join(root, "platform", "core", "src", "main", "kotlin", "TokenParser.kt"), "class TokenParser { fun parse(value: String) = value.trim() }\n");
+    fs.writeFileSync(path.join(root, "platform", "core", "src", "test", "kotlin", "TokenParserTest.kt"), "import kotlin.test.Test\nclass TokenParserTest { @Test fun parses() { TokenParser().parse(\"x\") } }\n");
+
+    const audit = auditKotlinRepo(root);
+
+    assert.equal(audit.profile.testCommand, "./gradlew test");
+    assert.deepEqual(audit.profile.blockers, []);
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["platform/core/src/main/kotlin/TokenParser.kt"]);
   });
 
   it("marks Android source sets outside the supported JVM module boundary", () => {
