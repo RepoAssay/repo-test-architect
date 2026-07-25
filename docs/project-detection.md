@@ -58,7 +58,7 @@ The detector skips common dependency and build output directories:
 
 This avoids reporting generated, vendored, or nested dependency-fixture output as independent projects. A fixture directory audited as the repository root still detects its own root marker; only nested traversal is skipped.
 
-Conventionally included Gradle modules with their own build files collapse into the settings-owning aggregate project. Custom `projectDir` remaps and composite builds remain separate because a plain include path does not prove their directory ownership.
+Conventionally included Gradle modules collapse into the settings-owning aggregate only when the complete root declaration is literal and repository-contained, every declared path has a conventional child build file, and nested settings do not expand undeclared paths. Computed or unsafe includes, missing child builds, custom `projectDir` remaps, and unowned nested settings make collapse all-or-nothing, leaving child build roots separately visible. Composite builds remain separate because `includeBuild(...)` does not transfer project ownership to the audited aggregate.
 
 Conventionally declared Maven `<module>` paths with direct child POMs collapse into the POM-owning reactor project. Collapse proceeds from parent to child and stops at an already collapsed intermediate reactor, so an unowned nested reactor child remains visible as a separate project instead of disappearing into a root audit that does not expand nested ownership. Profile-activated modules, property-expanded paths, directory escapes, and plugin configuration `<modules>` also remain separate because the root POM does not statically prove their ownership.
 

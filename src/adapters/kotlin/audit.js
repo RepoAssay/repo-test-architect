@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { analyzeGradleSettings } from "../../core/gradle-settings.js";
 
 const SOURCE_EXTENSIONS = [".kt", ".java", ".groovy"];
 const BUILD_FILE_NAMES = new Set([
@@ -145,8 +146,19 @@ function resolveJvmModules(files) {
 
 function resolveGradleModules(files, settings) {
   const paths = new Set(files.map((file) => normalizePath(file.path)));
-  const declarations = declaredGradleProjectPaths(settings.content);
-  const modules = [{ projectPath: ":", directory: ".", dependencies: new Set(), exportedDependencies: new Set(), buildSystem: "gradle" }];
+  const settingsAnalysis = analyzeGradleSettings(settings.content);
+  const aggregateBlockers = detectGradleAggregateBlockers(files, settingsAnalysis);
+  const declarations = aggregateBlockers.length === 0
+    ? settingsAnalysis.declarations.filter((declaration) => declaration.supported)
+    : [];
+  const modules = [{
+    projectPath: ":",
+    directory: ".",
+    dependencies: new Set(),
+    exportedDependencies: new Set(),
+    buildSystem: "gradle",
+    aggregateBlockers
+  }];
 
   for (const declaration of declarations) {
     const hasBuildFile = ["build.gradle", "build.gradle.kts"]
@@ -174,7 +186,7 @@ function resolveGradleModules(files, settings) {
       : new Set();
   }
 
-  if (declarations.length === 0 && modules.length === 1 && modules[0].hasKmpJvmTarget) {
+  if (aggregateBlockers.length === 0 && declarations.length === 0 && modules.length === 1 && modules[0].hasKmpJvmTarget) {
     modules[0].supportsKmpJvm = true;
     modules[0].supportsKmpShape = true;
   }
@@ -196,6 +208,57 @@ function resolveGradleModules(files, settings) {
   populateKmpReachableTestDependencies(modules);
   populateReachableModuleDependencies(modules);
   return modules.sort((left, right) => right.directory.length - left.directory.length || left.projectPath.localeCompare(right.projectPath));
+}
+
+function detectGradleAggregateBlockers(files, settingsAnalysis) {
+  const hasIncludes = settingsAnalysis.declarations.length > 0 || settingsAnalysis.hasUnsupportedDeclarations;
+  if (!hasIncludes && settingsAnalysis.remappedProjectPaths.length === 0 && !settingsAnalysis.hasUnsupportedRemaps) return [];
+
+  const paths = new Set(files.map((file) => normalizePath(file.path)));
+  const blockers = [];
+  if (settingsAnalysis.hasUnsupportedDeclarations || settingsAnalysis.declarations.some((declaration) => !declaration.supported)) {
+    blockers.push("Gradle settings include declarations must use literal repository-contained project paths.");
+  }
+
+  if (settingsAnalysis.remappedProjectPaths.length > 0) {
+    blockers.push(`Custom Gradle projectDir remaps are outside the supported aggregate ownership boundary: ${settingsAnalysis.remappedProjectPaths.join(", ")}.`);
+  } else if (settingsAnalysis.hasUnsupportedRemaps) {
+    blockers.push("Custom Gradle projectDir remaps must use literal project paths before aggregate ownership can be determined.");
+  }
+
+  const directDeclarations = settingsAnalysis.declarations.filter((declaration) => declaration.supported);
+  const directDirectories = new Set(directDeclarations.map((declaration) => declaration.directory));
+  const remappedProjects = new Set(settingsAnalysis.remappedProjectPaths);
+  const unresolved = directDeclarations
+    .filter((declaration) => !remappedProjects.has(declaration.projectPath))
+    .filter((declaration) => !["build.gradle", "build.gradle.kts"].some((name) => paths.has(`${declaration.directory}/${name}`)))
+    .map((declaration) => declaration.projectPath)
+    .sort();
+  if (unresolved.length > 0) {
+    blockers.push(`Gradle aggregate ownership is incomplete because declared projects lack conventional build files: ${unresolved.join(", ")}.`);
+  }
+
+  const nested = [];
+  for (const declaration of directDeclarations) {
+    const nestedSettingsPath = ["settings.gradle", "settings.gradle.kts"]
+      .map((name) => `${declaration.directory}/${name}`)
+      .find((candidate) => paths.has(candidate));
+    if (!nestedSettingsPath) continue;
+    const nestedSettings = files.find((file) => normalizePath(file.path) === nestedSettingsPath);
+    const nestedAnalysis = analyzeGradleSettings(nestedSettings?.content ?? "");
+    const hasUnownedNestedDeclaration = nestedAnalysis.hasUnsupportedDeclarations ||
+      nestedAnalysis.hasUnsupportedRemaps ||
+      nestedAnalysis.remappedProjectPaths.length > 0 ||
+      nestedAnalysis.declarations.some((nestedDeclaration) => {
+        if (!nestedDeclaration.supported) return true;
+        return !directDirectories.has(`${declaration.directory}/${nestedDeclaration.directory}`);
+      });
+    if (hasUnownedNestedDeclaration) nested.push(declaration.projectPath);
+  }
+  if (nested.length > 0) {
+    blockers.push(`Nested Gradle settings expansion is outside the supported aggregate ownership boundary: ${nested.sort().join(", ")}.`);
+  }
+  return blockers;
 }
 
 function resolveMavenModules(files, rootPom) {
@@ -541,9 +604,12 @@ function buildProfile(root, files, modules) {
   const testFrameworks = detectTestFrameworks(buildText, testText, files, modules);
   const unsupportedProjectShapes = detectUnsupportedProjectShapes(buildText, paths, modules);
   const testCommandResolution = detectTestCommand(root, paths, testFrameworks, modules);
-  const reactorBlockers = modules.flatMap((module) => module.reactorBlockers ?? []);
-  const commandBlockers = [...testCommandResolution.blockers, ...reactorBlockers];
-  const testCommand = reactorBlockers.length === 0 ? testCommandResolution.command : undefined;
+  const ownershipBlockers = modules.flatMap((module) => [
+    ...(module.reactorBlockers ?? []),
+    ...(module.aggregateBlockers ?? [])
+  ]);
+  const commandBlockers = [...testCommandResolution.blockers, ...ownershipBlockers];
+  const testCommand = ownershipBlockers.length === 0 ? testCommandResolution.command : undefined;
   const existingTestLocations = detectExistingTestLocations(paths, modules);
   const blockers = detectBlockers(
     paths,
@@ -747,29 +813,14 @@ function findParentGradleCommand(root) {
 }
 
 function declaredGradleProjectPaths(content) {
-  const settingsText = content
-    .replace(/\/\*[\s\S]*?\*\//g, " ")
-    .replace(/\/\/.*$/gm, "");
-  const declarations = new Set();
-  const remappedProjects = new Set(
-    [...settingsText.matchAll(/\bproject\s*\(\s*["'](:[^"']+)["']\s*\)\s*\.\s*projectDir\s*=/g)]
-      .map((match) => match[1])
-  );
-  for (const match of settingsText.matchAll(/\binclude\s*\(([^)]*)\)/g)) {
-    for (const value of quotedValues(match[1])) declarations.add(value);
-  }
-  for (const match of settingsText.matchAll(/^\s*include\s+(?!\()([^\n]+)$/gm)) {
-    for (const value of quotedValues(match[1])) declarations.add(value);
-  }
-  return [...declarations]
-    .map((value) => value.replace(/^:/, "").replaceAll("/", ":"))
-    .filter((value) => value && !value.includes(".."))
-    .filter((value) => !remappedProjects.has(`:${value}`))
-    .map((value) => ({ projectPath: `:${value}`, directory: value.replaceAll(":", "/") }));
-}
-
-function quotedValues(content) {
-  return [...content.matchAll(/["']([^"']+)["']/g)].map((match) => match[1]);
+  const analysis = analyzeGradleSettings(content);
+  if (
+    analysis.hasUnsupportedDeclarations ||
+    analysis.hasUnsupportedRemaps ||
+    analysis.remappedProjectPaths.length > 0 ||
+    analysis.declarations.some((declaration) => !declaration.supported)
+  ) return [];
+  return analysis.declarations;
 }
 
 function findParentMavenCommand(root) {
@@ -864,6 +915,7 @@ function detectSetupSignals(paths, buildText, testText, testCommandResolution, m
   for (const signal of testCommandResolution.inheritedSignals ?? []) signals.add(signal);
   if (modules.some((module) => module.buildSystem === "gradle" && module.directory !== ".")) signals.add("gradle module graph");
   if (modules.some((module) => module.buildSystem === "maven" && module.directory !== ".")) signals.add("maven reactor graph");
+  if (modules.some((module) => (module.aggregateBlockers ?? []).length > 0)) signals.add("gradle aggregate ownership blocked");
   if (modules.some((module) => (module.reactorBlockers ?? []).length > 0)) signals.add("maven reactor ownership blocked");
   return [...signals];
 }

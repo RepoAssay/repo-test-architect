@@ -92,6 +92,7 @@ KotlinPoet demonstrated the mixed aggregate boundary. The audit selects only set
 - added settings-owned Gradle aggregate graphs, direct `project(":source")` dependency qualification for cross-module test evidence, and project-detection collapse for owned child modules
 - added root-declared Maven reactor graphs, static coordinate and direct dependency qualification, and project-detection collapse for conventionally owned child POMs
 - bounded Maven reactor ownership to complete literal root declarations with direct static child POMs; unsafe, unresolved, or unowned nested expansion now blocks partial child ownership and command selection while nested child projects remain separately detectable
+- bounded Gradle aggregate ownership to complete literal root declarations with conventional child builds; computed or unsafe includes, remaps, missing builds, and unowned nested settings now block partial ownership and command selection while child projects remain separately detectable
 - added cycle-safe traversal through Gradle `api(...)` and Maven non-optional compile exports while retaining direct test-visible dependency scopes
 - replaced blanket Kotlin Multiplatform exclusion with bounded single-module default and literal named-JVM slices and retained a precise blocker for multi-module, computed/multiple-target, and otherwise unowned KMP shapes
 - added `commonMain`/`commonTest` and `jvmMain`/`jvmTest` ownership, source-set-qualified evidence reachability, and wrapper-aware `jvmTest` selection
@@ -117,7 +118,7 @@ KotlinPoet demonstrated the mixed aggregate boundary. The audit selects only set
 
 ## Remaining Gaps
 
-- broader Maven profile/computed/nested reactor execution and ownership, inherited/dynamic dependencies, Gradle composite builds, custom module mappings, and non-exported transitive project dependencies; incomplete Maven reactor shapes are now explicitly blocked rather than partially audited
+- broader Maven profile/computed/nested reactor execution and ownership, inherited/dynamic dependencies, Gradle composite builds, computed includes, custom module mappings, and non-exported transitive project dependencies; incomplete Maven and Gradle aggregate shapes are now explicitly blocked rather than partially audited
 - Groovy production and nonstandard test source sets, Maven/inherited/test-suite Spock execution, Spock fixture/data/extension/mock semantics, Android, mixed/incomplete/remapped multi-module KMP, transitive KMP implementation/compile-only or exclusion-bearing edges, type-safe/computed project accessors, computed/multiple-JVM-target or custom-hierarchy KMP, KMP Kotest/Spock/TestNG execution, TestNG class-level/lifecycle/generated/configured execution semantics, Kotest styles beyond `FunSpec`/`StringSpec`/`ShouldSpec`, and Kotest lifecycle/data/property semantics
 - parameterized arguments, dynamic tests, extensions, fixtures, and inherited tests as semantic coverage
 - framework-aware application boot, HTTP, persistence, coroutine scheduling, and dependency-injection boundaries

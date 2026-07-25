@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { analyzeGradleSettings } from "./gradle-settings.js";
 import { listAdapters } from "./adapter-registry.js";
 
 const IGNORED_DIRECTORIES = new Set([
@@ -249,40 +250,50 @@ function projectRootDepth(root) {
 
 function collapseOwnedGradleModules(repoRoot, markerGroups) {
   const collapsed = new Map(markerGroups);
-  for (const group of markerGroups.values()) {
+  const groups = [...markerGroups.values()]
+    .sort((left, right) => projectRootDepth(left.root) - projectRootDepth(right.root) || left.root.localeCompare(right.root));
+  for (const group of groups) {
+    if (!collapsed.has(group.root)) continue;
     const settingsMarker = group.markerFiles.find((markerFile) => /(?:^|\/)settings\.gradle(?:\.kts)?$/.test(markerFile));
     if (!settingsMarker) continue;
-    const settingsText = fs.readFileSync(path.resolve(repoRoot, settingsMarker), "utf8")
-      .replace(/\/\*[\s\S]*?\*\//g, " ")
-      .replace(/\/\/.*$/gm, "");
-    const declarations = new Set();
-    const remappedProjects = new Set(
-      [...settingsText.matchAll(/\bproject\s*\(\s*["'](:[^"']+)["']\s*\)\s*\.\s*projectDir\s*=/g)]
-        .map((match) => match[1])
-    );
-    for (const match of settingsText.matchAll(/\binclude\s*\(([^)]*)\)/g)) {
-      for (const value of quotedValues(match[1])) declarations.add(value);
-    }
-    for (const match of settingsText.matchAll(/^\s*include\s+(?!\()([^\n]+)$/gm)) {
-      for (const value of quotedValues(match[1])) declarations.add(value);
-    }
+    const analysis = analyzeGradleSettings(fs.readFileSync(path.resolve(repoRoot, settingsMarker), "utf8"));
+    if (
+      analysis.hasUnsupportedDeclarations ||
+      analysis.hasUnsupportedRemaps ||
+      analysis.remappedProjectPaths.length > 0 ||
+      analysis.declarations.some((declaration) => !declaration.supported)
+    ) continue;
 
-    for (const declaration of declarations) {
-      const projectPath = `:${declaration.replace(/^:/, "").replaceAll("/", ":")}`;
-      if (remappedProjects.has(projectPath)) continue;
-      const moduleDirectory = projectPath.slice(1).replaceAll(":", "/");
-      if (!moduleDirectory || moduleDirectory.includes("..")) continue;
-      const projectRoot = group.root === "." ? moduleDirectory : `${group.root}/${moduleDirectory}`;
+    const declarations = analysis.declarations.filter((declaration) => declaration.supported);
+    const declaredDirectories = new Set(declarations.map((declaration) => declaration.directory));
+    const ownedProjectRoots = declarations.map((declaration) => ({
+      declaration,
+      projectRoot: group.root === "." ? declaration.directory : `${group.root}/${declaration.directory}`
+    }));
+    const hasMissingBuild = ownedProjectRoots.some(({ projectRoot }) => {
       const candidate = markerGroups.get(projectRoot);
-      if (!candidate || !candidate.markerFiles.some((markerFile) => /(?:^|\/)build\.gradle(?:\.kts)?$/.test(markerFile))) continue;
-      collapsed.delete(projectRoot);
-    }
+      return !candidate || !candidate.markerFiles.some((markerFile) => /(?:^|\/)build\.gradle(?:\.kts)?$/.test(markerFile));
+    });
+    if (hasMissingBuild) continue;
+
+    const hasUnownedNestedSettings = ownedProjectRoots.some(({ declaration, projectRoot }) => {
+      const candidate = markerGroups.get(projectRoot);
+      const nestedSettingsMarker = candidate?.markerFiles.find((markerFile) => /(?:^|\/)settings\.gradle(?:\.kts)?$/.test(markerFile));
+      if (!nestedSettingsMarker) return false;
+      const nested = analyzeGradleSettings(fs.readFileSync(path.resolve(repoRoot, nestedSettingsMarker), "utf8"));
+      return nested.hasUnsupportedDeclarations ||
+        nested.hasUnsupportedRemaps ||
+        nested.remappedProjectPaths.length > 0 ||
+        nested.declarations.some((nestedDeclaration) =>
+          !nestedDeclaration.supported ||
+          !declaredDirectories.has(`${declaration.directory}/${nestedDeclaration.directory}`)
+        );
+    });
+    if (hasUnownedNestedSettings) continue;
+
+    for (const { projectRoot } of ownedProjectRoots) collapsed.delete(projectRoot);
   }
   return collapsed;
-}
-
-function quotedValues(content) {
-  return [...content.matchAll(/["']([^"']+)["']/g)].map((match) => match[1]);
 }
 
 function isExcludedProjectRoot(projectRoot, excludeProjectRoots = []) {

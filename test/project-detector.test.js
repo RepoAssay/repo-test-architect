@@ -266,6 +266,20 @@ describe("project detector", () => {
     );
   });
 
+  it("collapses literal Groovy Gradle include declarations", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-gradle-groovy-detection-"));
+    for (const moduleName of ["core", "tests"]) {
+      fs.mkdirSync(path.join(root, moduleName), { recursive: true });
+      fs.writeFileSync(path.join(root, moduleName, "build.gradle"), "plugins {}\n");
+    }
+    fs.writeFileSync(path.join(root, "settings.gradle"), "include ':core', ':tests'\n");
+    fs.writeFileSync(path.join(root, "build.gradle"), "plugins {}\n");
+
+    const detection = detectProjects(root);
+
+    assert.deepEqual(detection.projects.map((project) => project.root), ["."]);
+  });
+
   it("does not collapse custom Gradle project-directory remaps", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-gradle-detection-remap-"));
     fs.mkdirSync(path.join(root, "modules", "token-core"), { recursive: true });
@@ -278,6 +292,37 @@ describe("project detector", () => {
     const detection = detectProjects(root);
 
     assert.deepEqual(detection.projects.map((project) => project.root), [".", "modules/token-core", "tokens"]);
+  });
+
+  it("does not partially collapse computed or incomplete Gradle aggregates", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-gradle-detection-incomplete-"));
+    for (const moduleName of ["core", "extra"]) {
+      fs.mkdirSync(path.join(root, moduleName), { recursive: true });
+      fs.writeFileSync(path.join(root, moduleName, "build.gradle.kts"), "plugins {}\n");
+    }
+    fs.writeFileSync(path.join(root, "settings.gradle.kts"), 'include(":core", dynamicProject, ":missing")\n');
+    fs.writeFileSync(path.join(root, "build.gradle.kts"), "plugins {}\n");
+
+    const detection = detectProjects(root);
+
+    assert.deepEqual(detection.projects.map((project) => project.root), [".", "core", "extra"]);
+  });
+
+  it("keeps a nested Gradle build visible unless the root declares every nested path", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-gradle-detection-nested-"));
+    fs.mkdirSync(path.join(root, "platform", "core"), { recursive: true });
+    fs.writeFileSync(path.join(root, "settings.gradle.kts"), 'include(":platform")\n');
+    fs.writeFileSync(path.join(root, "build.gradle.kts"), "plugins {}\n");
+    fs.writeFileSync(path.join(root, "platform", "settings.gradle.kts"), 'include(":core")\n');
+    fs.writeFileSync(path.join(root, "platform", "build.gradle.kts"), "plugins {}\n");
+    fs.writeFileSync(path.join(root, "platform", "core", "build.gradle.kts"), "plugins {}\n");
+
+    const nested = detectProjects(root);
+    fs.writeFileSync(path.join(root, "settings.gradle.kts"), 'include(":platform", ":platform:core")\n');
+    const explicit = detectProjects(root);
+
+    assert.deepEqual(nested.projects.map((project) => project.root), [".", "platform"]);
+    assert.deepEqual(explicit.projects.map((project) => project.root), ["."]);
   });
 
   it("keeps mixed Java and Kotlin sources under one JVM project root", () => {

@@ -80,6 +80,34 @@ describe("project auditor", () => {
     assert.deepEqual(coreAudit.coveredButRisky.map((target) => target.path), ["src/main/java/TokenParser.java"]);
   });
 
+  it("audits Gradle children separately from a computed aggregate boundary", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-project-incomplete-gradle-"));
+    const coreRoot = path.join(root, "core");
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "src", "main", "kotlin"), { recursive: true });
+    fs.mkdirSync(path.join(root, "src", "test", "kotlin"), { recursive: true });
+    fs.mkdirSync(path.join(coreRoot, "src", "main", "kotlin"), { recursive: true });
+    fs.mkdirSync(path.join(coreRoot, "src", "test", "kotlin"), { recursive: true });
+    fs.writeFileSync(path.join(root, "settings.gradle.kts"), 'include(":core", dynamicProject)\n');
+    fs.writeFileSync(path.join(root, "build.gradle.kts"), 'plugins { kotlin("jvm") version "2.0.0" }\ndependencies { testImplementation(kotlin("test")) }\n');
+    fs.writeFileSync(path.join(root, "gradlew"), "#!/bin/sh\n");
+    fs.writeFileSync(path.join(root, "src", "main", "kotlin", "RootParser.kt"), "class RootParser { fun parse(value: String) = value.trim() }\n");
+    fs.writeFileSync(path.join(root, "src", "test", "kotlin", "RootParserTest.kt"), "import kotlin.test.Test\nclass RootParserTest { @Test fun parses() { RootParser().parse(\"x\") } }\n");
+    fs.writeFileSync(path.join(coreRoot, "build.gradle.kts"), 'plugins { kotlin("jvm") }\ndependencies { testImplementation(kotlin("test")) }\n');
+    fs.writeFileSync(path.join(coreRoot, "src", "main", "kotlin", "TokenParser.kt"), "class TokenParser { fun parse(value: String) = value.trim() }\n");
+    fs.writeFileSync(path.join(coreRoot, "src", "test", "kotlin", "TokenParserTest.kt"), "import kotlin.test.Test\nclass TokenParserTest { @Test fun parses() { TokenParser().parse(\"x\") } }\n");
+
+    const result = auditDetectedProjects(root);
+    const rootAudit = result.audits.find((entry) => entry.projectId === ".")?.audit;
+    const coreAudit = result.audits.find((entry) => entry.projectId === "core")?.audit;
+
+    assert.deepEqual(result.summary, { projectCount: 2, auditedProjectCount: 2, skippedProjectCount: 0 });
+    assert.equal(rootAudit.profile.testCommand, undefined);
+    assert.ok(rootAudit.profile.blockers.includes("Gradle settings include declarations must use literal repository-contained project paths."));
+    assert.equal(coreAudit.profile.testCommand, "gradle test");
+    assert.deepEqual(coreAudit.coveredButRisky.map((target) => target.path), ["src/main/kotlin/TokenParser.kt"]);
+  });
+
   it("preserves owning workspace package-manager commands in project audits", (t) => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-project-pnpm-workspace-"));
     const packageRoot = path.join(root, "packages", "checkout");
