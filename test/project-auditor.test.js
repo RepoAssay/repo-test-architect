@@ -242,6 +242,38 @@ python_files = ["check_*.py"]
     assert.ok(!auditedPaths.includes("tools/release.py"));
   });
 
+  it("preserves bounded Python relative-import evidence in project audits", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-project-python-relative-import-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "src", "checkout", "tests"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "pyproject.toml"),
+      `[project]
+name = "checkout"
+dependencies = ["pytest"]
+`
+    );
+    fs.writeFileSync(path.join(root, "src", "checkout", "__init__.py"), "");
+    fs.writeFileSync(path.join(root, "src", "checkout", "tests", "__init__.py"), "");
+    fs.writeFileSync(path.join(root, "src", "checkout", "parser.py"), "def parse(value):\n    return int(value)\n");
+    fs.writeFileSync(
+      path.join(root, "src", "checkout", "tests", "test_behavior.py"),
+      "from ..parser import parse\n\ndef test_behavior():\n    assert parse('2') == 2\n"
+    );
+
+    const result = auditDetectedProjects(root);
+    const audit = result.audits[0].audit;
+
+    assert.deepEqual(audit.untestedCandidates, []);
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["src/checkout/parser.py"]);
+    assert.deepEqual(audit.coveredButRisky[0].existingTestEvidence, [{
+      testPath: "src/checkout/tests/test_behavior.py",
+      kind: "python-module-import",
+      strength: "direct",
+      usage: "asserted"
+    }]);
+  });
+
   it("passes project-relative changed paths into matching project adapters", () => {
     const result = auditDetectedProjects(path.resolve("examples/polyglot-workspace"), {
       changedPaths: [

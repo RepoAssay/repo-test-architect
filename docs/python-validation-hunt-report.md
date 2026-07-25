@@ -93,4 +93,4 @@ The bounded support gates are met: the adapter has deterministic fixtures and mo
 3. Keep framework application/test-client reachability separate from direct route/view-module evidence.
 4. Add dedicated persistence, task-queue, and CLI semantics only when real-repository evidence justifies them.
 
-Post-report hardening now covers literal setuptools/Poetry multi-package declarations, bounded setuptools namespace find roots, and authoritative root pytest `testpaths`/`python_files` discovery without executing metadata. Relative imports and standardized reruns against the pinned repositories remain pending.
+Post-report hardening now covers literal setuptools/Poetry multi-package declarations, bounded setuptools namespace find roots, authoritative root pytest `testpaths`/`python_files` discovery, and exact package-local relative imports without executing metadata. Bounded source dependency evidence and standardized reruns against the pinned repositories remain pending.

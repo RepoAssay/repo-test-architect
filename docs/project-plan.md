@@ -38,7 +38,7 @@ The first public npm and MCP Registry distribution is complete. The active miles
 
 1. Add a shared validation corpus, scorecard, and adapter-conformance helper. Complete; standardized live stability and performance reruns remain tracked as pending corpus scores.
 2. Harden JavaScript/TypeScript workspace ownership, command selection, configuration boundaries, evidence, and performance. Complete for the bounded matrix: static workspace package-manager ownership, runner-config/custom-location discovery, ESM/CommonJS/export/barrel/alias evidence, a generated large-suite performance gate, and exact literal Playwright/Cypress request-to-route evidence.
-3. Harden Python package ownership, imports, pytest discovery, framework boundaries, and command selection. Literal setuptools/Poetry multi-package ownership, bounded namespace find roots, and root pytest `testpaths`/`python_files` discovery are complete; relative imports and bounded source dependencies are next.
+3. Harden Python package ownership, imports, pytest discovery, framework boundaries, and command selection. Literal setuptools/Poetry multi-package ownership, bounded namespace find roots, root pytest `testpaths`/`python_files` discovery, and exact package-local relative imports are complete; bounded source dependency evidence is next.
 4. Harden bounded Kotlin/JVM Gradle/Maven ownership, dependency visibility, supported test-framework evidence, and unsupported-graph blockers.
 5. Harden SwiftPM, Xcode, and Bazel ownership plus conservative Swift symbol evidence.
 6. Run a cross-adapter trust pass across polyglot ownership, artifact semantics, model consistency, placement, and measured performance.
