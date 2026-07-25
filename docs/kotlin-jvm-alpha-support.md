@@ -48,7 +48,7 @@ The bounded adapter is promoted only when all of these remain true:
 3. Duplicate basenames, empty test shells, and `src/test` helper files cannot create false coverage.
 4. Conventional Gradle and Maven module graphs are dependency-qualified through direct or explicitly exported edges with cycle protection; supported Kotest and Spock specs require directly visible Gradle/JUnit Platform execution and supported TestNG files require direct conventional execution; single-module and settings-owned all-KMP JVM ownership preserves common-versus-target source-set reachability, follows direct visibility and cycle-safe literal `api(project(...))` exports without leaking `implementation` edges, and derives module-qualified `<targetName>Test` tasks; custom mappings, computed/nested reactors, non-exported dependencies, Android, broader KMP shapes, and unsupported framework/spec shapes remain visibly blocked or excluded.
 5. Representative public Kotlin and Java repositories produce explainable results without executing repository code.
-6. Golden artifacts, model-consistency locks, schema validation, and the full local release gate pass.
+6. Golden artifacts, model-consistency locks, the generated 400-source/200-test semantic and timing regression gate, schema validation, and the full local release gate pass.
 
 ## Promotion Verdict
 

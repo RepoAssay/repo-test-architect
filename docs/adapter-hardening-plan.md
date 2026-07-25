@@ -124,6 +124,8 @@ After each adapter has a refreshed corpus:
 - review top findings in both single-project and merged project plans
 - record performance distributions and set adapter-specific regression budgets from measured results
 
+Progress: all four adapters now have deterministic 400-source/200-test semantic and performance regression gates with adapter-specific audit timing, covered/untested counts, and evidence-relationship counts. These synthetic ceilings protect local and CI performance while pinned real-repository distributions remain a separate corpus task.
+
 ## Slice And Pull-Request Routine
 
 Hardening work should stay small and traceable:

@@ -65,6 +65,6 @@ Swift is supported at the same maturity level as the JavaScript/TypeScript adapt
 1. multi-target ownership is validated against maintained SwiftNIO and RxSwift repositories, with custom-path and Bazel behavior locked by deterministic fixtures
 2. Swift symbol evidence stays target-qualified and conservative across public packages with overloaded APIs, extensions, macros, generated sources, and reactive frameworks
 3. Xcode app behavior covers shared schemes, workspaces, UI test locations, and test plans, with a pinned app-style repository report
-4. golden audits/plans, Swift-specific model-consistency scenarios, blocker behavior, and the full deterministic private-alpha gate remain stable
+4. golden audits/plans, Swift-specific model-consistency scenarios, the generated 400-source/200-test semantic and timing regression gate, blocker behavior, and the full deterministic private-alpha gate remain stable
 
 Supported maturity remains bounded to this matrix. The maintenance goal is the same as JavaScript/TypeScript: support popular, inspectable shapes well and report uncertainty for the long tail instead of claiming universal repository coverage. Native Objective-C source classification, manifest execution, and runtime coverage proof remain outside the supported promise.

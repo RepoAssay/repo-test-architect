@@ -41,7 +41,7 @@ The first public npm and MCP Registry distribution is complete. The active miles
 3. Harden Python package ownership, imports, pytest discovery, framework boundaries, and command selection. Literal setuptools/Poetry multi-package ownership, bounded namespace find roots, root pytest `testpaths`/`python_files` discovery, exact package-local relative imports, one-hop same-owner source dependencies, and static FastAPI/Starlette, Flask, and Django client-to-route evidence are complete. Configuration inheritance and command-selection ambiguity are the next bounded Python candidates.
 4. Harden bounded Kotlin/JVM Gradle/Maven ownership, dependency visibility, supported test-framework evidence, and unsupported-graph blockers.
 5. Harden SwiftPM, Xcode, and Bazel ownership plus conservative Swift symbol evidence.
-6. Run a cross-adapter trust pass across polyglot ownership, artifact semantics, model consistency, placement, and measured performance.
+6. Run a cross-adapter trust pass across polyglot ownership, artifact semantics, model consistency, placement, and measured performance. Deterministic 400-source/200-test semantic and timing gates are complete for all four adapters; pinned real-repository distributions remain.
 7. Reconsider another adapter or native generation only after the four supported adapters meet the hardening definition of done.
 
 ## General Backlog
