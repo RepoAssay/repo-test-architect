@@ -252,6 +252,191 @@ pytest = "^8.0"
     );
   });
 
+  it("credits one statically used same-owner source dependency", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-python-source-dependency-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "checkout"), { recursive: true });
+    fs.mkdirSync(path.join(root, "tests"), { recursive: true });
+    fs.writeFileSync(path.join(root, "requirements.txt"), "pytest\n");
+    fs.writeFileSync(path.join(root, "checkout", "__init__.py"), "from .public import public as public\n");
+    fs.writeFileSync(
+      path.join(root, "checkout", "public.py"),
+      `from __future__ import annotations
+from typing import TYPE_CHECKING
+from .service import calculate as calculate_service
+from .unused import unused
+
+if TYPE_CHECKING:
+    from .typed import Typed
+
+def public(value: Typed):
+    if value:
+        return calculate_service(value)
+    return 0
+`
+    );
+    fs.writeFileSync(
+      path.join(root, "checkout", "service.py"),
+      `from .deep import deep
+
+def calculate(value):
+    if value:
+        return deep(value)
+    return 0
+`
+    );
+    fs.writeFileSync(path.join(root, "checkout", "deep.py"), "def deep(value):\n    if value:\n        return int(value)\n    return 0\n");
+    fs.writeFileSync(path.join(root, "checkout", "unused.py"), "def unused(value):\n    if value:\n        return int(value)\n    return 0\n");
+    fs.writeFileSync(path.join(root, "checkout", "typed.py"), "class Typed:\n    def valid(self, value):\n        return bool(value) if value else False\n");
+    fs.writeFileSync(
+      path.join(root, "tests", "test_public_behavior.py"),
+      "from checkout import public\n\ndef test_public_behavior():\n    assert public('2') == 2\n"
+    );
+
+    const audit = auditPythonRepo(root);
+    const service = audit.coveredButRisky.find((target) => target.path === "checkout/service.py");
+
+    assert.deepEqual(
+      audit.coveredButRisky.map((target) => target.path),
+      ["checkout/public.py", "checkout/service.py"]
+    );
+    assert.deepEqual(service.existingTestEvidence, [{
+      testPath: "tests/test_public_behavior.py",
+      kind: "bounded-dependency",
+      strength: "indirect",
+      viaUsage: "asserted"
+    }]);
+    assert.deepEqual(
+      audit.untestedCandidates.map((target) => target.path),
+      ["checkout/deep.py", "checkout/typed.py", "checkout/unused.py"]
+    );
+  });
+
+  it("propagates one source edge from a consumed pytest fixture", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-python-fixture-dependency-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "checkout"), { recursive: true });
+    fs.mkdirSync(path.join(root, "tests"), { recursive: true });
+    fs.writeFileSync(path.join(root, "requirements.txt"), "pytest\n");
+    fs.writeFileSync(path.join(root, "checkout", "__init__.py"), "");
+    fs.writeFileSync(
+      path.join(root, "checkout", "service.py"),
+      "from .parser import parse\n\ndef calculate(value):\n    return parse(value)\n"
+    );
+    fs.writeFileSync(path.join(root, "checkout", "parser.py"), "def parse(value):\n    return int(value)\n");
+    fs.writeFileSync(
+      path.join(root, "tests", "conftest.py"),
+      `import pytest
+from checkout.service import calculate
+
+@pytest.fixture
+def calculated():
+    return calculate("2")
+`
+    );
+    fs.writeFileSync(
+      path.join(root, "tests", "test_checkout.py"),
+      "def test_checkout(calculated):\n    assert calculated == 2\n"
+    );
+
+    const audit = auditPythonRepo(root);
+    const parser = audit.coveredButRisky.find((target) => target.path === "checkout/parser.py");
+
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["checkout/parser.py", "checkout/service.py"]);
+    assert.deepEqual(parser.existingTestEvidence, [{
+      testPath: "tests/test_checkout.py",
+      kind: "bounded-dependency",
+      strength: "indirect",
+      viaUsage: "asserted"
+    }]);
+  });
+
+  it("keeps source dependencies cycle-safe and inside the exact layout entry", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-python-source-owner-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "src", "alpha"), { recursive: true });
+    fs.mkdirSync(path.join(root, "vendor", "alpha"), { recursive: true });
+    fs.mkdirSync(path.join(root, "beta"), { recursive: true });
+    fs.mkdirSync(path.join(root, "tests"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "pyproject.toml"),
+      `[tool.poetry]
+name = "source-owners"
+packages = [
+  { include = "alpha", from = "src" },
+  { include = "alpha", from = "vendor" },
+  { include = "beta" },
+]
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.0"
+`
+    );
+    fs.writeFileSync(path.join(root, "src", "alpha", "__init__.py"), "");
+    fs.writeFileSync(
+      path.join(root, "src", "alpha", "entry.py"),
+      `import alpha.helper as helper
+from beta.parser import parse as beta_parse
+
+def run(value):
+    if value:
+        return helper.handle(value) + beta_parse(value)
+    return 0
+`
+    );
+    fs.writeFileSync(
+      path.join(root, "src", "alpha", "helper.py"),
+      "import alpha.entry as entry\n\ndef handle(value):\n    return int(value) if entry else 0\n"
+    );
+    fs.writeFileSync(path.join(root, "vendor", "alpha", "__init__.py"), "");
+    fs.writeFileSync(path.join(root, "vendor", "alpha", "helper.py"), "def handle(value):\n    if value:\n        return int(value)\n    return 0\n");
+    fs.writeFileSync(path.join(root, "beta", "__init__.py"), "");
+    fs.writeFileSync(path.join(root, "beta", "parser.py"), "def parse(value):\n    return int(value)\n");
+    fs.writeFileSync(
+      path.join(root, "tests", "test_entry_behavior.py"),
+      "from alpha.entry import run\n\ndef test_entry_behavior():\n    assert run('2') == 4\n"
+    );
+
+    const audit = auditPythonRepo(root);
+
+    assert.deepEqual(
+      audit.coveredButRisky.map((target) => target.path),
+      ["src/alpha/entry.py", "src/alpha/helper.py"]
+    );
+    assert.deepEqual(
+      audit.untestedCandidates.map((target) => target.path),
+      ["beta/parser.py", "vendor/alpha/helper.py"]
+    );
+  });
+
+  it("does not propagate from an imported but unused test entrypoint", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-python-unused-entrypoint-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "checkout"), { recursive: true });
+    fs.mkdirSync(path.join(root, "tests"), { recursive: true });
+    fs.writeFileSync(path.join(root, "requirements.txt"), "pytest\n");
+    fs.writeFileSync(path.join(root, "checkout", "__init__.py"), "");
+    fs.writeFileSync(
+      path.join(root, "checkout", "entry.py"),
+      "from .helper import handle\n\ndef run(value):\n    if value:\n        return handle(value)\n    return 0\n"
+    );
+    fs.writeFileSync(path.join(root, "checkout", "helper.py"), "def handle(value):\n    if value:\n        return int(value)\n    return 0\n");
+    fs.writeFileSync(
+      path.join(root, "tests", "test_behavior.py"),
+      "from checkout.entry import run\n\ndef test_behavior():\n    assert True\n"
+    );
+
+    const audit = auditPythonRepo(root);
+
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["checkout/entry.py"]);
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.path), ["checkout/helper.py"]);
+    assert.deepEqual(audit.coveredButRisky[0].existingTestEvidence, [{
+      testPath: "tests/test_behavior.py",
+      kind: "python-module-import",
+      strength: "direct"
+    }]);
+  });
+
   it("tracks one-hop package re-exports without claiming a direct module import", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-python-reexport-"));
     fs.mkdirSync(path.join(root, "checkout"), { recursive: true });

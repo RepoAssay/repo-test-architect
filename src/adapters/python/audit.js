@@ -856,6 +856,21 @@ function collectPythonTestEvidence(sourceFiles, testFiles, sourceLayout, sourceB
     }
   }
 
+  const sourceDependencies = collectPythonSourceDependencies(sourceFiles, moduleToSourcePaths, sourceLayout);
+  for (const [key, evidence] of [...evidenceBySourceAndTest]) {
+    const sourcePath = key.slice(0, key.lastIndexOf("\0"));
+    const viaUsage = evidence.usage ?? evidence.viaUsage;
+    if (!viaUsage || evidence.kind === "filename-convention") continue;
+    for (const dependencyPath of sourceDependencies.get(sourcePath) ?? []) {
+      setPythonTestEvidence(evidenceBySourceAndTest, dependencyPath, evidence.testPath, {
+        testPath: evidence.testPath,
+        kind: "bounded-dependency",
+        strength: "indirect",
+        viaUsage
+      });
+    }
+  }
+
   const bySourcePath = new Map();
   for (const [key, evidence] of evidenceBySourceAndTest) {
     const sourcePath = key.slice(0, key.lastIndexOf("\0"));
@@ -1000,20 +1015,23 @@ function collectPythonModuleImportBindings(content) {
   return imports;
 }
 
-function collectResolvedPythonModuleImportBindings(content, filePath, sourceLayout) {
+function collectResolvedPythonModuleImportBindings(content, filePath, sourceLayout, bindAbsoluteOwner = false) {
   const imports = collectPythonModuleImportBindings(content);
   const owner = pythonSourceLayoutOwner(filePath, sourceLayout);
   if (!owner) return imports.filter((currentImport) => !currentImport.relativeLevel);
   const packageModule = pythonContainingPackageModule(filePath, owner);
+  const ownerKey = pythonSourceLayoutOwnerKey(owner);
   return imports.flatMap((currentImport) => {
-    if (!currentImport.relativeLevel) return [currentImport];
+    if (!currentImport.relativeLevel) {
+      return [{ ...currentImport, ...(bindAbsoluteOwner ? { ownerKey } : {}) }];
+    }
     const relativePackageImport = !currentImport.moduleName;
     const moduleName = resolveRelativePythonModule(packageModule, currentImport.relativeLevel, currentImport.moduleName);
     if (!moduleName) return [];
     return [{
       ...currentImport,
       moduleName,
-      ownerKey: pythonSourceLayoutOwnerKey(owner),
+      ownerKey,
       ...(relativePackageImport ? { relativePackageImport: true } : {})
     }];
   });
@@ -1037,6 +1055,57 @@ function pythonImportedSourcePaths(currentImport, moduleToSourcePaths, sourceLay
     : currentImport.moduleName;
   return (moduleToSourcePaths.get(moduleName) ?? [])
     .filter((sourcePath) => pythonImportOwnsSource(currentImport, sourcePath, sourceLayout));
+}
+
+function collectPythonSourceDependencies(sourceFiles, moduleToSourcePaths, sourceLayout) {
+  const dependenciesBySourcePath = new Map();
+  for (const sourceFile of sourceFiles) {
+    const sourcePath = normalizePath(sourceFile.path);
+    const runtimeSource = maskPythonTypeCheckingBlocks(sourceFile.content);
+    const runtimeContent = maskPythonImportStatements(runtimeSource);
+    const dependencies = new Set();
+    for (const currentImport of collectResolvedPythonModuleImportBindings(runtimeSource, sourcePath, sourceLayout, true)) {
+      if (!pythonReferenceAppears(runtimeContent, currentImport.reference)) continue;
+      for (const dependencyPath of pythonImportedSourcePaths(currentImport, moduleToSourcePaths, sourceLayout)) {
+        if (dependencyPath !== sourcePath) dependencies.add(dependencyPath);
+      }
+    }
+    if (dependencies.size > 0) dependenciesBySourcePath.set(sourcePath, [...dependencies].sort());
+  }
+  return dependenciesBySourcePath;
+}
+
+function maskPythonImportStatements(content) {
+  return maskPythonCommentsAndStrings(content)
+    .replace(
+      /^\s*from\s+(\.*)([A-Za-z_][A-Za-z0-9_.]*)?\s+import\s+(\([^)]*\)|[^\n]+)/gm,
+      maskPythonStatement
+    )
+    .replace(/^\s*import\s+[^\n]+/gm, maskPythonStatement);
+}
+
+function maskPythonStatement(statement) {
+  return statement.replace(/[^\n]/g, " ");
+}
+
+function maskPythonTypeCheckingBlocks(content) {
+  const lines = content.split("\n");
+  const maskedLines = maskPythonCommentsAndStrings(content).split("\n");
+  for (let index = 0; index < lines.length; index += 1) {
+    const match = maskedLines[index].match(/^(\s*)if\s+(?:typing\.)?TYPE_CHECKING\s*:\s*$/);
+    if (!match) continue;
+    const indent = indentationWidth(match[1]);
+    lines[index] = maskPythonStatement(lines[index]);
+    let blockIndex = index + 1;
+    while (blockIndex < lines.length) {
+      const maskedLine = maskedLines[blockIndex];
+      if (maskedLine.trim() && indentationWidth(maskedLine.match(/^\s*/)?.[0] ?? "") <= indent) break;
+      lines[blockIndex] = maskPythonStatement(lines[blockIndex]);
+      blockIndex += 1;
+    }
+    index = blockIndex - 1;
+  }
+  return lines.join("\n");
 }
 
 function parsePythonFunctions(content) {

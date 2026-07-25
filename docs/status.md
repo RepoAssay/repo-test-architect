@@ -41,6 +41,7 @@ Implemented:
 - Python declarative multi-package ownership for literal setuptools and Poetry entries plus bounded setuptools find roots, with import roots kept separate from owned path prefixes so namespace packages and sibling tooling do not leak into one another
 - Python root pytest configuration precedence across TOML, INI, `pyproject.toml`, `tox.ini`, and `setup.cfg`, with literal `testpaths`, simple `python_files` globs, configured test-support exclusion, and unsafe discovery-value rejection
 - Python package-local relative-import evidence for direct tests and consumed pytest fixtures, with exact source-layout ownership, implicit-namespace support, duplicate-root isolation, and excess-dot rejection
+- Python one-hop source dependency evidence from called/asserted direct, re-exported, or fixture-consumed entrypoints, limited to statically used same-owner imports and excluding type-checking-only, unused, deeper, cross-owner, and duplicate-root edges
 - bounded Kotlin/JVM Gradle and Maven module audits plus conventional Gradle and root-declared Maven reactor ownership for standard Kotlin/Java sources; single-module and settings-owned all-KMP ownership for conventional common and target-derived source sets with exactly one literal default or named JVM target per source module; JUnit 4/5, `kotlin.test`, Gradle/JUnit Platform Kotest common specs, conventional Gradle/Spock features under `src/test/groovy`, method-level TestNG, wrapper-aware and module-qualified KMP commands, cycle-safe direct/exported-transitive conventional cross-module evidence, cycle-safe source-set-qualified KMP `api` evidence without `implementation` leakage, and exact JVM symbol provenance
 - explicit Kotlin/JVM blockers or exclusions for unresolvable aggregate roots, missing standard source sets, Android, advanced Spock/TestNG execution or evidence semantics, unsupported Kotest styles/configuration, computed Maven modules, and custom Gradle boundaries
 - adapter registry capability metadata for maturity, framework signals, project types, and emitted artifacts
@@ -241,7 +242,7 @@ The active sequence is defined in the [Adapter Hardening Plan](adapter-hardening
 
 1. Shared validation-corpus manifest, scorecard schema, semantic checker, and adapter-conformance helper are complete. Standardized stability and performance reruns remain visible as pending corpus scores.
 2. JavaScript/TypeScript workspace command ownership, bounded runner-config/custom test-location discovery, module-boundary hardening, the generated large-suite regression gate, and conservative literal Playwright/Cypress request-to-route evidence are complete for the static patterns in the support matrix.
-3. Python literal multi-package/namespace ownership, bounded root pytest discovery, and exact package-local relative imports are complete. Next: bounded source dependency evidence.
+3. Python literal multi-package/namespace ownership, bounded root pytest discovery, exact package-local relative imports, and one-hop same-owner source dependencies are complete. Next: framework boot and test-client evidence boundaries.
 4. Harden Kotlin/JVM Gradle/Maven ownership and conservative unsupported-graph behavior.
 5. Harden SwiftPM/Xcode ownership ambiguity and symbol-evidence boundaries.
 6. Complete a cross-adapter trust pass and set measured performance regression budgets.
