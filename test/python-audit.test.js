@@ -902,7 +902,16 @@ def test_property(value):
     fs.writeFileSync(path.join(root, ".coveragerc"), "[run]\nbranch = true\n[report]\nfail_under = 85\n");
     fs.writeFileSync(
       path.join(root, "noxfile.py"),
-      "import nox\n\n@nox.session\ndef tests(session):\n    session.run(\"pytest\", \"tests\")\n"
+      `import nox
+
+@nox.session
+def build(session):
+    session.run("python", "scripts/build.py")
+
+@nox.session(name="tests")
+def verification(session):
+    session.run("pytest", "tests")
+`
     );
     fs.writeFileSync(path.join(root, "webapp", "__init__.py"), "");
     fs.writeFileSync(
@@ -931,7 +940,10 @@ def test_property(value):
     fs.mkdirSync(path.join(root, "tests"), { recursive: true });
     fs.writeFileSync(path.join(root, "requirements.txt"), "pytest\n");
     fs.writeFileSync(path.join(root, "tox.ini"), "[tox]\nenvlist = py\n[testenv]\ndeps = pytest\ncommands = python -m compileall rules\n");
-    fs.writeFileSync(path.join(root, "noxfile.py"), "import nox\n\n@nox.session\ndef build(session):\n    session.run(\"python\", \"scripts/build.py\")\n");
+    fs.writeFileSync(
+      path.join(root, "noxfile.py"),
+      "import nox\n\n@nox.session\ndef build(session):\n    \"\"\"session.run(\"pytest\") is only an example.\"\"\"\n    # session.run(\"pytest\")\n    session.run(\"python\", \"scripts/build.py\")\n\ndef helper(session):\n    session.run(\"pytest\")\n"
+    );
     fs.writeFileSync(path.join(root, "rules", "__init__.py"), "");
     fs.writeFileSync(path.join(root, "rules", "validator.py"), "def validate(value):\n    return value > 0\n");
     fs.writeFileSync(path.join(root, "tests", "test_validator.py"), "from rules.validator import validate\n\ndef test_value():\n    assert validate(1)\n");
@@ -941,6 +953,74 @@ def test_property(value):
     assert.equal(audit.profile.testCommand, "pytest");
     assert.ok(!audit.profile.setupSignals.includes("tox test environment"));
     assert.ok(!audit.profile.setupSignals.includes("nox test session"));
+  });
+
+  it("blocks competing tox and nox test commands", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-python-runner-ambiguity-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "checkout"), { recursive: true });
+    fs.mkdirSync(path.join(root, "tests"), { recursive: true });
+    fs.writeFileSync(path.join(root, "requirements.txt"), "pytest\n");
+    fs.writeFileSync(path.join(root, "tox.ini"), "[tox]\nenvlist = py\n[testenv]\ncommands = pytest\n");
+    fs.writeFileSync(
+      path.join(root, "noxfile.py"),
+      "import nox\n\n@nox.session\ndef tests(session):\n    session.run(\"pytest\", \"tests\")\n"
+    );
+    fs.writeFileSync(path.join(root, "checkout", "__init__.py"), "");
+    fs.writeFileSync(path.join(root, "checkout", "parser.py"), "def parse(value):\n    return int(value)\n");
+    fs.writeFileSync(
+      path.join(root, "tests", "test_parser.py"),
+      "from checkout.parser import parse\n\ndef test_parse():\n    assert parse('2') == 2\n"
+    );
+
+    const audit = auditPythonRepo(root);
+
+    assert.equal(audit.profile.testCommand, undefined);
+    assert.equal(audit.profile.confidence, "medium");
+    assert.deepEqual(audit.profile.blockers, [
+      "Multiple runnable Python test commands detected from project markers: tox, nox -s tests."
+    ]);
+    assert.ok(audit.profile.setupSignals.includes("tox test environment"));
+    assert.ok(audit.profile.setupSignals.includes("nox test session"));
+    assert.ok(!audit.profile.blockers.includes("No runnable Python test command detected from project markers."));
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["checkout/parser.py"]);
+  });
+
+  it("blocks multiple proven nox test sessions", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-python-nox-ambiguity-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "checkout"), { recursive: true });
+    fs.mkdirSync(path.join(root, "tests"), { recursive: true });
+    fs.writeFileSync(path.join(root, "requirements.txt"), "pytest\n");
+    fs.writeFileSync(
+      path.join(root, "noxfile.py"),
+      `import nox
+from nox import session
+
+@session
+def ignored_alias(current):
+    current.run("pytest")
+
+@nox.session
+def unit(session):
+    session.run("pytest", "tests/unit")
+
+@nox.session
+async def integration(session):
+    session.run("python", "-m", "unittest", "tests.integration")
+`
+    );
+    fs.writeFileSync(path.join(root, "checkout", "__init__.py"), "");
+    fs.writeFileSync(path.join(root, "checkout", "parser.py"), "def parse(value):\n    return int(value)\n");
+    fs.writeFileSync(path.join(root, "tests", "test_parser.py"), "def test_placeholder():\n    assert True\n");
+
+    const audit = auditPythonRepo(root);
+
+    assert.equal(audit.profile.testCommand, undefined);
+    assert.deepEqual(audit.profile.blockers, [
+      "Multiple runnable Python test commands detected from project markers: nox -s unit, nox -s integration."
+    ]);
+    assert.ok(audit.profile.setupSignals.includes("nox test session"));
   });
 
   it("can limit candidates to changed source files while keeping repo profile", () => {

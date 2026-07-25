@@ -361,11 +361,12 @@ function buildProfile(root, files, pytestDiscovery) {
     .concat(pytestDiscovery.inherited ? [pytestDiscovery.configContent] : [])
     .join("\n");
   const testFrameworks = detectTestFrameworks(paths, configText, files, pytestDiscovery);
-  const testCommand = pytestDiscovery.blockers.length === 0
+  const commandSelection = pytestDiscovery.blockers.length === 0
     ? detectTestCommand(paths, configText, testFrameworks, files)
-    : undefined;
+    : { command: undefined, blockers: pytestDiscovery.blockers };
+  const testCommand = commandSelection.command;
   const existingTestLocations = detectExistingTestLocations(paths, pytestDiscovery);
-  const blockers = detectBlockers(testCommand, testFrameworks, pytestDiscovery.blockers);
+  const blockers = detectBlockers(testCommand, testFrameworks, commandSelection.blockers);
 
   return {
     root,
@@ -407,29 +408,35 @@ function detectTestFrameworks(paths, configText, files, pytestDiscovery) {
 }
 
 function detectTestCommand(paths, configText, frameworks, files) {
-  const environmentCommand = detectPythonTestEnvironmentCommand(paths, files);
-  if (environmentCommand) return environmentCommand;
+  const environmentCommands = detectPythonTestEnvironmentCommands(paths, files);
+  if (environmentCommands.length > 1) {
+    return {
+      command: undefined,
+      blockers: [`Multiple runnable Python test commands detected from project markers: ${environmentCommands.join(", ")}.`]
+    };
+  }
+  if (environmentCommands.length === 1) return { command: environmentCommands[0], blockers: [] };
   const tool = detectPythonTool(paths, configText);
   const hasDjangoTestProject = paths.includes("manage.py") && files.some((file) => /\bDJANGO_SETTINGS_MODULE\b|\bfrom\s+django\b|\bimport\s+django\b/.test(file.content));
-  if (frameworks.includes("unittest") && paths.includes("tests/runtests.py")) return "python tests/runtests.py";
+  if (frameworks.includes("unittest") && paths.includes("tests/runtests.py")) return { command: "python tests/runtests.py", blockers: [] };
   if (frameworks.includes("unittest") && hasDjangoTestProject) {
-    if (tool === "uv") return "uv run python manage.py test";
-    if (tool === "poetry") return "poetry run python manage.py test";
-    return "python manage.py test";
+    if (tool === "uv") return { command: "uv run python manage.py test", blockers: [] };
+    if (tool === "poetry") return { command: "poetry run python manage.py test", blockers: [] };
+    return { command: "python manage.py test", blockers: [] };
   }
   if (frameworks.includes("pytest")) {
-    if (tool === "uv") return "uv run pytest";
-    if (tool === "poetry") return "poetry run pytest";
-    if (tool === "hatch") return "hatch test";
-    return "pytest";
+    if (tool === "uv") return { command: "uv run pytest", blockers: [] };
+    if (tool === "poetry") return { command: "poetry run pytest", blockers: [] };
+    if (tool === "hatch") return { command: "hatch test", blockers: [] };
+    return { command: "pytest", blockers: [] };
   }
   if (frameworks.includes("unittest")) {
-    if (tool === "uv") return "uv run python -m unittest";
-    if (tool === "poetry") return "poetry run python -m unittest";
-    if (tool === "hatch") return "hatch test";
-    return "python -m unittest";
+    if (tool === "uv") return { command: "uv run python -m unittest", blockers: [] };
+    if (tool === "poetry") return { command: "poetry run python -m unittest", blockers: [] };
+    if (tool === "hatch") return { command: "hatch test", blockers: [] };
+    return { command: "python -m unittest", blockers: [] };
   }
-  return undefined;
+  return { command: undefined, blockers: [] };
 }
 
 function detectExistingTestLocations(paths, pytestDiscovery) {
@@ -483,9 +490,9 @@ function detectSetupSignals(paths, configText, files, pytestDiscovery) {
   if (tool === "uv") signals.add("uv project");
   if (tool === "poetry") signals.add("poetry project");
   if (tool === "hatch") signals.add("hatch project");
-  const environmentCommand = detectPythonTestEnvironmentCommand(paths, files, configText);
-  if (environmentCommand?.startsWith("tox")) signals.add("tox test environment");
-  if (environmentCommand?.startsWith("nox")) signals.add("nox test session");
+  const environmentCommands = detectPythonTestEnvironmentCommands(paths, files, configText);
+  if (environmentCommands.some((command) => command.startsWith("tox"))) signals.add("tox test environment");
+  if (environmentCommands.some((command) => command.startsWith("nox"))) signals.add("nox test session");
   if (paths.includes("tests/runtests.py")) signals.add("django test runner");
   if (/\bpytest\b/i.test(configText)) signals.add("pytest dependency");
   if (/\bpytest[-_]asyncio\b|@pytest\.mark\.asyncio\b/i.test(testSignalText)) signals.add("pytest async support");
@@ -499,18 +506,60 @@ function detectSetupSignals(paths, configText, files, pytestDiscovery) {
   return [...signals];
 }
 
-function detectPythonTestEnvironmentCommand(paths, files = [], configText = "") {
+function detectPythonTestEnvironmentCommands(paths, files = [], configText = "") {
+  const commands = [];
   const toxContent = files.find((file) => normalizePath(file.path) === "tox.ini")?.content ?? (paths.includes("tox.ini") ? configText : "");
   const hasToxTestCommand = /^\s*commands(?:_pre|_post)?\s*=[\s\S]{0,500}?\b(?:pytest|python\s+-m\s+unittest)\b/im.test(toxContent);
-  if (/^\s*\[(?:tox|testenv(?::[^\]]+)?)\]/m.test(toxContent) && hasToxTestCommand) return "tox";
+  if (/^\s*\[(?:tox|testenv(?::[^\]]+)?)\]/m.test(toxContent) && hasToxTestCommand) commands.push("tox");
 
   const noxContent = files.find((file) => normalizePath(file.path) === "noxfile.py")?.content ?? (paths.includes("noxfile.py") ? configText : "");
-  const hasNoxTestCommand = /session\.run\s*\(\s*["']pytest["']/.test(noxContent) || /session\.run\s*\(\s*["']python["']\s*,\s*["']-m["']\s*,\s*["']unittest["']/.test(noxContent);
-  if (/\bimport\s+nox\b|\bfrom\s+nox\s+import\b/.test(noxContent) && hasNoxTestCommand) {
-    const sessionName = noxContent.match(/@nox\.session[^\n]*\n(?:async\s+)?def\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(/)?.[1];
-    return sessionName ? `nox -s ${sessionName}` : "nox";
+  commands.push(...detectNoxTestSessionCommands(noxContent));
+  return [...new Set(commands)];
+}
+
+function detectNoxTestSessionCommands(content) {
+  if (!/\bimport\s+nox\b|\bfrom\s+nox\s+import\b/.test(content)) return [];
+  const lines = content.split(/\r?\n/);
+  const commands = [];
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const decorator = lines[index].match(/^(\s*)@nox\.session(?:\((.*)\))?\s*$/);
+    if (!decorator) continue;
+    const definitionIndent = decorator[1].length;
+    let definitionIndex = index + 1;
+    while (definitionIndex < lines.length && /^\s*@/.test(lines[definitionIndex])) definitionIndex += 1;
+    const definition = lines[definitionIndex]?.match(/^\s*(?:async\s+)?def\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(/);
+    if (!definition) continue;
+
+    const body = [];
+    let cursor = definitionIndex + 1;
+    while (cursor < lines.length) {
+      const line = lines[cursor];
+      if (line.trim() && leadingWhitespaceLength(line) <= definitionIndent) break;
+      body.push(line);
+      cursor += 1;
+    }
+    const bodyText = body.join("\n");
+    if (!hasLiteralNoxTestRun(bodyText)) continue;
+    const explicitName = decorator[2]?.match(/\bname\s*=\s*["']([A-Za-z0-9_.-]+)["']/)?.[1];
+    commands.push(`nox -s ${explicitName ?? definition[1]}`);
   }
-  return undefined;
+
+  return commands;
+}
+
+function hasLiteralNoxTestRun(content) {
+  const masked = maskPythonCommentsAndStrings(content);
+  for (const match of masked.matchAll(/session\.run\s*\(/g)) {
+    const call = content.slice(match.index, match.index + 300);
+    if (/^session\.run\s*\(\s*["']pytest["']/.test(call)) return true;
+    if (/^session\.run\s*\(\s*["']python["']\s*,\s*["']-m["']\s*,\s*["']unittest["']/.test(call)) return true;
+  }
+  return false;
+}
+
+function leadingWhitespaceLength(line) {
+  return line.match(/^\s*/)[0].length;
 }
 
 function hasCoverageConfig(paths, configText) {
