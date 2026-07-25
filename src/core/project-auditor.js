@@ -59,7 +59,8 @@ export function auditDetectedProjects(repoRoot, options = {}) {
     const adapterId = project.adapterIds[0];
     const projectRoot = path.resolve(detection.root, project.root);
     const audit = getAdapter(adapterId).audit(projectRoot, {
-      changedPaths: selectProjectChangedPaths(detection.root, project.root, options.changedPaths)
+      changedPaths: selectProjectChangedPaths(detection.root, project.root, options.changedPaths),
+      repositoryRoot: detection.root
     });
 
     audits.push({

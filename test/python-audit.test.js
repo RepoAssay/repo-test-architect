@@ -1455,6 +1455,140 @@ def test_packages():
     assert.deepEqual(audit.coveredButRisky[0].existingTestPaths, ["verification/verify_parser.py"]);
   });
 
+  it("inherits bounded pytest discovery from the repository owner", (t) => {
+    const repositoryRoot = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-python-inherited-pytest-"));
+    t.after(() => fs.rmSync(repositoryRoot, { recursive: true, force: true }));
+    const root = path.join(repositoryRoot, "packages", "checkout");
+    fs.mkdirSync(path.join(root, "checkout"), { recursive: true });
+    fs.mkdirSync(path.join(root, "quality"), { recursive: true });
+    fs.writeFileSync(
+      path.join(repositoryRoot, "pytest.ini"),
+      `[pytest]
+testpaths = packages/checkout/quality
+python_files = check_*.py
+`
+    );
+    fs.writeFileSync(
+      path.join(root, "pyproject.toml"),
+      `[project]
+name = "checkout"
+dependencies = ["pytest"]
+`
+    );
+    fs.writeFileSync(path.join(root, "checkout", "__init__.py"), "");
+    fs.writeFileSync(path.join(root, "checkout", "parser.py"), "def parse(value):\n    return int(value)\n");
+    fs.writeFileSync(
+      path.join(root, "quality", "check_parser.py"),
+      "from checkout.parser import parse\n\ndef test_parse():\n    assert parse('2') == 2\n"
+    );
+
+    const audit = auditPythonRepo(root, { repositoryRoot });
+
+    assert.equal(audit.profile.testCommand, "pytest");
+    assert.equal(audit.profile.confidence, "high");
+    assert.deepEqual(audit.profile.blockers, []);
+    assert.ok(audit.profile.setupSignals.includes("inherited pytest config"));
+    assert.ok(audit.profile.existingTestLocations.includes("configured pytest location"));
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["checkout/parser.py"]);
+    assert.deepEqual(audit.coveredButRisky[0].existingTestPaths, ["quality/check_parser.py"]);
+  });
+
+  it("blocks inherited pytest commands that select another project", (t) => {
+    const repositoryRoot = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-python-inherited-pytest-ambiguous-"));
+    t.after(() => fs.rmSync(repositoryRoot, { recursive: true, force: true }));
+    const root = path.join(repositoryRoot, "packages", "checkout");
+    fs.mkdirSync(path.join(root, "checkout"), { recursive: true });
+    fs.mkdirSync(path.join(root, "quality"), { recursive: true });
+    fs.mkdirSync(path.join(repositoryRoot, "shared-tests"), { recursive: true });
+    fs.writeFileSync(
+      path.join(repositoryRoot, "pytest.ini"),
+      `[pytest]
+testpaths =
+    packages/checkout/quality
+    shared-tests
+python_files = check_*.py
+`
+    );
+    fs.writeFileSync(
+      path.join(root, "pyproject.toml"),
+      `[project]
+name = "checkout"
+dependencies = ["pytest"]
+`
+    );
+    fs.writeFileSync(path.join(root, "checkout", "__init__.py"), "");
+    fs.writeFileSync(path.join(root, "checkout", "parser.py"), "def parse(value):\n    return int(value)\n");
+    fs.writeFileSync(
+      path.join(root, "quality", "check_parser.py"),
+      "from checkout.parser import parse\n\ndef test_parse():\n    assert parse('2') == 2\n"
+    );
+    fs.writeFileSync(path.join(repositoryRoot, "shared-tests", "check_shared.py"), "def test_shared():\n    assert True\n");
+
+    const audit = auditPythonRepo(root, { repositoryRoot });
+
+    assert.equal(audit.profile.testCommand, undefined);
+    assert.equal(audit.profile.confidence, "medium");
+    assert.deepEqual(audit.profile.blockers, [
+      "Inherited pytest testpaths cannot be bounded to the audited project."
+    ]);
+    assert.ok(!audit.profile.blockers.includes("No runnable Python test command detected from project markers."));
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["checkout/parser.py"]);
+  });
+
+  it("keeps project-local pytest configuration ahead of an ancestor", (t) => {
+    const repositoryRoot = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-python-local-pytest-precedence-"));
+    t.after(() => fs.rmSync(repositoryRoot, { recursive: true, force: true }));
+    const root = path.join(repositoryRoot, "packages", "checkout");
+    fs.mkdirSync(path.join(root, "checkout"), { recursive: true });
+    fs.mkdirSync(path.join(root, "quality"), { recursive: true });
+    fs.mkdirSync(path.join(repositoryRoot, "shared-tests"), { recursive: true });
+    fs.writeFileSync(path.join(repositoryRoot, "pytest.ini"), "[pytest]\ntestpaths = shared-tests\n");
+    fs.writeFileSync(
+      path.join(root, "pytest.toml"),
+      "[pytest]\ntestpaths = [\"quality\"]\npython_files = [\"check_*.py\"]\n"
+    );
+    fs.writeFileSync(path.join(root, "pyproject.toml"), "[project]\nname = \"checkout\"\ndependencies = [\"pytest\"]\n");
+    fs.writeFileSync(path.join(root, "checkout", "__init__.py"), "");
+    fs.writeFileSync(path.join(root, "checkout", "parser.py"), "def parse(value):\n    return int(value)\n");
+    fs.writeFileSync(
+      path.join(root, "quality", "check_parser.py"),
+      "from checkout.parser import parse\n\ndef test_parse():\n    assert parse('2') == 2\n"
+    );
+
+    const audit = auditPythonRepo(root, { repositoryRoot });
+
+    assert.equal(audit.profile.testCommand, "pytest");
+    assert.deepEqual(audit.profile.blockers, []);
+    assert.ok(!audit.profile.setupSignals.includes("inherited pytest config"));
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["checkout/parser.py"]);
+  });
+
+  it("does not inherit pytest configuration above the repository owner", (t) => {
+    const outerRoot = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-python-pytest-boundary-"));
+    t.after(() => fs.rmSync(outerRoot, { recursive: true, force: true }));
+    const repositoryRoot = path.join(outerRoot, "repository");
+    const root = path.join(repositoryRoot, "packages", "checkout");
+    fs.mkdirSync(path.join(root, "checkout"), { recursive: true });
+    fs.mkdirSync(path.join(root, "quality"), { recursive: true });
+    fs.writeFileSync(
+      path.join(outerRoot, "pytest.ini"),
+      "[pytest]\ntestpaths = repository/packages/checkout/quality\npython_files = check_*.py\n"
+    );
+    fs.writeFileSync(path.join(root, "pyproject.toml"), "[project]\nname = \"checkout\"\ndependencies = [\"pytest\"]\n");
+    fs.writeFileSync(path.join(root, "checkout", "__init__.py"), "");
+    fs.writeFileSync(path.join(root, "checkout", "parser.py"), "def parse(value):\n    return int(value)\n");
+    fs.writeFileSync(
+      path.join(root, "quality", "check_parser.py"),
+      "from checkout.parser import parse\n\ndef test_parse():\n    assert parse('2') == 2\n"
+    );
+
+    const audit = auditPythonRepo(root, { repositoryRoot });
+
+    assert.ok(!audit.profile.setupSignals.includes("inherited pytest config"));
+    assert.deepEqual(audit.coveredButRisky, []);
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.path), ["checkout/parser.py"]);
+  });
+
   it("does not broaden invalid hidden pytest discovery outside the audit root", (t) => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-python-invalid-pytest-discovery-"));
     t.after(() => fs.rmSync(root, { recursive: true, force: true }));

@@ -242,6 +242,42 @@ python_files = ["check_*.py"]
     assert.ok(!auditedPaths.includes("tools/release.py"));
   });
 
+  it("passes repository-owned pytest discovery into nested Python audits", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-project-python-inherited-discovery-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    const projectRoot = path.join(root, "packages", "checkout");
+    fs.mkdirSync(path.join(projectRoot, "checkout"), { recursive: true });
+    fs.mkdirSync(path.join(projectRoot, "quality"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "pytest.ini"),
+      `[pytest]
+testpaths = packages/checkout/quality
+python_files = check_*.py
+`
+    );
+    fs.writeFileSync(
+      path.join(projectRoot, "pyproject.toml"),
+      `[project]
+name = "checkout"
+dependencies = ["pytest"]
+`
+    );
+    fs.writeFileSync(path.join(projectRoot, "checkout", "__init__.py"), "");
+    fs.writeFileSync(path.join(projectRoot, "checkout", "parser.py"), "def parse(value):\n    return int(value)\n");
+    fs.writeFileSync(
+      path.join(projectRoot, "quality", "check_parser.py"),
+      "from checkout.parser import parse\n\ndef test_parse():\n    assert parse('2') == 2\n"
+    );
+
+    const result = auditDetectedProjects(root);
+    const project = result.audits.find((entry) => entry.projectRoot === "packages/checkout");
+
+    assert.ok(project);
+    assert.equal(project.audit.profile.testCommand, "pytest");
+    assert.ok(project.audit.profile.setupSignals.includes("inherited pytest config"));
+    assert.deepEqual(project.audit.coveredButRisky.map((target) => target.path), ["checkout/parser.py"]);
+  });
+
   it("preserves bounded Python relative-import evidence in project audits", (t) => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-project-python-relative-import-"));
     t.after(() => fs.rmSync(root, { recursive: true, force: true }));
