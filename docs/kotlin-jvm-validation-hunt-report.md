@@ -6,12 +6,12 @@ This report records static audits of pinned public repositories used to pressure
 
 | Repository/root | Commit | Shape | Profile result | Untested | Covered | Skipped | Static audit |
 | --- | --- | --- | --- | ---: | ---: | ---: | ---: |
-| [JUnit 4](https://github.com/junit-team/junit4) root | `300468b1efd48d76fac2f7bd6d576846dcbbf5ed` | Maven, Java, JUnit 4, Maven wrapper | high; `./mvnw test`; no blockers | 34 | 82 | 103 | about 251 ms |
+| [JUnit 4](https://github.com/junit-team/junit4) root | `300468b1efd48d76fac2f7bd6d576846dcbbf5ed` | Maven, Java, JUnit 4, Maven wrapper | high; `./mvnw test`; no blockers | 34 | 82 | 103 | 244 ms median |
 | [Cash App Barber](https://github.com/cashapp/barber) root | `97b01fc1018a1aa573405f22497480008f767450` | Gradle Kotlin DSL aggregate, Kotlin, JUnit/`kotlin.test` | high; `gradle test`; no blockers | 2 | 14 | 12 | about 29 ms |
 | [Mockito-Kotlin](https://github.com/mockito/mockito-kotlin) root | `7a1f513e21b9bc0a65b282c3c065b26a7f900c43` | Gradle aggregate, Kotlin, JUnit | high; `./gradlew test`; no blockers | 10 | 7 | 7 | about 24 ms |
 | [Fray](https://github.com/cmu-pasta/fray) root | `b5650548c272749e795ebb27cc7c1f12d6c8ee01` | multi-module Gradle, mixed Kotlin/Java, JUnit/`kotlin.test` | high; `./gradlew test`; no blockers | 176 | 23 | 112 | about 111 ms |
 | [NightConfig](https://github.com/TheElectronWill/night-config) root | `9d2c9564518666927f29f3059a8772f006444f1a` | multi-module Gradle, Java, JUnit, exported API chains | high; `./gradlew test`; no blockers | 65 | 26 | 86 | about 120 ms |
-| [Apache Maven Surefire](https://github.com/apache/maven-surefire) root | `8dcf263f808c15b00a7064ec6ea3f9268c1d4b51` | multi-module Maven reactor, Java, JUnit 4/5 | high; `mvn test`; no blockers | 24 | 132 | 130 | about 520 ms |
+| [Apache Maven Surefire](https://github.com/apache/maven-surefire) root | `8dcf263f808c15b00a7064ec6ea3f9268c1d4b51` | multi-module Maven reactor, Java, JUnit 4/5 | high; `mvn test`; no blockers | 24 | 132 | 130 | 524 ms median |
 | [Apache Maven Resolver](https://github.com/apache/maven-resolver) root | `651e7b1d1f43035e94001fddf6afb09d5a060705` | multi-module Maven reactor, Java, JUnit, compile-exported chains | high; `mvn test`; no blockers | 151 | 232 | 245 | about 680 ms |
 | [libcs1](https://github.com/cs124-illinois/libcs1) root | `428d499bc0c78cd90cdbde3783a3ea983ac66eb6` | Gradle Kotlin/JVM, Kotest `StringSpec`, multiline spec declaration | high; `./gradlew test`; no blockers | 1 | 3 | 0 | about 62 ms |
 | [service-apply](https://github.com/woowacourse/service-apply) root | `19c9327266c7c8ddb3f858425057ddd2c5a1370e` | Gradle Kotlin/JVM, Spring, mixed Kotest spec styles/configuration | medium; `./gradlew test`; unsupported-style, lifecycle, and data/property blockers | 56 | 47 | 104 | about 211 ms |
@@ -25,12 +25,12 @@ This report records static audits of pinned public repositories used to pressure
 | [OHC](https://github.com/snazy/ohc) root | `7f59c264fe8ae4c859b9662c8cea15620f0f55f8` | Maven reactor, Java, mixed simple and advanced TestNG methods | medium; `mvn test`; advanced TestNG evidence blocker | 36 | 11 | 28 | about 81 ms |
 | [FusionAuth java-http](https://github.com/FusionAuth/java-http) root | `70aec888ef179954dad5b5b54e2fbc86a9444f41` | Maven, Java, TestNG listener and excluded-group execution | low; no command; custom execution and advanced evidence blockers | 34 | 0 | 31 | about 70 ms |
 | [ReportPortal TestNG agent](https://github.com/reportportal/agent-java-testNG) root | `ae2b0beb07314f2dfb3473b28f481257d0bd175b` | Gradle, Java, JUnit Platform execution plus TestNG integration fixtures | medium; `./gradlew test`; TestNG execution and advanced evidence blockers | 0 | 4 | 3 | about 68 ms |
-| [graphql-java](https://github.com/graphql-java/graphql-java) root | `94f398d50cbff7d5810b6ffc5692fa3947482c99` | Gradle, Java, mostly Spock plus JUnit/TestNG | medium; `./gradlew test`; advanced Spock/TestNG evidence blockers | 186 | 164 | 303 | about 968 ms |
+| [graphql-java](https://github.com/graphql-java/graphql-java) root | `94f398d50cbff7d5810b6ffc5692fa3947482c99` | Gradle, Java, mostly Spock plus JUnit/TestNG | medium; `./gradlew test`; advanced Spock/TestNG evidence blockers | 186 | 164 | 303 | 873 ms median |
 | [Micronaut Core](https://github.com/micronaut-projects/micronaut-core) root | `bbfae6eb35121ff5268ee391c0bbedbd4ab9bd97` | large Gradle aggregate, Java/Kotlin, mixed direct and inherited Spock/Kotest configuration | medium; `./gradlew test`; inherited execution and advanced evidence blockers | 1,260 | 59 | 1,318 | about 7.6 s |
 | [Ratpack](https://github.com/ratpack/ratpack) root | `cc0e5a87474154cdab9b86397cb72f2ede39757b` | Gradle aggregate with renamed per-project build files and custom source sets | low; no command; framework, command, and owned-source blockers | 0 | 0 | 0 | about 74 ms |
 | [KotlinPoet](https://github.com/square/kotlinpoet) root | `be2de914ce6eb3694092ed4e0f28626cbce1ffe0` | mixed conventional JVM and Kotlin Multiplatform Gradle modules | medium; `./gradlew test`; multiplatform blocker | 20 | 5 | 6 | about 21 ms |
 
-Timing is an observed local static-analysis duration, not a performance guarantee. Counts describe heuristic audit targets, not runtime line or branch coverage.
+Timing is an observed local static-analysis duration, not a performance guarantee. Counts describe heuristic audit targets, not runtime line or branch coverage. The three corpus probes marked with median timings each produced the same normalized audit digest across three runs; their evidence graphs contain 706, 348, and 701 relationships respectively.
 
 ## What The Probes Established
 

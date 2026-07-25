@@ -246,11 +246,11 @@ npm run eval:test
 
 The active sequence is defined in the [Adapter Hardening Plan](adapter-hardening-plan.md):
 
-1. Shared validation-corpus manifest, scorecard schema, semantic checker, adapter-conformance helper, and per-adapter implementation coverage floors are complete. Standardized stability and performance reruns remain visible as pending corpus scores.
+1. Shared validation-corpus manifest, scorecard schema, semantic checker, adapter-conformance helper, and per-adapter implementation coverage floors are complete. All 12 pinned cases pass standardized three-run stability and performance measurement.
 2. JavaScript/TypeScript workspace command ownership, bounded runner-config/custom test-location discovery, module-boundary hardening, the generated large-suite regression gate, and conservative literal Playwright/Cypress request-to-route evidence are complete for the static patterns in the support matrix.
 3. Python literal multi-package/namespace ownership, bounded root pytest discovery, exact package-local relative imports, one-hop same-owner source dependencies, and static framework test-client route evidence are complete. Next: configuration inheritance and command-selection ambiguity.
 4. Harden Kotlin/JVM Gradle/Maven ownership and conservative unsupported-graph behavior.
 5. Harden SwiftPM/Xcode ownership ambiguity and symbol-evidence boundaries.
-6. Complete a cross-adapter trust pass and set measured performance regression budgets.
+6. Continue the cross-adapter trust pass using the recorded real-repository distributions and deterministic regression budgets.
 
 Another adapter and native test generation remain behind this hardening phase. Placement, model-consistency, diagnostics, and stats work should be included when an adapter slice exposes a concrete cross-cutting need rather than expanding independently.

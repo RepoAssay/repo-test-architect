@@ -21,9 +21,9 @@ describe("adapter validation corpus", () => {
     assert.equal(result.adapterCount, 4);
     assert.equal(result.caseCount, 12);
     assert.deepEqual(result.scorecardCounts, {
-      pass: 60,
+      pass: 84,
       fail: 0,
-      pending: 24
+      pending: 0
     });
   });
 
@@ -41,6 +41,9 @@ describe("adapter validation corpus", () => {
     invalid.adapters[0].cases[0].repository.commit = "55679f5";
     invalid.adapters[0].cases[0].scorecard.performance = "pass";
     invalid.adapters[0].cases[0].scorecard.stability = "pass";
+    delete invalid.adapters[0].cases[0].observed.evidenceRelationshipCount;
+    delete invalid.adapters[0].cases[0].observed.auditDurationSamplesMs;
+    delete invalid.adapters[0].cases[0].observed.canonicalAuditSha256;
     invalid.adapters[0].cases[1].scorecard.ownership = "fail";
 
     const result = validateValidationCorpus(invalid);
