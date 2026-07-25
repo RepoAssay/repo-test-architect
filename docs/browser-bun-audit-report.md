@@ -6,11 +6,11 @@ This report validates the Playwright, Cypress, and Bun alpha paths against maint
 
 | Repository | Pinned commit | Primary signal | Audit time |
 | --- | --- | --- | --- |
-| [`microsoft/playwright-mcp`](https://github.com/microsoft/playwright-mcp) | [`55679f5`](https://github.com/microsoft/playwright-mcp/commit/55679f5f3d4b4f3e2534ec0ce2fc5683ba2eaf3f) | Playwright config, dependency, and specs | 0.06s |
-| [`archfz/cypress-terminal-report`](https://github.com/archfz/cypress-terminal-report) | [`b66713f`](https://github.com/archfz/cypress-terminal-report/commit/b66713fd88ebaf200cfe60dd4bf205e8c1030e37) | Cypress dependency with a nested test harness | 0.13s |
-| [`honojs/hono`](https://github.com/honojs/hono) | [`c285f9a`](https://github.com/honojs/hono/commit/c285f9a498623fe0d2992b31c77b3738c0c0a54d) | Bun lockfile, scripts, config, and native runner imports | 7.96s |
+| [`microsoft/playwright-mcp`](https://github.com/microsoft/playwright-mcp) | [`55679f5`](https://github.com/microsoft/playwright-mcp/commit/55679f5f3d4b4f3e2534ec0ce2fc5683ba2eaf3f) | Playwright config, dependency, and specs | 0.005s |
+| [`archfz/cypress-terminal-report`](https://github.com/archfz/cypress-terminal-report) | [`b66713f`](https://github.com/archfz/cypress-terminal-report/commit/b66713fd88ebaf200cfe60dd4bf205e8c1030e37) | Cypress dependency with a nested test harness | 0.021s |
+| [`honojs/hono`](https://github.com/honojs/hono) | [`c285f9a`](https://github.com/honojs/hono/commit/c285f9a498623fe0d2992b31c77b3738c0c0a54d) | Bun lockfile, scripts, config, and native runner imports | 0.400s |
 
-Times are local wall-clock observations on the audit command and are included only to catch order-of-magnitude regressions.
+Times are medians from three local static-audit runs and are included only to catch order-of-magnitude regressions. Each probe produced the same normalized audit digest in all three runs.
 
 ## Playwright MCP
 
@@ -59,8 +59,8 @@ Hardening result:
 Profile result:
 
 - high confidence with Bun package management, Bun native tests, Vitest, `bunfig.toml`, and `bun run test`
-- one untested candidate, 100 covered-but-risky candidates, 85 skipped targets, and no blockers
-- the evidence graph remains stable at 820 bounded-dependency, 183 direct-relative-import, 57 filename-convention, and 39 referenced-relative-reexport links
+- two untested candidates, 99 covered-but-risky candidates, 85 skipped targets, and no blockers
+- the evidence graph remains stable at 894 relationships
 
 What the probe confirmed:
 

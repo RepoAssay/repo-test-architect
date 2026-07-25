@@ -263,11 +263,11 @@ npm run kotlin:performance:check
 npm run swift:performance:check
 ```
 
-The versioned `evals/validation-corpus.json` manifest records one conventional library or service, one framework-heavy application, and one difficult ownership graph per adapter. Each record carries the shared detection, ownership, command, evidence, ranking, stability, and performance scorecard. A `pending` score stays visible until that area has been rerun under the standardized hardening review.
+The versioned `evals/validation-corpus.json` manifest records one conventional library or service, one framework-heavy application, and one difficult ownership graph per adapter. Each record carries the shared detection, ownership, command, evidence, ranking, stability, and performance scorecard. All 12 current pinned cases pass every scorecard area; a new or repinned case stays `pending` until it has been rerun under the standardized hardening review.
 
 `corpus:measure` verifies the checkout's exact pinned Git SHA, runs the selected adapter at least three times, rejects canonical audit drift, and reports the raw durations, median duration, evidence-link count, and normalized audit digest used to update the scorecard.
 
-Each adapter performance check separately runs a generated 400-source/200-test project, verifies its candidate and evidence counts, and enforces a broad cross-platform regression ceiling. These synthetic gates do not replace the pending per-repository corpus measurements.
+Each adapter performance check separately runs a generated 400-source/200-test project, verifies its candidate and evidence counts, and enforces a broad cross-platform regression ceiling. These synthetic gates complement the recorded per-repository corpus distributions.
 
 Use `alpha:check` for the adapter-support milestone. `release:check` additionally covers packaging and installed-binary readiness.
 

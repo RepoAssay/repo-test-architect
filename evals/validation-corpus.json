@@ -20,15 +20,22 @@
             "command": "pass",
             "evidence": "pass",
             "ranking": "pass",
-            "stability": "pending",
-            "performance": "pending"
+            "stability": "pass",
+            "performance": "pass"
           },
           "observed": {
             "testCommand": "npm run test",
             "untestedCandidates": 1,
             "coveredButRisky": 0,
             "skippedTargets": 1,
-            "auditDurationMs": 60
+            "auditDurationMs": 5,
+            "auditDurationSamplesMs": [
+              18,
+              5,
+              5
+            ],
+            "evidenceRelationshipCount": 0,
+            "canonicalAuditSha256": "9bda6c4e8c4c2c04cdc93c4b7b6608f0b327582560639e85170779624fc7d2f5"
           }
         },
         {
@@ -47,15 +54,22 @@
             "command": "pass",
             "evidence": "pass",
             "ranking": "pass",
-            "stability": "pending",
-            "performance": "pending"
+            "stability": "pass",
+            "performance": "pass"
           },
           "observed": {
             "testCommand": "npx cypress run --config-file test/cypress.config.js",
             "untestedCandidates": 19,
             "coveredButRisky": 2,
             "skippedTargets": 11,
-            "auditDurationMs": 130
+            "auditDurationMs": 21,
+            "auditDurationSamplesMs": [
+              60,
+              21,
+              17
+            ],
+            "evidenceRelationshipCount": 2,
+            "canonicalAuditSha256": "0304cedae158416931ee4b13efaf897707616527e921083c55177dc835decfb6"
           }
         },
         {
@@ -74,16 +88,22 @@
             "command": "pass",
             "evidence": "pass",
             "ranking": "pass",
-            "stability": "pending",
-            "performance": "pending"
+            "stability": "pass",
+            "performance": "pass"
           },
           "observed": {
             "testCommand": "bun run test",
-            "untestedCandidates": 1,
-            "coveredButRisky": 100,
+            "untestedCandidates": 2,
+            "coveredButRisky": 99,
             "skippedTargets": 85,
-            "auditDurationMs": 7960,
-            "evidenceRelationshipCount": 1099
+            "auditDurationMs": 400,
+            "auditDurationSamplesMs": [
+              528,
+              400,
+              389
+            ],
+            "evidenceRelationshipCount": 894,
+            "canonicalAuditSha256": "3255a294e5cbc4d17173ec3e6a7935801e84fcefceaa80b88550eca23224853b"
           }
         }
       ]
@@ -107,16 +127,22 @@
             "command": "pass",
             "evidence": "pass",
             "ranking": "pass",
-            "stability": "pending",
-            "performance": "pending"
+            "stability": "pass",
+            "performance": "pass"
           },
           "observed": {
             "testCommand": "./mvnw test",
             "untestedCandidates": 34,
             "coveredButRisky": 82,
             "skippedTargets": 103,
-            "auditDurationMs": 251,
-            "evidenceRelationshipCount": 706
+            "auditDurationMs": 244,
+            "auditDurationSamplesMs": [
+              296,
+              244,
+              242
+            ],
+            "evidenceRelationshipCount": 706,
+            "canonicalAuditSha256": "6763041e607581dde0c85a19db15c78cf95686b98bfed4e5a88d8182e9d26635"
           }
         },
         {
@@ -135,16 +161,22 @@
             "command": "pass",
             "evidence": "pass",
             "ranking": "pass",
-            "stability": "pending",
-            "performance": "pending"
+            "stability": "pass",
+            "performance": "pass"
           },
           "observed": {
             "testCommand": "./gradlew test",
             "untestedCandidates": 186,
             "coveredButRisky": 164,
             "skippedTargets": 303,
-            "auditDurationMs": 968,
-            "evidenceRelationshipCount": 701
+            "auditDurationMs": 873,
+            "auditDurationSamplesMs": [
+              995,
+              870,
+              873
+            ],
+            "evidenceRelationshipCount": 701,
+            "canonicalAuditSha256": "b59f75df14066e2a85b6b40c5248fb38b79dd1e03183a00cc8e56bd900c42468"
           }
         },
         {
@@ -163,16 +195,22 @@
             "command": "pass",
             "evidence": "pass",
             "ranking": "pass",
-            "stability": "pending",
-            "performance": "pending"
+            "stability": "pass",
+            "performance": "pass"
           },
           "observed": {
             "testCommand": "mvn test",
             "untestedCandidates": 24,
             "coveredButRisky": 132,
             "skippedTargets": 130,
-            "auditDurationMs": 520,
-            "evidenceRelationshipCount": 348
+            "auditDurationMs": 524,
+            "auditDurationSamplesMs": [
+              634,
+              524,
+              521
+            ],
+            "evidenceRelationshipCount": 348,
+            "canonicalAuditSha256": "17470891be77fc985e1df103496740831fca5dd37e726c0d7d94e314abf158e2"
           }
         }
       ]
@@ -196,14 +234,22 @@
             "command": "pass",
             "evidence": "pass",
             "ranking": "pass",
-            "stability": "pending",
-            "performance": "pending"
+            "stability": "pass",
+            "performance": "pass"
           },
           "observed": {
             "testCommand": "uv run pytest",
-            "untestedCandidates": 1,
-            "coveredButRisky": 1,
-            "skippedTargets": 0
+            "untestedCandidates": 0,
+            "coveredButRisky": 2,
+            "skippedTargets": 0,
+            "auditDurationMs": 13,
+            "auditDurationSamplesMs": [
+              32,
+              13,
+              13
+            ],
+            "evidenceRelationshipCount": 6,
+            "canonicalAuditSha256": "3d391f894bbb118d599e53276f31f12930b80d8502a86501afc186581b4f113b"
           }
         },
         {
@@ -222,14 +268,22 @@
             "command": "pass",
             "evidence": "pass",
             "ranking": "pass",
-            "stability": "pending",
-            "performance": "pending"
+            "stability": "pass",
+            "performance": "pass"
           },
           "observed": {
             "testCommand": "pytest",
-            "untestedCandidates": 6,
-            "coveredButRisky": 9,
-            "skippedTargets": 8
+            "untestedCandidates": 5,
+            "coveredButRisky": 10,
+            "skippedTargets": 8,
+            "auditDurationMs": 15,
+            "auditDurationSamplesMs": [
+              37,
+              15,
+              13
+            ],
+            "evidenceRelationshipCount": 19,
+            "canonicalAuditSha256": "760f0d6d94ede22f2d6929096b0a82508f3ed64adcfa24bc0625f70cbd24112b"
           }
         },
         {
@@ -248,15 +302,22 @@
             "command": "pass",
             "evidence": "pass",
             "ranking": "pass",
-            "stability": "pending",
-            "performance": "pending"
+            "stability": "pass",
+            "performance": "pass"
           },
           "observed": {
             "testCommand": "python tests/runtests.py",
-            "untestedCandidates": 170,
-            "coveredButRisky": 334,
+            "untestedCandidates": 104,
+            "coveredButRisky": 400,
             "skippedTargets": 197,
-            "auditDurationMs": 2000
+            "auditDurationMs": 3786,
+            "auditDurationSamplesMs": [
+              3900,
+              3741,
+              3786
+            ],
+            "evidenceRelationshipCount": 4935,
+            "canonicalAuditSha256": "541ccfb9779cdd34a9d9d2c338d97117770160f2ff456646b6b625d5d496e222"
           }
         }
       ]
@@ -280,14 +341,22 @@
             "command": "pass",
             "evidence": "pass",
             "ranking": "pass",
-            "stability": "pending",
-            "performance": "pending"
+            "stability": "pass",
+            "performance": "pass"
           },
           "observed": {
             "testCommand": "swift test",
-            "untestedCandidates": 17,
+            "untestedCandidates": 15,
             "coveredButRisky": 22,
-            "skippedTargets": 15
+            "skippedTargets": 17,
+            "auditDurationMs": 259,
+            "auditDurationSamplesMs": [
+              322,
+              259,
+              257
+            ],
+            "evidenceRelationshipCount": 80,
+            "canonicalAuditSha256": "e1b168f024893d1a040369239ec7989d201948f5008df2cc75b055fbaf97a8d4"
           }
         },
         {
@@ -306,14 +375,22 @@
             "command": "pass",
             "evidence": "pass",
             "ranking": "pass",
-            "stability": "pending",
-            "performance": "pending"
+            "stability": "pass",
+            "performance": "pass"
           },
           "observed": {
             "testCommand": "swift test",
-            "untestedCandidates": 91,
-            "coveredButRisky": 93,
-            "skippedTargets": 166
+            "untestedCandidates": 90,
+            "coveredButRisky": 92,
+            "skippedTargets": 168,
+            "auditDurationMs": 11500,
+            "auditDurationSamplesMs": [
+              11518,
+              11500,
+              11430
+            ],
+            "evidenceRelationshipCount": 261,
+            "canonicalAuditSha256": "8d931c34ef431a4e34892f08d9549413228820bf858868bfd01dca8ea4b37e51"
           }
         },
         {
@@ -332,14 +409,22 @@
             "command": "pass",
             "evidence": "pass",
             "ranking": "pass",
-            "stability": "pending",
-            "performance": "pending"
+            "stability": "pass",
+            "performance": "pass"
           },
           "observed": {
             "testCommand": "bazel test //...",
             "untestedCandidates": 29,
             "coveredButRisky": 5,
-            "skippedTargets": 102
+            "skippedTargets": 102,
+            "auditDurationMs": 114,
+            "auditDurationSamplesMs": [
+              170,
+              108,
+              114
+            ],
+            "evidenceRelationshipCount": 8,
+            "canonicalAuditSha256": "f162dac565b4d8ab2bc016efa3352f134d05f50b3edc044ffe0af240e254226c"
           }
         }
       ]
