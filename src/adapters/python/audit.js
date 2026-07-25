@@ -24,7 +24,11 @@ export function auditPythonRepo(root, options = {}) {
   const changedPaths = options.changedPaths ? new Set(options.changedPaths.map((currentPath) => normalizeChangedPath(root, currentPath))) : undefined;
   const testFiles = files
     .filter((file) => isTestFile(file.path, pytestDiscovery))
-    .map((file) => ({ path: normalizePath(file.path), content: file.content, analysis: analyzePythonTestFile(file.content) }))
+    .map((file) => ({
+      path: normalizePath(file.path),
+      content: file.content,
+      analysis: analyzePythonTestFile(file.content, file.path, sourceLayout)
+    }))
     .sort((left, right) => left.path.localeCompare(right.path));
   const sourceFiles = files.filter((candidate) => isSourceFile(candidate.path, sourceLayout, pytestDiscovery));
   const sourceBasenameCounts = countSourceBasenames(sourceFiles);
@@ -750,10 +754,10 @@ function isTestFile(currentPath, pytestDiscovery = EMPTY_PYTEST_DISCOVERY) {
   return fileName === "tests.py" || (isInTestsDirectory(normalized) && (fileName.startsWith("test_") || fileName.endsWith("_test.py")));
 }
 
-function analyzePythonTestFile(content) {
+function analyzePythonTestFile(content, filePath, sourceLayout) {
   return {
     functions: parsePythonFunctions(content),
-    imports: collectPythonModuleImportBindings(content)
+    imports: collectResolvedPythonModuleImportBindings(content, filePath, sourceLayout)
   };
 }
 
@@ -786,7 +790,8 @@ function collectPythonTestEvidence(sourceFiles, testFiles, sourceLayout, sourceB
     const fixtureFunctions = testFile.analysis.functions.filter((pythonFunction) => pythonFunction.decorators.some(isPytestFixtureDecorator));
 
     for (const currentImport of testFile.analysis.imports) {
-      for (const sourcePath of moduleToSourcePaths.get(currentImport.moduleName) ?? []) {
+      const directSourcePaths = pythonImportedSourcePaths(currentImport, moduleToSourcePaths, sourceLayout);
+      for (const sourcePath of directSourcePaths) {
         const testUsage = strongestPythonReferenceUsage(testFunctions, currentImport.reference);
         const fixtureUsesImport = fixtureFunctions.some((pythonFunction) => pythonReferenceAppears(pythonFunction.body, currentImport.reference));
         if (testUsage || !fixtureUsesImport) {
@@ -801,6 +806,7 @@ function collectPythonTestEvidence(sourceFiles, testFiles, sourceLayout, sourceB
 
       if (currentImport.kind === "from") {
         for (const sourcePath of reexportLookup.get(`${currentImport.moduleName}:${currentImport.imported}`) ?? []) {
+          if (!pythonImportOwnsSource(currentImport, sourcePath, sourceLayout)) continue;
           const usage = strongestPythonReferenceUsage(testFunctions, currentImport.reference);
           setPythonTestEvidence(evidenceBySourceAndTest, sourcePath, testFile.path, {
             testPath: testFile.path,
@@ -817,6 +823,7 @@ function collectPythonTestEvidence(sourceFiles, testFiles, sourceLayout, sourceB
           const usage = strongestPythonReferenceUsage(testFunctions, reference);
           if (!usage && !testFunctions.some((pythonFunction) => pythonReferenceAppears(pythonFunction.body, reference))) continue;
           for (const sourcePath of sourcePaths) {
+            if (!pythonImportOwnsSource(currentImport, sourcePath, sourceLayout)) continue;
             setPythonTestEvidence(evidenceBySourceAndTest, sourcePath, testFile.path, {
               testPath: testFile.path,
               kind: "python-package-reexport",
@@ -922,13 +929,13 @@ function collectPytestFixtures(files, sourceLayout, pytestDiscovery) {
   const definitions = files
     .filter((file) => isPythonTestSupportFile(file.path, pytestDiscovery))
     .flatMap((file) => {
-      const imports = collectPythonModuleImportBindings(file.content);
+      const imports = collectResolvedPythonModuleImportBindings(file.content, file.path, sourceLayout);
       return parsePythonFunctions(file.content)
         .filter((pythonFunction) => pythonFunction.decorators.some(isPytestFixtureDecorator))
         .map((pythonFunction) => {
           const sourcePaths = new Set();
           for (const currentImport of imports) {
-            const matchingSources = moduleToSourcePaths.get(currentImport.moduleName) ?? [];
+            const matchingSources = pythonImportedSourcePaths(currentImport, moduleToSourcePaths, sourceLayout);
             if (matchingSources.length === 0 || !pythonReferenceAppears(pythonFunction.body, currentImport.reference)) continue;
             for (const sourcePath of matchingSources) sourcePaths.add(sourcePath);
           }
@@ -972,9 +979,16 @@ function isPythonTestSupportFile(currentPath, pytestDiscovery = EMPTY_PYTEST_DIS
 function collectPythonModuleImportBindings(content) {
   const imports = [];
   const masked = maskPythonCommentsAndStrings(content);
-  for (const match of masked.matchAll(/^\s*from\s+([A-Za-z_][A-Za-z0-9_.]*)\s+import\s+(\([^)]*\)|[^\n]+)/gm)) {
-    for (const binding of parsePythonImportBindings(match[2])) {
-      imports.push({ moduleName: match[1], imported: binding.imported, reference: binding.local, kind: "from" });
+  for (const match of masked.matchAll(/^\s*from\s+(\.*)([A-Za-z_][A-Za-z0-9_.]*)?\s+import\s+(\([^)]*\)|[^\n]+)/gm)) {
+    if (!match[1] && !match[2]) continue;
+    for (const binding of parsePythonImportBindings(match[3])) {
+      imports.push({
+        moduleName: match[2] ?? "",
+        imported: binding.imported,
+        reference: binding.local,
+        kind: "from",
+        ...(match[1] ? { relativeLevel: match[1].length } : {})
+      });
     }
   }
   for (const match of masked.matchAll(/^\s*import\s+([^\n]+)/gm)) {
@@ -984,6 +998,45 @@ function collectPythonModuleImportBindings(content) {
     }
   }
   return imports;
+}
+
+function collectResolvedPythonModuleImportBindings(content, filePath, sourceLayout) {
+  const imports = collectPythonModuleImportBindings(content);
+  const owner = pythonSourceLayoutOwner(filePath, sourceLayout);
+  if (!owner) return imports.filter((currentImport) => !currentImport.relativeLevel);
+  const packageModule = pythonContainingPackageModule(filePath, owner);
+  return imports.flatMap((currentImport) => {
+    if (!currentImport.relativeLevel) return [currentImport];
+    const relativePackageImport = !currentImport.moduleName;
+    const moduleName = resolveRelativePythonModule(packageModule, currentImport.relativeLevel, currentImport.moduleName);
+    if (!moduleName) return [];
+    return [{
+      ...currentImport,
+      moduleName,
+      ownerKey: pythonSourceLayoutOwnerKey(owner),
+      ...(relativePackageImport ? { relativePackageImport: true } : {})
+    }];
+  });
+}
+
+function pythonContainingPackageModule(filePath, owner) {
+  const directory = normalizePath(filePath).split("/").slice(0, -1).join("/");
+  if (!directory.startsWith(owner.importRoot)) return undefined;
+  return directory.slice(owner.importRoot.length).replaceAll("/", ".");
+}
+
+function pythonImportOwnsSource(currentImport, sourcePath, sourceLayout) {
+  if (!currentImport.ownerKey) return true;
+  const owner = pythonSourceLayoutOwner(sourcePath, sourceLayout);
+  return owner && pythonSourceLayoutOwnerKey(owner) === currentImport.ownerKey;
+}
+
+function pythonImportedSourcePaths(currentImport, moduleToSourcePaths, sourceLayout) {
+  const moduleName = currentImport.relativePackageImport
+    ? `${currentImport.moduleName}.${currentImport.imported}`
+    : currentImport.moduleName;
+  return (moduleToSourcePaths.get(moduleName) ?? [])
+    .filter((sourcePath) => pythonImportOwnsSource(currentImport, sourcePath, sourceLayout));
 }
 
 function parsePythonFunctions(content) {
@@ -1049,6 +1102,8 @@ function collectPythonPackageReexports(files, sourceLayout, pytestDiscovery) {
     !isInConfiguredPytestPath(candidate.path, pytestDiscovery) &&
     sourceLayout.entries.some(({ prefix }) => normalizePath(candidate.path).startsWith(prefix))
   )) {
+    const owner = pythonSourceLayoutOwner(file.path, sourceLayout);
+    if (!owner) continue;
     const packageModule = pythonPackageModule(file.path, sourceLayout);
     if (!packageModule) continue;
     const masked = maskPythonCommentsAndStrings(file.content);
@@ -1059,6 +1114,7 @@ function collectPythonPackageReexports(files, sourceLayout, pytestDiscovery) {
       for (const sourcePath of files
         .filter((candidate) => isSourceFile(candidate.path, sourceLayout, pytestDiscovery))
         .filter((candidate) => pythonModuleNames(candidate.path, sourceLayout).includes(importedModule))
+        .filter((candidate) => pythonSourceLayoutOwnerKey(pythonSourceLayoutOwner(candidate.path, sourceLayout)) === pythonSourceLayoutOwnerKey(owner))
         .map((candidate) => normalizePath(candidate.path))) {
         const current = reexportsByModule.get(sourcePath) ?? [];
         reexportsByModule.set(sourcePath, [
@@ -1076,19 +1132,29 @@ function collectPythonPackageReexports(files, sourceLayout, pytestDiscovery) {
 
 function pythonPackageModule(initializerPath, sourceLayout) {
   const withoutInitializer = normalizePath(initializerPath).replace(/\/__init__\.py$/, "");
-  for (const { prefix, importRoot } of sourceLayout.entries) {
-    if (withoutInitializer === prefix.replace(/\/$/, "") || withoutInitializer.startsWith(prefix)) {
-      return withoutInitializer.slice(importRoot.length).replaceAll("/", ".");
-    }
-  }
+  const owner = pythonSourceLayoutOwner(initializerPath, sourceLayout);
+  if (owner) return withoutInitializer.slice(owner.importRoot.length).replaceAll("/", ".");
   return withoutInitializer.replaceAll("/", ".");
 }
 
 function resolveRelativePythonModule(packageModule, level, suffix) {
+  if (!packageModule || level < 1) return undefined;
   const packageSegments = packageModule.split(".");
-  const base = packageSegments.slice(0, Math.max(0, packageSegments.length - (level - 1)));
+  if (level > packageSegments.length) return undefined;
+  const base = packageSegments.slice(0, packageSegments.length - (level - 1));
   const suffixSegments = suffix ? suffix.split(".") : [];
   return [...base, ...suffixSegments].filter(Boolean).join(".");
+}
+
+function pythonSourceLayoutOwner(currentPath, sourceLayout) {
+  const normalized = normalizePath(currentPath);
+  return sourceLayout.entries
+    .filter(({ prefix }) => normalized.startsWith(prefix))
+    .sort((left, right) => right.prefix.length - left.prefix.length || left.importRoot.localeCompare(right.importRoot))[0];
+}
+
+function pythonSourceLayoutOwnerKey(owner) {
+  return owner ? `${owner.importRoot}\0${owner.prefix}` : undefined;
 }
 
 function countSourceBasenames(sourceFiles) {

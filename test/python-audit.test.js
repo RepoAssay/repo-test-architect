@@ -130,6 +130,128 @@ def test_checkout_behavior():
     }]);
   });
 
+  it("resolves exact relative imports inside the owning package", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-python-relative-import-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "src", "checkout", "tests"), { recursive: true });
+    fs.writeFileSync(path.join(root, "requirements.txt"), "pytest\n");
+    fs.writeFileSync(path.join(root, "src", "checkout", "__init__.py"), "");
+    fs.writeFileSync(path.join(root, "src", "checkout", "tests", "__init__.py"), "");
+    fs.writeFileSync(path.join(root, "src", "checkout", "parser.py"), "def parse(value):\n    return int(value)\n");
+    fs.writeFileSync(path.join(root, "src", "checkout", "tax_parser.py"), "def parse(value):\n    return int(value)\n");
+    fs.writeFileSync(
+      path.join(root, "src", "checkout", "tests", "test_checkout_behavior.py"),
+      `from ..parser import parse
+from .. import tax_parser as taxes
+
+def test_checkout_behavior():
+    assert parse("2") == taxes.parse("2")
+`
+    );
+
+    const audit = auditPythonRepo(root);
+
+    assert.deepEqual(
+      audit.coveredButRisky.map((target) => target.path),
+      ["src/checkout/parser.py", "src/checkout/tax_parser.py"]
+    );
+    assert.deepEqual(
+      audit.coveredButRisky.map((target) => target.existingTestEvidence),
+      [
+        [{
+          testPath: "src/checkout/tests/test_checkout_behavior.py",
+          kind: "python-module-import",
+          strength: "direct",
+          usage: "asserted"
+        }],
+        [{
+          testPath: "src/checkout/tests/test_checkout_behavior.py",
+          kind: "python-module-import",
+          strength: "direct",
+          usage: "asserted"
+        }]
+      ]
+    );
+  });
+
+  it("resolves relative imports used by consumed pytest fixtures", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-python-relative-fixture-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "checkout", "tests"), { recursive: true });
+    fs.writeFileSync(path.join(root, "requirements.txt"), "pytest\n");
+    fs.writeFileSync(path.join(root, "checkout", "__init__.py"), "");
+    fs.writeFileSync(path.join(root, "checkout", "tests", "__init__.py"), "");
+    fs.writeFileSync(path.join(root, "checkout", "price_parser.py"), "def parse_price(value):\n    return int(value)\n");
+    fs.writeFileSync(
+      path.join(root, "checkout", "tests", "conftest.py"),
+      `import pytest
+from ..price_parser import parse_price
+
+@pytest.fixture
+def parsed_price():
+    return parse_price("2")
+`
+    );
+    fs.writeFileSync(
+      path.join(root, "checkout", "tests", "test_checkout_behavior.py"),
+      `def test_checkout_behavior(parsed_price):
+    assert parsed_price == 2
+`
+    );
+
+    const audit = auditPythonRepo(root);
+
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["checkout/price_parser.py"]);
+    assert.deepEqual(audit.coveredButRisky[0].existingTestEvidence, [{
+      testPath: "checkout/tests/test_checkout_behavior.py",
+      kind: "python-pytest-fixture",
+      strength: "indirect",
+      viaUsage: "asserted"
+    }]);
+  });
+
+  it("keeps relative imports inside their exact source-layout owner", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-python-relative-owner-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "src", "alpha", "tests"), { recursive: true });
+    fs.mkdirSync(path.join(root, "vendor", "alpha"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "pyproject.toml"),
+      `[tool.poetry]
+name = "duplicate-layout"
+packages = [
+  { include = "alpha", from = "src" },
+  { include = "alpha", from = "vendor" },
+]
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.0"
+`
+    );
+    fs.writeFileSync(path.join(root, "src", "alpha", "__init__.py"), "");
+    fs.writeFileSync(path.join(root, "src", "alpha", "tests", "__init__.py"), "");
+    fs.writeFileSync(path.join(root, "src", "alpha", "parser.py"), "def parse(value):\n    return int(value)\n");
+    fs.writeFileSync(path.join(root, "src", "alpha", "escape_parser.py"), "def parse(value):\n    return int(value)\n");
+    fs.writeFileSync(path.join(root, "vendor", "alpha", "__init__.py"), "");
+    fs.writeFileSync(path.join(root, "vendor", "alpha", "parser.py"), "def parse(value):\n    return int(value)\n");
+    fs.writeFileSync(
+      path.join(root, "src", "alpha", "tests", "test_behavior.py"),
+      "from ..parser import parse\n\ndef test_behavior():\n    assert parse('2') == 2\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "src", "alpha", "tests", "test_escape.py"),
+      "from ...alpha.escape_parser import parse\n\ndef test_escape():\n    assert parse('2') == 2\n"
+    );
+
+    const audit = auditPythonRepo(root);
+
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["src/alpha/parser.py"]);
+    assert.deepEqual(
+      audit.untestedCandidates.map((target) => target.path),
+      ["src/alpha/escape_parser.py", "vendor/alpha/parser.py"]
+    );
+  });
+
   it("tracks one-hop package re-exports without claiming a direct module import", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-python-reexport-"));
     fs.mkdirSync(path.join(root, "checkout"), { recursive: true });
@@ -740,6 +862,38 @@ include = ["acme*"]
 
     assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["lib/acme/payments/price_parser.py"]);
     assert.ok(!auditedPaths.includes("lib/other/branching.py"));
+  });
+
+  it("resolves relative imports inside a declared implicit namespace owner", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-python-relative-namespace-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "lib", "acme", "payments", "tests"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "pyproject.toml"),
+      `[project]
+name = "acme-payments"
+dependencies = ["pytest"]
+
+[tool.setuptools.packages.find]
+where = ["lib"]
+include = ["acme*"]
+`
+    );
+    fs.writeFileSync(
+      path.join(root, "lib", "acme", "payments", "price_parser.py"),
+      "def parse_price(value):\n    return int(value)\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "lib", "acme", "payments", "tests", "test_behavior.py"),
+      "from ..price_parser import parse_price\n\ndef test_behavior():\n    assert parse_price('2') == 2\n"
+    );
+
+    const audit = auditPythonRepo(root);
+
+    assert.deepEqual(
+      audit.coveredButRisky.map((target) => target.path),
+      ["lib/acme/payments/price_parser.py"]
+    );
   });
 
   it("uses literal Poetry package entries across declared source bases", (t) => {
