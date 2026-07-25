@@ -37,7 +37,7 @@ Models can explain, prioritize, or generate from this graph, but the graph is th
 The first public npm and MCP Registry distribution is complete. The active milestone is [adapter hardening](adapter-hardening-plan.md):
 
 1. Add a shared validation corpus, scorecard, and adapter-conformance helper. Complete; standardized live stability and performance reruns remain tracked as pending corpus scores.
-2. Harden JavaScript/TypeScript workspace ownership, command selection, configuration boundaries, evidence, and performance. Static workspace package-manager ownership, bounded runner-config/custom-location discovery, the bounded ESM/CommonJS/export/barrel/alias evidence pass, and a generated large-suite performance regression gate are complete; conservative browser E2E evidence remains.
+2. Harden JavaScript/TypeScript workspace ownership, command selection, configuration boundaries, evidence, and performance. Complete for the bounded matrix: static workspace package-manager ownership, runner-config/custom-location discovery, ESM/CommonJS/export/barrel/alias evidence, a generated large-suite performance gate, and exact literal Playwright/Cypress request-to-route evidence.
 3. Harden Python package ownership, imports, pytest discovery, framework boundaries, and command selection.
 4. Harden bounded Kotlin/JVM Gradle/Maven ownership, dependency visibility, supported test-framework evidence, and unsupported-graph blockers.
 5. Harden SwiftPM, Xcode, and Bazel ownership plus conservative Swift symbol evidence.

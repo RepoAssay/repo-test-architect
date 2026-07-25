@@ -388,4 +388,4 @@ Remaining gap:
 - make local sibling package report generation independent of local checkout names
 - rerun the pinned JavaScript/TypeScript repositories against the hardened conditional-export, module-format, barrel, type-only, and alias boundaries before broadening public support claims
 - rerun pinned real repositories to populate their still-pending standardized performance observations
-- keep Playwright/Cypress navigation-only evidence conservative
+- rerun the pinned Playwright/Cypress repositories to record whether the new literal request-to-route boundary produces useful evidence without changing the older report's conservative runtime-reachability conclusions

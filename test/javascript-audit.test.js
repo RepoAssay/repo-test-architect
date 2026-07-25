@@ -1349,6 +1349,141 @@ export function auditKotlin(files) {
     }
   });
 
+  it("matches literal Playwright and Cypress requests to exact static HTTP route registrations", (t) => {
+    const roots = [];
+    t.after(() => roots.forEach((root) => fs.rmSync(root, { recursive: true, force: true })));
+
+    const cases = [
+      {
+        framework: "playwright",
+        config: "playwright.config.ts",
+        testPath: "tests/browser.spec.ts",
+        testContent: `import { test } from "@playwright/test";
+test("browser routes", async ({ page, request }) => {
+  await page.goto("/checkout?source=e2e");
+  await request.post("/api/orders");
+});
+`
+      },
+      {
+        framework: "cypress",
+        config: "cypress.config.ts",
+        testPath: "cypress/e2e/browser.cy.ts",
+        testContent: `describe("browser routes", () => {
+  it("covers navigation and network calls", () => {
+    cy.visit("/checkout#summary");
+    cy.request("POST", "/api/orders");
+  });
+});
+`
+      }
+    ];
+
+    for (const entry of cases) {
+      const root = fs.mkdtempSync(path.join(os.tmpdir(), `repo-test-architect-${entry.framework}-route-evidence-`));
+      roots.push(root);
+      fs.mkdirSync(path.join(root, "src", "routes"), { recursive: true });
+      fs.mkdirSync(path.dirname(path.join(root, entry.testPath)), { recursive: true });
+      fs.writeFileSync(path.join(root, "package.json"), JSON.stringify({ name: `${entry.framework}-routes` }));
+      fs.writeFileSync(path.join(root, entry.config), "export default {};\n");
+      fs.writeFileSync(
+        path.join(root, "src", "routes", "checkout.ts"),
+        `router.get("/checkout", (request, response) => response.send(request.query));\n`
+      );
+      fs.writeFileSync(
+        path.join(root, "src", "routes", "orders.ts"),
+        `router.post("/api/orders", (request, response) => response.send(request.body));\n`
+      );
+      fs.writeFileSync(path.join(root, entry.testPath), entry.testContent);
+
+      const audit = auditJavaScriptRepo(root);
+
+      assert.deepEqual(audit.untestedCandidates, []);
+      assert.deepEqual(
+        audit.coveredButRisky.map((target) => [target.path, target.existingTestEvidence]),
+        [
+          [
+            "src/routes/checkout.ts",
+            [{ testPath: entry.testPath, kind: "browser-route-match", strength: "indirect" }]
+          ],
+          [
+            "src/routes/orders.ts",
+            [{ testPath: entry.testPath, kind: "browser-route-match", strength: "indirect" }]
+          ]
+        ]
+      );
+    }
+  });
+
+  it("rejects ambiguous browser route relationships", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-playwright-route-near-misses-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "src", "clients"), { recursive: true });
+    fs.mkdirSync(path.join(root, "src", "routes"), { recursive: true });
+    fs.mkdirSync(path.join(root, "tests"), { recursive: true });
+    fs.writeFileSync(path.join(root, "package.json"), JSON.stringify({ devDependencies: { "@playwright/test": "latest" } }));
+    fs.writeFileSync(path.join(root, "playwright.config.ts"), "export default {};\n");
+    fs.writeFileSync(
+      path.join(root, "src", "clients", "checkoutClient.ts"),
+      `export function loadCheckout(client) { return client.get("/checkout"); }\n`
+    );
+    fs.writeFileSync(
+      path.join(root, "src", "routes", "computed.ts"),
+      `const routePath = "/computed";\nrouter.get(routePath, (request, response) => response.send(request.query));\n`
+    );
+    fs.writeFileSync(
+      path.join(root, "src", "routes", "dynamic.ts"),
+      `router.get("/orders/:id", (request, response) => response.send(request.params.id));\n`
+    );
+    fs.writeFileSync(
+      path.join(root, "src", "routes", "documented.ts"),
+      `const docs = 'router.get("/documented", handler)';\n// router.get("/commented", handler);\nexport function documentedRoute(value) { if (!value) throw new Error("missing"); return docs; }\n`
+    );
+    fs.writeFileSync(
+      path.join(root, "src", "routes", "proxy.ts"),
+      `export function loadCheckout(external) { return external.get("/checkout"); }\n`
+    );
+    fs.writeFileSync(
+      path.join(root, "src", "routes", "wrongMethod.ts"),
+      `router.post("/checkout", (request, response) => response.send(request.body));\n`
+    );
+    fs.writeFileSync(
+      path.join(root, "src", "routes", "dynamicRequest.ts"),
+      `router.get("/dynamic/42", (request, response) => response.send(request.params));\n`
+    );
+    fs.writeFileSync(
+      path.join(root, "tests", "navigation.spec.ts"),
+      `import { test } from "@playwright/test";
+test("browser near misses", async ({ page }) => {
+  const id = 42;
+  await page.goto("/checkout");
+  await page.goto("/orders/42");
+  await page.goto("/computed");
+  await page.goto(\`/dynamic/\${id}\`);
+  const docs = "page.goto('/documented')";
+  // await page.goto("/commented");
+  console.log(docs);
+});
+`
+    );
+
+    const audit = auditJavaScriptRepo(root);
+
+    assert.deepEqual(
+      audit.untestedCandidates.map((target) => target.path),
+      [
+        "src/routes/computed.ts",
+        "src/routes/documented.ts",
+        "src/routes/dynamic.ts",
+        "src/routes/dynamicRequest.ts",
+        "src/routes/proxy.ts",
+        "src/routes/wrongMethod.ts",
+        "src/clients/checkoutClient.ts"
+      ]
+    );
+    assert.deepEqual(audit.coveredButRisky, []);
+  });
+
   it("keeps a nested Cypress test harness in the owning package audit", (t) => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-cypress-harness-"));
     t.after(() => fs.rmSync(root, { recursive: true, force: true }));

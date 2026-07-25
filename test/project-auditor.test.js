@@ -169,6 +169,38 @@ describe("project auditor", () => {
     assert.deepEqual(result.audits[0].audit.untestedCandidates, []);
   });
 
+  it("preserves bounded browser route evidence in project audits", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-project-browser-route-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "src", "routes"), { recursive: true });
+    fs.mkdirSync(path.join(root, "cypress", "e2e"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "package.json"),
+      JSON.stringify({ scripts: { "test:e2e": "cypress run" }, devDependencies: { cypress: "latest" } })
+    );
+    fs.writeFileSync(path.join(root, "cypress.config.ts"), "export default {};\n");
+    fs.writeFileSync(
+      path.join(root, "src", "routes", "checkout.ts"),
+      `router.get("/checkout", (request, response) => response.send(request.query));\n`
+    );
+    fs.writeFileSync(
+      path.join(root, "cypress", "e2e", "checkout.cy.ts"),
+      `describe("checkout", () => it("opens", () => cy.visit("/checkout")));\n`
+    );
+
+    const result = auditDetectedProjects(root);
+    const audit = result.audits[0].audit;
+
+    assert.deepEqual(audit.untestedCandidates, []);
+    assert.deepEqual(audit.coveredButRisky[0].existingTestEvidence, [
+      {
+        testPath: "cypress/e2e/checkout.cy.ts",
+        kind: "browser-route-match",
+        strength: "indirect"
+      }
+    ]);
+  });
+
   it("passes project-relative changed paths into matching project adapters", () => {
     const result = auditDetectedProjects(path.resolve("examples/polyglot-workspace"), {
       changedPaths: [

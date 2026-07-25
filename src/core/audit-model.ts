@@ -31,7 +31,7 @@ export interface AuditTarget {
   existingTestPaths?: string[];
   existingTestEvidence?: Array<{
     testPath: string;
-    kind: "filename-convention" | "direct-relative-import" | "referenced-relative-reexport" | "tsconfig-path-import" | "package-entry-import" | "bounded-dependency" | "swift-symbol-reference" | "python-module-import" | "python-package-reexport" | "python-pytest-fixture" | "jvm-symbol-reference";
+    kind: "filename-convention" | "direct-relative-import" | "referenced-relative-reexport" | "tsconfig-path-import" | "package-entry-import" | "bounded-dependency" | "browser-route-match" | "swift-symbol-reference" | "python-module-import" | "python-package-reexport" | "python-pytest-fixture" | "jvm-symbol-reference";
     strength: "naming" | "direct" | "referenced" | "indirect";
     usage?: "called" | "asserted";
     viaUsage?: "called" | "asserted";
