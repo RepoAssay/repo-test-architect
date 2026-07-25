@@ -11,9 +11,12 @@ Implemented:
 - cached JavaScript/TypeScript module-import analysis for real repositories with large test suites
 - skipped-target short-circuiting before JavaScript/TypeScript test-evidence analysis
 - JavaScript/TypeScript package-boundary scoping that excludes nested packages from parent profiles and candidate graphs
+- JavaScript/TypeScript workspace package-script ownership across npm, pnpm, Yarn, and Bun for statically declared child packages, with local-manager precedence, unrelated-sibling isolation, and an explicit ambiguity blocker for unresolved multiple lockfiles
+- JavaScript/TypeScript bounded static runner-config discovery for Vitest, Jest, Playwright, Cypress, AVA, and Mocha custom test locations, with explicit owning-workspace inheritance and ambient/fixture config isolation
 - Node test runner detection from `node:test` imports, alongside AVA, Mocha, Vitest, Jest, React Testing Library, and Supertest dependency/config signals
 - JavaScript/TypeScript `src/`, `source/`, and `lib/` roots plus conventional `test/`, `tests/`, and `__tests__/` test locations
 - JavaScript/TypeScript existing-test matching from filename conventions, literal relative imports with two bounded source-dependency hops, referenced-import-symbol-aware barrel re-exports, exact self-package entry imports, and declared exact or single-wildcard package subpaths
+- JavaScript/TypeScript module-boundary evidence that separates conditional `import`/`require` package exports and explicit `.mjs`/`.mts` from `.cjs`/`.cts`, rejects type-only/test re-export evidence and ambiguous/default star-barrel leakage, and preserves ordered `tsconfig` wildcard fallbacks
 - JavaScript/TypeScript `tsconfig.json` path-alias evidence for exact and single-wildcard mappings, including local inherited configs, `baseUrl` relative to the declaring config, JSON comments/trailing commas, symbol-aware aliased barrels, and bounded aliased dependencies
 - optional JavaScript/TypeScript per-test provenance with deterministic naming, direct, referenced-symbol, and bounded-indirect evidence strengths
 - call-aware JavaScript/TypeScript provenance for directly imported named ES module and destructured CommonJS bindings
@@ -231,8 +234,8 @@ npm run eval:test
 
 The active sequence is defined in the [Adapter Hardening Plan](adapter-hardening-plan.md):
 
-1. Add the shared validation-corpus manifest, scorecard, and adapter-conformance helper.
-2. Harden JavaScript/TypeScript workspace command ownership and configuration boundaries.
+1. Shared validation-corpus manifest, scorecard schema, semantic checker, and adapter-conformance helper are complete. Standardized stability and performance reruns remain visible as pending corpus scores.
+2. JavaScript/TypeScript workspace command ownership, bounded runner-config/custom test-location discovery, and module-boundary hardening are complete for the static patterns in the support matrix. Next: large-suite performance and conservative Playwright/Cypress evidence.
 3. Harden Python multi-package ownership, relative imports, and pytest discovery configuration.
 4. Harden Kotlin/JVM Gradle/Maven ownership and conservative unsupported-graph behavior.
 5. Harden SwiftPM/Xcode ownership ambiguity and symbol-evidence boundaries.

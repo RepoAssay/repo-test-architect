@@ -100,6 +100,7 @@ describe("package manifest", () => {
     assert.ok(packageJson.scripts["model-consistency:compare"]);
     assert.ok(packageJson.scripts["model-consistency:compare:profiles"]);
     assert.ok(packageJson.scripts["model-consistency:stats"]);
+    assert.equal(packageJson.scripts["corpus:check"], "node ./scripts/check-validation-corpus.js");
     assert.equal(packageJson.scripts["demo:check"], "node ./scripts/check-demo-script.js");
     assert.equal(packageJson.scripts["mcp:smoke"], "node ./scripts/check-mcp-stdio-smoke.js");
     assert.equal(packageJson.scripts["audit:prod"], "npm audit --omit=dev");
@@ -117,6 +118,7 @@ describe("package manifest", () => {
 
     assert.deepEqual(alphaChecks, [
       "test",
+      "corpus:check",
       "eval:check",
       "model-consistency:check",
       "demo:check",
@@ -133,6 +135,7 @@ describe("package manifest", () => {
     const expectedChecks = [
       "audit:prod",
       "test",
+      "corpus:check",
       "eval:check",
       "model-consistency:check",
       "demo:check",

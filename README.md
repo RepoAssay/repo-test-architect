@@ -252,11 +252,19 @@ npm run validation:repos -- --profile swift,gradle,maven --format json
 
 The finder uses authenticated GitHub repository search, verifies exact ecosystem markers in root manifests, and ranks candidates using maintenance recency, stars, repository size, lockfiles, CI, and license metadata. Run `npm run validation:repos -- --list-profiles` for the available profiles and `--help` for quality-filter options.
 
+Check that every supported adapter has a complete, pinned hardening corpus:
+
+```powershell
+npm run corpus:check
+```
+
+The versioned `evals/validation-corpus.json` manifest records one conventional library or service, one framework-heavy application, and one difficult ownership graph per adapter. Each record carries the shared detection, ownership, command, evidence, ranking, stability, and performance scorecard. A `pending` score stays visible until that area has been rerun under the standardized hardening review.
+
 Use `alpha:check` for the adapter-support milestone. `release:check` additionally covers packaging and installed-binary readiness.
 
 The CI workflow keeps one stable Linux `pr-gate`: documentation-only changes run focused contract tests, normal changes run `npm run alpha:check`, and distribution-sensitive changes run `npm run release:check`. Windows runs only for runtime and portability changes; macOS runs only for Swift-sensitive changes. A merge to `master` runs the complete release gate on Linux, while manual dispatch runs the full release gate on all three operating systems.
 
-The tests include golden audit and plan snapshots under `evals/expected`, driven by `evals/fixtures.json`.
+The tests include golden audit and plan snapshots under `evals/expected`, driven by `evals/fixtures.json`, plus shared adapter-conformance checks for deterministic JSON, portable paths, evidence semantics, and downstream artifact agreement.
 JSON schemas and the signal registry for versioned artifacts live under `schemas/`.
 
 Refresh snapshots after intentional audit behavior changes:

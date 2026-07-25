@@ -298,6 +298,15 @@ Why it matters:
 - Evidence matching cannot affect a skipped target's artifact, making the previous source-by-test analysis pure discarded work in type-heavy packages.
 - Project source-file stats now apply the same nested ownership and fixture boundaries, avoiding double counts from both workspace-root and package-root scans.
 
+Follow-up workspace command hardening:
+
+- a directly or project-audited child package now inherits npm, pnpm, Yarn, or Bun command ownership only from the nearest statically matching workspace declaration
+- package-local lockfiles or `packageManager` remain authoritative, while an unrelated sibling outside the declared patterns keeps its own package-manager result
+- multiple owning-workspace lockfiles without an explicit `packageManager` now block the package-script command instead of selecting one by implementation order
+- a package-root or owned test-harness config can contribute bounded static test discovery; an ancestor config requires an explicit child-script path that remains inside the owning workspace
+- ambient root configs, arbitrary fixture configs, and unowned ancestor paths do not contribute test locations
+- deterministic positive and near-miss fixtures lock these boundaries; the pinned typescript-eslint checkout should be rerun to gather live evidence for the new configuration behavior
+
 ## Additional JavaScript Probe: `expressjs/express`
 
 Source:
@@ -375,4 +384,5 @@ The real-repo report gate is satisfied for private alpha validation:
 Remaining gap:
 
 - make local sibling package report generation independent of local checkout names
-- turn the `h3` and Hono false positives into fixture-backed transitive, directory-qualified, and exported-symbol matching improvements before broadening public support claims
+- rerun the pinned JavaScript/TypeScript repositories against the hardened conditional-export, module-format, barrel, type-only, and alias boundaries before broadening public support claims
+- measure large-suite import-analysis performance and keep Playwright/Cypress navigation-only evidence conservative

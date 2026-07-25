@@ -215,6 +215,11 @@ describe("docs links", () => {
     assert.ok(hardeningPlan.includes("Swift"));
     assert.ok(hardeningPlan.includes("Slice And Pull-Request Routine"));
     assert.ok(hardeningPlan.includes("Definition Of Done"));
+    assert.ok(hardeningPlan.includes("npm run corpus:check"));
+    assert.ok(hardeningPlan.includes("test/support/adapter-conformance.js"));
+    assert.ok(hardeningPlan.includes("first bounded workspace-command slice"));
+    assert.ok(hardeningPlan.includes("second bounded configuration slice"));
+    assert.ok(hardeningPlan.includes("ESM/CommonJS"));
     assert.ok(hardeningPlan.includes("Native test generation"));
     assert.ok(roadmap.includes("Alpha Readiness"));
     assert.ok(roadmap.includes("repository is public, `repo-test-architect@0.1.1` is available through npm"));
@@ -222,6 +227,10 @@ describe("docs links", () => {
     assert.ok(roadmap.includes("Milestone 1: Alpha Test Architecture Audit"));
     assert.ok(roadmap.includes("one concise repo-level summary can show top findings with evidence"));
     assert.ok(roadmap.includes("Milestone 2: Public Demo Polish"));
+    assert.ok(roadmap.includes("Future Scorecard Visualization"));
+    assert.ok(roadmap.includes("review completeness"));
+    assert.ok(roadmap.includes("reviewed pass rate"));
+    assert.ok(roadmap.includes("not “71% quality.”"));
     assert.ok(roadmap.includes("Milestone 3: Adapter Spike Hardening"));
     assert.ok(roadmap.includes("bounded single-module and settings-owned all-KMP literal-JVM-target graphs with source-set-qualified API traversal"));
     assert.ok(roadmap.includes("Swift Package Manager with XCTest, Swift Testing, Quick/Nimble, and SnapshotTesting signals"));

@@ -1,0 +1,50 @@
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import { describe, it } from "node:test";
+import {
+  corpusRoles,
+  loadValidationCorpus,
+  scorecardAreas,
+  validateValidationCorpus
+} from "../scripts/check-validation-corpus.js";
+import { assertMatchesSchema } from "./support/json-schema-validator.js";
+
+const corpus = loadValidationCorpus();
+const schema = JSON.parse(fs.readFileSync("schemas/validation-corpus-v1.schema.json", "utf8"));
+
+describe("adapter validation corpus", () => {
+  it("matches the versioned corpus schema and semantic checks", () => {
+    assertMatchesSchema(corpus, schema, "evals/validation-corpus.json");
+
+    const result = validateValidationCorpus(corpus);
+    assert.deepEqual(result.errors, []);
+    assert.equal(result.adapterCount, 4);
+    assert.equal(result.caseCount, 12);
+    assert.deepEqual(result.scorecardCounts, {
+      pass: 60,
+      fail: 0,
+      pending: 24
+    });
+  });
+
+  it("contains every required role and scorecard area for every supported adapter", () => {
+    for (const adapter of corpus.adapters) {
+      assert.deepEqual(adapter.cases.map((entry) => entry.role).sort(), [...corpusRoles].sort());
+      for (const entry of adapter.cases) {
+        assert.deepEqual(Object.keys(entry.scorecard).sort(), [...scorecardAreas].sort());
+      }
+    }
+  });
+
+  it("rejects incomplete pins and prematurely passing performance records", () => {
+    const invalid = structuredClone(corpus);
+    invalid.adapters[0].cases[0].repository.commit = "55679f5";
+    invalid.adapters[0].cases[0].scorecard.performance = "pass";
+    invalid.adapters[0].cases[1].scorecard.ownership = "fail";
+
+    const result = validateValidationCorpus(invalid);
+    assert.ok(result.errors.some((error) => error.includes("full lowercase 40-character Git SHA")));
+    assert.ok(result.errors.some((error) => error.includes("evidenceRelationshipCount")));
+    assert.ok(result.errors.some((error) => error.includes("scorecard.ownership is failing")));
+  });
+});

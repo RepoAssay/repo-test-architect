@@ -117,6 +117,17 @@ describe("schema files", () => {
     assert.deepEqual(schema.properties.adapters.items.properties.maturity.enum, ["supported", "experimental", "planned"]);
   });
 
+  it("documents validation-corpus/v1", () => {
+    const schema = readSchema("schemas/validation-corpus-v1.schema.json");
+
+    assert.equal(schema.properties.schemaVersion.const, "validation-corpus/v1");
+    assert.ok(schema.required.includes("adapters"));
+    assert.ok(schema.$defs.adapterCorpus.required.includes("adapterId"));
+    assert.ok(schema.$defs.corpusCase.required.includes("repository"));
+    assert.ok(schema.$defs.corpusCase.required.includes("scorecard"));
+    assert.deepEqual(schema.$defs.scoreStatus.enum, ["pass", "fail", "pending"]);
+  });
+
   it("documents project-detection/v1", () => {
     const schema = readSchema("schemas/project-detection-v1.schema.json");
 
