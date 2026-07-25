@@ -1803,7 +1803,7 @@ function maskPythonCommentsAndStrings(content) {
     }
     if (quote) {
       if (!triple && current === "\\") {
-        result += "  ";
+        result += content[index + 1] === "\n" ? " \n" : "  ";
         index += 2;
         continue;
       }
