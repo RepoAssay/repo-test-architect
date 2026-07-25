@@ -147,6 +147,74 @@ describe("Kotlin audit adapter", () => {
     );
   });
 
+  it("blocks competing root Gradle and Maven test commands", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-kotlin-competing-runners-"));
+    fs.mkdirSync(path.join(root, "src", "main", "kotlin"), { recursive: true });
+    fs.mkdirSync(path.join(root, "src", "test", "kotlin"), { recursive: true });
+    fs.writeFileSync(path.join(root, "settings.gradle.kts"), 'rootProject.name = "competing-runners"\n');
+    fs.writeFileSync(path.join(root, "build.gradle.kts"), 'dependencies { testImplementation(kotlin("test")) }\ntasks.test { useJUnitPlatform() }\n');
+    fs.writeFileSync(path.join(root, "gradlew"), "#!/usr/bin/env sh\n");
+    fs.writeFileSync(path.join(root, "pom.xml"), "<project><dependencies><dependency><groupId>org.junit.jupiter</groupId><artifactId>junit-jupiter</artifactId></dependency></dependencies></project>\n");
+    fs.writeFileSync(path.join(root, "mvnw"), "#!/bin/sh\n");
+    fs.writeFileSync(path.join(root, "src", "main", "kotlin", "TokenParser.kt"), "class TokenParser { fun parse(value: String) = value.trim() }\n");
+    fs.writeFileSync(path.join(root, "src", "test", "kotlin", "TokenParserTest.kt"), "import kotlin.test.Test\nclass TokenParserTest { @Test fun parses() { TokenParser().parse(\"x\") } }\n");
+
+    const audit = auditKotlinRepo(root);
+
+    assert.deepEqual(audit.profile.packageManagers, ["gradle", "maven"]);
+    assert.equal(audit.profile.testCommand, undefined);
+    assert.equal(audit.profile.confidence, "medium");
+    assert.ok(audit.profile.setupSignals.includes("gradle wrapper"));
+    assert.ok(audit.profile.setupSignals.includes("maven wrapper"));
+    assert.ok(audit.profile.blockers.includes("Multiple runnable JVM test commands detected from project markers: ./gradlew test, ./mvnw test."));
+    assert.ok(!audit.profile.blockers.includes("No runnable JVM test command detected from Gradle or Maven markers."));
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.name), ["TokenParser"]);
+  });
+
+  it("does not combine an orphan root Maven wrapper with a nested Maven build", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-kotlin-nested-maven-"));
+    fs.mkdirSync(path.join(root, "src", "main", "kotlin"), { recursive: true });
+    fs.mkdirSync(path.join(root, "src", "test", "kotlin"), { recursive: true });
+    fs.mkdirSync(path.join(root, "tools"), { recursive: true });
+    fs.writeFileSync(path.join(root, "settings.gradle.kts"), 'rootProject.name = "gradle-root"\n');
+    fs.writeFileSync(path.join(root, "build.gradle.kts"), 'dependencies { testImplementation(kotlin("test")) }\n');
+    fs.writeFileSync(path.join(root, "gradlew"), "#!/usr/bin/env sh\n");
+    fs.writeFileSync(path.join(root, "mvnw"), "#!/bin/sh\n");
+    fs.writeFileSync(path.join(root, "tools", "pom.xml"), "<project><artifactId>auxiliary-tool</artifactId></project>\n");
+    fs.writeFileSync(path.join(root, "tools", "mvnw"), "#!/bin/sh\n");
+    fs.writeFileSync(path.join(root, "src", "main", "kotlin", "TokenParser.kt"), "class TokenParser { fun parse(value: String) = value.trim() }\n");
+    fs.writeFileSync(path.join(root, "src", "test", "kotlin", "TokenParserTest.kt"), "import kotlin.test.Test\nclass TokenParserTest { @Test fun parses() { TokenParser().parse(\"x\") } }\n");
+
+    const audit = auditKotlinRepo(root);
+
+    assert.deepEqual(audit.profile.packageManagers, ["gradle"]);
+    assert.equal(audit.profile.testCommand, "./gradlew test");
+    assert.deepEqual(audit.profile.blockers, []);
+  });
+
+  it("blocks competing inherited Gradle and Maven wrapper commands", () => {
+    const aggregateRoot = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-kotlin-parent-runner-ambiguity-"));
+    const root = path.join(aggregateRoot, "token-core");
+    fs.mkdirSync(path.join(root, "src", "main", "kotlin"), { recursive: true });
+    fs.mkdirSync(path.join(root, "src", "test", "kotlin"), { recursive: true });
+    fs.writeFileSync(path.join(aggregateRoot, "settings.gradle.kts"), 'include(":token-core")\n');
+    fs.writeFileSync(path.join(aggregateRoot, "gradlew"), "#!/usr/bin/env sh\n");
+    fs.writeFileSync(path.join(aggregateRoot, "pom.xml"), "<project><modules><module>token-core</module></modules></project>\n");
+    fs.writeFileSync(path.join(aggregateRoot, "mvnw"), "#!/bin/sh\n");
+    fs.writeFileSync(path.join(root, "build.gradle.kts"), 'dependencies { testImplementation(kotlin("test")) }\n');
+    fs.writeFileSync(path.join(root, "pom.xml"), "<project><dependencies><dependency><groupId>org.junit.jupiter</groupId><artifactId>junit-jupiter</artifactId></dependency></dependencies></project>\n");
+    fs.writeFileSync(path.join(root, "src", "main", "kotlin", "TokenParser.kt"), "class TokenParser { fun parse(value: String) = value.trim() }\n");
+    fs.writeFileSync(path.join(root, "src", "test", "kotlin", "TokenParserTest.kt"), "import kotlin.test.Test\nclass TokenParserTest { @Test fun parses() { TokenParser().parse(\"x\") } }\n");
+
+    const audit = auditKotlinRepo(root);
+
+    assert.equal(audit.profile.testCommand, undefined);
+    assert.ok(audit.profile.setupSignals.includes("parent gradle wrapper"));
+    assert.ok(audit.profile.setupSignals.includes("parent maven wrapper"));
+    assert.ok(audit.profile.blockers.includes("Multiple runnable JVM test commands detected from project markers: ../gradlew :token-core:test, ../mvnw -f ../pom.xml -pl token-core test."));
+    assert.ok(!audit.profile.blockers.includes("No runnable JVM test command detected from Gradle or Maven markers."));
+  });
+
   it("inherits a parent Gradle wrapper for a conventionally included module", () => {
     const aggregateRoot = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-gradle-parent-wrapper-"));
     const root = path.join(aggregateRoot, "libraries", "tokens");

@@ -478,7 +478,15 @@ function buildProfile(root, files, modules) {
   const testCommandResolution = detectTestCommand(root, paths, testFrameworks, modules);
   const testCommand = testCommandResolution.command;
   const existingTestLocations = detectExistingTestLocations(paths, modules);
-  const blockers = detectBlockers(paths, files, modules, testCommand, testFrameworks, unsupportedProjectShapes);
+  const blockers = detectBlockers(
+    paths,
+    files,
+    modules,
+    testCommand,
+    testFrameworks,
+    unsupportedProjectShapes,
+    testCommandResolution.blockers
+  );
 
   return {
     root,
@@ -602,28 +610,49 @@ function detectUnsupportedProjectShapes(buildText, paths, modules) {
 }
 
 function detectTestCommand(root, paths, frameworks, modules) {
-  if (frameworks.length === 0) return {};
+  if (frameworks.length === 0) return { blockers: [] };
+  const candidates = [];
   const kmpJvmModules = modules
     .filter((module) => module.supportsKmpJvm)
     .sort((left, right) => left.projectPath.localeCompare(right.projectPath));
+  const hasRootGradleBuild = paths.includes("build.gradle") || paths.includes("build.gradle.kts") ||
+    paths.includes("settings.gradle") || paths.includes("settings.gradle.kts");
   if (kmpJvmModules.length > 0) {
     const tasks = kmpJvmModules.map((module) =>
       module.projectPath === ":"
         ? `${module.kmpJvmTargetName}Test`
         : `${module.projectPath}:${module.kmpJvmTargetName}Test`
     );
-    if (paths.includes("gradlew") || paths.includes("gradlew.bat")) return { command: `./gradlew ${tasks.join(" ")}` };
-    return { command: `gradle ${tasks.join(" ")}` };
+    candidates.push({
+      command: paths.includes("gradlew") || paths.includes("gradlew.bat")
+        ? `./gradlew ${tasks.join(" ")}`
+        : `gradle ${tasks.join(" ")}`
+    });
+  } else if (hasRootGradleBuild && (paths.includes("gradlew") || paths.includes("gradlew.bat"))) {
+    candidates.push({ command: "./gradlew test" });
+  } else if (paths.includes("build.gradle") || paths.includes("build.gradle.kts")) {
+    candidates.push(findParentGradleCommand(root) ?? { command: "gradle test" });
   }
-  if (paths.includes("gradlew") || paths.includes("gradlew.bat")) return { command: "./gradlew test" };
-  if (paths.includes("build.gradle") || paths.includes("build.gradle.kts")) {
-    return findParentGradleCommand(root) ?? { command: "gradle test" };
-  }
-  if (paths.includes("mvnw") || paths.includes("mvnw.cmd")) return { command: "./mvnw test" };
+
   if (paths.includes("pom.xml")) {
-    return findParentMavenCommand(root) ?? { command: "mvn test" };
+    candidates.push(
+      paths.includes("mvnw") || paths.includes("mvnw.cmd")
+        ? { command: "./mvnw test" }
+        : findParentMavenCommand(root) ?? { command: "mvn test" }
+    );
   }
-  return {};
+
+  const inheritedSignals = candidates
+    .map((candidate) => candidate.inheritedSignal)
+    .filter(Boolean);
+  if (candidates.length > 1) {
+    return {
+      blockers: [`Multiple runnable JVM test commands detected from project markers: ${candidates.map((candidate) => candidate.command).join(", ")}.`],
+      inheritedSignals
+    };
+  }
+  if (candidates.length === 1) return { ...candidates[0], blockers: [], inheritedSignals };
+  return { blockers: [], inheritedSignals };
 }
 
 function findParentGradleCommand(root) {
@@ -765,15 +794,17 @@ function detectSetupSignals(paths, buildText, testText, testCommandResolution, m
   if (modules.some((module) => module.hasKmpJvmTarget)) signals.add("jvm target");
   if (modules.some((module) => module.hasKmpJvmTarget && module.kmpJvmTargetName !== "jvm")) signals.add("named jvm target");
   if (testCommandResolution.inheritedSignal) signals.add(testCommandResolution.inheritedSignal);
+  for (const signal of testCommandResolution.inheritedSignals ?? []) signals.add(signal);
   if (modules.some((module) => module.buildSystem === "gradle" && module.directory !== ".")) signals.add("gradle module graph");
   if (modules.some((module) => module.buildSystem === "maven" && module.directory !== ".")) signals.add("maven reactor graph");
   return [...signals];
 }
 
-function detectBlockers(paths, files, modules, testCommand, frameworks, unsupportedProjectShapes) {
+function detectBlockers(paths, files, modules, testCommand, frameworks, unsupportedProjectShapes, commandBlockers = []) {
   const blockers = [];
   if (frameworks.length === 0) blockers.push("No supported JVM test framework detected.");
-  if (!testCommand) blockers.push("No runnable JVM test command detected from Gradle or Maven markers.");
+  blockers.push(...commandBlockers);
+  if (!testCommand && commandBlockers.length === 0) blockers.push("No runnable JVM test command detected from Gradle or Maven markers.");
   if (!paths.some((currentPath) => isSourceFile(currentPath, modules))) {
     const hasNestedSourceSet = paths.some((currentPath) => /(?:^|\/)src\/(?:main\/(?:kotlin|java)|(?:common|jvm)Main\/(?:kotlin|java))\/.+\.(?:kt|java)$/.test(currentPath));
     blockers.push(

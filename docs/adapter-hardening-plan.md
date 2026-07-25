@@ -101,6 +101,8 @@ Prioritize build-graph correctness inside the documented bounded support:
 
 Android, broad Kotlin Multiplatform expansion, and arbitrary Gradle execution remain separate product decisions rather than incidental hardening.
 
+Progress: the first Kotlin/JVM hardening slice resolves Gradle and Maven verification commands independently, blocks selection when both are runnable at the audited root, and keeps nested auxiliary build markers from creating false command ambiguity. Local and conventionally inherited single-runner commands remain unchanged.
+
 ### Swift
 
 Prioritize build ownership and stronger evidence without executing manifests:
