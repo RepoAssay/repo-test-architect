@@ -36,15 +36,18 @@ describe("adapter validation corpus", () => {
     }
   });
 
-  it("rejects incomplete pins and prematurely passing performance records", () => {
+  it("rejects incomplete pins and prematurely passing stability and performance records", () => {
     const invalid = structuredClone(corpus);
     invalid.adapters[0].cases[0].repository.commit = "55679f5";
     invalid.adapters[0].cases[0].scorecard.performance = "pass";
+    invalid.adapters[0].cases[0].scorecard.stability = "pass";
     invalid.adapters[0].cases[1].scorecard.ownership = "fail";
 
     const result = validateValidationCorpus(invalid);
     assert.ok(result.errors.some((error) => error.includes("full lowercase 40-character Git SHA")));
     assert.ok(result.errors.some((error) => error.includes("evidenceRelationshipCount")));
+    assert.ok(result.errors.some((error) => error.includes("canonicalAuditSha256")));
+    assert.ok(result.errors.some((error) => error.includes("auditDurationSamplesMs")));
     assert.ok(result.errors.some((error) => error.includes("scorecard.ownership is failing")));
   });
 });

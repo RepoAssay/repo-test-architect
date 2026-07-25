@@ -86,6 +86,7 @@ Implemented:
 - release-readiness checklist, npm package dry-run script, and package contents allowlist
 - public-readiness record covering the completed npm and official MCP Registry launch
 - adapter-hardening plan that prioritizes shared conformance and deeper JavaScript/TypeScript, Python, Swift, and bounded Kotlin/JVM validation before adding ecosystems
+- exact-pin validation-corpus measurement command with repeated canonical audit digests, raw and median durations, and evidence-link counts
 - Node 20-compatible instrumented line, branch, and function coverage floors for all four adapter-owned audit implementations
 - deterministic 400-source/200-test performance and evidence-count regression gates for JavaScript/TypeScript, Python, Kotlin/JVM, and Swift
 - alpha-readiness checklist for the test architecture audit milestone before native generation

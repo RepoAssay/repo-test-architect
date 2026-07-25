@@ -101,6 +101,7 @@ describe("package manifest", () => {
     assert.ok(packageJson.scripts["model-consistency:compare:profiles"]);
     assert.ok(packageJson.scripts["model-consistency:stats"]);
     assert.equal(packageJson.scripts["corpus:check"], "node ./scripts/check-validation-corpus.js");
+    assert.equal(packageJson.scripts["corpus:measure"], "node ./scripts/measure-validation-corpus.js");
     assert.equal(packageJson.scripts["adapter:coverage:check"], "node ./scripts/check-adapter-coverage.js");
     assert.equal(packageJson.scripts["javascript:performance:check"], "node ./scripts/check-javascript-performance.js");
     assert.equal(packageJson.scripts["python:performance:check"], "node ./scripts/check-python-performance.js");

@@ -150,9 +150,21 @@
           "type": "integer",
           "minimum": 0
         },
+        "auditDurationSamplesMs": {
+          "type": "array",
+          "minItems": 3,
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
         "evidenceRelationshipCount": {
           "type": "integer",
           "minimum": 0
+        },
+        "canonicalAuditSha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
         }
       }
     }

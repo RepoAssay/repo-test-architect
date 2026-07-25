@@ -256,6 +256,7 @@ Check that every supported adapter has a complete, pinned hardening corpus:
 
 ```powershell
 npm run corpus:check
+npm run corpus:measure -- --case python-asyncer --checkout /path/to/pinned/asyncer
 npm run javascript:performance:check
 npm run python:performance:check
 npm run kotlin:performance:check
@@ -263,6 +264,8 @@ npm run swift:performance:check
 ```
 
 The versioned `evals/validation-corpus.json` manifest records one conventional library or service, one framework-heavy application, and one difficult ownership graph per adapter. Each record carries the shared detection, ownership, command, evidence, ranking, stability, and performance scorecard. A `pending` score stays visible until that area has been rerun under the standardized hardening review.
+
+`corpus:measure` verifies the checkout's exact pinned Git SHA, runs the selected adapter at least three times, rejects canonical audit drift, and reports the raw durations, median duration, evidence-link count, and normalized audit digest used to update the scorecard.
 
 Each adapter performance check separately runs a generated 400-source/200-test project, verifies its candidate and evidence counts, and enforces a broad cross-platform regression ceiling. These synthetic gates do not replace the pending per-repository corpus measurements.
 
