@@ -497,6 +497,59 @@ def test_get_user():
     }]);
   });
 
+  it("preserves physical lines when masking continued strings in route functions", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-python-continued-string-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "app", "routes"), { recursive: true });
+    fs.mkdirSync(path.join(root, "tests"), { recursive: true });
+    fs.writeFileSync(path.join(root, "requirements.txt"), "fastapi\npytest\n");
+    fs.writeFileSync(path.join(root, "app", "__init__.py"), "");
+    fs.writeFileSync(
+      path.join(root, "app", "main.py"),
+      `from fastapi import FastAPI
+from app.routes.status import router
+
+app = FastAPI()
+app.include_router(router)
+`
+    );
+    fs.writeFileSync(
+      path.join(root, "app", "routes", "status.py"),
+      `from fastapi import APIRouter
+
+router = APIRouter()
+
+@router.get("/status")
+def status():
+    label = "ready\\
+now"
+    return {"label": label}
+`
+    );
+    fs.writeFileSync(
+      path.join(root, "tests", "test_status.py"),
+      `from fastapi.testclient import TestClient
+from app.main import app
+
+client = TestClient(app)
+
+def test_status():
+    response = client.get("/status")
+    assert response.status_code == 200
+`
+    );
+
+    const audit = auditPythonRepo(root);
+    const route = audit.coveredButRisky.find((target) => target.path === "app/routes/status.py");
+
+    assert.deepEqual(route.existingTestEvidence, [{
+      testPath: "tests/test_status.py",
+      kind: "python-test-client-route",
+      strength: "indirect",
+      viaUsage: "asserted"
+    }]);
+  });
+
   it("matches a consumed Flask client fixture through a literal application factory", (t) => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-python-flask-client-"));
     t.after(() => fs.rmSync(root, { recursive: true, force: true }));
