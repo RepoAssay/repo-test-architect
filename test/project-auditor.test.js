@@ -201,6 +201,47 @@ describe("project auditor", () => {
     ]);
   });
 
+  it("preserves Python package ownership and configured pytest discovery in project audits", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-project-python-discovery-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "alpha"), { recursive: true });
+    fs.mkdirSync(path.join(root, "beta"), { recursive: true });
+    fs.mkdirSync(path.join(root, "quality"), { recursive: true });
+    fs.mkdirSync(path.join(root, "tools"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "pyproject.toml"),
+      `[project]
+name = "multi-package"
+dependencies = ["pytest"]
+
+[tool.setuptools]
+packages = ["alpha", "beta"]
+
+[tool.pytest.ini_options]
+testpaths = ["quality"]
+python_files = ["check_*.py"]
+`
+    );
+    fs.writeFileSync(path.join(root, "alpha", "__init__.py"), "");
+    fs.writeFileSync(path.join(root, "alpha", "parser.py"), "def parse(value):\n    return int(value)\n");
+    fs.writeFileSync(path.join(root, "beta", "__init__.py"), "");
+    fs.writeFileSync(path.join(root, "beta", "parser.py"), "def parse(value):\n    return int(value)\n");
+    fs.writeFileSync(path.join(root, "tools", "release.py"), "def release(value):\n    return value if value else None\n");
+    fs.writeFileSync(
+      path.join(root, "quality", "check_alpha.py"),
+      "from alpha.parser import parse\n\ndef test_alpha():\n    assert parse('2') == 2\n"
+    );
+
+    const result = auditDetectedProjects(root);
+    const audit = result.audits[0].audit;
+    const auditedPaths = [...audit.recommended, ...audit.skipped].map((target) => target.path);
+
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["alpha/parser.py"]);
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.path), ["beta/parser.py"]);
+    assert.ok(audit.profile.existingTestLocations.includes("configured pytest location"));
+    assert.ok(!auditedPaths.includes("tools/release.py"));
+  });
+
   it("passes project-relative changed paths into matching project adapters", () => {
     const result = auditDetectedProjects(path.resolve("examples/polyglot-workspace"), {
       changedPaths: [

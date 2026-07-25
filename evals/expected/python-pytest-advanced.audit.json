@@ -21,13 +21,16 @@
       "pytest fixtures",
       "async tests",
       "pytest parametrization",
-      "property-based tests"
+      "property-based tests",
+      "pytest testpaths"
     ],
     "existingTestLocations": [
-      "tests"
+      "tests",
+      "configured pytest location"
     ],
     "setupSignals": [
       "pyproject",
+      "pytest config",
       "pytest dependency",
       "pytest async support",
       "anyio test support",

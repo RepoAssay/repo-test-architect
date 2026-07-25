@@ -6,10 +6,10 @@ This matrix defines the bounded private-alpha support claim for the Python adapt
 
 | Area | Current support | Evidence used |
 | --- | --- | --- |
-| Package and project shapes | Root and package-directory Python projects using `pyproject.toml`, `requirements.txt`, setuptools, uv, Poetry, or Hatch | project markers, lockfiles, tool tables, conventional `src/` roots, declared-name package roots, and conservative top-level package inference |
-| Test frameworks | pytest, unittest, pytest-asyncio, AnyIO-marked tests, and Hypothesis | dependency/configuration text, test imports/decorators, `pytest.ini`, `pytest.toml`, `.pytest.toml`, plus conventional test filenames |
+| Package and project shapes | Root and package-directory Python projects using `pyproject.toml`, `requirements.txt`, setuptools, uv, Poetry, or Hatch | project markers, lockfiles, conventional `src/` roots, declared-name roots, literal setuptools/Poetry package entries, and bounded setuptools find roots |
+| Test frameworks | pytest, unittest, pytest-asyncio, AnyIO-marked tests, and Hypothesis | dependency/configuration text, test imports/decorators, `pytest.ini`, `.pytest.ini`, `pytest.toml`, `.pytest.toml`, plus conventional or statically configured test filenames |
 | Commands | `pytest`, `python -m unittest`, Django `manage.py test`/`tests/runtests.py`, `uv run`, `poetry run`, explicitly configured `hatch test`, proven tox environments, and proven nox test sessions | detected framework and project-tool markers; Hatchling alone is treated only as a build backend, while Django/tox/nox commands require explicit runner evidence |
-| Test locations | root `test/`, `testing/`, and `tests/`, plus package-local `test/` and `tests/` directories | conventional directories and `test_*.py`, `*_test.py`, or Django-style `tests.py` filenames |
+| Test locations | root `test/`, `testing/`, and `tests/`, package-local variants, and literal pytest `testpaths` | conventional directories plus bounded `test_*.py`, `*_test.py`, Django-style `tests.py`, or configured `python_files` matches |
 | Pytest organization | fixtures in visible `conftest.py` or the consuming test module, bounded fixture dependency chains, async tests, parametrization, and property-based tests | exact source imports used in fixture bodies, fixture parameters/`usefixtures`, decorators, and test imports |
 | Application boundaries | parsers, mappers, validators, formatters, calculators, services, clients, repositories, and branching utilities | path, function-name, branching, async, and external-I/O signals |
 | HTTP boundaries | FastAPI routers/wiring, Django views/wiring, and Flask routes/wiring | framework imports, view paths, router/blueprint declarations, route decorators, and route paths |
@@ -18,6 +18,10 @@ This matrix defines the bounded private-alpha support claim for the Python adapt
 | Changed-file audits | repository-relative, current-directory-relative, absolute, and Windows-style source paths | normalized paths passed through the shared audit API |
 
 The current adapter emits the shared audit, explanation, ranking, plan, findings, placement, and stats artifacts. Exact package-qualified imports emit direct `python-module-import` evidence. Explicit one-hop package initializer exports emit referenced `python-package-reexport` evidence. Exact imports used inside consumed pytest fixtures emit indirect `python-pytest-fixture` evidence, including bounded fixture dependencies. Calls, assertions, and fixture-value usage are recorded only when statically visible. Filename matching remains structural: `foo.py` can match `test_foo.py` or `foo_test.py` in a recognized test directory, but duplicate basenames require package/test owner agreement or import proof.
+
+Package ownership accepts non-empty literal `[tool.setuptools].packages` lists, bounded `[tool.setuptools.packages.find]` or `setup.cfg` `find:`/`find_namespace:` roots with simple top-level include/exclude globs, and Poetry `packages` entries with an optional literal `from` base. These declarations can own several packages or a PEP 420-style namespace without absorbing sibling documentation, support, or tooling directories. Computed `setup.py`, nested include patterns, per-package remapping, and arbitrary backend hooks remain unsupported.
+
+Pytest discovery reads one root configuration using pytest's precedence: `pytest.toml`/`.pytest.toml`, `pytest.ini`/`.pytest.ini`, `pyproject.toml`, `tox.ini`, then `setup.cfg`. Literal in-repository `testpaths` and simple basename `python_files` globs become authoritative test candidates; helpers and `conftest.py` inside those roots remain test support rather than production candidates. Absolute, parent-escaping, path-glob, bracket, and brace values are rejected instead of broadening the audit. See pytest's [configuration formats](https://docs.pytest.org/en/stable/reference/customize.html) and [Python collection settings](https://docs.pytest.org/en/stable/example/pythoncollection.html), plus setuptools [package discovery](https://setuptools.pypa.io/en/stable/userguide/package_discovery.html).
 
 ## Promotion Gate Evidence
 
@@ -34,15 +38,15 @@ The registry maturity changed to `supported` after these gates were satisfied:
 
 ## Known Gaps
 
-- source discovery scopes conventional `src/` layouts, declared-name packages, and repositories with one unambiguous top-level package, but complex build metadata, multiple owned packages, and standalone modules still fall back to repository-wide non-test discovery
+- source discovery scopes conventional `src/` layouts, declared-name packages, literal multi-package declarations, and bounded setuptools find roots, but computed build metadata, unsupported nested/remapped discovery, standalone modules, and ambiguous undeclared flat layouts still fall back conservatively
 - direct absolute imports, explicit package re-exports, and bounded pytest fixture dependencies are covered, but relative test imports, application boot paths, plugin-provided fixtures, dynamically requested fixtures, and bounded source dependencies are not resolved
-- namespace packages, editable installs, monorepos, generated clients, notebooks, C-extension modules, and dynamic import paths are not explicitly modeled
+- namespace packages are bounded to declared source/find roots; editable-install metadata, monorepos, generated clients, notebooks, C-extension modules, and dynamic import paths are not explicitly modeled
 - Django and Flask have bounded view/route and wiring semantics; deeper ORM, middleware, template, application-factory, and framework test-client reachability is not modeled
 - SQLAlchemy, database migrations, task queues, CLI frameworks, and Starlette beyond FastAPI conventions have no dedicated boundary semantics
 - parametrization and Hypothesis are detected as suite conventions, but generated cases, strategies, examples, and per-parameter source reachability are not expanded
-- pytest configuration in every supported file/table form and custom test discovery patterns need broader validation
+- pytest configuration inheritance above the audited project, plugin-mutated discovery, `--ignore`/`norecursedirs`, and advanced glob semantics are not resolved
 - runtime coverage, fixture runtime behavior, async event-loop policy, database isolation, and framework dependency overrides are not inferred from static evidence
-- alternate test roots are bounded to conventional `test`, `testing`, and `tests` directory names; arbitrary `python_files`/`testpaths` patterns are reported only where current configuration parsing recognizes them
+- alternate test roots require literal in-repository `testpaths`; custom filenames require simple basename `python_files` globs without bracket, brace, or path syntax
 
 ## Non-Goals For Python Alpha
 
