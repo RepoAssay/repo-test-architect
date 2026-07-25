@@ -36,7 +36,7 @@ Models can explain, prioritize, or generate from this graph, but the graph is th
 
 The first public npm and MCP Registry distribution is complete. The active milestone is [adapter hardening](adapter-hardening-plan.md):
 
-1. Add a shared validation corpus, scorecard, and adapter-conformance helper. Complete; standardized live stability and performance reruns remain tracked as pending corpus scores.
+1. Add a shared validation corpus, scorecard, adapter-conformance helper, and instrumented implementation coverage floors. Complete; standardized live stability and performance reruns remain tracked as pending corpus scores.
 2. Harden JavaScript/TypeScript workspace ownership, command selection, configuration boundaries, evidence, and performance. Complete for the bounded matrix: static workspace package-manager ownership, runner-config/custom-location discovery, ESM/CommonJS/export/barrel/alias evidence, a generated large-suite performance gate, and exact literal Playwright/Cypress request-to-route evidence.
 3. Harden Python package ownership, imports, pytest discovery, framework boundaries, and command selection. Literal setuptools/Poetry multi-package ownership, bounded namespace find roots, root pytest `testpaths`/`python_files` discovery, exact package-local relative imports, one-hop same-owner source dependencies, and static FastAPI/Starlette, Flask, and Django client-to-route evidence are complete. Configuration inheritance and command-selection ambiguity are the next bounded Python candidates.
 4. Harden bounded Kotlin/JVM Gradle/Maven ownership, dependency visibility, supported test-framework evidence, and unsupported-graph blockers.
