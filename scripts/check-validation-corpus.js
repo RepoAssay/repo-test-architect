@@ -137,6 +137,20 @@ export function validateValidationCorpus(corpus, options = {}) {
           errors.push(`${caseLabel} observed.${field} must be a non-negative integer when present`);
         }
       }
+      if (
+        entry.observed?.auditDurationSamplesMs !== undefined &&
+        (!Array.isArray(entry.observed.auditDurationSamplesMs) ||
+          entry.observed.auditDurationSamplesMs.length < 3 ||
+          entry.observed.auditDurationSamplesMs.some((value) => !Number.isInteger(value) || value < 0))
+      ) {
+        errors.push(`${caseLabel} observed.auditDurationSamplesMs must contain at least three non-negative integers when present`);
+      }
+      if (
+        entry.observed?.canonicalAuditSha256 !== undefined &&
+        !/^[0-9a-f]{64}$/.test(entry.observed.canonicalAuditSha256)
+      ) {
+        errors.push(`${caseLabel} observed.canonicalAuditSha256 must be a lowercase SHA-256 digest when present`);
+      }
 
       if (entry.scorecard?.performance === "pass") {
         if (!Number.isInteger(entry.observed?.auditDurationMs)) {
@@ -144,6 +158,19 @@ export function validateValidationCorpus(corpus, options = {}) {
         }
         if (!Number.isInteger(entry.observed?.evidenceRelationshipCount)) {
           errors.push(`${caseLabel} needs evidenceRelationshipCount before performance can pass`);
+        }
+        if (!hasRepeatedDurationSamples(entry.observed)) {
+          errors.push(`${caseLabel} needs at least three auditDurationSamplesMs before performance can pass`);
+        } else if (entry.observed.auditDurationMs !== medianInteger(entry.observed.auditDurationSamplesMs)) {
+          errors.push(`${caseLabel} auditDurationMs must equal the median auditDurationSamplesMs value`);
+        }
+      }
+      if (entry.scorecard?.stability === "pass") {
+        if (!/^[0-9a-f]{64}$/.test(entry.observed?.canonicalAuditSha256 ?? "")) {
+          errors.push(`${caseLabel} needs canonicalAuditSha256 before stability can pass`);
+        }
+        if (!hasRepeatedDurationSamples(entry.observed)) {
+          errors.push(`${caseLabel} needs at least three auditDurationSamplesMs before stability can pass`);
         }
       }
     }
@@ -155,6 +182,17 @@ export function validateValidationCorpus(corpus, options = {}) {
     caseCount: caseIds.size,
     scorecardCounts
   };
+}
+
+function hasRepeatedDurationSamples(observed) {
+  return Array.isArray(observed?.auditDurationSamplesMs) &&
+    observed.auditDurationSamplesMs.length >= 3 &&
+    observed.auditDurationSamplesMs.every((value) => Number.isInteger(value) && value >= 0);
+}
+
+function medianInteger(values) {
+  const sorted = [...values].sort((left, right) => left - right);
+  return sorted[Math.floor(sorted.length / 2)];
 }
 
 function sameValues(left, right) {

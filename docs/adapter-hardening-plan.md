@@ -153,7 +153,7 @@ The initial queue is:
 5. Refresh Swift validation, starting with SwiftPM/Xcode ownership ambiguity and symbol-evidence pressure.
 6. Run the cross-adapter trust pass and set measured performance regression budgets.
 
-Run `npm run corpus:check` to validate corpus completeness, pins, report links, and scorecard states. Historical reports establish the initial detection, ownership, command, evidence, and ranking passes. Stability and performance remain `pending` until each pinned checkout has repeated canonical-JSON audits and a standardized duration plus evidence-count baseline; historical timings alone do not silently pass the new gate.
+Run `npm run corpus:check` to validate corpus completeness, pins, report links, and scorecard states. Use `npm run corpus:measure -- --case <case-id> --checkout <path>` against an exact pinned Git checkout to record at least three canonical audits, raw durations, their median, the evidence count, and normalized SHA-256 digest. Historical reports establish the initial detection, ownership, command, evidence, and ranking passes. Stability and performance remain `pending` until those standardized measurements pass; historical timings alone do not silently pass the new gate.
 
 User reports or a demonstrated false high-confidence claim can move a slice earlier. Within an adapter, correctness and false-confidence fixes take priority over recognizing another framework variant.
 
