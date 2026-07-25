@@ -19,6 +19,7 @@ Implemented:
 - JavaScript/TypeScript existing-test matching from filename conventions, literal relative imports with two bounded source-dependency hops, referenced-import-symbol-aware barrel re-exports, exact self-package entry imports, and declared exact or single-wildcard package subpaths
 - JavaScript/TypeScript module-boundary evidence that separates conditional `import`/`require` package exports and explicit `.mjs`/`.mts` from `.cjs`/`.cts`, rejects type-only/test re-export evidence and ambiguous/default star-barrel leakage, and preserves ordered `tsconfig` wildcard fallbacks
 - conservative Playwright/Cypress `browser-route-match` evidence with `indirect` strength for exact literal HTTP method/path matches between browser requests and auditable static route registrations, without dynamic-route, generic-client, or downstream reachability claims
+- conservative Python `python-test-client-route` evidence with `indirect` strength for uniquely matched FastAPI/Starlette, Flask, and Django client requests through literal owned application wiring, without boot-only or downstream runtime reachability claims
 - JavaScript/TypeScript `tsconfig.json` path-alias evidence for exact and single-wildcard mappings, including local inherited configs, `baseUrl` relative to the declaring config, JSON comments/trailing commas, symbol-aware aliased barrels, and bounded aliased dependencies
 - optional JavaScript/TypeScript per-test provenance with deterministic naming, direct, referenced-symbol, and bounded-indirect evidence strengths
 - call-aware JavaScript/TypeScript provenance for directly imported named ES module and destructured CommonJS bindings
@@ -242,7 +243,7 @@ The active sequence is defined in the [Adapter Hardening Plan](adapter-hardening
 
 1. Shared validation-corpus manifest, scorecard schema, semantic checker, and adapter-conformance helper are complete. Standardized stability and performance reruns remain visible as pending corpus scores.
 2. JavaScript/TypeScript workspace command ownership, bounded runner-config/custom test-location discovery, module-boundary hardening, the generated large-suite regression gate, and conservative literal Playwright/Cypress request-to-route evidence are complete for the static patterns in the support matrix.
-3. Python literal multi-package/namespace ownership, bounded root pytest discovery, exact package-local relative imports, and one-hop same-owner source dependencies are complete. Next: framework boot and test-client evidence boundaries.
+3. Python literal multi-package/namespace ownership, bounded root pytest discovery, exact package-local relative imports, one-hop same-owner source dependencies, and static framework test-client route evidence are complete. Next: configuration inheritance and command-selection ambiguity.
 4. Harden Kotlin/JVM Gradle/Maven ownership and conservative unsupported-graph behavior.
 5. Harden SwiftPM/Xcode ownership ambiguity and symbol-evidence boundaries.
 6. Complete a cross-adapter trust pass and set measured performance regression budgets.

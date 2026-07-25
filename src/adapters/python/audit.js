@@ -34,7 +34,16 @@ export function auditPythonRepo(root, options = {}) {
   const sourceBasenameCounts = countSourceBasenames(sourceFiles);
   const packageReexports = collectPythonPackageReexports(files, sourceLayout, pytestDiscovery);
   const pytestFixtures = collectPytestFixtures(files, sourceLayout, pytestDiscovery);
-  const testEvidenceBySourcePath = collectPythonTestEvidence(sourceFiles, testFiles, sourceLayout, sourceBasenameCounts, packageReexports, pytestFixtures);
+  const frameworkClientEvidence = collectPythonFrameworkClientEvidence(files, sourceFiles, testFiles, sourceLayout, pytestDiscovery);
+  const testEvidenceBySourcePath = collectPythonTestEvidence(
+    sourceFiles,
+    testFiles,
+    sourceLayout,
+    sourceBasenameCounts,
+    packageReexports,
+    pytestFixtures,
+    frameworkClientEvidence
+  );
   const untestedCandidates = [];
   const coveredButRisky = [];
   const skipped = [];
@@ -761,7 +770,7 @@ function analyzePythonTestFile(content, filePath, sourceLayout) {
   };
 }
 
-function collectPythonTestEvidence(sourceFiles, testFiles, sourceLayout, sourceBasenameCounts, packageReexports, pytestFixtures) {
+function collectPythonTestEvidence(sourceFiles, testFiles, sourceLayout, sourceBasenameCounts, packageReexports, pytestFixtures, frameworkClientEvidence) {
   const moduleToSourcePaths = new Map();
   const basenameToSourcePaths = new Map();
   for (const sourceFile of sourceFiles) {
@@ -860,7 +869,7 @@ function collectPythonTestEvidence(sourceFiles, testFiles, sourceLayout, sourceB
   for (const [key, evidence] of [...evidenceBySourceAndTest]) {
     const sourcePath = key.slice(0, key.lastIndexOf("\0"));
     const viaUsage = evidence.usage ?? evidence.viaUsage;
-    if (!viaUsage || evidence.kind === "filename-convention") continue;
+    if (!viaUsage || evidence.kind === "filename-convention" || frameworkClientEvidence.bootSourcePaths.has(sourcePath)) continue;
     for (const dependencyPath of sourceDependencies.get(sourcePath) ?? []) {
       setPythonTestEvidence(evidenceBySourceAndTest, dependencyPath, evidence.testPath, {
         testPath: evidence.testPath,
@@ -869,6 +878,14 @@ function collectPythonTestEvidence(sourceFiles, testFiles, sourceLayout, sourceB
         viaUsage
       });
     }
+  }
+  for (const relationship of frameworkClientEvidence.relationships) {
+    setPythonTestEvidence(evidenceBySourceAndTest, relationship.sourcePath, relationship.testPath, {
+      testPath: relationship.testPath,
+      kind: "python-test-client-route",
+      strength: "indirect",
+      viaUsage: relationship.viaUsage
+    });
   }
 
   const bySourcePath = new Map();
@@ -924,7 +941,17 @@ function setPythonTestEvidence(evidenceBySourceAndTest, sourcePath, testPath, ev
   const key = `${sourcePath}\0${testPath}`;
   const existing = evidenceBySourceAndTest.get(key);
   const rank = { naming: 0, indirect: 1, referenced: 2, direct: 3 };
-  if (!existing || rank[evidence.strength] > rank[existing.strength]) evidenceBySourceAndTest.set(key, evidence);
+  const specificity = { "bounded-dependency": 0, "python-test-client-route": 1 };
+  if (
+    !existing ||
+    rank[evidence.strength] > rank[existing.strength] ||
+    (
+      rank[evidence.strength] === rank[existing.strength] &&
+      (specificity[evidence.kind] ?? 0) > (specificity[existing.kind] ?? 0)
+    )
+  ) {
+    evidenceBySourceAndTest.set(key, evidence);
+  }
 }
 
 function isPytestFixtureDecorator(decorator) {
@@ -1075,6 +1102,499 @@ function collectPythonSourceDependencies(sourceFiles, moduleToSourcePaths, sourc
   return dependenciesBySourcePath;
 }
 
+function collectPythonFrameworkClientEvidence(files, sourceFiles, testFiles, sourceLayout, pytestDiscovery) {
+  const runtimeFiles = files
+    .filter((file) => normalizePath(file.path).endsWith(".py"))
+    .filter((file) => !isPythonTestSupportFile(file.path, pytestDiscovery))
+    .filter((file) => sourceLayout.entries.some(({ prefix }) => normalizePath(file.path).startsWith(prefix)));
+  const runtimeByPath = new Map(runtimeFiles.map((file) => [normalizePath(file.path), file]));
+  const moduleToRuntimePaths = new Map();
+  for (const runtimeFile of runtimeFiles) {
+    for (const moduleName of pythonRuntimeModuleNames(runtimeFile.path, sourceLayout)) {
+      const current = moduleToRuntimePaths.get(moduleName) ?? [];
+      moduleToRuntimePaths.set(moduleName, [...current, normalizePath(runtimeFile.path)]);
+    }
+  }
+
+  const routesBySourcePath = new Map();
+  for (const sourceFile of sourceFiles) {
+    const routes = collectPythonDecoratedRoutes(sourceFile);
+    if (routes.length > 0) routesBySourcePath.set(normalizePath(sourceFile.path), routes);
+  }
+
+  const bootSourcePaths = new Set();
+  const routesByBootPath = new Map();
+  for (const runtimeFile of runtimeFiles) {
+    const bootPath = normalizePath(runtimeFile.path);
+    const boot = collectPythonFrameworkBootRoutes(
+      runtimeFile,
+      moduleToRuntimePaths,
+      routesBySourcePath,
+      sourceLayout
+    );
+    if (!boot.isBootSource) continue;
+    bootSourcePaths.add(bootPath);
+    if (boot.routes.length > 0) routesByBootPath.set(bootPath, boot.routes);
+  }
+
+  const djangoRoutes = collectConfiguredDjangoRoutes(
+    runtimeFiles,
+    runtimeByPath,
+    moduleToRuntimePaths,
+    sourceFiles,
+    sourceLayout
+  );
+  const fixtureClients = collectPythonFrameworkClientFixtures(
+    files,
+    sourceLayout,
+    pytestDiscovery,
+    moduleToRuntimePaths,
+    routesByBootPath,
+    djangoRoutes
+  );
+  const relationships = new Map();
+
+  for (const testFile of testFiles) {
+    const imports = testFile.analysis.imports;
+    const moduleClients = collectPythonClientBindings(
+      maskPythonFunctionBlocks(testFile.content),
+      imports,
+      moduleToRuntimePaths,
+      routesByBootPath,
+      djangoRoutes,
+      sourceLayout
+    );
+    const hasImplicitDjangoClient = hasDjangoTestCaseClient(testFile.content, imports) && djangoRoutes.length > 0;
+    for (const testFunction of testFile.analysis.functions.filter((pythonFunction) => pythonFunction.name.startsWith("test_"))) {
+      const clients = new Map(moduleClients);
+      for (const [clientName, routes] of collectPythonClientBindings(
+        testFunction.body,
+        imports,
+        moduleToRuntimePaths,
+        routesByBootPath,
+        djangoRoutes,
+        sourceLayout
+      )) {
+        clients.set(clientName, routes);
+      }
+      for (const fixtureName of testFunction.parameters) {
+        const visibleFixtures = (fixtureClients.get(fixtureName) ?? [])
+          .filter((fixture) => fixtureIsVisible(fixture, testFile.path));
+        if (visibleFixtures.length === 1) clients.set(fixtureName, visibleFixtures[0].routes);
+      }
+      if (hasImplicitDjangoClient) clients.set("self.client", djangoRoutes);
+
+      for (const [clientName, routes] of clients) {
+        for (const request of collectStaticPythonClientRequests(testFunction.rawBody, clientName)) {
+          const matchingSourcePaths = new Set(
+            routes
+              .filter((route) => route.method === "*" || route.method === request.method)
+              .filter((route) => pythonStaticRouteMatches(route.routePath, request.routePath))
+              .map((route) => route.sourcePath)
+          );
+          if (matchingSourcePaths.size !== 1) continue;
+          const sourcePath = [...matchingSourcePaths][0];
+          const key = `${sourcePath}\0${testFile.path}`;
+          const existing = relationships.get(key);
+          relationships.set(key, {
+            sourcePath,
+            testPath: testFile.path,
+            viaUsage: strongerPythonUsage(existing?.viaUsage, request.viaUsage)
+          });
+        }
+      }
+    }
+  }
+
+  return {
+    bootSourcePaths,
+    relationships: [...relationships.values()].sort(
+      (left, right) => left.sourcePath.localeCompare(right.sourcePath) || left.testPath.localeCompare(right.testPath)
+    )
+  };
+}
+
+function pythonRuntimeModuleNames(runtimePath, sourceLayout) {
+  const names = new Set(pythonModuleNames(runtimePath, sourceLayout));
+  if (fileNameOf(runtimePath) === "__init__.py") {
+    const packageModule = pythonPackageModule(runtimePath, sourceLayout);
+    if (packageModule) names.add(packageModule);
+  }
+  return [...names].sort();
+}
+
+function collectPythonDecoratedRoutes(sourceFile) {
+  if (!isHttpRoute(sourceFile.path, sourceFile.content)) return [];
+  const routes = [];
+  const raw = sourceFile.content;
+  const masked = maskPythonCommentsAndStrings(raw);
+  const prefixes = new Map();
+  for (const match of raw.matchAll(/\b([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(?:APIRouter|Blueprint)\s*\(([^)\n]*)\)/g)) {
+    if (!pythonMatchStartsInCode(masked, match.index, match[1])) continue;
+    const prefix = extractPythonLiteralKeyword(match[2], "prefix") ?? extractPythonLiteralKeyword(match[2], "url_prefix");
+    if (prefix !== undefined) prefixes.set(match[1], normalizePythonRoutePath(prefix));
+  }
+  for (const match of raw.matchAll(/@([A-Za-z_][A-Za-z0-9_]*)\.(get|post|put|patch|delete|options|head)\s*\(\s*(["'])(\/[^"'\\\r\n]*)\3/g)) {
+    if (!pythonMatchStartsInCode(masked, match.index, `@${match[1]}`)) continue;
+    const routePath = combinePythonRoutePaths(prefixes.get(match[1]), match[4]);
+    if (routePath) routes.push({ sourcePath: normalizePath(sourceFile.path), method: match[2].toUpperCase(), routePath });
+  }
+  for (const match of raw.matchAll(/@([A-Za-z_][A-Za-z0-9_]*)\.route\s*\(\s*(["'])(\/[^"'\\\r\n]*)\2([^)\n]*)\)/g)) {
+    if (!pythonMatchStartsInCode(masked, match.index, `@${match[1]}`)) continue;
+    const routePath = combinePythonRoutePaths(prefixes.get(match[1]), match[3]);
+    if (!routePath) continue;
+    const methods = [...match[4].matchAll(/["'](GET|POST|PUT|PATCH|DELETE|OPTIONS|HEAD)["']/gi)]
+      .map((method) => method[1].toUpperCase());
+    for (const method of methods.length > 0 ? methods : ["GET"]) {
+      routes.push({ sourcePath: normalizePath(sourceFile.path), method, routePath });
+    }
+  }
+  return deduplicatePythonRoutes(routes);
+}
+
+function collectPythonFrameworkBootRoutes(runtimeFile, moduleToRuntimePaths, routesBySourcePath, sourceLayout) {
+  const raw = runtimeFile.content;
+  if (
+    !/\b(?:FastAPI|Flask)\s*\(/.test(raw) ||
+    !/\.(?:include_router|register_blueprint)\s*\(/.test(raw)
+  ) {
+    return { isBootSource: false, routes: [] };
+  }
+  const masked = maskPythonCommentsAndStrings(raw);
+  const imports = collectResolvedPythonModuleImportBindings(raw, runtimeFile.path, sourceLayout, true);
+  const importsFastApi = imports.some((currentImport) => currentImport.moduleName === "fastapi");
+  const importsFlask = imports.some((currentImport) => currentImport.moduleName === "flask");
+  const constructsFrameworkApp =
+    (importsFastApi && /\bFastAPI\s*\(/.test(masked)) ||
+    (importsFlask && /\bFlask\s*\(/.test(masked));
+  const wiringPattern = /\.(include_router|register_blueprint)\s*\(\s*([A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)?)([^)\n]*)\)/g;
+  const wiringCalls = [...raw.matchAll(wiringPattern)]
+    .filter((match) => pythonMatchStartsInCode(masked, match.index, `.${match[1]}`));
+  if (!constructsFrameworkApp || wiringCalls.length === 0) return { isBootSource: false, routes: [] };
+
+  const routes = [];
+  for (const call of wiringCalls) {
+    const importedPaths = resolvePythonImportedRuntimePaths(call[2], imports, moduleToRuntimePaths, sourceLayout)
+      .filter((sourcePath) => routesBySourcePath.has(sourcePath));
+    if (importedPaths.length !== 1) continue;
+    const callPrefix = extractPythonLiteralKeyword(
+      call[3],
+      call[1] === "include_router" ? "prefix" : "url_prefix"
+    );
+    for (const route of routesBySourcePath.get(importedPaths[0]) ?? []) {
+      routes.push({
+        ...route,
+        routePath: combinePythonRoutePaths(callPrefix, route.routePath)
+      });
+    }
+  }
+  return { isBootSource: true, routes: deduplicatePythonRoutes(routes) };
+}
+
+function collectConfiguredDjangoRoutes(runtimeFiles, runtimeByPath, moduleToRuntimePaths, sourceFiles, sourceLayout) {
+  const rootUrlModules = new Set();
+  for (const runtimeFile of runtimeFiles.filter((candidate) => candidate.content.includes("ROOT_URLCONF"))) {
+    const masked = maskPythonCommentsAndStrings(runtimeFile.content);
+    for (const match of runtimeFile.content.matchAll(/\bROOT_URLCONF\s*=\s*(["'])([A-Za-z_][A-Za-z0-9_.]*)\1/g)) {
+      if (pythonMatchStartsInCode(masked, match.index, "ROOT_URLCONF")) rootUrlModules.add(match[2]);
+    }
+  }
+  if (rootUrlModules.size !== 1) return [];
+  const urlPaths = moduleToRuntimePaths.get([...rootUrlModules][0]) ?? [];
+  if (urlPaths.length !== 1) return [];
+  const urlFile = runtimeByPath.get(urlPaths[0]);
+  if (!urlFile) return [];
+
+  const sourcePathSet = new Set(sourceFiles.map((sourceFile) => normalizePath(sourceFile.path)));
+  const imports = collectResolvedPythonModuleImportBindings(urlFile.content, urlFile.path, sourceLayout, true);
+  const masked = maskPythonCommentsAndStrings(urlFile.content);
+  const routes = [];
+  for (const match of urlFile.content.matchAll(/\bpath\s*\(\s*(["'])([^"'\\\r\n]*)\1\s*,\s*([A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)?)/g)) {
+    if (!pythonMatchStartsInCode(masked, match.index, "path")) continue;
+    const sourcePaths = resolvePythonImportedRuntimePaths(match[3], imports, moduleToRuntimePaths, sourceLayout)
+      .filter((sourcePath) => sourcePathSet.has(sourcePath))
+      .filter((sourcePath) => isDjangoView(sourcePath, runtimeByPath.get(sourcePath)?.content ?? ""));
+    if (sourcePaths.length !== 1) continue;
+    const routePath = normalizePythonRoutePath(`/${match[2]}`);
+    if (routePath) routes.push({ sourcePath: sourcePaths[0], method: "*", routePath });
+  }
+  return deduplicatePythonRoutes(routes);
+}
+
+function collectPythonFrameworkClientFixtures(
+  files,
+  sourceLayout,
+  pytestDiscovery,
+  moduleToRuntimePaths,
+  routesByBootPath,
+  djangoRoutes
+) {
+  const fixturesByName = new Map();
+  for (const file of files.filter((candidate) => isPythonTestSupportFile(candidate.path, pytestDiscovery))) {
+    const imports = collectResolvedPythonModuleImportBindings(file.content, file.path, sourceLayout);
+    for (const pythonFunction of parsePythonFunctions(file.content).filter((candidate) =>
+      candidate.decorators.some(isPytestFixtureDecorator)
+    )) {
+      const bindings = collectPythonClientBindings(
+        pythonFunction.body,
+        imports,
+        moduleToRuntimePaths,
+        routesByBootPath,
+        djangoRoutes,
+        sourceLayout
+      );
+      const routes = [];
+      for (const [clientName, clientRoutes] of bindings) {
+        if (new RegExp(`\\b(?:return|yield)\\s+${escapeRegex(clientName)}\\b`).test(pythonFunction.body)) {
+          routes.push(...clientRoutes);
+        }
+      }
+      routes.push(...collectDirectReturnedPythonClientRoutes(
+        pythonFunction.body,
+        imports,
+        moduleToRuntimePaths,
+        routesByBootPath,
+        djangoRoutes,
+        sourceLayout
+      ));
+      const uniqueRoutes = deduplicatePythonRoutes(routes);
+      if (uniqueRoutes.length === 0) continue;
+      const fixture = { name: pythonFunction.name, path: normalizePath(file.path), routes: uniqueRoutes };
+      const current = fixturesByName.get(fixture.name) ?? [];
+      fixturesByName.set(fixture.name, [...current, fixture]);
+    }
+  }
+  return fixturesByName;
+}
+
+function collectPythonClientBindings(
+  content,
+  imports,
+  moduleToRuntimePaths,
+  routesByBootPath,
+  djangoRoutes,
+  sourceLayout
+) {
+  const clients = new Map();
+  const masked = maskPythonCommentsAndStrings(content);
+  const testClientReferences = importedPythonReferences(imports, ["fastapi.testclient", "starlette.testclient"], "TestClient");
+  for (const constructor of testClientReferences) {
+    const pattern = new RegExp(
+      `(?:\\b([A-Za-z_][A-Za-z0-9_]*)\\s*=\\s*|\\bwith\\s+)${escapeRegex(constructor)}\\s*\\(\\s*([A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*)?)[^\\n)]*\\)(?:\\s+as\\s+([A-Za-z_][A-Za-z0-9_]*))?`,
+      "g"
+    );
+    for (const match of masked.matchAll(pattern)) {
+      const clientName = match[1] ?? match[3];
+      if (!clientName) continue;
+      const routes = routesForImportedPythonBoot(match[2], imports, moduleToRuntimePaths, routesByBootPath, sourceLayout);
+      if (routes.length > 0) clients.set(clientName, routes);
+    }
+  }
+
+  const flaskPattern = /\b([A-Za-z_][A-Za-z0-9_]*)\s*=\s*([A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)?)(?:\s*\([^)\n]*\))?\s*\.\s*test_client\s*\(\s*\)/g;
+  for (const match of masked.matchAll(flaskPattern)) {
+    const routes = routesForImportedPythonBoot(match[2], imports, moduleToRuntimePaths, routesByBootPath, sourceLayout);
+    if (routes.length > 0) clients.set(match[1], routes);
+  }
+
+  for (const constructor of importedPythonReferences(imports, ["django.test"], "Client")) {
+    const pattern = new RegExp(`\\b([A-Za-z_][A-Za-z0-9_]*)\\s*=\\s*${escapeRegex(constructor)}\\s*\\(\\s*\\)`, "g");
+    for (const match of masked.matchAll(pattern)) {
+      if (djangoRoutes.length > 0) clients.set(match[1], djangoRoutes);
+    }
+  }
+  return clients;
+}
+
+function collectDirectReturnedPythonClientRoutes(
+  content,
+  imports,
+  moduleToRuntimePaths,
+  routesByBootPath,
+  djangoRoutes,
+  sourceLayout
+) {
+  const routes = [];
+  const masked = maskPythonCommentsAndStrings(content);
+  for (const constructor of importedPythonReferences(imports, ["fastapi.testclient", "starlette.testclient"], "TestClient")) {
+    const pattern = new RegExp(
+      `\\b(?:return|yield)\\s+${escapeRegex(constructor)}\\s*\\(\\s*([A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*)?)`,
+      "g"
+    );
+    for (const match of masked.matchAll(pattern)) {
+      routes.push(...routesForImportedPythonBoot(match[1], imports, moduleToRuntimePaths, routesByBootPath, sourceLayout));
+    }
+  }
+  for (const match of masked.matchAll(/\b(?:return|yield)\s+([A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)?)(?:\s*\([^)\n]*\))?\s*\.\s*test_client\s*\(\s*\)/g)) {
+    routes.push(...routesForImportedPythonBoot(match[1], imports, moduleToRuntimePaths, routesByBootPath, sourceLayout));
+  }
+  for (const constructor of importedPythonReferences(imports, ["django.test"], "Client")) {
+    if (new RegExp(`\\b(?:return|yield)\\s+${escapeRegex(constructor)}\\s*\\(\\s*\\)`).test(masked)) {
+      routes.push(...djangoRoutes);
+    }
+  }
+  return deduplicatePythonRoutes(routes);
+}
+
+function importedPythonReferences(imports, moduleNames, importedName) {
+  return imports
+    .filter((currentImport) => moduleNames.includes(currentImport.moduleName))
+    .filter((currentImport) => currentImport.kind === "from" && currentImport.imported === importedName)
+    .map((currentImport) => currentImport.reference);
+}
+
+function routesForImportedPythonBoot(expression, imports, moduleToRuntimePaths, routesByBootPath, sourceLayout) {
+  const bootPaths = resolvePythonImportedRuntimePaths(expression, imports, moduleToRuntimePaths, sourceLayout)
+    .filter((runtimePath) => routesByBootPath.has(runtimePath));
+  return bootPaths.length === 1 ? routesByBootPath.get(bootPaths[0]) : [];
+}
+
+function resolvePythonImportedRuntimePaths(expression, imports, moduleToRuntimePaths, sourceLayout) {
+  const paths = new Set();
+  const matchingImports = imports
+    .filter((currentImport) =>
+      expression === currentImport.reference || expression.startsWith(`${currentImport.reference}.`)
+    )
+    .sort((left, right) => right.reference.length - left.reference.length);
+  if (matchingImports.length === 0) return [];
+  const longestReference = matchingImports[0].reference.length;
+  for (const currentImport of matchingImports.filter((candidate) => candidate.reference.length === longestReference)) {
+    for (const runtimePath of pythonImportedSourcePaths(currentImport, moduleToRuntimePaths, sourceLayout)) paths.add(runtimePath);
+    if (currentImport.kind === "from" && currentImport.imported) {
+      const childModule = `${currentImport.moduleName}.${currentImport.imported}`;
+      for (const runtimePath of moduleToRuntimePaths.get(childModule) ?? []) {
+        if (pythonImportOwnsSource(currentImport, runtimePath, sourceLayout)) paths.add(runtimePath);
+      }
+    }
+  }
+  return [...paths].sort();
+}
+
+function hasDjangoTestCaseClient(content, imports) {
+  const testCaseReferences = imports
+    .filter((currentImport) => currentImport.moduleName === "django.test" && currentImport.kind === "from")
+    .filter((currentImport) => ["TestCase", "TransactionTestCase", "SimpleTestCase", "LiveServerTestCase"].includes(currentImport.imported))
+    .map((currentImport) => currentImport.reference);
+  const masked = maskPythonCommentsAndStrings(content);
+  return testCaseReferences.some((reference) =>
+    new RegExp(`\\bclass\\s+[A-Za-z_][A-Za-z0-9_]*\\s*\\([^)]*\\b${escapeRegex(reference)}\\b[^)]*\\)\\s*:`).test(masked)
+  );
+}
+
+function collectStaticPythonClientRequests(content, clientReference) {
+  const requests = [];
+  const masked = maskPythonCommentsAndStrings(content);
+  const pattern = new RegExp(
+    `(?:\\b([A-Za-z_][A-Za-z0-9_]*)\\s*=\\s*)?${escapeRegex(clientReference)}\\s*\\.\\s*(get|post|put|patch|delete|options|head)\\s*\\(\\s*(["'])(\\/[^"'\\\\\\r\\n]*)\\3`,
+    "gi"
+  );
+  for (const match of content.matchAll(pattern)) {
+    const clientOffset = match[0].indexOf(clientReference);
+    if (!pythonMatchStartsInCode(masked, match.index + clientOffset, clientReference)) continue;
+    const routePath = normalizePythonRoutePath(match[4].split(/[?#]/, 1)[0]);
+    if (!routePath) continue;
+    const lineStart = content.lastIndexOf("\n", match.index) + 1;
+    const lineEnd = content.indexOf("\n", match.index);
+    const line = content.slice(lineStart, lineEnd < 0 ? content.length : lineEnd);
+    const responseName = match[1];
+    const asserted =
+      /^\s*assert\b/.test(line) ||
+      (responseName && pythonReferenceIsAsserted(masked, responseName));
+    requests.push({
+      method: match[2].toUpperCase(),
+      routePath,
+      viaUsage: asserted ? "asserted" : "called"
+    });
+  }
+  return requests;
+}
+
+function pythonReferenceIsAsserted(content, reference) {
+  const referencePattern = new RegExp(`\\b${escapeRegex(reference)}\\b`);
+  return content.split("\n").some((line) =>
+    (/^\s*assert\b/.test(line) || /\.assert[A-Z][A-Za-z0-9_]*\s*\(/.test(line)) &&
+    referencePattern.test(line)
+  );
+}
+
+function pythonStaticRouteMatches(routePattern, requestPath) {
+  const routeSegments = routePattern.split("/");
+  const requestSegments = requestPath.split("/");
+  if (routeSegments.length !== requestSegments.length) return false;
+  return routeSegments.every((segment, index) => {
+    if (segment === requestSegments[index]) return true;
+    const fastApiParameter = segment.match(/^\{[A-Za-z_][A-Za-z0-9_]*(?::([A-Za-z_][A-Za-z0-9_]*))?\}$/);
+    if (fastApiParameter) return pythonRouteParameterMatches(fastApiParameter[1], requestSegments[index]);
+    const flaskParameter = segment.match(/^<(?:(int|float|string|uuid):)?[A-Za-z_][A-Za-z0-9_]*>$/);
+    return Boolean(flaskParameter) && pythonRouteParameterMatches(flaskParameter[1], requestSegments[index]);
+  });
+}
+
+function pythonRouteParameterMatches(converter, value) {
+  if (!value || converter === "path") return false;
+  if (!converter || converter === "str" || converter === "string") return true;
+  if (converter === "int") return /^-?[0-9]+$/.test(value);
+  if (converter === "float") return /^-?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)$/.test(value);
+  if (converter === "uuid") return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+  return false;
+}
+
+function extractPythonLiteralKeyword(argumentsText, keyword) {
+  const match = argumentsText.match(new RegExp(`\\b${escapeRegex(keyword)}\\s*=\\s*(["'])(\\/[^"'\\\\\\r\\n]*)\\1`));
+  return match?.[2];
+}
+
+function combinePythonRoutePaths(prefix, routePath) {
+  const normalizedPrefix = prefix ? normalizePythonRoutePath(prefix) : "";
+  const normalizedRoute = normalizePythonRoutePath(routePath);
+  if (!normalizedRoute) return undefined;
+  if (!normalizedPrefix || normalizedPrefix === "/") return normalizedRoute;
+  if (normalizedRoute === "/") return `${normalizedPrefix}/`;
+  return `${normalizedPrefix.replace(/\/$/, "")}/${normalizedRoute.replace(/^\//, "")}`;
+}
+
+function normalizePythonRoutePath(routePath) {
+  if (typeof routePath !== "string" || !routePath.startsWith("/") || routePath.includes("\\")) return undefined;
+  return routePath.replace(/\/{2,}/g, "/");
+}
+
+function deduplicatePythonRoutes(routes) {
+  return [...new Map(
+    routes
+      .filter((route) => route.routePath)
+      .map((route) => [`${route.sourcePath}\0${route.method}\0${route.routePath}`, route])
+  ).values()].sort(
+    (left, right) =>
+      left.sourcePath.localeCompare(right.sourcePath) ||
+      left.method.localeCompare(right.method) ||
+      left.routePath.localeCompare(right.routePath)
+  );
+}
+
+function pythonMatchStartsInCode(maskedContent, index, expected) {
+  return maskedContent.slice(index, index + expected.length) === expected;
+}
+
+function maskPythonFunctionBlocks(content) {
+  const lines = content.split("\n");
+  const maskedLines = maskPythonCommentsAndStrings(content).split("\n");
+  for (let index = 0; index < maskedLines.length; index += 1) {
+    const match = maskedLines[index].match(/^(\s*)(?:async\s+)?def\s+[A-Za-z_][A-Za-z0-9_]*\s*\(/);
+    if (!match) continue;
+    const indent = indentationWidth(match[1]);
+    lines[index] = maskPythonStatement(lines[index]);
+    let blockIndex = index + 1;
+    while (blockIndex < lines.length) {
+      const maskedLine = maskedLines[blockIndex];
+      if (maskedLine.trim() && indentationWidth(maskedLine.match(/^\s*/)?.[0] ?? "") <= indent) break;
+      lines[blockIndex] = maskPythonStatement(lines[blockIndex]);
+      blockIndex += 1;
+    }
+    index = blockIndex - 1;
+  }
+  return lines.join("\n");
+}
+
 function maskPythonImportStatements(content) {
   return maskPythonCommentsAndStrings(content)
     .replace(
@@ -1133,7 +1653,8 @@ function parsePythonFunctions(content) {
       name: match[2],
       parameters: parsePythonParameters(match[3]),
       decorators,
-      body: maskedLines.slice(index + 1, end).join("\n")
+      body: maskedLines.slice(index + 1, end).join("\n"),
+      rawBody: rawLines.slice(index + 1, end).join("\n")
     });
     index = end - 1;
   }
