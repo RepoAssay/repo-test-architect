@@ -568,7 +568,7 @@ export function auditKotlin(files) {
     assert.deepEqual(audit.untestedCandidates, []);
   });
 
-  it("matches tests with direct relative source imports", (t) => {
+  it("matches tests with runtime direct relative source imports", (t) => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-js-import-tests-"));
     t.after(() => fs.rmSync(root, { recursive: true, force: true }));
     fs.mkdirSync(path.join(root, "src", "rules"), { recursive: true });
@@ -608,7 +608,6 @@ export function auditKotlin(files) {
     assert.deepEqual(
       audit.coveredButRisky.map((target) => `${target.path}:${target.existingTestPaths.join(",")}`),
       [
-        "src/formatters/index.ts:test/checkout-behavior.test.ts",
         "src/rules/cart-policy.ts:test/cart-flow.test.ts",
         "src/rules/payment-policy.ts:test/checkout-behavior.test.ts",
         "src/session.ts:test/login-flow.test.js",
@@ -618,14 +617,13 @@ export function auditKotlin(files) {
     assert.deepEqual(
       audit.coveredButRisky.map((target) => [target.path, target.existingTestEvidence[0].usage]),
       [
-        ["src/formatters/index.ts", undefined],
         ["src/rules/cart-policy.ts", "asserted"],
         ["src/rules/payment-policy.ts", "asserted"],
         ["src/session.ts", "called"],
         ["src/rules/tax-policy.ts", "asserted"]
       ]
     );
-    assert.deepEqual(audit.untestedCandidates, []);
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.path), ["src/formatters/index.ts"]);
   });
 
   it("tracks calls and assertions through default and namespace imports", (t) => {
@@ -895,6 +893,180 @@ export function auditKotlin(files) {
     );
   });
 
+  it("keeps conditional package exports on their import and require source branches", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-js-conditional-exports-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "src"), { recursive: true });
+    fs.mkdirSync(path.join(root, "test"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "package.json"),
+      JSON.stringify({
+        name: "@example/dual-runtime",
+        exports: {
+          ".": {
+            import: "./dist/esm-entry.mjs",
+            require: "./dist/commonjs-entry.cjs"
+          }
+        },
+        scripts: { test: "node --test" }
+      })
+    );
+    fs.writeFileSync(
+      path.join(root, "src", "esm-entry.mts"),
+      "export function esmFeature(value) { if (!value) throw new Error('missing'); return value; }\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "src", "commonjs-entry.cts"),
+      "export function commonjsFeature(value) { if (!value) throw new Error('missing'); return value; }\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "test", "import-branch.test.mts"),
+      "import { esmFeature } from '@example/dual-runtime';\nesmFeature('esm');\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "test", "require-branch.test.cts"),
+      "const { commonjsFeature } = require('@example/dual-runtime');\ncommonjsFeature('cjs');\n"
+    );
+
+    const audit = auditJavaScriptRepo(root);
+
+    assert.deepEqual(
+      audit.coveredButRisky.map((target) => `${target.path}:${target.existingTestPaths.join(",")}`),
+      [
+        "src/commonjs-entry.cts:test/require-branch.test.cts",
+        "src/esm-entry.mts:test/import-branch.test.mts"
+      ]
+    );
+    assert.deepEqual(audit.untestedCandidates, []);
+  });
+
+  it("does not collapse explicit mjs and cjs relative imports onto sibling module formats", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-js-module-formats-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "src"), { recursive: true });
+    fs.mkdirSync(path.join(root, "test"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "package.json"),
+      JSON.stringify({ scripts: { test: "node --test" } })
+    );
+    fs.writeFileSync(
+      path.join(root, "src", "runtime.mjs"),
+      "export function esmRuntime(value) { if (!value) throw new Error('missing'); return value; }\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "src", "runtime.cjs"),
+      "exports.commonjsRuntime = function (value) { if (!value) throw new Error('missing'); return value; };\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "test", "loading.test.mjs"),
+      "import { esmRuntime } from '../src/runtime.mjs';\nesmRuntime('esm');\n"
+    );
+
+    const audit = auditJavaScriptRepo(root);
+
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["src/runtime.mjs"]);
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.path), ["src/runtime.cjs"]);
+  });
+
+  it("does not credit ambiguous, default, or type-only export-star barrel members", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-js-barrel-boundaries-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "src"), { recursive: true });
+    fs.mkdirSync(path.join(root, "test"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "package.json"),
+      JSON.stringify({ scripts: { test: "vitest --run" }, devDependencies: { vitest: "latest" } })
+    );
+    fs.writeFileSync(
+      path.join(root, "src", "first.ts"),
+      "export function collision(value) { if (!value) throw new Error('first'); return value; }\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "src", "second.ts"),
+      "export function collision(value) { if (!value) throw new Error('second'); return value; }\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "src", "defaulted.ts"),
+      "export default function defaulted(value) { if (!value) throw new Error('default'); return value; }\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "src", "contract.ts"),
+      "export interface Contract { value: string }\nexport function validate(value) { if (!value) throw new Error('contract'); return value; }\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "src", "index.ts"),
+      "export * from './first';\nexport * from './second';\nexport * from './defaulted';\nexport * from './contract';\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "test", "public-api.test.ts"),
+      "import defaulted, { collision, Contract } from '../src';\nconst value: Contract = { value: 'ok' };\ncollision(value.value);\ndefaulted(value.value);\n"
+    );
+
+    const audit = auditJavaScriptRepo(root);
+
+    assert.deepEqual(
+      audit.untestedCandidates.map((target) => target.path),
+      ["src/contract.ts", "src/defaulted.ts", "src/first.ts", "src/second.ts"]
+    );
+    assert.deepEqual(audit.coveredButRisky, []);
+  });
+
+  it("does not treat direct type-only imports as runtime test coverage", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-js-type-only-imports-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "src"), { recursive: true });
+    fs.mkdirSync(path.join(root, "test"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "package.json"),
+      JSON.stringify({ scripts: { test: "vitest --run" }, devDependencies: { vitest: "latest" } })
+    );
+    fs.writeFileSync(
+      path.join(root, "src", "contract.ts"),
+      "export interface Contract { value: string }\nexport function validate(value) { if (!value) throw new Error('contract'); return value; }\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "test", "typing.test.ts"),
+      "import type { Contract } from '../src/contract';\nconst fixture: Contract = { value: 'ok' };\nexpect(fixture.value).toBe('ok');\n"
+    );
+
+    const audit = auditJavaScriptRepo(root);
+
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.path), ["src/contract.ts"]);
+    assert.deepEqual(audit.coveredButRisky, []);
+  });
+
+  it("lets an explicit named barrel export resolve an export-star collision", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-js-explicit-barrel-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "src"), { recursive: true });
+    fs.mkdirSync(path.join(root, "test"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "package.json"),
+      JSON.stringify({ scripts: { test: "vitest --run" }, devDependencies: { vitest: "latest" } })
+    );
+    fs.writeFileSync(
+      path.join(root, "src", "first.ts"),
+      "export function collision(value) { if (!value) throw new Error('first'); return value; }\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "src", "second.ts"),
+      "export function collision(value) { if (!value) throw new Error('second'); return value; }\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "src", "index.ts"),
+      "export * from './first';\nexport * from './second';\nexport { collision } from './first';\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "test", "public-api.test.ts"),
+      "import { collision } from '../src';\ncollision('ok');\n"
+    );
+
+    const audit = auditJavaScriptRepo(root);
+
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["src/first.ts"]);
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.path), ["src/second.ts"]);
+  });
+
   it("matches exact and wildcard aliases inherited from a local tsconfig", (t) => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-js-tsconfig-aliases-"));
     t.after(() => fs.rmSync(root, { recursive: true, force: true }));
@@ -969,6 +1141,44 @@ export function auditKotlin(files) {
         ["src/public/published.ts", "called"]
       ]
     );
+  });
+
+  it("honors ordered tsconfig wildcard fallbacks without cross-target alias leakage", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-js-alias-fallbacks-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    for (const directory of ["src/primary", "src/fallback", "test"]) {
+      fs.mkdirSync(path.join(root, directory), { recursive: true });
+    }
+    fs.writeFileSync(
+      path.join(root, "package.json"),
+      JSON.stringify({ scripts: { test: "vitest --run" }, devDependencies: { vitest: "latest" } })
+    );
+    fs.writeFileSync(
+      path.join(root, "tsconfig.json"),
+      JSON.stringify({
+        compilerOptions: {
+          baseUrl: ".",
+          paths: { "@feature/*": ["src/primary/*", "src/fallback/*"] }
+        }
+      })
+    );
+    fs.writeFileSync(
+      path.join(root, "src", "primary", "checkout.ts"),
+      "export function checkout(value) { if (!value) throw new Error('primary'); return value; }\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "src", "fallback", "checkout.ts"),
+      "export function checkout(value) { if (!value) throw new Error('fallback'); return value; }\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "test", "behavior.test.ts"),
+      "import { checkout } from '@feature/checkout';\ncheckout('ok');\n"
+    );
+
+    const audit = auditJavaScriptRepo(root);
+
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["src/primary/checkout.ts"]);
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.path), ["src/fallback/checkout.ts"]);
   });
 
   it("matches bounded transitive relative imports", (t) => {
@@ -1231,5 +1441,360 @@ export function auditKotlin(files) {
       assert.deepEqual(audit.profile.packageManagers, [manager]);
       assert.equal(audit.profile.testCommand, expectedCommand);
     }
+  });
+
+  it("inherits package-script ownership only from a statically declared workspace", (t) => {
+    const roots = [];
+    t.after(() => roots.forEach((root) => fs.rmSync(root, { recursive: true, force: true })));
+
+    const cases = [
+      {
+        manager: "npm",
+        rootPackage: { private: true, workspaces: ["packages/*"] },
+        lockfile: "package-lock.json",
+        expectedCommand: "npm run test"
+      },
+      {
+        manager: "pnpm",
+        rootPackage: { private: true },
+        lockfile: "pnpm-lock.yaml",
+        workspaceFile: "packages:\n  - 'packages/*'\n  - '!**/fixtures/**'\n",
+        expectedCommand: "pnpm run test"
+      },
+      {
+        manager: "yarn",
+        rootPackage: { private: true, workspaces: ["packages/*"] },
+        lockfile: "yarn.lock",
+        expectedCommand: "yarn test"
+      },
+      {
+        manager: "bun",
+        rootPackage: { private: true, workspaces: { packages: ["packages/*"] }, packageManager: "bun@1.3.0" },
+        lockfile: "bun.lock",
+        expectedCommand: "bun run test"
+      }
+    ];
+
+    for (const entry of cases) {
+      const root = fs.mkdtempSync(path.join(os.tmpdir(), `repo-test-architect-${entry.manager}-workspace-`));
+      const packageRoot = path.join(root, "packages", "checkout");
+      roots.push(root);
+      fs.mkdirSync(path.join(packageRoot, "src"), { recursive: true });
+      fs.mkdirSync(path.join(packageRoot, "test"), { recursive: true });
+      fs.writeFileSync(path.join(root, "package.json"), JSON.stringify(entry.rootPackage));
+      fs.writeFileSync(path.join(root, entry.lockfile), "lock\n");
+      if (entry.workspaceFile) fs.writeFileSync(path.join(root, "pnpm-workspace.yaml"), entry.workspaceFile);
+      fs.writeFileSync(
+        path.join(packageRoot, "package.json"),
+        JSON.stringify({ name: "@sample/checkout", scripts: { test: "vitest run" }, devDependencies: { vitest: "latest" } })
+      );
+      fs.writeFileSync(path.join(packageRoot, "src", "checkout.ts"), "export function checkout(value) { return value; }\n");
+      fs.writeFileSync(
+        path.join(packageRoot, "test", "checkout.test.ts"),
+        "import { expect, test } from 'vitest';\nimport { checkout } from '../src/checkout';\ntest('checkout', () => expect(checkout('ok')).toBe('ok'));\n"
+      );
+
+      const audit = auditJavaScriptRepo(packageRoot);
+
+      assert.deepEqual(audit.profile.packageManagers, [entry.manager]);
+      assert.equal(audit.profile.testCommand, entry.expectedCommand);
+      assert.ok(audit.profile.setupSignals.includes(`${entry.manager} workspace`));
+      assert.deepEqual(audit.profile.blockers, []);
+    }
+  });
+
+  it("does not inherit workspace package-manager evidence into an unrelated sibling", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-workspace-near-miss-"));
+    const packageRoot = path.join(root, "tools", "checkout");
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(packageRoot, "src"), { recursive: true });
+    fs.mkdirSync(path.join(packageRoot, "test"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "package.json"),
+      JSON.stringify({ private: true, packageManager: "pnpm@10.0.0", workspaces: ["packages/*"] })
+    );
+    fs.writeFileSync(path.join(root, "pnpm-lock.yaml"), "lock\n");
+    fs.writeFileSync(
+      path.join(packageRoot, "package.json"),
+      JSON.stringify({ scripts: { test: "vitest run" }, devDependencies: { vitest: "latest" } })
+    );
+    fs.writeFileSync(path.join(packageRoot, "src", "checkout.ts"), "export function checkout(value) { return value; }\n");
+    fs.writeFileSync(
+      path.join(packageRoot, "test", "checkout.test.ts"),
+      "import { test } from 'vitest';\nimport { checkout } from '../src/checkout';\ntest('checkout', () => checkout('ok'));\n"
+    );
+
+    const audit = auditJavaScriptRepo(packageRoot);
+
+    assert.deepEqual(audit.profile.packageManagers, ["npm"]);
+    assert.equal(audit.profile.testCommand, "npm run test");
+    assert.ok(!audit.profile.setupSignals.some((signal) => signal.includes("workspace")));
+  });
+
+  it("blocks ambiguous workspace package-script commands unless packageManager resolves ownership", (t) => {
+    const roots = [];
+    t.after(() => roots.forEach((root) => fs.rmSync(root, { recursive: true, force: true })));
+
+    for (const explicit of [false, true]) {
+      const root = fs.mkdtempSync(path.join(os.tmpdir(), `repo-test-architect-ambiguous-workspace-${explicit}-`));
+      const packageRoot = path.join(root, "packages", "checkout");
+      roots.push(root);
+      fs.mkdirSync(path.join(packageRoot, "src"), { recursive: true });
+      fs.mkdirSync(path.join(packageRoot, "test"), { recursive: true });
+      fs.writeFileSync(
+        path.join(root, "package.json"),
+        JSON.stringify({
+          private: true,
+          workspaces: ["packages/*"],
+          ...(explicit ? { packageManager: "yarn@4.9.2" } : {})
+        })
+      );
+      fs.writeFileSync(path.join(root, "pnpm-lock.yaml"), "lock\n");
+      fs.writeFileSync(path.join(root, "yarn.lock"), "lock\n");
+      fs.writeFileSync(
+        path.join(packageRoot, "package.json"),
+        JSON.stringify({ scripts: { test: "vitest run" }, devDependencies: { vitest: "latest" } })
+      );
+      fs.writeFileSync(path.join(packageRoot, "src", "checkout.ts"), "export function checkout(value) { return value; }\n");
+      fs.writeFileSync(
+        path.join(packageRoot, "test", "checkout.test.ts"),
+        "import { test } from 'vitest';\nimport { checkout } from '../src/checkout';\ntest('checkout', () => checkout('ok'));\n"
+      );
+
+      const audit = auditJavaScriptRepo(packageRoot);
+
+      assert.deepEqual(audit.profile.packageManagers, ["pnpm", "yarn"]);
+      if (explicit) {
+        assert.equal(audit.profile.testCommand, "yarn test");
+        assert.deepEqual(audit.profile.blockers, []);
+        assert.ok(audit.profile.setupSignals.includes("yarn workspace"));
+      } else {
+        assert.equal(audit.profile.testCommand, undefined);
+        assert.equal(audit.profile.confidence, "medium");
+        assert.ok(audit.profile.blockers.some((blocker) => blocker.includes("Multiple package managers detected (pnpm, yarn)")));
+        assert.ok(audit.profile.setupSignals.includes("package workspace"));
+      }
+    }
+  });
+
+  it("uses bounded static runner config fields to recognize custom test locations", (t) => {
+    const roots = [];
+    t.after(() => roots.forEach((root) => fs.rmSync(root, { recursive: true, force: true })));
+
+    const cases = [
+      {
+        framework: "vitest",
+        config: "vitest.config.ts",
+        content: "export default { test: { include: ['quality/**/*.check.ts'] } };\n",
+        script: "vitest run"
+      },
+      {
+        framework: "jest",
+        config: "jest.config.mjs",
+        content: "export default { testMatch: ['<rootDir>/quality/**/*.check.ts'] };\n",
+        script: "jest"
+      },
+      {
+        framework: "playwright",
+        config: "playwright.config.ts",
+        content: "export default { testDir: './quality', testMatch: '**/*.check.ts' };\n",
+        script: "playwright test"
+      },
+      {
+        framework: "cypress",
+        config: "cypress.config.ts",
+        content: "export default { e2e: { specPattern: 'quality/**/*.check.ts' } };\n",
+        script: "cypress run"
+      },
+      {
+        framework: "ava",
+        config: "ava.config.mjs",
+        content: "export default { files: ['quality/**/*.check.ts'] };\n",
+        script: "ava"
+      },
+      {
+        framework: "mocha",
+        config: ".mocharc.json",
+        content: JSON.stringify({ spec: ["quality/**/*.check.ts"] }),
+        script: "mocha"
+      }
+    ];
+
+    for (const entry of cases) {
+      const root = fs.mkdtempSync(path.join(os.tmpdir(), `repo-test-architect-${entry.framework}-custom-tests-`));
+      roots.push(root);
+      fs.mkdirSync(path.join(root, "src"), { recursive: true });
+      fs.mkdirSync(path.join(root, "quality", "checkout"), { recursive: true });
+      fs.writeFileSync(
+        path.join(root, "package.json"),
+        JSON.stringify({ scripts: { test: entry.script } })
+      );
+      fs.writeFileSync(path.join(root, entry.config), entry.content);
+      fs.writeFileSync(
+        path.join(root, "src", "checkout.ts"),
+        "export function checkout(value) { if (!value) throw new Error('missing'); return value; }\n"
+      );
+      fs.writeFileSync(
+        path.join(root, "quality", "checkout", "checkout.check.ts"),
+        "import { checkout } from '../../src/checkout';\ncheckout('ok');\n"
+      );
+
+      const audit = auditJavaScriptRepo(root);
+
+      assert.deepEqual(audit.profile.testFrameworks, [entry.framework]);
+      assert.equal(audit.profile.testCommand, "npm run test");
+      assert.deepEqual(audit.profile.existingTestLocations, ["custom test location"]);
+      assert.ok(audit.profile.detectedConventions.includes("configured test files"));
+      assert.ok(audit.profile.setupSignals.includes(`${entry.framework} config`));
+      assert.deepEqual(audit.profile.blockers, []);
+      assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["src/checkout.ts"]);
+    }
+  });
+
+  it("inherits an explicitly selected runner config only inside the owning workspace", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-inherited-runner-config-"));
+    const packageRoot = path.join(root, "packages", "checkout");
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "config"), { recursive: true });
+    fs.mkdirSync(path.join(packageRoot, "src"), { recursive: true });
+    fs.mkdirSync(path.join(packageRoot, "quality"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "package.json"),
+      JSON.stringify({ private: true, packageManager: "pnpm@10.0.0", workspaces: ["packages/*"] })
+    );
+    fs.writeFileSync(path.join(root, "pnpm-lock.yaml"), "lock\n");
+    fs.writeFileSync(
+      path.join(root, "config", "vitest.shared.ts"),
+      "export default { test: { include: ['quality/**/*.check.ts'] } };\n"
+    );
+    fs.writeFileSync(
+      path.join(packageRoot, "package.json"),
+      JSON.stringify({ scripts: { test: "vitest run --config ../../config/vitest.shared.ts" } })
+    );
+    fs.writeFileSync(
+      path.join(packageRoot, "src", "checkout.ts"),
+      "export function checkout(value) { if (!value) throw new Error('missing'); return value; }\n"
+    );
+    fs.writeFileSync(
+      path.join(packageRoot, "quality", "checkout.check.ts"),
+      "import { checkout } from '../src/checkout';\ncheckout('ok');\n"
+    );
+
+    const audit = auditJavaScriptRepo(packageRoot);
+
+    assert.deepEqual(audit.profile.packageManagers, ["pnpm"]);
+    assert.deepEqual(audit.profile.testFrameworks, ["vitest"]);
+    assert.equal(audit.profile.testCommand, "pnpm run test");
+    assert.ok(audit.profile.setupSignals.includes("vitest config (owning workspace)"));
+    assert.ok(audit.profile.setupSignals.includes("pnpm workspace"));
+    assert.deepEqual(audit.profile.existingTestLocations, ["custom test location"]);
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["src/checkout.ts"]);
+  });
+
+  it("honors bounded static include alternatives and exclusions", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-runner-config-excludes-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    for (const directory of ["src", "quality/checkout", "quality/ignored"]) {
+      fs.mkdirSync(path.join(root, directory), { recursive: true });
+    }
+    fs.writeFileSync(path.join(root, "package.json"), JSON.stringify({ scripts: { test: "vitest run" } }));
+    fs.writeFileSync(
+      path.join(root, "vitest.config.ts"),
+      "export default { test: { include: ['quality/**/*.{check,verify}.ts'], exclude: ['quality/ignored/**'] } };\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "src", "checkout.ts"),
+      "export function checkout(value) { if (!value) throw new Error('missing'); return value; }\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "src", "refund.ts"),
+      "export function refund(value) { if (!value) throw new Error('missing'); return value; }\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "quality", "checkout", "checkout.check.ts"),
+      "import { checkout } from '../../src/checkout';\ncheckout('ok');\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "quality", "ignored", "refund.verify.ts"),
+      "import { refund } from '../../src/refund';\nrefund('ok');\n"
+    );
+
+    const audit = auditJavaScriptRepo(root);
+
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["src/checkout.ts"]);
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.path), ["src/refund.ts"]);
+  });
+
+  it("does not inherit ambient or unowned ancestor runner configuration", (t) => {
+    const roots = [];
+    t.after(() => roots.forEach((root) => fs.rmSync(root, { recursive: true, force: true })));
+
+    for (const entry of [
+      { packagePath: ["packages", "checkout"], script: "vitest run" },
+      { packagePath: ["tools", "checkout"], script: "vitest run --config ../../config/vitest.shared.ts" }
+    ]) {
+      const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-runner-config-near-miss-"));
+      const packageRoot = path.join(root, ...entry.packagePath);
+      roots.push(root);
+      fs.mkdirSync(path.join(root, "config"), { recursive: true });
+      fs.mkdirSync(path.join(packageRoot, "src"), { recursive: true });
+      fs.mkdirSync(path.join(packageRoot, "quality"), { recursive: true });
+      fs.writeFileSync(
+        path.join(root, "package.json"),
+        JSON.stringify({ private: true, workspaces: ["packages/*"] })
+      );
+      fs.writeFileSync(
+        path.join(root, "config", "vitest.shared.ts"),
+        "export default { test: { include: ['quality/**/*.check.ts'] } };\n"
+      );
+      fs.writeFileSync(
+        path.join(packageRoot, "package.json"),
+        JSON.stringify({ scripts: { test: entry.script } })
+      );
+      fs.writeFileSync(
+        path.join(packageRoot, "src", "checkout.ts"),
+        "export function checkout(value) { if (!value) throw new Error('missing'); return value; }\n"
+      );
+      fs.writeFileSync(
+        path.join(packageRoot, "quality", "checkout.check.ts"),
+        "import { checkout } from '../src/checkout';\ncheckout('ok');\n"
+      );
+
+      const audit = auditJavaScriptRepo(packageRoot);
+
+      assert.ok(!audit.profile.setupSignals.some((signal) => signal.includes("vitest config")));
+      assert.deepEqual(audit.profile.existingTestLocations, []);
+      assert.deepEqual(audit.coveredButRisky, []);
+      assert.deepEqual(audit.untestedCandidates.map((target) => target.path), ["src/checkout.ts"]);
+    }
+  });
+
+  it("does not treat an arbitrary fixture config as package runner configuration", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-fixture-runner-config-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "fixtures"), { recursive: true });
+    fs.mkdirSync(path.join(root, "src"), { recursive: true });
+    fs.mkdirSync(path.join(root, "quality"), { recursive: true });
+    fs.writeFileSync(path.join(root, "package.json"), JSON.stringify({ scripts: { test: "vitest run" } }));
+    fs.writeFileSync(
+      path.join(root, "fixtures", "vitest.config.ts"),
+      "export default { test: { include: ['quality/**/*.check.ts'] } };\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "src", "checkout.ts"),
+      "export function checkout(value) { if (!value) throw new Error('missing'); return value; }\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "quality", "checkout.check.ts"),
+      "import { checkout } from '../src/checkout';\ncheckout('ok');\n"
+    );
+
+    const audit = auditJavaScriptRepo(root);
+
+    assert.deepEqual(audit.profile.testFrameworks, ["vitest"]);
+    assert.ok(!audit.profile.setupSignals.includes("vitest config"));
+    assert.deepEqual(audit.profile.existingTestLocations, []);
+    assert.deepEqual(audit.coveredButRisky, []);
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.path), ["src/checkout.ts"]);
   });
 });

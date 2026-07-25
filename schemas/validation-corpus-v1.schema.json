@@ -1,0 +1,160 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://repo-test-architect.local/schemas/validation-corpus-v1.schema.json",
+  "title": "Repo Test Architect Adapter Validation Corpus",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "adapters"],
+  "properties": {
+    "schemaVersion": {
+      "const": "validation-corpus/v1"
+    },
+    "adapters": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/adapterCorpus"
+      }
+    }
+  },
+  "$defs": {
+    "adapterCorpus": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["adapterId", "cases"],
+      "properties": {
+        "adapterId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "cases": {
+          "type": "array",
+          "minItems": 3,
+          "items": {
+            "$ref": "#/$defs/corpusCase"
+          }
+        }
+      }
+    },
+    "corpusCase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "role",
+        "repository",
+        "supportBoundary",
+        "reportPath",
+        "scorecard",
+        "observed"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "role": {
+          "enum": [
+            "conventional-library-or-service",
+            "framework-heavy-application",
+            "difficult-ownership-graph"
+          ]
+        },
+        "repository": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["url", "commit", "projectRoot"],
+          "properties": {
+            "url": {
+              "type": "string",
+              "minLength": 1
+            },
+            "commit": {
+              "type": "string",
+              "minLength": 40
+            },
+            "projectRoot": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "supportBoundary": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reportPath": {
+          "type": "string",
+          "minLength": 1
+        },
+        "scorecard": {
+          "$ref": "#/$defs/scorecard"
+        },
+        "observed": {
+          "$ref": "#/$defs/observation"
+        }
+      }
+    },
+    "scorecard": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "detection",
+        "ownership",
+        "command",
+        "evidence",
+        "ranking",
+        "stability",
+        "performance"
+      ],
+      "properties": {
+        "detection": { "$ref": "#/$defs/scoreStatus" },
+        "ownership": { "$ref": "#/$defs/scoreStatus" },
+        "command": { "$ref": "#/$defs/scoreStatus" },
+        "evidence": { "$ref": "#/$defs/scoreStatus" },
+        "ranking": { "$ref": "#/$defs/scoreStatus" },
+        "stability": { "$ref": "#/$defs/scoreStatus" },
+        "performance": { "$ref": "#/$defs/scoreStatus" }
+      }
+    },
+    "scoreStatus": {
+      "enum": ["pass", "fail", "pending"]
+    },
+    "observation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "testCommand",
+        "untestedCandidates",
+        "coveredButRisky",
+        "skippedTargets"
+      ],
+      "properties": {
+        "testCommand": {
+          "type": "string",
+          "minLength": 1
+        },
+        "untestedCandidates": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "coveredButRisky": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "skippedTargets": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "auditDurationMs": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "evidenceRelationshipCount": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    }
+  }
+}

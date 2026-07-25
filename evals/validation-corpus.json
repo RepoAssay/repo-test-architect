@@ -1,0 +1,348 @@
+{
+  "schemaVersion": "validation-corpus/v1",
+  "adapters": [
+    {
+      "adapterId": "javascript",
+      "cases": [
+        {
+          "id": "javascript-playwright-mcp",
+          "role": "conventional-library-or-service",
+          "repository": {
+            "url": "https://github.com/microsoft/playwright-mcp",
+            "commit": "55679f5f3d4b4f3e2534ec0ce2fc5683ba2eaf3f",
+            "projectRoot": "."
+          },
+          "supportBoundary": "Root package entrypoints, Playwright configuration, extended fixtures, and conservative browser-process evidence.",
+          "reportPath": "docs/browser-bun-audit-report.md",
+          "scorecard": {
+            "detection": "pass",
+            "ownership": "pass",
+            "command": "pass",
+            "evidence": "pass",
+            "ranking": "pass",
+            "stability": "pending",
+            "performance": "pending"
+          },
+          "observed": {
+            "testCommand": "npm run test",
+            "untestedCandidates": 1,
+            "coveredButRisky": 0,
+            "skippedTargets": 1,
+            "auditDurationMs": 60
+          }
+        },
+        {
+          "id": "javascript-cypress-terminal-report",
+          "role": "difficult-ownership-graph",
+          "repository": {
+            "url": "https://github.com/archfz/cypress-terminal-report",
+            "commit": "b66713fd88ebaf200cfe60dd4bf205e8c1030e37",
+            "projectRoot": "."
+          },
+          "supportBoundary": "A root package that owns a nested Cypress test harness without treating the harness as an independent production workspace.",
+          "reportPath": "docs/browser-bun-audit-report.md",
+          "scorecard": {
+            "detection": "pass",
+            "ownership": "pass",
+            "command": "pass",
+            "evidence": "pass",
+            "ranking": "pass",
+            "stability": "pending",
+            "performance": "pending"
+          },
+          "observed": {
+            "testCommand": "npx cypress run --config-file test/cypress.config.js",
+            "untestedCandidates": 19,
+            "coveredButRisky": 2,
+            "skippedTargets": 11,
+            "auditDurationMs": 130
+          }
+        },
+        {
+          "id": "javascript-hono-bun",
+          "role": "framework-heavy-application",
+          "repository": {
+            "url": "https://github.com/honojs/hono",
+            "commit": "c285f9a498623fe0d2992b31c77b3738c0c0a54d",
+            "projectRoot": "."
+          },
+          "supportBoundary": "Large TypeScript HTTP framework using Bun package management, Bun-native tests, Vitest, and a broad static evidence graph.",
+          "reportPath": "docs/browser-bun-audit-report.md",
+          "scorecard": {
+            "detection": "pass",
+            "ownership": "pass",
+            "command": "pass",
+            "evidence": "pass",
+            "ranking": "pass",
+            "stability": "pending",
+            "performance": "pending"
+          },
+          "observed": {
+            "testCommand": "bun run test",
+            "untestedCandidates": 1,
+            "coveredButRisky": 100,
+            "skippedTargets": 85,
+            "auditDurationMs": 7960,
+            "evidenceRelationshipCount": 1099
+          }
+        }
+      ]
+    },
+    {
+      "adapterId": "kotlin",
+      "cases": [
+        {
+          "id": "kotlin-junit4",
+          "role": "conventional-library-or-service",
+          "repository": {
+            "url": "https://github.com/junit-team/junit4",
+            "commit": "300468b1efd48d76fac2f7bd6d576846dcbbf5ed",
+            "projectRoot": "."
+          },
+          "supportBoundary": "Conventional Maven/Java library with a wrapper, JUnit 3/4 execution, and exact JVM symbol evidence.",
+          "reportPath": "docs/kotlin-jvm-validation-hunt-report.md",
+          "scorecard": {
+            "detection": "pass",
+            "ownership": "pass",
+            "command": "pass",
+            "evidence": "pass",
+            "ranking": "pass",
+            "stability": "pending",
+            "performance": "pending"
+          },
+          "observed": {
+            "testCommand": "./mvnw test",
+            "untestedCandidates": 34,
+            "coveredButRisky": 82,
+            "skippedTargets": 103,
+            "auditDurationMs": 251,
+            "evidenceRelationshipCount": 706
+          }
+        },
+        {
+          "id": "kotlin-graphql-java",
+          "role": "framework-heavy-application",
+          "repository": {
+            "url": "https://github.com/graphql-java/graphql-java",
+            "commit": "94f398d50cbff7d5810b6ffc5692fa3947482c99",
+            "projectRoot": "."
+          },
+          "supportBoundary": "Large Gradle/Java framework with bounded Spock features alongside explicit advanced Spock and TestNG blockers.",
+          "reportPath": "docs/kotlin-jvm-validation-hunt-report.md",
+          "scorecard": {
+            "detection": "pass",
+            "ownership": "pass",
+            "command": "pass",
+            "evidence": "pass",
+            "ranking": "pass",
+            "stability": "pending",
+            "performance": "pending"
+          },
+          "observed": {
+            "testCommand": "./gradlew test",
+            "untestedCandidates": 186,
+            "coveredButRisky": 164,
+            "skippedTargets": 303,
+            "auditDurationMs": 968,
+            "evidenceRelationshipCount": 701
+          }
+        },
+        {
+          "id": "kotlin-maven-surefire",
+          "role": "difficult-ownership-graph",
+          "repository": {
+            "url": "https://github.com/apache/maven-surefire",
+            "commit": "8dcf263f808c15b00a7064ec6ea3f9268c1d4b51",
+            "projectRoot": "."
+          },
+          "supportBoundary": "Multi-module Maven reactor with dependency-qualified cross-module evidence and nested integration-test fixtures kept outside root ownership.",
+          "reportPath": "docs/kotlin-jvm-validation-hunt-report.md",
+          "scorecard": {
+            "detection": "pass",
+            "ownership": "pass",
+            "command": "pass",
+            "evidence": "pass",
+            "ranking": "pass",
+            "stability": "pending",
+            "performance": "pending"
+          },
+          "observed": {
+            "testCommand": "mvn test",
+            "untestedCandidates": 24,
+            "coveredButRisky": 132,
+            "skippedTargets": 130,
+            "auditDurationMs": 520,
+            "evidenceRelationshipCount": 348
+          }
+        }
+      ]
+    },
+    {
+      "adapterId": "python",
+      "cases": [
+        {
+          "id": "python-asyncer",
+          "role": "conventional-library-or-service",
+          "repository": {
+            "url": "https://github.com/fastapi/asyncer",
+            "commit": "783a462e0a70016d99cbb9baccf46aaa1cd38ca2",
+            "projectRoot": "."
+          },
+          "supportBoundary": "Compact declared-name package using uv and pytest configuration while excluding docs and release scripts from package ownership.",
+          "reportPath": "docs/python-validation-hunt-report.md",
+          "scorecard": {
+            "detection": "pass",
+            "ownership": "pass",
+            "command": "pass",
+            "evidence": "pass",
+            "ranking": "pass",
+            "stability": "pending",
+            "performance": "pending"
+          },
+          "observed": {
+            "testCommand": "uv run pytest",
+            "untestedCandidates": 1,
+            "coveredButRisky": 1,
+            "skippedTargets": 0
+          }
+        },
+        {
+          "id": "python-fastapi-template-backend",
+          "role": "framework-heavy-application",
+          "repository": {
+            "url": "https://github.com/fastapi/full-stack-fastapi-template",
+            "commit": "4d3d5e92c1ea6b3fa0fab02c41124844ec45bca8",
+            "projectRoot": "backend"
+          },
+          "supportBoundary": "FastAPI application package with route, service, persistence, migration, and pytest ownership boundaries.",
+          "reportPath": "docs/python-validation-hunt-report.md",
+          "scorecard": {
+            "detection": "pass",
+            "ownership": "pass",
+            "command": "pass",
+            "evidence": "pass",
+            "ranking": "pass",
+            "stability": "pending",
+            "performance": "pending"
+          },
+          "observed": {
+            "testCommand": "pytest",
+            "untestedCandidates": 6,
+            "coveredButRisky": 9,
+            "skippedTargets": 8
+          }
+        },
+        {
+          "id": "python-django",
+          "role": "difficult-ownership-graph",
+          "repository": {
+            "url": "https://github.com/django/django",
+            "commit": "dca76b15c62a1118325b71678ce3235e2231198d",
+            "projectRoot": "."
+          },
+          "supportBoundary": "Large framework repository with nested unittest-derived suites, tests.py modules, and a repository-specific runner.",
+          "reportPath": "docs/python-validation-hunt-report.md",
+          "scorecard": {
+            "detection": "pass",
+            "ownership": "pass",
+            "command": "pass",
+            "evidence": "pass",
+            "ranking": "pass",
+            "stability": "pending",
+            "performance": "pending"
+          },
+          "observed": {
+            "testCommand": "python tests/runtests.py",
+            "untestedCandidates": 170,
+            "coveredButRisky": 334,
+            "skippedTargets": 197,
+            "auditDurationMs": 2000
+          }
+        }
+      ]
+    },
+    {
+      "adapterId": "swift",
+      "cases": [
+        {
+          "id": "swift-reercodable",
+          "role": "conventional-library-or-service",
+          "repository": {
+            "url": "https://github.com/reers/ReerCodable",
+            "commit": "9e9edc29e1aa6c6c644f5761737506cc243236f7",
+            "projectRoot": "."
+          },
+          "supportBoundary": "SwiftPM macro package with declaration, implementation, and expansion-test ownership kept distinct.",
+          "reportPath": "docs/swift-validation-hunt-report.md",
+          "scorecard": {
+            "detection": "pass",
+            "ownership": "pass",
+            "command": "pass",
+            "evidence": "pass",
+            "ranking": "pass",
+            "stability": "pending",
+            "performance": "pending"
+          },
+          "observed": {
+            "testCommand": "swift test",
+            "untestedCandidates": 17,
+            "coveredButRisky": 22,
+            "skippedTargets": 15
+          }
+        },
+        {
+          "id": "swift-package-index-server",
+          "role": "framework-heavy-application",
+          "repository": {
+            "url": "https://github.com/SwiftPackageIndex/SwiftPackageIndex-Server",
+            "commit": "26943bfd3e62f29348e6a06722ba5fcd9dc11d58",
+            "projectRoot": "."
+          },
+          "supportBoundary": "Production Vapor and Fluent service with SnapshotTesting, Swift Testing, VaporTesting, and conservative database evidence.",
+          "reportPath": "docs/swift-validation-hunt-report.md",
+          "scorecard": {
+            "detection": "pass",
+            "ownership": "pass",
+            "command": "pass",
+            "evidence": "pass",
+            "ranking": "pass",
+            "stability": "pending",
+            "performance": "pending"
+          },
+          "observed": {
+            "testCommand": "swift test",
+            "untestedCandidates": 91,
+            "coveredButRisky": 93,
+            "skippedTargets": 166
+          }
+        },
+        {
+          "id": "swift-rules-swift",
+          "role": "difficult-ownership-graph",
+          "repository": {
+            "url": "https://github.com/bazelbuild/rules_swift",
+            "commit": "4428a622d5127737fda3d55752659a657216281a",
+            "projectRoot": "."
+          },
+          "supportBoundary": "Canonical Bazel rules_swift workspace with target-owned sources, direct dependencies, fixtures, and conservative custom-Starlark boundaries.",
+          "reportPath": "docs/swift-validation-hunt-report.md",
+          "scorecard": {
+            "detection": "pass",
+            "ownership": "pass",
+            "command": "pass",
+            "evidence": "pass",
+            "ranking": "pass",
+            "stability": "pending",
+            "performance": "pending"
+          },
+          "observed": {
+            "testCommand": "bazel test //...",
+            "untestedCandidates": 29,
+            "coveredButRisky": 5,
+            "skippedTargets": 102
+          }
+        }
+      ]
+    }
+  ]
+}

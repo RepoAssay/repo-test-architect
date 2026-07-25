@@ -40,6 +40,8 @@ Validation records should pin the repository and commit, describe the supported 
 
 The first corpus pass establishes performance baselines rather than inventing one universal time budget for repositories of different sizes.
 
+The deferred HTML presentation may render these facts as an audit card or assay seal, following the [future scorecard visualization](near-term-roadmap.md#future-scorecard-visualization). Review completeness and reviewed pass rate must remain separate so the renderer does not turn unfinished review coverage into a misleading quality score.
+
 Repository code remains unexecuted during ordinary static validation. Comparing a proposed verification command with checked-in scripts, wrappers, documentation, and CI is sufficient unless a repository has been explicitly reviewed for safe local execution.
 
 ## Workstream 1: Shared Conformance
@@ -69,6 +71,8 @@ Prioritize the most common public-alpha path:
 - large-suite performance around import, call, and assertion analysis
 
 Do not treat arbitrary runtime loaders, browser requests, or opaque monorepo orchestration as proven source coverage.
+
+Progress: the first bounded workspace-command slice preserves npm, pnpm, Yarn, or Bun package-script ownership for child packages only when a nearest ancestor statically declares them. The second bounded configuration slice recognizes static custom test discovery for Vitest, Jest, Playwright, Cypress, AVA, and Mocha. An ancestor config is inherited only when the child package script explicitly selects a file inside its owning workspace; ambient root configs, fixture configs, and unowned siblings do not leak into the audit. Computed/imported config remains unsupported. The third ESM/CommonJS module-boundary slice keeps conditional `import` and `require` exports, explicit CJS/ESM extensions, one-hop barrel symbols, type-only imports, and ordered `tsconfig` alias fallbacks from leaking false coverage. Package `imports`, custom conditions, CommonJS re-export barrels, dynamic loading, and full resolver emulation remain explicitly unsupported. Large-suite performance and conservative browser E2E evidence are the remaining JavaScript/TypeScript priorities.
 
 ### Python
 
@@ -137,12 +141,14 @@ A framework name or dependency marker alone is not enough reason to widen suppor
 
 The initial queue is:
 
-1. Add the shared corpus manifest, scorecard format, and adapter-conformance helper.
+1. Add the shared corpus manifest, scorecard format, and adapter-conformance helper. Complete: `evals/validation-corpus.json` now carries three full-SHA cases per supported adapter, `schemas/validation-corpus-v1.schema.json` defines the scorecard, and `test/support/adapter-conformance.js` locks the shared local invariants.
 2. Refresh JavaScript/TypeScript validation, starting with workspace command ownership and configuration boundaries.
 3. Refresh Python validation, starting with multi-package ownership, relative imports, and pytest discovery configuration.
 4. Refresh Kotlin/JVM validation, starting with Gradle/Maven ownership and conservative unsupported-graph behavior.
 5. Refresh Swift validation, starting with SwiftPM/Xcode ownership ambiguity and symbol-evidence pressure.
 6. Run the cross-adapter trust pass and set measured performance regression budgets.
+
+Run `npm run corpus:check` to validate corpus completeness, pins, report links, and scorecard states. Historical reports establish the initial detection, ownership, command, evidence, and ranking passes. Stability and performance remain `pending` until each pinned checkout has repeated canonical-JSON audits and a standardized duration plus evidence-count baseline; historical timings alone do not silently pass the new gate.
 
 User reports or a demonstrated false high-confidence claim can move a slice earlier. Within an adapter, correctness and false-confidence fixes take priority over recognizing another framework variant.
 

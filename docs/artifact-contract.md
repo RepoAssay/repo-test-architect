@@ -655,6 +655,36 @@ Future model-assisted layers may:
 
 Models should consume audit/plan artifacts rather than infer repository facts from scratch.
 
+## Validation Corpus Artifact
+
+Schema:
+
+- `schemas/validation-corpus-v1.schema.json`
+- `schemaVersion: "validation-corpus/v1"`
+
+Manifest:
+
+- `evals/validation-corpus.json`
+
+Command:
+
+```powershell
+npm run corpus:check
+```
+
+This repository-owned artifact records the pinned public probes used to harden supported adapters. It is a review contract rather than CLI or MCP audit output. Every supported adapter owns at least one conventional library or service, one framework-heavy application, and one difficult ownership graph.
+
+Each case records:
+
+- a full repository commit and optional project root
+- the bounded support claim being reviewed
+- the checked-in report containing the human analysis
+- detection, ownership, command, evidence, ranking, stability, and performance score states
+- the command and candidate counts observed in the linked report
+- optional audit duration and evidence-relationship counts when those observations exist
+
+`pending` is an intentional score. Stability passes only after repeated audits produce identical canonical JSON for the pinned checkout. Performance passes only after the standardized pass records both duration and evidence-relationship counts; historical timing notes remain observations until then. External repositories are not fetched or executed by `corpus:check`, and deterministic local fixtures remain the release gate.
+
 ## Eval Artifacts
 
 Fixture manifest:
@@ -681,6 +711,7 @@ npm run model-consistency:check
 npm run model-consistency:json
 npm run model-consistency:compare -- baseline-summary.json candidate-summary.json
 npm run model-consistency:stats
+npm run corpus:check
 ```
 
 Update snapshots only after intentional behavior changes.

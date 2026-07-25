@@ -1,33 +1,49 @@
 import fs from "node:fs";
 import path from "node:path";
 
-const SOURCE_EXTENSIONS = [".cjs", ".js", ".jsx", ".mjs", ".ts", ".tsx"];
+const SOURCE_EXTENSIONS = [".cjs", ".cts", ".js", ".jsx", ".mjs", ".mts", ".ts", ".tsx"];
 const SOURCE_ROOTS = ["src/", "source/", "lib/"];
 const GENERIC_SOURCE_BASENAMES = new Set(["handler", "index", "types", "utils"]);
 const MAX_TRANSITIVE_SOURCE_DEPTH = 2;
 const AVA_ASSERTION_METHODS = ["assert", "deepEqual", "false", "falsy", "is", "like", "not", "notDeepEqual", "notRegex", "notThrows", "notThrowsAsync", "regex", "snapshot", "throws", "throwsAsync", "true", "truthy"];
+const PACKAGE_MANAGER_LOCKFILES = [
+  ["package-lock.json", "npm"],
+  ["pnpm-lock.yaml", "pnpm"],
+  ["yarn.lock", "yarn"],
+  ["bun.lock", "bun"],
+  ["bun.lockb", "bun"]
+];
+const SUPPORTED_PACKAGE_MANAGERS = new Set(["npm", "pnpm", "yarn", "bun"]);
 
 export function auditJavaScriptRepo(root, options = {}) {
   const files = scopeToPackageRoot(readRepoFiles(root));
-  const profile = buildProfile(root, files);
+  const packageData = parsePackageJson(files.find((file) => normalizePath(file.path) === "package.json")?.content ?? "");
+  const workspaceContext = findOwningWorkspace(root);
+  const runnerConfig = detectRunnerConfiguration(root, files, packageData, workspaceContext);
+  const testFilePaths = new Set(files
+    .map((file) => normalizePath(file.path))
+    .filter((currentPath) => isTestFile(currentPath) || runnerConfig.testPaths.has(currentPath)));
+  const profile = buildProfile(root, files, packageData, workspaceContext, runnerConfig, testFilePaths);
   const changedPaths = options.changedPaths ? new Set(options.changedPaths.map((currentPath) => normalizeChangedPath(root, currentPath))) : undefined;
   const moduleFiles = files.map((file) => analyzeModuleFile({ ...file, path: normalizePath(file.path) }));
-  const testFiles = moduleFiles.filter((file) => isTestFile(file.path));
+  const testFiles = moduleFiles.filter((file) => testFilePaths.has(file.path));
   const tsconfigData = resolveTsconfigData("tsconfig.json", files);
   const pathAliasEntries = findTsconfigPathAliasEntries(tsconfigData, moduleFiles);
   const boundedTransitiveImports = collectBoundedTransitiveImports(testFiles, moduleFiles, pathAliasEntries);
-  const packageData = parsePackageJson(files.find((file) => normalizePath(file.path) === "package.json")?.content ?? "");
   const packageSourcePaths = findDeclaredPackageSourcePaths(packageData, moduleFiles);
-  const packageEntryFile = findSourcePackageEntry(packageData, moduleFiles);
+  const packageEntryFiles = findSourcePackageEntries(packageData, moduleFiles);
   const packageSubpathEntries = findSourcePackageSubpathEntries(packageData, moduleFiles);
   const untestedCandidates = [];
   const coveredButRisky = [];
   const skipped = [];
   const risks = [];
-  const runtimeSourcePaths = new Set(files.map((file) => normalizePath(file.path)).filter((currentPath) => isRuntimeJavaScriptSource(currentPath) || (packageSourcePaths.has(currentPath) && /\.(cjs|mjs|js|jsx)$/.test(currentPath))));
+  const runtimeSourcePaths = new Set(files
+    .map((file) => normalizePath(file.path))
+    .filter((currentPath) => !testFilePaths.has(currentPath))
+    .filter((currentPath) => isRuntimeJavaScriptSource(currentPath) || (packageSourcePaths.has(currentPath) && /\.(cjs|mjs|js|jsx)$/.test(currentPath))));
   const sourceJavaScriptRuntime = hasSourceJavaScriptRuntimeEntrypoint(files) || [...packageSourcePaths].some((currentPath) => /\.(cjs|mjs|js|jsx)$/.test(currentPath));
 
-  for (const file of files.filter((candidate) => isAuditableSourceFile(candidate.path, packageSourcePaths) && isIncludedByChangedPaths(candidate.path, changedPaths))) {
+  for (const file of files.filter((candidate) => !testFilePaths.has(normalizePath(candidate.path)) && isAuditableSourceFile(candidate.path, packageSourcePaths) && isIncludedByChangedPaths(candidate.path, changedPaths))) {
     const name = basenameWithoutExtension(file.path);
     const classification = classifySourceFile(file, profile, {
       runtimeSourcePaths,
@@ -51,7 +67,7 @@ export function auditJavaScriptRepo(root, options = {}) {
 
     const existingTestEvidence = findExistingTestEvidence(file.path, testFiles, moduleFiles, boundedTransitiveImports, {
       packageName: packageData.name,
-      packageEntryFile,
+      packageEntryFiles,
       packageSubpathEntries,
       pathAliasEntries,
       browserE2EFrameworks: new Set(profile.testFrameworks.filter((framework) => framework === "playwright" || framework === "cypress"))
@@ -156,7 +172,7 @@ function shouldRead(relative) {
       "jest.config.ts",
       "jest.config.js",
       "ava.config.json"
-    ].includes(relative) || /(^|\/)(?:playwright|cypress)\.config\.[cm]?[jt]s$/.test(relative) || /(^|\/)tsconfig(?:\.[^/]+)?\.json$/.test(relative) || /(^|\/)\.mocharc(?:\.(?:json|ya?ml))?$/.test(relative)
+    ].includes(relative) || /(^|\/)(?:vitest(?:\.[A-Za-z0-9_-]+)?\.config|vitest\.config(?:\.[A-Za-z0-9_-]+)?|jest\.config|playwright\.config|cypress\.config|ava\.config)\.(?:[cm]?[jt]s|json)$/.test(relative) || /(^|\/)tsconfig(?:\.[^/]+)?\.json$/.test(relative) || /(^|\/)\.mocharc(?:\.(?:json|ya?ml))?$/.test(relative)
   );
 }
 
@@ -179,23 +195,21 @@ function isTestHarnessRoot(currentPath) {
   return ["test", "tests", "__tests__"].includes(currentPath.split("/")[0]);
 }
 
-function buildProfile(root, files) {
+function buildProfile(root, files, packageData, workspaceContext, runnerConfig, testFilePaths) {
   const paths = files.map((file) => normalizePath(file.path));
   const packageJson = files.find((file) => normalizePath(file.path) === "package.json");
-  const packageText = packageJson?.content ?? "";
-  const packageData = parsePackageJson(packageText);
-  const packageManagers = detectPackageManagers(paths);
-  const testFrameworks = detectTestFrameworks(files, packageData);
-  const testCommand = detectTestCommand(packageData, testFrameworks, packageManagers, paths);
-  const existingTestLocations = detectExistingTestLocations(paths);
-  const detectedConventions = detectConventions(paths);
-  const setupSignals = detectSetupSignals(paths, packageData);
-  const blockers = detectBlockers(packageJson !== undefined, testCommand, testFrameworks);
+  const packageManagerInfo = detectPackageManagerInfo(paths, packageData, workspaceContext);
+  const testFrameworks = detectTestFrameworks(files, packageData, runnerConfig, testFilePaths);
+  const testCommand = detectTestCommand(packageData, testFrameworks, packageManagerInfo, runnerConfig);
+  const existingTestLocations = detectExistingTestLocations(paths, testFilePaths);
+  const detectedConventions = detectConventions(paths, testFilePaths);
+  const setupSignals = detectSetupSignals(paths, packageData, workspaceContext, runnerConfig);
+  const blockers = detectBlockers(packageJson !== undefined, testCommand, testFrameworks, packageManagerInfo);
 
   return {
     root,
     languages: detectLanguages(paths),
-    packageManagers,
+    packageManagers: packageManagerInfo.managers,
     testFrameworks,
     architectures: detectArchitectures(paths, packageData),
     testCommand,
@@ -217,6 +231,132 @@ function parsePackageJson(packageText) {
   }
 }
 
+function findOwningWorkspace(root) {
+  const packageRoot = path.resolve(root);
+  let current = path.dirname(packageRoot);
+
+  while (current !== path.dirname(current)) {
+    const relativePackageRoot = normalizePath(path.relative(current, packageRoot));
+    if (!relativePackageRoot.startsWith("../") && relativePackageRoot !== "..") {
+      const packageData = parsePackageJson(readFileIfPresent(path.join(current, "package.json")));
+      const packagePatterns = collectPackageWorkspacePatterns(packageData);
+      const pnpmWorkspaceText = readFileIfPresent(path.join(current, "pnpm-workspace.yaml"));
+      const pnpmPatterns = collectPnpmWorkspacePatterns(pnpmWorkspaceText);
+      const matchesPackageWorkspace = matchesWorkspacePatterns(relativePackageRoot, packagePatterns);
+      const matchesPnpmWorkspace = matchesWorkspacePatterns(relativePackageRoot, pnpmPatterns);
+
+      if (matchesPackageWorkspace || matchesPnpmWorkspace) {
+        const managers = new Set();
+        for (const [lockfile, manager] of PACKAGE_MANAGER_LOCKFILES) {
+          if (fs.existsSync(path.join(current, lockfile))) managers.add(manager);
+        }
+        if (matchesPnpmWorkspace) managers.add("pnpm");
+
+        const explicitManager = detectExplicitPackageManager(packageData) ?? (matchesPnpmWorkspace ? "pnpm" : undefined);
+        if (explicitManager) managers.add(explicitManager);
+        const detectedManagers = sortPackageManagers(managers);
+        const signalManager = explicitManager ?? (detectedManagers.length === 1 ? detectedManagers[0] : undefined);
+
+        return {
+          root: current,
+          relativePackageRoot,
+          managers: detectedManagers,
+          explicitManager,
+          signal: signalManager ? `${signalManager} workspace` : "package workspace"
+        };
+      }
+    }
+
+    current = path.dirname(current);
+  }
+
+  return undefined;
+}
+
+function readFileIfPresent(filePath) {
+  try {
+    return fs.readFileSync(filePath, "utf8");
+  } catch (error) {
+    if (error?.code === "ENOENT" || error?.code === "ENOTDIR") return "";
+    throw error;
+  }
+}
+
+function collectPackageWorkspacePatterns(packageData) {
+  if (Array.isArray(packageData.workspaces)) {
+    return packageData.workspaces.filter((value) => typeof value === "string");
+  }
+  if (packageData.workspaces && typeof packageData.workspaces === "object" && Array.isArray(packageData.workspaces.packages)) {
+    return packageData.workspaces.packages.filter((value) => typeof value === "string");
+  }
+  return [];
+}
+
+function collectPnpmWorkspacePatterns(content) {
+  const patterns = [];
+  let packagesIndent;
+
+  for (const line of content.split(/\r?\n/)) {
+    const packagesMatch = /^(\s*)packages\s*:\s*$/.exec(line);
+    if (packagesMatch) {
+      packagesIndent = packagesMatch[1].length;
+      continue;
+    }
+    if (packagesIndent === undefined || /^\s*(?:#.*)?$/.test(line)) continue;
+
+    const indent = line.match(/^\s*/)[0].length;
+    if (indent <= packagesIndent) break;
+
+    const itemMatch = /^\s*-\s*(.*?)\s*$/.exec(line);
+    if (!itemMatch) continue;
+    const value = parseSimpleYamlString(itemMatch[1]);
+    if (value) patterns.push(value);
+  }
+
+  return patterns;
+}
+
+function parseSimpleYamlString(value) {
+  const trimmed = value.trim();
+  if ((trimmed.startsWith("'") && trimmed.endsWith("'")) || (trimmed.startsWith("\"") && trimmed.endsWith("\""))) {
+    return trimmed.slice(1, -1);
+  }
+  return trimmed.replace(/\s+#.*$/, "").trim();
+}
+
+function matchesWorkspacePatterns(relativePackageRoot, patterns) {
+  const normalizedRoot = relativePackageRoot.replace(/^\.\//, "").replace(/\/+$/, "");
+  const included = patterns
+    .filter((pattern) => !pattern.trim().startsWith("!"))
+    .some((pattern) => workspacePatternToRegExp(pattern).test(normalizedRoot));
+  if (!included) return false;
+
+  return !patterns
+    .filter((pattern) => pattern.trim().startsWith("!"))
+    .some((pattern) => workspacePatternToRegExp(pattern.trim().slice(1)).test(normalizedRoot));
+}
+
+function workspacePatternToRegExp(pattern) {
+  const normalized = pattern.trim().replace(/^['"]|['"]$/g, "").replace(/^\.\//, "").replace(/\/+$/, "");
+  let source = "^";
+
+  for (let index = 0; index < normalized.length; index += 1) {
+    const character = normalized[index];
+    if (character === "*" && normalized[index + 1] === "*") {
+      source += ".*";
+      index += 1;
+    } else if (character === "*") {
+      source += "[^/]*";
+    } else if (character === "?") {
+      source += "[^/]";
+    } else {
+      source += character.replace(/[|\\{}()[\]^$+?.]/g, "\\$&");
+    }
+  }
+
+  return new RegExp(`${source}$`);
+}
+
 function detectLanguages(paths) {
   const languages = new Set();
   if (paths.some((item) => item.endsWith(".ts") || item.endsWith(".tsx"))) languages.add("typescript");
@@ -224,27 +364,455 @@ function detectLanguages(paths) {
   return [...languages];
 }
 
-function detectPackageManagers(paths) {
+function detectPackageManagerInfo(paths, packageData, workspaceContext) {
+  const localLockfileManagers = detectLockfilePackageManagers(paths);
+  const localExplicitManager = detectExplicitPackageManager(packageData);
+  const hasLocalManagerEvidence = localLockfileManagers.length > 0 || localExplicitManager !== undefined;
+  const inheritedManagers = hasLocalManagerEvidence ? [] : (workspaceContext?.managers ?? []);
+  const explicitManager = localExplicitManager ?? (hasLocalManagerEvidence ? undefined : workspaceContext?.explicitManager);
   const managers = new Set();
-  if (paths.includes("package-lock.json")) managers.add("npm");
-  if (paths.includes("pnpm-lock.yaml")) managers.add("pnpm");
-  if (paths.includes("yarn.lock")) managers.add("yarn");
-  if (paths.includes("bun.lock") || paths.includes("bun.lockb")) managers.add("bun");
+  for (const manager of [...localLockfileManagers, ...inheritedManagers]) managers.add(manager);
+  if (explicitManager) managers.add(explicitManager);
   if (paths.includes("package.json") && managers.size === 0) managers.add("npm");
+  const detectedManagers = sortPackageManagers(managers);
+
+  return {
+    managers: detectedManagers,
+    selectedManager: explicitManager ?? (detectedManagers.length === 1 ? detectedManagers[0] : undefined),
+    ambiguous: explicitManager === undefined && detectedManagers.length > 1
+  };
+}
+
+function detectLockfilePackageManagers(paths) {
+  const managers = new Set();
+  for (const [lockfile, manager] of PACKAGE_MANAGER_LOCKFILES) {
+    if (paths.includes(lockfile)) managers.add(manager);
+  }
   return [...managers];
 }
 
-function detectTestFrameworks(files, packageData) {
-  const paths = files.map((file) => normalizePath(file.path));
-  const frameworks = new Set();
-  if (paths.some((item) => item.includes("ava.config")) || hasPackageDependency(packageData, "ava")) frameworks.add("ava");
-  if (paths.some((item) => item.includes(".mocharc")) || hasPackageDependency(packageData, "mocha")) frameworks.add("mocha");
-  if (paths.some((item) => item.includes("vitest.config")) || hasPackageDependency(packageData, "vitest")) frameworks.add("vitest");
-  if (paths.some((item) => item.includes("jest.config")) || hasPackageDependency(packageData, "jest")) frameworks.add("jest");
-  if (paths.some((item) => item.includes("playwright.config")) || hasPackageDependency(packageData, "@playwright/test")) frameworks.add("playwright");
-  if (paths.some((item) => item.includes("cypress.config")) || hasPackageDependency(packageData, "cypress")) frameworks.add("cypress");
-  if (files.some((file) => isTestFile(file.path) && usesNodeTest(file.content))) frameworks.add("node-test");
-  if (files.some((file) => isTestFile(file.path) && usesBunTest(file.content))) frameworks.add("bun-test");
+function sortPackageManagers(managers) {
+  const order = new Map(["npm", "pnpm", "yarn", "bun"].map((manager, index) => [manager, index]));
+  return [...managers].sort((left, right) => order.get(left) - order.get(right));
+}
+
+function detectExplicitPackageManager(packageData) {
+  if (typeof packageData.packageManager !== "string") return undefined;
+  const match = /^([a-z][a-z0-9-]*)@/.exec(packageData.packageManager.trim());
+  return match && SUPPORTED_PACKAGE_MANAGERS.has(match[1]) ? match[1] : undefined;
+}
+
+function detectRunnerConfiguration(root, files, packageData, workspaceContext) {
+  const packageRoot = path.resolve(root);
+  const selectedConfigs = collectSelectedRunnerConfigs(packageRoot, files, packageData, workspaceContext);
+  const explicitlySelectedFrameworks = new Set(selectedConfigs.map((config) => config.framework));
+  const localConfigs = files
+    .map((file) => {
+      const relativePath = normalizePath(file.path);
+      const framework = classifyRunnerConfigPath(relativePath);
+      if (!framework || !isAutoDiscoveredRunnerConfig(relativePath) || explicitlySelectedFrameworks.has(framework)) return undefined;
+      return {
+        framework,
+        content: file.content,
+        absolutePath: path.resolve(packageRoot, relativePath),
+        inherited: false
+      };
+    })
+    .filter(Boolean);
+  const configs = dedupeRunnerConfigs([...selectedConfigs, ...localConfigs]);
+  const testPaths = new Set();
+
+  for (const config of configs) {
+    const rules = collectRunnerDiscoveryRules(config, packageRoot);
+    for (const file of files) {
+      const currentPath = normalizePath(file.path);
+      if (!SOURCE_EXTENSIONS.some((extension) => currentPath.endsWith(extension))) continue;
+      if (rules.some((rule) => runnerRuleMatches(currentPath, rule))) testPaths.add(currentPath);
+    }
+  }
+
+  return {
+    frameworks: [...new Set(configs.map((config) => config.framework))],
+    signals: [...new Set(configs.map((config) => `${config.framework} config${config.inherited ? " (owning workspace)" : ""}`))],
+    configPaths: configs
+      .filter((config) => !config.inherited && isPathInside(packageRoot, config.absolutePath))
+      .map((config) => ({ framework: config.framework, path: normalizePath(path.relative(packageRoot, config.absolutePath)) })),
+    testPaths
+  };
+}
+
+function collectSelectedRunnerConfigs(packageRoot, files, packageData, workspaceContext) {
+  const configs = [];
+  const scripts = packageData.scripts && typeof packageData.scripts === "object"
+    ? Object.values(packageData.scripts).filter((value) => typeof value === "string")
+    : [];
+
+  for (const script of scripts) {
+    const framework = detectScriptRunner(script);
+    if (!framework) continue;
+    const option = framework === "cypress" ? "--config-file" : "--config";
+    const configuredPath = extractCliOptionPath(script, option);
+    if (!configuredPath || path.isAbsolute(configuredPath)) continue;
+
+    const absolutePath = path.resolve(packageRoot, configuredPath);
+    const local = isPathInside(packageRoot, absolutePath);
+    const inherited = !local && workspaceContext && isPathInside(workspaceContext.root, absolutePath);
+    if (!local && !inherited) continue;
+
+    const localPath = normalizePath(path.relative(packageRoot, absolutePath));
+    const localFile = files.find((file) => normalizePath(file.path) === localPath);
+    const content = localFile?.content ?? readFileIfPresent(absolutePath);
+    if (!content || !fs.statSync(absolutePath).isFile()) continue;
+    configs.push({ framework, content, absolutePath, inherited });
+  }
+
+  return configs;
+}
+
+function detectScriptRunner(script) {
+  const commandPrefix = "(?:^|&&\\s*|\\|\\|\\s*|;\\s*)";
+  const executor = "(?:(?:npx|yarn|bunx|pnpm\\s+exec)\\s+)?";
+  const checks = [
+    ["playwright", new RegExp(`${commandPrefix}${executor}playwright\\s+test(?:\\s|$)`)],
+    ["cypress", new RegExp(`${commandPrefix}${executor}cypress\\s+(?:run|open)(?:\\s|$)`)],
+    ["vitest", new RegExp(`${commandPrefix}${executor}vitest(?:\\s|$)`)],
+    ["jest", new RegExp(`${commandPrefix}${executor}jest(?:\\s|$)`)],
+    ["ava", new RegExp(`${commandPrefix}${executor}ava(?:\\s|$)`)],
+    ["mocha", new RegExp(`${commandPrefix}${executor}mocha(?:\\s|$)`)]
+  ];
+  return checks.find(([, pattern]) => pattern.test(script))?.[0];
+}
+
+function extractCliOptionPath(script, option) {
+  const escapedOption = escapeRegExp(option);
+  const match = new RegExp(`${escapedOption}(?:=|\\s+)(?:"([^"]+)"|'([^']+)'|([^\\s;&|]+))`).exec(script);
+  return match?.slice(1).find(Boolean);
+}
+
+function isPathInside(parentPath, candidatePath) {
+  const relative = path.relative(parentPath, candidatePath);
+  return relative === "" || (!relative.startsWith(`..${path.sep}`) && relative !== ".." && !path.isAbsolute(relative));
+}
+
+function classifyRunnerConfigPath(currentPath) {
+  const basename = path.posix.basename(normalizePath(currentPath));
+  if (/^vitest(?:\.[A-Za-z0-9_-]+)?\.config\.[cm]?[jt]s$/.test(basename) || /^vitest\.config(?:\.[A-Za-z0-9_-]+)?\.[cm]?[jt]s$/.test(basename)) return "vitest";
+  if (/^jest\.config\.(?:[cm]?[jt]s|json)$/.test(basename)) return "jest";
+  if (/^playwright\.config\.[cm]?[jt]s$/.test(basename)) return "playwright";
+  if (/^cypress\.config\.[cm]?[jt]s$/.test(basename)) return "cypress";
+  if (/^ava\.config\.(?:[cm]?[jt]s|json)$/.test(basename)) return "ava";
+  if (/^\.mocharc(?:\.(?:json|ya?ml))?$/.test(basename)) return "mocha";
+  return undefined;
+}
+
+function isAutoDiscoveredRunnerConfig(currentPath) {
+  const directory = path.posix.dirname(normalizePath(currentPath));
+  return directory === "." || isTestHarnessRoot(directory);
+}
+
+function dedupeRunnerConfigs(configs) {
+  const seen = new Set();
+  return configs.filter((config) => {
+    const key = `${config.framework}:${config.absolutePath}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function collectRunnerDiscoveryRules(config, packageRoot) {
+  const content = stripStaticConfigComments(config.content);
+  const configDirectory = path.dirname(config.absolutePath);
+  const rules = [];
+
+  if (config.framework === "vitest") {
+    const bodies = extractObjectPropertyBodies(content, "test");
+    for (const body of bodies) {
+      addRunnerRules(rules, extractStaticPropertyStrings(body, "include"), extractStaticPropertyStrings(body, "exclude"), packageRoot, packageRoot);
+    }
+  } else if (config.framework === "jest") {
+    addRunnerRules(
+      rules,
+      extractStaticPropertyStrings(content, "testMatch"),
+      [],
+      configDirectory,
+      packageRoot,
+      { rootToken: configDirectory }
+    );
+  } else if (config.framework === "playwright") {
+    const testDirectories = extractStaticPropertyStrings(content, "testDir");
+    const testMatches = extractStaticPropertyStrings(content, "testMatch");
+    const testIgnores = extractStaticPropertyStrings(content, "testIgnore");
+    for (const testDirectory of testDirectories) {
+      const directoryBase = resolveStaticPatternBase(configDirectory, testDirectory);
+      if (!directoryBase) continue;
+      const includes = testMatches.length > 0 ? testMatches : ["**/*.test.*", "**/*.spec.*"];
+      addRunnerRules(rules, includes, testIgnores, directoryBase, packageRoot);
+    }
+  } else if (config.framework === "cypress") {
+    for (const property of ["e2e", "component"]) {
+      for (const body of extractObjectPropertyBodies(content, property)) {
+        addRunnerRules(
+          rules,
+          extractStaticPropertyStrings(body, "specPattern"),
+          extractStaticPropertyStrings(body, "excludeSpecPattern"),
+          packageRoot,
+          packageRoot
+        );
+      }
+    }
+  } else if (config.framework === "ava") {
+    addRunnerRules(rules, extractStaticPropertyStrings(content, "files"), [], packageRoot, packageRoot);
+  } else if (config.framework === "mocha") {
+    const jsonSpec = extractStaticPropertyStrings(content, "spec");
+    const yamlSpec = extractSimpleYamlList(content, "spec");
+    addRunnerRules(rules, [...jsonSpec, ...yamlSpec], [], packageRoot, packageRoot);
+  }
+
+  return rules;
+}
+
+function stripStaticConfigComments(content) {
+  let result = "";
+  let quote;
+  let escaped = false;
+
+  for (let index = 0; index < content.length; index += 1) {
+    const character = content[index];
+    const next = content[index + 1];
+    if (quote) {
+      result += character;
+      if (escaped) {
+        escaped = false;
+      } else if (character === "\\") {
+        escaped = true;
+      } else if (character === quote) {
+        quote = undefined;
+      }
+      continue;
+    }
+    if (character === "'" || character === "\"" || character === "`") {
+      quote = character;
+      result += character;
+    } else if (character === "/" && next === "/") {
+      while (index < content.length && content[index] !== "\n") index += 1;
+      result += "\n";
+    } else if (character === "/" && next === "*") {
+      index += 2;
+      while (index < content.length - 1 && !(content[index] === "*" && content[index + 1] === "/")) index += 1;
+      index += 1;
+    } else {
+      result += character;
+    }
+  }
+
+  return result;
+}
+
+function extractObjectPropertyBodies(content, property) {
+  const bodies = [];
+  const pattern = new RegExp(`(?:^\\s*|[,{]\\s*)(?:["']${escapeRegExp(property)}["']|${escapeRegExp(property)})\\s*:\\s*\\{`, "gm");
+  for (const match of content.matchAll(pattern)) {
+    const openIndex = match.index + match[0].lastIndexOf("{");
+    const closeIndex = findClosingDelimiter(content, openIndex, "{", "}");
+    if (closeIndex !== undefined) bodies.push(content.slice(openIndex + 1, closeIndex));
+  }
+  return bodies;
+}
+
+function extractStaticPropertyStrings(content, property) {
+  const values = [];
+  const pattern = new RegExp(`(?:^\\s*|[,{]\\s*)(?:["']${escapeRegExp(property)}["']|${escapeRegExp(property)})\\s*:\\s*`, "gm");
+  for (const match of content.matchAll(pattern)) {
+    let index = match.index + match[0].length;
+    while (/\s/.test(content[index] ?? "")) index += 1;
+    if (content[index] === "[") {
+      const closeIndex = findClosingDelimiter(content, index, "[", "]");
+      if (closeIndex !== undefined) values.push(...extractQuotedStrings(content.slice(index + 1, closeIndex)));
+    } else if (content[index] === "'" || content[index] === "\"") {
+      const value = readQuotedString(content, index);
+      if (value) values.push(value.value);
+    }
+  }
+  return values;
+}
+
+function findClosingDelimiter(content, openIndex, open, close) {
+  let depth = 0;
+  let quote;
+  let escaped = false;
+  for (let index = openIndex; index < content.length; index += 1) {
+    const character = content[index];
+    if (quote) {
+      if (escaped) {
+        escaped = false;
+      } else if (character === "\\") {
+        escaped = true;
+      } else if (character === quote) {
+        quote = undefined;
+      }
+      continue;
+    }
+    if (character === "'" || character === "\"" || character === "`") {
+      quote = character;
+    } else if (character === open) {
+      depth += 1;
+    } else if (character === close) {
+      depth -= 1;
+      if (depth === 0) return index;
+    }
+  }
+  return undefined;
+}
+
+function extractQuotedStrings(content) {
+  const values = [];
+  for (let index = 0; index < content.length; index += 1) {
+    if (content[index] !== "'" && content[index] !== "\"") continue;
+    const value = readQuotedString(content, index);
+    if (!value) continue;
+    values.push(value.value);
+    index = value.end;
+  }
+  return values;
+}
+
+function readQuotedString(content, start) {
+  const quote = content[start];
+  let value = "";
+  let escaped = false;
+  for (let index = start + 1; index < content.length; index += 1) {
+    const character = content[index];
+    if (escaped) {
+      value += character;
+      escaped = false;
+    } else if (character === "\\") {
+      escaped = true;
+    } else if (character === quote) {
+      return { value, end: index };
+    } else {
+      value += character;
+    }
+  }
+  return undefined;
+}
+
+function extractSimpleYamlList(content, property) {
+  const values = [];
+  const lines = content.split(/\r?\n/);
+  for (let index = 0; index < lines.length; index += 1) {
+    const match = new RegExp(`^(\\s*)${escapeRegExp(property)}\\s*:\\s*(.*?)\\s*$`).exec(lines[index]);
+    if (!match) continue;
+    if (match[2]) {
+      const value = parseSimpleYamlString(match[2]);
+      if (value) values.push(value);
+      continue;
+    }
+    const baseIndent = match[1].length;
+    for (index += 1; index < lines.length; index += 1) {
+      const item = /^(\s*)-\s*(.*?)\s*$/.exec(lines[index]);
+      if (!item || item[1].length <= baseIndent) {
+        index -= 1;
+        break;
+      }
+      const value = parseSimpleYamlString(item[2]);
+      if (value) values.push(value);
+    }
+  }
+  return values;
+}
+
+function addRunnerRules(rules, includes, excludes, baseDirectory, packageRoot, options = {}) {
+  const negativeIncludes = includes
+    .filter((pattern) => typeof pattern === "string" && pattern.trim().startsWith("!"))
+    .map((pattern) => pattern.trim().slice(1));
+  const normalizedExcludes = [...excludes, ...negativeIncludes]
+    .flatMap((pattern) => normalizeRunnerPatterns(pattern, baseDirectory, packageRoot, options));
+  for (const include of includes.filter((pattern) => typeof pattern === "string" && !pattern.trim().startsWith("!"))) {
+    for (const pattern of normalizeRunnerPatterns(include, baseDirectory, packageRoot, options)) {
+      rules.push({ include: runnerGlobToRegExp(pattern), excludes: normalizedExcludes.map(runnerGlobToRegExp) });
+    }
+  }
+}
+
+function resolveStaticPatternBase(baseDirectory, value) {
+  if (!value || path.isAbsolute(value) || hasUnsupportedGlobSyntax(value)) return undefined;
+  return path.resolve(baseDirectory, value);
+}
+
+function normalizeRunnerPatterns(value, baseDirectory, packageRoot, options = {}) {
+  if (typeof value !== "string" || !value.trim()) return [];
+  let pattern = value.trim().replaceAll("\\", "/");
+  if (options.rootToken) {
+    pattern = pattern.replaceAll("<rootDir>", ".");
+  }
+  if (path.posix.isAbsolute(pattern) || hasUnsupportedGlobSyntax(pattern)) return [];
+  const expanded = expandSimpleBraces(pattern);
+
+  return expanded.flatMap((currentPattern) => {
+    const absolutePattern = path.resolve(baseDirectory, currentPattern);
+    const relativePattern = normalizePath(path.relative(packageRoot, absolutePattern)).replace(/^\.\//, "");
+    if (relativePattern === ".." || relativePattern.startsWith("../")) return [];
+    return [relativePattern];
+  });
+}
+
+function hasUnsupportedGlobSyntax(value) {
+  return /[()[\]@+]/.test(value) || /\$\{/.test(value);
+}
+
+function expandSimpleBraces(pattern) {
+  const match = /\{([^{}]+)\}/.exec(pattern);
+  if (!match) return [pattern];
+  const options = match[1].split(",").map((value) => value.trim()).filter(Boolean);
+  if (options.length === 0 || options.length > 8) return [];
+  return options.flatMap((option) => expandSimpleBraces(`${pattern.slice(0, match.index)}${option}${pattern.slice(match.index + match[0].length)}`)).slice(0, 32);
+}
+
+function runnerGlobToRegExp(pattern) {
+  const normalized = pattern.replace(/^!/, "").replace(/^\.\//, "").replace(/\/+$/, "");
+  const directoryOnly = !/[?*]/.test(normalized) && !SOURCE_EXTENSIONS.some((extension) => normalized.endsWith(extension));
+  const value = directoryOnly ? `${normalized}/**` : normalized;
+  let source = "^";
+
+  for (let index = 0; index < value.length; index += 1) {
+    const character = value[index];
+    if (character === "*" && value[index + 1] === "*" && value[index + 2] === "/") {
+      source += "(?:.*/)?";
+      index += 2;
+    } else if (character === "*" && value[index + 1] === "*") {
+      source += ".*";
+      index += 1;
+    } else if (character === "*") {
+      source += "[^/]*";
+    } else if (character === "?") {
+      source += "[^/]";
+    } else {
+      source += character.replace(/[|\\{}()[\]^$+?.]/g, "\\$&");
+    }
+  }
+
+  return new RegExp(`${source}$`);
+}
+
+function runnerRuleMatches(currentPath, rule) {
+  return rule.include.test(currentPath) && !rule.excludes.some((pattern) => pattern.test(currentPath));
+}
+
+function detectTestFrameworks(files, packageData, runnerConfig, testFilePaths) {
+  const frameworks = new Set(runnerConfig.frameworks);
+  for (const script of Object.values(packageData.scripts ?? {}).filter((value) => typeof value === "string")) {
+    const runner = detectScriptRunner(script);
+    if (runner) frameworks.add(runner);
+  }
+  if (hasPackageDependency(packageData, "ava")) frameworks.add("ava");
+  if (hasPackageDependency(packageData, "mocha")) frameworks.add("mocha");
+  if (hasPackageDependency(packageData, "vitest")) frameworks.add("vitest");
+  if (hasPackageDependency(packageData, "jest")) frameworks.add("jest");
+  if (hasPackageDependency(packageData, "@playwright/test")) frameworks.add("playwright");
+  if (hasPackageDependency(packageData, "cypress")) frameworks.add("cypress");
+  if (files.some((file) => testFilePaths.has(normalizePath(file.path)) && usesNodeTest(file.content))) frameworks.add("node-test");
+  if (files.some((file) => testFilePaths.has(normalizePath(file.path)) && usesBunTest(file.content))) frameworks.add("bun-test");
   if (hasPackageDependency(packageData, "@testing-library/react")) frameworks.add("react-testing-library");
   if (hasPackageDependency(packageData, "supertest")) frameworks.add("supertest");
   return [...frameworks];
@@ -265,16 +833,21 @@ function usesBunTest(content) {
   return /(?:from\s+|import\s+|require\(\s*)["']bun:test["']/.test(content);
 }
 
-function detectTestCommand(packageData, frameworks, packageManagers, paths) {
+function detectTestCommand(packageData, frameworks, packageManagerInfo, runnerConfig) {
   const scripts = packageData.scripts ?? {};
 
   for (const key of ["test", "test:unit", "test:e2e", "e2e", "vitest", "jest", "playwright", "cypress"]) {
     const command = scripts[key];
     if (command && !isPlaceholderTestScript(command)) {
-      return formatPackageScriptCommand(packageManagers, key);
+      return packageManagerInfo.ambiguous
+        ? undefined
+        : formatPackageScriptCommand(packageManagerInfo.selectedManager, key);
     }
   }
 
+  if (packageManagerInfo.ambiguous && frameworks.some((framework) => !["node-test", "bun-test"].includes(framework))) {
+    return undefined;
+  }
   if (frameworks.includes("vitest")) return "npx vitest run";
   if (frameworks.includes("jest")) return "npx jest";
   if (frameworks.includes("node-test")) return "node --test";
@@ -282,11 +855,11 @@ function detectTestCommand(packageData, frameworks, packageManagers, paths) {
   if (frameworks.includes("mocha")) return "npx mocha";
   if (frameworks.includes("bun-test")) return "bun test";
   if (frameworks.includes("playwright")) {
-    const config = paths.find((currentPath) => /(^|\/)playwright\.config\.[cm]?[jt]s$/.test(currentPath));
+    const config = runnerConfig.configPaths.find((entry) => entry.framework === "playwright")?.path;
     return config?.includes("/") ? `npx playwright test --config ${quoteCommandPath(config)}` : "npx playwright test";
   }
   if (frameworks.includes("cypress")) {
-    const config = paths.find((currentPath) => /(^|\/)cypress\.config\.[cm]?[jt]s$/.test(currentPath));
+    const config = runnerConfig.configPaths.find((entry) => entry.framework === "cypress")?.path;
     return config?.includes("/") ? `npx cypress run --config-file ${quoteCommandPath(config)}` : "npx cypress run";
   }
 
@@ -297,10 +870,10 @@ function quoteCommandPath(value) {
   return /^[A-Za-z0-9_./-]+$/.test(value) ? value : JSON.stringify(value);
 }
 
-function formatPackageScriptCommand(packageManagers, script) {
-  if (packageManagers.includes("bun")) return `bun run ${script}`;
-  if (packageManagers.includes("pnpm")) return `pnpm run ${script}`;
-  if (packageManagers.includes("yarn")) return `yarn ${script}`;
+function formatPackageScriptCommand(packageManager, script) {
+  if (packageManager === "bun") return `bun run ${script}`;
+  if (packageManager === "pnpm") return `pnpm run ${script}`;
+  if (packageManager === "yarn") return `yarn ${script}`;
   return `npm run ${script}`;
 }
 
@@ -308,11 +881,11 @@ function isPlaceholderTestScript(command) {
   return command.includes("no test specified") || command.includes("exit 1");
 }
 
-function detectExistingTestLocations(paths) {
+function detectExistingTestLocations(paths, testFilePaths) {
   const locations = new Set();
 
   for (const currentPath of paths) {
-    if (!isTestFile(currentPath)) continue;
+    if (!testFilePaths.has(currentPath)) continue;
 
     const segments = currentPath.split("/");
     if (segments.includes("__tests__")) {
@@ -329,19 +902,21 @@ function detectExistingTestLocations(paths) {
   return [...locations];
 }
 
-function detectConventions(paths) {
+function detectConventions(paths, testFilePaths) {
   const conventions = new Set();
+  const testPaths = paths.filter((currentPath) => testFilePaths.has(currentPath));
 
-  if (paths.some((currentPath) => /\.test\.[cm]?[jt]sx?$/.test(currentPath))) {
+  if (testPaths.some((currentPath) => /\.test\.[cm]?[jt]sx?$/.test(currentPath))) {
     conventions.add("*.test files");
   }
 
-  if (paths.some((currentPath) => /\.spec\.[cm]?[jt]sx?$/.test(currentPath))) {
+  if (testPaths.some((currentPath) => /\.spec\.[cm]?[jt]sx?$/.test(currentPath))) {
     conventions.add("*.spec files");
   }
 
-  if (paths.some((currentPath) => /\.cy\.[cm]?[jt]sx?$/.test(currentPath))) conventions.add("*.cy files");
-  if (paths.some((currentPath) => /_(?:test|spec)\.[cm]?[jt]sx?$/.test(currentPath))) conventions.add("Bun-style test files");
+  if (testPaths.some((currentPath) => /\.cy\.[cm]?[jt]sx?$/.test(currentPath))) conventions.add("*.cy files");
+  if (testPaths.some((currentPath) => /_(?:test|spec)\.[cm]?[jt]sx?$/.test(currentPath))) conventions.add("Bun-style test files");
+  if (testPaths.some((currentPath) => !isTestFile(currentPath))) conventions.add("configured test files");
 
   if (paths.some((currentPath) => currentPath.includes("__tests__/"))) {
     conventions.add("__tests__ folders");
@@ -358,25 +933,21 @@ function detectConventions(paths) {
   return [...conventions];
 }
 
-function detectSetupSignals(paths, packageData) {
+function detectSetupSignals(paths, packageData, workspaceContext, runnerConfig) {
   const signals = new Set();
 
   if (paths.includes("tsconfig.json")) signals.add("tsconfig");
-  if (paths.some((currentPath) => currentPath.includes("ava.config"))) signals.add("ava config");
-  if (paths.some((currentPath) => currentPath.includes(".mocharc"))) signals.add("mocha config");
-  if (paths.some((currentPath) => currentPath.includes("vitest.config"))) signals.add("vitest config");
-  if (paths.some((currentPath) => currentPath.includes("jest.config"))) signals.add("jest config");
-  if (paths.some((currentPath) => currentPath.includes("playwright.config"))) signals.add("playwright config");
-  if (paths.some((currentPath) => currentPath.includes("cypress.config"))) signals.add("cypress config");
+  for (const signal of runnerConfig.signals) signals.add(signal);
   if (paths.includes("bunfig.toml")) signals.add("bunfig");
   if (hasPackageDependency(packageData, "msw")) signals.add("msw");
   if (hasPackageDependency(packageData, "nock")) signals.add("nock");
   if (hasPackageDependency(packageData, "supertest")) signals.add("supertest");
+  if (workspaceContext?.signal) signals.add(workspaceContext.signal);
 
   return [...signals];
 }
 
-function detectBlockers(hasPackageJson, testCommand, frameworks) {
+function detectBlockers(hasPackageJson, testCommand, frameworks, packageManagerInfo) {
   const blockers = [];
 
   if (!hasPackageJson) {
@@ -387,7 +958,9 @@ function detectBlockers(hasPackageJson, testCommand, frameworks) {
     blockers.push("No supported JS test framework detected.");
   }
 
-  if (!testCommand) {
+  if (packageManagerInfo.ambiguous) {
+    blockers.push(`Multiple package managers detected (${packageManagerInfo.managers.join(", ")}) without an explicit packageManager field, so the package-script command is ambiguous.`);
+  } else if (!testCommand) {
     blockers.push("No runnable test command detected from package scripts or framework config.");
   }
 
@@ -396,6 +969,7 @@ function detectBlockers(hasPackageJson, testCommand, frameworks) {
 
 function scoreProfileConfidence(testFrameworks, existingTestLocations, blockers) {
   if (blockers.length > 1) return "low";
+  if (blockers.length === 1) return "medium";
   if (testFrameworks.length > 0 && existingTestLocations.length > 0) return "high";
   if (testFrameworks.length > 0) return "medium";
   return "low";
@@ -837,7 +1411,7 @@ function findImportedReExportFiles(barrelFile, importedNames, moduleFiles) {
   return moduleFiles.filter((sourceFile) =>
     sourceFile.path !== barrelFile.path &&
     isSourceFile(sourceFile.path) &&
-    barrelExportsImportedNames(barrelFile, sourceFile, importedNames)
+    barrelExportsImportedNames(barrelFile, sourceFile, importedNames, moduleFiles)
   );
 }
 
@@ -853,9 +1427,9 @@ function getOneHopBarrelImportUsage(testFile, sourcePath, moduleFiles) {
     const barrelFile = moduleFiles.find((file) => moduleSpecifierTargetsSource(testFile.path, specifier, file.path));
     if (!barrelFile || barrelFile.path === sourcePath) continue;
     const sourceFile = moduleFiles.find((file) => file.path === sourcePath);
-    if (!sourceFile || !barrelExportsImportedNames(barrelFile, sourceFile, usedImportedNames)) continue;
-    if (barrelExportsImportedNames(barrelFile, sourceFile, assertedImportedNames)) return "asserted";
-    if (barrelExportsImportedNames(barrelFile, sourceFile, calledImportedNames)) return "called";
+    if (!sourceFile || !barrelExportsImportedNames(barrelFile, sourceFile, usedImportedNames, moduleFiles)) continue;
+    if (barrelExportsImportedNames(barrelFile, sourceFile, assertedImportedNames, moduleFiles)) return "asserted";
+    if (barrelExportsImportedNames(barrelFile, sourceFile, calledImportedNames, moduleFiles)) return "called";
     return "referenced";
   }
   return undefined;
@@ -867,60 +1441,79 @@ function getPathAliasImportUsage(testFile, sourcePath, moduleFiles, pathAliasEnt
     const entryFile = pathAliasEntries.get(specifier);
     if (!entryFile) continue;
     const sourceFile = moduleFiles.find((file) => file.path === sourcePath);
-    const usage = sourceFile ? getEntrypointImportUsage(moduleImport, entryFile, sourceFile, "imported") : undefined;
+    const usage = sourceFile ? getEntrypointImportUsage(moduleImport, entryFile, sourceFile, moduleFiles, "imported") : undefined;
     if (usage) return usage;
   }
   return undefined;
 }
 
-function getPackageEntryImportUsage(testFile, sourcePath, moduleFiles, { packageName, packageEntryFile, packageSubpathEntries }) {
+function getPackageEntryImportUsage(testFile, sourcePath, moduleFiles, { packageName, packageEntryFiles, packageSubpathEntries }) {
   if (typeof packageName !== "string") return undefined;
 
   for (const moduleImport of getModuleImports(testFile)) {
     const { specifier } = moduleImport;
-    const entryFile = specifier === packageName ? packageEntryFile : packageSubpathEntries.get(specifier);
+    const entryFile = specifier === packageName
+      ? packageEntryFiles[moduleImport.kind]
+      : packageSubpathEntries.get(specifier)?.[moduleImport.kind];
     if (!entryFile) continue;
     const sourceFile = moduleFiles.find((file) => file.path === sourcePath);
-    const usage = sourceFile ? getEntrypointImportUsage(moduleImport, entryFile, sourceFile, "referenced") : undefined;
+    const usage = sourceFile ? getEntrypointImportUsage(moduleImport, entryFile, sourceFile, moduleFiles, "referenced") : undefined;
     if (usage) return usage;
   }
   return undefined;
 }
 
-function getEntrypointImportUsage(moduleImport, entryFile, sourceFile, structuralUsage) {
+function getEntrypointImportUsage(moduleImport, entryFile, sourceFile, moduleFiles, structuralUsage) {
   if (entryFile.path === sourceFile.path) {
     if (moduleImport.assertedImportedNames.size > 0) return "asserted";
     if (moduleImport.calledImportedNames.size > 0) return "called";
     return structuralUsage;
   }
-  if (!barrelExportsImportedNames(entryFile, sourceFile, moduleImport.usedImportedNames)) return undefined;
-  if (barrelExportsImportedNames(entryFile, sourceFile, moduleImport.assertedImportedNames)) return "asserted";
-  if (barrelExportsImportedNames(entryFile, sourceFile, moduleImport.calledImportedNames)) return "called";
+  if (!barrelExportsImportedNames(entryFile, sourceFile, moduleImport.usedImportedNames, moduleFiles)) return undefined;
+  if (barrelExportsImportedNames(entryFile, sourceFile, moduleImport.assertedImportedNames, moduleFiles)) return "asserted";
+  if (barrelExportsImportedNames(entryFile, sourceFile, moduleImport.calledImportedNames, moduleFiles)) return "called";
   return structuralUsage;
 }
 
-function barrelExportsImportedNames(barrelFile, sourceFile, importedNames) {
+function barrelExportsImportedNames(barrelFile, sourceFile, importedNames, moduleFiles) {
   if (importedNames.size === 0) return false;
-  return collectRelativeReExports(barrelFile.content).some(({ specifier, exportedNames, exportAll }) => {
-    if (!moduleSpecifierTargetsSource(barrelFile.path, specifier, sourceFile.path)) return false;
-    const availableNames = exportAll ? collectDeclaredExportNames(sourceFile.content) : exportedNames;
-    return [...importedNames].some((name) => availableNames.has(name));
+  const reExports = collectRelativeReExports(barrelFile.content)
+    .map((reExport) => ({
+      ...reExport,
+      target: findRelativeModuleFile(barrelFile.path, reExport.specifier, moduleFiles)
+    }))
+    .filter((reExport) => reExport.target);
+
+  return [...importedNames].some((name) => {
+    const explicitProviders = reExports.filter((reExport) => !reExport.exportAll && reExport.exportedNames.has(name));
+    if (explicitProviders.length > 0) {
+      return new Set(explicitProviders.map((provider) => provider.target.path)).size === 1 &&
+        explicitProviders[0].target.path === sourceFile.path;
+    }
+    if (name === "default") return false;
+
+    const starProviders = reExports.filter((reExport) =>
+      reExport.exportAll && collectDeclaredExportNames(reExport.target.content).has(name)
+    );
+    return new Set(starProviders.map((provider) => provider.target.path)).size === 1 &&
+      starProviders[0]?.target.path === sourceFile.path;
   });
 }
 
-function findSourcePackageEntry(packageData, moduleFiles) {
+function findSourcePackageEntries(packageData, moduleFiles) {
+  if (packageData.exports !== undefined) {
+    const rootExport = findPackageRootExport(packageData.exports);
+    return {
+      import: findSourceFileForExportValue(rootExport, "import", moduleFiles),
+      require: findSourceFileForExportValue(rootExport, "require", moduleFiles)
+    };
+  }
+
   const candidates = [packageData.source, packageData.module, packageData.main, "src/index", "index"]
     .filter((candidate) => typeof candidate === "string")
     .map((candidate) => candidate.replace(/^\.\//, ""));
-
-  for (const candidate of candidates) {
-    const entryFile = moduleFiles.find(
-      (file) => isJavaScriptModuleFile(file.path) && moduleSpecifierTargetsSource("package.json", candidate, file.path)
-    );
-    if (entryFile) return entryFile;
-  }
-
-  return undefined;
+  const entryFile = findSourceFileForCandidates(candidates, moduleFiles);
+  return { import: entryFile, require: entryFile };
 }
 
 function findSourcePackageSubpathEntries(packageData, moduleFiles) {
@@ -932,22 +1525,58 @@ function findSourcePackageSubpathEntries(packageData, moduleFiles) {
   for (const [subpath, value] of Object.entries(packageData.exports)) {
     if (!subpath.startsWith("./")) continue;
     const relativeSubpath = subpath.slice(2);
-    const declaredPaths = collectStringValues(value).map((candidate) => candidate.replace(/^\.\//, ""));
-    const candidates = [
-      ...declaredPaths,
-      ...declaredPaths.filter((candidate) => candidate.startsWith("dist/")).map((candidate) => candidate.replace(/^dist\//, "src/")),
-      `src/${relativeSubpath}`,
-      relativeSubpath
-    ];
-    if (relativeSubpath.includes("*")) {
-      addWildcardPackageEntries(entries, packageData.name, relativeSubpath, candidates, moduleFiles);
-      continue;
+    const entry = {};
+    for (const requestKind of ["import", "require"]) {
+      const declaredPaths = collectConditionalExportTargets(value, requestKind)
+        .map((candidate) => candidate.replace(/^\.\//, ""));
+      if (declaredPaths.length === 0) continue;
+      const candidates = buildSourceCandidates(declaredPaths, relativeSubpath);
+      if (relativeSubpath.includes("*")) {
+        addWildcardPackageEntries(entries, packageData.name, relativeSubpath, requestKind, candidates, moduleFiles);
+      } else {
+        entry[requestKind] = findSourceFileForCandidates(candidates, moduleFiles);
+      }
     }
-    const entryFile = findSourceFileForCandidates(candidates, moduleFiles);
-    if (entryFile) entries.set(`${packageData.name}/${relativeSubpath}`, entryFile);
+    if (!relativeSubpath.includes("*") && (entry.import || entry.require)) {
+      entries.set(`${packageData.name}/${relativeSubpath}`, entry);
+    }
   }
 
   return entries;
+}
+
+function findPackageRootExport(exportsValue) {
+  if (!exportsValue || typeof exportsValue !== "object" || Array.isArray(exportsValue)) return exportsValue;
+  const keys = Object.keys(exportsValue);
+  return keys.some((key) => key.startsWith(".")) ? exportsValue["."] : exportsValue;
+}
+
+function findSourceFileForExportValue(value, requestKind, moduleFiles) {
+  const declaredPaths = collectConditionalExportTargets(value, requestKind)
+    .map((candidate) => candidate.replace(/^\.\//, ""));
+  return findSourceFileForCandidates(buildSourceCandidates(declaredPaths), moduleFiles);
+}
+
+function collectConditionalExportTargets(value, requestKind) {
+  if (typeof value === "string") return [value];
+  if (Array.isArray(value)) return value.flatMap((candidate) => collectConditionalExportTargets(candidate, requestKind));
+  if (!value || typeof value !== "object") return [];
+
+  for (const [condition, candidate] of Object.entries(value)) {
+    if (condition === "types" || condition.startsWith("types@")) continue;
+    if (condition === requestKind || condition === "node" || condition === "default") {
+      return collectConditionalExportTargets(candidate, requestKind);
+    }
+  }
+  return [];
+}
+
+function buildSourceCandidates(declaredPaths, relativeSubpath) {
+  return [
+    ...declaredPaths,
+    ...declaredPaths.filter((candidate) => candidate.startsWith("dist/")).map((candidate) => candidate.replace(/^dist\//, "src/")),
+    ...(relativeSubpath ? [`src/${relativeSubpath}`, relativeSubpath] : [])
+  ];
 }
 
 function parseJsonConfig(content) {
@@ -1009,25 +1638,46 @@ function findTsconfigPathAliasEntries(tsconfigData, moduleFiles) {
       continue;
     }
     if (aliasPattern.split("*").length !== 2) continue;
-    for (const file of moduleFiles.filter((candidate) => isSourceFile(candidate.path))) {
-      for (const targetPattern of targetPatterns.filter((candidate) => candidate.split("*").length === 2)) {
+    for (const targetPattern of targetPatterns.filter((candidate) => candidate.split("*").length === 2)) {
+      const patternMatches = new Map();
+      for (const file of moduleFiles.filter((candidate) => isSourceFile(candidate.path))) {
         const wildcardValue = matchWildcardSourcePath(targetPattern, file.path);
         if (wildcardValue === undefined) continue;
-        entries.set(aliasPattern.replace("*", wildcardValue), file);
-        break;
+        const specifier = aliasPattern.replace("*", wildcardValue);
+        const matches = patternMatches.get(specifier) ?? [];
+        matches.push(file);
+        patternMatches.set(specifier, matches);
+      }
+      for (const [specifier, matches] of patternMatches) {
+        if (entries.has(specifier)) continue;
+        const uniqueFiles = [...new Map(matches.map((file) => [file.path, file])).values()];
+        if (uniqueFiles.length === 1) entries.set(specifier, uniqueFiles[0]);
       }
     }
   }
   return entries;
 }
 
-function addWildcardPackageEntries(entries, packageName, relativeSubpath, candidatePatterns, moduleFiles) {
-  for (const file of moduleFiles.filter((candidate) => isSourceFile(candidate.path))) {
-    for (const pattern of candidatePatterns.filter((candidate) => candidate.includes("*"))) {
+function addWildcardPackageEntries(entries, packageName, relativeSubpath, requestKind, candidatePatterns, moduleFiles) {
+  const resolvedSpecifiers = new Set();
+  for (const pattern of candidatePatterns.filter((candidate) => candidate.includes("*"))) {
+    const matches = new Map();
+    for (const file of moduleFiles.filter((candidate) => isSourceFile(candidate.path))) {
       const wildcardValue = matchWildcardSourcePath(pattern, file.path);
       if (wildcardValue === undefined) continue;
-      entries.set(`${packageName}/${relativeSubpath.replace("*", wildcardValue)}`, file);
-      break;
+      const current = matches.get(wildcardValue) ?? [];
+      current.push(file);
+      matches.set(wildcardValue, current);
+    }
+    for (const [wildcardValue, files] of matches) {
+      const uniqueFiles = [...new Map(files.map((file) => [file.path, file])).values()];
+      if (uniqueFiles.length !== 1) continue;
+      const specifier = `${packageName}/${relativeSubpath.replace("*", wildcardValue)}`;
+      if (resolvedSpecifiers.has(specifier)) continue;
+      const entry = entries.get(specifier) ?? {};
+      entry[requestKind] = uniqueFiles[0];
+      entries.set(specifier, entry);
+      resolvedSpecifiers.add(specifier);
     }
   }
 }
@@ -1044,33 +1694,44 @@ function matchWildcardSourcePath(pattern, sourcePath) {
 
 function findSourceFileForCandidates(candidates, moduleFiles) {
   for (const candidate of candidates) {
-    const entryFile = moduleFiles.find(
+    const matches = moduleFiles.filter(
       (file) => isSourceFile(file.path) && moduleSpecifierTargetsSource("package.json", candidate, file.path)
     );
-    if (entryFile) return entryFile;
+    if (matches.length === 1) return matches[0];
+    if (matches.length > 1) return undefined;
   }
   return undefined;
 }
 
-function collectStringValues(value) {
-  if (typeof value === "string") return [value];
-  if (!value || typeof value !== "object") return [];
-  return Object.values(value).flatMap(collectStringValues);
-}
-
 function moduleSpecifierTargetsSource(importerPath, specifier, sourcePath) {
   const resolved = path.posix.normalize(path.posix.join(path.posix.dirname(importerPath), specifier));
+  if (resolved === sourcePath) return true;
+  const resolvedExtension = path.posix.extname(resolved);
+  const sourceExtension = path.posix.extname(sourcePath);
   const resolvedWithoutExtension = removeJavaScriptExtension(resolved);
   const sourceWithoutExtension = removeJavaScriptExtension(sourcePath);
   return (
-    resolved === sourcePath ||
-    resolvedWithoutExtension === sourceWithoutExtension ||
-    (basenameWithoutExtension(sourcePath) === "index" && resolvedWithoutExtension === path.posix.dirname(sourcePath))
+    (resolvedWithoutExtension === sourceWithoutExtension && moduleExtensionsAreCompatible(resolvedExtension, sourceExtension)) ||
+    (!resolvedExtension && basenameWithoutExtension(sourcePath) === "index" && resolved === path.posix.dirname(sourcePath))
   );
 }
 
+function moduleExtensionsAreCompatible(requestedExtension, sourceExtension) {
+  if (!requestedExtension) return true;
+  if (requestedExtension === sourceExtension) return true;
+  const substitutions = {
+    ".cjs": new Set([".cts"]),
+    ".js": new Set([".js", ".jsx", ".ts", ".tsx"]),
+    ".jsx": new Set([".jsx", ".tsx"]),
+    ".mjs": new Set([".mts"])
+  };
+  return substitutions[requestedExtension]?.has(sourceExtension) ?? false;
+}
+
 function collectRelativeModuleSpecifiers(content) {
-  return collectModuleSpecifiers(content).filter((specifier) => specifier.startsWith("."));
+  return collectModuleImports(content)
+    .map(({ specifier }) => specifier)
+    .filter((specifier) => specifier.startsWith("."));
 }
 
 function analyzeModuleFile(file) {
@@ -1109,7 +1770,9 @@ function collectModuleImports(content) {
     .replace(/\b(?:const|let|var)\s+[A-Za-z_$][\w$]*\s*=\s*require\s*\(\s*["'][^"']+["']\s*\)\s*;?/g, "");
   const importPattern = /\bimport\s+([^;"']*?)\s+from\s+["']([^"']+)["']/g;
   for (const match of content.matchAll(importPattern)) {
+    if (/^\s*type\b/.test(match[1])) continue;
     imports.push({
+      kind: "import",
       specifier: match[2],
       importedNames: collectImportClauseNames(match[1], content),
       usedImportedNames: collectUsedImportClauseNames(match[1], contentWithoutImports),
@@ -1120,7 +1783,7 @@ function collectModuleImports(content) {
   const requirePattern = /\b(?:const|let|var)\s+\{([^}]+)\}\s*=\s*require\s*\(\s*["']([^"']+)["']\s*\)/g;
   for (const match of content.matchAll(requirePattern)) {
     const importedNames = collectAliasedNames(match[1], ":");
-    imports.push({ specifier: match[2], importedNames, usedImportedNames: collectUsedRequireNames(match[1], contentWithoutImports), calledImportedNames: collectCalledRequireNames(match[1], contentWithoutImports), assertedImportedNames: collectAssertedRequireNames(match[1], contentWithoutImports) });
+    imports.push({ kind: "require", specifier: match[2], importedNames, usedImportedNames: collectUsedRequireNames(match[1], contentWithoutImports), calledImportedNames: collectCalledRequireNames(match[1], contentWithoutImports), assertedImportedNames: collectAssertedRequireNames(match[1], contentWithoutImports) });
   }
   const namespaceRequirePattern = /\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*require\s*\(\s*["']([^"']+)["']\s*\)/g;
   for (const match of content.matchAll(namespaceRequirePattern)) {
@@ -1129,6 +1792,7 @@ function collectModuleImports(content) {
     if (isIdentifierCalled(contentWithoutImports, match[1])) calledImportedNames.add("default");
     if (isIdentifierAsserted(contentWithoutImports, match[1])) assertedImportedNames.add("default");
     imports.push({
+      kind: "require",
       specifier: match[2],
       importedNames: collectNamespaceMemberNames(match[1], contentWithoutImports),
       usedImportedNames: collectNamespaceMemberNames(match[1], contentWithoutImports),
@@ -1138,8 +1802,8 @@ function collectModuleImports(content) {
   }
   const plainRequirePattern = /\brequire\s*\(\s*["']([^"']+)["']\s*\)/g;
   for (const match of content.matchAll(plainRequirePattern)) {
-    if (!imports.some((current) => current.specifier === match[1])) {
-      imports.push({ specifier: match[1], importedNames: new Set(), usedImportedNames: new Set(), calledImportedNames: new Set(), assertedImportedNames: new Set() });
+    if (!imports.some((current) => current.kind === "require" && current.specifier === match[1])) {
+      imports.push({ kind: "require", specifier: match[1], importedNames: new Set(), usedImportedNames: new Set(), calledImportedNames: new Set(), assertedImportedNames: new Set() });
     }
   }
   return imports;
@@ -1150,7 +1814,8 @@ function collectCalledImportClauseNames(clause, contentWithoutImports) {
   const named = clause.match(/\{([^}]+)\}/)?.[1];
   if (named) {
     for (const part of named.split(",")) {
-      const [imported, local = imported] = part.trim().replace(/^type\s+/, "").split(/\s+as\s+/);
+      if (/^\s*type\b/.test(part)) continue;
+      const [imported, local = imported] = part.trim().split(/\s+as\s+/);
       if (imported && isIdentifierCalled(contentWithoutImports, local)) names.add(imported);
     }
   }
@@ -1174,7 +1839,8 @@ function collectAssertedImportClauseNames(clause, contentWithoutImports) {
   const named = clause.match(/\{([^}]+)\}/)?.[1];
   if (named) {
     for (const part of named.split(",")) {
-      const [imported, local = imported] = part.trim().replace(/^type\s+/, "").split(/\s+as\s+/);
+      if (/^\s*type\b/.test(part)) continue;
+      const [imported, local = imported] = part.trim().split(/\s+as\s+/);
       if (imported && isIdentifierAsserted(contentWithoutImports, local)) names.add(imported);
     }
   }
@@ -1258,7 +1924,8 @@ function collectUsedImportClauseNames(clause, contentWithoutImports) {
   const named = clause.match(/\{([^}]+)\}/)?.[1];
   if (named) {
     for (const part of named.split(",")) {
-      const [imported, local = imported] = part.trim().replace(/^type\s+/, "").split(/\s+as\s+/);
+      if (/^\s*type\b/.test(part)) continue;
+      const [imported, local = imported] = part.trim().split(/\s+as\s+/);
       if (imported && isIdentifierReferenced(contentWithoutImports, local)) names.add(imported);
     }
   }
@@ -1290,7 +1957,12 @@ function isIdentifierReferenced(content, identifier) {
 function collectImportClauseNames(clause, content) {
   const names = new Set();
   const named = clause.match(/\{([^}]+)\}/)?.[1];
-  if (named) for (const name of collectAliasedNames(named, "as")) names.add(name);
+  if (named) {
+    for (const part of named.split(",")) {
+      if (/^\s*type\b/.test(part)) continue;
+      for (const name of collectAliasedNames(part, "as")) names.add(name);
+    }
+  }
   const defaultImport = clause.split(",", 1)[0].trim();
   if (defaultImport && !defaultImport.startsWith("{") && !defaultImport.startsWith("*")) names.add("default");
   const namespace = clause.match(/\*\s+as\s+([A-Za-z_$][\w$]*)/)?.[1];
@@ -1327,7 +1999,7 @@ function collectPublicExportNames(value) {
 
 function collectDeclaredExportNames(content) {
   const names = new Set();
-  const declarationPattern = /\bexport\s+(?:async\s+)?(?:function|class|const|let|var|type|interface|enum)\s+([A-Za-z_$][\w$]*)/g;
+  const declarationPattern = /\bexport\s+(?:async\s+)?(?:function|class|const|let|var|enum)\s+([A-Za-z_$][\w$]*)/g;
   for (const match of content.matchAll(declarationPattern)) names.add(match[1]);
   if (/\bexport\s+default\b/.test(content)) names.add("default");
   const localExportPattern = /\bexport\s*\{([^}]+)\}(?!\s*from)/g;

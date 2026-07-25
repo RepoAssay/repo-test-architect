@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { describe, it } from "node:test";
 import { auditDetectedProjects } from "../src/core/project-auditor.js";
@@ -52,6 +54,119 @@ describe("project auditor", () => {
     assert.equal(result.audits[0].adapterId, "kotlin");
     assert.deepEqual(result.audits[0].audit.untestedCandidates.map((target) => target.name), ["TokenFormatter"]);
     assert.deepEqual(result.audits[0].audit.coveredButRisky.map((target) => target.name), ["TokenParser"]);
+  });
+
+  it("preserves owning workspace package-manager commands in project audits", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-project-pnpm-workspace-"));
+    const packageRoot = path.join(root, "packages", "checkout");
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(packageRoot, "src"), { recursive: true });
+    fs.mkdirSync(path.join(packageRoot, "test"), { recursive: true });
+    fs.writeFileSync(path.join(root, "package.json"), JSON.stringify({ private: true }));
+    fs.writeFileSync(path.join(root, "pnpm-workspace.yaml"), "packages:\n  - 'packages/*'\n");
+    fs.writeFileSync(path.join(root, "pnpm-lock.yaml"), "lock\n");
+    fs.writeFileSync(
+      path.join(packageRoot, "package.json"),
+      JSON.stringify({ scripts: { test: "vitest run" }, devDependencies: { vitest: "latest" } })
+    );
+    fs.writeFileSync(path.join(packageRoot, "src", "checkout.ts"), "export function checkout(value) { return value; }\n");
+    fs.writeFileSync(
+      path.join(packageRoot, "test", "checkout.test.ts"),
+      "import { test } from 'vitest';\nimport { checkout } from '../src/checkout';\ntest('checkout', () => checkout('ok'));\n"
+    );
+
+    const result = auditDetectedProjects(root);
+    const checkout = result.audits.find((entry) => entry.projectId === "packages/checkout");
+
+    assert.equal(result.summary.projectCount, 2);
+    assert.deepEqual(checkout.audit.profile.packageManagers, ["pnpm"]);
+    assert.equal(checkout.audit.profile.testCommand, "pnpm run test");
+    assert.ok(checkout.audit.profile.setupSignals.includes("pnpm workspace"));
+  });
+
+  it("preserves explicitly inherited runner config and custom test locations in project audits", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-project-runner-config-"));
+    const packageRoot = path.join(root, "packages", "checkout");
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "config"), { recursive: true });
+    fs.mkdirSync(path.join(packageRoot, "src"), { recursive: true });
+    fs.mkdirSync(path.join(packageRoot, "quality"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "package.json"),
+      JSON.stringify({ private: true, packageManager: "pnpm@10.0.0", workspaces: ["packages/*"] })
+    );
+    fs.writeFileSync(path.join(root, "pnpm-lock.yaml"), "lock\n");
+    fs.writeFileSync(
+      path.join(root, "config", "vitest.shared.ts"),
+      "export default { test: { include: ['quality/**/*.check.ts'] } };\n"
+    );
+    fs.writeFileSync(
+      path.join(packageRoot, "package.json"),
+      JSON.stringify({ scripts: { test: "vitest run --config ../../config/vitest.shared.ts" } })
+    );
+    fs.writeFileSync(
+      path.join(packageRoot, "src", "checkout.ts"),
+      "export function checkout(value) { if (!value) throw new Error('missing'); return value; }\n"
+    );
+    fs.writeFileSync(
+      path.join(packageRoot, "quality", "checkout.check.ts"),
+      "import { checkout } from '../src/checkout';\ncheckout('ok');\n"
+    );
+
+    const result = auditDetectedProjects(root);
+    const checkout = result.audits.find((entry) => entry.projectId === "packages/checkout");
+
+    assert.equal(result.summary.projectCount, 2);
+    assert.deepEqual(checkout.audit.profile.testFrameworks, ["vitest"]);
+    assert.equal(checkout.audit.profile.testCommand, "pnpm run test");
+    assert.deepEqual(checkout.audit.profile.existingTestLocations, ["custom test location"]);
+    assert.ok(checkout.audit.profile.setupSignals.includes("vitest config (owning workspace)"));
+    assert.deepEqual(checkout.audit.coveredButRisky.map((target) => target.path), ["src/checkout.ts"]);
+  });
+
+  it("preserves conditional JavaScript package-export ownership in project audits", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-project-conditional-exports-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "src"), { recursive: true });
+    fs.mkdirSync(path.join(root, "test"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "package.json"),
+      JSON.stringify({
+        name: "@example/dual-runtime",
+        exports: {
+          ".": {
+            import: "./dist/esm-entry.mjs",
+            require: "./dist/commonjs-entry.cjs"
+          }
+        },
+        scripts: { test: "node --test" }
+      })
+    );
+    fs.writeFileSync(
+      path.join(root, "src", "esm-entry.mts"),
+      "export function esmFeature(value) { if (!value) throw new Error('missing'); return value; }\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "src", "commonjs-entry.cts"),
+      "export function commonjsFeature(value) { if (!value) throw new Error('missing'); return value; }\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "test", "import-branch.test.mts"),
+      "import { esmFeature } from '@example/dual-runtime';\nesmFeature('esm');\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "test", "require-branch.test.cts"),
+      "const { commonjsFeature } = require('@example/dual-runtime');\ncommonjsFeature('cjs');\n"
+    );
+
+    const result = auditDetectedProjects(root);
+
+    assert.equal(result.summary.projectCount, 1);
+    assert.deepEqual(
+      result.audits[0].audit.coveredButRisky.map((target) => target.path),
+      ["src/commonjs-entry.cts", "src/esm-entry.mts"]
+    );
+    assert.deepEqual(result.audits[0].audit.untestedCandidates, []);
   });
 
   it("passes project-relative changed paths into matching project adapters", () => {
