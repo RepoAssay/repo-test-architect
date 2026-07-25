@@ -14,12 +14,15 @@
     "architectures": [],
     "testCommand": "pytest",
     "detectedConventions": [
-      "tests/test_*.py"
+      "tests/test_*.py",
+      "pytest testpaths"
     ],
     "existingTestLocations": [
-      "tests"
+      "tests",
+      "configured pytest location"
     ],
     "setupSignals": [
+      "pytest config",
       "pytest dependency"
     ],
     "confidence": "high",

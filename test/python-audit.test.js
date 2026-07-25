@@ -645,8 +645,200 @@ dependencies = ["pytest"]
     assert.ok(!auditedPaths.includes("meta/build.py"));
   });
 
+  it("keeps explicit multi-package ownership aligned with custom pytest discovery", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-python-multi-package-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "alpha"), { recursive: true });
+    fs.mkdirSync(path.join(root, "beta"), { recursive: true });
+    fs.mkdirSync(path.join(root, "quality"), { recursive: true });
+    fs.mkdirSync(path.join(root, "tests"), { recursive: true });
+    fs.mkdirSync(path.join(root, "tools"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "pyproject.toml"),
+      `[project]
+name = "multi-package"
+dependencies = ["pytest"]
+
+[tool.setuptools]
+packages = ["alpha", "beta"]
+
+[tool.pytest.ini_options]
+testpaths = ["quality"]
+python_files = ["check_*.py"]
+`
+    );
+    fs.writeFileSync(path.join(root, "alpha", "__init__.py"), "");
+    fs.writeFileSync(path.join(root, "alpha", "parser.py"), "def parse(value):\n    return int(value)\n");
+    fs.writeFileSync(path.join(root, "beta", "__init__.py"), "");
+    fs.writeFileSync(path.join(root, "beta", "parser.py"), "def parse(value):\n    return int(value)\n");
+    fs.writeFileSync(path.join(root, "tools", "release.py"), "def release(value):\n    return value if value else None\n");
+    fs.writeFileSync(path.join(root, "quality", "helpers.py"), "def build(value):\n    return value if value else None\n");
+    fs.writeFileSync(
+      path.join(root, "quality", "check_alpha.py"),
+      "from alpha.parser import parse\n\ndef test_alpha():\n    assert parse('2') == 2\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "quality", "test_beta.py"),
+      "from beta.parser import parse\n\ndef test_beta():\n    assert parse('2') == 2\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "tests", "check_beta.py"),
+      "from beta.parser import parse\n\ndef test_beta():\n    assert parse('2') == 2\n"
+    );
+
+    const audit = auditPythonRepo(root);
+    const auditedPaths = [...audit.recommended, ...audit.skipped].map((target) => target.path);
+
+    assert.ok(audit.profile.existingTestLocations.includes("configured pytest location"));
+    assert.ok(audit.profile.detectedConventions.includes("pytest testpaths"));
+    assert.ok(audit.profile.detectedConventions.includes("pytest python_files"));
+    assert.ok(audit.profile.setupSignals.includes("pytest config"));
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["alpha/parser.py"]);
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.path), ["beta/parser.py"]);
+    assert.deepEqual(audit.coveredButRisky[0].existingTestEvidence, [{
+      testPath: "quality/check_alpha.py",
+      kind: "python-module-import",
+      strength: "direct",
+      usage: "asserted"
+    }]);
+    assert.ok(!auditedPaths.includes("quality/helpers.py"));
+    assert.ok(!auditedPaths.includes("tools/release.py"));
+  });
+
+  it("uses bounded setuptools find roots for implicit namespace packages", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-python-namespace-find-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "lib", "acme", "payments"), { recursive: true });
+    fs.mkdirSync(path.join(root, "lib", "other"), { recursive: true });
+    fs.mkdirSync(path.join(root, "tests"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "pyproject.toml"),
+      `[project]
+name = "acme-payments"
+dependencies = ["pytest"]
+
+[tool.setuptools.packages.find]
+where = ["lib"]
+include = ["acme*"]
+`
+    );
+    fs.writeFileSync(
+      path.join(root, "lib", "acme", "payments", "price_parser.py"),
+      "def parse_price(value):\n    return int(value)\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "lib", "other", "branching.py"),
+      "def choose(value):\n    return value if value else None\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "tests", "test_payment_behavior.py"),
+      "from acme.payments.price_parser import parse_price\n\ndef test_payment():\n    assert parse_price('2') == 2\n"
+    );
+
+    const audit = auditPythonRepo(root);
+    const auditedPaths = [...audit.recommended, ...audit.skipped].map((target) => target.path);
+
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["lib/acme/payments/price_parser.py"]);
+    assert.ok(!auditedPaths.includes("lib/other/branching.py"));
+  });
+
+  it("uses literal Poetry package entries across declared source bases", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-python-poetry-packages-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "checkout"), { recursive: true });
+    fs.mkdirSync(path.join(root, "lib", "plugins"), { recursive: true });
+    fs.mkdirSync(path.join(root, "support"), { recursive: true });
+    fs.mkdirSync(path.join(root, "tests"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "pyproject.toml"),
+      `[tool.poetry]
+name = "checkout-suite"
+packages = [
+  { include = "checkout" },
+  { include = "plugins", from = "lib" },
+]
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.0"
+`
+    );
+    fs.writeFileSync(path.join(root, "checkout", "__init__.py"), "");
+    fs.writeFileSync(path.join(root, "checkout", "price_parser.py"), "def parse(value):\n    return int(value)\n");
+    fs.writeFileSync(path.join(root, "lib", "plugins", "__init__.py"), "");
+    fs.writeFileSync(path.join(root, "lib", "plugins", "rule_parser.py"), "def parse(value):\n    return int(value)\n");
+    fs.writeFileSync(path.join(root, "support", "branching.py"), "def choose(value):\n    return value if value else None\n");
+    fs.writeFileSync(
+      path.join(root, "tests", "test_packages.py"),
+      `from checkout.price_parser import parse as parse_price
+from plugins.rule_parser import parse as parse_rule
+
+def test_packages():
+    assert parse_price("2") == parse_rule("2")
+`
+    );
+
+    const audit = auditPythonRepo(root);
+    const auditedPaths = [...audit.recommended, ...audit.skipped].map((target) => target.path);
+
+    assert.deepEqual(
+      audit.coveredButRisky.map((target) => target.path),
+      ["checkout/price_parser.py", "lib/plugins/rule_parser.py"]
+    );
+    assert.ok(!auditedPaths.includes("support/branching.py"));
+  });
+
+  it("honors pytest config precedence for custom testpaths and python_files", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-python-pytest-precedence-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "checkout"), { recursive: true });
+    fs.mkdirSync(path.join(root, "legacy"), { recursive: true });
+    fs.mkdirSync(path.join(root, "verification"), { recursive: true });
+    fs.writeFileSync(path.join(root, "pyproject.toml"), "[project]\nname = \"checkout\"\ndependencies = [\"pytest\"]\n");
+    fs.writeFileSync(path.join(root, "pytest.ini"), "[pytest]\ntestpaths = legacy\npython_files = check_*.py\n");
+    fs.writeFileSync(
+      path.join(root, "pytest.toml"),
+      "[pytest]\ntestpaths = [\"verification\"]\npython_files = [\"verify_*.py\"]\n"
+    );
+    fs.writeFileSync(path.join(root, "checkout", "__init__.py"), "");
+    fs.writeFileSync(path.join(root, "checkout", "parser.py"), "def parse(value):\n    return int(value)\n");
+    fs.writeFileSync(
+      path.join(root, "legacy", "check_parser.py"),
+      "from checkout.parser import parse\n\ndef test_parse():\n    assert parse('2') == 2\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "verification", "verify_parser.py"),
+      "from checkout.parser import parse\n\ndef test_parse():\n    assert parse('2') == 2\n"
+    );
+
+    const audit = auditPythonRepo(root);
+
+    assert.deepEqual(audit.coveredButRisky[0].existingTestPaths, ["verification/verify_parser.py"]);
+  });
+
+  it("does not broaden invalid hidden pytest discovery outside the audit root", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-python-invalid-pytest-discovery-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "checkout"), { recursive: true });
+    fs.mkdirSync(path.join(root, "tests"), { recursive: true });
+    fs.writeFileSync(path.join(root, "requirements.txt"), "pytest\n");
+    fs.writeFileSync(path.join(root, ".pytest.ini"), "[pytest]\ntestpaths = ../outside\npython_files = [invalid].py\n");
+    fs.writeFileSync(path.join(root, "checkout", "__init__.py"), "");
+    fs.writeFileSync(path.join(root, "checkout", "parser.py"), "def parse(value):\n    return int(value)\n");
+    fs.writeFileSync(
+      path.join(root, "tests", "test_parser.py"),
+      "from checkout.parser import parse\n\ndef test_parse():\n    assert parse('2') == 2\n"
+    );
+
+    const audit = auditPythonRepo(root);
+
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.path), ["checkout/parser.py"]);
+    assert.deepEqual(audit.coveredButRisky, []);
+    assert.ok(audit.profile.setupSignals.includes("pytest config"));
+  });
+
   for (const [configName, configText] of [
     ["pytest.ini", "[pytest]\ntestpaths = tests\n"],
+    [".pytest.ini", "[pytest]\ntestpaths = tests\n"],
     ["pytest.toml", "[pytest]\ntestpaths = [\"tests\"]\n"],
     [".pytest.toml", "[pytest]\ntestpaths = [\"tests\"]\n"]
   ]) {
