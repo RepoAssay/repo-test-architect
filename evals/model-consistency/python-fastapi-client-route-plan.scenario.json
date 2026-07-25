@@ -1,0 +1,82 @@
+{
+  "schemaVersion": "model-consistency-scenario/v1",
+  "id": "python-fastapi-client-route-plan",
+  "description": "Different model profiles should preserve route-specific FastAPI client evidence, integration-level extension, and app-wiring deferral.",
+  "sourceArtifact": {
+    "path": "evals/expected/python-fastapi-client-route.audit.json",
+    "schemaVersion": "audit/v1"
+  },
+  "toolCall": {
+    "toolName": "generate_test_plan",
+    "arguments": {}
+  },
+  "lockedFields": [
+    {
+      "path": "summary.verificationCommand",
+      "expected": "pytest",
+      "reason": "The FastAPI fixture must preserve its repo-native pytest command."
+    },
+    {
+      "path": "summary.addTestCount",
+      "expected": 0,
+      "reason": "The exact client request already provides bounded route evidence, so the route should not require a new test file."
+    },
+    {
+      "path": "summary.extendTestCount",
+      "expected": 1,
+      "reason": "The covered route should remain an edge-case extension candidate."
+    },
+    {
+      "path": "summary.deferredCount",
+      "expected": 1,
+      "reason": "Application wiring should remain deferred to route-level coverage."
+    },
+    {
+      "path": "items[0].id",
+      "expected": "extend-test:app/routes/users.py",
+      "reason": "The exact client-to-route match should produce a stable extend-test item."
+    },
+    {
+      "path": "items[0].testLevel",
+      "expected": "integration",
+      "reason": "HTTP route behavior belongs at the integration level."
+    },
+    {
+      "path": "items[0].existingTestPaths[0]",
+      "expected": "tests/test_users.py",
+      "reason": "The route recommendation must retain the matching FastAPI client test."
+    },
+    {
+      "path": "items[0].existingTestEvidence[0].kind",
+      "expected": "python-test-client-route",
+      "reason": "The route must retain its framework-client evidence kind."
+    },
+    {
+      "path": "items[0].existingTestEvidence[0].strength",
+      "expected": "indirect",
+      "reason": "A client request remains bounded indirect evidence rather than a direct source import."
+    },
+    {
+      "path": "items[0].existingTestEvidence[0].viaUsage",
+      "expected": "asserted",
+      "reason": "The visibly asserted response should retain asserted usage."
+    },
+    {
+      "path": "items[1].id",
+      "expected": "defer:app/main.py",
+      "reason": "FastAPI application wiring should remain deferred to route or integration tests."
+    }
+  ],
+  "allowedVariations": [
+    "summary wording",
+    "route edge-case explanation wording",
+    "optional detail depth"
+  ],
+  "unexpectedVariations": [
+    "missing pytest verification command",
+    "new-test recommendation for the covered route",
+    "unit-level route recommendation",
+    "direct app-wiring test recommendation",
+    "missing or upgraded framework-client evidence"
+  ]
+}

@@ -1,0 +1,119 @@
+{
+  "schemaVersion": "audit/v1",
+  "profile": {
+    "root": "<fixture>",
+    "languages": [
+      "python"
+    ],
+    "packageManagers": [
+      "pip"
+    ],
+    "testFrameworks": [
+      "pytest"
+    ],
+    "architectures": [
+      "fastapi"
+    ],
+    "testCommand": "pytest",
+    "detectedConventions": [
+      "tests/test_*.py"
+    ],
+    "existingTestLocations": [
+      "tests"
+    ],
+    "setupSignals": [
+      "requirements",
+      "pytest dependency",
+      "fastapi dependency"
+    ],
+    "confidence": "high",
+    "blockers": []
+  },
+  "untestedCandidates": [],
+  "coveredButRisky": [
+    {
+      "id": "app/routes/users.py",
+      "name": "users",
+      "path": "app/routes/users.py",
+      "kind": "http-route",
+      "signals": [
+        "http-route",
+        "status-handling",
+        "matching-test"
+      ],
+      "risk": "high",
+      "testability": "medium",
+      "recommendedTestLevel": "integration",
+      "riskReductionScore": 8,
+      "maintenanceCost": 5,
+      "reasons": [
+        "HTTP route behavior",
+        "request or status handling",
+        "Existing test file detected; review missing edge cases"
+      ],
+      "existingTestPaths": [
+        "tests/test_users.py"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "tests/test_users.py",
+          "kind": "python-test-client-route",
+          "strength": "indirect",
+          "viaUsage": "asserted"
+        }
+      ]
+    }
+  ],
+  "recommended": [
+    {
+      "id": "app/routes/users.py",
+      "name": "users",
+      "path": "app/routes/users.py",
+      "kind": "http-route",
+      "signals": [
+        "http-route",
+        "status-handling",
+        "matching-test"
+      ],
+      "risk": "high",
+      "testability": "medium",
+      "recommendedTestLevel": "integration",
+      "riskReductionScore": 8,
+      "maintenanceCost": 5,
+      "reasons": [
+        "HTTP route behavior",
+        "request or status handling",
+        "Existing test file detected; review missing edge cases"
+      ],
+      "existingTestPaths": [
+        "tests/test_users.py"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "tests/test_users.py",
+          "kind": "python-test-client-route",
+          "strength": "indirect",
+          "viaUsage": "asserted"
+        }
+      ]
+    }
+  ],
+  "skipped": [
+    {
+      "id": "app/main.py",
+      "name": "main",
+      "path": "app/main.py",
+      "kind": "app-wiring",
+      "signals": [
+        "app-wiring"
+      ],
+      "riskReductionScore": 3,
+      "maintenanceCost": 5,
+      "reason": "Application wiring is usually better covered through route or integration tests.",
+      "preferredCoveragePath": "Cover through framework route tests or service integration tests that boot the app."
+    }
+  ],
+  "risks": [
+    "users has http route behavior, request or status handling and needs edge-case review."
+  ]
+}

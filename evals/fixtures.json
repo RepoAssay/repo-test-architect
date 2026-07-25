@@ -160,6 +160,11 @@
     "path": "examples/python-pytest-service"
   },
   {
+    "name": "python-fastapi-client-route",
+    "adapter": "python",
+    "path": "examples/python-fastapi-client-route"
+  },
+  {
     "name": "python-unittest-service",
     "adapter": "python",
     "path": "examples/python-unittest-service"
