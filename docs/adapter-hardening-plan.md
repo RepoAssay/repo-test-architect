@@ -86,7 +86,7 @@ Prioritize ownership and import accuracy:
 
 Do not execute dynamic package metadata or plugin code to discover the graph.
 
-Progress: the first Python slice separates import roots from owned path prefixes, honors literal multi-package declarations from setuptools and Poetry, supports bounded setuptools find roots including implicit namespaces, and makes root pytest `testpaths`/`python_files` authoritative according to configuration precedence. The second slice resolves exact package-local relative imports in tests and consumed fixture support, binds duplicate module names to the originating layout entry, and rejects excess-dot escapes. Computed metadata, editable-install remapping, source dependency tracing, inherited pytest configuration, and plugin-provided discovery remain pending.
+Progress: the first Python slice separates import roots from owned path prefixes, honors literal multi-package declarations from setuptools and Poetry, supports bounded setuptools find roots including implicit namespaces, and makes root pytest `testpaths`/`python_files` authoritative according to configuration precedence. The second slice resolves exact package-local relative imports in tests and consumed fixture support, binds duplicate module names to the originating layout entry, and rejects excess-dot escapes. The third slice adds one-hop same-owner source dependency evidence from called/asserted direct, re-exported, or fixture-consumed entrypoints while excluding unused, type-checking-only, deeper, cross-owner, and duplicate-root edges. Computed metadata, editable-install remapping, deeper source graphs, inherited pytest configuration, plugin-provided discovery, and framework boot/test-client reachability remain pending.
 
 ### Kotlin And JVM
 

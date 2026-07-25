@@ -274,6 +274,43 @@ dependencies = ["pytest"]
     }]);
   });
 
+  it("preserves bounded Python source dependency evidence in project audits", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-project-python-source-dependency-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "checkout"), { recursive: true });
+    fs.mkdirSync(path.join(root, "tests"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "pyproject.toml"),
+      `[project]
+name = "checkout"
+dependencies = ["pytest"]
+`
+    );
+    fs.writeFileSync(path.join(root, "checkout", "__init__.py"), "");
+    fs.writeFileSync(
+      path.join(root, "checkout", "service.py"),
+      "from .parser import parse\n\ndef calculate(value):\n    return parse(value)\n"
+    );
+    fs.writeFileSync(path.join(root, "checkout", "parser.py"), "def parse(value):\n    return int(value)\n");
+    fs.writeFileSync(
+      path.join(root, "tests", "test_service_behavior.py"),
+      "from checkout.service import calculate\n\ndef test_service_behavior():\n    assert calculate('2') == 2\n"
+    );
+
+    const result = auditDetectedProjects(root);
+    const audit = result.audits[0].audit;
+    const parser = audit.coveredButRisky.find((target) => target.path === "checkout/parser.py");
+
+    assert.deepEqual(audit.untestedCandidates, []);
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["checkout/parser.py", "checkout/service.py"]);
+    assert.deepEqual(parser.existingTestEvidence, [{
+      testPath: "tests/test_service_behavior.py",
+      kind: "bounded-dependency",
+      strength: "indirect",
+      viaUsage: "asserted"
+    }]);
+  });
+
   it("passes project-relative changed paths into matching project adapters", () => {
     const result = auditDetectedProjects(path.resolve("examples/polyglot-workspace"), {
       changedPaths: [
