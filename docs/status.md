@@ -41,6 +41,7 @@ Implemented:
 - runtime adapter registry with supported `javascript`, `kotlin`, `python`, and `swift` adapters
 - Python declarative multi-package ownership for literal setuptools and Poetry entries plus bounded setuptools find roots, with import roots kept separate from owned path prefixes so namespace packages and sibling tooling do not leak into one another
 - Python root pytest configuration precedence across TOML, INI, `pyproject.toml`, `tox.ini`, and `setup.cfg`, with literal `testpaths`, simple `python_files` globs, configured test-support exclusion, and unsafe discovery-value rejection
+- Python runner selection that binds literal nox test commands to their owning session bodies and emits an explicit ambiguity blocker for competing tox/nox or multiple nox test entrypoints
 - Python package-local relative-import evidence for direct tests and consumed pytest fixtures, with exact source-layout ownership, implicit-namespace support, duplicate-root isolation, and excess-dot rejection
 - Python one-hop source dependency evidence from called/asserted direct, re-exported, or fixture-consumed entrypoints, limited to statically used same-owner imports and excluding type-checking-only, unused, deeper, cross-owner, and duplicate-root edges
 - Python static string masking that preserves physical line alignment across backslash-newline continuations before framework route analysis
@@ -248,7 +249,7 @@ The active sequence is defined in the [Adapter Hardening Plan](adapter-hardening
 
 1. Shared validation-corpus manifest, scorecard schema, semantic checker, adapter-conformance helper, and per-adapter implementation coverage floors are complete. All 12 pinned cases pass standardized three-run stability and performance measurement.
 2. JavaScript/TypeScript workspace command ownership, bounded runner-config/custom test-location discovery, module-boundary hardening, the generated large-suite regression gate, and conservative literal Playwright/Cypress request-to-route evidence are complete for the static patterns in the support matrix.
-3. Python literal multi-package/namespace ownership, bounded root and repository-owned ancestor pytest discovery, exact package-local relative imports, one-hop same-owner source dependencies, and static framework test-client route evidence are complete. Cross-owner inherited `testpaths` now produce an explicit command blocker; next Python pressure can target other ambiguous runner selections or plugin-mutated discovery.
+3. Python literal multi-package/namespace ownership, bounded root and repository-owned ancestor pytest discovery, exact package-local relative imports, one-hop same-owner source dependencies, static framework test-client route evidence, and deterministic tox/nox ambiguity blockers are complete. Next Python pressure can target plugin-mutated discovery or dynamic runner orchestration.
 4. Harden Kotlin/JVM Gradle/Maven ownership and conservative unsupported-graph behavior.
 5. Harden SwiftPM/Xcode ownership ambiguity and symbol-evidence boundaries.
 6. Continue the cross-adapter trust pass using the recorded real-repository distributions and deterministic regression budgets.
