@@ -1,6 +1,6 @@
 # Python Alpha Support
 
-This matrix defines the bounded private-alpha support claim for the Python adapter. The common patterns below are locked by deterministic fixtures, model-consistency scenarios, and reviewed real-repository reports; layouts outside this boundary remain conservative or explicitly blocked.
+This matrix defines the bounded public-alpha support claim for the Python adapter. The common patterns below are locked by deterministic fixtures, model-consistency scenarios, and reviewed real-repository reports; layouts outside this boundary remain conservative or explicitly blocked.
 
 ## Current Common-Pattern Coverage
 

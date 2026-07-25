@@ -1,6 +1,6 @@
 # Release Checklist
 
-Use this checklist for the first public `0.1.0` release and every later package or MCP Registry version.
+Use this checklist for every public package or MCP Registry version. The [Release Lifecycle](release-lifecycle.md) defines when alpha, beta, release-candidate, and stable versions should be published; this checklist defines how an approved version is verified.
 
 ## Package Readiness
 
@@ -63,13 +63,13 @@ npm run release:check
 
 The repository also keeps `scripts/smoke.ps1` as a manual PowerShell fallback for environments that need it.
 
-Also verify the installed package entry points from a packed tarball before first public release with `npm run installed-package:check`.
+Also verify the installed package entry points from a packed tarball with `npm run installed-package:check`.
 
 After npm publication, repeat the install and MCP smoke path against the registry package rather than the local tarball.
 
 ## Distribution
 
-First public release should be:
+The public distribution remains:
 
 - public GitHub repository
 - public npm package exposing the CLI and stdio MCP binaries
@@ -77,4 +77,4 @@ First public release should be:
 - local stdio MCP install docs
 - fixture-based examples
 
-Remote MCP hosting should remain out of scope for the first public release.
+Remote MCP hosting remains out of scope unless a later product decision explicitly adds it.

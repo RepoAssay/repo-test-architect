@@ -20,7 +20,7 @@ Revisit when: the JS/TS adapter contract is stable enough to make a second suppo
 
 ## Swift As The Second Supported Adapter
 
-Decision: promote Swift to supported private-alpha maturity alongside JavaScript/TypeScript, bounded by the checked-in Swift alpha support matrix.
+Decision: promote Swift to supported alpha maturity alongside JavaScript/TypeScript, bounded by the checked-in Swift alpha support matrix.
 
 Rationale: Swift now exercises the full shared audit pipeline with deterministic SwiftPM, Xcode, Bazel, Vapor, reactive, and framework fixtures; golden audit and plan artifacts; model-consistency locks; blocker behavior; target-qualified symbol evidence; and pinned maintained-repository validation. RxSwift and SwiftNIO exposed and verified ownership boundaries that synthetic fixtures alone did not cover. This is enough to support popular inspectable patterns without claiming manifest execution, native Objective-C classification, or universal Xcode graph resolution.
 
@@ -51,6 +51,14 @@ Decision: after the first public alpha, prioritize deeper validation and conserv
 Rationale: the current four adapters cover a broad share of likely repositories. Improving project ownership, command accuracy, source-to-test evidence, blocker behavior, real-repository validation, and performance now creates more user trust than adding a shallow fifth adapter. The [Adapter Hardening Plan](adapter-hardening-plan.md) defines the corpus, scorecard, bounded slices, and pull-request routine.
 
 Revisit when: all four adapters meet the hardening definition of done, or repeated user demand identifies an unsupported ecosystem whose value clearly exceeds the remaining trust work.
+
+## Readiness-Gated Release Lifecycle
+
+Decision: use flexible planning windows for public alpha, beta, release candidates, and `1.0`, while making readiness evidence—not a promised calendar date—the promotion authority. Keep the current `0.x` line as public alpha, target `1.0.0-beta.N` and `1.0.0-rc.N` as formal prerelease channels, and promote `1.0.0` to npm `latest` only after its stable gates pass.
+
+Rationale: the product is owner-operated and can develop faster or slower than an initial estimate. Directional dates make sequencing visible, while adapter trust, real-user feedback, compatibility freezes, clean observation periods, and exact-commit distribution checks prevent a date from forcing an immature release. The release owners may accelerate when equivalent evidence already exists and the rationale is recorded, or delay without exception when more confidence is useful.
+
+Revisit when: real release history shows that the planning windows, feedback thresholds, npm tags, or stable cadence in the [Release Lifecycle](release-lifecycle.md) no longer fit the product or its users.
 
 ## Local Stdio MCP First
 

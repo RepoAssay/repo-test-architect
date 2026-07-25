@@ -4,7 +4,7 @@ Repo Test Architect is distributed as a local CLI and stdio MCP server through n
 
 ## Distribution Targets
 
-The first public release targets:
+The public distribution consists of:
 
 - a public GitHub repository
 - one public npm package containing the CLI and stdio MCP server

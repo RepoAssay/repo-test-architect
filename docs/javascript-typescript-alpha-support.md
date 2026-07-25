@@ -1,6 +1,6 @@
 # JavaScript/TypeScript Alpha Support
 
-This matrix is the acceptance boundary for the JavaScript/TypeScript private alpha. It describes conventions the adapter detects and tests today; it is not a claim that every repository using a named tool will be interpreted perfectly.
+This matrix is the acceptance boundary for the JavaScript/TypeScript public alpha. It describes conventions the adapter detects and tests today; it is not a claim that every repository using a named tool will be interpreted perfectly.
 
 ## Supported Common Patterns
 

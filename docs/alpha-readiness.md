@@ -1,6 +1,6 @@
 # Alpha Readiness
 
-This milestone defines a useful private alpha for Repo Test Architect.
+This milestone defines a useful public alpha for Repo Test Architect.
 
 The alpha goal is not native test generation. The alpha goal is a credible local test architecture audit that a technical lead can run on a real repository and trust enough to discuss with a team.
 
@@ -23,17 +23,17 @@ The output should be useful even when the user disagrees with a recommendation. 
 
 ## Acceptance Gates
 
-Run the deterministic private-alpha gate with:
+Run the deterministic alpha gate with:
 
 ```powershell
 npm run alpha:check
 ```
 
-This verifies the test suite, adapter implementation coverage, pinned adapter-corpus contract, generated performance/evidence regression for all four adapters, golden audit artifacts, model-consistency locks, public demo path, and local MCP transport. Package publishing checks remain part of `release:check`, not the private-alpha gate.
+This verifies the test suite, adapter implementation coverage, pinned adapter-corpus contract, generated performance/evidence regression for all four adapters, golden audit artifacts, model-consistency locks, public demo path, and local MCP transport. Package publishing checks remain part of `release:check`, not the alpha gate.
 
 ### Current Readiness Verdict
 
-The deterministic gate passes locally. Repo Test Architect is therefore a private-alpha candidate for the explicitly detected patterns in the [JavaScript/TypeScript Alpha Support](javascript-typescript-alpha-support.md), [Python Alpha Support](python-alpha-support.md), [Swift Alpha Support](swift-alpha-support.md), and [Kotlin/JVM Alpha Support](kotlin-jvm-alpha-support.md) matrices, subject to human review of the real-repository reports.
+The deterministic gate passes locally. Repo Test Architect's public-alpha claim is limited to the explicitly detected patterns in the [JavaScript/TypeScript Alpha Support](javascript-typescript-alpha-support.md), [Python Alpha Support](python-alpha-support.md), [Swift Alpha Support](swift-alpha-support.md), and [Kotlin/JVM Alpha Support](kotlin-jvm-alpha-support.md) matrices, subject to human review of the real-repository reports.
 
 This verdict does not mean:
 
