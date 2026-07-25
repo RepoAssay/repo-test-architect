@@ -46,6 +46,7 @@ Implemented:
 - Python one-hop source dependency evidence from called/asserted direct, re-exported, or fixture-consumed entrypoints, limited to statically used same-owner imports and excluding type-checking-only, unused, deeper, cross-owner, and duplicate-root edges
 - Python static string masking that preserves physical line alignment across backslash-newline continuations before framework route analysis
 - bounded Kotlin/JVM Gradle and Maven module audits plus conventional Gradle and root-declared Maven reactor ownership for standard Kotlin/Java sources; single-module and settings-owned all-KMP ownership for conventional common and target-derived source sets with exactly one literal default or named JVM target per source module; JUnit 4/5, `kotlin.test`, Gradle/JUnit Platform Kotest common specs, conventional Gradle/Spock features under `src/test/groovy`, method-level TestNG, wrapper-aware and module-qualified KMP commands, cycle-safe direct/exported-transitive conventional cross-module evidence, cycle-safe source-set-qualified KMP `api` evidence without `implementation` leakage, and exact JVM symbol provenance
+- Kotlin/JVM command selection that preserves root ownership, isolates nested auxiliary build markers, and emits an explicit ambiguity blocker instead of preferring Gradle when both root Gradle and Maven verification entrypoints are runnable
 - explicit Kotlin/JVM blockers or exclusions for unresolvable aggregate roots, missing standard source sets, Android, advanced Spock/TestNG execution or evidence semantics, unsupported Kotest styles/configuration, computed Maven modules, and custom Gradle boundaries
 - adapter registry capability metadata for maturity, framework signals, project types, and emitted artifacts
 - CLI adapter registry output
@@ -253,7 +254,7 @@ The active sequence is defined in the [Adapter Hardening Plan](adapter-hardening
 1. Shared validation-corpus manifest, scorecard schema, semantic checker, adapter-conformance helper, and per-adapter implementation coverage floors are complete. All 12 pinned cases pass standardized three-run stability and performance measurement.
 2. JavaScript/TypeScript workspace command ownership, bounded runner-config/custom test-location discovery, module-boundary hardening, the generated large-suite regression gate, and conservative literal Playwright/Cypress request-to-route evidence are complete for the static patterns in the support matrix.
 3. Python literal multi-package/namespace ownership, bounded root and repository-owned ancestor pytest discovery, exact package-local relative imports, one-hop same-owner source dependencies, static framework test-client route evidence, and deterministic tox/nox ambiguity blockers are complete. Next Python pressure can target plugin-mutated discovery or dynamic runner orchestration.
-4. Harden Kotlin/JVM Gradle/Maven ownership and conservative unsupported-graph behavior.
+4. Kotlin/JVM competing root Gradle/Maven verification commands now block selection while nested auxiliary markers remain isolated. Continue Gradle/Maven ownership and conservative unsupported-graph pressure.
 5. Harden SwiftPM/Xcode ownership ambiguity and symbol-evidence boundaries.
 6. Continue the cross-adapter trust pass using the recorded real-repository distributions and deterministic regression budgets.
 
