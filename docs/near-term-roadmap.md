@@ -2,7 +2,7 @@
 
 This roadmap tracks the next practical milestones before Repo Test Architect should claim broader adapter support or native test generation.
 
-The first public alpha is shipped. The active phase is to deepen the four supported adapters through the measurable [Adapter Hardening Plan](adapter-hardening-plan.md). See [Alpha Readiness](alpha-readiness.md) for the standing product acceptance gates.
+The first public alpha is shipped. The active phase is to deepen the four supported adapters through the measurable [Adapter Hardening Plan](adapter-hardening-plan.md). See [Alpha Readiness](alpha-readiness.md) for the standing product acceptance gates and the [Release Lifecycle](release-lifecycle.md) for the flexible alpha, beta, release-candidate, and `1.0` planning windows.
 
 ## Current Baseline
 
@@ -18,6 +18,10 @@ The useful baseline is:
 - model-consistency scenarios for stable audit and plan outputs
 - release gate through `npm run release:check`
 - native test generation intentionally deferred
+
+## Release Progression
+
+The current planning target is to keep the public alpha active through at least mid/late September 2026, begin beta in late September or October if its evidence gates pass, and consider `1.0.0` in November or December at the earliest. These are owner-controlled planning windows rather than delivery promises: strong evidence can justify a documented acceleration, while unresolved trust work can delay promotion for as long as necessary. The normative stages, version lines, cadence, and promotion gates live in the [Release Lifecycle](release-lifecycle.md).
 
 ## Milestone 1: Alpha Test Architecture Audit
 

@@ -1,6 +1,6 @@
 # Python Validation Hunt Report
 
-This report records the real-repository evidence used to promote the Python adapter to bounded private-alpha support. Public repositories were shallow-cloned and audited locally without installing dependencies, running repository code, or uploading source.
+This report records the real-repository evidence used to promote the Python adapter to bounded public-alpha support. Public repositories were shallow-cloned and audited locally without installing dependencies, running repository code, or uploading source.
 
 ## Discovery Profiles
 

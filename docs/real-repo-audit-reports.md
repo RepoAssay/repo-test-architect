@@ -2,7 +2,7 @@
 
 This page tracks local audit passes against real repositories that are not checked in as deterministic fixtures.
 
-The purpose is product validation, not regression locking. These reports record what the tool found, what it missed, and which heuristics should be tightened before the private alpha is credible.
+The purpose is product validation, not regression locking. These reports record what the tool found, what it missed, and which heuristics should be tightened while the public alpha matures.
 
 ## Report Set
 
@@ -375,7 +375,7 @@ Heuristic follow-up:
 
 ## Current Alpha Gate Read
 
-The real-repo report gate is satisfied for private alpha validation:
+The real-repo report gate is satisfied for public-alpha validation:
 
 - at least three real repositories have local audit summaries: Repo Test Architect, `cg-bff`/Swift package family, and Collectors Grimoire
 - one JavaScript/TypeScript codebase is covered by the self-audit, while non-owned JavaScript/TypeScript coverage now includes the small `unjs/defu` and `sindresorhus/is` libraries, React Hook Form, the TypeScript ESLint monorepo, Express, and the `h3js/h3` and `honojs/hono` HTTP frameworks

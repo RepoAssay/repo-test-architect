@@ -113,6 +113,7 @@ Implemented:
 - GitHub feature request issue form for audit-first adapter, MCP, evaluation, and reporting proposals
 - GitHub issue template config that disables blank issues, adds structured support questions, and routes security reports privately
 - monthly grouped Dependabot version updates, with GitHub security updates enabled separately for vulnerable dependencies
+- readiness-gated release lifecycle with flexible alpha, beta, release-candidate, and `1.0` planning windows, formal prerelease tags, promotion gates, and post-`1.0` cadence
 - contributor guide for traceable workflow, audit changes, adapter boundaries, generation deferral, and release checks
 - support policy for questions, bugs, feature requests, security boundaries, and regression verification
 - security policy for local-first repo access, vulnerability reports, and sensitive artifact handling
@@ -244,6 +245,8 @@ npm run eval:test
 `eval:check` uses the direct snapshot checker. `eval:test` uses Node's test runner and may need a less restricted process environment.
 
 ## Next Useful Milestones
+
+Release promotion follows the flexible, evidence-based [Release Lifecycle](release-lifecycle.md): public alpha remains active through at least mid/late September 2026 by default, beta can begin in late September or October when its gates pass, and `1.0.0` is considered in November or December at the earliest. The release owners may document an evidence-backed acceleration or delay any stage while trust work remains.
 
 The active sequence is defined in the [Adapter Hardening Plan](adapter-hardening-plan.md):
 

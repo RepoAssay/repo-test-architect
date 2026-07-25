@@ -80,7 +80,7 @@ The local MCP should remain useful on its own.
 
 ## Public Distribution
 
-The first public distribution path should be local-first:
+The public distribution path remains local-first:
 
 - publish the source on GitHub
 - publish an npm package that exposes the stdio MCP binary

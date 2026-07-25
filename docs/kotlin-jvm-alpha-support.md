@@ -1,6 +1,6 @@
 # Kotlin/JVM Alpha Support
 
-This matrix defines the bounded private-alpha support claim for the Kotlin/JVM adapter. The supported unit is a conventional Gradle or Maven JVM module root, a conventional Gradle aggregate, a root-declared Maven reactor whose directly owned modules have standard JVM source sets, one conventional Kotlin Multiplatform Gradle module, or a settings-owned all-KMP aggregate whose source modules each have exactly one literal default or named JVM target—not every project that happens to contain Kotlin or Java.
+This matrix defines the bounded public-alpha support claim for the Kotlin/JVM adapter. The supported unit is a conventional Gradle or Maven JVM module root, a conventional Gradle aggregate, a root-declared Maven reactor whose directly owned modules have standard JVM source sets, one conventional Kotlin Multiplatform Gradle module, or a settings-owned all-KMP aggregate whose source modules each have exactly one literal default or named JVM target—not every project that happens to contain Kotlin or Java.
 
 ## Current Common-Pattern Coverage
 

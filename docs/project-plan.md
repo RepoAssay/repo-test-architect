@@ -36,6 +36,8 @@ Models can explain, prioritize, or generate from this graph, but the graph is th
 
 The first public npm and MCP Registry distribution is complete. The active milestone is [adapter hardening](adapter-hardening-plan.md):
 
+Release progression is governed by the flexible, readiness-based [Release Lifecycle](release-lifecycle.md). Its target windows guide planning without forcing promotion before the adapter and distribution gates pass.
+
 1. Add a shared validation corpus, scorecard, adapter-conformance helper, and instrumented implementation coverage floors. Complete; all 12 pinned cases now have passing standardized stability and performance measurements.
 2. Harden JavaScript/TypeScript workspace ownership, command selection, configuration boundaries, evidence, and performance. Complete for the bounded matrix: static workspace package-manager ownership, runner-config/custom-location discovery, ESM/CommonJS/export/barrel/alias evidence, a generated large-suite performance gate, and exact literal Playwright/Cypress request-to-route evidence.
 3. Harden Python package ownership, imports, pytest discovery, framework boundaries, and command selection. Literal setuptools/Poetry multi-package ownership, bounded namespace find roots, root and repository-owned ancestor pytest discovery, exact package-local relative imports, one-hop same-owner source dependencies, and static FastAPI/Starlette, Flask, and Django client-to-route evidence are complete. Cross-owner inherited `testpaths` and competing proven tox/nox entrypoints now block command selection; plugin-mutated discovery and dynamic runner orchestration remain bounded follow-up candidates.
@@ -53,7 +55,7 @@ These are useful foundation items, but they should not block adapter work:
 - an accessible HTML audit-card or assay-seal visualization for validation scorecards, with review completeness kept separate from reviewed pass rate
 - local stats and history tracking from saved audit artifacts
 - keep the real MCP SDK transport wrapper aligned with the dependency-free tool surface
-- installed-package tarball smoke checks before a first public npm release
+- installed-package tarball smoke checks before every public npm release
 - keep required Linux PR validation fast, select Windows and macOS coverage by portability risk, and run the full three-OS matrix before releases
 
 ## Fixture Roadmap

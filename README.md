@@ -411,4 +411,5 @@ Important runtime surfaces:
 - [MCP deployment](docs/mcp-deployment.md)
 - [Local diagnostics](docs/diagnostics.md)
 - [Agent install paths](docs/agent-install-paths.md)
+- [Release lifecycle](docs/release-lifecycle.md)
 - [Release checklist](docs/release-checklist.md)
