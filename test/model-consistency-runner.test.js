@@ -105,6 +105,7 @@ describe("model consistency runner", () => {
         ["project-placement-inferred-package-boundary", []],
         ["project-placement-split", []],
         ["python-django-tox-plan", []],
+        ["python-fastapi-client-route-plan", []],
         ["python-flask-nox-coverage-plan", []],
         ["python-package-local-tests-plan", []],
         ["python-poetry-pytest-plan", []],
@@ -133,10 +134,10 @@ describe("model consistency runner", () => {
     assert.equal(summary.schemaVersion, "model-consistency-summary/v1");
     assert.equal(summary.profileName, "deterministic-baseline");
     assert.deepEqual(summary.summary, {
-      scenarioCount: 50,
-      passedScenarioCount: 50,
+      scenarioCount: 51,
+      passedScenarioCount: 51,
       failedScenarioCount: 0,
-      checkedFieldCount: 433,
+      checkedFieldCount: 444,
       failureCount: 0
     });
     assert.equal(summary.scenarios[16].scenarioId, "node-ava-basic-plan");
@@ -154,8 +155,8 @@ describe("model consistency runner", () => {
     assert.equal(comparison.baselineProfile, "deterministic-baseline");
     assert.equal(comparison.candidateProfile, "local-small");
     assert.deepEqual(comparison.summary, {
-      scenarioCount: 50,
-      alignedScenarioCount: 50,
+      scenarioCount: 51,
+      alignedScenarioCount: 51,
       driftedScenarioCount: 0,
       missingScenarioCount: 0,
       unexpectedScenarioCount: 0,
@@ -197,12 +198,12 @@ describe("model consistency runner", () => {
     const comparison = compareModelConsistencySummaries(baseline, candidate);
 
     assert.deepEqual(comparison.summary, {
-      scenarioCount: 51,
-      alignedScenarioCount: 48,
+      scenarioCount: 52,
+      alignedScenarioCount: 49,
       driftedScenarioCount: 1,
       missingScenarioCount: 1,
       unexpectedScenarioCount: 1,
-      checkedFieldDelta: -278,
+      checkedFieldDelta: -289,
       failureDelta: 3
     });
     assert.deepEqual(
@@ -244,6 +245,7 @@ describe("model consistency runner", () => {
         ["project-placement-inferred-package-boundary", "aligned"],
         ["project-placement-split", "aligned"],
         ["python-django-tox-plan", "aligned"],
+        ["python-fastapi-client-route-plan", "aligned"],
         ["python-flask-nox-coverage-plan", "aligned"],
         ["python-package-local-tests-plan", "aligned"],
         ["python-poetry-pytest-plan", "aligned"],

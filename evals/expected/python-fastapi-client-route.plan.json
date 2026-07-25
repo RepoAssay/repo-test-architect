@@ -1,0 +1,65 @@
+{
+  "schemaVersion": "plan/v1",
+  "summary": {
+    "confidence": "high",
+    "verificationCommand": "pytest",
+    "blockerCount": 0,
+    "addTestCount": 0,
+    "extendTestCount": 1,
+    "deferredCount": 1
+  },
+  "blockers": [],
+  "items": [
+    {
+      "id": "extend-test:app/routes/users.py",
+      "action": "extend-test",
+      "targetId": "app/routes/users.py",
+      "target": "users",
+      "path": "app/routes/users.py",
+      "testLevel": "integration",
+      "priority": 3,
+      "riskReductionScore": 8,
+      "maintenanceCost": 5,
+      "rationale": [
+        "HTTP route behavior",
+        "request or status handling",
+        "Existing test file detected; review missing edge cases"
+      ],
+      "sourceSignals": [
+        "http-route",
+        "status-handling",
+        "matching-test"
+      ],
+      "existingTestPaths": [
+        "tests/test_users.py"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "tests/test_users.py",
+          "kind": "python-test-client-route",
+          "strength": "indirect",
+          "viaUsage": "asserted"
+        }
+      ]
+    },
+    {
+      "id": "defer:app/main.py",
+      "action": "defer",
+      "targetId": "app/main.py",
+      "target": "main",
+      "path": "app/main.py",
+      "testLevel": "none",
+      "priority": -2,
+      "riskReductionScore": 3,
+      "maintenanceCost": 5,
+      "rationale": [
+        "Application wiring is usually better covered through route or integration tests.",
+        "Cover through framework route tests or service integration tests that boot the app."
+      ],
+      "sourceSignals": [
+        "app-wiring"
+      ],
+      "existingTestPaths": []
+    }
+  ]
+}
