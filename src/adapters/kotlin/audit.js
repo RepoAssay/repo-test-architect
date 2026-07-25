@@ -202,14 +202,25 @@ function resolveMavenModules(files, rootPom) {
   const paths = new Set(files.map((file) => normalizePath(file.path)));
   const rootCoordinate = readMavenCoordinate(rootPom.content);
   const rootProjectPath = rootCoordinate?.id ?? "maven:.";
-  const modules = [{
+  const reactorBlockers = detectMavenReactorBlockers(files, rootPom, rootCoordinate?.groupId);
+  const rootModule = {
     projectPath: rootProjectPath,
     directory: ".",
     dependencies: new Set(),
     exportedDependencies: new Set(),
     buildSystem: "maven",
-    coordinate: rootCoordinate
-  }];
+    coordinate: rootCoordinate,
+    reactorBlockers
+  };
+  const modules = [rootModule];
+
+  if (reactorBlockers.length > 0) {
+    const declaredDependencies = declaredMavenDependencies(rootPom.content, rootCoordinate?.groupId);
+    for (const dependency of declaredDependencies.direct) rootModule.dependencies.add(dependency);
+    for (const dependency of declaredDependencies.exported) rootModule.exportedDependencies.add(dependency);
+    populateReachableModuleDependencies(modules);
+    return modules;
+  }
 
   for (const directory of declaredMavenModules(rootPom.content)) {
     const pomPath = `${directory}/pom.xml`;
@@ -260,12 +271,66 @@ function populateReachableModuleDependencies(modules) {
 }
 
 function declaredMavenModules(content) {
+  return mavenModuleDeclarations(content)
+    .filter((declaration) => declaration.supported)
+    .map((declaration) => declaration.directory);
+}
+
+function mavenModuleDeclarations(content) {
   const pomText = stripMavenComments(content)
     .replace(/<(?:profiles|build|reporting|dependencies|dependencyManagement)>[\s\S]*?<\/(?:profiles|build|reporting|dependencies|dependencyManagement)>/g, " ");
   const moduleText = [...pomText.matchAll(/<modules>([\s\S]*?)<\/modules>/g)].map((match) => match[1]).join("\n");
   return [...moduleText.matchAll(/<module>\s*([^<]+?)\s*<\/module>/g)]
-    .map((match) => normalizePath(match[1].trim()).replace(/^\.\//, "").replace(/\/$/, ""))
-    .filter((modulePath) => modulePath && !modulePath.startsWith("/") && !modulePath.split("/").includes("..") && !modulePath.includes("${"));
+    .map((match) => {
+      const raw = match[1].trim();
+      const directory = normalizePath(raw).replace(/^\.\//, "").replace(/\/$/, "");
+      const supported = Boolean(directory) &&
+        directory !== "." &&
+        !directory.startsWith("/") &&
+        !/^[A-Za-z]:\//.test(directory) &&
+        !directory.split("/").includes("..") &&
+        !directory.includes("${");
+      return { raw, directory, supported };
+    });
+}
+
+function detectMavenReactorBlockers(files, rootPom, rootGroupId) {
+  const declarations = mavenModuleDeclarations(rootPom.content);
+  if (declarations.length === 0) return [];
+
+  const blockers = [];
+  if (declarations.some((declaration) => !declaration.supported)) {
+    blockers.push("Maven reactor module declarations must use literal repository-contained paths at the audited root.");
+  }
+
+  const directDirectories = new Set(
+    declarations.filter((declaration) => declaration.supported).map((declaration) => declaration.directory)
+  );
+  const unresolved = [];
+  const nested = [];
+  for (const directory of [...directDirectories].sort()) {
+    const pomPath = `${directory}/pom.xml`;
+    const pom = files.find((file) => normalizePath(file.path) === pomPath);
+    if (!pom || !readMavenCoordinate(pom.content, rootGroupId)) {
+      unresolved.push(directory);
+      continue;
+    }
+
+    const hasUnownedNestedDeclaration = mavenModuleDeclarations(pom.content).some((declaration) => {
+      if (!declaration.supported) return true;
+      const nestedDirectory = normalizePath(path.posix.join(directory, declaration.directory));
+      return !directDirectories.has(nestedDirectory);
+    });
+    if (hasUnownedNestedDeclaration) nested.push(directory);
+  }
+
+  if (unresolved.length > 0) {
+    blockers.push(`Maven reactor ownership is incomplete because declared modules lack a direct POM with static coordinates: ${unresolved.join(", ")}.`);
+  }
+  if (nested.length > 0) {
+    blockers.push(`Nested Maven reactor expansion is outside the supported ownership boundary: ${nested.join(", ")}.`);
+  }
+  return blockers;
 }
 
 function readMavenCoordinate(content, fallbackGroupId) {
@@ -476,7 +541,9 @@ function buildProfile(root, files, modules) {
   const testFrameworks = detectTestFrameworks(buildText, testText, files, modules);
   const unsupportedProjectShapes = detectUnsupportedProjectShapes(buildText, paths, modules);
   const testCommandResolution = detectTestCommand(root, paths, testFrameworks, modules);
-  const testCommand = testCommandResolution.command;
+  const reactorBlockers = modules.flatMap((module) => module.reactorBlockers ?? []);
+  const commandBlockers = [...testCommandResolution.blockers, ...reactorBlockers];
+  const testCommand = reactorBlockers.length === 0 ? testCommandResolution.command : undefined;
   const existingTestLocations = detectExistingTestLocations(paths, modules);
   const blockers = detectBlockers(
     paths,
@@ -485,7 +552,7 @@ function buildProfile(root, files, modules) {
     testCommand,
     testFrameworks,
     unsupportedProjectShapes,
-    testCommandResolution.blockers
+    commandBlockers
   );
 
   return {
@@ -797,6 +864,7 @@ function detectSetupSignals(paths, buildText, testText, testCommandResolution, m
   for (const signal of testCommandResolution.inheritedSignals ?? []) signals.add(signal);
   if (modules.some((module) => module.buildSystem === "gradle" && module.directory !== ".")) signals.add("gradle module graph");
   if (modules.some((module) => module.buildSystem === "maven" && module.directory !== ".")) signals.add("maven reactor graph");
+  if (modules.some((module) => (module.reactorBlockers ?? []).length > 0)) signals.add("maven reactor ownership blocked");
   return [...signals];
 }
 

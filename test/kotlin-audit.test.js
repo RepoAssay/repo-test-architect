@@ -806,6 +806,72 @@ describe("Kotlin audit adapter", () => {
     assert.ok(!audit.recommended.some((target) => target.path.includes("profile-only")));
   });
 
+  it("owns nested Maven paths when every module is declared directly by the root", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-maven-reactor-explicit-nested-"));
+    fs.mkdirSync(path.join(root, "platform", "core", "src", "main", "java"), { recursive: true });
+    fs.mkdirSync(path.join(root, "platform", "core", "src", "test", "java"), { recursive: true });
+    fs.writeFileSync(path.join(root, "pom.xml"), "<project><groupId>com.example</groupId><artifactId>reactor</artifactId><modules><module>platform</module><module>platform/core</module></modules></project>\n");
+    fs.writeFileSync(path.join(root, "mvnw"), "#!/bin/sh\n");
+    fs.writeFileSync(path.join(root, "platform", "pom.xml"), "<project><groupId>com.example</groupId><artifactId>platform</artifactId><modules><module>core</module></modules></project>\n");
+    fs.writeFileSync(path.join(root, "platform", "core", "pom.xml"), "<project><groupId>com.example</groupId><artifactId>core</artifactId><dependencies><dependency><groupId>org.junit.jupiter</groupId><artifactId>junit-jupiter</artifactId></dependency></dependencies></project>\n");
+    fs.writeFileSync(path.join(root, "platform", "core", "src", "main", "java", "TokenParser.java"), "class TokenParser { String parse(String value) { return value.trim(); } }\n");
+    fs.writeFileSync(path.join(root, "platform", "core", "src", "test", "java", "TokenParserTest.java"), "import org.junit.jupiter.api.Test; class TokenParserTest { @Test void parses() { new TokenParser().parse(\"x\"); } }\n");
+
+    const audit = auditKotlinRepo(root);
+
+    assert.equal(audit.profile.testCommand, "./mvnw test");
+    assert.deepEqual(audit.profile.blockers, []);
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["platform/core/src/main/java/TokenParser.java"]);
+  });
+
+  it("blocks unsafe Maven reactor declarations without partially owning valid children", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-maven-reactor-unsafe-"));
+    fs.mkdirSync(path.join(root, "src", "main", "java"), { recursive: true });
+    fs.mkdirSync(path.join(root, "src", "test", "java"), { recursive: true });
+    fs.mkdirSync(path.join(root, "core", "src", "main", "java"), { recursive: true });
+    fs.writeFileSync(path.join(root, "pom.xml"), '<project><groupId>com.example</groupId><artifactId>reactor</artifactId><modules><module>core</module><module>${module.name}</module><module>../outside</module></modules><dependencies><dependency><groupId>org.junit.jupiter</groupId><artifactId>junit-jupiter</artifactId></dependency></dependencies></project>\n');
+    fs.writeFileSync(path.join(root, "mvnw"), "#!/bin/sh\n");
+    fs.writeFileSync(path.join(root, "core", "pom.xml"), "<project><groupId>com.example</groupId><artifactId>core</artifactId></project>\n");
+    fs.writeFileSync(path.join(root, "src", "main", "java", "RootParser.java"), "class RootParser { String parse(String value) { return value.trim(); } }\n");
+    fs.writeFileSync(path.join(root, "src", "test", "java", "RootParserTest.java"), "import org.junit.jupiter.api.Test; class RootParserTest { @Test void parses() { new RootParser().parse(\"x\"); } }\n");
+    fs.writeFileSync(path.join(root, "core", "src", "main", "java", "HiddenCoreParser.java"), "class HiddenCoreParser { String parse(String value) { return value.trim(); } }\n");
+
+    const audit = auditKotlinRepo(root);
+
+    assert.equal(audit.profile.testCommand, undefined);
+    assert.equal(audit.profile.confidence, "medium");
+    assert.ok(audit.profile.setupSignals.includes("maven reactor ownership blocked"));
+    assert.ok(audit.profile.blockers.includes("Maven reactor module declarations must use literal repository-contained paths at the audited root."));
+    assert.ok(!audit.profile.blockers.includes("No runnable JVM test command detected from Gradle or Maven markers."));
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["src/main/java/RootParser.java"]);
+    assert.ok(!audit.recommended.some((target) => target.path.startsWith("core/")));
+  });
+
+  it("blocks unresolved and nested Maven reactor ownership", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-maven-reactor-incomplete-"));
+    fs.mkdirSync(path.join(root, "src", "main", "java"), { recursive: true });
+    fs.mkdirSync(path.join(root, "src", "test", "java"), { recursive: true });
+    fs.mkdirSync(path.join(root, "platform", "core", "src", "main", "java"), { recursive: true });
+    fs.mkdirSync(path.join(root, "dynamic"), { recursive: true });
+    fs.writeFileSync(path.join(root, "pom.xml"), '<project><groupId>com.example</groupId><artifactId>reactor</artifactId><modules><module>platform</module><module>missing-pom</module><module>dynamic</module></modules><dependencies><dependency><groupId>org.junit.jupiter</groupId><artifactId>junit-jupiter</artifactId></dependency></dependencies></project>\n');
+    fs.writeFileSync(path.join(root, "mvnw"), "#!/bin/sh\n");
+    fs.writeFileSync(path.join(root, "platform", "pom.xml"), "<project><groupId>com.example</groupId><artifactId>platform</artifactId><modules><module>core</module></modules></project>\n");
+    fs.writeFileSync(path.join(root, "platform", "core", "pom.xml"), "<project><groupId>com.example</groupId><artifactId>core</artifactId></project>\n");
+    fs.writeFileSync(path.join(root, "dynamic", "pom.xml"), '<project><groupId>com.example</groupId><artifactId>${dynamic.name}</artifactId></project>\n');
+    fs.writeFileSync(path.join(root, "src", "main", "java", "RootParser.java"), "class RootParser { String parse(String value) { return value.trim(); } }\n");
+    fs.writeFileSync(path.join(root, "src", "test", "java", "RootParserTest.java"), "import org.junit.jupiter.api.Test; class RootParserTest { @Test void parses() { new RootParser().parse(\"x\"); } }\n");
+    fs.writeFileSync(path.join(root, "platform", "core", "src", "main", "java", "HiddenCoreParser.java"), "class HiddenCoreParser { String parse(String value) { return value.trim(); } }\n");
+
+    const audit = auditKotlinRepo(root);
+
+    assert.equal(audit.profile.testCommand, undefined);
+    assert.ok(audit.profile.blockers.includes("Maven reactor ownership is incomplete because declared modules lack a direct POM with static coordinates: dynamic, missing-pom."));
+    assert.ok(audit.profile.blockers.includes("Nested Maven reactor expansion is outside the supported ownership boundary: platform."));
+    assert.ok(!audit.profile.blockers.includes("No runnable JVM test command detected from Gradle or Maven markers."));
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["src/main/java/RootParser.java"]);
+    assert.ok(!audit.recommended.some((target) => target.path.startsWith("platform/")));
+  });
+
   it("follows only exported Maven dependencies beyond the direct test-module edge", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-maven-transitive-"));
     const modules = ["token-core", "exported-bridge", "provided-bridge", "optional-bridge", "excluded-top", "exported-tests", "provided-tests", "optional-tests", "excluded-tests"];
