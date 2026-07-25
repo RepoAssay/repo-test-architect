@@ -10,6 +10,7 @@ import {
 import {
   analyzeRepoProjectTestPlacement,
   analyzeRepoTestPlacement,
+  analyzeProjectAudits,
   auditRepoProjects,
   auditRepo,
   collectRepoProjectFindings,
@@ -30,6 +31,7 @@ import {
 
 const MAX_DISPLAYED_EXISTING_TEST_PATHS = 5;
 const COMMANDS = [
+  "analyze",
   "doctor",
   "diagnostic-bundle",
   "adapters",
@@ -50,11 +52,59 @@ const COMMANDS = [
   "rank",
   "placement"
 ];
+const PROJECT_AUDIT_COMMANDS = [
+  "analyze",
+  "audit-projects",
+  "summarize-projects",
+  "rank-projects",
+  "plan-projects",
+  "hints-projects",
+  "findings-projects",
+  "placement-projects",
+  "stats-projects"
+];
+const COMMAND_DESCRIPTIONS = Object.freeze({
+  analyze: "Start here for a complete repository review: detection, audits, blockers, findings, ranking, plan, execution hints, commands, and stats.",
+  doctor: "Check runtime and local diagnostics readiness.",
+  "diagnostic-bundle": "Build a sanitized bundle from an explicitly enabled local diagnostics file.",
+  adapters: "List registered adapters and supported boundaries.",
+  "detect-rules": "List deterministic project detection rules.",
+  detect: "Detect project roots and adapter matches without auditing them.",
+  "audit-projects": "Return raw audits for every detected supported project.",
+  "summarize-projects": "Return compact repository audit coverage and project counts.",
+  "rank-projects": "Rank candidates across detected project roots.",
+  "plan-projects": "Generate a project-aware deterministic test plan.",
+  "hints-projects": "Derive execution and context hints for a project-aware plan.",
+  "findings-projects": "Return concise top test-architecture findings.",
+  "placement-projects": "Analyze test placement across detected project owners.",
+  "stats-projects": "Collect deterministic repository audit statistics.",
+  audit: "Audit one explicitly selected project root; defaults to the JavaScript adapter.",
+  plan: "Generate a test plan for one project audit.",
+  hints: "Derive execution and context hints for one project plan.",
+  explain: "Explain one audited target by stable target ID.",
+  rank: "Rank candidates inside one project audit.",
+  placement: "Analyze test placement inside one project audit."
+});
 
-const options = parseArgs(process.argv.slice(2));
+const rawArgs = process.argv.slice(2);
+if (rawArgs[0] === "help" || rawArgs.includes("--help") || rawArgs.includes("-h")) {
+  const requestedCommand = rawArgs[0] === "help"
+    ? rawArgs[1]
+    : ["--help", "-h"].includes(rawArgs[0])
+      ? undefined
+      : rawArgs[0];
+  if (requestedCommand && !COMMANDS.includes(requestedCommand)) {
+    console.error(`Unknown command: ${requestedCommand}`);
+    process.exit(1);
+  }
+  console.log(requestedCommand ? renderCommandHelp(requestedCommand) : renderGlobalHelp());
+  process.exit(0);
+}
+
+const options = parseArgs(rawArgs);
 
 if (!COMMANDS.includes(options.command)) {
-  console.error(`Usage: repo-test-architect <${COMMANDS.join("|")}> <repo> [--diagnostics-file diagnostics.jsonl] [--adapter id] [--format markdown|json] [--from-audit audit.json] [--from-project-audits project-audits.json] [--item id] [--target id] [--owner label] [--changed] [--changed-since ref] [--exclude-project root-or-pattern]`);
+  console.error(renderGlobalHelp());
   process.exit(1);
 }
 
@@ -68,8 +118,8 @@ if (options.fromAuditPath && !["plan", "hints", "explain", "rank", "placement"].
   process.exit(1);
 }
 
-if (options.fromProjectAuditsPath && !["audit-projects", "summarize-projects", "rank-projects", "plan-projects", "hints-projects", "findings-projects", "placement-projects", "stats-projects"].includes(options.command)) {
-  console.error("--from-project-audits is only supported with audit-projects, summarize-projects, rank-projects, plan-projects, hints-projects, findings-projects, placement-projects, and stats-projects commands.");
+if (options.fromProjectAuditsPath && !PROJECT_AUDIT_COMMANDS.includes(options.command)) {
+  console.error(`--from-project-audits is only supported with ${PROJECT_AUDIT_COMMANDS.join(", ")} commands.`);
   process.exit(1);
 }
 
@@ -82,7 +132,7 @@ const detection = options.command === "detect" ? detectRepoProjects(repoRoot, {
 }) : undefined;
 const projectAudits = options.fromProjectAuditsPath
   ? readProjectAuditsJson(options.fromProjectAuditsPath)
-  : ["audit-projects", "summarize-projects", "rank-projects", "plan-projects", "hints-projects", "findings-projects", "placement-projects", "stats-projects"].includes(options.command)
+  : PROJECT_AUDIT_COMMANDS.includes(options.command)
     ? auditRepoProjects(repoRoot, {
       changedPaths: readSelectedChangedPaths(repoRoot, options),
       excludeProjectRoots: options.excludeProjectRoots
@@ -110,6 +160,8 @@ if (options.format === "json") {
   console.log(renderMarkdownDetectionRules(output));
 } else if (options.command === "detect") {
   console.log(renderMarkdownDetection(output));
+} else if (options.command === "analyze") {
+  console.log(renderMarkdownRepositoryAnalysis(output));
 } else if (options.command === "audit-projects") {
   console.log(renderMarkdownProjectAudits(output));
 } else if (options.command === "summarize-projects") {
@@ -275,7 +327,11 @@ function parseArgs(args) {
 
     if (!arg.startsWith("-")) {
       repoPath = arg;
+      continue;
     }
+
+    console.error(`Unknown option: ${arg}. Run repo-test-architect ${command} --help for supported options.`);
+    process.exit(1);
   }
 
   return { command, repoPath, format, fromAuditPath, fromProjectAuditsPath, adapterId, itemId, targetId, owner, changedOnly, changedSinceRef, diagnosticsFilePath, excludeProjectRoots };
@@ -417,6 +473,7 @@ function selectOutput(audit, options) {
 
 function selectProjectOutput(projectAudits, options) {
   if (!projectAudits) return undefined;
+  if (options.command === "analyze") return analyzeProjectAudits(projectAudits);
   if (options.command === "summarize-projects") return summarizeRepoProjectAudits(projectAudits);
   if (options.command === "rank-projects") return rankRepoProjectCandidates(projectAudits);
   if (options.command === "plan-projects") return generateRepoProjectTestPlan(projectAudits);
@@ -427,6 +484,63 @@ function selectProjectOutput(projectAudits, options) {
   if (options.command === "placement-projects") return analyzeRepoProjectTestPlacement(projectAudits);
   if (options.command === "stats-projects") return collectRepoProjectStats(projectAudits);
   return projectAudits;
+}
+
+function renderGlobalHelp() {
+  return [
+    "Repo Test Architect",
+    "",
+    "Usage: repo-test-architect <command> [repo] [options]",
+    "",
+    "Start here:",
+    "  analyze              Complete repository analysis (recommended)",
+    "  doctor               Runtime and diagnostics readiness",
+    "",
+    "Focused repository views:",
+    "  detect               Project roots and adapter matches",
+    "  findings-projects    Concise top architecture findings",
+    "  plan-projects        Project-aware test plan",
+    "  stats-projects       Repository audit statistics",
+    "",
+    "Advanced commands:",
+    `  ${COMMANDS.filter((command) => !["analyze", "doctor", "detect", "findings-projects", "plan-projects", "stats-projects"].includes(command)).join(", ")}`,
+    "",
+    "Run repo-test-architect <command> --help for command guidance.",
+    "See docs/cli-reference.md for the complete command and option reference."
+  ].join("\n");
+}
+
+function renderCommandHelp(command) {
+  const lines = [
+    `Usage: repo-test-architect ${command} [repo] [options]`,
+    "",
+    COMMAND_DESCRIPTIONS[command],
+    "",
+    "Options:",
+    "  --format markdown|json       Select human or machine-readable output"
+  ];
+  if (PROJECT_AUDIT_COMMANDS.includes(command) || command === "detect") {
+    lines.push("  --exclude-project pattern    Exclude an exact project root or quoted subtree/**");
+  }
+  if (PROJECT_AUDIT_COMMANDS.includes(command) && command !== "detect") {
+    lines.push("  --changed                    Limit candidates to changed source files");
+    lines.push("  --changed-since ref          Limit candidates to source files changed since a Git ref");
+  }
+  if (PROJECT_AUDIT_COMMANDS.includes(command)) {
+    lines.push("  --from-project-audits file   Reuse a saved project-audits/v1 artifact");
+  }
+  if (["audit", "plan", "hints", "explain", "rank", "placement"].includes(command)) {
+    lines.push("  --adapter id                 Select the adapter for a single project root");
+  }
+  if (["plan", "hints", "explain", "rank", "placement"].includes(command)) {
+    lines.push("  --from-audit file            Reuse a saved audit/v1 artifact");
+  }
+  if (["plan", "hints", "hints-projects"].includes(command)) lines.push("  --item id                    Select one stable plan item ID");
+  if (command === "explain") lines.push("  --target id                  Select one stable audit target ID");
+  if (command === "placement") lines.push("  --owner label                Override the project owner label");
+  if (command === "diagnostic-bundle") lines.push("  --diagnostics-file file      Read an explicitly enabled local diagnostics JSONL file");
+  lines.push("  -h, --help                   Show this help without scanning the repository");
+  return lines.join("\n");
 }
 
 function renderMarkdownDoctorReport(report) {
@@ -573,6 +687,69 @@ function renderMarkdownProjectAudits(projectAudits) {
     }
   }
 
+  return lines.join("\n");
+}
+
+function renderMarkdownRepositoryAnalysis(analysis) {
+  const lines = [];
+  lines.push("# Repository Test Analysis");
+  lines.push("");
+  lines.push("## Overview");
+  lines.push(`- Projects: ${analysis.summary.projectCount}`);
+  lines.push(`- Audited: ${analysis.summary.auditedProjectCount}`);
+  lines.push(`- Unsupported: ${analysis.summary.unsupportedProjectCount}`);
+  lines.push(`- Audit coverage: ${analysis.summary.auditCoverage}`);
+  lines.push(`- Blockers: ${analysis.summary.blockerCount}`);
+  lines.push(`- Findings: ${analysis.summary.findingCount}`);
+  lines.push(`- Ranked candidates: ${analysis.summary.candidateCount}`);
+  lines.push(`- Plan items: ${analysis.summary.planItemCount}`);
+  lines.push("");
+  lines.push("## Verification Commands");
+  if (analysis.verificationCommands.length === 0) {
+    lines.push("- No runnable verification commands detected.");
+  } else {
+    for (const entry of analysis.verificationCommands) {
+      lines.push(`- ${entry.command} (${entry.projectCount} project${entry.projectCount === 1 ? "" : "s"})`);
+    }
+  }
+  lines.push("");
+  lines.push("## Top Findings");
+  if (analysis.findings.findings.length === 0) {
+    lines.push("- No project findings detected.");
+  } else {
+    for (const finding of analysis.findings.findings) {
+      const subject = finding.target ? `${finding.target} [${finding.targetId}]` : finding.title;
+      const rationale = finding.rationale[0] ? ` ${trimTrailingPeriod(finding.rationale[0])}.` : "";
+      lines.push(`- ${finding.projectRoot}: ${finding.severity} ${finding.category}, priority ${finding.priority}: ${subject}.${rationale}`);
+    }
+  }
+  lines.push("");
+  lines.push("## Recommended Plan");
+  if (analysis.testPlan.items.length === 0) {
+    lines.push("- No plan items generated.");
+  } else {
+    for (const item of analysis.testPlan.items) {
+      lines.push(`- ${item.projectRoot}: ${item.action} ${item.target} [${item.projectItemId}] (${item.testLevel}, priority ${item.priority})`);
+    }
+  }
+  lines.push("");
+  lines.push("## Project Coverage");
+  if (analysis.auditSummary.projects.length === 0) {
+    lines.push("- No supported projects audited.");
+  } else {
+    for (const project of analysis.auditSummary.projects) {
+      lines.push(`- ${project.projectRoot}: ${project.adapterId}, ${project.confidence} confidence, ${project.untestedCandidateCount} untested, command ${project.testCommand ?? "not detected"}`);
+    }
+  }
+  lines.push("");
+  lines.push("## Unsupported Projects");
+  if (analysis.auditSummary.unsupportedProjects.length === 0) {
+    lines.push("- No unsupported projects.");
+  } else {
+    for (const project of analysis.auditSummary.unsupportedProjects) lines.push(formatUnsupportedProject(project));
+  }
+  lines.push("");
+  lines.push("Use --format json for the complete project audits, evidence, findings, ranking, plan, execution hints, and stats.");
   return lines.join("\n");
 }
 

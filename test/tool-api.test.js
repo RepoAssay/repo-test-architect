@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import path from "node:path";
 import { describe, it } from "node:test";
 import {
+  analyzeProjectAudits,
+  analyzeRepository,
   analyzeRepoTestPlacement,
   analyzeRepoProjectTestPlacement,
   auditRepoProjects,
@@ -25,6 +27,39 @@ import {
 } from "../src/core/tool-api.js";
 
 describe("tool API", () => {
+  it("analyzes a repository in one audit pass", () => {
+    const analysis = analyzeRepository(path.resolve("examples/polyglot-workspace"));
+
+    assert.equal(analysis.schemaVersion, "repository-analysis/v1");
+    assert.deepEqual(analysis.summary, {
+      projectCount: 3,
+      auditedProjectCount: 3,
+      unsupportedProjectCount: 0,
+      auditCoverage: "complete",
+      blockerCount: 2,
+      findingCount: 5,
+      candidateCount: 3,
+      planItemCount: 3,
+      verificationCommandCount: 2
+    });
+    assert.deepEqual(analysis.verificationCommands, [
+      { command: "gradle test", projectCount: 1 },
+      { command: "npm run test", projectCount: 1 }
+    ]);
+  });
+
+  it("derives repository analysis from a saved project audit", () => {
+    const projectAudits = auditRepoProjects(path.resolve("examples/polyglot-workspace"));
+    const analysis = analyzeProjectAudits(projectAudits);
+
+    assert.equal(analysis.projectAudits, projectAudits);
+    assert.equal(analysis.auditSummary.schemaVersion, "project-audit-summary/v1");
+    assert.equal(analysis.candidateRanking.schemaVersion, "project-candidate-ranking/v1");
+    assert.equal(analysis.testPlan.schemaVersion, "project-test-plan/v1");
+    assert.equal(analysis.executionHints.schemaVersion, "plan-execution-hints/v1");
+    assert.equal(analysis.stats.schemaVersion, "project-stats/v1");
+  });
+
   it("lists registered adapters", () => {
     const registry = getAdapterRegistry();
 

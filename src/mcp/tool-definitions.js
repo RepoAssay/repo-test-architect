@@ -1,6 +1,7 @@
 import {
   analyzeRepoProjectTestPlacement,
   analyzeRepoTestPlacement,
+  analyzeRepository,
   auditRepoProjects,
   auditRepo,
   collectRepoProjectFindings,
@@ -28,6 +29,7 @@ const readOnlyAnnotations = Object.freeze({
 });
 
 const toolTitles = Object.freeze({
+  analyze_repository: "Analyze Repository",
   list_adapters: "List Adapters",
   list_project_detection_rules: "List Project Detection Rules",
   detect_projects: "Detect Projects",
@@ -49,6 +51,24 @@ const toolTitles = Object.freeze({
 });
 
 const toolDefinitions = [
+  {
+    name: "analyze_repository",
+    description: "Start here for an unfamiliar repository or a general test-architecture review. Detect and audit all project roots once, then return the complete deterministic summary, blockers, findings, ranking, plan, execution hints, verification commands, and stats. Prefer this over audit_repo unless one project root and adapter were explicitly selected.",
+    outputArtifact: artifact("repository-analysis/v1", "schemas/repository-analysis-v1.schema.json"),
+    inputSchema: objectSchema({
+      repoRoot: { type: "string", description: "Repository root path." },
+      changedPaths: {
+        type: "array",
+        description: "Optional repository-relative source paths to limit target selection inside detected projects.",
+        items: { type: "string", minLength: 1 }
+      },
+      excludeProjectRoots: {
+        type: "array",
+        description: "Optional exact project roots or subtree patterns such as examples/** to exclude before analysis.",
+        items: { type: "string", minLength: 1 }
+      }
+    }, ["repoRoot"])
+  },
   {
     name: "list_adapters",
     description: "List registered language adapters available to audit repositories.",
@@ -76,7 +96,7 @@ const toolDefinitions = [
   },
   {
     name: "audit_projects",
-    description: "Audit detected supported projects and report unsupported project roots.",
+    description: "Return raw per-project audit artifacts for all detected supported roots and report unsupported roots. Use when a downstream specialist tool needs project-audits/v1; for a complete first-pass review, prefer analyze_repository.",
     outputArtifact: artifact("project-audits/v1", "schemas/project-audits-v1.schema.json"),
     inputSchema: objectSchema({
       repoRoot: { type: "string", description: "Repository root path." },
@@ -94,7 +114,7 @@ const toolDefinitions = [
   },
   {
     name: "summarize_project_audits",
-    description: "Summarize project audit coverage, unsupported reasons, and project-level counts without merging cross-project rankings.",
+    description: "Summarize an existing project-audits/v1 artifact. Use only when a compact coverage view is needed separately; analyze_repository already includes this result.",
     outputArtifact: artifact("project-audit-summary/v1", "schemas/project-audit-summary-v1.schema.json"),
     inputSchema: objectSchema({
       projectAudits: { type: "object", description: "A project-audits/v1 artifact." }
@@ -102,7 +122,7 @@ const toolDefinitions = [
   },
   {
     name: "rank_project_candidates",
-    description: "Rank test candidates across project-audits while preserving project identity.",
+    description: "Rank candidates from an existing project-audits/v1 artifact while preserving project identity. analyze_repository already includes this result.",
     outputArtifact: artifact("project-candidate-ranking/v1", "schemas/project-candidate-ranking-v1.schema.json"),
     inputSchema: objectSchema({
       projectAudits: { type: "object", description: "A project-audits/v1 artifact." }
@@ -110,7 +130,7 @@ const toolDefinitions = [
   },
   {
     name: "generate_project_test_plan",
-    description: "Generate a project-aware test plan from audited project roots.",
+    description: "Generate a project-aware plan from an existing project-audits/v1 artifact. analyze_repository already includes this result.",
     outputArtifact: artifact("project-test-plan/v1", "schemas/project-test-plan-v1.schema.json"),
     inputSchema: objectSchema({
       projectAudits: { type: "object", description: "A project-audits/v1 artifact." }
@@ -118,7 +138,7 @@ const toolDefinitions = [
   },
   {
     name: "collect_project_findings",
-    description: "Collect concise top test architecture findings across project-audits.",
+    description: "Collect concise top findings from an existing project-audits/v1 artifact. analyze_repository already includes this result.",
     outputArtifact: artifact("project-findings/v1", "schemas/project-findings-v1.schema.json"),
     inputSchema: objectSchema({
       projectAudits: { type: "object", description: "A project-audits/v1 artifact." }
@@ -142,7 +162,7 @@ const toolDefinitions = [
   },
   {
     name: "audit_repo",
-    description: "Audit a repository and return the deterministic audit graph.",
+    description: "Audit one explicitly selected project root and return audit/v1. Use only when the caller selected a single adapter or project boundary; adapterId defaults to javascript. For an unfamiliar or complete repository review, use analyze_repository.",
     outputArtifact: artifact("audit/v1", "schemas/audit-v1.schema.json"),
     inputSchema: objectSchema({
       repoRoot: { type: "string", description: "Repository root path." },
@@ -156,7 +176,7 @@ const toolDefinitions = [
   },
   {
     name: "get_audit_graph",
-    description: "Return a validated audit graph artifact.",
+    description: "Validate and return an existing audit/v1 artifact unchanged; this does not scan a repository. Use audit_repo or analyze_repository for repository discovery.",
     outputArtifact: artifact("audit/v1", "schemas/audit-v1.schema.json"),
     inputSchema: objectSchema({
       audit: { type: "object", description: "An audit/v1 artifact." }
@@ -208,7 +228,7 @@ const toolDefinitions = [
   },
   {
     name: "generate_selected_test",
-    description: "Return a structured deferred result until native test generation is enabled.",
+    description: "Return a structured deferred result. This tool does not generate or write test code while native generation remains disabled.",
     outputArtifact: artifact("generation-deferred/v1", "schemas/generation-deferred-v1.schema.json"),
     inputSchema: objectSchema({
       planItemId: { type: "string", description: "Stable plan item id selected for future generation." }
@@ -236,6 +256,11 @@ export function callTool(name, args = {}) {
 
   try {
     switch (name) {
+      case "analyze_repository":
+        return analyzeRepository(requireString(args.repoRoot, "repoRoot"), {
+          changedPaths: optionalStringArray(args.changedPaths, "changedPaths"),
+          excludeProjectRoots: optionalStringArray(args.excludeProjectRoots, "excludeProjectRoots")
+        });
       case "list_adapters":
         return getAdapterRegistry();
       case "list_project_detection_rules":

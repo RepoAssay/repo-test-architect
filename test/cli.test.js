@@ -9,6 +9,67 @@ const cliPath = "src/cli/index.js";
 const fixturePath = "examples/node-vitest-basic";
 
 describe("CLI", () => {
+  it("shows the streamlined entrypoint in global help without scanning", () => {
+    const output = execFileSync(process.execPath, [cliPath, "--help"], { encoding: "utf8" });
+
+    assert.match(output, /Usage: repo-test-architect/);
+    assert.match(output, /analyze\s+Complete repository analysis \(recommended\)/);
+    assert.doesNotMatch(output, /# Repository Analysis/);
+  });
+
+  it("shows command help without resolving or scanning the repository", () => {
+    const output = execFileSync(
+      process.execPath,
+      [cliPath, "analyze", "/path/that/does/not/exist", "--help"],
+      { encoding: "utf8" }
+    );
+
+    assert.match(output, /Usage: repo-test-architect analyze/);
+    assert.match(output, /--from-project-audits/);
+    assert.match(output, /--changed/);
+  });
+
+  it("analyzes a repository in one command with compact markdown", () => {
+    const output = execFileSync(
+      process.execPath,
+      [cliPath, "analyze", "examples/polyglot-workspace"],
+      { encoding: "utf8" }
+    );
+
+    assert.match(output, /^# Repository Test Analysis/);
+    assert.match(output, /- Projects: 3/);
+    assert.match(output, /- Audited: 3/);
+    assert.match(output, /## Verification Commands/);
+    assert.match(output, /gradle test/);
+    assert.match(output, /npm run test/);
+    assert.match(output, /## Top Findings/);
+    assert.match(output, /## Recommended Plan/);
+    assert.match(output, /--format json/);
+  });
+
+  it("emits the complete repository analysis as JSON", () => {
+    const output = execFileSync(
+      process.execPath,
+      [cliPath, "analyze", "examples/polyglot-workspace", "--format=json"],
+      { encoding: "utf8" }
+    );
+    const analysis = JSON.parse(output);
+
+    assert.equal(analysis.schemaVersion, "repository-analysis/v1");
+    assert.equal(analysis.summary.projectCount, 3);
+    assert.equal(analysis.summary.planItemCount, 3);
+    assert.equal(analysis.projectAudits.schemaVersion, "project-audits/v1");
+    assert.equal(analysis.findings.schemaVersion, "project-findings/v1");
+    assert.equal(analysis.executionHints.schemaVersion, "plan-execution-hints/v1");
+  });
+
+  it("rejects unknown options instead of silently ignoring them", () => {
+    assert.throws(
+      () => execFileSync(process.execPath, [cliPath, "analyze", ".", "--mystery"], { stdio: "pipe" }),
+      /Command failed/
+    );
+  });
+
   it("reports local diagnostic readiness without enabling external reporting", () => {
     const output = execFileSync(process.execPath, [cliPath, "doctor", ".", "--format=json"], {
       encoding: "utf8",

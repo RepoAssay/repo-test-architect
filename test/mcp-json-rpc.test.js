@@ -20,6 +20,7 @@ describe("MCP JSON-RPC scaffold", () => {
     assert.equal(response.result.protocolVersion, "test-protocol");
     assert.equal(response.result.serverInfo.name, "repo-test-architect");
     assert.equal(response.result.serverInfo.version, "0.1.1");
+    assert.match(response.result.instructions, /Start with analyze_repository/i);
   });
 
   it("lists tools", () => {
@@ -30,6 +31,8 @@ describe("MCP JSON-RPC scaffold", () => {
     });
 
     assert.deepEqual(response.result.tools.map((tool) => tool.name), expectedMcpToolNames);
+    assert.equal(response.result.tools[0].name, "analyze_repository");
+    assert.equal(response.result.tools[0].title, "Analyze Repository");
     assert.equal(response.result.tools.find((tool) => tool.name === "audit_repo").title, "Audit Repository");
     assert.deepEqual(response.result.tools.find((tool) => tool.name === "audit_repo").annotations, {
       readOnlyHint: true,
@@ -56,6 +59,23 @@ describe("MCP JSON-RPC scaffold", () => {
     assert.equal(response.id, 3);
     assert.equal(response.result.content[0].type, "text");
     assert.equal(audit.schemaVersion, "audit/v1");
+  });
+
+  it("calls the canonical repository analysis tool", () => {
+    const response = handleJsonRpcRequest({
+      jsonrpc: "2.0",
+      id: 8,
+      method: "tools/call",
+      params: {
+        name: "analyze_repository",
+        arguments: { repoRoot: "./examples/polyglot-workspace" }
+      }
+    });
+    const analysis = JSON.parse(response.result.content[0].text);
+
+    assert.equal(analysis.schemaVersion, "repository-analysis/v1");
+    assert.equal(analysis.summary.projectCount, 3);
+    assert.equal(analysis.testPlan.schemaVersion, "project-test-plan/v1");
   });
 
   it("returns JSON-RPC errors", () => {

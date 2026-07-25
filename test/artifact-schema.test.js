@@ -10,6 +10,7 @@ import { auditDetectedProjects } from "../src/core/project-auditor.js";
 import { rankProjectTestCandidates } from "../src/core/project-candidate-ranking.js";
 import { detectProjects, getProjectDetectionRules } from "../src/core/project-detector.js";
 import { createProjectFindings } from "../src/core/project-findings.js";
+import { createRepositoryAnalysis } from "../src/core/repository-analysis.js";
 import { analyzeProjectTestPlacement } from "../src/core/project-test-placement-analysis.js";
 import { createProjectTestPlan } from "../src/core/project-test-plan.js";
 import { rankTestCandidates } from "../src/core/rank-test-candidates.js";
@@ -48,6 +49,7 @@ const projectCandidateRankingSchema = readJson("schemas/project-candidate-rankin
 const projectTestPlanSchema = readJson("schemas/project-test-plan-v1.schema.json");
 const projectFindingsSchema = readJson("schemas/project-findings-v1.schema.json");
 const projectStatsSchema = readJson("schemas/project-stats-v1.schema.json");
+const repositoryAnalysisSchema = readJson("schemas/repository-analysis-v1.schema.json");
 const modelConsistencyScenarioSchema = readJson("schemas/model-consistency-scenario-v1.schema.json");
 const modelConsistencySummarySchema = readJson("schemas/model-consistency-summary-v1.schema.json");
 const modelConsistencyComparisonSchema = readJson("schemas/model-consistency-comparison-v1.schema.json");
@@ -279,6 +281,15 @@ describe("project stats artifact schema compatibility", () => {
     const artifact = collectProjectStats(projectAudits);
 
     assertMatchesSchema(artifact, projectStatsSchema, "project-stats.json");
+  });
+});
+
+describe("repository analysis artifact schema compatibility", () => {
+  it("validates repository-analysis/v1", () => {
+    const projectAudits = auditDetectedProjects(path.resolve("examples/polyglot-workspace"));
+    const artifact = createRepositoryAnalysis(projectAudits);
+
+    assertMatchesSchema(artifact, repositoryAnalysisSchema, "repository-analysis.json");
   });
 });
 

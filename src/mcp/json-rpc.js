@@ -1,7 +1,7 @@
 import { toMcpToolResult } from "./responses.js";
 import { callTool, mcpTools } from "./tool-definitions.js";
 import { toSafeMcpError } from "./errors.js";
-import { mcpServerInfo } from "./server-info.js";
+import { mcpServerInfo, mcpServerInstructions } from "./server-info.js";
 
 export function handleJsonRpcMessage(message) {
   if (!Array.isArray(message)) {
@@ -35,7 +35,8 @@ export function handleJsonRpcRequest(request) {
         serverInfo: mcpServerInfo,
         capabilities: {
           tools: {}
-        }
+        },
+        instructions: mcpServerInstructions
       });
     }
 

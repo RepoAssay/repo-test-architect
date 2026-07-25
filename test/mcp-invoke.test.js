@@ -32,6 +32,20 @@ describe("MCP invoke harness", () => {
     assert.deepEqual(audit.profile.testFrameworks, ["vitest"]);
   });
 
+  it("calls the canonical repository analysis tool", () => {
+    const output = execFileSync(
+      process.execPath,
+      [invokePath, "call", "analyze_repository", JSON.stringify({ repoRoot: "./examples/polyglot-workspace" })],
+      { encoding: "utf8" }
+    );
+    const analysis = JSON.parse(output);
+
+    assert.equal(analysis.schemaVersion, "repository-analysis/v1");
+    assert.equal(analysis.summary.auditCoverage, "complete");
+    assert.equal(analysis.candidateRanking.schemaVersion, "project-candidate-ranking/v1");
+    assert.equal(analysis.stats.schemaVersion, "project-stats/v1");
+  });
+
   it("calls a tool with JSON args from a file", () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-mcp-"));
     const argsPath = path.join(tempDir, "args.json");

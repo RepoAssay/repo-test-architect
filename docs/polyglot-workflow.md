@@ -22,6 +22,15 @@ repo root
 
 Each step emits a stable artifact so later steps can reuse saved facts instead of rescanning the repository.
 
+For the normal end-to-end path, run the whole flow with one command:
+
+```powershell
+node ./src/cli/index.js analyze ./examples/polyglot-workspace
+node ./src/cli/index.js analyze ./examples/polyglot-workspace --format json
+```
+
+This emits `repository-analysis/v1`. Its child artifacts remain available for advanced consumers, while the Markdown view gives humans the summary, top findings, recommended plan, project coverage, and verification commands without requiring separate calls.
+
 ## 1. Detect Projects
 
 ```powershell
@@ -61,6 +70,7 @@ Quote `**` patterns in shells that expand globs.
 Project-derived commands can read a saved `project-audits/v1` file:
 
 ```powershell
+node ./src/cli/index.js analyze --from-project-audits ./project-audits.json --format json
 node ./src/cli/index.js summarize-projects --from-project-audits ./project-audits.json --format json
 node ./src/cli/index.js rank-projects --from-project-audits ./project-audits.json --format json
 node ./src/cli/index.js plan-projects --from-project-audits ./project-audits.json --format json

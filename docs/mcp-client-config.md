@@ -2,7 +2,7 @@
 
 Repo Test Architect should be used as a local stdio MCP server for repository audits.
 
-The MCP client starts the server process, then calls tools such as `list_project_detection_rules`, `detect_projects`, and `audit_projects`.
+The MCP client starts the server process. For an unfamiliar repository or a general review, the connected model should call `analyze_repository`; specialist tools remain available for narrower questions and saved artifacts.
 
 ## Local Checkout
 
@@ -100,6 +100,7 @@ For deterministic tool checks without an MCP client, use the local invoke harnes
 
 ```powershell
 npm run mcp:tools
+npm run mcp:analyze:example
 npm run mcp:detect-rules
 npm run mcp:detect:example
 ```

@@ -3,6 +3,18 @@ import fs from "node:fs";
 import { describe, it } from "node:test";
 
 describe("schema files", () => {
+  it("documents repository-analysis/v1", () => {
+    const schema = readSchema("schemas/repository-analysis-v1.schema.json");
+
+    assert.equal(schema.properties.schemaVersion.const, "repository-analysis/v1");
+    for (const field of ["projectAudits", "auditSummary", "findings", "candidateRanking", "testPlan", "executionHints", "stats"]) {
+      assert.ok(schema.required.includes(field));
+    }
+    assert.ok(schema.properties.summary.required.includes("auditCoverage"));
+    assert.ok(schema.properties.summary.required.includes("verificationCommandCount"));
+    assert.deepEqual(schema.properties.verificationCommands.items.required, ["command", "projectCount"]);
+  });
+
   it("documents audit/v1", () => {
     const schema = readSchema("schemas/audit-v1.schema.json");
 
