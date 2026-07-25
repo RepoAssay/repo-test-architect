@@ -87,8 +87,9 @@ Implemented:
 - public-readiness record covering the completed npm and official MCP Registry launch
 - adapter-hardening plan that prioritizes shared conformance and deeper JavaScript/TypeScript, Python, Swift, and bounded Kotlin/JVM validation before adding ecosystems
 - Node 20-compatible instrumented line, branch, and function coverage floors for all four adapter-owned audit implementations
+- deterministic 400-source/200-test performance and evidence-count regression gates for JavaScript/TypeScript, Python, Kotlin/JVM, and Swift
 - alpha-readiness checklist for the test architecture audit milestone before native generation
-- deterministic `npm run alpha:check` gate for tests, adapter implementation coverage, adapter corpus validation, JavaScript performance/evidence regression, golden audits, model consistency, demo behavior, and local MCP transport without npm packaging requirements
+- deterministic `npm run alpha:check` gate for tests, adapter implementation coverage, adapter corpus validation, all-adapter performance/evidence regression, golden audits, model consistency, demo behavior, and local MCP transport without npm packaging requirements
 - real-repo audit reports for owned JavaScript/TypeScript and Swift repositories, including Collectors Grimoire and `cg-*` sibling packages
 - authenticated public-repository discovery and ranking profiles for React, JavaScript/TypeScript workspaces, SwiftPM, SwiftUI/Xcode, Vapor, Swift Bazel, Swift macros/plugins, CocoaPods-era Apple projects, Gradle JVM, and Maven JVM validation targets
 - product positioning note for audit-first differentiation, initial audience, business paths, proof points, and anti-positioning

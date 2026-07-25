@@ -42,6 +42,7 @@ The registry maturity changed to `supported` after these gates were satisfied:
 - cover pytest and unittest commands across plain pip, setuptools, uv, Poetry, and Hatch projects
 - record known false positives, false negatives, unsupported layouts, and blocker behavior in a real-repository report
 - add golden audit/plan fixtures and model-consistency locks for every heuristic changed by live validation
+- keep the generated 400-source/200-test semantic and timing regression gate green
 - keep `npm run alpha:check` passing in a clean local environment
 
 ## Known Gaps

@@ -103,6 +103,9 @@ describe("package manifest", () => {
     assert.equal(packageJson.scripts["corpus:check"], "node ./scripts/check-validation-corpus.js");
     assert.equal(packageJson.scripts["adapter:coverage:check"], "node ./scripts/check-adapter-coverage.js");
     assert.equal(packageJson.scripts["javascript:performance:check"], "node ./scripts/check-javascript-performance.js");
+    assert.equal(packageJson.scripts["python:performance:check"], "node ./scripts/check-python-performance.js");
+    assert.equal(packageJson.scripts["kotlin:performance:check"], "node ./scripts/check-kotlin-performance.js");
+    assert.equal(packageJson.scripts["swift:performance:check"], "node ./scripts/check-swift-performance.js");
     assert.equal(packageJson.scripts["demo:check"], "node ./scripts/check-demo-script.js");
     assert.equal(packageJson.scripts["mcp:smoke"], "node ./scripts/check-mcp-stdio-smoke.js");
     assert.equal(packageJson.scripts["audit:prod"], "npm audit --omit=dev");
@@ -123,6 +126,9 @@ describe("package manifest", () => {
       "adapter:coverage:check",
       "corpus:check",
       "javascript:performance:check",
+      "python:performance:check",
+      "kotlin:performance:check",
+      "swift:performance:check",
       "eval:check",
       "model-consistency:check",
       "demo:check",
@@ -142,6 +148,9 @@ describe("package manifest", () => {
       "adapter:coverage:check",
       "corpus:check",
       "javascript:performance:check",
+      "python:performance:check",
+      "kotlin:performance:check",
+      "swift:performance:check",
       "eval:check",
       "model-consistency:check",
       "demo:check",
