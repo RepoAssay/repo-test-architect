@@ -6,6 +6,7 @@ import { auditSwiftRepo } from "../adapters/swift/audit.js";
 /**
  * @typedef {object} AuditRepoOptions
  * @property {string[]} [changedPaths]
+ * @property {string} [repositoryRoot]
  *
  * @typedef {object} RuntimeAdapter
  * @property {string} id
@@ -71,7 +72,8 @@ export const adapters = [
     emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"],
     audit(repoRoot, options = {}) {
       return auditPythonRepo(repoRoot, {
-        changedPaths: options.changedPaths
+        changedPaths: options.changedPaths,
+        repositoryRoot: options.repositoryRoot
       });
     }
   },

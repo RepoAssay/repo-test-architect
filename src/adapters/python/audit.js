@@ -5,11 +5,14 @@ const SOURCE_EXTENSIONS = [".py"];
 const DEFAULT_PYTEST_PYTHON_FILES = ["test_*.py", "*_test.py"];
 const EMPTY_PYTEST_DISCOVERY = Object.freeze({
   configPath: undefined,
+  configContent: "",
+  inherited: false,
   testPaths: [],
   pythonFiles: [],
   testPathsDeclared: false,
   pythonFilesDeclared: false,
-  hasDiscoveryRules: false
+  hasDiscoveryRules: false,
+  blockers: []
 });
 const IGNORED_TOP_LEVEL_PACKAGES = new Set([
   "benchmark", "benchmarks", "build", "ci", "dist", "doc", "docs", "docs_src", "example", "examples",
@@ -18,7 +21,7 @@ const IGNORED_TOP_LEVEL_PACKAGES = new Set([
 
 export function auditPythonRepo(root, options = {}) {
   const files = readRepoFiles(root);
-  const pytestDiscovery = detectPytestDiscovery(files);
+  const pytestDiscovery = detectPytestDiscovery(root, files, options.repositoryRoot);
   const profile = buildProfile(root, files, pytestDiscovery);
   const sourceLayout = detectOwnedSourceLayout(files);
   const changedPaths = options.changedPaths ? new Set(options.changedPaths.map((currentPath) => normalizeChangedPath(root, currentPath))) : undefined;
@@ -158,7 +161,7 @@ function shouldRead(relative) {
   );
 }
 
-function detectPytestDiscovery(files) {
+function detectPytestDiscovery(root, files, repositoryRoot = root) {
   const candidates = [
     ["pytest.toml", ["pytest"]],
     [".pytest.toml", ["pytest"]],
@@ -173,24 +176,66 @@ function detectPytestDiscovery(files) {
   for (const [configPath, sections] of candidates) {
     const config = fileByPath.get(configPath);
     if (!config || !sections.some((section) => hasStaticConfigSection(config.content, section))) continue;
-    const rawTestPaths = extractStaticSectionSetting(config.content, sections, "testpaths");
-    const rawPythonFiles = extractStaticSectionSetting(config.content, sections, "python_files");
-    const testPaths = parseStaticConfigValues(rawTestPaths)
-      .map(normalizeConfiguredTestPath)
-      .filter(Boolean);
-    const pythonFiles = parseStaticConfigValues(rawPythonFiles)
-      .filter((pattern) => isBoundedPythonFilePattern(pattern));
-    return {
-      configPath,
-      testPaths: [...new Set(testPaths)],
-      pythonFiles: [...new Set(pythonFiles)],
-      testPathsDeclared: rawTestPaths !== undefined,
-      pythonFilesDeclared: rawPythonFiles !== undefined,
-      hasDiscoveryRules: rawTestPaths !== undefined || rawPythonFiles !== undefined
-    };
+    return buildPytestDiscovery(root, path.resolve(root, configPath), config.content, sections, false);
+  }
+
+  const resolvedRoot = path.resolve(root);
+  const resolvedRepositoryRoot = path.resolve(repositoryRoot);
+  if (!isPathInside(resolvedRepositoryRoot, resolvedRoot)) return EMPTY_PYTEST_DISCOVERY;
+
+  let currentDirectory = path.dirname(resolvedRoot);
+  while (isPathInside(resolvedRepositoryRoot, currentDirectory)) {
+    for (const [configName, sections] of candidates) {
+      const absoluteConfigPath = path.join(currentDirectory, configName);
+      if (!fs.existsSync(absoluteConfigPath) || !fs.statSync(absoluteConfigPath).isFile()) continue;
+      const content = fs.readFileSync(absoluteConfigPath, "utf8");
+      if (!sections.some((section) => hasStaticConfigSection(content, section))) continue;
+      return buildPytestDiscovery(root, absoluteConfigPath, content, sections, true);
+    }
+    if (currentDirectory === resolvedRepositoryRoot) break;
+    currentDirectory = path.dirname(currentDirectory);
   }
 
   return EMPTY_PYTEST_DISCOVERY;
+}
+
+function buildPytestDiscovery(root, absoluteConfigPath, content, sections, inherited) {
+  const rawTestPaths = extractStaticSectionSetting(content, sections, "testpaths");
+  const rawPythonFiles = extractStaticSectionSetting(content, sections, "python_files");
+  const rawConfiguredTestPaths = parseStaticConfigValues(rawTestPaths);
+  const configuredTestPaths = rawConfiguredTestPaths.map(normalizeConfiguredTestPath).filter(Boolean);
+  const resolvedRoot = path.resolve(root);
+  const configDirectory = path.dirname(absoluteConfigPath);
+  const resolvedTestPaths = configuredTestPaths.map((testPath) => path.resolve(configDirectory, testPath));
+  const unboundedTestPaths = inherited && (
+    configuredTestPaths.length !== rawConfiguredTestPaths.length ||
+    resolvedTestPaths.some((testPath) => !isPathInside(resolvedRoot, testPath))
+  );
+  const testPaths = inherited
+    ? resolvedTestPaths
+      .filter((testPath) => isPathInside(resolvedRoot, testPath))
+      .map((testPath) => normalizePath(path.relative(resolvedRoot, testPath)))
+    : configuredTestPaths;
+  const pythonFiles = parseStaticConfigValues(rawPythonFiles)
+    .filter((pattern) => isBoundedPythonFilePattern(pattern));
+  return {
+    configPath: normalizePath(path.relative(resolvedRoot, absoluteConfigPath)),
+    configContent: content,
+    inherited,
+    testPaths: [...new Set(testPaths)],
+    pythonFiles: [...new Set(pythonFiles)],
+    testPathsDeclared: rawTestPaths !== undefined,
+    pythonFilesDeclared: rawPythonFiles !== undefined,
+    hasDiscoveryRules: rawTestPaths !== undefined || rawPythonFiles !== undefined,
+    blockers: unboundedTestPaths
+      ? ["Inherited pytest testpaths cannot be bounded to the audited project."]
+      : []
+  };
+}
+
+function isPathInside(parent, candidate) {
+  const relative = path.relative(path.resolve(parent), path.resolve(candidate));
+  return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
 }
 
 function hasStaticConfigSection(content, section) {
@@ -313,11 +358,14 @@ function buildProfile(root, files, pytestDiscovery) {
   const configText = files
     .filter((file) => [".coveragerc", ".pytest.ini", ".pytest.toml", "noxfile.py", "pyproject.toml", "pytest.ini", "pytest.toml", "requirements.txt", "setup.cfg", "setup.py", "tox.ini"].includes(normalizePath(file.path)))
     .map((file) => file.content)
+    .concat(pytestDiscovery.inherited ? [pytestDiscovery.configContent] : [])
     .join("\n");
   const testFrameworks = detectTestFrameworks(paths, configText, files, pytestDiscovery);
-  const testCommand = detectTestCommand(paths, configText, testFrameworks, files);
+  const testCommand = pytestDiscovery.blockers.length === 0
+    ? detectTestCommand(paths, configText, testFrameworks, files)
+    : undefined;
   const existingTestLocations = detectExistingTestLocations(paths, pytestDiscovery);
-  const blockers = detectBlockers(testCommand, testFrameworks);
+  const blockers = detectBlockers(testCommand, testFrameworks, pytestDiscovery.blockers);
 
   return {
     root,
@@ -431,6 +479,7 @@ function detectSetupSignals(paths, configText, files, pytestDiscovery) {
   if (paths.includes("pyproject.toml")) signals.add("pyproject");
   if (paths.includes("requirements.txt")) signals.add("requirements");
   if (pytestDiscovery.configPath) signals.add("pytest config");
+  if (pytestDiscovery.inherited) signals.add("inherited pytest config");
   if (tool === "uv") signals.add("uv project");
   if (tool === "poetry") signals.add("poetry project");
   if (tool === "hatch") signals.add("hatch project");
@@ -479,15 +528,17 @@ function detectPythonTool(paths, configText) {
   return undefined;
 }
 
-function detectBlockers(testCommand, frameworks) {
+function detectBlockers(testCommand, frameworks, commandBlockers = []) {
   const blockers = [];
   if (frameworks.length === 0) blockers.push("No supported Python test framework detected.");
-  if (!testCommand) blockers.push("No runnable Python test command detected from project markers.");
+  blockers.push(...commandBlockers);
+  if (!testCommand && commandBlockers.length === 0) blockers.push("No runnable Python test command detected from project markers.");
   return blockers;
 }
 
 function scoreProfileConfidence(testFrameworks, existingTestLocations, blockers) {
   if (blockers.length > 1) return "low";
+  if (blockers.length > 0) return testFrameworks.length > 0 ? "medium" : "low";
   if (testFrameworks.length > 0 && existingTestLocations.length > 0) return "high";
   if (testFrameworks.length > 0) return "medium";
   return "low";

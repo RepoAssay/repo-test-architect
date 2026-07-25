@@ -248,7 +248,7 @@ The active sequence is defined in the [Adapter Hardening Plan](adapter-hardening
 
 1. Shared validation-corpus manifest, scorecard schema, semantic checker, adapter-conformance helper, and per-adapter implementation coverage floors are complete. All 12 pinned cases pass standardized three-run stability and performance measurement.
 2. JavaScript/TypeScript workspace command ownership, bounded runner-config/custom test-location discovery, module-boundary hardening, the generated large-suite regression gate, and conservative literal Playwright/Cypress request-to-route evidence are complete for the static patterns in the support matrix.
-3. Python literal multi-package/namespace ownership, bounded root pytest discovery, exact package-local relative imports, one-hop same-owner source dependencies, and static framework test-client route evidence are complete. Next: configuration inheritance and command-selection ambiguity.
+3. Python literal multi-package/namespace ownership, bounded root and repository-owned ancestor pytest discovery, exact package-local relative imports, one-hop same-owner source dependencies, and static framework test-client route evidence are complete. Cross-owner inherited `testpaths` now produce an explicit command blocker; next Python pressure can target other ambiguous runner selections or plugin-mutated discovery.
 4. Harden Kotlin/JVM Gradle/Maven ownership and conservative unsupported-graph behavior.
 5. Harden SwiftPM/Xcode ownership ambiguity and symbol-evidence boundaries.
 6. Continue the cross-adapter trust pass using the recorded real-repository distributions and deterministic regression budgets.
