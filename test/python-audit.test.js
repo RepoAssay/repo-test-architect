@@ -437,6 +437,254 @@ def run(value):
     }]);
   });
 
+  it("matches a FastAPI TestClient request through exact app and router wiring", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-python-fastapi-client-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "app", "routes"), { recursive: true });
+    fs.mkdirSync(path.join(root, "tests"), { recursive: true });
+    fs.writeFileSync(path.join(root, "requirements.txt"), "fastapi\npytest\n");
+    fs.writeFileSync(path.join(root, "app", "__init__.py"), "");
+    fs.writeFileSync(
+      path.join(root, "app", "main.py"),
+      `from fastapi import FastAPI
+from app.routes.users import router as users_router
+
+app = FastAPI()
+app.include_router(users_router, prefix="/v1")
+`
+    );
+    fs.writeFileSync(
+      path.join(root, "app", "routes", "users.py"),
+      `from fastapi import APIRouter
+
+router = APIRouter(prefix="/users")
+
+@router.get("/{user_id}")
+def get_user(user_id):
+    if not user_id:
+        return None
+    return {"id": user_id}
+
+@router.post("/{user_id}")
+def update_user(user_id):
+    if not user_id:
+        return None
+    return {"id": user_id}
+`
+    );
+    fs.writeFileSync(
+      path.join(root, "tests", "test_users.py"),
+      `from fastapi.testclient import TestClient
+from app.main import app
+
+client = TestClient(app)
+
+def test_get_user():
+    response = client.get("/v1/users/user-1?expanded=true")
+    assert response.status_code == 200
+`
+    );
+
+    const audit = auditPythonRepo(root);
+    const route = audit.coveredButRisky.find((target) => target.path === "app/routes/users.py");
+
+    assert.deepEqual(audit.untestedCandidates, []);
+    assert.deepEqual(route.existingTestEvidence, [{
+      testPath: "tests/test_users.py",
+      kind: "python-test-client-route",
+      strength: "indirect",
+      viaUsage: "asserted"
+    }]);
+  });
+
+  it("matches a consumed Flask client fixture through a literal application factory", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-python-flask-client-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "webapp"), { recursive: true });
+    fs.mkdirSync(path.join(root, "tests"), { recursive: true });
+    fs.writeFileSync(path.join(root, "requirements.txt"), "flask\npytest\n");
+    fs.writeFileSync(
+      path.join(root, "webapp", "__init__.py"),
+      `from flask import Flask
+from .routes import bp
+
+def create_app():
+    app = Flask(__name__)
+    app.register_blueprint(bp, url_prefix="/api")
+    return app
+`
+    );
+    fs.writeFileSync(
+      path.join(root, "webapp", "routes.py"),
+      `from flask import Blueprint, jsonify
+
+bp = Blueprint("orders", __name__, url_prefix="/v1/orders")
+
+@bp.route("/<int:order_id>", methods=["POST"])
+def update_order(order_id):
+    if not order_id:
+        return jsonify(error="missing"), 400
+    return jsonify(id=order_id)
+`
+    );
+    fs.writeFileSync(
+      path.join(root, "tests", "conftest.py"),
+      `import pytest
+from webapp import create_app
+
+@pytest.fixture
+def client():
+    return create_app().test_client()
+`
+    );
+    fs.writeFileSync(
+      path.join(root, "tests", "test_orders.py"),
+      `def test_update_order(client):
+    response = client.post("/api/v1/orders/7")
+    assert response.status_code == 200
+`
+    );
+
+    const audit = auditPythonRepo(root);
+
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["webapp/routes.py"]);
+    assert.deepEqual(audit.coveredButRisky[0].existingTestEvidence, [{
+      testPath: "tests/test_orders.py",
+      kind: "python-test-client-route",
+      strength: "indirect",
+      viaUsage: "asserted"
+    }]);
+  });
+
+  it("matches Django TestCase client requests through the configured root URLconf", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-python-django-client-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "shop"), { recursive: true });
+    fs.mkdirSync(path.join(root, "tests"), { recursive: true });
+    fs.writeFileSync(path.join(root, "requirements.txt"), "django\n");
+    fs.writeFileSync(path.join(root, "manage.py"), "import os\nos.environ.setdefault('DJANGO_SETTINGS_MODULE', 'shop.settings')\n");
+    fs.writeFileSync(path.join(root, "shop", "__init__.py"), "");
+    fs.writeFileSync(path.join(root, "shop", "settings.py"), "ROOT_URLCONF = \"shop.urls\"\n");
+    fs.writeFileSync(
+      path.join(root, "shop", "urls.py"),
+      `from django.urls import path
+from .views import order_status
+
+urlpatterns = [
+    path("orders/<int:order_id>/", order_status),
+]
+`
+    );
+    fs.writeFileSync(
+      path.join(root, "shop", "views.py"),
+      `from django.http import JsonResponse
+
+def order_status(request, order_id):
+    if not order_id:
+        return JsonResponse({"error": "missing"}, status=400)
+    return JsonResponse({"id": order_id})
+`
+    );
+    fs.writeFileSync(
+      path.join(root, "tests", "test_orders.py"),
+      `from django.test import TestCase
+
+class OrderTests(TestCase):
+    def test_order_status(self):
+        response = self.client.get("/orders/7/")
+        self.assertEqual(response.status_code, 200)
+`
+    );
+
+    const audit = auditPythonRepo(root);
+    const view = audit.coveredButRisky.find((target) => target.path === "shop/views.py");
+
+    assert.deepEqual(view.existingTestEvidence, [{
+      testPath: "tests/test_orders.py",
+      kind: "python-test-client-route",
+      strength: "indirect",
+      viaUsage: "asserted"
+    }]);
+  });
+
+  it("does not turn app boot, wrong methods, dynamic requests, or duplicate roots into route evidence", (t) => {
+    const roots = [];
+    t.after(() => roots.forEach((root) => fs.rmSync(root, { recursive: true, force: true })));
+
+    const wrongMethodRoot = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-python-client-near-miss-"));
+    roots.push(wrongMethodRoot);
+    fs.mkdirSync(path.join(wrongMethodRoot, "app", "routes"), { recursive: true });
+    fs.mkdirSync(path.join(wrongMethodRoot, "tests"), { recursive: true });
+    fs.writeFileSync(path.join(wrongMethodRoot, "requirements.txt"), "fastapi\npytest\n");
+    fs.writeFileSync(path.join(wrongMethodRoot, "app", "__init__.py"), "");
+    fs.writeFileSync(
+      path.join(wrongMethodRoot, "app", "main.py"),
+      "from fastapi import FastAPI\nfrom .routes.orders import router\n\napp = FastAPI()\napp.include_router(router)\n"
+    );
+    fs.writeFileSync(
+      path.join(wrongMethodRoot, "app", "routes", "orders.py"),
+      "from fastapi import APIRouter\n\nrouter = APIRouter()\n\n@router.post('/orders')\ndef create_order():\n    return {'ok': True}\n"
+    );
+    fs.writeFileSync(
+      path.join(wrongMethodRoot, "tests", "conftest.py"),
+      "import pytest\nfrom fastapi.testclient import TestClient\nfrom app.main import app\n\n@pytest.fixture\ndef client():\n    return TestClient(app)\n"
+    );
+    fs.writeFileSync(
+      path.join(wrongMethodRoot, "tests", "test_client_mismatch.py"),
+      `def test_orders(client):
+    path = "/orders"
+    response = client.get("/orders")
+    client.post(path)
+    assert response.status_code == 405
+`
+    );
+
+    const wrongMethodAudit = auditPythonRepo(wrongMethodRoot);
+    assert.deepEqual(wrongMethodAudit.coveredButRisky, []);
+    assert.deepEqual(wrongMethodAudit.untestedCandidates.map((target) => target.path), ["app/routes/orders.py"]);
+
+    const duplicateRoot = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-python-client-duplicate-root-"));
+    roots.push(duplicateRoot);
+    for (const owner of ["src", "vendor"]) {
+      fs.mkdirSync(path.join(duplicateRoot, owner, "alpha", "routes"), { recursive: true });
+      fs.writeFileSync(path.join(duplicateRoot, owner, "alpha", "__init__.py"), "");
+      fs.writeFileSync(
+        path.join(duplicateRoot, owner, "alpha", "app.py"),
+        "from fastapi import FastAPI\nfrom .routes.status import router\n\napp = FastAPI()\napp.include_router(router)\n"
+      );
+      fs.writeFileSync(
+        path.join(duplicateRoot, owner, "alpha", "routes", "status.py"),
+        "from fastapi import APIRouter\n\nrouter = APIRouter()\n\n@router.get('/status')\ndef status():\n    return {'ok': True}\n"
+      );
+    }
+    fs.mkdirSync(path.join(duplicateRoot, "tests"), { recursive: true });
+    fs.writeFileSync(
+      path.join(duplicateRoot, "pyproject.toml"),
+      `[tool.poetry]
+name = "duplicate-client-roots"
+packages = [
+  { include = "alpha", from = "src" },
+  { include = "alpha", from = "vendor" },
+]
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.0"
+fastapi = "^0.100"
+`
+    );
+    fs.writeFileSync(
+      path.join(duplicateRoot, "tests", "test_status.py"),
+      "from fastapi.testclient import TestClient\nfrom alpha.app import app\n\nclient = TestClient(app)\n\ndef test_status():\n    assert client.get('/status').status_code == 200\n"
+    );
+
+    const duplicateAudit = auditPythonRepo(duplicateRoot);
+    assert.deepEqual(duplicateAudit.coveredButRisky, []);
+    assert.deepEqual(
+      duplicateAudit.untestedCandidates.map((target) => target.path),
+      ["src/alpha/routes/status.py", "vendor/alpha/routes/status.py"]
+    );
+  });
+
   it("tracks one-hop package re-exports without claiming a direct module import", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-python-reexport-"));
     fs.mkdirSync(path.join(root, "checkout"), { recursive: true });

@@ -119,6 +119,7 @@
                   "python-module-import",
                   "python-package-reexport",
                   "python-pytest-fixture",
+                  "python-test-client-route",
                   "jvm-symbol-reference"
                 ]
               },

@@ -16,6 +16,7 @@ const portableEvidenceStrengths = {
   "python-module-import": ["direct"],
   "python-package-reexport": ["referenced"],
   "python-pytest-fixture": ["indirect"],
+  "python-test-client-route": ["indirect"],
   "referenced-relative-reexport": ["referenced"],
   "swift-symbol-reference": ["referenced"],
   "tsconfig-path-import": ["direct"]

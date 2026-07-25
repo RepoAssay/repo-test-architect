@@ -36,6 +36,7 @@ It contains:
 - Kotlin/JVM emits `jvm-symbol-reference` for exact package/import ownership, same-package references, Java static-member imports, and Kotlin top-level functions found inside runnable JUnit tests; exact imports are `direct`, while same-package, wildcard, and fully qualified references are `referenced`; constructor/function use emits `called`, and bounded receiver/result aliases consumed by assertion APIs emit `asserted`
 - Python emits `python-package-reexport` with `referenced` strength when a package initializer explicitly re-exports a binding from the source module and a recognized test imports or uses that exported binding through the package
 - Python emits `python-pytest-fixture` with `indirect` strength when an exact source import is used inside a declared pytest fixture and a recognized test consumes that fixture; optional `viaUsage` describes only visible test use of the fixture value
+- Python emits `python-test-client-route` with `indirect` strength only when a supported framework client boots an exact owned application, its static router/blueprint/URLconf wiring reaches one route source, and a test issues a matching HTTP method and path; optional `viaUsage` records whether the request result is visibly called or asserted
 - JavaScript/TypeScript usage detection covers named, aliased, default, and namespace-member ES module imports
 - JavaScript/TypeScript CommonJS usage detection covers destructured and namespace-member bindings plus callable default exports assigned from `require(...)`
 - optional `viaUsage` for bounded-indirect evidence records whether the test called or asserted the imported entrypoint that reaches the dependency; it does not claim that the indirect dependency itself was called or asserted
@@ -48,6 +49,8 @@ The JavaScript/TypeScript adapter currently emits these evidence strengths:
 - `indirect` for modules reached through the bounded dependency graph and for exact literal Playwright/Cypress request-to-HTTP-route matches
 
 `browser-route-match` is emitted only for the route-registration source file. It does not claim direct usage, assertion usage, or transitive browser reachability.
+
+`python-test-client-route` is likewise route-specific. It does not turn application boot, framework presence, middleware, services, dependency overrides, or deeper runtime dependencies into source coverage.
 
 ## Plan Artifact
 

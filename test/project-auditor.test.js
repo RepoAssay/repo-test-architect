@@ -311,6 +311,45 @@ dependencies = ["pytest"]
     }]);
   });
 
+  it("preserves bounded Python test-client route evidence in project audits", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-project-python-test-client-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "app", "routes"), { recursive: true });
+    fs.mkdirSync(path.join(root, "tests"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "pyproject.toml"),
+      `[project]
+name = "checkout-api"
+dependencies = ["fastapi", "pytest"]
+`
+    );
+    fs.writeFileSync(path.join(root, "app", "__init__.py"), "");
+    fs.writeFileSync(
+      path.join(root, "app", "main.py"),
+      "from fastapi import FastAPI\nfrom .routes.checkout import router\n\napp = FastAPI()\napp.include_router(router)\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "app", "routes", "checkout.py"),
+      "from fastapi import APIRouter\n\nrouter = APIRouter()\n\n@router.get('/checkout')\ndef checkout():\n    return {'ok': True}\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "tests", "test_api_behavior.py"),
+      "from fastapi.testclient import TestClient\nfrom app.main import app\n\nclient = TestClient(app)\n\ndef test_api_behavior():\n    assert client.get('/checkout').status_code == 200\n"
+    );
+
+    const result = auditDetectedProjects(root);
+    const audit = result.audits[0].audit;
+
+    assert.deepEqual(audit.untestedCandidates, []);
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["app/routes/checkout.py"]);
+    assert.deepEqual(audit.coveredButRisky[0].existingTestEvidence, [{
+      testPath: "tests/test_api_behavior.py",
+      kind: "python-test-client-route",
+      strength: "indirect",
+      viaUsage: "asserted"
+    }]);
+  });
+
   it("passes project-relative changed paths into matching project adapters", () => {
     const result = auditDetectedProjects(path.resolve("examples/polyglot-workspace"), {
       changedPaths: [
