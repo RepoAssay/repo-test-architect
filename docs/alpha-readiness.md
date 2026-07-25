@@ -29,7 +29,7 @@ Run the deterministic private-alpha gate with:
 npm run alpha:check
 ```
 
-This verifies the test suite, pinned adapter-corpus contract, golden audit artifacts, model-consistency locks, public demo path, and local MCP transport. Package publishing checks remain part of `release:check`, not the private-alpha gate.
+This verifies the test suite, pinned adapter-corpus contract, generated JavaScript performance/evidence regression, golden audit artifacts, model-consistency locks, public demo path, and local MCP transport. Package publishing checks remain part of `release:check`, not the private-alpha gate.
 
 ### Current Readiness Verdict
 

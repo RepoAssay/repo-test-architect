@@ -6,6 +6,7 @@ import { runNpmScripts } from "./support/npm-runner.js";
 export const alphaChecks = [
   "test",
   "corpus:check",
+  "javascript:performance:check",
   "eval:check",
   "model-consistency:check",
   "demo:check",

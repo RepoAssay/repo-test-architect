@@ -26,10 +26,11 @@ export function auditJavaScriptRepo(root, options = {}) {
   const profile = buildProfile(root, files, packageData, workspaceContext, runnerConfig, testFilePaths);
   const changedPaths = options.changedPaths ? new Set(options.changedPaths.map((currentPath) => normalizeChangedPath(root, currentPath))) : undefined;
   const moduleFiles = files.map((file) => analyzeModuleFile({ ...file, path: normalizePath(file.path) }));
+  const moduleIndex = createJavaScriptModuleIndex(moduleFiles);
   const testFiles = moduleFiles.filter((file) => testFilePaths.has(file.path));
   const tsconfigData = resolveTsconfigData("tsconfig.json", files);
   const pathAliasEntries = findTsconfigPathAliasEntries(tsconfigData, moduleFiles);
-  const boundedTransitiveImports = collectBoundedTransitiveImports(testFiles, moduleFiles, pathAliasEntries);
+  const boundedTransitiveImports = collectBoundedTransitiveImports(testFiles, moduleIndex, pathAliasEntries);
   const packageSourcePaths = findDeclaredPackageSourcePaths(packageData, moduleFiles);
   const packageEntryFiles = findSourcePackageEntries(packageData, moduleFiles);
   const packageSubpathEntries = findSourcePackageSubpathEntries(packageData, moduleFiles);
@@ -65,7 +66,7 @@ export function auditJavaScriptRepo(root, options = {}) {
       continue;
     }
 
-    const existingTestEvidence = findExistingTestEvidence(file.path, testFiles, moduleFiles, boundedTransitiveImports, {
+    const existingTestEvidence = findExistingTestEvidence(file.path, testFiles, moduleIndex, boundedTransitiveImports, {
       packageName: packageData.name,
       packageEntryFiles,
       packageSubpathEntries,
@@ -1297,7 +1298,7 @@ function isTestFile(currentPath) {
   );
 }
 
-function findExistingTestEvidence(sourcePath, testFiles, moduleFiles, boundedTransitiveImports, packageEntry) {
+function findExistingTestEvidence(sourcePath, testFiles, moduleIndex, boundedTransitiveImports, packageEntry) {
   const normalized = normalizePath(sourcePath);
   const sourceBase = basenameWithoutExtension(normalized);
   const sourceSegments = normalized.split("/");
@@ -1325,11 +1326,11 @@ function findExistingTestEvidence(sourcePath, testFiles, moduleFiles, boundedTra
         testFile.path.startsWith(`${sourceDir}/__tests__/${sourceBase}.`);
       const directImportUsage = getDirectRelativeImportUsage(testFile, normalized);
       if (directImportUsage) return [{ testPath: testFile.path, kind: "direct-relative-import", strength: "direct", ...(directImportUsage !== "imported" ? { usage: directImportUsage } : {}) }];
-      const barrelUsage = getOneHopBarrelImportUsage(testFile, normalized, moduleFiles);
+      const barrelUsage = getOneHopBarrelImportUsage(testFile, normalized, moduleIndex);
       if (barrelUsage) return [{ testPath: testFile.path, kind: "referenced-relative-reexport", strength: "referenced", ...(barrelUsage !== "referenced" ? { usage: barrelUsage } : {}) }];
-      const pathAliasUsage = getPathAliasImportUsage(testFile, normalized, moduleFiles, packageEntry.pathAliasEntries);
+      const pathAliasUsage = getPathAliasImportUsage(testFile, normalized, moduleIndex, packageEntry.pathAliasEntries);
       if (pathAliasUsage) return [{ testPath: testFile.path, kind: "tsconfig-path-import", strength: "direct", ...(pathAliasUsage !== "imported" ? { usage: pathAliasUsage } : {}) }];
-      const packageEntryUsage = getPackageEntryImportUsage(testFile, normalized, moduleFiles, packageEntry);
+      const packageEntryUsage = getPackageEntryImportUsage(testFile, normalized, moduleIndex, packageEntry);
       if (packageEntryUsage) return [{ testPath: testFile.path, kind: "package-entry-import", strength: "referenced", ...(packageEntryUsage !== "referenced" ? { usage: packageEntryUsage } : {}) }];
       const transitiveImports = boundedTransitiveImports.get(testFile.path);
       if (transitiveImports?.has(normalized)) {
@@ -1364,31 +1365,31 @@ function getDirectRelativeImportUsage(testFile, sourcePath) {
   ) ? "imported" : undefined;
 }
 
-function collectBoundedTransitiveImports(testFiles, moduleFiles, pathAliasEntries) {
-  return new Map(testFiles.map((testFile) => [testFile.path, collectBoundedTransitiveImportsForTest(testFile, moduleFiles, pathAliasEntries)]));
+function collectBoundedTransitiveImports(testFiles, moduleIndex, pathAliasEntries) {
+  return new Map(testFiles.map((testFile) => [testFile.path, collectBoundedTransitiveImportsForTest(testFile, moduleIndex, pathAliasEntries)]));
 }
 
-function collectBoundedTransitiveImportsForTest(testFile, moduleFiles, pathAliasEntries) {
+function collectBoundedTransitiveImportsForTest(testFile, moduleIndex, pathAliasEntries) {
   const queue = [];
   for (const { specifier, usedImportedNames, calledImportedNames, assertedImportedNames } of getModuleImports(testFile)) {
-    const file = findImportedModuleFile(testFile.path, specifier, moduleFiles, pathAliasEntries);
+    const file = findImportedModuleFile(testFile.path, specifier, moduleIndex, pathAliasEntries);
     if (!file) continue;
     const viaUsage = assertedImportedNames.size > 0 ? "asserted" : calledImportedNames.size > 0 ? "called" : undefined;
     queue.push({ file, depth: 0, viaUsage });
-    for (const reExport of findImportedReExportFiles(file, usedImportedNames, moduleFiles)) {
+    for (const reExport of findImportedReExportFiles(file, usedImportedNames, moduleIndex)) {
       queue.push({ file: reExport, depth: 1, viaUsage });
     }
   }
   const visited = new Map();
 
-  while (queue.length > 0) {
-    const { file, depth, viaUsage } = queue.shift();
+  for (let cursor = 0; cursor < queue.length; cursor += 1) {
+    const { file, depth, viaUsage } = queue[cursor];
     if (visited.has(file.path) && usageRank(visited.get(file.path)) >= usageRank(viaUsage)) continue;
     visited.set(file.path, viaUsage);
     if (depth >= MAX_TRANSITIVE_SOURCE_DEPTH) continue;
 
     for (const specifier of getRuntimeDependencySpecifiers(file)) {
-      const dependency = findImportedModuleFile(file.path, specifier, moduleFiles, pathAliasEntries);
+      const dependency = findImportedModuleFile(file.path, specifier, moduleIndex, pathAliasEntries);
       if (dependency) queue.push({ file: dependency, depth: depth + 1, viaUsage });
     }
   }
@@ -1400,54 +1401,71 @@ function usageRank(usage) {
   return usage === "asserted" ? 2 : usage === "called" ? 1 : 0;
 }
 
-function findImportedModuleFile(importerPath, specifier, moduleFiles, pathAliasEntries) {
+function findImportedModuleFile(importerPath, specifier, moduleIndex, pathAliasEntries) {
   return specifier.startsWith(".")
-    ? findRelativeModuleFile(importerPath, specifier, moduleFiles)
+    ? findRelativeModuleFile(importerPath, specifier, moduleIndex)
     : pathAliasEntries.get(specifier);
 }
 
-function findImportedReExportFiles(barrelFile, importedNames, moduleFiles) {
+function findImportedReExportFiles(barrelFile, importedNames, moduleIndex) {
   if (importedNames.size === 0) return [];
-  return moduleFiles.filter((sourceFile) =>
+  const candidateFiles = new Map(getResolvedRelativeReExports(barrelFile, moduleIndex)
+    .map((reExport) => [reExport.target.path, reExport.target]));
+  return [...candidateFiles.values()].filter((sourceFile) =>
     sourceFile.path !== barrelFile.path &&
     isSourceFile(sourceFile.path) &&
-    barrelExportsImportedNames(barrelFile, sourceFile, importedNames, moduleFiles)
+    barrelExportsImportedNames(barrelFile, sourceFile, importedNames, moduleIndex)
   );
 }
 
-function findRelativeModuleFile(importerPath, specifier, moduleFiles) {
-  return moduleFiles.find(
-    (file) => isJavaScriptModuleFile(file.path) && moduleSpecifierTargetsSource(importerPath, specifier, file.path)
-  );
+function findRelativeModuleFile(importerPath, specifier, moduleIndex) {
+  const cacheKey = `${importerPath}\0${specifier}`;
+  if (moduleIndex.relativeResolutionCache.has(cacheKey)) {
+    return moduleIndex.relativeResolutionCache.get(cacheKey) ?? undefined;
+  }
+
+  const resolved = path.posix.normalize(path.posix.join(path.posix.dirname(importerPath), specifier));
+  const requestedExtension = path.posix.extname(resolved);
+  const candidates = requestedExtension
+    ? [resolved, ...compatibleSourceExtensions(requestedExtension).map((extension) => `${removeJavaScriptExtension(resolved)}${extension}`)]
+    : [
+        ...SOURCE_EXTENSIONS.map((extension) => `${resolved}${extension}`),
+        ...SOURCE_EXTENSIONS.map((extension) => `${resolved}/index${extension}`)
+      ];
+  const match = [...new Set(candidates)]
+    .map((candidate) => moduleIndex.byPath.get(candidate))
+    .find((file) => file && isJavaScriptModuleFile(file.path));
+  moduleIndex.relativeResolutionCache.set(cacheKey, match ?? null);
+  return match;
 }
 
-function getOneHopBarrelImportUsage(testFile, sourcePath, moduleFiles) {
+function getOneHopBarrelImportUsage(testFile, sourcePath, moduleIndex) {
   for (const { specifier, usedImportedNames, calledImportedNames, assertedImportedNames } of getModuleImports(testFile)) {
     if (!specifier.startsWith(".")) continue;
-    const barrelFile = moduleFiles.find((file) => moduleSpecifierTargetsSource(testFile.path, specifier, file.path));
+    const barrelFile = findRelativeModuleFile(testFile.path, specifier, moduleIndex);
     if (!barrelFile || barrelFile.path === sourcePath) continue;
-    const sourceFile = moduleFiles.find((file) => file.path === sourcePath);
-    if (!sourceFile || !barrelExportsImportedNames(barrelFile, sourceFile, usedImportedNames, moduleFiles)) continue;
-    if (barrelExportsImportedNames(barrelFile, sourceFile, assertedImportedNames, moduleFiles)) return "asserted";
-    if (barrelExportsImportedNames(barrelFile, sourceFile, calledImportedNames, moduleFiles)) return "called";
+    const sourceFile = moduleIndex.byPath.get(sourcePath);
+    if (!sourceFile || !barrelExportsImportedNames(barrelFile, sourceFile, usedImportedNames, moduleIndex)) continue;
+    if (barrelExportsImportedNames(barrelFile, sourceFile, assertedImportedNames, moduleIndex)) return "asserted";
+    if (barrelExportsImportedNames(barrelFile, sourceFile, calledImportedNames, moduleIndex)) return "called";
     return "referenced";
   }
   return undefined;
 }
 
-function getPathAliasImportUsage(testFile, sourcePath, moduleFiles, pathAliasEntries) {
+function getPathAliasImportUsage(testFile, sourcePath, moduleIndex, pathAliasEntries) {
   for (const moduleImport of getModuleImports(testFile)) {
     const { specifier } = moduleImport;
     const entryFile = pathAliasEntries.get(specifier);
     if (!entryFile) continue;
-    const sourceFile = moduleFiles.find((file) => file.path === sourcePath);
-    const usage = sourceFile ? getEntrypointImportUsage(moduleImport, entryFile, sourceFile, moduleFiles, "imported") : undefined;
+    const sourceFile = moduleIndex.byPath.get(sourcePath);
+    const usage = sourceFile ? getEntrypointImportUsage(moduleImport, entryFile, sourceFile, moduleIndex, "imported") : undefined;
     if (usage) return usage;
   }
   return undefined;
 }
 
-function getPackageEntryImportUsage(testFile, sourcePath, moduleFiles, { packageName, packageEntryFiles, packageSubpathEntries }) {
+function getPackageEntryImportUsage(testFile, sourcePath, moduleIndex, { packageName, packageEntryFiles, packageSubpathEntries }) {
   if (typeof packageName !== "string") return undefined;
 
   for (const moduleImport of getModuleImports(testFile)) {
@@ -1456,33 +1474,28 @@ function getPackageEntryImportUsage(testFile, sourcePath, moduleFiles, { package
       ? packageEntryFiles[moduleImport.kind]
       : packageSubpathEntries.get(specifier)?.[moduleImport.kind];
     if (!entryFile) continue;
-    const sourceFile = moduleFiles.find((file) => file.path === sourcePath);
-    const usage = sourceFile ? getEntrypointImportUsage(moduleImport, entryFile, sourceFile, moduleFiles, "referenced") : undefined;
+    const sourceFile = moduleIndex.byPath.get(sourcePath);
+    const usage = sourceFile ? getEntrypointImportUsage(moduleImport, entryFile, sourceFile, moduleIndex, "referenced") : undefined;
     if (usage) return usage;
   }
   return undefined;
 }
 
-function getEntrypointImportUsage(moduleImport, entryFile, sourceFile, moduleFiles, structuralUsage) {
+function getEntrypointImportUsage(moduleImport, entryFile, sourceFile, moduleIndex, structuralUsage) {
   if (entryFile.path === sourceFile.path) {
     if (moduleImport.assertedImportedNames.size > 0) return "asserted";
     if (moduleImport.calledImportedNames.size > 0) return "called";
     return structuralUsage;
   }
-  if (!barrelExportsImportedNames(entryFile, sourceFile, moduleImport.usedImportedNames, moduleFiles)) return undefined;
-  if (barrelExportsImportedNames(entryFile, sourceFile, moduleImport.assertedImportedNames, moduleFiles)) return "asserted";
-  if (barrelExportsImportedNames(entryFile, sourceFile, moduleImport.calledImportedNames, moduleFiles)) return "called";
+  if (!barrelExportsImportedNames(entryFile, sourceFile, moduleImport.usedImportedNames, moduleIndex)) return undefined;
+  if (barrelExportsImportedNames(entryFile, sourceFile, moduleImport.assertedImportedNames, moduleIndex)) return "asserted";
+  if (barrelExportsImportedNames(entryFile, sourceFile, moduleImport.calledImportedNames, moduleIndex)) return "called";
   return structuralUsage;
 }
 
-function barrelExportsImportedNames(barrelFile, sourceFile, importedNames, moduleFiles) {
+function barrelExportsImportedNames(barrelFile, sourceFile, importedNames, moduleIndex) {
   if (importedNames.size === 0) return false;
-  const reExports = collectRelativeReExports(barrelFile.content)
-    .map((reExport) => ({
-      ...reExport,
-      target: findRelativeModuleFile(barrelFile.path, reExport.specifier, moduleFiles)
-    }))
-    .filter((reExport) => reExport.target);
+  const reExports = getResolvedRelativeReExports(barrelFile, moduleIndex);
 
   return [...importedNames].some((name) => {
     const explicitProviders = reExports.filter((reExport) => !reExport.exportAll && reExport.exportedNames.has(name));
@@ -1493,11 +1506,31 @@ function barrelExportsImportedNames(barrelFile, sourceFile, importedNames, modul
     if (name === "default") return false;
 
     const starProviders = reExports.filter((reExport) =>
-      reExport.exportAll && collectDeclaredExportNames(reExport.target.content).has(name)
+      reExport.exportAll && getDeclaredExportNames(reExport.target, moduleIndex).has(name)
     );
     return new Set(starProviders.map((provider) => provider.target.path)).size === 1 &&
       starProviders[0]?.target.path === sourceFile.path;
   });
+}
+
+function getResolvedRelativeReExports(barrelFile, moduleIndex) {
+  if (!moduleIndex.relativeReExportCache.has(barrelFile.path)) {
+    const reExports = collectRelativeReExports(barrelFile.content)
+      .map((reExport) => ({
+        ...reExport,
+        target: findRelativeModuleFile(barrelFile.path, reExport.specifier, moduleIndex)
+      }))
+      .filter((reExport) => reExport.target);
+    moduleIndex.relativeReExportCache.set(barrelFile.path, reExports);
+  }
+  return moduleIndex.relativeReExportCache.get(barrelFile.path);
+}
+
+function getDeclaredExportNames(file, moduleIndex) {
+  if (!moduleIndex.declaredExportNamesCache.has(file.path)) {
+    moduleIndex.declaredExportNamesCache.set(file.path, collectDeclaredExportNames(file.content));
+  }
+  return moduleIndex.declaredExportNamesCache.get(file.path);
 }
 
 function findSourcePackageEntries(packageData, moduleFiles) {
@@ -1719,13 +1752,17 @@ function moduleSpecifierTargetsSource(importerPath, specifier, sourcePath) {
 function moduleExtensionsAreCompatible(requestedExtension, sourceExtension) {
   if (!requestedExtension) return true;
   if (requestedExtension === sourceExtension) return true;
+  return compatibleSourceExtensions(requestedExtension).includes(sourceExtension);
+}
+
+function compatibleSourceExtensions(requestedExtension) {
   const substitutions = {
-    ".cjs": new Set([".cts"]),
-    ".js": new Set([".js", ".jsx", ".ts", ".tsx"]),
-    ".jsx": new Set([".jsx", ".tsx"]),
-    ".mjs": new Set([".mts"])
+    ".cjs": [".cts"],
+    ".js": [".jsx", ".ts", ".tsx"],
+    ".jsx": [".tsx"],
+    ".mjs": [".mts"]
   };
-  return substitutions[requestedExtension]?.has(sourceExtension) ?? false;
+  return substitutions[requestedExtension] ?? [];
 }
 
 function collectRelativeModuleSpecifiers(content) {
@@ -1740,8 +1777,19 @@ function analyzeModuleFile(file) {
   return {
     ...file,
     moduleImports,
-    relativeModuleSpecifiers: collectRelativeModuleSpecifiers(file.content),
+    relativeModuleSpecifiers: moduleImports
+      .map(({ specifier }) => specifier)
+      .filter((specifier) => specifier.startsWith(".")),
     runtimeDependencySpecifiers: moduleImports.map(({ specifier }) => specifier)
+  };
+}
+
+function createJavaScriptModuleIndex(moduleFiles) {
+  return {
+    byPath: new Map(moduleFiles.map((file) => [file.path, file])),
+    relativeResolutionCache: new Map(),
+    relativeReExportCache: new Map(),
+    declaredExportNamesCache: new Map()
   };
 }
 
