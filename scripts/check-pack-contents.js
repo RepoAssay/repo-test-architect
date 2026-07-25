@@ -44,6 +44,7 @@ export const requiredFiles = [
   "schemas/validation-corpus-v1.schema.json",
   "evals/validation-corpus.json",
   "scripts/check-validation-corpus.js",
+  "scripts/check-javascript-performance.js",
   "scripts/check-pack-contents.js",
   "scripts/check-bin-entrypoints.js",
   "scripts/check-demo-script.js",

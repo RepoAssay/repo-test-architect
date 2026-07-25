@@ -9,6 +9,7 @@ Implemented:
 - JavaScript/TypeScript repository profiling
 - JavaScript/TypeScript React hook classification ahead of generic component and HTTP controller heuristics
 - cached JavaScript/TypeScript module-import analysis for real repositories with large test suites
+- indexed JavaScript/TypeScript module paths plus audit-local relative-resolution, barrel-export, and declared-symbol caches, with a deterministic 400-source/200-test performance and evidence-count regression gate
 - skipped-target short-circuiting before JavaScript/TypeScript test-evidence analysis
 - JavaScript/TypeScript package-boundary scoping that excludes nested packages from parent profiles and candidate graphs
 - JavaScript/TypeScript workspace package-script ownership across npm, pnpm, Yarn, and Bun for statically declared child packages, with local-manager precedence, unrelated-sibling isolation, and an explicit ambiguity blocker for unresolved multiple lockfiles
@@ -80,7 +81,7 @@ Implemented:
 - public-readiness record covering the completed npm and official MCP Registry launch
 - adapter-hardening plan that prioritizes shared conformance and deeper JavaScript/TypeScript, Python, Swift, and bounded Kotlin/JVM validation before adding ecosystems
 - alpha-readiness checklist for the test architecture audit milestone before native generation
-- deterministic `npm run alpha:check` gate for tests, golden audits, model consistency, demo behavior, and local MCP transport without npm packaging requirements
+- deterministic `npm run alpha:check` gate for tests, adapter corpus validation, JavaScript performance/evidence regression, golden audits, model consistency, demo behavior, and local MCP transport without npm packaging requirements
 - real-repo audit reports for owned JavaScript/TypeScript and Swift repositories, including Collectors Grimoire and `cg-*` sibling packages
 - authenticated public-repository discovery and ranking profiles for React, JavaScript/TypeScript workspaces, SwiftPM, SwiftUI/Xcode, Vapor, Swift Bazel, Swift macros/plugins, CocoaPods-era Apple projects, Gradle JVM, and Maven JVM validation targets
 - product positioning note for audit-first differentiation, initial audience, business paths, proof points, and anti-positioning
@@ -235,7 +236,7 @@ npm run eval:test
 The active sequence is defined in the [Adapter Hardening Plan](adapter-hardening-plan.md):
 
 1. Shared validation-corpus manifest, scorecard schema, semantic checker, and adapter-conformance helper are complete. Standardized stability and performance reruns remain visible as pending corpus scores.
-2. JavaScript/TypeScript workspace command ownership, bounded runner-config/custom test-location discovery, and module-boundary hardening are complete for the static patterns in the support matrix. Next: large-suite performance and conservative Playwright/Cypress evidence.
+2. JavaScript/TypeScript workspace command ownership, bounded runner-config/custom test-location discovery, module-boundary hardening, and the generated large-suite regression gate are complete for the static patterns in the support matrix. Next: conservative Playwright/Cypress evidence.
 3. Harden Python multi-package ownership, relative imports, and pytest discovery configuration.
 4. Harden Kotlin/JVM Gradle/Maven ownership and conservative unsupported-graph behavior.
 5. Harden SwiftPM/Xcode ownership ambiguity and symbol-evidence boundaries.

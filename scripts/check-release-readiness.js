@@ -7,6 +7,7 @@ export const releaseChecks = [
   "audit:prod",
   "test",
   "corpus:check",
+  "javascript:performance:check",
   "eval:check",
   "model-consistency:check",
   "demo:check",

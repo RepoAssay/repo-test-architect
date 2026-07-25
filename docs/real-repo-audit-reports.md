@@ -265,6 +265,8 @@ Result:
 - direct audit found a high-confidence Jest and React Testing Library profile with `npm run test` and no blockers
 - the initial audit took about 90 seconds and emitted roughly 159,000 output tokens; module-import parsing was repeated while matching every source against every test
 - caching parsed module imports and dependency specifiers reduced the same audit to 9.7 seconds while preserving the evidence graph
+- the follow-up large-suite slice indexes module paths and caches relative resolution plus barrel/export metadata; a generated 400-source/200-test audit improved locally from about 9.8 seconds to about 0.25 seconds with the same 200 covered, 200 untested, and 200 evidence relationships
+- the generated check uses a broad 5,000 ms cross-platform regression ceiling; this is not a new timing guarantee for React Hook Form or another external repository
 - eight declared `use*` modules are now classified as React hooks with component-level testing guidance and existing-test evidence
 - `useController.ts` is no longer falsely classified as an HTTP route merely because its name contains `controller`
 - the resulting audit contains one untested candidate, 37 covered-but-risky targets, and 67 skipped targets
@@ -385,4 +387,5 @@ Remaining gap:
 
 - make local sibling package report generation independent of local checkout names
 - rerun the pinned JavaScript/TypeScript repositories against the hardened conditional-export, module-format, barrel, type-only, and alias boundaries before broadening public support claims
-- measure large-suite import-analysis performance and keep Playwright/Cypress navigation-only evidence conservative
+- rerun pinned real repositories to populate their still-pending standardized performance observations
+- keep Playwright/Cypress navigation-only evidence conservative
