@@ -659,34 +659,51 @@ function collectImportedModules(content) {
 }
 
 function collectUniqueSwiftSourceSymbols(files, sourceGraph) {
-  const symbolsByPath = new Map();
-  const pathsByOwnerAndSymbol = new Map();
-
-  for (const file of files.filter((candidate) =>
+  const sourceFiles = files.filter((candidate) =>
     isSourceFile(candidate.path, sourceGraph) &&
     candidate.path.endsWith(".swift") &&
     !isGeneratedSwiftSource(candidate.path, candidate.content)
-  )) {
+  );
+  const records = sourceFiles.map((file) => {
     const currentPath = normalizePath(file.path);
     const owner = normalizeModuleName(sourceGraph.sourceOwners.get(currentPath) ?? inferSourceOwner(currentPath) ?? "__root__");
     const declarations = collectTopLevelSwiftDeclarations(file.content);
     const hasConcreteDeclaration = declarations.some((declaration) => declaration.kind !== "protocol");
-    const symbols = new Map(
-      declarations
-        .filter((declaration) => declaration.kind !== "protocol" || !hasConcreteDeclaration)
-        .map((declaration) => [declaration.name, declaration.kind])
-    );
-    symbolsByPath.set(currentPath, symbols);
-    for (const symbol of symbols.keys()) {
-      const key = `${owner}:${symbol}`;
-      pathsByOwnerAndSymbol.set(key, new Set([...(pathsByOwnerAndSymbol.get(key) ?? []), currentPath]));
+    return {
+      currentPath,
+      owner,
+      declarations: declarations.filter((declaration) => declaration.kind !== "protocol" || !hasConcreteDeclaration),
+      members: collectSwiftMemberDeclarations(file.content)
+    };
+  });
+  const declarationPaths = new Map();
+
+  for (const record of records) {
+    for (const declaration of record.declarations) {
+      recordDeclarationPath(declarationPaths, `${record.owner}:top:${declaration.name}`, record.currentPath);
+    }
+    for (const member of record.members) {
+      recordDeclarationPath(declarationPaths, `${record.owner}:member:${member.receiver}:${member.name}`, record.currentPath);
     }
   }
 
-  return new Map([...symbolsByPath].map(([currentPath, symbols]) => {
-    const owner = normalizeModuleName(sourceGraph.sourceOwners.get(currentPath) ?? inferSourceOwner(currentPath) ?? "__root__");
-    return [currentPath, new Map([...symbols].filter(([symbol]) => pathsByOwnerAndSymbol.get(`${owner}:${symbol}`)?.size === 1))];
+  return new Map(records.map((record) => {
+    const symbols = new Map();
+    for (const declaration of record.declarations) {
+      if (declarationPaths.get(`${record.owner}:top:${declaration.name}`)?.size !== 1) continue;
+      symbols.set(`top:${declaration.name}`, { name: declaration.name, kind: declaration.kind });
+    }
+    for (const member of record.members) {
+      if (member.containerKind !== "extension" || !member.isStatic) continue;
+      if (declarationPaths.get(`${record.owner}:member:${member.receiver}:${member.name}`)?.size !== 1) continue;
+      symbols.set(`member:${member.receiver}:${member.name}`, { ...member, kind: "extension-func" });
+    }
+    return [record.currentPath, symbols];
   }));
+}
+
+function recordDeclarationPath(pathsByKey, key, currentPath) {
+  pathsByKey.set(key, new Set([...(pathsByKey.get(key) ?? []), currentPath]));
 }
 
 function collectTopLevelSwiftDeclarations(content) {
@@ -708,11 +725,69 @@ function collectTopLevelSwiftDeclarations(content) {
   return declarations;
 }
 
+function collectSwiftMemberDeclarations(content) {
+  const masked = maskSwiftCommentsAndStrings(content);
+  const depths = swiftBraceDepths(masked);
+  const declarations = [];
+  const containerPattern = /\b(struct|class|enum|actor|protocol|extension)\s+`?([A-Za-z_][A-Za-z0-9_]*)`?/g;
+
+  for (const container of masked.matchAll(containerPattern)) {
+    if (depths[container.index] !== 0) continue;
+    const openBrace = masked.indexOf("{", container.index + container[0].length);
+    if (openBrace === -1 || depths[openBrace] !== 0) continue;
+    const closeBrace = findClosingSwiftBrace(masked, openBrace);
+    if (closeBrace === -1) continue;
+    const memberPattern = /\bfunc\s+`?([A-Za-z_][A-Za-z0-9_]*)`?/g;
+    memberPattern.lastIndex = openBrace + 1;
+    let member;
+    while ((member = memberPattern.exec(masked)) !== null && member.index < closeBrace) {
+      if (depths[member.index] !== 1) continue;
+      const lineStart = masked.lastIndexOf("\n", member.index - 1) + 1;
+      const prefix = masked.slice(lineStart, member.index);
+      declarations.push({
+        containerKind: container[1],
+        receiver: container[2],
+        name: member[1],
+        isStatic: /\b(?:static|class)\s*$/.test(prefix)
+      });
+    }
+  }
+
+  return declarations;
+}
+
+function swiftBraceDepths(content) {
+  const depths = [];
+  let depth = 0;
+  for (let index = 0; index < content.length; index += 1) {
+    depths[index] = depth;
+    if (content[index] === "{") depth += 1;
+    else if (content[index] === "}") depth = Math.max(0, depth - 1);
+  }
+  return depths;
+}
+
+function findClosingSwiftBrace(content, openBrace) {
+  let depth = 1;
+  for (let index = openBrace + 1; index < content.length; index += 1) {
+    if (content[index] === "{") depth += 1;
+    else if (content[index] === "}") depth -= 1;
+    if (depth === 0) return index;
+  }
+  return -1;
+}
+
 function findSwiftSymbolUsage(content, symbols) {
   if (symbols.size === 0) return undefined;
   const masked = maskSwiftCommentsAndStrings(content).replace(/^\s*(?:@testable\s+)?import\s+.*$/gm, "");
 
-  for (const [symbol, kind] of [...symbols].sort(([left], [right]) => left.localeCompare(right))) {
+  for (const [, descriptor] of [...symbols].sort(([left], [right]) => left.localeCompare(right))) {
+    if (descriptor.kind === "extension-func") {
+      const extensionUsage = findSwiftExtensionMemberUsage(masked, descriptor);
+      if (extensionUsage) return extensionUsage;
+      continue;
+    }
+    const { name: symbol, kind } = descriptor;
     const escapedSymbol = escapeRegex(symbol);
     const declaration = new RegExp(`\\b(?:struct|class|enum|actor|protocol|func|typealias|let|var|case)\\s+\`?${escapedSymbol}\\b\`?`);
     if (declaration.test(masked)) continue;
@@ -723,6 +798,26 @@ function findSwiftSymbolUsage(content, symbols) {
   }
 
   return undefined;
+}
+
+function findSwiftExtensionMemberUsage(content, descriptor) {
+  if (hasSwiftLocalDeclaration(content, descriptor.receiver)) return undefined;
+  if (swiftAssertionBodies(content).some((body) => hasSwiftStaticExtensionCall(body, descriptor))) return "asserted";
+  return hasSwiftStaticExtensionCall(content, descriptor) ? "called" : undefined;
+}
+
+function hasSwiftLocalDeclaration(content, symbol) {
+  const escapedSymbol = escapeRegex(symbol);
+  return new RegExp(`\\b(?:struct|class|enum|actor|protocol|extension|func|typealias|let|var|case)\\s+\`?${escapedSymbol}\\b\`?`).test(content);
+}
+
+function hasSwiftStaticExtensionCall(content, descriptor) {
+  const pattern = new RegExp(`\\b${escapeRegex(descriptor.receiver)}\\s*(?:<[^>\\n]+>)?\\s*\\.\\s*${escapeRegex(descriptor.name)}\\s*(?:<[^>\\n]+>\\s*)?\\(`, "g");
+  let match;
+  while ((match = pattern.exec(content)) !== null) {
+    if (!isSwiftMemberReference(content, match.index)) return true;
+  }
+  return false;
 }
 
 function hasSwiftSymbolReference(content, symbol, kind) {

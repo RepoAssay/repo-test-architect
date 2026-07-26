@@ -752,6 +752,136 @@ final class BehaviorTests: XCTestCase {
     ]);
   });
 
+  it("credits a unique static extension member through an explicit receiver", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-swift-extension-evidence-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "Sources", "Core"), { recursive: true });
+    fs.mkdirSync(path.join(root, "Tests", "CoreTests"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "Package.swift"),
+      `// swift-tools-version: 6.0
+import PackageDescription
+let package = Package(targets: [
+    .target(name: "Core"),
+    .testTarget(name: "CoreTests", dependencies: ["Core"])
+])
+`
+    );
+    fs.writeFileSync(path.join(root, "Sources", "Core", "Checkout.swift"), "public struct Checkout {}\n");
+    fs.writeFileSync(
+      path.join(root, "Sources", "Core", "Checkout+Normalization.swift"),
+      `extension Checkout {
+    public static func normalized(_ value: String) -> String {
+        if value.isEmpty { return "missing" }
+        return value
+    }
+}
+`
+    );
+    fs.writeFileSync(
+      path.join(root, "Sources", "Core", "Checkout+Sanitization.swift"),
+      `extension Checkout {
+    public static func sanitized(_ value: String) -> String {
+        if value.isEmpty { return "missing" }
+        return value
+    }
+}
+`
+    );
+    fs.writeFileSync(
+      path.join(root, "Tests", "CoreTests", "CheckoutBehaviorTests.swift"),
+      `import Testing
+@testable import Core
+
+@Test func normalizesCheckoutValues() {
+    #expect(Checkout.normalized("") == "missing")
+}
+
+@Test func sanitizesCheckoutValues() {
+    _ = Checkout.sanitized("value")
+}
+`
+    );
+
+    const audit = auditSwiftRepo(root);
+    const normalization = audit.coveredButRisky.find((target) => target.name === "Checkout+Normalization");
+    const sanitization = audit.coveredButRisky.find((target) => target.name === "Checkout+Sanitization");
+
+    assert.deepEqual(normalization.existingTestEvidence, [
+      {
+        testPath: "Tests/CoreTests/CheckoutBehaviorTests.swift",
+        kind: "swift-symbol-reference",
+        strength: "referenced",
+        usage: "asserted"
+      }
+    ]);
+    assert.deepEqual(sanitization.existingTestEvidence, [
+      {
+        testPath: "Tests/CoreTests/CheckoutBehaviorTests.swift",
+        kind: "swift-symbol-reference",
+        strength: "referenced",
+        usage: "called"
+      }
+    ]);
+  });
+
+  it("does not guess between overloaded extension members or a test-local receiver", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-swift-ambiguous-extension-evidence-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "Sources", "Core"), { recursive: true });
+    fs.mkdirSync(path.join(root, "Tests", "CoreTests"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "Package.swift"),
+      `// swift-tools-version: 6.0
+import PackageDescription
+let package = Package(targets: [
+    .target(name: "Core"),
+    .testTarget(name: "CoreTests", dependencies: ["Core"])
+])
+`
+    );
+    fs.writeFileSync(path.join(root, "Sources", "Core", "Receipt.swift"), "public struct Receipt {}\n");
+    fs.writeFileSync(path.join(root, "Sources", "Core", "Payment.swift"), "public struct Payment {}\n");
+    fs.writeFileSync(
+      path.join(root, "Sources", "Core", "Receipt+Formatting.swift"),
+      "extension Receipt { public static func formatted(_ value: String) -> String { if value.isEmpty { return \"missing\" }; return value } }\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "Sources", "Core", "Receipt+LegacyFormatting.swift"),
+      "extension Receipt { public static func formatted(_ value: Int) -> String { if value < 0 { return \"invalid\" }; return String(value) } }\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "Sources", "Core", "Payment+Validation.swift"),
+      "extension Payment { public static func validated(_ value: Bool) -> Bool { if value { return true }; return false } }\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "Tests", "CoreTests", "BehaviorTests.swift"),
+      `import XCTest
+@testable import Core
+
+private enum Payment {
+    static func validated(_ value: Bool) -> Bool { value }
+}
+
+final class BehaviorTests: XCTestCase {
+    func testLocalBehavior() {
+        XCTAssertEqual(Receipt.formatted("value"), "value")
+        XCTAssertTrue(Payment.validated(true))
+    }
+}
+`
+    );
+
+    const audit = auditSwiftRepo(root);
+
+    assert.deepEqual(audit.coveredButRisky, []);
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.name).sort(), [
+      "Payment+Validation",
+      "Receipt+Formatting",
+      "Receipt+LegacyFormatting"
+    ]);
+  });
+
   it("does not credit concrete Swift implementations from protocol-only test references", (t) => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-swift-protocol-evidence-"));
     t.after(() => fs.rmSync(root, { recursive: true, force: true }));
