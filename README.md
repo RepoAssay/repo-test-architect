@@ -301,6 +301,7 @@ Check that every supported adapter has a complete, pinned hardening corpus:
 
 ```powershell
 npm run corpus:check
+npm run corpus:scorecard
 npm run corpus:measure -- --case python-asyncer --checkout /path/to/pinned/asyncer
 npm run javascript:performance:check
 npm run python:performance:check
@@ -309,6 +310,8 @@ npm run swift:performance:check
 ```
 
 The versioned `evals/validation-corpus.json` manifest records one conventional library or service, one framework-heavy application, and one difficult ownership graph per adapter. Each record carries the shared detection, ownership, command, evidence, ranking, stability, and performance scorecard. All 12 current pinned cases pass every scorecard area; a new or repinned case stays `pending` until it has been rerun under the standardized hardening review.
+
+`corpus:scorecard` renders the review contract for humans. It reports review completeness separately from the pass rate among reviewed checks and keeps `PASS`, `FAIL`, and `PENDING` visible for every area. Use `npm run corpus:scorecard -- --format json` for the deterministic `validation-scorecard/v1` view. These are validation-review results, not a repository-quality rating.
 
 `corpus:measure` verifies the checkout's exact pinned Git SHA, runs the selected adapter at least three times, rejects canonical audit drift, and reports the raw durations, median duration, evidence-link count, and normalized audit digest used to update the scorecard.
 

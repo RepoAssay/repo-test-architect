@@ -69,16 +69,18 @@ Markdown and JSON remain the supported formats until each additional renderer ha
 
 #### Future Scorecard Visualization
 
-The HTML renderer should include a compact human-readable card for each adapter or pinned corpus case. The card may use a repository-native assay seal, segmented ring, or similarly distinct corner badge instead of a generic star rating. Its visual language should remain recognizable as an audit result rather than a popularity or product-review score.
+The deterministic Markdown and `validation-scorecard/v1` JSON views now provide the scorecard contract for each adapter and pinned corpus case. Run `npm run corpus:scorecard` for the human-readable matrix or add `-- --format json` for the versioned derived artifact.
 
-The card must show two separate measures:
+A later HTML renderer should present the same contract as a compact card. The card may use a repository-native assay seal, segmented ring, or similarly distinct corner badge instead of a generic star rating. Its visual language should remain recognizable as an audit result rather than a popularity or product-review score.
+
+Every renderer must show two separate measures:
 
 - **review completeness**: reviewed scorecard areas divided by the seven defined areas, such as `5/7 reviewed`
 - **reviewed pass rate**: passing areas divided by reviewed areas, such as `5/5 reviewed checks pass`
 
 These measures must never be collapsed into an unexplained repository-quality percentage. A repository with five passing and two pending areas is `71% reviewed` with a `5/5` reviewed pass rate, not “71% quality.”
 
-Detection, ownership, command, evidence, ranking, stability, and performance should each retain visible `pass`, `pending`, or `fail` text. Icons can reinforce those areas—for example search, repository boundary, terminal, linked evidence, ranking bars, fingerprint, and speedometer—but color or icon shape must not be the only state indicator. The design should remain accessible, printable through the later PDF renderer, and deterministic from `validation-corpus/v1`; it must not create new scores or alter the canonical corpus data.
+Detection, ownership, command, evidence, ranking, stability, and performance each retain visible `pass`, `pending`, or `fail` text in the current scorecard. Future icons can reinforce those areas—for example search, repository boundary, terminal, linked evidence, ranking bars, fingerprint, and speedometer—but color or icon shape must not be the only state indicator. The design should remain accessible, printable through the later PDF renderer, and deterministic from `validation-corpus/v1`; it must not create new scores or alter the canonical corpus data.
 
 ## Milestone 3: Adapter Spike Hardening
 

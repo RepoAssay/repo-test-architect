@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { listAdapters } from "../src/core/adapter-registry.js";
+import { validationScorecardAreas } from "../src/core/validation-scorecard.js";
 
 export const corpusRoles = [
   "conventional-library-or-service",
@@ -10,15 +11,7 @@ export const corpusRoles = [
   "difficult-ownership-graph"
 ];
 
-export const scorecardAreas = [
-  "detection",
-  "ownership",
-  "command",
-  "evidence",
-  "ranking",
-  "stability",
-  "performance"
-];
+export const scorecardAreas = validationScorecardAreas;
 
 const scoreStatuses = new Set(["pass", "fail", "pending"]);
 

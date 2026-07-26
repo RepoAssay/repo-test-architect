@@ -230,6 +230,8 @@ describe("docs links", () => {
     assert.ok(roadmap.includes("Future Scorecard Visualization"));
     assert.ok(roadmap.includes("review completeness"));
     assert.ok(roadmap.includes("reviewed pass rate"));
+    assert.ok(roadmap.includes("npm run corpus:scorecard"));
+    assert.ok(roadmap.includes("validation-scorecard/v1"));
     assert.ok(roadmap.includes("not “71% quality.”"));
     assert.ok(roadmap.includes("Milestone 3: Adapter Spike Hardening"));
     assert.ok(roadmap.includes("bounded single-module and settings-owned all-KMP literal-JVM-target graphs with source-set-qualified API traversal"));

@@ -706,6 +706,8 @@ Command:
 
 ```powershell
 npm run corpus:check
+npm run corpus:scorecard
+npm run corpus:scorecard -- --format json
 ```
 
 This repository-owned artifact records the pinned public probes used to harden supported adapters. It is a review contract rather than CLI or MCP audit output. Every supported adapter owns at least one conventional library or service, one framework-heavy application, and one difficult ownership graph.
@@ -720,6 +722,20 @@ Each case records:
 - optional audit duration and evidence-relationship counts when those observations exist
 
 `pending` is an intentional score. Stability passes only after repeated audits produce identical canonical JSON for the pinned checkout. Performance passes only after the standardized pass records both duration and evidence-relationship counts; historical timing notes remain observations until then. External repositories are not fetched or executed by `corpus:check`, and deterministic local fixtures remain the release gate.
+
+### Validation Scorecard View
+
+Schema:
+
+- `schemas/validation-scorecard-v1.schema.json`
+- `schemaVersion: "validation-scorecard/v1"`
+
+The derived scorecard is a deterministic human and machine-readable view of `validation-corpus/v1`; it does not alter the source manifest or create a repository-quality score. Overall, adapter, and case summaries keep two ratios separate:
+
+- `reviewCompleteness`: reviewed areas (`pass` plus `fail`) divided by all defined areas
+- `reviewedPassRate`: passing areas divided only by reviewed areas
+
+The JSON artifact stores the exact numerators and denominators rather than a rounded percentage. The Markdown renderer may show a rounded percentage alongside those ratios for readability. When no areas have been reviewed, the reviewed pass rate is reported as unavailable instead of treating `0/0` as a passing result. Every case retains the ordered detection, ownership, command, evidence, ranking, stability, and performance states with explicit `pass`, `fail`, or `pending` text.
 
 ## Eval Artifacts
 

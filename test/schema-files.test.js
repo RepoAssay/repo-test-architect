@@ -140,6 +140,17 @@ describe("schema files", () => {
     assert.deepEqual(schema.$defs.scoreStatus.enum, ["pass", "fail", "pending"]);
   });
 
+  it("documents validation-scorecard/v1", () => {
+    const schema = readSchema("schemas/validation-scorecard-v1.schema.json");
+
+    assert.equal(schema.properties.schemaVersion.const, "validation-scorecard/v1");
+    assert.ok(schema.required.includes("summary"));
+    assert.ok(schema.required.includes("adapters"));
+    assert.ok(schema.$defs.collectionSummary.required.includes("reviewCompleteness"));
+    assert.ok(schema.$defs.collectionSummary.required.includes("reviewedPassRate"));
+    assert.deepEqual(schema.$defs.area.properties.status.enum, ["pass", "fail", "pending"]);
+  });
+
   it("documents project-detection/v1", () => {
     const schema = readSchema("schemas/project-detection-v1.schema.json");
 

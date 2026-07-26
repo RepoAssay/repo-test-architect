@@ -1,0 +1,124 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://repo-test-architect.local/schemas/validation-scorecard-v1.schema.json",
+  "title": "Repo Test Architect Validation Scorecard",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "source", "summary", "adapters"],
+  "properties": {
+    "schemaVersion": { "const": "validation-scorecard/v1" },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schemaVersion"],
+      "properties": {
+        "schemaVersion": { "const": "validation-corpus/v1" }
+      }
+    },
+    "summary": { "$ref": "#/$defs/collectionSummary" },
+    "adapters": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/adapter" }
+    }
+  },
+  "$defs": {
+    "reviewCompleteness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reviewedAreas", "totalAreas"],
+      "properties": {
+        "reviewedAreas": { "type": "integer", "minimum": 0 },
+        "totalAreas": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "reviewedPassRate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["passedAreas", "reviewedAreas"],
+      "properties": {
+        "passedAreas": { "type": "integer", "minimum": 0 },
+        "reviewedAreas": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "states": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pass", "fail", "pending"],
+      "properties": {
+        "pass": { "type": "integer", "minimum": 0 },
+        "fail": { "type": "integer", "minimum": 0 },
+        "pending": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reviewCompleteness", "reviewedPassRate", "states"],
+      "properties": {
+        "reviewCompleteness": { "$ref": "#/$defs/reviewCompleteness" },
+        "reviewedPassRate": { "$ref": "#/$defs/reviewedPassRate" },
+        "states": { "$ref": "#/$defs/states" }
+      }
+    },
+    "collectionSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["caseCount", "reviewCompleteness", "reviewedPassRate", "states"],
+      "properties": {
+        "caseCount": { "type": "integer", "minimum": 0 },
+        "reviewCompleteness": { "$ref": "#/$defs/reviewCompleteness" },
+        "reviewedPassRate": { "$ref": "#/$defs/reviewedPassRate" },
+        "states": { "$ref": "#/$defs/states" }
+      }
+    },
+    "adapter": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["adapterId", "summary", "cases"],
+      "properties": {
+        "adapterId": { "type": "string", "minLength": 1 },
+        "summary": { "$ref": "#/$defs/collectionSummary" },
+        "cases": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/case" }
+        }
+      }
+    },
+    "case": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "role", "repository", "reportPath", "summary", "areas"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "role": { "type": "string", "minLength": 1 },
+        "repository": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["url", "commit", "projectRoot"],
+          "properties": {
+            "url": { "type": "string", "minLength": 1 },
+            "commit": { "type": "string", "minLength": 1 },
+            "projectRoot": { "type": "string", "minLength": 1 }
+          }
+        },
+        "reportPath": { "type": "string", "minLength": 1 },
+        "summary": { "$ref": "#/$defs/summary" },
+        "areas": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/area" }
+        }
+      }
+    },
+    "area": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["area", "status"],
+      "properties": {
+        "area": {
+          "enum": ["detection", "ownership", "command", "evidence", "ranking", "stability", "performance"]
+        },
+        "status": { "enum": ["pass", "fail", "pending"] }
+      }
+    }
+  }
+}
