@@ -249,14 +249,14 @@ function detectTestCommand(paths, frameworks, bazelGraph, files) {
     const scheme = detectXcodeScheme(paths);
     const schemeBlocker = detectXcodeSchemeBlocker(paths, scheme);
     if (schemeBlocker) return { command: undefined, blockers: [schemeBlocker] };
+    const containerResolution = detectXcodeContainer(paths, scheme);
+    if (containerResolution.blockers.length > 0) return { command: undefined, blockers: containerResolution.blockers };
     const testPlan = detectXcodeTestPlan(paths, files, scheme);
     const testPlanBlocker = detectXcodeTestPlanBlocker(paths, testPlan);
     if (testPlanBlocker) return { command: undefined, blockers: [testPlanBlocker] };
-    const workspace = detectXcodeWorkspace(paths, scheme);
-    const project = workspace ? undefined : detectXcodeProject(paths, scheme);
-    const containerOption = workspace
-      ? ` -workspace ${quoteShellArgument(workspace)}`
-      : project ? ` -project ${quoteShellArgument(project)}` : "";
+    const containerOption = containerResolution.workspace
+      ? ` -workspace ${quoteShellArgument(containerResolution.workspace)}`
+      : containerResolution.project ? ` -project ${quoteShellArgument(containerResolution.project)}` : "";
     if (scheme && testPlan) return { command: `xcodebuild test${containerOption} -scheme ${quoteShellArgument(scheme)} -testPlan ${quoteShellArgument(testPlan)}`, blockers: [] };
     if (scheme) return { command: `xcodebuild test${containerOption} -scheme ${quoteShellArgument(scheme)}`, blockers: [] };
     return { command: `xcodebuild test${containerOption}`, blockers: [] };
@@ -1273,24 +1273,45 @@ function detectXcodeSchemeBlocker(paths, selectedScheme) {
   return `Multiple shared Xcode schemes detected without a unique workspace or project name match: ${schemeNames.join(", ")}.`;
 }
 
-function detectXcodeWorkspace(paths, scheme) {
+function detectXcodeContainer(paths, scheme) {
   const workspaces = [...new Set(paths
     .filter(isXcodeWorkspaceDataPath)
-    .map((item) => item.split("/").at(-2))
-    .filter(Boolean))].sort();
-  if (workspaces.length === 1) return workspaces[0];
-  if (scheme) return workspaces.find((workspace) => basenameWithoutExtension(workspace) === scheme);
-  return undefined;
-}
+    .map((item) => item.replace(/\/contents\.xcworkspacedata$/, "")))].sort();
+  const workspace = selectXcodeContainer(workspaces, scheme, paths);
+  if (workspace) return { workspace, project: undefined, blockers: [] };
+  if (workspaces.length > 1) {
+    return {
+      workspace: undefined,
+      project: undefined,
+      blockers: [`Multiple Xcode workspaces detected without a unique scheme-name match: ${workspaces.join(", ")}.`]
+    };
+  }
 
-function detectXcodeProject(paths, scheme) {
   const projects = [...new Set(paths
     .filter((item) => item.endsWith(".xcodeproj/project.pbxproj"))
-    .map((item) => item.split("/").at(-2))
-    .filter(Boolean))].sort();
-  if (projects.length === 1) return projects[0];
-  if (scheme) return projects.find((project) => basenameWithoutExtension(project) === scheme);
-  return undefined;
+    .map((item) => item.replace(/\/project\.pbxproj$/, "")))].sort();
+  const project = selectXcodeContainer(projects, scheme, paths);
+  if (project) return { workspace: undefined, project, blockers: [] };
+  if (projects.length > 1) {
+    return {
+      workspace: undefined,
+      project: undefined,
+      blockers: [`Multiple Xcode projects detected without a unique scheme-name match: ${projects.join(", ")}.`]
+    };
+  }
+
+  return { workspace: undefined, project: undefined, blockers: [] };
+}
+
+function selectXcodeContainer(containers, scheme, paths) {
+  if (containers.length === 1) return containers[0];
+  if (!scheme) return undefined;
+  const schemePaths = paths.filter((item) => isSharedXcodeSchemePath(item) && basenameWithoutExtension(item) === scheme);
+  const owningContainers = containers.filter((container) => schemePaths.some((schemePath) => schemePath.startsWith(`${container}/xcshareddata/xcschemes/`)));
+  if (owningContainers.length === 1) return owningContainers[0];
+  if (owningContainers.length > 1) return undefined;
+  const matches = containers.filter((container) => basenameWithoutExtension(container) === scheme);
+  return matches.length === 1 ? matches[0] : undefined;
 }
 
 function hasXcodeContainer(paths) {
