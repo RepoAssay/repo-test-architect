@@ -755,6 +755,7 @@ function collectGoTestEvidence(sourceFiles, sourceSymbols, testFiles, modulePath
       const externalAlias = sameDirectory && testFile.packageName === `${source.packageName}_test`
         ? importedPackageAlias(testFile.imports, modulePath, source.directory, source.packageName)
         : undefined;
+      const usesUnqualifiedSymbols = samePackage || externalAlias === ".";
       const expectedTestPath = normalizedSourcePath.replace(/\.go$/, "_test.go");
       if (testFile.path === expectedTestPath && (samePackage || externalAlias)) {
         evidence.push({
@@ -766,17 +767,18 @@ function collectGoTestEvidence(sourceFiles, sourceSymbols, testFiles, modulePath
       if (!samePackage && !externalAlias) continue;
 
       for (const symbol of source.symbols) {
+        if (externalAlias && !isExportedGoIdentifier(symbol.name)) continue;
         const symbolKey = sourceSymbolKey(source.directory, symbol);
         if (sourceSymbols.symbolCounts.get(symbolKey) !== 1) continue;
-        if (samePackage && testFile.declaredSymbols.has(symbol.kind === "method" ? symbol.receiverType : symbol.name)) continue;
-        const reference = externalAlias ? `${externalAlias}.${symbol.name}` : symbol.name;
+        if (usesUnqualifiedSymbols && testFile.declaredSymbols.has(symbol.kind === "method" ? symbol.receiverType : symbol.name)) continue;
+        const reference = externalAlias && externalAlias !== "." ? `${externalAlias}.${symbol.name}` : symbol.name;
         const usage = symbol.kind === "method"
           ? detectReceiverMethodUsage(
             testFile.maskedContent,
-            externalAlias ? `${externalAlias}.${symbol.receiverType}` : symbol.receiverType,
+            externalAlias && externalAlias !== "." ? `${externalAlias}.${symbol.receiverType}` : symbol.receiverType,
             symbol.name
           )
-          : detectSymbolUsage(testFile.maskedContent, reference, symbol.kind);
+          : detectSymbolUsage(testFile.maskedContent, reference, symbol.kind, externalAlias === ".");
         if (!usage) continue;
         evidence.push({
           testPath: testFile.path,
@@ -841,8 +843,12 @@ function importedPackageAlias(imports, modulePath, directory, packageName) {
   if (!modulePath) return undefined;
   const importPath = directory === "." ? modulePath : `${modulePath}/${directory}`;
   const declaration = imports.find((entry) => entry.path === importPath);
-  if (!declaration || declaration.alias === "_" || declaration.alias === ".") return undefined;
+  if (!declaration || declaration.alias === "_") return undefined;
   return declaration.alias ?? packageName;
+}
+
+function isExportedGoIdentifier(name) {
+  return /^[A-Z]/.test(name);
 }
 
 function collectImports(content) {
@@ -858,8 +864,11 @@ function collectImports(content) {
   return imports;
 }
 
-function detectSymbolUsage(maskedContent, reference, kind) {
+function detectSymbolUsage(maskedContent, reference, kind, rejectLocalBindings = false) {
   const escaped = escapeRegex(reference);
+  if (kind === "function" && rejectLocalBindings && !reference.includes(".")) {
+    return callsUnqualifiedFunction(maskedContent, reference) ? "called" : undefined;
+  }
   if (kind === "function" && hasGoFunctionCall(maskedContent, `\\b${escaped}`)) return "called";
   if (kind === "type" && new RegExp(`\\b${escaped}\\s*(?:\\{|\\()`).test(maskedContent)) return "referenced";
   return undefined;

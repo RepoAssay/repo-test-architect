@@ -371,6 +371,74 @@ describe("Go adapter", () => {
     ]);
   });
 
+  it("resolves exact external-package dot imports without blank-import or local-shadow leakage", (t) => {
+    const root = createRepo(t, {
+      "go.mod": "module example.com/shop\n\ngo 1.22\n",
+      "price/parser.go": "package price\nfunc Parse(value string) string { return value }\n",
+      "price/client.go": "package price\ntype Client struct{}\nfunc (Client) Fetch() int { return 42 }\n",
+      "price/shadow.go": "package price\nfunc Shadow() int { return 1 }\n",
+      "price/blank.go": "package price\nfunc Blank() int { return 1 }\n",
+      "price/hidden.go": "package price\nfunc hidden() int { return 1 }\n",
+      "price/dot_test.go": [
+        "package price_test",
+        "import (",
+        "  \"testing\"",
+        "  . \"example.com/shop/price\"",
+        ")",
+        "func TestDotImport(t *testing.T) {",
+        "  client := Client{}",
+        "  if Parse(\"ok\") != \"ok\" || client.Fetch() != 42 { t.Fatal() }",
+        "  hidden := func() int { return 2 }",
+        "  _ = hidden()",
+        "}",
+        ""
+      ].join("\n"),
+      "price/local_test.go": [
+        "package price_test",
+        "import (",
+        "  \"testing\"",
+        "  . \"example.com/shop/price\"",
+        ")",
+        "func TestShadow(t *testing.T) {",
+        "  Shadow := func() int { return 2 }",
+        "  if Shadow() != 2 { t.Fatal() }",
+        "}",
+        ""
+      ].join("\n"),
+      "price/blank_test.go": [
+        "package price_test",
+        "import (",
+        "  \"testing\"",
+        "  _ \"example.com/shop/price\"",
+        ")",
+        "func TestBlank(t *testing.T) {",
+        "  Blank := func() int { return 2 }",
+        "  _ = Blank()",
+        "}",
+        ""
+      ].join("\n")
+    });
+
+    const audit = auditGoRepo(root);
+
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["price/parser.go", "price/client.go"]);
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.path), [
+      "price/blank.go",
+      "price/hidden.go",
+      "price/shadow.go"
+    ]);
+    assert.deepEqual(audit.coveredButRisky[1].existingTestEvidence, [
+      { testPath: "price/dot_test.go", kind: "go-symbol-reference", strength: "direct", usage: "called" },
+      { testPath: "price/dot_test.go", kind: "go-symbol-reference", strength: "referenced" }
+    ]);
+    assert.deepEqual(audit.coveredButRisky[0].existingTestEvidence, [{
+      testPath: "price/dot_test.go",
+      kind: "go-symbol-reference",
+      strength: "direct",
+      usage: "called"
+    }]);
+  });
+
   it("rejects inferred, reassigned, and ambiguously shadowed receiver bindings", (t) => {
     const root = createRepo(t, {
       "go.mod": "module example.com/method-shadows\n\ngo 1.22\n",
