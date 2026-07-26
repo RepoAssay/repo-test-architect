@@ -6,7 +6,7 @@ The first public alpha is shipped. The active phase is to deepen the four suppor
 
 ## Current Baseline
 
-The repository is public, `repo-test-architect@0.1.1` is available through npm, and `io.github.RepoAssay/repo-test-architect@0.1.1` is active in the Official MCP Registry.
+The repository is public, `repo-test-architect@0.2.0` is the current public alpha through npm, and `io.github.RepoAssay/repo-test-architect@0.2.0` is the matching Official MCP Registry version.
 
 The useful baseline is:
 
