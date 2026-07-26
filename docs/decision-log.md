@@ -205,3 +205,11 @@ Decision: emit direct `go-symbol-reference` evidence for a unique receiver-type/
 Rationale: receiver methods are ordinary Go behavior and were the largest repeated evidence gap after promotion. Requiring both the source receiver type and a concrete test binding recovers calls such as `client := PaymentClient{...}; client.Authorize(...)` without guessing what `NewClient()`, an interface value, or a reassigned variable contains. The checked-in client fixture validates the call with native `httptest`, race testing, and formatting.
 
 Revisit when: pinned live cases demonstrate a safe static constructor-return or typed-parameter rule that materially improves evidence without turning inferred or dynamic dispatch into direct coverage.
+
+## Exact Go Dot-Import Evidence
+
+Decision: treat `.` as an exact external-package import mode when an external `_test` package imports its own module-local package path. Resolve only exported, uniquely owned symbols and preserve the existing shadow, call-shape, explicit receiver-binding, and one-hop dependency boundaries. Blank imports and unrelated paths remain ineligible.
+
+Rationale: the pinned Zap pressure pass reported seven files as untested despite 92.5% module statement coverage because its external tests deliberately dot-import `zapcore` and `zaptest/observer`. The adapter already had exact package ownership but discarded the dot alias. Retaining the unqualified import mode recovers 69 evidence relationships without constructor inference, interface dispatch, or package-wide coverage claims; the two remaining untested internal helper files both have zero native coverage.
+
+Revisit when: another pinned repository demonstrates that dot-import ambiguity survives the exact package, exported identifier, unique symbol, and test-local shadow checks.
