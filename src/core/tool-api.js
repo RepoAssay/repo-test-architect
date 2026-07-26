@@ -38,10 +38,12 @@ export { validateProjectAudits } from "./project-audits-validation.js";
  * @typedef {object} AuditRepoOptions
  * @property {string} [adapterId]
  * @property {string[]} [changedPaths]
+ * @property {{ goos: string, goarch: string, tags?: string[] }} [goTarget]
  *
  * @typedef {object} AuditRepoProjectsOptions
  * @property {string[]} [changedPaths]
  * @property {string[]} [excludeProjectRoots]
+ * @property {{ goos: string, goarch: string, tags?: string[] }} [goTarget]
  *
  * @typedef {object} DetectRepoProjectsOptions
  * @property {string[]} [excludeProjectRoots]
@@ -87,7 +89,8 @@ export function getProjectDetectionRules() {
 export function auditRepoProjects(repoRoot, options = {}) {
   return auditDetectedProjects(repoRoot, {
     changedPaths: validateChangedPaths(options.changedPaths),
-    excludeProjectRoots: validateProjectRootPatterns(options.excludeProjectRoots)
+    excludeProjectRoots: validateProjectRootPatterns(options.excludeProjectRoots),
+    goTarget: validateGoTarget(options.goTarget)
   });
 }
 
@@ -172,7 +175,8 @@ export function collectRepoProjectStats(projectAudits) {
  */
 export function auditRepo(repoRoot, options = {}) {
   return getAdapter(options.adapterId).audit(repoRoot, {
-    changedPaths: validateChangedPaths(options.changedPaths)
+    changedPaths: validateChangedPaths(options.changedPaths),
+    goTarget: validateGoTarget(options.goTarget)
   });
 }
 
@@ -283,6 +287,32 @@ function validateProjectRootPatterns(projectRoots) {
   }
 
   return projectRoots;
+}
+
+function validateGoTarget(goTarget) {
+  if (goTarget === undefined) return undefined;
+  if (!goTarget || typeof goTarget !== "object" || Array.isArray(goTarget)) {
+    throw new Error("goTarget must be an object.");
+  }
+  const unknownKeys = Object.keys(goTarget).filter((key) => !["goos", "goarch", "tags"].includes(key));
+  if (unknownKeys.length > 0) throw new Error(`Unsupported goTarget option: ${unknownKeys[0]}.`);
+  if (typeof goTarget.goos !== "string" || goTarget.goos.length === 0) {
+    throw new Error("goTarget.goos must be a non-empty string.");
+  }
+  if (typeof goTarget.goarch !== "string" || goTarget.goarch.length === 0) {
+    throw new Error("goTarget.goarch must be a non-empty string.");
+  }
+  if (goTarget.tags !== undefined && (
+    !Array.isArray(goTarget.tags) ||
+    goTarget.tags.some((tag) => typeof tag !== "string" || tag.length === 0)
+  )) {
+    throw new Error("goTarget.tags must be an array of non-empty strings.");
+  }
+  return {
+    goos: goTarget.goos,
+    goarch: goTarget.goarch,
+    tags: goTarget.tags ?? []
+  };
 }
 
 /**

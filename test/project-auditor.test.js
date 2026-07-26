@@ -6,6 +6,23 @@ import { describe, it } from "node:test";
 import { auditDetectedProjects } from "../src/core/project-auditor.js";
 
 describe("project auditor", () => {
+  it("passes one explicit Go build target into detected Go projects", () => {
+    const result = auditDetectedProjects(path.resolve("examples/go-build-target-basic"), {
+      goTarget: { goos: "darwin", goarch: "arm64", tags: ["integration"] }
+    });
+
+    assert.deepEqual(result.summary, { projectCount: 1, auditedProjectCount: 1, skippedProjectCount: 0 });
+    assert.equal(result.audits[0].adapterId, "go");
+    assert.equal(
+      result.audits[0].audit.profile.testCommand,
+      "GOOS=darwin GOARCH=arm64 go test -tags=integration ./..."
+    );
+    assert.deepEqual(result.audits[0].audit.coveredButRisky.map((target) => target.path), [
+      "price_parser.go",
+      "tax_service_darwin_arm64.go"
+    ]);
+  });
+
   it("audits go.work members independently with module-local commands", () => {
     const result = auditDetectedProjects(path.resolve("examples/go-workspace-basic"));
 

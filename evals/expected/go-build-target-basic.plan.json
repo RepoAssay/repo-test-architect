@@ -1,0 +1,108 @@
+{
+  "schemaVersion": "plan/v1",
+  "summary": {
+    "confidence": "high",
+    "verificationCommand": "GOOS=darwin GOARCH=arm64 go test -tags=integration ./...",
+    "blockerCount": 0,
+    "addTestCount": 0,
+    "extendTestCount": 2,
+    "deferredCount": 1
+  },
+  "blockers": [],
+  "items": [
+    {
+      "id": "extend-test:price_parser.go",
+      "action": "extend-test",
+      "targetId": "price_parser.go",
+      "target": "price_parser",
+      "path": "price_parser.go",
+      "testLevel": "unit",
+      "priority": 7,
+      "riskReductionScore": 9,
+      "maintenanceCost": 2,
+      "rationale": [
+        "Pure transformation logic",
+        "edge-case surface",
+        "Existing Go test evidence detected; review missing edge cases"
+      ],
+      "sourceSignals": [
+        "pure-logic",
+        "edge-case-surface",
+        "matching-test"
+      ],
+      "existingTestPaths": [
+        "price_parser_test.go"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "price_parser_test.go",
+          "kind": "go-symbol-reference",
+          "strength": "direct",
+          "usage": "called"
+        },
+        {
+          "testPath": "price_parser_test.go",
+          "kind": "filename-convention",
+          "strength": "naming"
+        }
+      ]
+    },
+    {
+      "id": "extend-test:tax_service_darwin_arm64.go",
+      "action": "extend-test",
+      "targetId": "tax_service_darwin_arm64.go",
+      "target": "tax_service_darwin_arm64",
+      "path": "tax_service_darwin_arm64.go",
+      "testLevel": "unit",
+      "priority": 2,
+      "riskReductionScore": 6,
+      "maintenanceCost": 4,
+      "rationale": [
+        "Service boundary",
+        "Selected Go build target darwin/arm64",
+        "Existing Go test evidence detected; review missing edge cases"
+      ],
+      "sourceSignals": [
+        "service-boundary",
+        "build-target-selected",
+        "matching-test"
+      ],
+      "existingTestPaths": [
+        "tax_service_darwin_arm64_test.go"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "tax_service_darwin_arm64_test.go",
+          "kind": "go-symbol-reference",
+          "strength": "direct",
+          "usage": "called"
+        },
+        {
+          "testPath": "tax_service_darwin_arm64_test.go",
+          "kind": "filename-convention",
+          "strength": "naming"
+        }
+      ]
+    },
+    {
+      "id": "defer:tax_service_windows_amd64.go",
+      "action": "defer",
+      "targetId": "tax_service_windows_amd64.go",
+      "target": "tax_service_windows_amd64",
+      "path": "tax_service_windows_amd64.go",
+      "testLevel": "none",
+      "priority": -3,
+      "riskReductionScore": 3,
+      "maintenanceCost": 6,
+      "rationale": [
+        "Go source is excluded by the selected build target darwin/arm64 with tags integration.",
+        "Audit under a matching Go target instead of darwin/arm64 with tags integration."
+      ],
+      "sourceSignals": [
+        "build-constraint",
+        "target-excluded"
+      ],
+      "existingTestPaths": []
+    }
+  ]
+}

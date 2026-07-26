@@ -33,6 +33,34 @@
               "type": "string",
               "minLength": 1
             }
+          },
+          "goTarget": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "goos",
+              "goarch"
+            ],
+            "properties": {
+              "goos": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Explicit GOOS for bounded Go build-constraint evaluation."
+              },
+              "goarch": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Explicit GOARCH for bounded Go build-constraint evaluation."
+              },
+              "tags": {
+                "type": "array",
+                "description": "Optional custom Go build tags passed to the target-aware verification command.",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
           }
         }
       },
@@ -154,6 +182,34 @@
             "items": {
               "type": "string",
               "minLength": 1
+            }
+          },
+          "goTarget": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "goos",
+              "goarch"
+            ],
+            "properties": {
+              "goos": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Explicit GOOS for bounded Go build-constraint evaluation."
+              },
+              "goarch": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Explicit GOARCH for bounded Go build-constraint evaluation."
+              },
+              "tags": {
+                "type": "array",
+                "description": "Optional custom Go build tags passed to the target-aware verification command.",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
             }
           }
         }
@@ -362,6 +418,34 @@
             "items": {
               "type": "string",
               "minLength": 1
+            }
+          },
+          "goTarget": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "goos",
+              "goarch"
+            ],
+            "properties": {
+              "goos": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Explicit GOOS for bounded Go build-constraint evaluation."
+              },
+              "goarch": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Explicit GOARCH for bounded Go build-constraint evaluation."
+              },
+              "tags": {
+                "type": "array",
+                "description": "Optional custom Go build tags passed to the target-aware verification command.",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
             }
           }
         }

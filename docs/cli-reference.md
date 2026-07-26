@@ -67,9 +67,14 @@ Use these when one project root and, if needed, one adapter have already been se
 | `--exclude-project <root-or-glob>` | Exclude a project root or subtree; repeat as needed |
 | `--from-project-audits <file>` | Reuse `project-audits/v1` without rescanning |
 | `--adapter <id>` | Select an adapter for explicit single-project commands |
+| `--goos <value>` | Select `GOOS` for target-aware Go audits; requires `--goarch` |
+| `--goarch <value>` | Select `GOARCH` for target-aware Go audits; requires `--goos` |
+| `--go-tag <value>` | Add a custom Go build tag; repeat as needed |
 | `--help` | Show command-specific help without scanning |
 
 Unknown options fail instead of being silently ignored. Use quoted glob patterns such as `"examples/**"` so the shell does not expand them first.
+
+Go target options apply to `analyze`, `audit-projects`, and direct single-project scans. They cannot be combined with saved audit artifacts because target selection must happen during evidence collection. For example: `repo-test-architect audit ./service --adapter go --goos darwin --goarch arm64 --go-tag integration`.
 
 ## Metadata and Diagnostics
 

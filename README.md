@@ -102,7 +102,7 @@ Supported adapters:
 
 Experimental adapter:
 
-- `go`: conventional `go.mod` projects and literal repository-contained `go.work` members using runnable standard-library `TestXxx`, `FuzzXxx`, or `ExampleXxx` tests, package-local filename and unique-symbol evidence, and module-local `go test ./...`; see the [experimental support matrix](docs/go-experimental-support.md) for blockers and the promotion TODO
+- `go`: conventional `go.mod` projects and literal repository-contained `go.work` members using runnable standard-library `TestXxx`, `FuzzXxx`, or `ExampleXxx` tests, package-local filename and unique-symbol evidence, module-local commands, and optional explicit `GOOS`/`GOARCH`/custom-tag selection; see the [experimental support matrix](docs/go-experimental-support.md) for blockers and the promotion TODO
 
 Project detection also reports unsupported Ruby, PHP, Elixir, Rust, and .NET roots so clients can distinguish "not audited yet" from "not present."
 
@@ -429,7 +429,7 @@ evals/
 schemas/
 ```
 
-JavaScript/TypeScript, Python, Swift, and bounded Kotlin/JVM modules are supported adapter proof points. Conventional Go modules and literal repository-contained `go.work` members form the experimental fifth adapter. Kotlin/JVM support is limited to conventional Gradle/Maven modules and directly declared aggregate graphs, JUnit, the documented Kotest common-spec and Spock feature variants, or method-level TestNG, and standard source sets as defined in [Kotlin/JVM Alpha Support](docs/kotlin-jvm-alpha-support.md).
+JavaScript/TypeScript, Python, Swift, and bounded Kotlin/JVM modules are supported adapter proof points. Conventional Go modules, literal repository-contained `go.work` members, and explicit static build-target selection form the experimental fifth adapter. Kotlin/JVM support is limited to conventional Gradle/Maven modules and directly declared aggregate graphs, JUnit, the documented Kotest common-spec and Spock feature variants, or method-level TestNG, and standard source sets as defined in [Kotlin/JVM Alpha Support](docs/kotlin-jvm-alpha-support.md).
 
 Important runtime surfaces:
 

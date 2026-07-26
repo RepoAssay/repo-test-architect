@@ -1,0 +1,62 @@
+{
+  "schemaVersion": "model-consistency-scenario/v1",
+  "id": "go-build-target-basic-plan",
+  "description": "Different model profiles should preserve explicit Go build-target selection, target-aware verification, and exclusion ownership.",
+  "sourceArtifact": {
+    "path": "evals/expected/go-build-target-basic.audit.json",
+    "schemaVersion": "audit/v1"
+  },
+  "toolCall": {
+    "toolName": "generate_test_plan",
+    "arguments": {}
+  },
+  "lockedFields": [
+    {
+      "path": "summary.verificationCommand",
+      "expected": "GOOS=darwin GOARCH=arm64 go test -tags=integration ./...",
+      "reason": "The plan must retain the selected platform and custom build tag in its verification command."
+    },
+    {
+      "path": "summary.blockerCount",
+      "expected": 0,
+      "reason": "A fully specified supported target with statically evaluable constraints should not introduce a blocker."
+    },
+    {
+      "path": "summary.extendTestCount",
+      "expected": 2,
+      "reason": "The unconstrained parser and selected Darwin service should remain extend-test items."
+    },
+    {
+      "path": "summary.deferredCount",
+      "expected": 1,
+      "reason": "The Windows-only source should remain visible as a target-excluded deferred item."
+    },
+    {
+      "path": "items[0].id",
+      "expected": "extend-test:price_parser.go",
+      "reason": "The unconstrained parser should retain its stable plan identifier."
+    },
+    {
+      "path": "items[1].id",
+      "expected": "extend-test:tax_service_darwin_arm64.go",
+      "reason": "The selected target-specific service should retain its stable plan identifier."
+    },
+    {
+      "path": "items[2].id",
+      "expected": "defer:tax_service_windows_amd64.go",
+      "reason": "The nonmatching Windows source should remain explicitly excluded from this target audit."
+    }
+  ],
+  "allowedVariations": [
+    "summary wording",
+    "Go build-target explanation wording",
+    "optional detail depth"
+  ],
+  "unexpectedVariations": [
+    "missing GOOS or GOARCH verification context",
+    "missing custom build tag",
+    "selected Darwin source excluded",
+    "Windows-only source treated as selected",
+    "different plan action counts"
+  ]
+}

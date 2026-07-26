@@ -28,6 +28,7 @@ import { detectProjects } from "./project-detector.js";
  * @typedef {object} AuditDetectedProjectsOptions
  * @property {string[]} [changedPaths]
  * @property {string[]} [excludeProjectRoots]
+ * @property {{ goos: string, goarch: string, tags?: string[] }} [goTarget]
  */
 
 /**
@@ -60,7 +61,8 @@ export function auditDetectedProjects(repoRoot, options = {}) {
     const projectRoot = path.resolve(detection.root, project.root);
     const audit = getAdapter(adapterId).audit(projectRoot, {
       changedPaths: selectProjectChangedPaths(detection.root, project.root, options.changedPaths),
-      repositoryRoot: detection.root
+      repositoryRoot: detection.root,
+      goTarget: options.goTarget
     });
 
     audits.push({

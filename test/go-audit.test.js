@@ -51,6 +51,105 @@ describe("Go adapter", () => {
     ]);
   });
 
+  it("selects explicit GOOS, GOARCH, tags, and filename-constrained files", () => {
+    const audit = auditGoRepo(path.resolve("examples/go-build-target-basic"), {
+      goTarget: { goos: "darwin", goarch: "arm64", tags: ["integration"] }
+    });
+
+    assert.equal(audit.profile.testCommand, "GOOS=darwin GOARCH=arm64 go test -tags=integration ./...");
+    assert.equal(audit.profile.confidence, "high");
+    assert.deepEqual(audit.profile.blockers, []);
+    assert.deepEqual(audit.profile.architectures, ["go-module", "go-target-darwin-arm64"]);
+    assert.deepEqual(audit.profile.detectedConventions, [
+      "*_test.go",
+      "TestXxx",
+      "//go:build",
+      "GOOS/GOARCH filename constraints"
+    ]);
+    assert.ok(audit.profile.setupSignals.includes("Go target darwin/arm64"));
+    assert.ok(audit.profile.setupSignals.includes("Go build tags integration"));
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), [
+      "price_parser.go",
+      "tax_service_darwin_arm64.go"
+    ]);
+    assert.deepEqual(audit.skipped.map((target) => [target.path, target.kind]), [
+      ["tax_service_windows_amd64.go", "build-target-excluded"]
+    ]);
+    assert.ok(audit.coveredButRisky[1].signals.includes("build-target-selected"));
+  });
+
+  it("withholds target-specific files and commands without explicit target configuration", () => {
+    const audit = auditGoRepo(path.resolve("examples/go-build-target-basic"));
+
+    assert.equal(audit.profile.testCommand, undefined);
+    assert.equal(audit.profile.confidence, "medium");
+    assert.deepEqual(audit.profile.blockers, [
+      "Go build constraints require explicit GOOS and GOARCH target configuration before audit ownership is complete."
+    ]);
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["price_parser.go"]);
+    assert.deepEqual(audit.skipped.map((target) => [target.path, target.kind]), [
+      ["tax_service_darwin_arm64.go", "build-constrained"],
+      ["tax_service_windows_amd64.go", "build-constrained"]
+    ]);
+  });
+
+  it("evaluates boolean build expressions, custom tags, and target aliases", (t) => {
+    const root = createRepo(t, {
+      "go.mod": "module example.com/target\n",
+      "service_linux_arm64.go": "//go:build linux && unix && (enterprise || premium) && !windows\n\npackage target\nfunc Run() {}\n",
+      "service_linux_arm64_test.go": "//go:build linux && unix && enterprise\n\npackage target\nimport \"testing\"\nfunc TestRun(t *testing.T) { Run() }\n",
+      "service_windows_amd64.go": "//go:build windows || premium\n\npackage target\nfunc Run() {}\n"
+    });
+
+    const audit = auditGoRepo(root, {
+      goTarget: { goos: "android", goarch: "arm64", tags: ["enterprise", "enterprise"] }
+    });
+
+    assert.equal(audit.profile.testCommand, "GOOS=android GOARCH=arm64 go test -tags=enterprise ./...");
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["service_linux_arm64.go"]);
+    assert.deepEqual(audit.skipped.map((target) => target.path), ["service_windows_amd64.go"]);
+  });
+
+  it("blocks legacy, malformed, and environment-dependent build expressions", (t) => {
+    const root = createRepo(t, {
+      "go.mod": "module example.com/target\n",
+      "parser.go": "package target\nfunc Parse(value string) string { return value }\n",
+      "parser_test.go": "package target\nimport \"testing\"\nfunc TestParse(t *testing.T) { _ = Parse(\"ok\") }\n",
+      "legacy_linux.go": "// +build linux\n\npackage target\nfunc Legacy() {}\n",
+      "cgo_linux.go": "//go:build cgo && linux\n\npackage target\nfunc Native() {}\n",
+      "broken_linux.go": "//go:build linux && (amd64 ||\n\npackage target\nfunc Broken() {}\n"
+    });
+
+    const audit = auditGoRepo(root, {
+      goTarget: { goos: "linux", goarch: "amd64", tags: [] }
+    });
+
+    assert.equal(audit.profile.testCommand, undefined);
+    assert.ok(audit.profile.blockers.includes(
+      "Go build constraints include syntax or environment-dependent tags outside the bounded target evaluator."
+    ));
+    assert.deepEqual(audit.skipped.map((target) => target.path), [
+      "broken_linux.go",
+      "cgo_linux.go",
+      "legacy_linux.go"
+    ]);
+  });
+
+  it("rejects invalid or environment-overriding target options", () => {
+    assert.throws(
+      () => auditGoRepo(path.resolve("examples/go-testing-basic"), {
+        goTarget: { goos: "linux", goarch: "unknown", tags: [] }
+      }),
+      /Unsupported Go build target: linux\/unknown/
+    );
+    assert.throws(
+      () => auditGoRepo(path.resolve("examples/go-testing-basic"), {
+        goTarget: { goos: "linux", goarch: "amd64", tags: ["cgo"] }
+      }),
+      /cannot override environment-defined tag: cgo/
+    );
+  });
+
   it("keeps a declared go.work module as an independent command owner", () => {
     const audit = auditGoRepo(path.resolve("examples/go-workspace-basic/services/checkout"));
 
@@ -268,7 +367,7 @@ describe("Go adapter", () => {
     assert.equal(audit.profile.testCommand, undefined);
     assert.equal(audit.profile.confidence, "low");
     assert.deepEqual(audit.profile.blockers, [
-      "Go build constraints require an explicit target configuration before audit ownership is complete.",
+      "Go build constraints require explicit GOOS and GOARCH target configuration before audit ownership is complete.",
       "Ginkgo/Gomega execution is outside the bounded standard-library Go test support matrix."
     ]);
     assert.ok(audit.profile.setupSignals.includes("go.work"));

@@ -16,7 +16,7 @@ describe("golden audit snapshots", () => {
     it(`matches ${fixture.name}`, () => {
       const fileName = `${fixture.name}.audit.json`;
       const expected = JSON.parse(fs.readFileSync(path.join(expectedDir, fileName), "utf8"));
-      const actual = normalizeAuditForSnapshot(getAdapter(fixture.adapter).audit(fixture.root));
+      const actual = normalizeAuditForSnapshot(getAdapter(fixture.adapter).audit(fixture.root, fixture.options));
 
       assert.deepEqual(actual, expected);
     });
@@ -28,7 +28,7 @@ describe("golden plan snapshots", () => {
     it(`matches ${fixture.name}`, () => {
       const fileName = `${fixture.name}.plan.json`;
       const expected = JSON.parse(fs.readFileSync(path.join(expectedDir, fileName), "utf8"));
-      const audit = normalizeAuditForSnapshot(getAdapter(fixture.adapter).audit(fixture.root));
+      const audit = normalizeAuditForSnapshot(getAdapter(fixture.adapter).audit(fixture.root, fixture.options));
       const actual = normalizeJsonForSnapshot(createTestPlan(audit));
 
       assert.deepEqual(actual, expected);

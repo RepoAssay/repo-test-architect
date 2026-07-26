@@ -2,7 +2,7 @@
 
 ## Current State
 
-Repo Test Architect currently has supported deterministic JavaScript/TypeScript, Python, Swift, and bounded Kotlin/JVM audit pipelines, plus an experimental conventional Go module adapter with literal repository-contained `go.work` ownership.
+Repo Test Architect currently has supported deterministic JavaScript/TypeScript, Python, Swift, and bounded Kotlin/JVM audit pipelines, plus an experimental conventional Go module adapter with literal repository-contained `go.work` ownership and explicit static build-target selection.
 
 Implemented:
 
@@ -41,7 +41,7 @@ Implemented:
 - shared runtime Markdown audit renderer with a TypeScript reference mirror, used directly by the CLI
 - behavioral HTTP framework classifications for routers, routes, handlers, security and general middleware, request access and validation, request bodies, queries, cookies, caching, response construction, request events, proxies, sessions, WebSockets, streaming, client response parsing, and runtime adapters, including flat utility layouts identified through HTTP boundary types
 - runtime adapter registry with supported `javascript`, `kotlin`, `python`, and `swift` adapters
-- experimental `go` registry entry with conventional `go.mod` ownership, literal repository-contained `go.work` membership, module-local `go test ./...` selection, runnable standard-library test detection, exact package-symbol provenance, conservative source classification, explicit incomplete-workspace/build-constraint/Ginkgo blockers, golden artifacts, model-consistency locking, and shared downstream conformance
+- experimental `go` registry entry with conventional `go.mod` ownership, literal repository-contained `go.work` membership, module-local command selection, explicit `GOOS`/`GOARCH`/custom-tag evaluation for boolean and filename build constraints, runnable standard-library test detection, exact package-symbol provenance, conservative source classification, explicit incomplete-workspace/unsupported-constraint/Ginkgo blockers, golden artifacts, model-consistency locking, and shared downstream conformance
 - Swift Xcode command selection that preserves sole, direct scheme-owning, container-name-matched, and default-plan choices while retaining nested container paths, blocking ambiguous workspaces/projects/schemes/plans, and lowering unresolved profiles from high confidence
 - Swift source-symbol evidence that remains target-qualified and unique while rejecting test-local shadow declarations and same-named receiver member calls as proof of a source type or top-level function
 - Swift static extension evidence limited to source-file-unique receiver/member ownership and an explicit qualified call, with cross-file overloads and test-local receiver declarations kept uncredited
@@ -140,6 +140,9 @@ Implemented:
 - `node-test-typescript`
 - `express-supertest`
 - `react-testing-library`
+- `go-testing-basic`
+- `go-build-target-basic`
+- `go-workspace-checkout`
 - `kotlin-junit-basic`
 - `kotlin-gradle-groovy-junit`
 - `kotlin-gradle-module-graph-junit`

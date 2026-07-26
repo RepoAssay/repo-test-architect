@@ -1,0 +1,210 @@
+{
+  "schemaVersion": "audit/v1",
+  "profile": {
+    "root": "<fixture>",
+    "languages": [
+      "go"
+    ],
+    "packageManagers": [
+      "go-modules"
+    ],
+    "testFrameworks": [
+      "go-testing"
+    ],
+    "architectures": [
+      "go-module",
+      "go-target-darwin-arm64"
+    ],
+    "testCommand": "GOOS=darwin GOARCH=arm64 go test -tags=integration ./...",
+    "detectedConventions": [
+      "*_test.go",
+      "TestXxx",
+      "//go:build",
+      "GOOS/GOARCH filename constraints"
+    ],
+    "existingTestLocations": [
+      "root _test.go"
+    ],
+    "setupSignals": [
+      "go.mod",
+      "module path",
+      "Go target darwin/arm64",
+      "Go build tags integration",
+      "standard testing package"
+    ],
+    "confidence": "high",
+    "blockers": []
+  },
+  "untestedCandidates": [],
+  "coveredButRisky": [
+    {
+      "id": "price_parser.go",
+      "name": "price_parser",
+      "path": "price_parser.go",
+      "kind": "pure-logic",
+      "signals": [
+        "pure-logic",
+        "edge-case-surface",
+        "matching-test"
+      ],
+      "risk": "high",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 9,
+      "maintenanceCost": 2,
+      "reasons": [
+        "Pure transformation logic",
+        "edge-case surface",
+        "Existing Go test evidence detected; review missing edge cases"
+      ],
+      "existingTestPaths": [
+        "price_parser_test.go"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "price_parser_test.go",
+          "kind": "go-symbol-reference",
+          "strength": "direct",
+          "usage": "called"
+        },
+        {
+          "testPath": "price_parser_test.go",
+          "kind": "filename-convention",
+          "strength": "naming"
+        }
+      ]
+    },
+    {
+      "id": "tax_service_darwin_arm64.go",
+      "name": "tax_service_darwin_arm64",
+      "path": "tax_service_darwin_arm64.go",
+      "kind": "service",
+      "signals": [
+        "service-boundary",
+        "build-target-selected",
+        "matching-test"
+      ],
+      "risk": "medium",
+      "testability": "medium",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 6,
+      "maintenanceCost": 4,
+      "reasons": [
+        "Service boundary",
+        "Selected Go build target darwin/arm64",
+        "Existing Go test evidence detected; review missing edge cases"
+      ],
+      "existingTestPaths": [
+        "tax_service_darwin_arm64_test.go"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "tax_service_darwin_arm64_test.go",
+          "kind": "go-symbol-reference",
+          "strength": "direct",
+          "usage": "called"
+        },
+        {
+          "testPath": "tax_service_darwin_arm64_test.go",
+          "kind": "filename-convention",
+          "strength": "naming"
+        }
+      ]
+    }
+  ],
+  "recommended": [
+    {
+      "id": "price_parser.go",
+      "name": "price_parser",
+      "path": "price_parser.go",
+      "kind": "pure-logic",
+      "signals": [
+        "pure-logic",
+        "edge-case-surface",
+        "matching-test"
+      ],
+      "risk": "high",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 9,
+      "maintenanceCost": 2,
+      "reasons": [
+        "Pure transformation logic",
+        "edge-case surface",
+        "Existing Go test evidence detected; review missing edge cases"
+      ],
+      "existingTestPaths": [
+        "price_parser_test.go"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "price_parser_test.go",
+          "kind": "go-symbol-reference",
+          "strength": "direct",
+          "usage": "called"
+        },
+        {
+          "testPath": "price_parser_test.go",
+          "kind": "filename-convention",
+          "strength": "naming"
+        }
+      ]
+    },
+    {
+      "id": "tax_service_darwin_arm64.go",
+      "name": "tax_service_darwin_arm64",
+      "path": "tax_service_darwin_arm64.go",
+      "kind": "service",
+      "signals": [
+        "service-boundary",
+        "build-target-selected",
+        "matching-test"
+      ],
+      "risk": "medium",
+      "testability": "medium",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 6,
+      "maintenanceCost": 4,
+      "reasons": [
+        "Service boundary",
+        "Selected Go build target darwin/arm64",
+        "Existing Go test evidence detected; review missing edge cases"
+      ],
+      "existingTestPaths": [
+        "tax_service_darwin_arm64_test.go"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "tax_service_darwin_arm64_test.go",
+          "kind": "go-symbol-reference",
+          "strength": "direct",
+          "usage": "called"
+        },
+        {
+          "testPath": "tax_service_darwin_arm64_test.go",
+          "kind": "filename-convention",
+          "strength": "naming"
+        }
+      ]
+    }
+  ],
+  "skipped": [
+    {
+      "id": "tax_service_windows_amd64.go",
+      "name": "tax_service_windows_amd64",
+      "path": "tax_service_windows_amd64.go",
+      "kind": "build-target-excluded",
+      "signals": [
+        "build-constraint",
+        "target-excluded"
+      ],
+      "riskReductionScore": 3,
+      "maintenanceCost": 6,
+      "reason": "Go source is excluded by the selected build target darwin/arm64 with tags integration.",
+      "preferredCoveragePath": "Audit under a matching Go target instead of darwin/arm64 with tags integration."
+    }
+  ],
+  "risks": [
+    "price_parser has pure transformation logic, edge-case surface and needs edge-case review."
+  ]
+}

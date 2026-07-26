@@ -10,7 +10,7 @@ const expectedDir = path.resolve("evals/expected");
 fs.mkdirSync(expectedDir, { recursive: true });
 
 for (const fixture of loadEvalFixtures()) {
-  const audit = normalizeAuditForSnapshot(getAdapter(fixture.adapter).audit(fixture.root));
+  const audit = normalizeAuditForSnapshot(getAdapter(fixture.adapter).audit(fixture.root, fixture.options));
   const plan = createTestPlan(audit);
   const auditOutputPath = path.join(expectedDir, `${fixture.name}.audit.json`);
   const planOutputPath = path.join(expectedDir, `${fixture.name}.plan.json`);

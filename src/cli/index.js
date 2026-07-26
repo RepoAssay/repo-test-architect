@@ -123,6 +123,11 @@ if (options.fromProjectAuditsPath && !PROJECT_AUDIT_COMMANDS.includes(options.co
   process.exit(1);
 }
 
+if (options.goTarget && (options.fromAuditPath || options.fromProjectAuditsPath)) {
+  console.error("Go target options require a repository scan and cannot be combined with saved audit artifacts.");
+  process.exit(1);
+}
+
 const repoRoot = path.resolve(process.cwd(), options.repoPath);
 const diagnosticsOutput = selectDiagnosticsOutput(repoRoot, options);
 const adapterRegistry = options.command === "adapters" ? getAdapterRegistry() : undefined;
@@ -135,7 +140,8 @@ const projectAudits = options.fromProjectAuditsPath
   : PROJECT_AUDIT_COMMANDS.includes(options.command)
     ? auditRepoProjects(repoRoot, {
       changedPaths: readSelectedChangedPaths(repoRoot, options),
-      excludeProjectRoots: options.excludeProjectRoots
+      excludeProjectRoots: options.excludeProjectRoots,
+      goTarget: options.goTarget
     })
     : undefined;
 const audit = options.fromAuditPath
@@ -144,7 +150,8 @@ const audit = options.fromAuditPath
     ? undefined
     : auditRepo(repoRoot, {
       adapterId: options.adapterId,
-      changedPaths: readSelectedChangedPaths(repoRoot, options)
+      changedPaths: readSelectedChangedPaths(repoRoot, options),
+      goTarget: options.goTarget
     });
 const output = diagnosticsOutput ?? adapterRegistry ?? detectionRules ?? detection ?? selectProjectOutput(projectAudits, options) ?? selectOutput(audit, options);
 
@@ -206,6 +213,9 @@ function parseArgs(args) {
   let changedSinceRef;
   let diagnosticsFilePath;
   const excludeProjectRoots = [];
+  let goos;
+  let goarch;
+  const goTags = [];
 
   for (let index = 0; index < rest.length; index += 1) {
     const arg = rest[index];
@@ -251,6 +261,39 @@ function parseArgs(args) {
 
     if (arg.startsWith("--adapter=")) {
       adapterId = arg.slice("--adapter=".length);
+      continue;
+    }
+
+    if (arg === "--goos") {
+      goos = rest[index + 1] ?? "";
+      index += 1;
+      continue;
+    }
+
+    if (arg.startsWith("--goos=")) {
+      goos = arg.slice("--goos=".length);
+      continue;
+    }
+
+    if (arg === "--goarch") {
+      goarch = rest[index + 1] ?? "";
+      index += 1;
+      continue;
+    }
+
+    if (arg.startsWith("--goarch=")) {
+      goarch = arg.slice("--goarch=".length);
+      continue;
+    }
+
+    if (arg === "--go-tag") {
+      goTags.push(rest[index + 1] ?? "");
+      index += 1;
+      continue;
+    }
+
+    if (arg.startsWith("--go-tag=")) {
+      goTags.push(arg.slice("--go-tag=".length));
       continue;
     }
 
@@ -334,7 +377,14 @@ function parseArgs(args) {
     process.exit(1);
   }
 
-  return { command, repoPath, format, fromAuditPath, fromProjectAuditsPath, adapterId, itemId, targetId, owner, changedOnly, changedSinceRef, diagnosticsFilePath, excludeProjectRoots };
+  const hasGoTargetOption = goos !== undefined || goarch !== undefined || goTags.length > 0;
+  if (hasGoTargetOption && (!goos || !goarch || goTags.some((tag) => !tag))) {
+    console.error("Go target selection requires non-empty --goos and --goarch values; --go-tag values must also be non-empty.");
+    process.exit(1);
+  }
+  const goTarget = hasGoTargetOption ? { goos, goarch, tags: goTags } : undefined;
+
+  return { command, repoPath, format, fromAuditPath, fromProjectAuditsPath, adapterId, itemId, targetId, owner, changedOnly, changedSinceRef, diagnosticsFilePath, excludeProjectRoots, goTarget };
 }
 
 function selectDiagnosticsOutput(repoRoot, options) {
@@ -531,6 +581,11 @@ function renderCommandHelp(command) {
   }
   if (["audit", "plan", "hints", "explain", "rank", "placement"].includes(command)) {
     lines.push("  --adapter id                 Select the adapter for a single project root");
+  }
+  if (PROJECT_AUDIT_COMMANDS.includes(command) || ["audit", "plan", "hints", "explain", "rank", "placement"].includes(command)) {
+    lines.push("  --goos value                Select GOOS for target-aware Go audits");
+    lines.push("  --goarch value              Select GOARCH for target-aware Go audits");
+    lines.push("  --go-tag value              Add a custom Go build tag; repeat as needed");
   }
   if (["plan", "hints", "explain", "rank", "placement"].includes(command)) {
     lines.push("  --from-audit file            Reuse a saved audit/v1 artifact");

@@ -24,6 +24,7 @@ describe("package contents", () => {
     assert.ok(requiredFiles.includes("src/adapters/go/audit.js"));
     assert.ok(requiredFiles.includes("docs/go-experimental-support.md"));
     assert.ok(requiredFiles.includes("examples/go-testing-basic/go.mod"));
+    assert.ok(requiredFiles.includes("examples/go-build-target-basic/go.mod"));
     assert.ok(requiredFiles.includes("examples/go-workspace-basic/go.work"));
     assert.ok(requiredFiles.includes("examples/go-workspace-basic/services/checkout/go.mod"));
     assert.ok(requiredFiles.includes("schemas/diagnostic-event-v1.schema.json"));
