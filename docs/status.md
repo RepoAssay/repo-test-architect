@@ -41,6 +41,7 @@ Implemented:
 - shared runtime Markdown audit renderer with a TypeScript reference mirror, used directly by the CLI
 - behavioral HTTP framework classifications for routers, routes, handlers, security and general middleware, request access and validation, request bodies, queries, cookies, caching, response construction, request events, proxies, sessions, WebSockets, streaming, client response parsing, and runtime adapters, including flat utility layouts identified through HTTP boundary types
 - runtime adapter registry with supported `javascript`, `kotlin`, `python`, and `swift` adapters
+- Swift Xcode command selection that preserves sole, container-name-matched, and default-plan choices while blocking ambiguous shared schemes or test plans and lowering unresolved profiles from high confidence
 - Python declarative multi-package ownership for literal setuptools and Poetry entries plus bounded setuptools find roots, with import roots kept separate from owned path prefixes so namespace packages and sibling tooling do not leak into one another
 - Python root pytest configuration precedence across TOML, INI, `pyproject.toml`, `tox.ini`, and `setup.cfg`, with literal `testpaths`, simple `python_files` globs, configured test-support exclusion, and unsafe discovery-value rejection
 - Python runner selection that binds literal nox test commands to their owning session bodies and emits an explicit ambiguity blocker for competing tox/nox or multiple nox test entrypoints
@@ -259,7 +260,7 @@ The active sequence is defined in the [Adapter Hardening Plan](adapter-hardening
 2. JavaScript/TypeScript workspace command ownership, bounded runner-config/custom test-location discovery, module-boundary hardening, the generated large-suite regression gate, and conservative literal Playwright/Cypress request-to-route evidence are complete for the static patterns in the support matrix.
 3. Python literal multi-package/namespace ownership, bounded root and repository-owned ancestor pytest discovery, exact package-local relative imports, one-hop same-owner source dependencies, static framework test-client route evidence, and deterministic tox/nox ambiguity blockers are complete. Next Python pressure can target plugin-mutated discovery or dynamic runner orchestration.
 4. Kotlin/JVM competing root commands and incomplete Gradle aggregate or Maven reactor ownership now block selection; child builds remain separately detectable instead of disappearing through partial collapse. Continue pressure on statically provable dependency and module syntax.
-5. Harden SwiftPM/Xcode ownership ambiguity and symbol-evidence boundaries.
+5. Swift Xcode scheme and test-plan ambiguity now blocks command selection instead of producing an unresolved high-confidence fallback. Continue SwiftPM/Xcode ownership and symbol-evidence pressure.
 6. Continue the cross-adapter trust pass using the recorded real-repository distributions and deterministic regression budgets.
 
 Another adapter and native test generation remain behind this hardening phase. Placement, model-consistency, diagnostics, and stats work should be included when an adapter slice exposes a concrete cross-cutting need rather than expanding independently.

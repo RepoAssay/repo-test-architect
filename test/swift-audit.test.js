@@ -1527,6 +1527,29 @@ final class CollectorTests: XCTestCase {
     assert.ok(audit.profile.setupSignals.includes("xcode shared scheme"));
   });
 
+  it("blocks multiple shared Xcode schemes without a unique container-name match", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-ambiguous-xcode-schemes-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    const schemesRoot = path.join(root, "SampleApp.xcodeproj", "xcshareddata", "xcschemes");
+    fs.mkdirSync(schemesRoot, { recursive: true });
+    fs.mkdirSync(path.join(root, "SampleAppTests"), { recursive: true });
+    fs.writeFileSync(path.join(root, "SampleApp.xcodeproj", "project.pbxproj"), "{}\n");
+    fs.writeFileSync(path.join(schemesRoot, "Beta.xcscheme"), "<Scheme></Scheme>\n");
+    fs.writeFileSync(path.join(schemesRoot, "Preview.xcscheme"), "<Scheme></Scheme>\n");
+    fs.writeFileSync(
+      path.join(root, "SampleAppTests", "SampleAppTests.swift"),
+      "import XCTest\nfinal class SampleAppTests: XCTestCase { func testExample() {} }\n"
+    );
+
+    const audit = auditSwiftRepo(root);
+
+    assert.equal(audit.profile.testCommand, undefined);
+    assert.equal(audit.profile.confidence, "medium");
+    assert.ok(audit.profile.setupSignals.includes("xcode shared scheme"));
+    assert.ok(audit.profile.blockers.includes("Multiple shared Xcode schemes detected without a unique workspace or project name match: Beta, Preview."));
+    assert.ok(!audit.profile.blockers.includes("No runnable Swift test command detected from Package.swift or Xcode project/workspace markers."));
+  });
+
   it("ignores user-local Xcode schemes when selecting a portable command", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-xcode-user-scheme-"));
     const projectRoot = path.join(root, "SampleApp.xcodeproj");
@@ -1747,9 +1770,12 @@ final class SampleAppTests: XCTestCase {
 
     const audit = auditSwiftRepo(root);
 
-    assert.equal(audit.profile.testCommand, "xcodebuild test -project SampleApp.xcodeproj -scheme SampleApp");
+    assert.equal(audit.profile.testCommand, undefined);
+    assert.equal(audit.profile.confidence, "medium");
     assert.ok(audit.profile.setupSignals.includes("xcode test plan"));
     assert.ok(!audit.profile.setupSignals.includes("xcode scheme test plan"));
+    assert.ok(audit.profile.blockers.includes("Multiple Xcode test plans detected without a unique default or sole scheme reference: IntegrationTests, UnitTests."));
+    assert.ok(!audit.profile.blockers.includes("No runnable Swift test command detected from Package.swift or Xcode project/workspace markers."));
   });
 
   it("selects the default test plan referenced by the matching Xcode scheme", () => {

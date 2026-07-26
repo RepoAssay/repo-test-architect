@@ -115,6 +115,8 @@ Prioritize build ownership and stronger evidence without executing manifests:
 
 Objective-C classification, arbitrary manifest logic, and runtime coverage proof remain outside the current supported promise.
 
+Progress: the first Swift hardening slice suppresses `xcodebuild` commands when multiple checked-in shared schemes lack a unique workspace/project-name match or multiple test plans lack a unique default or sole scheme reference. It preserves the detected Xcode setup signals, reports a precise ambiguity blocker instead of the generic missing-command blocker, and prevents an unresolved command from retaining high profile confidence. Existing sole, name-matched, and default-plan selections remain unchanged.
+
 ## Workstream 3: Cross-Adapter Trust
 
 After each adapter has a refreshed corpus:
