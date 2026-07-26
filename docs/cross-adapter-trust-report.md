@@ -40,4 +40,4 @@ Both fixes are shared rather than adapter-specific. Focused regression tests loc
 
 The cross-adapter trust pass is complete for the current bounded alpha contract. The adapters agree on target categories, evidence provenance, blockers, ranking, planning, placement, stats, and repository-level composition without an unexplained adapter-specific exception.
 
-This does not broaden the supported static-analysis boundaries documented by each adapter. Dynamic build graphs, runtime reachability, and unproven test assertions remain explicit limitations. The next public-alpha release remains a separate exact-commit packaging and publication decision after the release gates pass.
+This does not broaden the supported static-analysis boundaries documented by each adapter. Dynamic build graphs, runtime reachability, and unproven test assertions remain explicit limitations. Public alpha `0.2.0` packages this completed trust pass after aligning every release-bearing manifest and runtime surface and passing the exact-commit release gates.

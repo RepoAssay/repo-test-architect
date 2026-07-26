@@ -148,12 +148,12 @@ describe("docs links", () => {
     assert.ok(realRepoReports.includes("cg-bff"));
     assert.ok(realRepoReports.includes("one JavaScript/TypeScript codebase"));
     assert.ok(publicReadiness.includes("Public Repository Ready"));
-    assert.ok(publicReadiness.includes("First Package Publication"));
+    assert.ok(publicReadiness.includes("Current Public Alpha"));
     assert.ok(publicReadiness.includes("repository visibility is public"));
-    assert.ok(publicReadiness.includes("The first public distribution is complete"));
-    assert.ok(publicReadiness.includes("`repo-test-architect@0.1.1`"));
-    assert.ok(publicReadiness.includes("`io.github.RepoAssay/repo-test-architect@0.1.1`"));
-    assert.ok(publicReadiness.includes("GitHub release `v0.1.1`"));
+    assert.ok(publicReadiness.includes("The current public-alpha distribution is complete"));
+    assert.ok(publicReadiness.includes("`repo-test-architect@0.2.0`"));
+    assert.ok(publicReadiness.includes("`io.github.RepoAssay/repo-test-architect@0.2.0`"));
+    assert.ok(publicReadiness.includes("GitHub release `v0.2.0`"));
     assert.ok(publicReadiness.includes("`LICENSE` ownership is verified as Mikael Stenberg"));
     assert.ok(publicReadiness.includes("Native test generation remains deferred"));
     assert.ok(publicReadiness.includes("alpha-readiness acceptance gates"));
@@ -223,7 +223,7 @@ describe("docs links", () => {
     assert.ok(hardeningPlan.includes("ESM/CommonJS"));
     assert.ok(hardeningPlan.includes("Native test generation"));
     assert.ok(roadmap.includes("Alpha Readiness"));
-    assert.ok(roadmap.includes("repository is public, `repo-test-architect@0.1.1` is available through npm"));
+    assert.ok(roadmap.includes("repository is public, `repo-test-architect@0.2.0` is the current public alpha through npm"));
     assert.ok(roadmap.includes("[Adapter Hardening Plan](adapter-hardening-plan.md)"));
     assert.ok(roadmap.includes("Milestone 1: Alpha Test Architecture Audit"));
     assert.ok(roadmap.includes("one concise repo-level summary can show top findings with evidence"));
