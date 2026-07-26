@@ -685,6 +685,73 @@ final class BehaviorTests: XCTestCase {
     ]);
   });
 
+  it("does not credit test-local shadows or same-named member calls as source symbols", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-swift-member-evidence-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "Sources", "Core"), { recursive: true });
+    fs.mkdirSync(path.join(root, "Tests", "CoreTests"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "Package.swift"),
+      `// swift-tools-version: 6.0
+import PackageDescription
+let package = Package(targets: [
+    .target(name: "Core"),
+    .testTarget(name: "CoreTests", dependencies: ["Core"])
+])
+`
+    );
+    fs.writeFileSync(
+      path.join(root, "Sources", "Core", "Formatter.swift"),
+      "public func format(_ value: String) -> String { if value.isEmpty { return \"missing\" }; return value }\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "Sources", "Core", "Normalizer.swift"),
+      "public func normalize(_ value: String) -> String { if value.isEmpty { return \"missing\" }; return value }\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "Sources", "Core", "Shadow.swift"),
+      "public struct Shadow { public init() {}; public func evaluate(_ value: Bool) -> Bool { if value { return true }; return false } }\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "Tests", "CoreTests", "BehaviorTests.swift"),
+      `import XCTest
+@testable import Core
+
+private struct Shadow {
+    let value: Bool
+}
+
+private struct TestFormatter {
+    func format(_ value: String) -> String { value }
+}
+
+final class BehaviorTests: XCTestCase {
+    func testLocalHelpers() {
+        XCTAssertTrue(Shadow(value: true).value)
+        XCTAssertEqual(TestFormatter().format("value"), "value")
+    }
+
+    func testTopLevelFunction() {
+        XCTAssertEqual(normalize("value"), "value")
+    }
+}
+`
+    );
+
+    const audit = auditSwiftRepo(root);
+    const normalizer = audit.coveredButRisky.find((target) => target.name === "Normalizer");
+
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.name).sort(), ["Formatter", "Shadow"]);
+    assert.deepEqual(normalizer.existingTestEvidence, [
+      {
+        testPath: "Tests/CoreTests/BehaviorTests.swift",
+        kind: "swift-symbol-reference",
+        strength: "referenced",
+        usage: "asserted"
+      }
+    ]);
+  });
+
   it("does not credit concrete Swift implementations from protocol-only test references", (t) => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-swift-protocol-evidence-"));
     t.after(() => fs.rmSync(root, { recursive: true, force: true }));

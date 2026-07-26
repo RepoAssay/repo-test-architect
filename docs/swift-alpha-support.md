@@ -42,6 +42,7 @@ Swift also emits stronger `swift-symbol-reference` evidence when a test qualifie
 - constructor and top-level function calls carry `called` usage
 - references inside `#expect`, `#require`, XCTest assertions, or Nimble `expect` expressions carry `asserted` usage
 - comments, ordinary string literals, test-local declarations, duplicate declarations in the same module, and wrong-target references are not credited
+- a test-local declaration or binding with the same symbol name suppresses that symbol for the test file, and a member call such as `helper.format()` does not count as a reference to a top-level `format()` function
 - this evidence proves a static symbol relationship, not runtime execution or behavioral completeness
 
 This normalized evidence now flows through audit, plan, explanation, findings, placement, and stats artifacts using the shared model. Stronger Swift evidence should be added as a distinct direct or referenced relationship only when the adapter can actually prove it.
@@ -49,7 +50,7 @@ This normalized evidence now flows through audit, plan, explanation, findings, p
 ## Known Alpha Gaps
 
 - custom Starlark macros, generated BUILD files, `select()` expressions, aliases, and transitive Bazel test-source graphs are not resolved
-- member-level references through inferred receiver types, overload resolution, extensions, aliases, raw-string interpolation, and macro expansion are not resolved
+- member-level references through inferred receiver types, overload resolution, extensions, aliases, raw-string interpolation, and macro expansion are not resolved; same-named member calls are deliberately kept separate from top-level function evidence
 - computed Swift manifest arrays, arbitrary helper logic, conditional target graphs, and dependency aliases are not fully resolved by the static manifest reader; version-specific manifests, simple target-returning helpers, and conventional module ownership are covered
 - database driver presence identifies the environment but does not prove that tests use an isolated database, execute migrations, or exercise production-engine semantics
 - reactive virtual-time, event-ordering, disposal, completion, reentrancy, and error-path coverage is not inferred from RxTest/RxBlocking presence
