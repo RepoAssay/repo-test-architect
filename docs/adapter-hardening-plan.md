@@ -103,6 +103,8 @@ Android, broad Kotlin Multiplatform expansion, and arbitrary Gradle execution re
 
 Progress: the first Kotlin/JVM hardening slice resolves Gradle and Maven verification commands independently, blocks selection when both are runnable at the audited root, and keeps nested auxiliary build markers from creating false command ambiguity. Local and conventionally inherited single-runner commands remain unchanged. The second slice requires Maven reactor declarations to be literal, repository-contained, directly resolvable to static child POM coordinates, and complete at the audited root. Unsafe, unresolved, or unowned nested declarations block the aggregate command and child ownership, while nested child projects remain visible to project detection. The third slice applies the same complete-ownership rule to Gradle settings: computed or unsafe includes, custom `projectDir` remaps, missing child builds, and unowned nested settings expansion block aggregate commands and partial child ownership. Project detection retains those child builds separately, while complete conventional and explicitly root-declared nested aggregates remain unchanged.
 
+Progress: the first post-Swift live-corpus refresh found that Maven Surefire's complete literal nested provider aggregator had become over-blocked. Maven ownership now recursively follows literal, repository-contained modules with direct POMs and static coordinates at every level; any unsafe or unresolved descendant still blocks the entire aggregate rather than producing partial ownership.
+
 ### Swift
 
 Prioritize build ownership and stronger evidence without executing manifests:

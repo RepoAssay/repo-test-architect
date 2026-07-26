@@ -187,7 +187,7 @@
             "commit": "8dcf263f808c15b00a7064ec6ea3f9268c1d4b51",
             "projectRoot": "."
           },
-          "supportBoundary": "Multi-module Maven reactor with dependency-qualified cross-module evidence and nested integration-test fixtures kept outside root ownership.",
+          "supportBoundary": "Multi-level literal Maven reactor with dependency-qualified cross-module evidence and nested integration-test fixtures kept outside root ownership.",
           "reportPath": "docs/kotlin-jvm-validation-hunt-report.md",
           "scorecard": {
             "detection": "pass",
@@ -200,17 +200,17 @@
           },
           "observed": {
             "testCommand": "mvn test",
-            "untestedCandidates": 24,
-            "coveredButRisky": 132,
-            "skippedTargets": 130,
-            "auditDurationMs": 524,
+            "untestedCandidates": 27,
+            "coveredButRisky": 139,
+            "skippedTargets": 137,
+            "auditDurationMs": 556,
             "auditDurationSamplesMs": [
-              634,
-              524,
-              521
+              666,
+              556,
+              551
             ],
-            "evidenceRelationshipCount": 348,
-            "canonicalAuditSha256": "17470891be77fc985e1df103496740831fca5dd37e726c0d7d94e314abf158e2"
+            "evidenceRelationshipCount": 356,
+            "canonicalAuditSha256": "c90f9bc99449f0f445ef11da29b48353b9ede6056b85d721f4aa2f65c1450127"
           }
         }
       ]

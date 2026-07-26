@@ -160,9 +160,9 @@ describe("project detector", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-maven-reactor-detection-"));
     fs.mkdirSync(path.join(root, "core"), { recursive: true });
     fs.mkdirSync(path.join(root, "integration-tests"), { recursive: true });
-    fs.writeFileSync(path.join(root, "pom.xml"), "<project><modules><module>core</module><module>integration-tests</module></modules></project>\n");
-    fs.writeFileSync(path.join(root, "core", "pom.xml"), "<project />\n");
-    fs.writeFileSync(path.join(root, "integration-tests", "pom.xml"), "<project />\n");
+    fs.writeFileSync(path.join(root, "pom.xml"), "<project><groupId>com.example</groupId><artifactId>root</artifactId><modules><module>core</module><module>integration-tests</module></modules></project>\n");
+    fs.writeFileSync(path.join(root, "core", "pom.xml"), "<project><groupId>com.example</groupId><artifactId>core</artifactId></project>\n");
+    fs.writeFileSync(path.join(root, "integration-tests", "pom.xml"), "<project><groupId>com.example</groupId><artifactId>integration-tests</artifactId></project>\n");
 
     const detection = detectProjects(root);
 
@@ -173,16 +173,28 @@ describe("project detector", () => {
     }]);
   });
 
-  it("keeps nested Maven reactor children visible outside the root ownership boundary", () => {
+  it("collapses complete literal nested Maven reactors into their aggregate root", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-maven-nested-reactor-detection-"));
     fs.mkdirSync(path.join(root, "platform", "core"), { recursive: true });
-    fs.writeFileSync(path.join(root, "pom.xml"), "<project><modules><module>platform</module></modules></project>\n");
-    fs.writeFileSync(path.join(root, "platform", "pom.xml"), "<project><modules><module>core</module></modules></project>\n");
-    fs.writeFileSync(path.join(root, "platform", "core", "pom.xml"), "<project />\n");
+    fs.writeFileSync(path.join(root, "pom.xml"), "<project><groupId>com.example</groupId><artifactId>root</artifactId><modules><module>platform</module></modules></project>\n");
+    fs.writeFileSync(path.join(root, "platform", "pom.xml"), "<project><groupId>com.example</groupId><artifactId>platform</artifactId><modules><module>core</module></modules></project>\n");
+    fs.writeFileSync(path.join(root, "platform", "core", "pom.xml"), "<project><groupId>com.example</groupId><artifactId>core</artifactId></project>\n");
 
     const detection = detectProjects(root);
 
-    assert.deepEqual(detection.projects.map((project) => project.root), [".", "platform/core"]);
+    assert.deepEqual(detection.projects.map((project) => project.root), ["."]);
+  });
+
+  it("keeps the nearest complete nested Maven boundary when the root graph is incomplete", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-maven-incomplete-nested-reactor-detection-"));
+    fs.mkdirSync(path.join(root, "platform", "core"), { recursive: true });
+    fs.writeFileSync(path.join(root, "pom.xml"), "<project><groupId>com.example</groupId><artifactId>root</artifactId><modules><module>platform</module><module>missing</module></modules></project>\n");
+    fs.writeFileSync(path.join(root, "platform", "pom.xml"), "<project><groupId>com.example</groupId><artifactId>platform</artifactId><modules><module>core</module></modules></project>\n");
+    fs.writeFileSync(path.join(root, "platform", "core", "pom.xml"), "<project><groupId>com.example</groupId><artifactId>core</artifactId></project>\n");
+
+    const detection = detectProjects(root);
+
+    assert.deepEqual(detection.projects.map((project) => project.root), [".", "platform"]);
   });
 
   it("detects the checked-in Maven reactor fixture as one supported project", () => {

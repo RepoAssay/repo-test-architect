@@ -56,7 +56,7 @@ describe("project auditor", () => {
     assert.deepEqual(result.audits[0].audit.coveredButRisky.map((target) => target.name), ["TokenParser"]);
   });
 
-  it("audits nested Maven reactor children separately from the blocked root", (t) => {
+  it("audits a complete literal nested Maven reactor once at the aggregate root", (t) => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-project-nested-maven-"));
     const coreRoot = path.join(root, "platform", "core");
     t.after(() => fs.rmSync(root, { recursive: true, force: true }));
@@ -71,13 +71,10 @@ describe("project auditor", () => {
 
     const result = auditDetectedProjects(root);
     const rootAudit = result.audits.find((entry) => entry.projectId === ".")?.audit;
-    const coreAudit = result.audits.find((entry) => entry.projectId === "platform/core")?.audit;
-
-    assert.deepEqual(result.summary, { projectCount: 2, auditedProjectCount: 2, skippedProjectCount: 0 });
-    assert.equal(rootAudit.profile.testCommand, undefined);
-    assert.ok(rootAudit.profile.blockers.includes("Nested Maven reactor expansion is outside the supported ownership boundary: platform."));
-    assert.equal(coreAudit.profile.testCommand, "mvn test");
-    assert.deepEqual(coreAudit.coveredButRisky.map((target) => target.path), ["src/main/java/TokenParser.java"]);
+    assert.deepEqual(result.summary, { projectCount: 1, auditedProjectCount: 1, skippedProjectCount: 0 });
+    assert.equal(rootAudit.profile.testCommand, "./mvnw test");
+    assert.deepEqual(rootAudit.profile.blockers, []);
+    assert.deepEqual(rootAudit.coveredButRisky.map((target) => target.path), ["platform/core/src/main/java/TokenParser.java"]);
   });
 
   it("audits Gradle children separately from a computed aggregate boundary", (t) => {
