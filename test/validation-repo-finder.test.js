@@ -115,6 +115,17 @@ describe("validation repository finder", () => {
     });
   });
 
+  it("defines a Go HTTP validation profile with an exact README signal", () => {
+    assert.equal(validationProfiles["go-http"].language, "Go");
+    assert.deepEqual(detectManifestSignals(validationProfiles["go-http"].searches, {
+      "go.mod": "module example.com/router\n\ngo 1.22\n",
+      "README.md": "A composable HTTP router built on net/http.\n"
+    }, [{ name: "router_test.go", type: "file" }]), {
+      signals: ["go-module", "go-http-readme", "root-go-tests"],
+      matchedPaths: ["go.mod", "README.md", "router_test.go"]
+    });
+  });
+
   it("defines Python validation profiles for package, framework, and advanced pytest shapes", () => {
     assert.deepEqual(
       ["python", "python-pytest", "python-fastapi", "python-django", "python-flask", "python-advanced"].map((profile) => validationProfiles[profile].language),

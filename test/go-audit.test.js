@@ -328,6 +328,57 @@ describe("Go adapter", () => {
     ]);
   });
 
+  it("keeps symbol calls visible between comment-like HTTP route strings", (t) => {
+    const root = createRepo(t, {
+      "go.mod": "module example.com/http-service\n",
+      "chain.go": "package service\nfunc Chain() int { return 1 }\n",
+      "router_test.go": `package service
+import "testing"
+func TestWildcardRoute(t *testing.T) {
+  prefix := "/*"
+  if Chain() != 1 { t.Fatal("unexpected chain") }
+  suffix := "*/"
+  if prefix + suffix == "" { t.Fatal("unexpected route") }
+}
+`
+    });
+
+    const audit = auditGoRepo(root);
+
+    assert.deepEqual(audit.untestedCandidates, []);
+    assert.deepEqual(audit.coveredButRisky[0].existingTestEvidence, [
+      {
+        testPath: "router_test.go",
+        kind: "go-symbol-reference",
+        strength: "direct",
+        usage: "called"
+      }
+    ]);
+  });
+
+  it("does not treat symbol-shaped strings, runes, or comments as calls", (t) => {
+    const root = createRepo(t, {
+      "go.mod": "module example.com/lexical-masking\n",
+      "visible.go": "package masking\nfunc Visible() int { return 1 }\n",
+      "string_only.go": "package masking\nfunc StringOnly() int { return 1 }\n",
+      "raw_only.go": "package masking\nfunc RawOnly() int { return 1 }\n",
+      "comment_only.go": "package masking\nfunc CommentOnly() int { return 1 }\n",
+      "block_only.go": "package masking\nfunc BlockOnly() int { return 1 }\n",
+      "router_test.go": "package masking\nimport \"testing\"\nfunc TestMasking(t *testing.T) {\n  _ = \"StringOnly() escaped \\\" // /* */\"\n  _ = `RawOnly()\n/* still raw */`\n  _ = '\\''\n  // CommentOnly() \"not a string\n  /* BlockOnly() `not a raw string` */\n  if Visible() != 1 { t.Fatal(\"unexpected value\") }\n}\n"
+    });
+
+    const audit = auditGoRepo(root);
+
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.path), [
+      "block_only.go",
+      "comment_only.go",
+      "raw_only.go",
+      "string_only.go"
+    ]);
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["visible.go"]);
+    assert.equal(audit.coveredButRisky[0].existingTestEvidence[0].usage, "called");
+  });
+
   it("resolves exact external test-package imports and aliases", (t) => {
     const root = createRepo(t, {
       "go.mod": "module example.com/shop\n\ngo 1.22\n",

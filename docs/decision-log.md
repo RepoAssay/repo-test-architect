@@ -181,3 +181,11 @@ Decision: allow one indirect `go-source-dependency` relationship from a runnable
 Rationale: the first pinned Go audit showed heavily exercised parser, type-cache, and TOML-type files as untested because tests call public decode and encode entrypoints one file away. A single explicit file dependency recovers useful coverage context while keeping receiver methods, dynamic dispatch, deeper graphs, cross-package calls, and assertion completeness outside the claim.
 
 Revisit when: the remaining pinned Go roles show that function-level call ownership or a deeper graph can be proven without turning a direct entrypoint call into package-wide coverage.
+
+## Go-Aware Lexical Masking
+
+Decision: mask Go comments, interpreted strings, raw strings, runes, and escapes with one stateful lexical scan before static symbol matching. Preserve source positions and newlines, keep literal contents available when parsing imports, and do not change the package, uniqueness, or call-shape requirements for evidence.
+
+Rationale: the pinned HTTP probe contained wildcard route strings with `/*` and `*/`. A comment regular expression interpreted those literal characters as a block comment and hid a real top-level function call between them, producing a false untested result for fully exercised code. Lexical states remove that ambiguity without treating text inside comments or strings as executable evidence.
+
+Revisit when: live Go syntax demonstrates a construct the bounded scanner cannot distinguish safely, or adopting a parser can improve correctness without executing repository code or introducing host-dependent behavior.
