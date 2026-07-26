@@ -23,6 +23,10 @@ The useful baseline is:
 
 The current planning target is to keep the public alpha active through at least mid/late September 2026, begin beta in late September or October if its evidence gates pass, and consider `1.0.0` in November or December at the earliest. These are owner-controlled planning windows rather than delivery promises: strong evidence can justify a documented acceleration, while unresolved trust work can delay promotion for as long as necessary. The normative stages, version lines, cadence, and promotion gates live in the [Release Lifecycle](release-lifecycle.md).
 
+### Future Release Automation
+
+OIDC-based GitHub Actions publication is a future operational improvement rather than a beta or `1.0` blocker. The proposed protected `publish.yml` flow would replace repeated npm and MCP browser authentication with short-lived, on-demand identities after one release-environment approval, while preserving exact-commit three-OS gates, clean registry verification, and GitHub release creation. Its public-repository security requirements and manual fallback are defined in [Distribution](distribution.md#deferred-oidc-release-automation); implementation can wait until release frequency makes the current owner-driven process meaningfully costly.
+
 ## Milestone 1: Alpha Test Architecture Audit
 
 Goal: make the audit trustworthy enough for a technical lead to run on a real repository and review with a team.

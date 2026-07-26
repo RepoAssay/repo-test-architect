@@ -32,6 +32,12 @@ Use this checklist for every public package or MCP Registry version. The [Releas
 - verify the public npm package from a clean temporary install before publishing the matching MCP Registry entry
 - query the official MCP Registry for the exact server name and version after publication
 
+## Future Release Automation Gate
+
+The deferred [OIDC release automation design](distribution.md#deferred-oidc-release-automation) may replace repeated local authentication only after its protected environment, trusted-publisher identity, exact-commit guards, least-privilege jobs, `CODEOWNERS`, pinned dependencies, registry verification, and manual fallback are implemented and reviewed. Until then, use the manual publication steps in this checklist.
+
+Automation must not introduce a long-lived npm token, MCP Registry token, GitHub personal access token, or deploy key. A public pull request, fork, issue, comment, arbitrary tag, or unapproved collaborator action must never be able to reach a publishing job or request its OIDC identity.
+
 ## Public Docs
 
 - include local MCP install snippets

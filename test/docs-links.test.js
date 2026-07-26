@@ -167,6 +167,15 @@ describe("docs links", () => {
     assert.ok(releaseChecklist.includes("required Linux `pr-gate` green"));
     assert.ok(releaseChecklist.includes("manually dispatched three-OS release matrix"));
     assert.ok(releaseChecklist.includes("repository, homepage, bugs, MCP identity, and keywords aligned"));
+    assert.ok(releaseChecklist.includes("distribution.md#deferred-oidc-release-automation"));
+    assert.ok(releaseChecklist.includes("must not introduce a long-lived npm token"));
+
+    const distribution = fs.readFileSync("docs/distribution.md", "utf8");
+    assert.ok(distribution.includes("Deferred OIDC Release Automation"));
+    assert.ok(distribution.includes("started only through `workflow_dispatch` against protected `master`"));
+    assert.ok(distribution.includes("No `NPM_TOKEN`, `MCP_GITHUB_TOKEN`, personal access token, deploy key"));
+    assert.ok(distribution.includes("never publish from `pull_request`, `pull_request_target`, fork, issue, comment, or arbitrary tag events"));
+    assert.ok(distribution.includes("The manual process remains the fallback"));
 
     for (const field of ["repository", "homepage", "bugs"]) {
       assert.ok(packageJson[field], `Missing approved package metadata field: ${field}`);
