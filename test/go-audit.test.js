@@ -51,6 +51,102 @@ describe("Go adapter", () => {
     ]);
   });
 
+  it("keeps a declared go.work module as an independent command owner", () => {
+    const audit = auditGoRepo(path.resolve("examples/go-workspace-basic/services/checkout"));
+
+    assert.equal(audit.profile.testCommand, "go test ./...");
+    assert.equal(audit.profile.confidence, "high");
+    assert.deepEqual(audit.profile.blockers, []);
+    assert.deepEqual(audit.profile.architectures, ["go-module", "go-workspace-module"]);
+    assert.deepEqual(audit.profile.setupSignals, [
+      "go.mod",
+      "go.work (nearest workspace)",
+      "module path",
+      "go.work module",
+      "standard testing package"
+    ]);
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["checkout_service.go"]);
+  });
+
+  it("blocks command ownership for modules omitted by the nearest workspace", (t) => {
+    const workspace = createRepo(t, {
+      "go.work": "go 1.22\nuse ./listed\n",
+      "listed/go.mod": "module example.com/listed\n",
+      "unlisted/go.mod": "module example.com/unlisted\n",
+      "unlisted/parser.go": "package unlisted\nfunc Parse(value string) string { return value }\n",
+      "unlisted/parser_test.go": "package unlisted\nimport \"testing\"\nfunc TestParse(t *testing.T) { _ = Parse(\"ok\") }\n"
+    });
+
+    const audit = auditGoRepo(path.join(workspace, "unlisted"));
+
+    assert.equal(audit.profile.testCommand, undefined);
+    assert.equal(audit.profile.confidence, "medium");
+    assert.deepEqual(audit.profile.blockers, [
+      "The module is not declared by the nearest Go workspace, so command ownership is incomplete."
+    ]);
+    assert.ok(audit.profile.setupSignals.includes("go.work (nearest workspace)"));
+    assert.ok(!audit.profile.setupSignals.includes("go.work module"));
+  });
+
+  it("blocks incomplete or escaping workspace module graphs", (t) => {
+    const workspace = createRepo(t, {
+      "go.work": "go 1.22\nuse (\n  `./module` // owned\n  ./missing\n  ../external\n)\n",
+      "module/go.mod": "module example.com/module\n",
+      "module/parser.go": "package module\nfunc Parse(value string) string { return value }\n",
+      "module/parser_test.go": "package module\nimport \"testing\"\nfunc TestParse(t *testing.T) { _ = Parse(\"ok\") }\n"
+    });
+
+    const audit = auditGoRepo(path.join(workspace, "module"));
+
+    assert.equal(audit.profile.testCommand, undefined);
+    assert.deepEqual(audit.profile.blockers, [
+      "Go workspace use directives must resolve to literal repository-contained modules before command ownership is complete."
+    ]);
+    assert.ok(audit.profile.setupSignals.includes("go.work module"));
+  });
+
+  it("accepts a quoted literal workspace member with an inline comment", (t) => {
+    const workspace = createRepo(t, {
+      "go.work": "go 1.22\nuse \"./module\" // exact member\n",
+      "module/go.mod": "module example.com/module\n",
+      "module/parser.go": "package module\nfunc Parse(value string) string { return value }\n",
+      "module/parser_test.go": "package module\nimport \"testing\"\nfunc TestParse(t *testing.T) { _ = Parse(\"ok\") }\n"
+    });
+
+    const audit = auditGoRepo(path.join(workspace, "module"));
+
+    assert.equal(audit.profile.testCommand, "go test ./...");
+    assert.deepEqual(audit.profile.blockers, []);
+  });
+
+  it("blocks malformed workspace blocks and invalid quoted paths", (t) => {
+    const workspace = createRepo(t, {
+      "go.work": "go 1.22\nuse (\n  ./module\n  \"\\xZZ\"\n  malformed)\n",
+      "module/go.mod": "module example.com/module\n",
+      "module/parser.go": "package module\nfunc Parse(value string) string { return value }\n",
+      "module/parser_test.go": "package module\nimport \"testing\"\nfunc TestParse(t *testing.T) { _ = Parse(\"ok\") }\n"
+    });
+
+    const audit = auditGoRepo(path.join(workspace, "module"));
+
+    assert.equal(audit.profile.testCommand, undefined);
+    assert.deepEqual(audit.profile.blockers, [
+      "Go workspace use directives must resolve to literal repository-contained modules before command ownership is complete."
+    ]);
+  });
+
+  it("keeps workspace-root audits aggregate-only", () => {
+    const audit = auditGoRepo(path.resolve("examples/go-workspace-basic"));
+
+    assert.equal(audit.profile.testCommand, undefined);
+    assert.deepEqual(audit.profile.blockers, [
+      "No root go.mod detected for the bounded Go module adapter.",
+      "No runnable standard Go test detected.",
+      "Go workspace roots must be audited through their declared module projects."
+    ]);
+    assert.deepEqual(audit.recommended, []);
+  });
+
   it("requires a root module and a runnable standard test", (t) => {
     const root = createRepo(t, {
       "parser.go": "package sample\nfunc Parse(value string) string { return value }\n",
@@ -150,7 +246,7 @@ describe("Go adapter", () => {
     assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["codec.go"]);
   });
 
-  it("blocks workspaces, build constraints, and Ginkgo execution", (t) => {
+  it("accepts a root-owned workspace module while blocking build constraints and Ginkgo execution", (t) => {
     const root = createRepo(t, {
       "go.mod": "module example.com/sample\n\nrequire github.com/onsi/ginkgo/v2 v2.0.0\n",
       "go.work": "go 1.22\nuse .\n",
@@ -172,11 +268,11 @@ describe("Go adapter", () => {
     assert.equal(audit.profile.testCommand, undefined);
     assert.equal(audit.profile.confidence, "low");
     assert.deepEqual(audit.profile.blockers, [
-      "Go workspaces are outside the bounded single-module support matrix.",
       "Go build constraints require an explicit target configuration before audit ownership is complete.",
       "Ginkgo/Gomega execution is outside the bounded standard-library Go test support matrix."
     ]);
     assert.ok(audit.profile.setupSignals.includes("go.work"));
+    assert.ok(audit.profile.setupSignals.includes("go.work module"));
     assert.deepEqual(audit.skipped.find((target) => target.path === "platform.go")?.kind, "build-constrained");
   });
 

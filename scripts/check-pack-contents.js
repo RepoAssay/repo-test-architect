@@ -36,6 +36,8 @@ export const requiredFiles = [
   "src/adapters/go/audit.js",
   "docs/go-experimental-support.md",
   "examples/go-testing-basic/go.mod",
+  "examples/go-workspace-basic/go.work",
+  "examples/go-workspace-basic/services/checkout/go.mod",
   "schemas/audit-v1.schema.json",
   "schemas/diagnostic-event-v1.schema.json",
   "schemas/doctor-report-v1.schema.json",

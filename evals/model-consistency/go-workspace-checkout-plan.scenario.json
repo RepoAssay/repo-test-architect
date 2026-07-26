@@ -1,0 +1,61 @@
+{
+  "schemaVersion": "model-consistency-scenario/v1",
+  "id": "go-workspace-checkout-plan",
+  "description": "Different model profiles should preserve module-local Go workspace command ownership and direct standard-library test evidence.",
+  "sourceArtifact": {
+    "path": "evals/expected/go-workspace-checkout.audit.json",
+    "schemaVersion": "audit/v1"
+  },
+  "toolCall": {
+    "toolName": "generate_test_plan",
+    "arguments": {}
+  },
+  "lockedFields": [
+    {
+      "path": "summary.verificationCommand",
+      "expected": "go test ./...",
+      "reason": "A literally declared workspace member should retain its module-local verification command."
+    },
+    {
+      "path": "summary.blockerCount",
+      "expected": 0,
+      "reason": "The complete repository-contained workspace graph should not introduce an ownership blocker."
+    },
+    {
+      "path": "summary.extendTestCount",
+      "expected": 1,
+      "reason": "The directly exercised checkout service should remain an extend-test item."
+    },
+    {
+      "path": "items[0].id",
+      "expected": "extend-test:checkout_service.go",
+      "reason": "The workspace-owned service should retain its stable module-local plan identifier."
+    },
+    {
+      "path": "items[0].existingTestPaths[0]",
+      "expected": "checkout_service_test.go",
+      "reason": "Test provenance must stay relative to the owning module rather than the workspace root."
+    },
+    {
+      "path": "items[0].existingTestEvidence[0].kind",
+      "expected": "go-symbol-reference",
+      "reason": "The checkout test should retain direct Go symbol evidence."
+    },
+    {
+      "path": "items[0].existingTestEvidence[0].usage",
+      "expected": "called",
+      "reason": "The owned checkout function remains directly called by its runnable test."
+    }
+  ],
+  "allowedVariations": [
+    "summary wording",
+    "Go workspace explanation wording",
+    "optional detail depth"
+  ],
+  "unexpectedVariations": [
+    "workspace-root aggregate command",
+    "missing module-local verification command",
+    "missing direct Go symbol evidence",
+    "workspace-relative source or test identifiers"
+  ]
+}

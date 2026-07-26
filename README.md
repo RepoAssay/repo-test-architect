@@ -8,7 +8,7 @@ The current implementation can:
 
 - audit JavaScript/TypeScript, Python, and Swift projects through supported adapters
 - audit supported, bounded Kotlin/JVM fixtures through the same shared artifact model
-- audit conventional single-module Go projects through an experimental bounded adapter
+- audit conventional Go modules and literal repository-contained `go.work` members through an experimental bounded adapter
 - detect polyglot project roots and report unsupported ecosystems without hiding them
 - produce a complete repository analysis, findings, ranking, plan, execution hints, and verification commands in one audit pass
 - classify source files by likely test value and defer low-value direct tests
@@ -102,7 +102,7 @@ Supported adapters:
 
 Experimental adapter:
 
-- `go`: conventional single-module `go.mod` projects using runnable standard-library `TestXxx`, `FuzzXxx`, or `ExampleXxx` tests, package-local filename and unique-symbol evidence, and `go test ./...`; see the [experimental support matrix](docs/go-experimental-support.md) for blockers and the promotion TODO
+- `go`: conventional `go.mod` projects and literal repository-contained `go.work` members using runnable standard-library `TestXxx`, `FuzzXxx`, or `ExampleXxx` tests, package-local filename and unique-symbol evidence, and module-local `go test ./...`; see the [experimental support matrix](docs/go-experimental-support.md) for blockers and the promotion TODO
 
 Project detection also reports unsupported Ruby, PHP, Elixir, Rust, and .NET roots so clients can distinguish "not audited yet" from "not present."
 
@@ -429,7 +429,7 @@ evals/
 schemas/
 ```
 
-JavaScript/TypeScript, Python, Swift, and bounded Kotlin/JVM modules are supported adapter proof points. Conventional single-module Go is an experimental fifth adapter. Kotlin/JVM support is limited to conventional Gradle/Maven modules and directly declared aggregate graphs, JUnit, the documented Kotest common-spec and Spock feature variants, or method-level TestNG, and standard source sets as defined in [Kotlin/JVM Alpha Support](docs/kotlin-jvm-alpha-support.md).
+JavaScript/TypeScript, Python, Swift, and bounded Kotlin/JVM modules are supported adapter proof points. Conventional Go modules and literal repository-contained `go.work` members form the experimental fifth adapter. Kotlin/JVM support is limited to conventional Gradle/Maven modules and directly declared aggregate graphs, JUnit, the documented Kotest common-spec and Spock feature variants, or method-level TestNG, and standard source sets as defined in [Kotlin/JVM Alpha Support](docs/kotlin-jvm-alpha-support.md).
 
 Important runtime surfaces:
 

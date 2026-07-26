@@ -6,6 +6,38 @@ import { describe, it } from "node:test";
 import { auditDetectedProjects } from "../src/core/project-auditor.js";
 
 describe("project auditor", () => {
+  it("audits go.work members independently with module-local commands", () => {
+    const result = auditDetectedProjects(path.resolve("examples/go-workspace-basic"));
+
+    assert.deepEqual(result.summary, {
+      projectCount: 2,
+      auditedProjectCount: 2,
+      skippedProjectCount: 0
+    });
+    assert.deepEqual(result.audits.map((entry) => ({
+      projectId: entry.projectId,
+      adapterId: entry.adapterId,
+      testCommand: entry.audit.profile.testCommand,
+      blockers: entry.audit.profile.blockers,
+      workspaceOwned: entry.audit.profile.setupSignals.includes("go.work module")
+    })), [
+      {
+        projectId: "libraries/pricing",
+        adapterId: "go",
+        testCommand: "go test ./...",
+        blockers: [],
+        workspaceOwned: true
+      },
+      {
+        projectId: "services/checkout",
+        adapterId: "go",
+        testCommand: "go test ./...",
+        blockers: [],
+        workspaceOwned: true
+      }
+    ]);
+  });
+
   it("audits supported detected projects and reports unsupported projects", () => {
     const result = auditDetectedProjects(path.resolve("examples/polyglot-workspace"));
 

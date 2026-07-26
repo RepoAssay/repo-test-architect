@@ -19,7 +19,8 @@ const IGNORED_DIRECTORIES = new Set([
 
 export function auditGoRepo(root, options = {}) {
   const files = readRepoFiles(root);
-  const profile = buildProfile(root, files);
+  const workspaceContext = findNearestGoWorkspace(root);
+  const profile = buildProfile(root, files, workspaceContext);
   const changedPaths = options.changedPaths
     ? new Set(options.changedPaths.map((currentPath) => normalizeChangedPath(root, currentPath)))
     : undefined;
@@ -134,14 +135,13 @@ function shouldRead(currentPath) {
   return normalized.endsWith(GO_SOURCE_EXTENSION) || BUILD_FILES.has(normalized);
 }
 
-function buildProfile(root, files) {
+function buildProfile(root, files, workspaceContext) {
   const paths = files.map((file) => normalizePath(file.path));
   const goMod = files.find((file) => file.path === "go.mod");
   const modulePath = goMod?.content.match(/^\s*module\s+([^\s]+)\s*$/m)?.[1];
   const runnableTests = files.filter((file) => isRunnableTestFile(file)).map((file) => analyzeTestFile(file));
   const allTestFiles = files.filter((file) => isTestFile(file.path));
   const hasBuildConstraints = files.some((file) => file.path.endsWith(".go") && hasBuildConstraint(file.content));
-  const hasGoWorkspace = paths.includes("go.work");
   const hasGinkgo = files.some((file) => /github\.com\/onsi\/(?:ginkgo|gomega)/.test(file.content));
   const testFrameworks = runnableTests.length > 0 ? ["go-testing"] : [];
   const existingTestLocations = detectExistingTestLocations(runnableTests);
@@ -149,7 +149,13 @@ function buildProfile(root, files) {
 
   if (!goMod) blockers.push("No root go.mod detected for the bounded Go module adapter.");
   if (testFrameworks.length === 0) blockers.push("No runnable standard Go test detected.");
-  if (hasGoWorkspace) blockers.push("Go workspaces are outside the bounded single-module support matrix.");
+  if (workspaceContext && !workspaceContext.complete) {
+    blockers.push("Go workspace use directives must resolve to literal repository-contained modules before command ownership is complete.");
+  } else if (workspaceContext && !workspaceContext.declared) {
+    blockers.push(workspaceContext.local && !goMod
+      ? "Go workspace roots must be audited through their declared module projects."
+      : "The module is not declared by the nearest Go workspace, so command ownership is incomplete.");
+  }
   if (hasBuildConstraints) blockers.push("Go build constraints require an explicit target configuration before audit ownership is complete.");
   if (hasGinkgo) blockers.push("Ginkgo/Gomega execution is outside the bounded standard-library Go test support matrix.");
 
@@ -162,11 +168,11 @@ function buildProfile(root, files) {
     languages: ["go"],
     packageManagers: goMod ? ["go-modules"] : [],
     testFrameworks,
-    architectures: detectArchitectures(files, Boolean(goMod)),
+    architectures: detectArchitectures(files, Boolean(goMod), Boolean(workspaceContext?.declared)),
     ...(testCommand ? { testCommand } : {}),
     detectedConventions: detectConventions(runnableTests),
     existingTestLocations,
-    setupSignals: detectSetupSignals(paths, files, allTestFiles, modulePath),
+    setupSignals: detectSetupSignals(paths, files, allTestFiles, modulePath, workspaceContext),
     confidence: scoreProfileConfidence(testFrameworks, existingTestLocations, blockers),
     blockers,
     modulePath
@@ -180,8 +186,9 @@ function detectExistingTestLocations(testFiles) {
   return [...locations];
 }
 
-function detectArchitectures(files, hasGoModule) {
+function detectArchitectures(files, hasGoModule, hasGoWorkspaceOwner) {
   const architectures = new Set(hasGoModule ? ["go-module"] : []);
+  if (hasGoWorkspaceOwner) architectures.add("go-workspace-module");
   const sourceText = files.filter((file) => file.path.endsWith(".go")).map((file) => file.content).join("\n");
   if (/^\s*package\s+main\b/m.test(sourceText)) architectures.add("command");
   if (/\bnet\/http\b|github\.com\/(?:gin-gonic\/gin|labstack\/echo)|\bhttp\.(?:Handle|HandleFunc|ListenAndServe)\b/.test(sourceText)) {
@@ -202,17 +209,154 @@ function detectConventions(testFiles) {
   return [...conventions];
 }
 
-function detectSetupSignals(paths, files, testFiles, modulePath) {
+function detectSetupSignals(paths, files, testFiles, modulePath, workspaceContext) {
   const signals = new Set();
   if (paths.includes("go.mod")) signals.add("go.mod");
   if (paths.includes("go.sum")) signals.add("go.sum");
   if (paths.includes("go.work")) signals.add("go.work");
+  else if (workspaceContext) signals.add("go.work (nearest workspace)");
   if (modulePath) signals.add("module path");
+  if (workspaceContext?.declared) signals.add("go.work module");
   if (testFiles.some((file) => /(?:^|\n)\s*(?:import\s+(?:\w+\s+)?["`]testing["`]|["`]testing["`])/m.test(file.content))) {
     signals.add("standard testing package");
   }
   if (files.some((file) => /github\.com\/stretchr\/testify/.test(file.content))) signals.add("testify assertions");
   return [...signals];
+}
+
+function findNearestGoWorkspace(root) {
+  const moduleRoot = path.resolve(root);
+  let current = moduleRoot;
+
+  while (true) {
+    const workspacePath = path.join(current, "go.work");
+    if (fs.existsSync(workspacePath) && fs.statSync(workspacePath).isFile()) {
+      const analysis = analyzeGoWorkspace(current, fs.readFileSync(workspacePath, "utf8"));
+      const relativeRoot = normalizePath(path.relative(current, moduleRoot)) || ".";
+      return {
+        root: current,
+        local: current === moduleRoot,
+        declared: analysis.moduleDirectories.includes(relativeRoot),
+        complete: analysis.complete
+      };
+    }
+
+    const parent = path.dirname(current);
+    if (parent === current) return undefined;
+    current = parent;
+  }
+}
+
+function analyzeGoWorkspace(workspaceRoot, content) {
+  const rawDeclarations = [];
+  let inUseBlock = false;
+  let complete = true;
+
+  for (const rawLine of content.split(/\r?\n/)) {
+    const line = stripGoWorkspaceComment(rawLine).trim();
+    if (!line) continue;
+
+    if (inUseBlock) {
+      if (line === ")") {
+        inUseBlock = false;
+        continue;
+      }
+      if (line.includes("(") || line.includes(")")) {
+        complete = false;
+        continue;
+      }
+      rawDeclarations.push(line);
+      continue;
+    }
+
+    if (/^use\s*\(\s*$/.test(line)) {
+      inUseBlock = true;
+      continue;
+    }
+    const singleUse = line.match(/^use\s+(.+)$/);
+    if (singleUse) {
+      rawDeclarations.push(singleUse[1].trim());
+      continue;
+    }
+    if (/^use\b/.test(line)) complete = false;
+  }
+
+  if (inUseBlock) complete = false;
+
+  const moduleDirectories = [];
+  for (const rawDeclaration of rawDeclarations) {
+    const declaredPath = decodeGoWorkspacePath(rawDeclaration);
+    if (!declaredPath || !isRepositoryContainedWorkspacePath(declaredPath)) {
+      complete = false;
+      continue;
+    }
+
+    const absoluteModuleRoot = path.resolve(workspaceRoot, declaredPath);
+    const relativeModuleRoot = normalizePath(path.relative(workspaceRoot, absoluteModuleRoot)) || ".";
+    if (!fs.existsSync(path.join(absoluteModuleRoot, "go.mod"))) {
+      complete = false;
+      continue;
+    }
+    const realWorkspaceRoot = fs.realpathSync(workspaceRoot);
+    const realModuleRoot = fs.realpathSync(absoluteModuleRoot);
+    const realRelativeRoot = path.relative(realWorkspaceRoot, realModuleRoot);
+    if (realRelativeRoot.startsWith(`..${path.sep}`) || realRelativeRoot === ".." || path.isAbsolute(realRelativeRoot)) {
+      complete = false;
+      continue;
+    }
+    moduleDirectories.push(relativeModuleRoot);
+  }
+
+  return {
+    complete,
+    moduleDirectories: [...new Set(moduleDirectories)].sort()
+  };
+}
+
+function stripGoWorkspaceComment(line) {
+  let quote;
+  let escaped = false;
+  for (let index = 0; index < line.length; index += 1) {
+    const character = line[index];
+    if (quote === "\"") {
+      if (escaped) escaped = false;
+      else if (character === "\\") escaped = true;
+      else if (character === quote) quote = undefined;
+      continue;
+    }
+    if (quote === "`") {
+      if (character === quote) quote = undefined;
+      continue;
+    }
+    if (character === "\"" || character === "`") {
+      quote = character;
+      continue;
+    }
+    if (character === "/" && line[index + 1] === "/") return line.slice(0, index);
+  }
+  return line;
+}
+
+function decodeGoWorkspacePath(raw) {
+  if (raw.startsWith("`")) {
+    return raw.endsWith("`") && raw.length >= 2 ? raw.slice(1, -1) : undefined;
+  }
+  if (raw.startsWith("\"")) {
+    if (!raw.endsWith("\"")) return undefined;
+    try {
+      const parsed = JSON.parse(raw);
+      return typeof parsed === "string" ? parsed : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+  return /[\s()`]/.test(raw) ? undefined : raw;
+}
+
+function isRepositoryContainedWorkspacePath(value) {
+  const normalized = normalizePath(value);
+  if (!normalized || path.isAbsolute(value) || path.win32.isAbsolute(value)) return false;
+  return !normalized.split("/").includes("..");
 }
 
 function scoreProfileConfidence(testFrameworks, existingTestLocations, blockers) {

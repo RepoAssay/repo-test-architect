@@ -1,0 +1,113 @@
+{
+  "schemaVersion": "audit/v1",
+  "profile": {
+    "root": "<fixture>",
+    "languages": [
+      "go"
+    ],
+    "packageManagers": [
+      "go-modules"
+    ],
+    "testFrameworks": [
+      "go-testing"
+    ],
+    "architectures": [
+      "go-module",
+      "go-workspace-module"
+    ],
+    "testCommand": "go test ./...",
+    "detectedConventions": [
+      "*_test.go",
+      "TestXxx"
+    ],
+    "existingTestLocations": [
+      "root _test.go"
+    ],
+    "setupSignals": [
+      "go.mod",
+      "go.work (nearest workspace)",
+      "module path",
+      "go.work module",
+      "standard testing package"
+    ],
+    "confidence": "high",
+    "blockers": []
+  },
+  "untestedCandidates": [],
+  "coveredButRisky": [
+    {
+      "id": "checkout_service.go",
+      "name": "checkout_service",
+      "path": "checkout_service.go",
+      "kind": "service",
+      "signals": [
+        "service-boundary",
+        "matching-test"
+      ],
+      "risk": "medium",
+      "testability": "medium",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 6,
+      "maintenanceCost": 4,
+      "reasons": [
+        "Service boundary",
+        "Existing Go test evidence detected; review missing edge cases"
+      ],
+      "existingTestPaths": [
+        "checkout_service_test.go"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "checkout_service_test.go",
+          "kind": "go-symbol-reference",
+          "strength": "direct",
+          "usage": "called"
+        },
+        {
+          "testPath": "checkout_service_test.go",
+          "kind": "filename-convention",
+          "strength": "naming"
+        }
+      ]
+    }
+  ],
+  "recommended": [
+    {
+      "id": "checkout_service.go",
+      "name": "checkout_service",
+      "path": "checkout_service.go",
+      "kind": "service",
+      "signals": [
+        "service-boundary",
+        "matching-test"
+      ],
+      "risk": "medium",
+      "testability": "medium",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 6,
+      "maintenanceCost": 4,
+      "reasons": [
+        "Service boundary",
+        "Existing Go test evidence detected; review missing edge cases"
+      ],
+      "existingTestPaths": [
+        "checkout_service_test.go"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "checkout_service_test.go",
+          "kind": "go-symbol-reference",
+          "strength": "direct",
+          "usage": "called"
+        },
+        {
+          "testPath": "checkout_service_test.go",
+          "kind": "filename-convention",
+          "strength": "naming"
+        }
+      ]
+    }
+  ],
+  "skipped": [],
+  "risks": []
+}

@@ -62,6 +62,8 @@ Conventionally included Gradle modules collapse into the settings-owning aggrega
 
 Conventionally declared Maven `<module>` paths with direct child POMs collapse into the POM-owning reactor project. Collapse proceeds from parent to child and stops at an already collapsed intermediate reactor, so an unowned nested reactor child remains visible as a separate project instead of disappearing into a root audit that does not expand nested ownership. Profile-activated modules, property-expanded paths, directory escapes, and plugin configuration `<modules>` also remain separate because the root POM does not statically prove their ownership.
 
+Go workspaces do not collapse into one aggregate project. Every `go.mod` remains an independently detected root. The Go adapter then checks the nearest ancestor `go.work`: literal repository-contained members retain module-local `go test ./...`, while omitted modules or incomplete `use` graphs lose the command and receive an ownership blocker.
+
 ## Output Contract
 
 Detection emits `project-detection/v1` with:
