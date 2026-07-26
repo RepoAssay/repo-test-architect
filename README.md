@@ -458,6 +458,7 @@ Important runtime surfaces:
 - [Kotlin/JVM alpha support](docs/kotlin-jvm-alpha-support.md)
 - [Go experimental support](docs/go-experimental-support.md)
 - [Go validation hunt report](docs/go-validation-hunt-report.md)
+- [Go HTTP validation report](docs/go-http-validation-report.md)
 - [Kotlin/JVM validation hunt report](docs/kotlin-jvm-validation-hunt-report.md)
 - [Adapter contract](docs/adapter-contract.md)
 - [Artifact contract](docs/artifact-contract.md)

@@ -53,10 +53,9 @@ Receiver methods, interfaces, reflection, dynamic calls, deeper source graphs, c
 
 ## Corpus Progress
 
-This checkout is the first of the three required Go promotion roles. It is recorded here rather than in `validation-corpus/v1`, whose current contract requires every included adapter to provide all three roles. The remaining Go corpus work is:
+This checkout is the first of the three required Go promotion roles. It is recorded here rather than in `validation-corpus/v1`, whose current contract requires every included adapter to provide all three roles. The [Go HTTP validation](go-http-validation-report.md) subsequently completed the second role. The remaining Go corpus work is:
 
-1. a maintained HTTP or service application
-2. a difficult multi-package, nested-module, or `go.work` ownership graph
-3. the generated large-module performance and evidence-count regression gate
+1. a difficult multi-package, nested-module, or `go.work` ownership graph
+2. the generated large-module performance and evidence-count regression gate
 
 When all three pinned roles are reviewed, they can enter the shared corpus together and support an explicit experimental-to-supported decision.

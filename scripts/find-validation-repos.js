@@ -54,6 +54,16 @@ export const validationProfiles = {
       { signal: "root-go-tests", entryPattern: /_test\.go$/ }
     ]
   },
+  "go-http": {
+    description: "Go HTTP services and middleware with standard-library tests",
+    repositoryQuery: '"go http"',
+    language: "Go",
+    searches: [
+      { signal: "go-module", file: "go.mod", pattern: /^\s*module\s+\S+/m },
+      { signal: "go-http-readme", file: "README.md", pattern: /\b(?:net\/http|HTTP (?:middleware|router|server|service)|REST API)\b/i },
+      { signal: "root-go-tests", entryPattern: /_test\.go$/ }
+    ]
+  },
   swift: {
     description: "Swift Package Manager projects",
     repositoryQuery: '"swift package"',

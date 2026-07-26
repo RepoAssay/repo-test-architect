@@ -970,16 +970,83 @@ function extractPackageName(content) {
 }
 
 function maskGoSource(content) {
-  return maskGoComments(content)
-    .replace(/`[\s\S]*?`/g, (value) => " ".repeat(value.length))
-    .replace(/"(?:\\.|[^"\\])*"/g, (value) => " ".repeat(value.length))
-    .replace(/'(?:\\.|[^'\\])*'/g, (value) => " ".repeat(value.length));
+  return maskGoLexicalContent(content, true);
 }
 
 function maskGoComments(content) {
-  return content
-    .replace(/\/\*[\s\S]*?\*\//g, (value) => value.replace(/[^\n]/g, " "))
-    .replace(/\/\/[^\n]*/g, (value) => " ".repeat(value.length));
+  return maskGoLexicalContent(content, false);
+}
+
+function maskGoLexicalContent(content, maskStrings) {
+  let masked = "";
+  let state = "code";
+
+  for (let index = 0; index < content.length;) {
+    const current = content[index];
+    const next = content[index + 1];
+
+    if (state === "code") {
+      if (current === "/" && next === "/") {
+        masked += "  ";
+        state = "line-comment";
+        index += 2;
+        continue;
+      }
+      if (current === "/" && next === "*") {
+        masked += "  ";
+        state = "block-comment";
+        index += 2;
+        continue;
+      }
+      if (current === '"') state = "interpreted-string";
+      else if (current === "'") state = "rune";
+      else if (current === "`") state = "raw-string";
+      masked += maskLexicalCharacter(current, maskStrings && state !== "code");
+      index += 1;
+      continue;
+    }
+
+    if (state === "line-comment") {
+      masked += maskLexicalCharacter(current, true);
+      if (current === "\n") state = "code";
+      index += 1;
+      continue;
+    }
+
+    if (state === "block-comment") {
+      if (current === "*" && next === "/") {
+        masked += "  ";
+        state = "code";
+        index += 2;
+        continue;
+      }
+      masked += maskLexicalCharacter(current, true);
+      index += 1;
+      continue;
+    }
+
+    const shouldMask = maskStrings;
+    if ((state === "interpreted-string" || state === "rune") && current === "\\" && next !== undefined) {
+      masked += maskLexicalCharacter(current, shouldMask);
+      masked += maskLexicalCharacter(next, shouldMask);
+      index += 2;
+      continue;
+    }
+
+    masked += maskLexicalCharacter(current, shouldMask);
+    if ((state === "interpreted-string" && current === '"') ||
+        (state === "rune" && current === "'") ||
+        (state === "raw-string" && current === "`")) {
+      state = "code";
+    }
+    index += 1;
+  }
+
+  return masked;
+}
+
+function maskLexicalCharacter(character, shouldMask) {
+  return shouldMask && character !== "\n" && character !== "\r" ? " " : character;
 }
 
 function matchesAny(value, terms) {

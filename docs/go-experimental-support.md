@@ -1,6 +1,6 @@
 # Go Experimental Support
 
-This matrix defines the bounded Go adapter through its first pinned live-library validation. The adapter is registered as `experimental`: its single-module, `go.work`, build-target, and one-hop dependency fixtures, native Go command validation, shared artifact pipeline, implementation coverage floor, golden snapshots, and model-consistency plan locks are complete, but the remaining live-repository roles and generated large-module performance validation still precede a supported public-alpha claim.
+This matrix defines the bounded Go adapter through its pinned conventional-library and HTTP/service validations. The adapter is registered as `experimental`: its single-module, `go.work`, build-target, one-hop dependency, and lexical masking fixtures; native Go command validation; shared artifact pipeline; implementation coverage floor; golden snapshots; and model-consistency plan locks are complete, but the difficult-ownership live role and generated large-module performance validation still precede a supported public-alpha claim.
 
 ## Current Bounded Coverage
 
@@ -17,6 +17,8 @@ This matrix defines the bounded Go adapter through its first pinned live-library
 
 `go-symbol-reference` evidence is `direct` with `called` usage for a uniquely owned top-level function call, or `referenced` for a uniquely owned type construction. A test-local declaration with the same name is not source evidence. `go-source-dependency` is `indirect` with `viaUsage: called` for one same-package, same-directory, unique top-level function dependency from a directly called source file; it never propagates to a second source hop. Filename convention remains weaker `naming` evidence.
 
+Go source is lexically masked before symbol matching. The bounded scanner distinguishes line and block comments, interpreted and raw strings, runes, and escapes so comment-shaped HTTP route strings cannot hide later calls and symbol-shaped literal text cannot become evidence.
+
 The adapter does not execute repository code, `go list`, module hooks, generators, or tests during an ordinary audit. The reported command is repository guidance, not a claim that it was run. Target selection is explicit rather than host-dependent: callers pass `goTarget: { goos, goarch, tags }`, or the CLI equivalents `--goos`, `--goarch`, and repeated `--go-tag` values.
 
 ## Native Fixture Validation
@@ -24,6 +26,8 @@ The adapter does not execute repository code, `go list`, module hooks, generator
 On 2026-07-26, the checked-in standalone and two-module workspace fixtures passed module-local `go test ./...`, `go test -race ./...`, and `gofmt` validation with Go 1.26.5 on Darwin arm64. The build-target fixture additionally passed `GOOS=darwin GOARCH=arm64 go test -tags=integration ./...` and its race-enabled equivalent. The workspace service imports its sibling pricing module through `go.work`, so the native check covers actual cross-module resolution. Audits remain static and do not execute project code.
 
 The first pinned live probe, [`BurntSushi/toml`](https://github.com/BurntSushi/toml) at `c6d720d83547bb8d7afb067ba9df8bad0323e2d1`, passed `go test ./...`, `go test -race ./...`, and `gofmt`. Its reviewed audit drove bounded source-dependency evidence and a project-detection fix for nested Go `testdata`. Full measurements and remaining gaps are recorded in the [Go Validation Hunt Report](go-validation-hunt-report.md).
+
+The second pinned live probe, [`go-chi/chi`](https://github.com/go-chi/chi) at `8b258c7bb28f97a5f2a856ff7ef962578fec9215`, passed the same native checks under Darwin/arm64 and reported 82.9% statement coverage. Its HTTP wildcard routes drove Go-aware lexical masking, while its `!tinygo` middleware and nested example modules validated explicit target and project ownership. Full measurements are recorded in the [Go HTTP Validation Report](go-http-validation-report.md).
 
 ## Explicit Blockers And Exclusions
 
@@ -51,6 +55,6 @@ Promote `go` from `experimental` to `supported` only after:
 3. Live review finds no false ownership, command, or direct-evidence upgrades and converts concrete gaps into fixtures.
 4. The shared release gate passes with Go included in package, CLI, MCP, schema, documentation, and cross-adapter checks.
 
-Literal `go.work` ownership, explicit build-target selection, and the first conventional-library live probe are complete. The adapter parses single and block `use` directives without executing Go tooling, preserves each `go.mod` owner, blocks incomplete graphs, evaluates bounded target constraints without inheriting the host environment, and never substitutes one aggregate-root command for module-local verification. The HTTP/service and difficult-ownership live roles plus large-module performance are the next promotion targets.
+Literal `go.work` ownership, explicit build-target selection, and the conventional-library plus HTTP/service live probes are complete. The adapter parses single and block `use` directives without executing Go tooling, preserves each `go.mod` owner, blocks incomplete graphs, evaluates bounded target constraints without inheriting the host environment, and never substitutes one aggregate-root command for module-local verification. The difficult-ownership live role plus large-module performance are the next promotion targets.
 
 Native test generation and repair loops remain deferred.
