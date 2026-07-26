@@ -1027,7 +1027,7 @@ function parseSwiftPmManifestGraph(packageFile, files, emptyGraph) {
         if (!ownedSources.has(swiftPath)) ignoredSources.add(swiftPath);
       }
     }
-    const dependencies = new Set(readStringArrayAttribute(rule.body, "dependencies").filter((dependency) => targetNames.has(dependency)));
+    const dependencies = new Set(readSwiftPmTargetDependencies(rule.body, targetNames));
 
     for (const sourcePath of ownedSources) {
       if (isTest) {
@@ -1164,8 +1164,26 @@ function readStringAttribute(body, attribute) {
 }
 
 function readStringArrayAttribute(body, attribute) {
+  const arrayBody = readArrayAttributeBody(body, attribute);
+  if (arrayBody === undefined) return [];
+  return [...arrayBody.matchAll(/["']([^"']+)["']/g)].map((match) => match[1]);
+}
+
+function readSwiftPmTargetDependencies(body, targetNames) {
+  const arrayBody = readArrayAttributeBody(body, "dependencies");
+  if (arrayBody === undefined) return [];
+  return splitSwiftTopLevelList(arrayBody).flatMap((entry) => {
+    const directName = entry.match(/^["']([^"']+)["']$/)?.[1];
+    if (directName) return targetNames.has(directName) ? [directName] : [];
+    if (!/^\.(?:target|byName)\s*\(/.test(entry)) return [];
+    const namedTarget = readStringAttribute(entry, "name");
+    return namedTarget && targetNames.has(namedTarget) ? [namedTarget] : [];
+  });
+}
+
+function readArrayAttributeBody(body, attribute) {
   const start = body.search(new RegExp(`\\b${attribute}\\s*:\\s*\\[`));
-  if (start < 0) return [];
+  if (start < 0) return undefined;
   const openingBracket = body.indexOf("[", start);
   let depth = 1;
   let quote;
@@ -1183,7 +1201,73 @@ function readStringArrayAttribute(body, attribute) {
     else if (character === "]") depth -= 1;
   }
 
-  return [...body.slice(openingBracket + 1, index - 1).matchAll(/["']([^"']+)["']/g)].map((match) => match[1]);
+  return body.slice(openingBracket + 1, index - 1);
+}
+
+function splitSwiftTopLevelList(content) {
+  const entries = [];
+  let current = "";
+  let parentheses = 0;
+  let brackets = 0;
+  let braces = 0;
+  let quote;
+  let escaped = false;
+  let lineComment = false;
+  let blockCommentDepth = 0;
+
+  for (let index = 0; index < content.length; index += 1) {
+    const character = content[index];
+    const next = content[index + 1];
+    if (lineComment) {
+      if (character === "\n") {
+        lineComment = false;
+        current += "\n";
+      }
+      continue;
+    }
+    if (blockCommentDepth > 0) {
+      if (character === "/" && next === "*") {
+        blockCommentDepth += 1;
+        index += 1;
+      } else if (character === "*" && next === "/") {
+        blockCommentDepth -= 1;
+        index += 1;
+      }
+      continue;
+    }
+    if (quote) {
+      current += character;
+      if (escaped) escaped = false;
+      else if (character === "\\") escaped = true;
+      else if (character === quote) quote = undefined;
+      continue;
+    }
+    if (character === "/" && next === "/") {
+      lineComment = true;
+      index += 1;
+      continue;
+    }
+    if (character === "/" && next === "*") {
+      blockCommentDepth = 1;
+      index += 1;
+      continue;
+    }
+    if (character === "\"" || character === "'") quote = character;
+    else if (character === "(") parentheses += 1;
+    else if (character === ")") parentheses -= 1;
+    else if (character === "[") brackets += 1;
+    else if (character === "]") brackets -= 1;
+    else if (character === "{") braces += 1;
+    else if (character === "}") braces -= 1;
+
+    if (character === "," && parentheses === 0 && brackets === 0 && braces === 0) {
+      if (current.trim()) entries.push(current.trim());
+      current = "";
+    } else current += character;
+  }
+
+  if (current.trim()) entries.push(current.trim());
+  return entries;
 }
 
 function resolveSwiftPmSources(targetPath, sourceEntries, excludeEntries, hasExplicitSources, swiftPaths) {

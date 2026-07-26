@@ -484,6 +484,77 @@ let package = Package(name: "ComputedTargets", targets: targets)
     assert.deepEqual(audit.untestedCandidates.map((target) => target.path), ["Sources/UI/Parser.swift"]);
   });
 
+  it("keeps external SwiftPM products separate from local target dependencies", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-swiftpm-product-ownership-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    for (const directory of ["Sources/Core", "Sources/UI", "Tests/RemoteCollisionTests", "Verification/UI"]) {
+      fs.mkdirSync(path.join(root, directory), { recursive: true });
+    }
+    fs.writeFileSync(
+      path.join(root, "Package.swift"),
+      `// swift-tools-version: 6.0
+import PackageDescription
+
+let package = Package(
+    name: "DependencyOwnership",
+    dependencies: [
+        .package(url: "https://example.com/remote-core.git", from: "1.0.0")
+    ],
+    targets: [
+        .target(name: "Core"),
+        .target(name: "UI"),
+        .testTarget(
+            name: "RemoteCollisionTests",
+            dependencies: [
+                .product(
+                    name: "Core",
+                    package: "remote-core",
+                    condition: .when(platforms: [.macOS, .iOS])
+                ) // external, not the local Core target
+            ]
+        ),
+        .testTarget(
+            name: "UIChecks",
+            dependencies: [
+                .byName(name: "UI", condition: .when(platforms: [.macOS, .iOS]))
+            ],
+            path: "Verification/UI"
+        )
+    ]
+)
+`
+    );
+    fs.writeFileSync(
+      path.join(root, "Sources", "Core", "Parser.swift"),
+      "public struct Parser { public init() {}; public func parse(_ value: String) -> String { if value.isEmpty { return \"missing\" }; return value } }\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "Sources", "UI", "Renderer.swift"),
+      "public struct Renderer { public init() {}; public func render(_ value: String) -> String { if value.isEmpty { return \"empty\" }; return value } }\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "Tests", "RemoteCollisionTests", "BehaviorTests.swift"),
+      "import XCTest\nimport RemoteCore\nfinal class BehaviorTests: XCTestCase { func testParse() { XCTAssertEqual(Parser().parse(\"value\"), \"value\") } }\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "Verification", "UI", "BehaviorTests.swift"),
+      "import XCTest\nfinal class BehaviorTests: XCTestCase { func testRender() { XCTAssertEqual(Renderer().render(\"value\"), \"value\") } }\n"
+    );
+
+    const audit = auditSwiftRepo(root);
+
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["Sources/UI/Renderer.swift"]);
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.path), ["Sources/Core/Parser.swift"]);
+    assert.deepEqual(audit.coveredButRisky[0].existingTestEvidence, [
+      {
+        testPath: "Verification/UI/BehaviorTests.swift",
+        kind: "swift-symbol-reference",
+        strength: "referenced",
+        usage: "asserted"
+      }
+    ]);
+  });
+
   it("uses custom SwiftPM paths, sources, excludes, and test dependencies", () => {
     const audit = auditSwiftRepo(customPathsRoot);
 
