@@ -694,7 +694,7 @@ function collectUniqueSwiftSourceSymbols(files, sourceGraph) {
       symbols.set(`top:${declaration.name}`, { name: declaration.name, kind: declaration.kind });
     }
     for (const member of record.members) {
-      if (member.containerKind !== "extension" || !member.isStatic) continue;
+      if (member.containerKind !== "extension") continue;
       if (declarationPaths.get(`${record.owner}:member:${member.receiver}:${member.name}`)?.size !== 1) continue;
       symbols.set(`member:${member.receiver}:${member.name}`, { ...member, kind: "extension-func" });
     }
@@ -802,8 +802,11 @@ function findSwiftSymbolUsage(content, symbols) {
 
 function findSwiftExtensionMemberUsage(content, descriptor) {
   if (hasSwiftLocalDeclaration(content, descriptor.receiver)) return undefined;
-  if (swiftAssertionBodies(content).some((body) => hasSwiftStaticExtensionCall(body, descriptor))) return "asserted";
-  return hasSwiftStaticExtensionCall(content, descriptor) ? "called" : undefined;
+  const hasCall = descriptor.isStatic
+    ? (body) => hasSwiftStaticExtensionCall(body, descriptor)
+    : (body) => hasSwiftDirectInstanceExtensionCall(body, descriptor);
+  if (swiftAssertionBodies(content).some(hasCall)) return "asserted";
+  return hasCall(content) ? "called" : undefined;
 }
 
 function hasSwiftLocalDeclaration(content, symbol) {
@@ -818,6 +821,30 @@ function hasSwiftStaticExtensionCall(content, descriptor) {
     if (!isSwiftMemberReference(content, match.index)) return true;
   }
   return false;
+}
+
+function hasSwiftDirectInstanceExtensionCall(content, descriptor) {
+  const constructor = new RegExp(`\\b${escapeRegex(descriptor.receiver)}\\s*(?:<[^>\\n]+>)?\\s*\\(`, "g");
+  let match;
+  while ((match = constructor.exec(content)) !== null) {
+    if (isSwiftMemberReference(content, match.index)) continue;
+    const openParenthesis = constructor.lastIndex - 1;
+    const closeParenthesis = findClosingSwiftParenthesis(content, openParenthesis);
+    if (closeParenthesis === -1) continue;
+    const memberCall = new RegExp(`^\\s*\\.\\s*${escapeRegex(descriptor.name)}\\s*(?:<[^>\\n]+>\\s*)?\\(`);
+    if (memberCall.test(content.slice(closeParenthesis + 1))) return true;
+  }
+  return false;
+}
+
+function findClosingSwiftParenthesis(content, openParenthesis) {
+  let depth = 1;
+  for (let index = openParenthesis + 1; index < content.length; index += 1) {
+    if (content[index] === "(") depth += 1;
+    else if (content[index] === ")") depth -= 1;
+    if (depth === 0) return index;
+  }
+  return -1;
 }
 
 function hasSwiftSymbolReference(content, symbol, kind) {

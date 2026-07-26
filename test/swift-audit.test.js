@@ -953,6 +953,97 @@ final class BehaviorTests: XCTestCase {
     ]);
   });
 
+  it("credits unique instance extension members only through direct constructor receivers", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-swift-instance-extension-evidence-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "Sources", "Core"), { recursive: true });
+    fs.mkdirSync(path.join(root, "Tests", "CoreTests"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "Package.swift"),
+      `// swift-tools-version: 6.0
+import PackageDescription
+let package = Package(targets: [
+    .target(name: "Core"),
+    .testTarget(name: "CoreTests", dependencies: ["Core"])
+])
+`
+    );
+    for (const type of ["Checkout", "Receipt", "Shipment", "Payment"]) {
+      fs.writeFileSync(
+        path.join(root, "Sources", "Core", `${type}.swift`),
+        `public struct ${type} { public let value: String; public init(value: String) { self.value = value } }\n`
+      );
+    }
+    fs.writeFileSync(
+      path.join(root, "Sources", "Core", "Checkout+Normalization.swift"),
+      "extension Checkout { public func normalized() -> String { if value.isEmpty { return \"missing\" }; return value } }\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "Sources", "Core", "Receipt+Serialization.swift"),
+      "extension Receipt { public func serialized() -> String { if value.isEmpty { return \"missing\" }; return value } }\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "Sources", "Core", "Shipment+Tracking.swift"),
+      "extension Shipment { public func tracked() -> Bool { if value.isEmpty { return false }; return true } }\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "Sources", "Core", "Payment+Validation.swift"),
+      "extension Payment { public func validated() -> Bool { if value.isEmpty { return false }; return true } }\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "Tests", "CoreTests", "BehaviorTests.swift"),
+      `import Testing
+@testable import Core
+
+private struct Payment {
+    let value: String
+    func validated() -> Bool { true }
+}
+
+private func makeValue(fallback: String) -> String { fallback }
+
+@Test func directInstanceExtensionCalls() {
+    #expect(Checkout(value: makeValue(fallback: "value")).normalized() == "value")
+    _ = Receipt(value: "value").serialized()
+}
+
+@Test func inferredAndLocalReceiversStayUncredited() {
+    let shipment = Shipment(value: "value")
+    #expect(shipment.tracked())
+    #expect(Payment(value: "value").validated())
+}
+`
+    );
+
+    const audit = auditSwiftRepo(root);
+    const normalization = audit.coveredButRisky.find((target) => target.name === "Checkout+Normalization");
+    const serialization = audit.coveredButRisky.find((target) => target.name === "Receipt+Serialization");
+
+    assert.deepEqual(normalization.existingTestEvidence, [
+      {
+        testPath: "Tests/CoreTests/BehaviorTests.swift",
+        kind: "swift-symbol-reference",
+        strength: "referenced",
+        usage: "asserted"
+      }
+    ]);
+    assert.deepEqual(serialization.existingTestEvidence, [
+      {
+        testPath: "Tests/CoreTests/BehaviorTests.swift",
+        kind: "swift-symbol-reference",
+        strength: "referenced",
+        usage: "called"
+      }
+    ]);
+    assert.deepEqual(
+      audit.untestedCandidates
+        .filter((target) => target.name.includes("+"))
+        .map((target) => target.name)
+        .sort(),
+      ["Payment+Validation", "Shipment+Tracking"]
+    );
+  });
+
   it("does not credit concrete Swift implementations from protocol-only test references", (t) => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-swift-protocol-evidence-"));
     t.after(() => fs.rmSync(root, { recursive: true, force: true }));

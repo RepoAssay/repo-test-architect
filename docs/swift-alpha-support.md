@@ -44,14 +44,15 @@ Swift also emits stronger `swift-symbol-reference` evidence when a test qualifie
 - comments, ordinary string literals, test-local declarations, duplicate declarations in the same module, and wrong-target references are not credited
 - a test-local declaration or binding with the same symbol name suppresses that symbol for the test file, and a member call such as `helper.format()` does not count as a reference to a top-level `format()` function
 - a static function declared directly in an extension is credited only when its receiver/member pair resolves to one source file in the owning module and the test calls it through that explicit receiver, such as `Checkout.normalized()`; calls can carry `called` or `asserted` usage
-- this evidence proves a static symbol relationship, not runtime execution or behavioral completeness
+- an instance function declared directly in an extension follows the same uniqueness rule and is credited only through a direct constructor receiver such as `Checkout(...).normalized()`; calls through stored or inferred receivers remain uncredited
+- this evidence proves a statically attributable symbol relationship, not runtime execution or behavioral completeness
 
 This normalized evidence now flows through audit, plan, explanation, findings, placement, and stats artifacts using the shared model. Stronger Swift evidence should be added as a distinct direct or referenced relationship only when the adapter can actually prove it.
 
 ## Known Alpha Gaps
 
 - custom Starlark macros, generated BUILD files, `select()` expressions, aliases, and transitive Bazel test-source graphs are not resolved
-- instance members, inferred receiver types, cross-file overloaded extension members, aliases, raw-string interpolation, and macro expansion are not resolved; same-named member calls are deliberately kept separate from top-level function evidence, while source-file-unique static extension calls with explicit receivers are covered
+- instance members reached through stored or inferred receiver types, cross-file overloaded extension members, aliases, raw-string interpolation, and macro expansion are not resolved; same-named member calls are deliberately kept separate from top-level function evidence, while source-file-unique static calls and direct-constructor instance calls with explicit receivers are covered
 - computed Swift manifest arrays, arbitrary helper logic, conditional target graphs, and dependency aliases are not fully resolved by the static manifest reader; version-specific manifests, simple target-returning helpers, conventional module ownership, and literal direct-string, `.target`, and locally resolving `.byName` dependencies are covered
 - database driver presence identifies the environment but does not prove that tests use an isolated database, execute migrations, or exercise production-engine semantics
 - reactive virtual-time, event-ordering, disposal, completion, reentrancy, and error-path coverage is not inferred from RxTest/RxBlocking presence
