@@ -64,7 +64,35 @@ Local automation cannot perform account authentication or replace release-owner 
 5. Authenticate `mcp-publisher` with the intended GitHub identity.
 6. Approve and publish to the official MCP Registry.
 
-The first npm and MCP Registry publication is complete. Future npm and `mcp-publisher` authentication still require the release owner. Treat both publications as irreversible release events, and always run `npm run release:check` and `npm run distribution:check:publish` against the exact commit and version first.
+The first npm and MCP Registry publication is complete. Until the deferred OIDC workflow below is implemented and proven, future npm and `mcp-publisher` authentication still require the release owner. Treat both publications as irreversible release events, and always run `npm run release:check` and `npm run distribution:check:publish` against the exact commit and version first.
+
+## Deferred OIDC Release Automation
+
+A future release-engineering slice may replace repeated local npm and MCP Registry browser authentication with one protected GitHub Actions workflow. This is an optional operational improvement, not a current release requirement.
+
+The intended workflow is `.github/workflows/publish.yml`, started only through `workflow_dispatch` against protected `master`. A release owner supplies the intended version, reviews the exact commit, and approves a protected `release` environment before any credential-bearing job starts. The workflow must then:
+
+1. prove that the requested version matches `package.json`, `package-lock.json`, `server.json`, MCP server info, diagnostics, tests, and public release docs
+2. run the complete Linux, Windows, and macOS release matrix without write or OIDC permissions
+3. publish npm through an npm trusted publisher bound to `RepoAssay/repo-test-architect`, the exact `publish.yml` filename, and the `release` environment
+4. verify a clean install from the public npm registry before continuing
+5. publish the matching MCP metadata through `mcp-publisher login github-oidc`
+6. create the Git tag and GitHub release only after both registries are verified
+7. fail if npm, MCP Registry, Git tag, GitHub release, version, or commit do not agree
+
+No `NPM_TOKEN`, `MCP_GITHUB_TOKEN`, personal access token, deploy key, or other long-lived publishing credential should be stored in the repository, Actions secrets, or workflow source. npm, MCP Registry, and GitHub credentials must be short-lived and generated on demand for the approved job. Human MFA remains appropriate for the one-time npm trusted-publisher configuration, changes to package or organization ownership, and changes to the protected release environment.
+
+Public collaboration changes the workflow threat model even without stored secrets. Before enabling automated publication:
+
+- protect `.github/workflows/publish.yml`, `package.json`, `package-lock.json`, `server.json`, and release scripts through `CODEOWNERS` and required release-owner review
+- restrict the `release` environment to protected `master`, require an explicit reviewer, and disallow administrator bypass where practical
+- never publish from `pull_request`, `pull_request_target`, fork, issue, comment, or arbitrary tag events
+- grant permissions per job: validation jobs receive read-only contents; npm and MCP jobs receive `id-token: write` plus read-only contents; the GitHub release job receives `contents: write` without OIDC
+- keep credential-bearing jobs separate, minimal, and free of untrusted dependency or lifecycle execution; publish the current no-build package with scripts disabled
+- pin third-party Actions by full commit SHA and pin the official `mcp-publisher` version plus verified digest
+- serialize publication with a release concurrency group and reject versions that already exist
+
+The manual process remains the fallback until the automated path has completed a non-public dry run, one owner-approved live release, clean registry verification, and a review confirming that no long-lived publishing secret was introduced. npm staged publishing can remain a later higher-friction option if release owners prefer a separate npm proof-of-presence approval.
 
 ## Publication Order
 
