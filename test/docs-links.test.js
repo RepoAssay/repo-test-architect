@@ -217,6 +217,7 @@ describe("docs links", () => {
     assert.ok(hardeningPlan.includes("Definition Of Done"));
     assert.ok(hardeningPlan.includes("npm run corpus:check"));
     assert.ok(hardeningPlan.includes("test/support/adapter-conformance.js"));
+    assert.ok(hardeningPlan.includes("cross-adapter-trust-report.md"));
     assert.ok(hardeningPlan.includes("first bounded workspace-command slice"));
     assert.ok(hardeningPlan.includes("second bounded configuration slice"));
     assert.ok(hardeningPlan.includes("ESM/CommonJS"));

@@ -46,6 +46,8 @@ describe("test plan generator", () => {
 
     assert.equal(plan.summary.confidence, "low");
     assert.equal(plan.summary.verificationCommand, undefined);
+    assert.equal(Object.hasOwn(plan.summary, "verificationCommand"), false);
+    assert.deepEqual(JSON.parse(JSON.stringify(plan)), plan);
     assert.equal(plan.summary.blockerCount, 2);
     assert.ok(plan.blockers.includes("No supported JS test framework detected."));
   });

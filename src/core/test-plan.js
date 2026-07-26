@@ -80,7 +80,7 @@ export function createTestPlan(audit) {
     schemaVersion: "plan/v1",
     summary: {
       confidence: audit.profile.confidence,
-      verificationCommand: audit.profile.testCommand,
+      ...(audit.profile.testCommand ? { verificationCommand: audit.profile.testCommand } : {}),
       blockerCount: audit.profile.blockers.length,
       addTestCount: addItems.length,
       extendTestCount: extendItems.length,
