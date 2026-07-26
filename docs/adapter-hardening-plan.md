@@ -123,6 +123,8 @@ Progress: Swift symbol evidence now retains declaration kinds so top-level funct
 
 Progress: the first positive Swift member-evidence slice credits a static function declared directly in an extension only when its receiver/member pair resolves to one source file in the owning module and the qualified test calls that exact receiver. Cross-file overloads across a primary type or other extensions and test-local receiver declarations remain uncredited; instance and inferred-receiver relationships remain outside the supported boundary.
 
+Progress: SwiftPM test-target ownership now distinguishes local direct-string, `.target`, and locally resolving `.byName` dependencies from external `.product` dependencies. An external product whose name collides with a local target can no longer qualify that local target's source evidence, while nested literal conditions and comments remain parseable without broadening into computed manifest evaluation.
+
 ## Workstream 3: Cross-Adapter Trust
 
 After each adapter has a refreshed corpus:
@@ -160,7 +162,7 @@ The initial queue is:
 2. Refresh JavaScript/TypeScript validation, starting with workspace command ownership and configuration boundaries.
 3. Refresh Python validation, starting with multi-package ownership, relative imports, and pytest discovery configuration.
 4. Refresh Kotlin/JVM validation, starting with Gradle/Maven ownership and conservative unsupported-graph behavior.
-5. Refresh Swift validation, starting with SwiftPM/Xcode ownership ambiguity and symbol-evidence pressure.
+5. Refresh Swift validation, starting with SwiftPM/Xcode ownership ambiguity and symbol-evidence pressure. Xcode selection, local-versus-external SwiftPM dependency ownership, shadow suppression, and bounded static extension evidence are complete; instance and inferred-member relationships remain under conservative review.
 6. Re-run live-repository reports across all four adapters after Swift hardening and turn concrete drift into regression-backed fixes.
 7. Improve the human-facing validation scorecard without collapsing review completeness into reviewed pass rate.
 8. Run the broader cross-adapter trust pass, then cut the next public alpha only after the Swift, live-repository, scorecard, and exact-commit release gates pass.
