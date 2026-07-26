@@ -1550,6 +1550,49 @@ final class CollectorTests: XCTestCase {
     assert.ok(!audit.profile.blockers.includes("No runnable Swift test command detected from Package.swift or Xcode project/workspace markers."));
   });
 
+  it("selects the project that directly owns a shared scheme when multiple projects exist", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-owned-xcode-project-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    const storefrontProject = path.join(root, "Apps", "Storefront.xcodeproj");
+    const schemesRoot = path.join(storefrontProject, "xcshareddata", "xcschemes");
+    fs.mkdirSync(path.join(root, "Admin.xcodeproj"), { recursive: true });
+    fs.mkdirSync(schemesRoot, { recursive: true });
+    fs.mkdirSync(path.join(root, "StorefrontTests"), { recursive: true });
+    fs.writeFileSync(path.join(root, "Admin.xcodeproj", "project.pbxproj"), "{}\n");
+    fs.writeFileSync(path.join(storefrontProject, "project.pbxproj"), "{}\n");
+    fs.writeFileSync(path.join(schemesRoot, "CI.xcscheme"), "<Scheme></Scheme>\n");
+    fs.writeFileSync(
+      path.join(root, "StorefrontTests", "StorefrontTests.swift"),
+      "import XCTest\nfinal class StorefrontTests: XCTestCase { func testExample() {} }\n"
+    );
+
+    const audit = auditSwiftRepo(root);
+
+    assert.equal(audit.profile.testCommand, "xcodebuild test -project Apps/Storefront.xcodeproj -scheme CI");
+    assert.deepEqual(audit.profile.blockers, []);
+  });
+
+  it("blocks multiple Xcode projects without a shared scheme to resolve ownership", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-ambiguous-xcode-projects-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "Admin.xcodeproj"), { recursive: true });
+    fs.mkdirSync(path.join(root, "Storefront.xcodeproj"), { recursive: true });
+    fs.mkdirSync(path.join(root, "StorefrontTests"), { recursive: true });
+    fs.writeFileSync(path.join(root, "Admin.xcodeproj", "project.pbxproj"), "{}\n");
+    fs.writeFileSync(path.join(root, "Storefront.xcodeproj", "project.pbxproj"), "{}\n");
+    fs.writeFileSync(
+      path.join(root, "StorefrontTests", "StorefrontTests.swift"),
+      "import XCTest\nfinal class StorefrontTests: XCTestCase { func testExample() {} }\n"
+    );
+
+    const audit = auditSwiftRepo(root);
+
+    assert.equal(audit.profile.testCommand, undefined);
+    assert.equal(audit.profile.confidence, "medium");
+    assert.ok(audit.profile.blockers.includes("Multiple Xcode projects detected without a unique scheme-name match: Admin.xcodeproj, Storefront.xcodeproj."));
+    assert.ok(!audit.profile.blockers.includes("No runnable Swift test command detected from Package.swift or Xcode project/workspace markers."));
+  });
+
   it("ignores user-local Xcode schemes when selecting a portable command", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-xcode-user-scheme-"));
     const projectRoot = path.join(root, "SampleApp.xcodeproj");
@@ -1624,6 +1667,54 @@ final class CollectorTests: XCTestCase {
     assert.ok(audit.profile.setupSignals.includes("xcode workspace"));
     assert.equal(audit.profile.testCommand, "xcodebuild test -workspace Checkout.xcworkspace -scheme Checkout");
     assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["Checkout/Services/SessionService.swift"]);
+  });
+
+  it("selects the workspace that directly owns a shared scheme when multiple workspaces exist", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-owned-xcode-workspace-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    const storefrontWorkspace = path.join(root, "Storefront.xcworkspace");
+    const schemesRoot = path.join(storefrontWorkspace, "xcshareddata", "xcschemes");
+    fs.mkdirSync(path.join(root, "Admin.xcworkspace"), { recursive: true });
+    fs.mkdirSync(schemesRoot, { recursive: true });
+    fs.mkdirSync(path.join(root, "StorefrontTests"), { recursive: true });
+    fs.writeFileSync(path.join(root, "Admin.xcworkspace", "contents.xcworkspacedata"), "<Workspace></Workspace>\n");
+    fs.writeFileSync(path.join(storefrontWorkspace, "contents.xcworkspacedata"), "<Workspace></Workspace>\n");
+    fs.writeFileSync(path.join(schemesRoot, "CI.xcscheme"), "<Scheme></Scheme>\n");
+    fs.writeFileSync(
+      path.join(root, "StorefrontTests", "StorefrontTests.swift"),
+      "import XCTest\nfinal class StorefrontTests: XCTestCase { func testExample() {} }\n"
+    );
+
+    const audit = auditSwiftRepo(root);
+
+    assert.equal(audit.profile.testCommand, "xcodebuild test -workspace Storefront.xcworkspace -scheme CI");
+    assert.deepEqual(audit.profile.blockers, []);
+  });
+
+  it("blocks ambiguous workspaces instead of falling through to a matching project", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-ambiguous-xcode-workspaces-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    const projectRoot = path.join(root, "Shared.xcodeproj");
+    const schemesRoot = path.join(projectRoot, "xcshareddata", "xcschemes");
+    fs.mkdirSync(path.join(root, "Admin.xcworkspace"), { recursive: true });
+    fs.mkdirSync(path.join(root, "Beta.xcworkspace"), { recursive: true });
+    fs.mkdirSync(schemesRoot, { recursive: true });
+    fs.mkdirSync(path.join(root, "SharedTests"), { recursive: true });
+    fs.writeFileSync(path.join(root, "Admin.xcworkspace", "contents.xcworkspacedata"), "<Workspace></Workspace>\n");
+    fs.writeFileSync(path.join(root, "Beta.xcworkspace", "contents.xcworkspacedata"), "<Workspace></Workspace>\n");
+    fs.writeFileSync(path.join(projectRoot, "project.pbxproj"), "{}\n");
+    fs.writeFileSync(path.join(schemesRoot, "Shared.xcscheme"), "<Scheme></Scheme>\n");
+    fs.writeFileSync(
+      path.join(root, "SharedTests", "SharedTests.swift"),
+      "import XCTest\nfinal class SharedTests: XCTestCase { func testExample() {} }\n"
+    );
+
+    const audit = auditSwiftRepo(root);
+
+    assert.equal(audit.profile.testCommand, undefined);
+    assert.equal(audit.profile.confidence, "medium");
+    assert.ok(audit.profile.blockers.includes("Multiple Xcode workspaces detected without a unique scheme-name match: Admin.xcworkspace, Beta.xcworkspace."));
+    assert.ok(!audit.profile.blockers.includes("No runnable Swift test command detected from Package.swift or Xcode project/workspace markers."));
   });
 
   it("detects popular SwiftPM test support libraries", () => {

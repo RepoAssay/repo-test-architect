@@ -117,6 +117,8 @@ Objective-C classification, arbitrary manifest logic, and runtime coverage proof
 
 Progress: the first Swift hardening slice suppresses `xcodebuild` commands when multiple checked-in shared schemes lack a unique workspace/project-name match or multiple test plans lack a unique default or sole scheme reference. It preserves the detected Xcode setup signals, reports a precise ambiguity blocker instead of the generic missing-command blocker, and prevents an unresolved command from retaining high profile confidence. Existing sole, name-matched, and default-plan selections remain unchanged.
 
+Progress: Xcode container ownership now preserves relative project/workspace paths and selects a sole container, a unique direct owner of the shared scheme, or a unique scheme-name match. Multiple unresolved workspaces block before project fallback, and unresolved multiple projects also block, while positive direct-owner and matched-container cases remain runnable.
+
 ## Workstream 3: Cross-Adapter Trust
 
 After each adapter has a refreshed corpus:
