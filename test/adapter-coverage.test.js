@@ -16,6 +16,12 @@ describe("adapter coverage regression gate", () => {
         thresholds: { lines: 94, branches: 87, functions: 95 }
       },
       {
+        adapterId: "go",
+        sourcePath: "src/adapters/go/audit.js",
+        testPath: "test/go-audit.test.js",
+        thresholds: { lines: 95, branches: 90, functions: 95 }
+      },
+      {
         adapterId: "python",
         sourcePath: "src/adapters/python/audit.js",
         testPath: "test/python-audit.test.js",

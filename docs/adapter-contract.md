@@ -40,6 +40,7 @@ Runtime adapter registration lives in `src/core/adapter-registry.js`.
 Currently registered adapters are:
 
 - `javascript` for the JavaScript ecosystem, covering JavaScript and TypeScript repositories
+- `go` for conventional single-module Go projects using the standard `testing` package, registered as experimental within the [Go support matrix](go-experimental-support.md)
 - `kotlin` for conventional Kotlin and Java Gradle or Maven JVM module roots, supported within the bounded [Kotlin/JVM Alpha Support](kotlin-jvm-alpha-support.md) matrix
 - `python` for bounded Python package, FastAPI, Django, and Flask roots
 - `swift` for the bounded Swift Package Manager, Apple Xcode, and Bazel/rules_swift patterns in the Swift alpha support matrix

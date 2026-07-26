@@ -2,7 +2,7 @@
 
 ## Current State
 
-Repo Test Architect currently has supported deterministic JavaScript/TypeScript, Python, Swift, and bounded Kotlin/JVM audit pipelines.
+Repo Test Architect currently has supported deterministic JavaScript/TypeScript, Python, Swift, and bounded Kotlin/JVM audit pipelines, plus an experimental conventional single-module Go adapter.
 
 Implemented:
 
@@ -41,6 +41,7 @@ Implemented:
 - shared runtime Markdown audit renderer with a TypeScript reference mirror, used directly by the CLI
 - behavioral HTTP framework classifications for routers, routes, handlers, security and general middleware, request access and validation, request bodies, queries, cookies, caching, response construction, request events, proxies, sessions, WebSockets, streaming, client response parsing, and runtime adapters, including flat utility layouts identified through HTTP boundary types
 - runtime adapter registry with supported `javascript`, `kotlin`, `python`, and `swift` adapters
+- experimental `go` registry entry with conventional `go.mod` ownership, runnable standard-library test detection, `go test ./...` command selection, exact package-symbol provenance, conservative source classification, explicit workspace/build-constraint/Ginkgo blockers, golden artifacts, model-consistency locking, and shared downstream conformance
 - Swift Xcode command selection that preserves sole, direct scheme-owning, container-name-matched, and default-plan choices while retaining nested container paths, blocking ambiguous workspaces/projects/schemes/plans, and lowering unresolved profiles from high confidence
 - Swift source-symbol evidence that remains target-qualified and unique while rejecting test-local shadow declarations and same-named receiver member calls as proof of a source type or top-level function
 - Swift static extension evidence limited to source-file-unique receiver/member ownership and an explicit qualified call, with cross-file overloads and test-local receiver declarations kept uncredited
@@ -68,7 +69,7 @@ Implemented:
 - shared project-audits validation for saved artifact reuse across CLI and MCP-style flows
 - file-backed MCP invoke arguments for local calls that reuse saved artifacts
 - checked-in MCP args fixture for project-audits derived local examples
-- unsupported Ruby, PHP, Elixir, Go, Rust, and .NET project reporting with ecosystem and language labels
+- unsupported Ruby, PHP, Elixir, Rust, and .NET project reporting with ecosystem and language labels
 - documented project detection marker rules
 - CLI output for project detection marker rules
 - fixture-based regression coverage
@@ -99,7 +100,7 @@ Implemented:
 - public-readiness record covering the completed npm and official MCP Registry launch
 - adapter-hardening plan that prioritizes shared conformance and deeper JavaScript/TypeScript, Python, Swift, and bounded Kotlin/JVM validation before adding ecosystems
 - exact-pin validation-corpus measurement command with repeated canonical audit digests, raw and median durations, and evidence-link counts
-- Node 20-compatible instrumented line, branch, and function coverage floors for all four adapter-owned audit implementations
+- Node 20-compatible instrumented line, branch, and function coverage floors for all four supported adapter implementations plus experimental Go
 - deterministic 400-source/200-test performance and evidence-count regression gates for JavaScript/TypeScript, Python, Kotlin/JVM, and Swift
 - alpha-readiness checklist for the test architecture audit milestone before native generation
 - deterministic `npm run alpha:check` gate for tests, adapter implementation coverage, adapter corpus validation, all-adapter performance/evidence regression, golden audits, model consistency, demo behavior, and local MCP transport without npm packaging requirements

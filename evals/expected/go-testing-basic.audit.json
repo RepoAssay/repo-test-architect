@@ -1,0 +1,174 @@
+{
+  "schemaVersion": "audit/v1",
+  "profile": {
+    "root": "<fixture>",
+    "languages": [
+      "go"
+    ],
+    "packageManagers": [
+      "go-modules"
+    ],
+    "testFrameworks": [
+      "go-testing"
+    ],
+    "architectures": [
+      "go-module",
+      "http-service"
+    ],
+    "testCommand": "go test ./...",
+    "detectedConventions": [
+      "*_test.go",
+      "TestXxx",
+      "table-driven tests"
+    ],
+    "existingTestLocations": [
+      "root _test.go"
+    ],
+    "setupSignals": [
+      "go.mod",
+      "module path",
+      "standard testing package"
+    ],
+    "confidence": "high",
+    "blockers": []
+  },
+  "untestedCandidates": [
+    {
+      "id": "payment_client.go",
+      "name": "payment_client",
+      "path": "payment_client.go",
+      "kind": "service",
+      "signals": [
+        "service-boundary",
+        "external-boundary"
+      ],
+      "risk": "high",
+      "testability": "medium",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 8,
+      "maintenanceCost": 4,
+      "reasons": [
+        "Service boundary",
+        "external boundary"
+      ],
+      "existingTestPaths": []
+    }
+  ],
+  "coveredButRisky": [
+    {
+      "id": "price_parser.go",
+      "name": "price_parser",
+      "path": "price_parser.go",
+      "kind": "pure-logic",
+      "signals": [
+        "pure-logic",
+        "edge-case-surface",
+        "matching-test"
+      ],
+      "risk": "high",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 9,
+      "maintenanceCost": 2,
+      "reasons": [
+        "Pure transformation logic",
+        "edge-case surface",
+        "Existing Go test evidence detected; review missing edge cases"
+      ],
+      "existingTestPaths": [
+        "price_parser_test.go"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "price_parser_test.go",
+          "kind": "go-symbol-reference",
+          "strength": "direct",
+          "usage": "called"
+        },
+        {
+          "testPath": "price_parser_test.go",
+          "kind": "filename-convention",
+          "strength": "naming"
+        }
+      ]
+    }
+  ],
+  "recommended": [
+    {
+      "id": "payment_client.go",
+      "name": "payment_client",
+      "path": "payment_client.go",
+      "kind": "service",
+      "signals": [
+        "service-boundary",
+        "external-boundary"
+      ],
+      "risk": "high",
+      "testability": "medium",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 8,
+      "maintenanceCost": 4,
+      "reasons": [
+        "Service boundary",
+        "external boundary"
+      ],
+      "existingTestPaths": []
+    },
+    {
+      "id": "price_parser.go",
+      "name": "price_parser",
+      "path": "price_parser.go",
+      "kind": "pure-logic",
+      "signals": [
+        "pure-logic",
+        "edge-case-surface",
+        "matching-test"
+      ],
+      "risk": "high",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 9,
+      "maintenanceCost": 2,
+      "reasons": [
+        "Pure transformation logic",
+        "edge-case surface",
+        "Existing Go test evidence detected; review missing edge cases"
+      ],
+      "existingTestPaths": [
+        "price_parser_test.go"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "price_parser_test.go",
+          "kind": "go-symbol-reference",
+          "strength": "direct",
+          "usage": "called"
+        },
+        {
+          "testPath": "price_parser_test.go",
+          "kind": "filename-convention",
+          "strength": "naming"
+        }
+      ]
+    }
+  ],
+  "skipped": [
+    {
+      "id": "payment.go",
+      "name": "payment",
+      "path": "payment.go",
+      "kind": "dto",
+      "signals": [
+        "dto-only"
+      ],
+      "riskReductionScore": 2,
+      "maintenanceCost": 4,
+      "reason": "Struct-only data shapes are usually better covered through the behavior that consumes them.",
+      "preferredCoveragePath": "Cover through parser, service, repository, or HTTP boundary tests."
+    }
+  ],
+  "risks": [
+    "payment_client has service boundary, external boundary and has no matching Go test evidence.",
+    "price_parser has pure transformation logic, edge-case surface and needs edge-case review."
+  ]
+}

@@ -546,7 +546,7 @@ describe("project detector", () => {
           root: "services/worker",
           ecosystems: ["go"],
           languages: ["go"],
-          supported: false
+          supported: true
         }
       ]
     );

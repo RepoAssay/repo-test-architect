@@ -1,0 +1,90 @@
+{
+  "schemaVersion": "plan/v1",
+  "summary": {
+    "confidence": "high",
+    "verificationCommand": "go test ./...",
+    "blockerCount": 0,
+    "addTestCount": 1,
+    "extendTestCount": 1,
+    "deferredCount": 1
+  },
+  "blockers": [],
+  "items": [
+    {
+      "id": "extend-test:price_parser.go",
+      "action": "extend-test",
+      "targetId": "price_parser.go",
+      "target": "price_parser",
+      "path": "price_parser.go",
+      "testLevel": "unit",
+      "priority": 7,
+      "riskReductionScore": 9,
+      "maintenanceCost": 2,
+      "rationale": [
+        "Pure transformation logic",
+        "edge-case surface",
+        "Existing Go test evidence detected; review missing edge cases"
+      ],
+      "sourceSignals": [
+        "pure-logic",
+        "edge-case-surface",
+        "matching-test"
+      ],
+      "existingTestPaths": [
+        "price_parser_test.go"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "price_parser_test.go",
+          "kind": "go-symbol-reference",
+          "strength": "direct",
+          "usage": "called"
+        },
+        {
+          "testPath": "price_parser_test.go",
+          "kind": "filename-convention",
+          "strength": "naming"
+        }
+      ]
+    },
+    {
+      "id": "add-test:payment_client.go",
+      "action": "add-test",
+      "targetId": "payment_client.go",
+      "target": "payment_client",
+      "path": "payment_client.go",
+      "testLevel": "unit",
+      "priority": 4,
+      "riskReductionScore": 8,
+      "maintenanceCost": 4,
+      "rationale": [
+        "Service boundary",
+        "external boundary"
+      ],
+      "sourceSignals": [
+        "service-boundary",
+        "external-boundary"
+      ],
+      "existingTestPaths": []
+    },
+    {
+      "id": "defer:payment.go",
+      "action": "defer",
+      "targetId": "payment.go",
+      "target": "payment",
+      "path": "payment.go",
+      "testLevel": "none",
+      "priority": -2,
+      "riskReductionScore": 2,
+      "maintenanceCost": 4,
+      "rationale": [
+        "Struct-only data shapes are usually better covered through the behavior that consumes them.",
+        "Cover through parser, service, repository, or HTTP boundary tests."
+      ],
+      "sourceSignals": [
+        "dto-only"
+      ],
+      "existingTestPaths": []
+    }
+  ]
+}

@@ -22,6 +22,7 @@ const portableEvidenceStrengths = {
   "browser-route-match": ["indirect"],
   "direct-relative-import": ["direct"],
   "filename-convention": ["naming"],
+  "go-symbol-reference": ["direct", "referenced"],
   "jvm-symbol-reference": ["direct", "referenced"],
   "package-entry-import": ["referenced"],
   "python-module-import": ["direct"],
@@ -36,6 +37,7 @@ const portableEvidenceStrengths = {
 export function assertAdapterConformance({
   adapterId,
   fixturePath,
+  expectedMaturity = "supported",
   expectedProfile = {}
 }) {
   const root = path.resolve(fixturePath);
@@ -44,7 +46,7 @@ export function assertAdapterConformance({
   const second = adapter.audit(root);
   const serialized = JSON.stringify(first);
 
-  assert.equal(adapter.maturity, "supported", `${adapterId} must expose supported maturity`);
+  assert.equal(adapter.maturity, expectedMaturity, `${adapterId} must expose the expected maturity`);
   assert.ok(adapter.ecosystems.length > 0, `${adapterId} must expose ecosystems`);
   assert.ok(adapter.languages.length > 0, `${adapterId} must expose languages`);
   assert.ok(adapter.supportedProjectTypes.length > 0, `${adapterId} must expose project types`);

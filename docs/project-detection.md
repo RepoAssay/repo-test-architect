@@ -21,7 +21,7 @@ npm run detect-rules:json
 | `Gemfile` | `ruby` | `ruby` | Detected, unsupported |
 | `composer.json` | `php` | `php` | Detected, unsupported |
 | `mix.exs` | `elixir` | `elixir` | Detected, unsupported |
-| `go.mod` | `go` | `go` | Detected, unsupported |
+| `go.mod` | `go` | `go` | Experimental bounded `go` adapter |
 | `Cargo.toml` | `rust` | `rust` | Detected, unsupported |
 | `Package.swift` | `swift` | `swift` | Supported by `swift` |
 | `MODULE.bazel` | `bazel` | `swift` | Supported by `swift` when Swift rules and sources are present |

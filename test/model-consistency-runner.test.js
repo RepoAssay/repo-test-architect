@@ -70,6 +70,7 @@ describe("model consistency runner", () => {
       results.map((result) => [result.scenarioId, result.failures]),
       [
         ["express-supertest-plan", []],
+        ["go-testing-basic-plan", []],
         ["kotlin-gradle-aggregate-kotest-plan", []],
         ["kotlin-gradle-groovy-junit-plan", []],
         ["kotlin-gradle-module-graph-junit-plan", []],
@@ -134,14 +135,14 @@ describe("model consistency runner", () => {
     assert.equal(summary.schemaVersion, "model-consistency-summary/v1");
     assert.equal(summary.profileName, "deterministic-baseline");
     assert.deepEqual(summary.summary, {
-      scenarioCount: 51,
-      passedScenarioCount: 51,
+      scenarioCount: 52,
+      passedScenarioCount: 52,
       failedScenarioCount: 0,
-      checkedFieldCount: 444,
+      checkedFieldCount: 453,
       failureCount: 0
     });
-    assert.equal(summary.scenarios[16].scenarioId, "node-ava-basic-plan");
-    assert.equal(summary.scenarios[16].status, "passed");
+    assert.equal(summary.scenarios[17].scenarioId, "node-ava-basic-plan");
+    assert.equal(summary.scenarios[17].status, "passed");
     assert.ok(summary.allowedVariationThemes.includes("Additional non-locked metadata may be added."));
     assert.ok(summary.unexpectedVariationThemes.includes("Generating a direct DTO test recommendation."));
   });
@@ -155,8 +156,8 @@ describe("model consistency runner", () => {
     assert.equal(comparison.baselineProfile, "deterministic-baseline");
     assert.equal(comparison.candidateProfile, "local-small");
     assert.deepEqual(comparison.summary, {
-      scenarioCount: 51,
-      alignedScenarioCount: 51,
+      scenarioCount: 52,
+      alignedScenarioCount: 52,
       driftedScenarioCount: 0,
       missingScenarioCount: 0,
       unexpectedScenarioCount: 0,
@@ -198,19 +199,20 @@ describe("model consistency runner", () => {
     const comparison = compareModelConsistencySummaries(baseline, candidate);
 
     assert.deepEqual(comparison.summary, {
-      scenarioCount: 52,
-      alignedScenarioCount: 49,
+      scenarioCount: 53,
+      alignedScenarioCount: 50,
       driftedScenarioCount: 1,
       missingScenarioCount: 1,
       unexpectedScenarioCount: 1,
-      checkedFieldDelta: -289,
+      checkedFieldDelta: -298,
       failureDelta: 3
     });
     assert.deepEqual(
       comparison.scenarios.map((scenario) => [scenario.scenarioId, scenario.alignment]),
       [
         ["express-supertest-plan", "drifted"],
-        ["kotlin-gradle-aggregate-kotest-plan", "missing"],
+        ["go-testing-basic-plan", "missing"],
+        ["kotlin-gradle-aggregate-kotest-plan", "aligned"],
         ["kotlin-gradle-groovy-junit-plan", "aligned"],
         ["kotlin-gradle-module-graph-junit-plan", "aligned"],
         ["kotlin-gradle-parent-wrapper-junit-plan", "aligned"],
