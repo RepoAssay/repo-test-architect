@@ -109,6 +109,120 @@
       ]
     },
     {
+      "adapterId": "go",
+      "cases": [
+        {
+          "id": "go-burntsushi-toml",
+          "role": "conventional-library-or-service",
+          "repository": {
+            "url": "https://github.com/BurntSushi/toml",
+            "commit": "c6d720d83547bb8d7afb067ba9df8bad0323e2d1",
+            "projectRoot": "."
+          },
+          "supportBoundary": "Conventional parser module with standard-library tests, fuzz and example functions, fixture-owned testdata, and bounded one-hop source evidence.",
+          "reportPath": "docs/go-validation-hunt-report.md",
+          "scorecard": {
+            "detection": "pass",
+            "ownership": "pass",
+            "command": "pass",
+            "evidence": "pass",
+            "ranking": "pass",
+            "stability": "pass",
+            "performance": "pass"
+          },
+          "observed": {
+            "testCommand": "go test ./...",
+            "untestedCandidates": 6,
+            "coveredButRisky": 9,
+            "skippedTargets": 7,
+            "auditDurationMs": 62,
+            "auditDurationSamplesMs": [
+              102,
+              62,
+              60
+            ],
+            "evidenceRelationshipCount": 49,
+            "canonicalAuditSha256": "b8ec8314282aba21b6722bd155bcf5529adcf19b20e1184bf586a40f1367b208"
+          }
+        },
+        {
+          "id": "go-chi-http",
+          "role": "framework-heavy-application",
+          "repository": {
+            "url": "https://github.com/go-chi/chi",
+            "commit": "8b258c7bb28f97a5f2a856ff7ef962578fec9215",
+            "projectRoot": "."
+          },
+          "auditOptions": {
+            "goTarget": {
+              "goos": "darwin",
+              "goarch": "arm64",
+              "tags": []
+            }
+          },
+          "supportBoundary": "HTTP router and middleware module with an explicit static target, nested example-module boundaries, and Go-aware lexical evidence.",
+          "reportPath": "docs/go-http-validation-report.md",
+          "scorecard": {
+            "detection": "pass",
+            "ownership": "pass",
+            "command": "pass",
+            "evidence": "pass",
+            "ranking": "pass",
+            "stability": "pass",
+            "performance": "pass"
+          },
+          "observed": {
+            "testCommand": "GOOS=darwin GOARCH=arm64 go test ./...",
+            "untestedCandidates": 14,
+            "coveredButRisky": 23,
+            "skippedTargets": 10,
+            "auditDurationMs": 77,
+            "auditDurationSamplesMs": [
+              111,
+              77,
+              76
+            ],
+            "evidenceRelationshipCount": 66,
+            "canonicalAuditSha256": "30549ee5288778c890f6b13a165e0155fda4112eb872474431137e26de25973e"
+          }
+        },
+        {
+          "id": "go-river-workspace",
+          "role": "difficult-ownership-graph",
+          "repository": {
+            "url": "https://github.com/riverqueue/river",
+            "commit": "b6c733cf8699eeb825a0c719c6c81041817d87c9",
+            "projectRoot": "."
+          },
+          "supportBoundary": "Nine-member literal go.work graph whose root module excludes eight nested module owners while retaining generic top-level function evidence.",
+          "reportPath": "docs/go-ownership-validation-report.md",
+          "scorecard": {
+            "detection": "pass",
+            "ownership": "pass",
+            "command": "pass",
+            "evidence": "pass",
+            "ranking": "pass",
+            "stability": "pass",
+            "performance": "pass"
+          },
+          "observed": {
+            "testCommand": "go test ./...",
+            "untestedCandidates": 6,
+            "coveredButRisky": 47,
+            "skippedTargets": 10,
+            "auditDurationMs": 467,
+            "auditDurationSamplesMs": [
+              540,
+              458,
+              467
+            ],
+            "evidenceRelationshipCount": 572,
+            "canonicalAuditSha256": "ec066fabe92b0af4c352a72b4098636b9a2c6a21fd3276b91ee99bebae5b9ae9"
+          }
+        }
+      ]
+    },
+    {
       "adapterId": "kotlin",
       "cases": [
         {

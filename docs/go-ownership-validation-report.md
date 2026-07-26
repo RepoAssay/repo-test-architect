@@ -1,6 +1,6 @@
 # Go Workspace Ownership Validation Report
 
-This report records the third pinned public-repository audit for the experimental Go adapter. The source repository was cloned at an exact commit and audited locally. The checkout exercises a root module, eight nested modules, and a literal `go.work` graph without collapsing their commands or evidence into one aggregate owner.
+This report records the third pinned public-repository audit for the bounded Go adapter, which has since reached supported alpha maturity. The source repository was cloned at an exact commit and audited locally. The checkout exercises a root module, eight nested modules, and a literal `go.work` graph without collapsing their commands or evidence into one aggregate owner.
 
 ## Discovery And Selection
 
@@ -11,6 +11,8 @@ The validation finder now exposes a `go-workspace` profile requiring a root `go.
 | [`riverqueue/river`](https://github.com/riverqueue/river) | `b6c733cf8699eeb825a0c719c6c81041817d87c9` | difficult `go.work` ownership graph | 9 | 9 | 15 | 95 | 42 | 622 ms |
 
 Three post-hardening repository audits took 712, 622, and 614 ms. They produced the same normalized project-audit digest, `62dff714c5ccadb78383acb9796e9627bb4cca5cddfdb2d3c032fb5b855df383`, with 662 evidence relationships. The pinned tree contains 296 Go files, including 144 test files.
+
+The shared corpus measures the same exact checkout through the direct root-module adapter contract: three audits took 540, 458, and 467 ms, for a 467 ms median, 6 untested, 47 covered, 10 skipped, and 572 evidence relationships. Their normalized audit digest is `ec066fabe92b0af4c352a72b4098636b9a2c6a21fd3276b91ee99bebae5b9ae9`. The repository-level figures above remain the ownership review across all nine detected projects; the direct measurement is the reproducible per-case corpus baseline.
 
 ## Native Validation
 
@@ -64,6 +66,4 @@ Workspace `replace` effects, repository-external members, receiver methods, inte
 
 ## Corpus Progress
 
-This checkout completes the third of the three required Go live-validation roles. The conventional-library, HTTP/service, and difficult-ownership probes are now all pinned and reviewed. They remain in their reports rather than entering `validation-corpus/v1` early because that contract currently contains the supported adapters only.
-
-The remaining promotion slice is the generated large-module performance and evidence-count regression gate. After that gate passes and an explicit support decision is made, all three pinned Go cases can enter the shared corpus together and the full release surface can be checked with Go included.
+This checkout is the difficult-ownership role in `validation-corpus/v1`. The conventional-library, HTTP/service, and difficult-ownership probes are all pinned, measured, reviewed, and passing. Together with the generated large-module gate and complete release surface, they support Go's promotion to bounded supported alpha maturity.

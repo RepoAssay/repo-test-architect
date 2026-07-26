@@ -8,7 +8,7 @@ The current implementation can:
 
 - audit JavaScript/TypeScript, Python, and Swift projects through supported adapters
 - audit supported, bounded Kotlin/JVM fixtures through the same shared artifact model
-- audit conventional Go modules and literal repository-contained `go.work` members through an experimental bounded adapter
+- audit conventional Go modules and literal repository-contained `go.work` members through a supported bounded adapter
 - detect polyglot project roots and report unsupported ecosystems without hiding them
 - produce a complete repository analysis, findings, ranking, plan, execution hints, and verification commands in one audit pass
 - classify source files by likely test value and defer low-value direct tests
@@ -102,7 +102,7 @@ Supported adapters:
 
 Experimental adapter:
 
-- `go`: conventional `go.mod` projects and literal repository-contained `go.work` members using runnable standard-library `TestXxx`, `FuzzXxx`, or `ExampleXxx` tests, package-local filename, unique-symbol, generic top-level function, and bounded one-hop evidence, module-local commands, and optional explicit `GOOS`/`GOARCH`/custom-tag selection; see the [experimental support matrix](docs/go-experimental-support.md) for blockers and the promotion TODO
+- `go`: conventional `go.mod` projects and literal repository-contained `go.work` members using runnable standard-library `TestXxx`, `FuzzXxx`, or `ExampleXxx` tests, package-local filename, unique-symbol, generic top-level function, and bounded one-hop evidence, module-local commands, and optional explicit `GOOS`/`GOARCH`/custom-tag selection; see the [alpha support matrix](docs/go-alpha-support.md) for the supported boundary and blockers
 
 Project detection also reports unsupported Ruby, PHP, Elixir, Rust, and .NET roots so clients can distinguish "not audited yet" from "not present."
 
@@ -312,9 +312,10 @@ npm run javascript:performance:check
 npm run python:performance:check
 npm run kotlin:performance:check
 npm run swift:performance:check
+npm run go:performance:check
 ```
 
-The versioned `evals/validation-corpus.json` manifest records one conventional library or service, one framework-heavy application, and one difficult ownership graph per adapter. Each record carries the shared detection, ownership, command, evidence, ranking, stability, and performance scorecard. All 12 current pinned cases pass every scorecard area; a new or repinned case stays `pending` until it has been rerun under the standardized hardening review.
+The versioned `evals/validation-corpus.json` manifest records one conventional library or service, one framework-heavy application, and one difficult ownership graph per adapter. Each record carries the shared detection, ownership, command, evidence, ranking, stability, and performance scorecard. All 15 current pinned cases pass every scorecard area; a new or repinned case stays `pending` until it has been rerun under the standardized hardening review. Cases may carry bounded adapter audit options, such as an explicit Go build target, so repeated measurements remain host-independent.
 
 `corpus:scorecard` renders the review contract for humans. It reports review completeness separately from the pass rate among reviewed checks and keeps `PASS`, `FAIL`, and `PENDING` visible for every area. Use `npm run corpus:scorecard -- --format json` for the deterministic `validation-scorecard/v1` view. These are validation-review results, not a repository-quality rating.
 
@@ -429,7 +430,7 @@ evals/
 schemas/
 ```
 
-JavaScript/TypeScript, Python, Swift, and bounded Kotlin/JVM modules are supported adapter proof points. Conventional Go modules, literal repository-contained `go.work` members, and explicit static build-target selection form the experimental fifth adapter. Kotlin/JVM support is limited to conventional Gradle/Maven modules and directly declared aggregate graphs, JUnit, the documented Kotest common-spec and Spock feature variants, or method-level TestNG, and standard source sets as defined in [Kotlin/JVM Alpha Support](docs/kotlin-jvm-alpha-support.md).
+JavaScript/TypeScript, Python, Swift, bounded Kotlin/JVM modules, and bounded Go modules are supported adapter proof points. Go support includes literal repository-contained `go.work` members and explicit static build-target selection as defined in [Go Alpha Support](docs/go-alpha-support.md). Kotlin/JVM support is limited to conventional Gradle/Maven modules and directly declared aggregate graphs, JUnit, the documented Kotest common-spec and Spock feature variants, or method-level TestNG, and standard source sets as defined in [Kotlin/JVM Alpha Support](docs/kotlin-jvm-alpha-support.md).
 
 Important runtime surfaces:
 
@@ -456,7 +457,7 @@ Important runtime surfaces:
 - [Decision log](docs/decision-log.md)
 - [Second adapter spike](docs/second-adapter-spike.md)
 - [Kotlin/JVM alpha support](docs/kotlin-jvm-alpha-support.md)
-- [Go experimental support](docs/go-experimental-support.md)
+- [Go alpha support](docs/go-alpha-support.md)
 - [Go validation hunt report](docs/go-validation-hunt-report.md)
 - [Go HTTP validation report](docs/go-http-validation-report.md)
 - [Go workspace ownership validation report](docs/go-ownership-validation-report.md)

@@ -104,6 +104,7 @@ describe("package manifest", () => {
     assert.equal(packageJson.scripts["corpus:scorecard"], "node ./scripts/render-validation-scorecard.js");
     assert.equal(packageJson.scripts["corpus:measure"], "node ./scripts/measure-validation-corpus.js");
     assert.equal(packageJson.scripts["adapter:coverage:check"], "node ./scripts/check-adapter-coverage.js");
+    assert.equal(packageJson.scripts["go:performance:check"], "node ./scripts/check-go-performance.js");
     assert.equal(packageJson.scripts["javascript:performance:check"], "node ./scripts/check-javascript-performance.js");
     assert.equal(packageJson.scripts["python:performance:check"], "node ./scripts/check-python-performance.js");
     assert.equal(packageJson.scripts["kotlin:performance:check"], "node ./scripts/check-kotlin-performance.js");
@@ -127,6 +128,7 @@ describe("package manifest", () => {
       "test",
       "adapter:coverage:check",
       "corpus:check",
+      "go:performance:check",
       "javascript:performance:check",
       "python:performance:check",
       "kotlin:performance:check",
@@ -149,6 +151,7 @@ describe("package manifest", () => {
       "test",
       "adapter:coverage:check",
       "corpus:check",
+      "go:performance:check",
       "javascript:performance:check",
       "python:performance:check",
       "kotlin:performance:check",

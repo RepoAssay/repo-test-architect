@@ -58,7 +58,7 @@ Decision: begin the next ecosystem with a bounded experimental Go adapter for co
 
 Rationale: Go has strong static project, package, test-file, runnable-test, and command conventions. It exercises package-colocated tests and external `_test` packages while keeping the first build/test matrix smaller than .NET, Rust, or dynamic framework ecosystems. The first slice can therefore prove a useful `go-symbol-reference` relationship without executing repository code or weakening the shared evidence contract. The checked-in fixture subsequently passed native `go test ./...`, `go test -race ./...`, and `gofmt` validation with Go 1.26.5 on Darwin arm64.
 
-Revisit when: the completed three-role live review and generated performance gate justify promotion, or common Go repositories show that receiver methods or alternate execution models must enter the bounded support claim first.
+Revisit when: common Go repositories show that receiver methods or alternate execution models must enter the bounded support claim.
 
 ## Preserve Go Workspace Module Ownership
 
@@ -67,6 +67,14 @@ Decision: parse bounded literal `go.work` `use` directives but continue auditing
 Rationale: Go workspaces activate multiple main modules without turning the workspace directory into one module. Preserving module roots keeps candidate paths, evidence, changed-file filtering, blockers, and commands attached to the source they own. Repository-contained single and block declarations are deterministic; omitted modules, escaping or absolute paths, missing module markers, and malformed declarations suppress commands instead of guessing.
 
 Revisit when: pinned repositories show that repository-external workspace members, workspace `replace` effects, or an explicit aggregate execution strategy can be modeled without weakening ownership or portability.
+
+## Promote Bounded Go To Supported Alpha
+
+Decision: promote the bounded Go adapter from experimental to supported alpha maturity.
+
+Rationale: the conventional-library, HTTP/service, and difficult-workspace roles are pinned and pass all 21 shared validation-corpus areas. Those reviews corrected real ownership and evidence gaps without leaving an unresolved command or direct-evidence upgrade. A generated 400-source/200-test module additionally locks 200 covered candidates, 200 untested candidates, zero skipped candidates, 200 evidence links, and a broad 5-second regression ceiling. The package, CLI, MCP, schema, documentation, conformance, coverage, and release checks now treat Go as a supported adapter while retaining the explicit exclusions in [Go Alpha Support](go-alpha-support.md).
+
+Revisit when: repeated audits inside the documented boundary produce false ownership, verification-command, or direct-evidence claims, or when enough evidence supports expanding beyond static standard-library tests and bounded source relationships.
 
 ## Readiness-Gated Release Lifecycle
 

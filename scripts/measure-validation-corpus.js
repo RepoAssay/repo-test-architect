@@ -36,7 +36,7 @@ export function measureValidationCorpusCase({ caseId, checkoutPath, runCount = 3
   const runs = [];
   for (let index = 0; index < runCount; index += 1) {
     const started = performance.now();
-    const audit = adapter.audit(projectRoot);
+    const audit = adapter.audit(projectRoot, corpusCase.entry.auditOptions ?? {});
     const durationMs = Math.round(performance.now() - started);
     runs.push({ audit, durationMs });
   }

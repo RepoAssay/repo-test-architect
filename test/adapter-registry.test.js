@@ -19,7 +19,7 @@ describe("adapter registry", () => {
         id: "go",
         ecosystems: ["go"],
         languages: ["go"],
-        maturity: "experimental",
+        maturity: "supported",
         supportedTestFrameworks: ["go-testing"],
         supportedProjectTypes: ["go-module"],
         emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"]
@@ -71,7 +71,7 @@ describe("adapter registry", () => {
           id: "go",
           ecosystems: ["go"],
           languages: ["go"],
-          maturity: "experimental",
+          maturity: "supported",
           supportedTestFrameworks: ["go-testing"],
           supportedProjectTypes: ["go-module"],
           emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"]
