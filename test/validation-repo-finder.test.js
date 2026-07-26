@@ -126,6 +126,17 @@ describe("validation repository finder", () => {
     });
   });
 
+  it("defines a Go workspace validation profile with a literal use directive", () => {
+    assert.equal(validationProfiles["go-workspace"].language, "Go");
+    assert.deepEqual(detectManifestSignals(validationProfiles["go-workspace"].searches, {
+      "go.mod": "module example.com/workspace\n\ngo 1.25\n",
+      "go.work": "go 1.25\n\nuse (\n  .\n  ./driver\n)\n"
+    }, [{ name: "workspace_test.go", type: "file" }]), {
+      signals: ["go-module", "go-workspace", "root-go-tests"],
+      matchedPaths: ["go.mod", "go.work", "workspace_test.go"]
+    });
+  });
+
   it("defines Python validation profiles for package, framework, and advanced pytest shapes", () => {
     assert.deepEqual(
       ["python", "python-pytest", "python-fastapi", "python-django", "python-flask", "python-advanced"].map((profile) => validationProfiles[profile].language),

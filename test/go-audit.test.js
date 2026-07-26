@@ -410,6 +410,37 @@ func TestWildcardRoute(t *testing.T) {
     assert.deepEqual(audit.skipped.find((target) => target.path === "price/types.go")?.kind, "dto");
   });
 
+  it("resolves generic function declarations, explicit type arguments, and one source hop", (t) => {
+    const root = createRepo(t, {
+      "go.mod": "module example.com/generic\n\ngo 1.22\n",
+      "exercise.go": "package generic\nfunc Exercise[\n  T ~[]byte | ~string,\n](value T) T { return normalize(value) }\n",
+      "normalize.go": "package generic\nfunc normalize[T ~[]byte | ~string](value T) T { return value }\n",
+      "exercise_test.go": [
+        "package generic_test",
+        "import (",
+        "  \"testing\"",
+        "  driver \"example.com/generic\"",
+        ")",
+        "func TestExercise(t *testing.T) {",
+        "  if driver.Exercise[string](\"ok\") != \"ok\" { t.Fatal() }",
+        "}",
+        ""
+      ].join("\n")
+    });
+
+    const audit = auditGoRepo(root);
+
+    assert.deepEqual(audit.untestedCandidates, []);
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["exercise.go", "normalize.go"]);
+    assert.deepEqual(audit.coveredButRisky[0].existingTestEvidence, [
+      { testPath: "exercise_test.go", kind: "go-symbol-reference", strength: "direct", usage: "called" },
+      { testPath: "exercise_test.go", kind: "filename-convention", strength: "naming" }
+    ]);
+    assert.deepEqual(audit.coveredButRisky[1].existingTestEvidence, [
+      { testPath: "exercise_test.go", kind: "go-source-dependency", strength: "indirect", viaUsage: "called" }
+    ]);
+  });
+
   it("recognizes runnable fuzz and example conventions", (t) => {
     const root = createRepo(t, {
       "go.mod": "module example.com/sample\n\ngo 1.22\n",

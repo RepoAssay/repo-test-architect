@@ -64,6 +64,16 @@ export const validationProfiles = {
       { signal: "root-go-tests", entryPattern: /_test\.go$/ }
     ]
   },
+  "go-workspace": {
+    description: "Go workspaces with a root module and standard-library tests",
+    repositoryQuery: '"go.work"',
+    language: "Go",
+    searches: [
+      { signal: "go-module", file: "go.mod", pattern: /^\s*module\s+\S+/m },
+      { signal: "go-workspace", file: "go.work", pattern: /^\s*use\s+(?:\(|[."`])/m },
+      { signal: "root-go-tests", entryPattern: /_test\.go$/ }
+    ]
+  },
   swift: {
     description: "Swift Package Manager projects",
     repositoryQuery: '"swift package"',

@@ -102,7 +102,7 @@ Supported adapters:
 
 Experimental adapter:
 
-- `go`: conventional `go.mod` projects and literal repository-contained `go.work` members using runnable standard-library `TestXxx`, `FuzzXxx`, or `ExampleXxx` tests, package-local filename and unique-symbol evidence, module-local commands, and optional explicit `GOOS`/`GOARCH`/custom-tag selection; see the [experimental support matrix](docs/go-experimental-support.md) for blockers and the promotion TODO
+- `go`: conventional `go.mod` projects and literal repository-contained `go.work` members using runnable standard-library `TestXxx`, `FuzzXxx`, or `ExampleXxx` tests, package-local filename, unique-symbol, generic top-level function, and bounded one-hop evidence, module-local commands, and optional explicit `GOOS`/`GOARCH`/custom-tag selection; see the [experimental support matrix](docs/go-experimental-support.md) for blockers and the promotion TODO
 
 Project detection also reports unsupported Ruby, PHP, Elixir, Rust, and .NET roots so clients can distinguish "not audited yet" from "not present."
 
@@ -459,6 +459,7 @@ Important runtime surfaces:
 - [Go experimental support](docs/go-experimental-support.md)
 - [Go validation hunt report](docs/go-validation-hunt-report.md)
 - [Go HTTP validation report](docs/go-http-validation-report.md)
+- [Go workspace ownership validation report](docs/go-ownership-validation-report.md)
 - [Kotlin/JVM validation hunt report](docs/kotlin-jvm-validation-hunt-report.md)
 - [Adapter contract](docs/adapter-contract.md)
 - [Artifact contract](docs/artifact-contract.md)

@@ -54,9 +54,4 @@ The HTTP/service probe passes the reviewed detection, ownership, target, command
 
 ## Corpus Progress
 
-This checkout completes the second of the three required Go promotion roles. It remains documented here rather than entering `validation-corpus/v1` early, because the current corpus contract requires every included adapter to provide all three roles. Remaining Go work is:
-
-1. a difficult multi-package, nested-module, or `go.work` ownership graph
-2. the generated large-module performance and evidence-count regression gate
-
-When the final pinned role is reviewed, all three Go cases can enter the shared corpus together and support an explicit experimental-to-supported decision.
+This checkout completes the second of the three required Go promotion roles. It remains documented here rather than entering `validation-corpus/v1` early, because the current corpus contract contains the supported adapters only. The [Go workspace ownership validation](go-ownership-validation-report.md) subsequently completed the final live role. The remaining promotion work is the generated large-module performance and evidence-count regression gate, followed by an explicit support decision and entry of all three cases into the shared corpus.
