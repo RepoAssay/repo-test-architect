@@ -16,6 +16,15 @@ describe("adapter registry", () => {
         emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"]
       },
       {
+        id: "go",
+        ecosystems: ["go"],
+        languages: ["go"],
+        maturity: "experimental",
+        supportedTestFrameworks: ["go-testing"],
+        supportedProjectTypes: ["go-module"],
+        emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"]
+      },
+      {
         id: "kotlin",
         ecosystems: ["jvm"],
         languages: ["kotlin", "java"],
@@ -56,6 +65,15 @@ describe("adapter registry", () => {
           maturity: "supported",
           supportedTestFrameworks: ["ava", "bun-test", "cypress", "jest", "mocha", "node-test", "playwright", "react-testing-library", "supertest", "vitest"],
           supportedProjectTypes: ["node", "express", "react", "browser-e2e"],
+          emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"]
+        },
+        {
+          id: "go",
+          ecosystems: ["go"],
+          languages: ["go"],
+          maturity: "experimental",
+          supportedTestFrameworks: ["go-testing"],
+          supportedProjectTypes: ["go-module"],
           emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"]
         },
         {
@@ -134,7 +152,7 @@ describe("adapter registry", () => {
   it("rejects unsupported adapters", () => {
     assert.throws(
       () => getAdapter("ruby"),
-      /Unsupported adapter: ruby\. Available adapters: javascript, kotlin, python, swift\./
+      /Unsupported adapter: ruby\. Available adapters: javascript, go, kotlin, python, swift\./
     );
   });
 
@@ -144,6 +162,14 @@ describe("adapter registry", () => {
 
     assert.equal(audit.schemaVersion, "audit/v1");
     assert.deepEqual(audit.profile.testFrameworks, ["junit", "kotlin-test"]);
+  });
+
+  it("audits through the Go adapter", () => {
+    const adapter = getAdapter("go");
+    const audit = adapter.audit(path.resolve("examples/go-testing-basic"));
+
+    assert.equal(audit.schemaVersion, "audit/v1");
+    assert.deepEqual(audit.profile.testFrameworks, ["go-testing"]);
   });
 
   it("audits through the Swift adapter", () => {

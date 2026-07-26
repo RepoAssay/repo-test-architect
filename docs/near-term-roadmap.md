@@ -2,7 +2,7 @@
 
 This roadmap tracks the next practical milestones before Repo Test Architect should claim broader adapter support or native test generation.
 
-The first public alpha is shipped. The active phase is to deepen the four supported adapters through the measurable [Adapter Hardening Plan](adapter-hardening-plan.md). See [Alpha Readiness](alpha-readiness.md) for the standing product acceptance gates and the [Release Lifecycle](release-lifecycle.md) for the flexible alpha, beta, release-candidate, and `1.0` planning windows.
+The first public alpha is shipped. The four supported adapters completed the measurable [Adapter Hardening Plan](adapter-hardening-plan.md), and the active adapter-expansion phase is a bounded experimental Go spike. See [Alpha Readiness](alpha-readiness.md) for the standing product acceptance gates and the [Release Lifecycle](release-lifecycle.md) for the flexible alpha, beta, release-candidate, and `1.0` planning windows.
 
 ## Current Baseline
 
@@ -12,6 +12,7 @@ The useful baseline is:
 
 - deterministic JavaScript/TypeScript audit pipeline
 - supported Swift, Python, and bounded Kotlin/JVM adapters
+- experimental conventional single-module Go adapter
 - polyglot project detection with unsupported-project reporting
 - project-level ranking, planning, provider-neutral execution hints, placement, stats, and local MCP tool calls
 - disabled-by-default local MCP diagnostics, safe internal-error report IDs, runtime checks, and inspectable sanitized bundles
@@ -90,10 +91,11 @@ Detection, ownership, command, evidence, ranking, stability, and performance eac
 
 Goal: prove the adapter contract keeps holding as additional ecosystems move from detection-only to audited fixtures.
 
-Status: Swift, Python, and bounded Kotlin/JVM modules reached supported alpha maturity. New adapter expansion is paused while JavaScript/TypeScript, Python, Swift, and Kotlin/JVM complete the corpus, conformance, ecosystem, and cross-adapter work in the [Adapter Hardening Plan](adapter-hardening-plan.md).
+Status: Swift, Python, and bounded Kotlin/JVM modules reached supported alpha maturity, and the four-adapter hardening gate is complete. The experimental Go spike now passes its deterministic fixture, native `go test ./...`, `go test -race ./...`, `gofmt`, shared conformance, implementation coverage, golden artifact, and model-consistency gates. Promotion remains pending on the live validation corpus and a generated performance/evidence gate described in [Go Experimental Support](go-experimental-support.md).
 
 Useful hardening targets:
 
+- Go `go.work` ownership, build-target configuration, large-module performance, and pinned live-repository validation
 - Kotlin/JVM with Gradle/Maven, bounded single-module and settings-owned all-KMP literal-JVM-target graphs with source-set-qualified API traversal, JUnit variants, bounded Kotest common specs, conventional Spock features, and method-level TestNG
 - Swift Package Manager with XCTest, Swift Testing, Quick/Nimble, and SnapshotTesting signals
 - Python fixture reachability, async/parametrized/property-based pytest conventions, Django/Flask routes, tox/nox commands, coverage configuration, and no-tests-yet blocker behavior

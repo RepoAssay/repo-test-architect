@@ -120,7 +120,8 @@
                   "python-package-reexport",
                   "python-pytest-fixture",
                   "python-test-client-route",
-                  "jvm-symbol-reference"
+                  "jvm-symbol-reference",
+                  "go-symbol-reference"
                 ]
               },
               "strength": { "enum": ["naming", "direct", "referenced", "indirect"] },

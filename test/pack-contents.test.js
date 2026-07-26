@@ -21,6 +21,9 @@ describe("package contents", () => {
 
   it("requires check script dependencies needed by packaged release verification", () => {
     assert.ok(requiredFiles.includes("src/diagnostics/diagnostics.js"));
+    assert.ok(requiredFiles.includes("src/adapters/go/audit.js"));
+    assert.ok(requiredFiles.includes("docs/go-experimental-support.md"));
+    assert.ok(requiredFiles.includes("examples/go-testing-basic/go.mod"));
     assert.ok(requiredFiles.includes("schemas/diagnostic-event-v1.schema.json"));
     assert.ok(requiredFiles.includes("schemas/doctor-report-v1.schema.json"));
     assert.ok(requiredFiles.includes("schemas/diagnostic-bundle-v1.schema.json"));

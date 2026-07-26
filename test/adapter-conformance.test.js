@@ -13,6 +13,17 @@ const cases = [
     }
   },
   {
+    adapterId: "go",
+    fixturePath: "examples/go-testing-basic",
+    expectedMaturity: "experimental",
+    expectedProfile: {
+      languages: ["go"],
+      testFrameworks: ["go-testing"],
+      testCommand: "go test ./...",
+      confidence: "high"
+    }
+  },
+  {
     adapterId: "kotlin",
     fixturePath: "examples/kotlin-junit-basic",
     expectedProfile: {

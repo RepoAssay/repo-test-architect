@@ -1,4 +1,5 @@
 import { auditJavaScriptRepo } from "../adapters/javascript/audit.js";
+import { auditGoRepo } from "../adapters/go/audit.js";
 import { auditKotlinRepo } from "../adapters/kotlin/audit.js";
 import { auditPythonRepo } from "../adapters/python/audit.js";
 import { auditSwiftRepo } from "../adapters/swift/audit.js";
@@ -44,6 +45,20 @@ export const adapters = [
     emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"],
     audit(repoRoot, options = {}) {
       return auditJavaScriptRepo(repoRoot, {
+        changedPaths: options.changedPaths
+      });
+    }
+  },
+  {
+    id: "go",
+    ecosystems: ["go"],
+    languages: ["go"],
+    maturity: "experimental",
+    supportedTestFrameworks: ["go-testing"],
+    supportedProjectTypes: ["go-module"],
+    emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"],
+    audit(repoRoot, options = {}) {
+      return auditGoRepo(repoRoot, {
         changedPaths: options.changedPaths
       });
     }

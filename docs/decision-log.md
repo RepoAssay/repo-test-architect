@@ -52,6 +52,14 @@ Rationale: the current four adapters cover a broad share of likely repositories.
 
 Revisit when: all four adapters meet the hardening definition of done, or repeated user demand identifies an unsupported ecosystem whose value clearly exceeds the remaining trust work.
 
+## Go As The Fifth Adapter Spike
+
+Decision: begin the next ecosystem with a bounded experimental Go adapter for conventional single-module `go.mod` projects and standard-library tests.
+
+Rationale: Go has strong static project, package, test-file, runnable-test, and command conventions. It exercises package-colocated tests and external `_test` packages while keeping the first build/test matrix smaller than .NET, Rust, or dynamic framework ecosystems. The first slice can therefore prove a useful `go-symbol-reference` relationship without executing repository code or weakening the shared evidence contract. The checked-in fixture subsequently passed native `go test ./...`, `go test -race ./...`, and `gofmt` validation with Go 1.26.5 on Darwin arm64.
+
+Revisit when: a pinned live-repository corpus and generated performance gate justify promotion, or common Go repositories show that `go.work`, build constraints, receiver methods, or alternate execution models must enter the bounded support claim first.
+
 ## Readiness-Gated Release Lifecycle
 
 Decision: use flexible planning windows for public alpha, beta, release candidates, and `1.0`, while making readiness evidence—not a promised calendar date—the promotion authority. Keep the current `0.x` line as public alpha, target `1.0.0-beta.N` and `1.0.0-rc.N` as formal prerelease channels, and promote `1.0.0` to npm `latest` only after its stable gates pass.

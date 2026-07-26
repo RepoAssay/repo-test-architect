@@ -8,6 +8,7 @@ The current implementation can:
 
 - audit JavaScript/TypeScript, Python, and Swift projects through supported adapters
 - audit supported, bounded Kotlin/JVM fixtures through the same shared artifact model
+- audit conventional single-module Go projects through an experimental bounded adapter
 - detect polyglot project roots and report unsupported ecosystems without hiding them
 - produce a complete repository analysis, findings, ranking, plan, execution hints, and verification commands in one audit pass
 - classify source files by likely test value and defer low-value direct tests
@@ -99,7 +100,11 @@ Supported adapters:
 - `python`: bounded Python package, FastAPI, Django, and Flask layouts with declarative multi-package/namespace ownership, configured pytest discovery, exact absolute/relative imports, one-hop source dependency evidence, static framework test-client route evidence, pytest/unittest, async and property-based extensions, fixture reachability, pip/setuptools, uv, Poetry, Hatch, tox, nox, and coverage configuration; see the [Python alpha support matrix](docs/python-alpha-support.md)
 - `swift`: Swift Package Manager, Xcode-style and Bazel/rules_swift layouts, Swift Testing, XCTest, Quick/Nimble, SnapshotTesting, VaporTesting/XCTVapor, reactive frameworks, and generic Fluent database boundaries with driver-specific qualifiers; see the [Swift alpha support matrix](docs/swift-alpha-support.md)
 
-Project detection also reports unsupported Ruby, PHP, Elixir, Go, Rust, and .NET roots so clients can distinguish "not audited yet" from "not present."
+Experimental adapter:
+
+- `go`: conventional single-module `go.mod` projects using runnable standard-library `TestXxx`, `FuzzXxx`, or `ExampleXxx` tests, package-local filename and unique-symbol evidence, and `go test ./...`; see the [experimental support matrix](docs/go-experimental-support.md) for blockers and the promotion TODO
+
+Project detection also reports unsupported Ruby, PHP, Elixir, Rust, and .NET roots so clients can distinguish "not audited yet" from "not present."
 
 The public package exposes the audit CLI, the stdio MCP server, and a deterministic MCP invoke harness under the stable binary names documented below.
 
@@ -424,7 +429,7 @@ evals/
 schemas/
 ```
 
-JavaScript/TypeScript, Python, Swift, and bounded Kotlin/JVM modules are supported adapter proof points. Kotlin/JVM support is limited to conventional Gradle/Maven modules and directly declared aggregate graphs, JUnit, the documented Kotest common-spec and Spock feature variants, or method-level TestNG, and standard source sets as defined in [Kotlin/JVM Alpha Support](docs/kotlin-jvm-alpha-support.md).
+JavaScript/TypeScript, Python, Swift, and bounded Kotlin/JVM modules are supported adapter proof points. Conventional single-module Go is an experimental fifth adapter. Kotlin/JVM support is limited to conventional Gradle/Maven modules and directly declared aggregate graphs, JUnit, the documented Kotest common-spec and Spock feature variants, or method-level TestNG, and standard source sets as defined in [Kotlin/JVM Alpha Support](docs/kotlin-jvm-alpha-support.md).
 
 Important runtime surfaces:
 
@@ -451,6 +456,7 @@ Important runtime surfaces:
 - [Decision log](docs/decision-log.md)
 - [Second adapter spike](docs/second-adapter-spike.md)
 - [Kotlin/JVM alpha support](docs/kotlin-jvm-alpha-support.md)
+- [Go experimental support](docs/go-experimental-support.md)
 - [Kotlin/JVM validation hunt report](docs/kotlin-jvm-validation-hunt-report.md)
 - [Adapter contract](docs/adapter-contract.md)
 - [Artifact contract](docs/artifact-contract.md)

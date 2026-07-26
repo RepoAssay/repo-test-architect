@@ -13,6 +13,10 @@ Later completed adapters:
 - Swift Package Manager with XCTest, Swift Testing, Quick/Nimble, and SnapshotTesting signals
 - Python package roots with pytest or unittest
 
+Current fifth-adapter spike:
+
+- experimental Go single-module support with standard-library tests; see [Go Experimental Support](go-experimental-support.md)
+
 Choose the ecosystem with the lowest local setup cost and the clearest fixture coverage. The spike should validate adapter shape, not solve every framework variant.
 
 ## Required Fixture Shape

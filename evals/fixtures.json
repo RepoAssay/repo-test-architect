@@ -40,6 +40,11 @@
     "path": "examples/react-testing-library"
   },
   {
+    "name": "go-testing-basic",
+    "adapter": "go",
+    "path": "examples/go-testing-basic"
+  },
+  {
     "name": "kotlin-junit-basic",
     "adapter": "kotlin",
     "path": "examples/kotlin-junit-basic"
