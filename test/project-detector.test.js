@@ -6,6 +6,32 @@ import { describe, it } from "node:test";
 import { detectProjects } from "../src/core/project-detector.js";
 
 describe("project detector", () => {
+  it("preserves each declared go.work module as an independently detected project", () => {
+    const detection = detectProjects(path.resolve("examples/go-workspace-basic"));
+
+    assert.deepEqual(detection.summary, {
+      projectCount: 2,
+      supportedProjectCount: 2,
+      unsupportedProjectCount: 0
+    });
+    assert.deepEqual(detection.projects.map((project) => ({
+      root: project.root,
+      markerFiles: project.markerFiles,
+      adapterIds: project.adapterIds
+    })), [
+      {
+        root: "libraries/pricing",
+        markerFiles: ["libraries/pricing/go.mod"],
+        adapterIds: ["go"]
+      },
+      {
+        root: "services/checkout",
+        markerFiles: ["services/checkout/go.mod"],
+        adapterIds: ["go"]
+      }
+    ]);
+  });
+
   it("detects a single JavaScript project", () => {
     const detection = detectProjects(path.resolve("examples/node-vitest-basic"));
 

@@ -1,0 +1,49 @@
+{
+  "schemaVersion": "plan/v1",
+  "summary": {
+    "confidence": "high",
+    "verificationCommand": "go test ./...",
+    "blockerCount": 0,
+    "addTestCount": 0,
+    "extendTestCount": 1,
+    "deferredCount": 0
+  },
+  "blockers": [],
+  "items": [
+    {
+      "id": "extend-test:checkout_service.go",
+      "action": "extend-test",
+      "targetId": "checkout_service.go",
+      "target": "checkout_service",
+      "path": "checkout_service.go",
+      "testLevel": "unit",
+      "priority": 2,
+      "riskReductionScore": 6,
+      "maintenanceCost": 4,
+      "rationale": [
+        "Service boundary",
+        "Existing Go test evidence detected; review missing edge cases"
+      ],
+      "sourceSignals": [
+        "service-boundary",
+        "matching-test"
+      ],
+      "existingTestPaths": [
+        "checkout_service_test.go"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "checkout_service_test.go",
+          "kind": "go-symbol-reference",
+          "strength": "direct",
+          "usage": "called"
+        },
+        {
+          "testPath": "checkout_service_test.go",
+          "kind": "filename-convention",
+          "strength": "naming"
+        }
+      ]
+    }
+  ]
+}

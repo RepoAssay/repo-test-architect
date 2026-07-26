@@ -60,6 +60,14 @@ Rationale: Go has strong static project, package, test-file, runnable-test, and 
 
 Revisit when: a pinned live-repository corpus and generated performance gate justify promotion, or common Go repositories show that `go.work`, build constraints, receiver methods, or alternate execution models must enter the bounded support claim first.
 
+## Preserve Go Workspace Module Ownership
+
+Decision: parse bounded literal `go.work` `use` directives but continue auditing each declared `go.mod` as an independent project with its own module-local `go test ./...` command.
+
+Rationale: Go workspaces activate multiple main modules without turning the workspace directory into one module. Preserving module roots keeps candidate paths, evidence, changed-file filtering, blockers, and commands attached to the source they own. Repository-contained single and block declarations are deterministic; omitted modules, escaping or absolute paths, missing module markers, and malformed declarations suppress commands instead of guessing.
+
+Revisit when: pinned repositories show that repository-external workspace members, workspace `replace` effects, or an explicit aggregate execution strategy can be modeled without weakening ownership or portability.
+
 ## Readiness-Gated Release Lifecycle
 
 Decision: use flexible planning windows for public alpha, beta, release candidates, and `1.0`, while making readiness evidence—not a promised calendar date—the promotion authority. Keep the current `0.x` line as public alpha, target `1.0.0-beta.N` and `1.0.0-rc.N` as formal prerelease channels, and promote `1.0.0` to npm `latest` only after its stable gates pass.

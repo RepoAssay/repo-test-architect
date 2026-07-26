@@ -45,6 +45,11 @@
     "path": "examples/go-testing-basic"
   },
   {
+    "name": "go-workspace-checkout",
+    "adapter": "go",
+    "path": "examples/go-workspace-basic/services/checkout"
+  },
+  {
     "name": "kotlin-junit-basic",
     "adapter": "kotlin",
     "path": "examples/kotlin-junit-basic"
