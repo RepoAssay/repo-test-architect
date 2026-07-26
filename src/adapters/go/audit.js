@@ -707,8 +707,13 @@ function collectSourceSymbols(sourceFiles) {
 function collectDeclaredSymbols(content) {
   const masked = maskGoSource(content);
   const symbols = [];
-  for (const match of masked.matchAll(/(?:^|\n)\s*func\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(/g)) {
-    symbols.push({ name: match[1], kind: "function" });
+  for (const match of masked.matchAll(/(?:^|\n)\s*func\s+([A-Za-z_][A-Za-z0-9_]*)/g)) {
+    let cursor = match.index + match[0].length;
+    cursor = skipGoWhitespace(masked, cursor);
+    if (masked[cursor] === "[") cursor = skipBalancedGoBrackets(masked, cursor);
+    if (cursor !== undefined && masked[skipGoWhitespace(masked, cursor)] === "(") {
+      symbols.push({ name: match[1], kind: "function" });
+    }
   }
   for (const match of masked.matchAll(/(?:^|\n)\s*type\s+([A-Za-z_][A-Za-z0-9_]*)\b/g)) {
     symbols.push({ name: match[1], kind: "type" });
@@ -803,7 +808,7 @@ function callsUnqualifiedFunction(maskedContent, name) {
   if (new RegExp(`\\bfunc\\s+(?:\\([^)]*\\)\\s*)?[A-Za-z_][A-Za-z0-9_]*\\s*\\([^)]*\\b${escaped}\\s+`).test(maskedContent)) {
     return false;
   }
-  return new RegExp(`(?:^|[^.A-Za-z0-9_])${escaped}\\s*\\(`).test(maskedContent);
+  return hasGoFunctionCall(maskedContent, `(?:^|[^.A-Za-z0-9_])${escaped}`);
 }
 
 function importedPackageAlias(imports, modulePath, directory, packageName) {
@@ -829,8 +834,57 @@ function collectImports(content) {
 
 function detectSymbolUsage(maskedContent, reference, kind) {
   const escaped = escapeRegex(reference);
-  if (kind === "function" && new RegExp(`\\b${escaped}\\s*\\(`).test(maskedContent)) return "called";
+  if (kind === "function" && hasGoFunctionCall(maskedContent, `\\b${escaped}`)) return "called";
   if (kind === "type" && new RegExp(`\\b${escaped}\\s*(?:\\{|\\()`).test(maskedContent)) return "referenced";
+  return undefined;
+}
+
+function hasGoFunctionCall(maskedContent, prefixPattern) {
+  const matcher = new RegExp(prefixPattern, "g");
+  for (const match of maskedContent.matchAll(matcher)) {
+    let cursor = skipGoWhitespace(maskedContent, match.index + match[0].length);
+    if (maskedContent[cursor] === "[") cursor = skipBalancedGoBrackets(maskedContent, cursor);
+    if (cursor !== undefined && maskedContent[skipGoWhitespace(maskedContent, cursor)] === "(") return true;
+  }
+  return false;
+}
+
+function hasGoFunctionDeclaration(maskedContent) {
+  for (const match of maskedContent.matchAll(/\bfunc\s+/g)) {
+    let cursor = skipGoWhitespace(maskedContent, match.index + match[0].length);
+    if (maskedContent[cursor] === "(") {
+      cursor = skipBalancedGoDelimiter(maskedContent, cursor, "(", ")");
+      if (cursor === undefined) continue;
+      cursor = skipGoWhitespace(maskedContent, cursor);
+    }
+    const name = maskedContent.slice(cursor).match(/^([A-Za-z_][A-Za-z0-9_]*)/);
+    if (!name) continue;
+    cursor = skipGoWhitespace(maskedContent, cursor + name[0].length);
+    if (maskedContent[cursor] === "[") cursor = skipBalancedGoBrackets(maskedContent, cursor);
+    if (cursor !== undefined && maskedContent[skipGoWhitespace(maskedContent, cursor)] === "(") return true;
+  }
+  return false;
+}
+
+function skipGoWhitespace(content, start) {
+  let cursor = start;
+  while (/\s/.test(content[cursor] ?? "")) cursor += 1;
+  return cursor;
+}
+
+function skipBalancedGoBrackets(content, start) {
+  return skipBalancedGoDelimiter(content, start, "[", "]");
+}
+
+function skipBalancedGoDelimiter(content, start, opening, closing) {
+  let depth = 0;
+  for (let cursor = start; cursor < content.length; cursor += 1) {
+    if (content[cursor] === opening) depth += 1;
+    else if (content[cursor] === closing) {
+      depth -= 1;
+      if (depth === 0) return cursor + 1;
+    }
+  }
   return undefined;
 }
 
@@ -912,7 +966,7 @@ function classifySourceFile(file, allowBuildConstraint = false) {
   if (hasBranching(masked)) {
     return recommended("utility", ["branching-logic"], "medium", "high", "unit", 6, 2, ["Branching logic"]);
   }
-  if (/\bfunc\s+(?:\([^)]*\)\s*)?[A-Za-z_][A-Za-z0-9_]*\s*\(/.test(masked)) {
+  if (hasGoFunctionDeclaration(masked)) {
     return recommended("utility", ["runtime-behavior"], "medium", "high", "unit", 5, 2, ["Runtime function or method behavior"]);
   }
   return skipped("low-value", ["low-runtime-behavior"], 1, 3, "No meaningful runtime behavior detected by current Go heuristics.");
@@ -941,7 +995,7 @@ function hasConcurrency(masked) {
 
 function isDtoOnly(masked) {
   return /\btype\s+[A-Za-z_][A-Za-z0-9_]*\s+struct\s*\{/.test(masked) &&
-    !/\bfunc\s+(?:\([^)]*\)\s*)?[A-Za-z_][A-Za-z0-9_]*\s*\(/.test(masked);
+    !hasGoFunctionDeclaration(masked);
 }
 
 function hasBranching(masked) {
