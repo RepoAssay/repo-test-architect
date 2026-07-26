@@ -217,31 +217,85 @@ function collapseOwnedMavenModules(repoRoot, markerGroups) {
     .sort((left, right) => projectRootDepth(left.root) - projectRootDepth(right.root) || left.root.localeCompare(right.root));
   for (const group of groups) {
     if (!collapsed.has(group.root)) continue;
-    const pomMarker = group.markerFiles.find((markerFile) => /(?:^|\/)pom\.xml$/.test(markerFile));
-    if (!pomMarker) continue;
-    const pomText = fs.readFileSync(path.resolve(repoRoot, pomMarker), "utf8")
-      .replace(/<!--[\s\S]*?-->/g, " ")
-      .replace(/<(?:profiles|build|reporting|dependencies|dependencyManagement)>[\s\S]*?<\/(?:profiles|build|reporting|dependencies|dependencyManagement)>/g, " ");
-    const moduleText = [...pomText.matchAll(/<modules>([\s\S]*?)<\/modules>/g)]
-      .map((match) => match[1])
-      .join("\n");
-
-    for (const match of moduleText.matchAll(/<module>\s*([^<]+?)\s*<\/module>/g)) {
-      const moduleDirectory = normalizeProjectPattern(match[1].trim());
-      if (
-        !moduleDirectory ||
-        moduleDirectory === "." ||
-        moduleDirectory.startsWith("/") ||
-        moduleDirectory.split("/").includes("..") ||
-        moduleDirectory.includes("${")
-      ) continue;
-      const projectRoot = group.root === "." ? moduleDirectory : `${group.root}/${moduleDirectory}`;
-      const candidate = markerGroups.get(projectRoot);
-      if (!candidate || !candidate.markerFiles.some((markerFile) => /(?:^|\/)pom\.xml$/.test(markerFile))) continue;
-      collapsed.delete(projectRoot);
-    }
+    const ownedRoots = completeOwnedMavenProjectRoots(repoRoot, group, markerGroups);
+    if (!ownedRoots) continue;
+    for (const projectRoot of ownedRoots) collapsed.delete(projectRoot);
   }
   return collapsed;
+}
+
+function completeOwnedMavenProjectRoots(repoRoot, group, markerGroups) {
+  const pomMarker = group.markerFiles.find((markerFile) => /(?:^|\/)pom\.xml$/.test(markerFile));
+  if (!pomMarker) return undefined;
+  const rootPom = fs.readFileSync(path.resolve(repoRoot, pomMarker), "utf8");
+  const rootCoordinate = readDetectorMavenCoordinate(rootPom);
+  const pending = detectorMavenModuleDeclarations(rootPom).map((declaration) => ({
+    declaration,
+    parentRoot: group.root,
+    parentGroupId: rootCoordinate?.groupId
+  }));
+  if (pending.length === 0) return [];
+
+  const ownedRoots = new Set();
+  for (let index = 0; index < pending.length; index += 1) {
+    const { declaration, parentRoot, parentGroupId } = pending[index];
+    if (!declaration.supported) return undefined;
+    const projectRoot = parentRoot === "."
+      ? declaration.directory
+      : `${parentRoot}/${declaration.directory}`;
+    if (ownedRoots.has(projectRoot)) continue;
+    const candidate = markerGroups.get(projectRoot);
+    const childPomMarker = candidate?.markerFiles.find((markerFile) => /(?:^|\/)pom\.xml$/.test(markerFile));
+    if (!childPomMarker) return undefined;
+    const childPom = fs.readFileSync(path.resolve(repoRoot, childPomMarker), "utf8");
+    const coordinate = readDetectorMavenCoordinate(childPom, parentGroupId);
+    if (!coordinate) return undefined;
+    ownedRoots.add(projectRoot);
+    for (const nestedDeclaration of detectorMavenModuleDeclarations(childPom)) {
+      pending.push({
+        declaration: nestedDeclaration,
+        parentRoot: projectRoot,
+        parentGroupId: coordinate.groupId
+      });
+    }
+  }
+  return ownedRoots;
+}
+
+function detectorMavenModuleDeclarations(content) {
+  const pomText = content
+    .replace(/<!--[\s\S]*?-->/g, " ")
+    .replace(/<(?:profiles|build|reporting|dependencies|dependencyManagement)>[\s\S]*?<\/(?:profiles|build|reporting|dependencies|dependencyManagement)>/g, " ");
+  const moduleText = [...pomText.matchAll(/<modules>([\s\S]*?)<\/modules>/g)]
+    .map((match) => match[1])
+    .join("\n");
+  return [...moduleText.matchAll(/<module>\s*([^<]+?)\s*<\/module>/g)].map((match) => {
+    const raw = match[1].trim();
+    const directory = normalizeProjectPattern(raw).replace(/^\.\//, "").replace(/\/$/, "");
+    const supported = Boolean(directory) &&
+      directory !== "." &&
+      !directory.startsWith("/") &&
+      !/^[A-Za-z]:\//.test(directory) &&
+      !directory.split("/").includes("..") &&
+      !directory.includes("${");
+    return { directory, supported };
+  });
+}
+
+function readDetectorMavenCoordinate(content, fallbackGroupId) {
+  const pomText = content.replace(/<!--[\s\S]*?-->/g, " ");
+  const parentText = pomText.match(/<parent>([\s\S]*?)<\/parent>/)?.[1] ?? "";
+  const projectText = pomText
+    .replace(/<parent>[\s\S]*?<\/parent>/, " ")
+    .replace(/<(?:dependencies|dependencyManagement|build|profiles|modules|properties|repositories|pluginRepositories|reporting)>[\s\S]*?<\/(?:dependencies|dependencyManagement|build|profiles|modules|properties|repositories|pluginRepositories|reporting)>/g, " ");
+  const artifactId = detectorMavenElement(projectText, "artifactId");
+  const groupId = detectorMavenElement(projectText, "groupId") ?? detectorMavenElement(parentText, "groupId") ?? fallbackGroupId;
+  if (!artifactId || !groupId || artifactId.includes("${") || groupId.includes("${")) return undefined;
+  return { artifactId, groupId };
+}
+
+function detectorMavenElement(content, name) {
+  return content.match(new RegExp(`<${name}>\\s*([^<]+?)\\s*</${name}>`))?.[1].trim();
 }
 
 function projectRootDepth(root) {

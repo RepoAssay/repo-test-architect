@@ -262,10 +262,10 @@ function detectGradleAggregateBlockers(files, settingsAnalysis) {
 }
 
 function resolveMavenModules(files, rootPom) {
-  const paths = new Set(files.map((file) => normalizePath(file.path)));
   const rootCoordinate = readMavenCoordinate(rootPom.content);
   const rootProjectPath = rootCoordinate?.id ?? "maven:.";
-  const reactorBlockers = detectMavenReactorBlockers(files, rootPom, rootCoordinate?.groupId);
+  const reactor = analyzeMavenReactor(files, rootPom, rootCoordinate?.groupId);
+  const reactorBlockers = reactor.blockers;
   const rootModule = {
     projectPath: rootProjectPath,
     directory: ".",
@@ -285,12 +285,7 @@ function resolveMavenModules(files, rootPom) {
     return modules;
   }
 
-  for (const directory of declaredMavenModules(rootPom.content)) {
-    const pomPath = `${directory}/pom.xml`;
-    if (!paths.has(pomPath)) continue;
-    const pom = files.find((file) => normalizePath(file.path) === pomPath);
-    const coordinate = readMavenCoordinate(pom?.content ?? "", rootCoordinate?.groupId);
-    if (!coordinate) continue;
+  for (const { directory, coordinate } of reactor.modules) {
     modules.push({
       projectPath: coordinate.id,
       directory,
@@ -333,12 +328,6 @@ function populateReachableModuleDependencies(modules) {
   }
 }
 
-function declaredMavenModules(content) {
-  return mavenModuleDeclarations(content)
-    .filter((declaration) => declaration.supported)
-    .map((declaration) => declaration.directory);
-}
-
 function mavenModuleDeclarations(content) {
   const pomText = stripMavenComments(content)
     .replace(/<(?:profiles|build|reporting|dependencies|dependencyManagement)>[\s\S]*?<\/(?:profiles|build|reporting|dependencies|dependencyManagement)>/g, " ");
@@ -357,43 +346,56 @@ function mavenModuleDeclarations(content) {
     });
 }
 
-function detectMavenReactorBlockers(files, rootPom, rootGroupId) {
-  const declarations = mavenModuleDeclarations(rootPom.content);
-  if (declarations.length === 0) return [];
+function analyzeMavenReactor(files, rootPom, rootGroupId) {
+  const filesByPath = new Map(files.map((file) => [normalizePath(file.path), file]));
+  const pending = mavenModuleDeclarations(rootPom.content).map((declaration) => ({
+    declaration,
+    parentDirectory: ".",
+    parentGroupId: rootGroupId
+  }));
+  if (pending.length === 0) return { modules: [], blockers: [] };
 
+  const modules = [];
   const blockers = [];
-  if (declarations.some((declaration) => !declaration.supported)) {
-    blockers.push("Maven reactor module declarations must use literal repository-contained paths at the audited root.");
-  }
-
-  const directDirectories = new Set(
-    declarations.filter((declaration) => declaration.supported).map((declaration) => declaration.directory)
-  );
+  const visited = new Set();
   const unresolved = [];
-  const nested = [];
-  for (const directory of [...directDirectories].sort()) {
+  let hasUnsupportedDeclaration = false;
+
+  for (let index = 0; index < pending.length; index += 1) {
+    const { declaration, parentDirectory, parentGroupId } = pending[index];
+    if (!declaration.supported) {
+      hasUnsupportedDeclaration = true;
+      continue;
+    }
+    const directory = parentDirectory === "."
+      ? declaration.directory
+      : normalizePath(path.posix.join(parentDirectory, declaration.directory));
+    if (visited.has(directory)) continue;
+    visited.add(directory);
     const pomPath = `${directory}/pom.xml`;
-    const pom = files.find((file) => normalizePath(file.path) === pomPath);
-    if (!pom || !readMavenCoordinate(pom.content, rootGroupId)) {
+    const pom = filesByPath.get(pomPath);
+    const coordinate = pom ? readMavenCoordinate(pom.content, parentGroupId) : undefined;
+    if (!pom || !coordinate) {
       unresolved.push(directory);
       continue;
     }
-
-    const hasUnownedNestedDeclaration = mavenModuleDeclarations(pom.content).some((declaration) => {
-      if (!declaration.supported) return true;
-      const nestedDirectory = normalizePath(path.posix.join(directory, declaration.directory));
-      return !directDirectories.has(nestedDirectory);
-    });
-    if (hasUnownedNestedDeclaration) nested.push(directory);
+    modules.push({ directory, coordinate });
+    for (const nestedDeclaration of mavenModuleDeclarations(pom.content)) {
+      pending.push({
+        declaration: nestedDeclaration,
+        parentDirectory: directory,
+        parentGroupId: coordinate.groupId
+      });
+    }
   }
 
+  if (hasUnsupportedDeclaration) {
+    blockers.push("Maven reactor module declarations must use literal repository-contained paths at every owned level.");
+  }
   if (unresolved.length > 0) {
-    blockers.push(`Maven reactor ownership is incomplete because declared modules lack a direct POM with static coordinates: ${unresolved.join(", ")}.`);
+    blockers.push(`Maven reactor ownership is incomplete because declared modules lack a direct POM with static coordinates: ${unresolved.sort().join(", ")}.`);
   }
-  if (nested.length > 0) {
-    blockers.push(`Nested Maven reactor expansion is outside the supported ownership boundary: ${nested.join(", ")}.`);
-  }
-  return blockers;
+  return { modules, blockers };
 }
 
 function readMavenCoordinate(content, fallbackGroupId) {
