@@ -119,6 +119,8 @@ Progress: the first Swift hardening slice suppresses `xcodebuild` commands when 
 
 Progress: Xcode container ownership now preserves relative project/workspace paths and selects a sole container, a unique direct owner of the shared scheme, or a unique scheme-name match. Multiple unresolved workspaces block before project fallback, and unresolved multiple projects also block, while positive direct-owner and matched-container cases remain runnable.
 
+Progress: Swift symbol evidence now retains declaration kinds so top-level functions can be distinguished from member calls. Test-local types, functions, aliases, bindings, and cases suppress a same-named source symbol for that test file, and receiver-qualified member calls cannot masquerade as bare top-level function evidence. Real constructors and bare top-level calls retain their referenced, called, or asserted usage.
+
 ## Workstream 3: Cross-Adapter Trust
 
 After each adapter has a refreshed corpus:

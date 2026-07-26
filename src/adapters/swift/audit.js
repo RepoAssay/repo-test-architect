@@ -603,7 +603,7 @@ function isTestFile(currentPath, bazelGraph) {
 function findExistingTestEvidence(sourcePath, testFiles, sourceGraph, sourceSymbols) {
   const sourceBase = basenameWithoutExtension(sourcePath);
   const sourceOwner = sourceGraph.sourceOwners.get(normalizePath(sourcePath)) ?? inferSourceOwner(sourcePath);
-  const symbols = sourceSymbols.get(normalizePath(sourcePath)) ?? new Set();
+  const symbols = sourceSymbols.get(normalizePath(sourcePath)) ?? new Map();
 
   return testFiles.flatMap((testFile) => {
     const testBase = basenameWithoutExtension(testFile.path).replace(/(?:Tests?|Spec)$/, "");
@@ -671,13 +671,13 @@ function collectUniqueSwiftSourceSymbols(files, sourceGraph) {
     const owner = normalizeModuleName(sourceGraph.sourceOwners.get(currentPath) ?? inferSourceOwner(currentPath) ?? "__root__");
     const declarations = collectTopLevelSwiftDeclarations(file.content);
     const hasConcreteDeclaration = declarations.some((declaration) => declaration.kind !== "protocol");
-    const symbols = new Set(
+    const symbols = new Map(
       declarations
         .filter((declaration) => declaration.kind !== "protocol" || !hasConcreteDeclaration)
-        .map((declaration) => declaration.name)
+        .map((declaration) => [declaration.name, declaration.kind])
     );
     symbolsByPath.set(currentPath, symbols);
-    for (const symbol of symbols) {
+    for (const symbol of symbols.keys()) {
       const key = `${owner}:${symbol}`;
       pathsByOwnerAndSymbol.set(key, new Set([...(pathsByOwnerAndSymbol.get(key) ?? []), currentPath]));
     }
@@ -685,7 +685,7 @@ function collectUniqueSwiftSourceSymbols(files, sourceGraph) {
 
   return new Map([...symbolsByPath].map(([currentPath, symbols]) => {
     const owner = normalizeModuleName(sourceGraph.sourceOwners.get(currentPath) ?? inferSourceOwner(currentPath) ?? "__root__");
-    return [currentPath, new Set([...symbols].filter((symbol) => pathsByOwnerAndSymbol.get(`${owner}:${symbol}`)?.size === 1))];
+    return [currentPath, new Map([...symbols].filter(([symbol]) => pathsByOwnerAndSymbol.get(`${owner}:${symbol}`)?.size === 1))];
   }));
 }
 
@@ -712,19 +712,43 @@ function findSwiftSymbolUsage(content, symbols) {
   if (symbols.size === 0) return undefined;
   const masked = maskSwiftCommentsAndStrings(content).replace(/^\s*(?:@testable\s+)?import\s+.*$/gm, "");
 
-  for (const symbol of [...symbols].sort()) {
+  for (const [symbol, kind] of [...symbols].sort(([left], [right]) => left.localeCompare(right))) {
     const escapedSymbol = escapeRegex(symbol);
-    const reference = new RegExp(`\\b${escapedSymbol}\\b`);
-    if (!reference.test(masked)) continue;
-    const declaration = new RegExp(`\\b(?:struct|class|enum|actor|protocol|func|typealias)\\s+${escapedSymbol}\\b`);
-    const withoutDeclarations = masked.replace(declaration, "");
-    if (!reference.test(withoutDeclarations)) continue;
-    if (swiftAssertionBodies(masked).some((body) => reference.test(body))) return "asserted";
-    if (new RegExp(`\\b${escapedSymbol}\\s*(?:<[^>\\n]+>\\s*)?\\(`).test(withoutDeclarations)) return "called";
+    const declaration = new RegExp(`\\b(?:struct|class|enum|actor|protocol|func|typealias|let|var|case)\\s+\`?${escapedSymbol}\\b\`?`);
+    if (declaration.test(masked)) continue;
+    if (!hasSwiftSymbolReference(masked, symbol, kind)) continue;
+    if (swiftAssertionBodies(masked).some((body) => hasSwiftSymbolReference(body, symbol, kind))) return "asserted";
+    if (hasSwiftSymbolCall(masked, symbol, kind)) return "called";
     return "referenced";
   }
 
   return undefined;
+}
+
+function hasSwiftSymbolReference(content, symbol, kind) {
+  return swiftSymbolReferenceIndexes(content, symbol, kind).length > 0;
+}
+
+function hasSwiftSymbolCall(content, symbol, kind) {
+  return swiftSymbolReferenceIndexes(content, symbol, kind).some((index) =>
+    /^\s*(?:<[^>\n]+>\s*)?\(/.test(content.slice(index + symbol.length))
+  );
+}
+
+function swiftSymbolReferenceIndexes(content, symbol, kind) {
+  const indexes = [];
+  const reference = new RegExp(`\\b${escapeRegex(symbol)}\\b`, "g");
+  let match;
+  while ((match = reference.exec(content)) !== null) {
+    if (kind !== "func" || !isSwiftMemberReference(content, match.index)) indexes.push(match.index);
+  }
+  return indexes;
+}
+
+function isSwiftMemberReference(content, index) {
+  let previous = index - 1;
+  while (previous >= 0 && /\s/.test(content[previous])) previous -= 1;
+  return content[previous] === ".";
 }
 
 function swiftAssertionBodies(content) {
