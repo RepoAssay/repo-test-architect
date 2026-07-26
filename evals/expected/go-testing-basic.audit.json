@@ -32,7 +32,8 @@
     "confidence": "high",
     "blockers": []
   },
-  "untestedCandidates": [
+  "untestedCandidates": [],
+  "coveredButRisky": [
     {
       "id": "payment_client.go",
       "name": "payment_client",
@@ -40,7 +41,8 @@
       "kind": "service",
       "signals": [
         "service-boundary",
-        "external-boundary"
+        "external-boundary",
+        "matching-test"
       ],
       "risk": "high",
       "testability": "medium",
@@ -49,12 +51,31 @@
       "maintenanceCost": 4,
       "reasons": [
         "Service boundary",
-        "external boundary"
+        "external boundary",
+        "Existing Go test evidence detected; review missing edge cases"
       ],
-      "existingTestPaths": []
-    }
-  ],
-  "coveredButRisky": [
+      "existingTestPaths": [
+        "payment_client_test.go"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "payment_client_test.go",
+          "kind": "go-symbol-reference",
+          "strength": "direct",
+          "usage": "called"
+        },
+        {
+          "testPath": "payment_client_test.go",
+          "kind": "go-symbol-reference",
+          "strength": "referenced"
+        },
+        {
+          "testPath": "payment_client_test.go",
+          "kind": "filename-convention",
+          "strength": "naming"
+        }
+      ]
+    },
     {
       "id": "price_parser.go",
       "name": "price_parser",
@@ -131,7 +152,8 @@
       "kind": "service",
       "signals": [
         "service-boundary",
-        "external-boundary"
+        "external-boundary",
+        "matching-test"
       ],
       "risk": "high",
       "testability": "medium",
@@ -140,9 +162,30 @@
       "maintenanceCost": 4,
       "reasons": [
         "Service boundary",
-        "external boundary"
+        "external boundary",
+        "Existing Go test evidence detected; review missing edge cases"
       ],
-      "existingTestPaths": []
+      "existingTestPaths": [
+        "payment_client_test.go"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "payment_client_test.go",
+          "kind": "go-symbol-reference",
+          "strength": "direct",
+          "usage": "called"
+        },
+        {
+          "testPath": "payment_client_test.go",
+          "kind": "go-symbol-reference",
+          "strength": "referenced"
+        },
+        {
+          "testPath": "payment_client_test.go",
+          "kind": "filename-convention",
+          "strength": "naming"
+        }
+      ]
     },
     {
       "id": "price_parser.go",
@@ -228,7 +271,7 @@
     }
   ],
   "risks": [
-    "payment_client has service boundary, external boundary and has no matching Go test evidence.",
+    "payment_client has service boundary, external boundary and needs edge-case review.",
     "price_parser has pure transformation logic, edge-case surface and needs edge-case review."
   ]
 }

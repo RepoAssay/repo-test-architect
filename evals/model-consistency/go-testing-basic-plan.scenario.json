@@ -1,7 +1,7 @@
 {
   "schemaVersion": "model-consistency-scenario/v1",
   "id": "go-testing-basic-plan",
-  "description": "Different model profiles should preserve bounded Go planning decisions, including direct symbol evidence, one-hop same-package dependency evidence, an untested external client, and DTO deferral.",
+  "description": "Different model profiles should preserve bounded Go planning decisions, including direct top-level and explicitly typed receiver-method evidence, one-hop same-package dependency evidence, and DTO deferral.",
   "sourceArtifact": {
     "path": "evals/expected/go-testing-basic.audit.json",
     "schemaVersion": "audit/v1"
@@ -18,13 +18,13 @@
     },
     {
       "path": "summary.addTestCount",
-      "expected": 1,
-      "reason": "The untested external payment client should remain an add-test item."
+      "expected": 0,
+      "reason": "Every runtime target in the fixture now has bounded test evidence."
     },
     {
       "path": "summary.extendTestCount",
-      "expected": 2,
-      "reason": "The directly exercised parser and its one-hop normalizer dependency should remain extend-test items."
+      "expected": 3,
+      "reason": "The directly exercised parser, explicitly typed payment-client method, and one-hop normalizer dependency should remain extend-test items."
     },
     {
       "path": "summary.deferredCount",
@@ -48,8 +48,18 @@
     },
     {
       "path": "items[1].id",
-      "expected": "add-test:payment_client.go",
-      "reason": "The external boundary should remain a new unit-test candidate."
+      "expected": "extend-test:payment_client.go",
+      "reason": "The external boundary should retain a stable extension item after its explicitly typed receiver call is proven."
+    },
+    {
+      "path": "items[1].existingTestEvidence[0].kind",
+      "expected": "go-symbol-reference",
+      "reason": "The payment client must retain exact receiver-method provenance."
+    },
+    {
+      "path": "items[1].existingTestEvidence[0].usage",
+      "expected": "called",
+      "reason": "The explicitly typed payment client remains directly called by the runnable test."
     },
     {
       "path": "items[2].id",
@@ -83,7 +93,7 @@
     "missing bounded same-package dependency evidence",
     "dependency evidence propagated beyond one source hop",
     "direct DTO test recommendation",
-    "missing external client candidate",
+    "receiver-method evidence downgraded to a type reference",
     "different plan action counts"
   ]
 }

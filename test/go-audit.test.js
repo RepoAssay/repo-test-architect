@@ -33,10 +33,14 @@ describe("Go adapter", () => {
       confidence: "high",
       blockers: []
     });
-    assert.deepEqual(audit.untestedCandidates.map((target) => target.path), ["payment_client.go"]);
-    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["price_parser.go", "price_normalizer.go"]);
+    assert.deepEqual(audit.untestedCandidates, []);
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), [
+      "payment_client.go",
+      "price_parser.go",
+      "price_normalizer.go"
+    ]);
     assert.deepEqual(audit.skipped.map((target) => [target.path, target.kind]), [["payment.go", "dto"]]);
-    assert.deepEqual(audit.coveredButRisky[0].existingTestEvidence, [
+    assert.deepEqual(audit.coveredButRisky.find((target) => target.path === "price_parser.go").existingTestEvidence, [
       {
         testPath: "price_parser_test.go",
         kind: "go-symbol-reference",
@@ -49,7 +53,7 @@ describe("Go adapter", () => {
         strength: "naming"
       }
     ]);
-    assert.deepEqual(audit.coveredButRisky[1].existingTestEvidence, [
+    assert.deepEqual(audit.coveredButRisky.find((target) => target.path === "price_normalizer.go").existingTestEvidence, [
       {
         testPath: "price_parser_test.go",
         kind: "go-source-dependency",
@@ -281,6 +285,8 @@ describe("Go adapter", () => {
       "coverage_test.go": [
         "package sample",
         "import \"testing\"",
+        "type testHarness struct{}",
+        "func (testHarness) Parse() string { return \"method\" }",
         "func Format(value string) string { return \"shadow\" }",
         "func TestCoverage(t *testing.T) {",
         "  _ = Parse(\"ok\")",
@@ -300,6 +306,106 @@ describe("Go adapter", () => {
       strength: "direct",
       usage: "called"
     }]);
+  });
+
+  it("resolves receiver methods through unique explicitly typed local bindings", (t) => {
+    const root = createRepo(t, {
+      "go.mod": "module example.com/methods\n\ngo 1.22\n",
+      "parser.go": "package methods\ntype Parser struct{}\nfunc (Parser) Transform(value string) string { return value }\n",
+      "formatter.go": "package methods\ntype Formatter struct{}\nfunc (Formatter) Transform(value string) string { return value }\n",
+      "validator.go": "package methods\ntype Validator struct{}\nfunc (*Validator) Validate(value string) bool { return value != \"\" }\n",
+      "method_test.go": [
+        "package methods",
+        "import \"testing\"",
+        "func TestMethods(t *testing.T) {",
+        "  parser := Parser{}",
+        "  if parser.Transform(\"ok\") != \"ok\" { t.Fatal() }",
+        "  var validator *Validator = &Validator{}",
+        "  if !validator.Validate(\"ok\") { t.Fatal() }",
+        "}",
+        ""
+      ].join("\n")
+    });
+
+    const audit = auditGoRepo(root);
+
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["parser.go", "validator.go"]);
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.path), ["formatter.go"]);
+    assert.deepEqual(audit.coveredButRisky[0].existingTestEvidence, [{
+      testPath: "method_test.go",
+      kind: "go-symbol-reference",
+      strength: "direct",
+      usage: "called"
+    }, {
+      testPath: "method_test.go",
+      kind: "go-symbol-reference",
+      strength: "referenced"
+    }]);
+  });
+
+  it("resolves an explicitly typed receiver through an exact external package alias", (t) => {
+    const root = createRepo(t, {
+      "go.mod": "module example.com/shop\n\ngo 1.22\n",
+      "price/client.go": "package price\ntype Client struct{}\nfunc (Client) Fetch() int { return 42 }\n",
+      "price/client_test.go": [
+        "package price_test",
+        "import (",
+        "  \"testing\"",
+        "  pricing \"example.com/shop/price\"",
+        ")",
+        "func TestFetch(t *testing.T) {",
+        "  client := pricing.Client{}",
+        "  if client.Fetch() != 42 { t.Fatal() }",
+        "}",
+        ""
+      ].join("\n")
+    });
+
+    const audit = auditGoRepo(root);
+
+    assert.deepEqual(audit.untestedCandidates, []);
+    assert.deepEqual(audit.coveredButRisky[0].existingTestEvidence, [
+      { testPath: "price/client_test.go", kind: "go-symbol-reference", strength: "direct", usage: "called" },
+      { testPath: "price/client_test.go", kind: "go-symbol-reference", strength: "referenced" },
+      { testPath: "price/client_test.go", kind: "filename-convention", strength: "naming" }
+    ]);
+  });
+
+  it("rejects inferred, reassigned, and ambiguously shadowed receiver bindings", (t) => {
+    const root = createRepo(t, {
+      "go.mod": "module example.com/method-shadows\n\ngo 1.22\n",
+      "client.go": "package shadows\ntype Client struct{}\nfunc (Client) Fetch() int { return 1 }\n",
+      "factory.go": "package shadows\nfunc NewClient() Client { return Client{} }\n",
+      "service.go": "package shadows\ntype Service struct{}\nfunc (Service) Run() int { return 1 }\n",
+      "worker.go": "package shadows\ntype Worker struct{}\nfunc (Worker) Work() int { return 1 }\n",
+      "method_test.go": [
+        "package shadows",
+        "import \"testing\"",
+        "func TestMethods(t *testing.T) {",
+        "  client := NewClient()",
+        "  _ = client.Fetch()",
+        "  service := Service{}",
+        "  service = Service{}",
+        "  _ = service.Run()",
+        "  worker := Worker{}",
+        "  if true { worker := Worker{}; _ = worker.Work() }",
+        "  _ = worker.Work()",
+        "}",
+        ""
+      ].join("\n")
+    });
+
+    const audit = auditGoRepo(root);
+
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.path), ["client.go"]);
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["factory.go", "service.go", "worker.go"]);
+    for (const path of ["service.go", "worker.go"]) {
+      assert.deepEqual(audit.coveredButRisky.find((target) => target.path === path).existingTestEvidence, [{
+        testPath: "method_test.go",
+        kind: "go-symbol-reference",
+        strength: "referenced"
+      }]);
+    }
   });
 
   it("propagates one called same-package source dependency without two-hop or local-shadow leakage", (t) => {

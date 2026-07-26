@@ -4,8 +4,8 @@
     "confidence": "high",
     "verificationCommand": "go test ./...",
     "blockerCount": 0,
-    "addTestCount": 1,
-    "extendTestCount": 2,
+    "addTestCount": 0,
+    "extendTestCount": 3,
     "deferredCount": 1
   },
   "blockers": [],
@@ -48,8 +48,8 @@
       ]
     },
     {
-      "id": "add-test:payment_client.go",
-      "action": "add-test",
+      "id": "extend-test:payment_client.go",
+      "action": "extend-test",
       "targetId": "payment_client.go",
       "target": "payment_client",
       "path": "payment_client.go",
@@ -59,13 +59,35 @@
       "maintenanceCost": 4,
       "rationale": [
         "Service boundary",
-        "external boundary"
+        "external boundary",
+        "Existing Go test evidence detected; review missing edge cases"
       ],
       "sourceSignals": [
         "service-boundary",
-        "external-boundary"
+        "external-boundary",
+        "matching-test"
       ],
-      "existingTestPaths": []
+      "existingTestPaths": [
+        "payment_client_test.go"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "payment_client_test.go",
+          "kind": "go-symbol-reference",
+          "strength": "direct",
+          "usage": "called"
+        },
+        {
+          "testPath": "payment_client_test.go",
+          "kind": "go-symbol-reference",
+          "strength": "referenced"
+        },
+        {
+          "testPath": "payment_client_test.go",
+          "kind": "filename-convention",
+          "strength": "naming"
+        }
+      ]
     },
     {
       "id": "extend-test:price_normalizer.go",

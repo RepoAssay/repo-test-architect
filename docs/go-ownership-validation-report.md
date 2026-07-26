@@ -62,8 +62,10 @@ The difficult-ownership probe passes the reviewed detection, ownership, command,
 - repeated full-repository audits are semantically stable and remain below one second locally
 - database prerequisites are documented without claiming that the static command provisions them
 
-Workspace `replace` effects, repository-external members, receiver methods, interface dispatch, generic type construction, reflection, deeper or cross-package dependencies, service provisioning, coverage profiles, runtime reachability, and assertion completeness remain outside the bounded adapter.
+Workspace `replace` effects, repository-external members, constructor-inferred or ambiguous receiver methods, interface dispatch, generic type construction, reflection, deeper or cross-package dependencies, service provisioning, coverage profiles, runtime reachability, and assertion completeness remain outside the bounded adapter.
 
 ## Corpus Progress
 
 This checkout is the difficult-ownership role in `validation-corpus/v1`. The conventional-library, HTTP/service, and difficult-ownership probes are all pinned, measured, reviewed, and passing. Together with the generated large-module gate and complete release surface, they support Go's promotion to bounded supported alpha maturity.
+
+The explicitly typed receiver-method slice was remeasured against this exact checkout without changing its candidate counts, 572 evidence relationships, or canonical digest. A test-local method name initially exposed and fixed a shadow-set regression before the corpus baseline could move; methods no longer suppress same-named top-level source functions.

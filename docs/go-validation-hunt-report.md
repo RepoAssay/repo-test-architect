@@ -54,3 +54,5 @@ Receiver methods, interfaces, reflection, dynamic calls, deeper source graphs, c
 ## Corpus Progress
 
 This checkout is the conventional-library role in `validation-corpus/v1`. Together with the [Go HTTP validation](go-http-validation-report.md) and [Go workspace ownership validation](go-ownership-validation-report.md), it gives supported Go three exact-pin passing roles with stable repeated audits and recorded performance distributions.
+
+The explicitly typed receiver-method slice was remeasured against this exact checkout without changing its candidate counts, 49 evidence relationships, or canonical digest. Its new direct method claim remains limited to tests that visibly bind a concrete receiver type.

@@ -662,7 +662,11 @@ function analyzeTestFile(file) {
     packageName,
     runnableKinds,
     imports: collectImports(file.content),
-    declaredSymbols: new Set(collectDeclaredSymbols(file.content).map((symbol) => symbol.name)),
+    declaredSymbols: new Set(
+      collectDeclaredSymbols(file.content)
+        .filter((symbol) => symbol.kind !== "method")
+        .map((symbol) => symbol.name)
+    ),
     maskedContent: maskGoSource(file.content)
   };
 }
@@ -696,7 +700,7 @@ function collectSourceSymbols(sourceFiles) {
       maskedContent: maskGoSource(file.content)
     });
     for (const symbol of symbols) {
-      const key = `${directory}\0${symbol.name}`;
+      const key = sourceSymbolKey(directory, symbol);
       symbolCounts.set(key, (symbolCounts.get(key) ?? 0) + 1);
     }
   }
@@ -715,10 +719,26 @@ function collectDeclaredSymbols(content) {
       symbols.push({ name: match[1], kind: "function" });
     }
   }
+  for (const match of masked.matchAll(/(?:^|\n)\s*func\s*\(\s*(?:[A-Za-z_][A-Za-z0-9_]*\s+)?(\*?\s*[A-Za-z_][A-Za-z0-9_]*)\s*\)\s*([A-Za-z_][A-Za-z0-9_]*)/g)) {
+    const cursor = skipGoWhitespace(masked, match.index + match[0].length);
+    if (masked[cursor] === "(") {
+      symbols.push({
+        name: match[2],
+        kind: "method",
+        receiverType: match[1].replace(/^\*?\s*/, "")
+      });
+    }
+  }
   for (const match of masked.matchAll(/(?:^|\n)\s*type\s+([A-Za-z_][A-Za-z0-9_]*)\b/g)) {
     symbols.push({ name: match[1], kind: "type" });
   }
   return symbols;
+}
+
+function sourceSymbolKey(directory, symbol) {
+  return symbol.kind === "method"
+    ? `${directory}\0method\0${symbol.receiverType}\0${symbol.name}`
+    : `${directory}\0${symbol.name}`;
 }
 
 function collectGoTestEvidence(sourceFiles, sourceSymbols, testFiles, modulePath) {
@@ -746,16 +766,22 @@ function collectGoTestEvidence(sourceFiles, sourceSymbols, testFiles, modulePath
       if (!samePackage && !externalAlias) continue;
 
       for (const symbol of source.symbols) {
-        const symbolKey = `${source.directory}\0${symbol.name}`;
+        const symbolKey = sourceSymbolKey(source.directory, symbol);
         if (sourceSymbols.symbolCounts.get(symbolKey) !== 1) continue;
-        if (samePackage && testFile.declaredSymbols.has(symbol.name)) continue;
+        if (samePackage && testFile.declaredSymbols.has(symbol.kind === "method" ? symbol.receiverType : symbol.name)) continue;
         const reference = externalAlias ? `${externalAlias}.${symbol.name}` : symbol.name;
-        const usage = detectSymbolUsage(testFile.maskedContent, reference, symbol.kind);
+        const usage = symbol.kind === "method"
+          ? detectReceiverMethodUsage(
+            testFile.maskedContent,
+            externalAlias ? `${externalAlias}.${symbol.receiverType}` : symbol.receiverType,
+            symbol.name
+          )
+          : detectSymbolUsage(testFile.maskedContent, reference, symbol.kind);
         if (!usage) continue;
         evidence.push({
           testPath: testFile.path,
           kind: "go-symbol-reference",
-          strength: symbol.kind === "function" ? "direct" : "referenced",
+          strength: symbol.kind === "type" ? "referenced" : "direct",
           ...(usage === "called" ? { usage } : {})
         });
       }
@@ -782,7 +808,7 @@ function addGoSourceDependencyEvidence(sourceSymbols, evidenceByPath) {
 
       const callsDependency = dependency.symbols.some((symbol) =>
         symbol.kind === "function" &&
-        sourceSymbols.symbolCounts.get(`${dependency.directory}\0${symbol.name}`) === 1 &&
+        sourceSymbols.symbolCounts.get(sourceSymbolKey(dependency.directory, symbol)) === 1 &&
         callsUnqualifiedFunction(caller.maskedContent, symbol.name)
       );
       if (!callsDependency) continue;
@@ -837,6 +863,44 @@ function detectSymbolUsage(maskedContent, reference, kind) {
   if (kind === "function" && hasGoFunctionCall(maskedContent, `\\b${escaped}`)) return "called";
   if (kind === "type" && new RegExp(`\\b${escaped}\\s*(?:\\{|\\()`).test(maskedContent)) return "referenced";
   return undefined;
+}
+
+function detectReceiverMethodUsage(maskedContent, receiverTypeReference, methodName) {
+  const receiverNames = collectExplicitReceiverNames(maskedContent, receiverTypeReference);
+  return receiverNames.some((receiverName) =>
+    hasUniqueReceiverBinding(maskedContent, receiverName) &&
+    hasGoFunctionCall(
+      maskedContent,
+      `\\b${escapeRegex(receiverName)}\\s*\\.\\s*${escapeRegex(methodName)}`
+    )
+  ) ? "called" : undefined;
+}
+
+function collectExplicitReceiverNames(maskedContent, receiverTypeReference) {
+  const escapedType = escapeRegex(receiverTypeReference);
+  const names = new Set();
+  const shortDeclaration = new RegExp(
+    `(?:^|[;{}\\n])\\s*([A-Za-z_][A-Za-z0-9_]*)\\s*:=\\s*&?\\s*${escapedType}\\s*\\{`,
+    "g"
+  );
+  const varDeclaration = new RegExp(
+    `(?:^|[;{}\\n])\\s*var\\s+([A-Za-z_][A-Za-z0-9_]*)\\s+\\*?\\s*${escapedType}\\b`,
+    "g"
+  );
+  for (const match of maskedContent.matchAll(shortDeclaration)) names.add(match[1]);
+  for (const match of maskedContent.matchAll(varDeclaration)) names.add(match[1]);
+  return [...names];
+}
+
+function hasUniqueReceiverBinding(maskedContent, receiverName) {
+  const escaped = escapeRegex(receiverName);
+  const shortDeclarations = [...maskedContent.matchAll(new RegExp(`\\b${escaped}\\s*:=`, "g"))].length;
+  const varDeclarations = [...maskedContent.matchAll(new RegExp(`\\bvar\\s+${escaped}\\b`, "g"))].length;
+  const parameterDeclarations = [...maskedContent.matchAll(
+    new RegExp(`(?:\\(|,)\\s*${escaped}\\s+\\*?[A-Za-z_][A-Za-z0-9_.]*`, "g")
+  )].length;
+  const assignments = [...maskedContent.matchAll(new RegExp(`\\b${escaped}\\s*=`, "g"))].length;
+  return shortDeclarations + varDeclarations + parameterDeclarations === 1 && assignments === 0;
 }
 
 function hasGoFunctionCall(maskedContent, prefixPattern) {
