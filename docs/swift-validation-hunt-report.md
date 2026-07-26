@@ -29,14 +29,14 @@ The SwiftUI/Xcode search surfaced maintained application candidates including Fi
 | Repository | Audited commit | Role | Frameworks | Command | Untested | Covered | Skipped | Recommended | High-risk notes |
 | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: |
 | [FineTune](https://github.com/ronitsingh10/FineTune) | `2285279d36d3f8115c1c2d4aecd904f1bdf96a51` | compact maintained SwiftUI/Xcode application | Swift Testing | `xcodebuild test -project FineTune.xcodeproj -scheme FineTune` | 41 | 44 | 66 | 85 | 3 |
-| [Swift Package Index Server](https://github.com/SwiftPackageIndex/SwiftPackageIndex-Server) | `26943bfd3e62f29348e6a06722ba5fcd9dc11d58` | production Vapor/Fluent service | SnapshotTesting, Swift Testing, VaporTesting | `swift test` | 90 | 92 | 168 | 182 | 75 |
+| [Swift Package Index Server](https://github.com/SwiftPackageIndex/SwiftPackageIndex-Server) | `26943bfd3e62f29348e6a06722ba5fcd9dc11d58` | production Vapor/Fluent service | SnapshotTesting, Swift Testing, VaporTesting | `swift test` | 86 | 96 | 168 | 182 | 75 |
 | [ReerCodable](https://github.com/reers/ReerCodable) | `9e9edc29e1aa6c6c644f5761737506cc243236f7` | macro declarations, implementations, and expansion tests | Swift Testing, XCTest | `swift test` | 15 | 22 | 17 | 37 | 0 |
-| [rules_swift](https://github.com/bazelbuild/rules_swift) | `4428a622d5127737fda3d55752659a657216281a` | canonical Bazel/rules_swift workspace | Swift Testing, XCTest | `bazel test //...` | 29 | 5 | 102 | 34 | 0 |
+| [rules_swift](https://github.com/bazelbuild/rules_swift) | `4428a622d5127737fda3d55752659a657216281a` | canonical Bazel/rules_swift workspace | Swift Testing, XCTest | `bazel test //...` | 30 | 4 | 102 | 34 | 0 |
 | [Quick](https://github.com/Quick/Quick) | `2b4547b230e94d84320724fd6df65e418b058be2` | maintained framework with older Xcode/CocoaPods compatibility structure | Nimble, Quick, XCTest | `swift test` | 14 | 21 | 35 | 35 | 2 |
 
 All five profiles are high confidence and report no blockers. These are adapter audits, not claims that the repositories' own test suites pass at the pinned commits.
 
-Standardized corpus measurements pass with stable normalized audit digests across three runs: ReerCodable has a 259 ms median and 80 evidence links, Swift Package Index Server has an 11,500 ms median and 261 links, and rules_swift has a 114 ms median and 8 links.
+Standardized corpus measurements pass with stable normalized audit digests across three runs: ReerCodable has a 259 ms median and 80 evidence links, Swift Package Index Server has a 14,484 ms median and 265 links, and rules_swift has a 135 ms median and 6 links.
 
 ## Local No-Meaningful-Tests Cohort
 
@@ -74,6 +74,8 @@ After hardening, three unrelated rules_swift example entrypoints moved from cove
 The Swift Package Index calibration kept the same 184 actionable targets while moving seven controller-adjacent helpers out of the HTTP-route bucket: five retained high-risk data-access treatment and two became medium-risk branching utilities. It also removed a false MongoDB architecture from the Postgres service and reduced high-risk notes from 77 to 75. The small 90/94 to 91/93 coverage shift reflects corrected target identity rather than a lost test suite.
 
 The FineTune calibration exposed `AccessibilityPermissionService` as untested because its only previous evidence was a mock conforming to `AccessibilityTrustProviding`; concrete instantiation and call evidence still count normally. Four protocol-only contracts now carry an explicit deferred-coverage reason, with `ProcessTapControlling` moving out of direct recommendations. The result changes from 40/46/65/86 to 41/44/66/85 for untested/covered/skipped/recommended while preserving all three high-risk notes.
+
+The post-hardening exact-commit refresh moved four Swift Package Index extension targets from untested to covered through direct called evidence: `API+SearchController.swift`, `PackageCollection+signing.swift`, `Joined4+BuildResult.swift`, and `PackageReadme+Model.swift`. It also upgraded several weaker relationships without changing their categories. In rules_swift, `test/fixtures/android/jni.swift` moved from covered to untested after two unrelated asserted links were removed, while `String+RandomExtensions.swift` retained coverage through stronger called-symbol evidence. These are intentional precision improvements rather than repository drift.
 
 ## Next Validation Pressure
 

@@ -167,7 +167,7 @@ The initial queue is:
 3. Refresh Python validation, starting with multi-package ownership, relative imports, and pytest discovery configuration.
 4. Refresh Kotlin/JVM validation, starting with Gradle/Maven ownership and conservative unsupported-graph behavior.
 5. Refresh Swift validation, starting with SwiftPM/Xcode ownership ambiguity and symbol-evidence pressure. Complete for the bounded static matrix: Xcode selection, local-versus-external SwiftPM dependency ownership, shadow suppression, unique static extension evidence, and direct-constructor instance extension evidence are locked; stored and inferred receivers remain outside the supported boundary.
-6. Re-run live-repository reports across all four adapters after Swift hardening and turn concrete drift into regression-backed fixes.
+6. Re-run live-repository reports across all four adapters after Swift hardening and turn concrete drift into regression-backed fixes. Complete: all 12 exact-commit cases were measured again; nine remained semantically exact, Maven Surefire produced a regression-backed recursive-reactor fix, and two Swift changes were confirmed as intentional precision improvements before their baselines were refreshed.
 7. Improve the human-facing validation scorecard without collapsing review completeness into reviewed pass rate.
 8. Run the broader cross-adapter trust pass, then cut the next public alpha only after the Swift, live-repository, scorecard, and exact-commit release gates pass.
 9. Reconsider another adapter or native generation.
