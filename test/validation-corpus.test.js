@@ -18,13 +18,30 @@ describe("adapter validation corpus", () => {
 
     const result = validateValidationCorpus(corpus);
     assert.deepEqual(result.errors, []);
-    assert.equal(result.adapterCount, 4);
-    assert.equal(result.caseCount, 12);
+    assert.equal(result.adapterCount, 5);
+    assert.equal(result.caseCount, 15);
     assert.deepEqual(result.scorecardCounts, {
-      pass: 84,
+      pass: 105,
       fail: 0,
       pending: 0
     });
+  });
+
+  it("accepts bounded Go targets and rejects adapter-incompatible audit options", () => {
+    const valid = structuredClone(corpus);
+    const goCase = valid.adapters.find((adapter) => adapter.adapterId === "go").cases[1];
+    assert.deepEqual(goCase.auditOptions, {
+      goTarget: { goos: "darwin", goarch: "arm64", tags: [] }
+    });
+    assert.deepEqual(validateValidationCorpus(valid).errors, []);
+
+    const invalid = structuredClone(corpus);
+    invalid.adapters[0].cases[0].auditOptions = {
+      goTarget: { goos: "darwin", goarch: "arm64", tags: ["integration", "integration"] }
+    };
+    const result = validateValidationCorpus(invalid);
+    assert.ok(result.errors.some((error) => error.includes("only valid for the Go adapter")));
+    assert.ok(result.errors.some((error) => error.includes("unique non-empty strings")));
   });
 
   it("contains every required role and scorecard area for every supported adapter", () => {

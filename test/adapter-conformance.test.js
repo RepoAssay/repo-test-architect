@@ -15,7 +15,7 @@ const cases = [
   {
     adapterId: "go",
     fixturePath: "examples/go-testing-basic",
-    expectedMaturity: "experimental",
+    expectedMaturity: "supported",
     expectedProfile: {
       languages: ["go"],
       testFrameworks: ["go-testing"],

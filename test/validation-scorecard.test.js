@@ -18,10 +18,10 @@ describe("validation scorecard", () => {
 
     assertMatchesSchema(scorecard, schema, "validation scorecard");
     assert.deepEqual(scorecard.summary, {
-      caseCount: 12,
-      reviewCompleteness: { reviewedAreas: 84, totalAreas: 84 },
-      reviewedPassRate: { passedAreas: 84, reviewedAreas: 84 },
-      states: { pass: 84, fail: 0, pending: 0 }
+      caseCount: 15,
+      reviewCompleteness: { reviewedAreas: 105, totalAreas: 105 },
+      reviewedPassRate: { passedAreas: 105, reviewedAreas: 105 },
+      states: { pass: 105, fail: 0, pending: 0 }
     });
     assert.deepEqual(scorecard.adapters[0].cases[0].areas.map((entry) => entry.area), validationScorecardAreas);
   });
@@ -64,7 +64,7 @@ describe("validation scorecard", () => {
   it("renders the checked-in scorecard as Markdown and JSON", () => {
     const markdown = execFileSync(process.execPath, ["scripts/render-validation-scorecard.js"], { encoding: "utf8" });
     assert.match(markdown, /# Validation Corpus Scorecard/);
-    assert.match(markdown, /84\/84 areas reviewed \(100%\)/);
+    assert.match(markdown, /105\/105 areas reviewed \(100%\)/);
     assert.match(markdown, /This reports validation review status, not repository quality/);
 
     const json = JSON.parse(execFileSync(

@@ -2,7 +2,7 @@
 
 ## Current State
 
-Repo Test Architect currently has supported deterministic JavaScript/TypeScript, Python, Swift, and bounded Kotlin/JVM audit pipelines, plus an experimental conventional Go module adapter with literal repository-contained `go.work` ownership and explicit static build-target selection.
+Repo Test Architect currently has supported deterministic JavaScript/TypeScript, Python, Swift, bounded Kotlin/JVM, and bounded Go audit pipelines. Go support includes conventional modules, literal repository-contained `go.work` ownership, and explicit static build-target selection.
 
 Implemented:
 
@@ -40,8 +40,8 @@ Implemented:
 - bounded Markdown display of existing-test evidence with complete path lists preserved in JSON artifacts
 - shared runtime Markdown audit renderer with a TypeScript reference mirror, used directly by the CLI
 - behavioral HTTP framework classifications for routers, routes, handlers, security and general middleware, request access and validation, request bodies, queries, cookies, caching, response construction, request events, proxies, sessions, WebSockets, streaming, client response parsing, and runtime adapters, including flat utility layouts identified through HTTP boundary types
-- runtime adapter registry with supported `javascript`, `kotlin`, `python`, and `swift` adapters
-- experimental `go` registry entry with conventional `go.mod` ownership, literal repository-contained `go.work` membership, module-local command selection, explicit `GOOS`/`GOARCH`/custom-tag evaluation for boolean and filename build constraints, runnable standard-library test detection, Go-aware lexical masking, generic top-level function declarations and calls, exact package-symbol provenance, bounded one-hop same-package source dependency evidence, conservative source classification, explicit incomplete-workspace/unsupported-constraint/Ginkgo blockers, golden artifacts, model-consistency locking, and shared downstream conformance
+- runtime adapter registry with supported `javascript`, `go`, `kotlin`, `python`, and `swift` adapters
+- supported `go` registry entry with conventional `go.mod` ownership, literal repository-contained `go.work` membership, module-local command selection, explicit `GOOS`/`GOARCH`/custom-tag evaluation for boolean and filename build constraints, runnable standard-library test detection, Go-aware lexical masking, generic top-level function declarations and calls, exact package-symbol provenance, bounded one-hop same-package source dependency evidence, conservative source classification, explicit incomplete-workspace/unsupported-constraint/Ginkgo blockers, golden artifacts, model-consistency locking, and shared downstream conformance
 - Swift Xcode command selection that preserves sole, direct scheme-owning, container-name-matched, and default-plan choices while retaining nested container paths, blocking ambiguous workspaces/projects/schemes/plans, and lowering unresolved profiles from high confidence
 - Swift source-symbol evidence that remains target-qualified and unique while rejecting test-local shadow declarations and same-named receiver member calls as proof of a source type or top-level function
 - Swift static extension evidence limited to source-file-unique receiver/member ownership and an explicit qualified call, with cross-file overloads and test-local receiver declarations kept uncredited
@@ -100,7 +100,8 @@ Implemented:
 - public-readiness record covering the completed npm and official MCP Registry launch
 - adapter-hardening plan that prioritizes shared conformance and deeper JavaScript/TypeScript, Python, Swift, and bounded Kotlin/JVM validation before adding ecosystems
 - exact-pin validation-corpus measurement command with repeated canonical audit digests, raw and median durations, and evidence-link counts
-- Node 20-compatible instrumented line, branch, and function coverage floors for all four supported adapter implementations plus experimental Go
+- Node 20-compatible instrumented line, branch, and function coverage floors for all five supported adapter implementations
+- deterministic generated performance and evidence-count gates for JavaScript/TypeScript, Python, Kotlin/JVM, Swift, and Go
 - deterministic 400-source/200-test performance and evidence-count regression gates for JavaScript/TypeScript, Python, Kotlin/JVM, and Swift
 - alpha-readiness checklist for the test architecture audit milestone before native generation
 - deterministic `npm run alpha:check` gate for tests, adapter implementation coverage, adapter corpus validation, all-adapter performance/evidence regression, golden audits, model consistency, demo behavior, and local MCP transport without npm packaging requirements
@@ -267,7 +268,7 @@ Release promotion follows the flexible, evidence-based [Release Lifecycle](relea
 
 The active sequence is defined in the [Adapter Hardening Plan](adapter-hardening-plan.md):
 
-1. Shared validation-corpus manifest, scorecard schema, semantic checker, adapter-conformance helper, and per-adapter implementation coverage floors are complete. All 12 pinned cases pass standardized three-run stability and performance measurement.
+1. Shared validation-corpus manifest, scorecard schema, semantic checker, adapter-conformance helper, and per-adapter implementation coverage floors are complete. All 15 pinned cases across five supported adapters pass standardized three-run stability and performance measurement; corpus cases can preserve bounded adapter options such as an explicit Go target.
 2. JavaScript/TypeScript workspace command ownership, bounded runner-config/custom test-location discovery, module-boundary hardening, the generated large-suite regression gate, and conservative literal Playwright/Cypress request-to-route evidence are complete for the static patterns in the support matrix.
 3. Python literal multi-package/namespace ownership, bounded root and repository-owned ancestor pytest discovery, exact package-local relative imports, one-hop same-owner source dependencies, static framework test-client route evidence, and deterministic tox/nox ambiguity blockers are complete. Next Python pressure can target plugin-mutated discovery or dynamic runner orchestration.
 4. Kotlin/JVM competing root commands and incomplete Gradle aggregate or Maven reactor ownership now block selection; complete recursively literal Maven reactors are owned without partial guessing, and incomplete child builds remain separately detectable. Continue pressure on statically provable dependency and module syntax.

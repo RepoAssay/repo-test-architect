@@ -79,6 +79,9 @@
             }
           }
         },
+        "auditOptions": {
+          "$ref": "#/$defs/auditOptions"
+        },
         "supportBoundary": {
           "type": "string",
           "minLength": 1
@@ -92,6 +95,35 @@
         },
         "observed": {
           "$ref": "#/$defs/observation"
+        }
+      }
+    },
+    "auditOptions": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "goTarget": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["goos", "goarch"],
+          "properties": {
+            "goos": {
+              "type": "string",
+              "minLength": 1
+            },
+            "goarch": {
+              "type": "string",
+              "minLength": 1
+            },
+            "tags": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
         }
       }
     },

@@ -1,6 +1,6 @@
-# Go Experimental Support
+# Go Alpha Support
 
-This matrix defines the bounded Go adapter through its pinned conventional-library, HTTP/service, and difficult-workspace-ownership validations. The adapter is registered as `experimental`: its single-module, `go.work`, build-target, one-hop dependency, lexical masking, and generic-function fixtures; all three live roles; native Go command validation; shared artifact pipeline; implementation coverage floor; golden snapshots; and model-consistency plan locks are complete, but generated large-module performance validation still precedes a supported public-alpha claim.
+This matrix defines the bounded supported Go adapter through its pinned conventional-library, HTTP/service, and difficult-workspace-ownership validations. Its single-module, `go.work`, build-target, one-hop dependency, lexical masking, and generic-function fixtures; all three live roles; native Go command validation; generated large-module performance gate; shared artifact pipeline; implementation coverage floor; golden snapshots; model-consistency plan locks; and validation-corpus scorecards are complete.
 
 ## Current Bounded Coverage
 
@@ -48,15 +48,15 @@ Nested modules, `vendor`, `testdata`, dependency/build output directories, and s
 
 The current evidence model does not resolve receiver methods, interfaces, embedding, generic type construction or generic methods, init-time behavior, internal test helpers, generated mocks, reflection, dependencies beyond one same-package source hop, cross-package source dependencies, cgo-dependent selection, release/compiler/architecture-feature tags, workspace `replace` effects, custom commands, coverage profiles, runtime reachability, or assertion completeness. Testify may be reported as a setup signal, but no Testify-specific assertion claim is emitted.
 
-## Promotion TODO
+## Promotion Result
 
-Promote `go` from `experimental` to `supported` only after:
+Go is promoted from `experimental` to `supported` because all four promotion gates are complete:
 
-1. Add a generated large-module performance and evidence-count regression gate.
-2. Confirm the three pinned live reviews contain no unresolved false ownership, command, or direct-evidence upgrades.
-3. Make an explicit experimental-to-supported decision and enter all three pinned cases into the shared corpus together.
-4. Pass the shared release gate with Go included in package, CLI, MCP, schema, documentation, and cross-adapter checks.
+1. The generated 400-source/200-test module locks 200 covered candidates, 200 untested candidates, zero skipped candidates, 200 evidence links, and a broad 5-second regression ceiling.
+2. The three pinned live reviews contain no unresolved false ownership, command, or direct-evidence upgrades.
+3. All three cases are measured in `validation-corpus/v1`, including Chi's explicit Darwin/arm64 target, and pass all 21 shared scorecard areas.
+4. The shared alpha and release gates include Go packaging, CLI, MCP, schema, documentation, and cross-adapter checks.
 
-Literal `go.work` ownership, explicit build-target selection, balanced generic top-level function evidence, and all three live probes are complete. The adapter parses single and block `use` directives without executing Go tooling, preserves each `go.mod` owner, blocks incomplete graphs, evaluates bounded target constraints without inheriting the host environment, and never substitutes one aggregate-root command for module-local verification. Generated large-module performance and evidence-count regression is the next promotion target.
+The supported boundary remains deliberately narrow. The adapter parses single and block `use` directives without executing Go tooling, preserves each `go.mod` owner, blocks incomplete graphs, evaluates bounded target constraints without inheriting the host environment, and never substitutes one aggregate-root command for module-local verification.
 
 Native test generation and repair loops remain deferred.

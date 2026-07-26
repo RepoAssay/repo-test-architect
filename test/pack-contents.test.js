@@ -22,7 +22,7 @@ describe("package contents", () => {
   it("requires check script dependencies needed by packaged release verification", () => {
     assert.ok(requiredFiles.includes("src/diagnostics/diagnostics.js"));
     assert.ok(requiredFiles.includes("src/adapters/go/audit.js"));
-    assert.ok(requiredFiles.includes("docs/go-experimental-support.md"));
+    assert.ok(requiredFiles.includes("docs/go-alpha-support.md"));
     assert.ok(requiredFiles.includes("examples/go-testing-basic/go.mod"));
     assert.ok(requiredFiles.includes("examples/go-build-target-basic/go.mod"));
     assert.ok(requiredFiles.includes("examples/go-workspace-basic/go.work"));
@@ -35,6 +35,7 @@ describe("package contents", () => {
     assert.ok(requiredFiles.includes("evals/validation-corpus.json"));
     assert.ok(requiredFiles.includes("scripts/check-validation-corpus.js"));
     assert.ok(requiredFiles.includes("scripts/render-validation-scorecard.js"));
+    assert.ok(requiredFiles.includes("scripts/check-go-performance.js"));
     assert.ok(requiredFiles.includes("scripts/check-javascript-performance.js"));
     assert.ok(requiredFiles.includes("scripts/check-bin-entrypoints.js"));
     assert.ok(requiredFiles.includes("scripts/check-demo-script.js"));

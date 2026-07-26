@@ -29,11 +29,11 @@ Run the deterministic alpha gate with:
 npm run alpha:check
 ```
 
-This verifies the test suite, adapter implementation coverage, pinned adapter-corpus contract, generated performance/evidence regression for all four adapters, golden audit artifacts, model-consistency locks, public demo path, and local MCP transport. Package publishing checks remain part of `release:check`, not the alpha gate.
+This verifies the test suite, adapter implementation coverage, pinned adapter-corpus contract, generated performance/evidence regression for all five supported adapters, golden audit artifacts, model-consistency locks, public demo path, and local MCP transport. Package publishing checks remain part of `release:check`, not the alpha gate.
 
 ### Current Readiness Verdict
 
-The deterministic gate passes locally. Repo Test Architect's public-alpha claim is limited to the explicitly detected patterns in the [JavaScript/TypeScript Alpha Support](javascript-typescript-alpha-support.md), [Python Alpha Support](python-alpha-support.md), [Swift Alpha Support](swift-alpha-support.md), and [Kotlin/JVM Alpha Support](kotlin-jvm-alpha-support.md) matrices, subject to human review of the real-repository reports.
+The deterministic gate passes locally. Repo Test Architect's public-alpha claim is limited to the explicitly detected patterns in the [JavaScript/TypeScript Alpha Support](javascript-typescript-alpha-support.md), [Go Alpha Support](go-alpha-support.md), [Python Alpha Support](python-alpha-support.md), [Swift Alpha Support](swift-alpha-support.md), and [Kotlin/JVM Alpha Support](kotlin-jvm-alpha-support.md) matrices, subject to human review of the real-repository reports.
 
 This verdict does not mean:
 

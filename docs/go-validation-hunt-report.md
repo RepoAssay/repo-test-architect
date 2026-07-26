@@ -1,6 +1,6 @@
 # Go Validation Hunt Report
 
-This report records the first pinned public-repository audit for the experimental Go adapter. The source repository was shallow-cloned at an exact commit and audited locally. No source was uploaded. Unlike an ordinary static audit, the validation pass also ran the repository's native tests to compare our conservative evidence graph with observed package coverage.
+This report records the first pinned public-repository audit for the bounded Go adapter, which has since reached supported alpha maturity. The source repository was shallow-cloned at an exact commit and audited locally. No source was uploaded. Unlike an ordinary static audit, the validation pass also ran the repository's native tests to compare our conservative evidence graph with observed package coverage.
 
 ## Discovery And Selection
 
@@ -8,9 +8,9 @@ The validation finder now exposes a `go` profile requiring a root `go.mod` and a
 
 | Repository | Audited commit | Role | Detected command | Untested | Covered | Skipped | Median audit |
 | --- | --- | --- | --- | ---: | ---: | ---: | ---: |
-| [`BurntSushi/toml`](https://github.com/BurntSushi/toml) | `c6d720d83547bb8d7afb067ba9df8bad0323e2d1` | conventional parser library | `go test ./...` | 6 | 9 | 7 | 28 ms |
+| [`BurntSushi/toml`](https://github.com/BurntSushi/toml) | `c6d720d83547bb8d7afb067ba9df8bad0323e2d1` | conventional parser library | `go test ./...` | 6 | 9 | 7 | 62 ms |
 
-Three post-hardening audits took 54, 28, and 27 ms. They produced the same normalized audit digest, `7876d40c30c40a8b0a857c1d15cdc2207cb2f8e335fa6e25d2dc52781c7faed5`, with 42 evidence relationships.
+The promotion remeasurement took 102, 62, and 60 ms. All three audits produced the same normalized audit digest, `b8ec8314282aba21b6722bd155bcf5529adcf19b20e1184bf586a40f1367b208`, with 49 evidence relationships. The seven relationships added since the first hardening measurement come from the later generic top-level function support; candidate classifications remained unchanged.
 
 ## Native Validation
 
@@ -36,7 +36,7 @@ The relationship is `indirect` with `viaUsage: called`. It is not propagated fro
 
 The live parser file also revealed that an exact `parse.go` basename was classified as a generic branching utility because the bounded pure-logic vocabulary recognized `parser` but not `parse`. Exact path-token recognition now treats `parse` as pure transformation logic without matching unrelated names such as `sparse`.
 
-Before these fixes the direct audit reported nine untested, six covered, seven skipped, and 19 evidence relationships. After hardening it reports six untested, nine covered, seven skipped, and 42 relationships.
+Before these fixes the direct audit reported nine untested, six covered, seven skipped, and 19 evidence relationships. The first-slice hardened audit reported six untested, nine covered, seven skipped, and 42 relationships; the promotion remeasurement retains those candidate counts and reports 49 relationships after generic top-level function support.
 
 ## Reviewed Boundary
 
@@ -53,4 +53,4 @@ Receiver methods, interfaces, reflection, dynamic calls, deeper source graphs, c
 
 ## Corpus Progress
 
-This checkout is the first of the three required Go promotion roles. It is recorded here rather than in `validation-corpus/v1`, whose current contract contains the supported adapters only. The [Go HTTP validation](go-http-validation-report.md) subsequently completed the second role, and the [Go workspace ownership validation](go-ownership-validation-report.md) completed the third. The remaining promotion work is the generated large-module performance and evidence-count regression gate, followed by an explicit experimental-to-supported decision and entry of all three cases into the shared corpus.
+This checkout is the conventional-library role in `validation-corpus/v1`. Together with the [Go HTTP validation](go-http-validation-report.md) and [Go workspace ownership validation](go-ownership-validation-report.md), it gives supported Go three exact-pin passing roles with stable repeated audits and recorded performance distributions.

@@ -2,7 +2,7 @@
 
 This roadmap tracks the next practical milestones before Repo Test Architect should claim broader adapter support or native test generation.
 
-The first public alpha is shipped. The four supported adapters completed the measurable [Adapter Hardening Plan](adapter-hardening-plan.md), and the active adapter-expansion phase is a bounded experimental Go spike. See [Alpha Readiness](alpha-readiness.md) for the standing product acceptance gates and the [Release Lifecycle](release-lifecycle.md) for the flexible alpha, beta, release-candidate, and `1.0` planning windows.
+The first public alpha is shipped. Five supported adapters have completed the measurable [Adapter Hardening Plan](adapter-hardening-plan.md), including the newly promoted bounded Go adapter. See [Alpha Readiness](alpha-readiness.md) for the standing product acceptance gates and the [Release Lifecycle](release-lifecycle.md) for the flexible alpha, beta, release-candidate, and `1.0` planning windows.
 
 ## Current Baseline
 
@@ -12,7 +12,7 @@ The useful baseline is:
 
 - deterministic JavaScript/TypeScript audit pipeline
 - supported Swift, Python, and bounded Kotlin/JVM adapters
-- experimental conventional Go module adapter with literal repository-contained `go.work` ownership and explicit static build-target selection
+- supported bounded Go module adapter with literal repository-contained `go.work` ownership and explicit static build-target selection
 - polyglot project detection with unsupported-project reporting
 - project-level ranking, planning, provider-neutral execution hints, placement, stats, and local MCP tool calls
 - disabled-by-default local MCP diagnostics, safe internal-error report IDs, runtime checks, and inspectable sanitized bundles
@@ -91,7 +91,7 @@ Detection, ownership, command, evidence, ranking, stability, and performance eac
 
 Goal: prove the adapter contract keeps holding as additional ecosystems move from detection-only to audited fixtures.
 
-Status: Swift, Python, and bounded Kotlin/JVM modules reached supported alpha maturity, and the four-adapter hardening gate is complete. The experimental Go spike now passes standalone, two-module `go.work`, explicit build-target, one-hop source-dependency, lexical masking, and generic-function fixtures plus all three pinned live roles against `BurntSushi/toml`, `go-chi/chi`, and `riverqueue/river`. Those audits drove complete `testdata` ownership, recovered bounded source dependencies, fixed comment-like HTTP route strings hiding real calls, and preserved nine workspace owners while recovering generic entrypoint evidence. Promotion remains pending on the generated performance/evidence gate described in [Go Experimental Support](go-experimental-support.md).
+Status: Swift, Python, bounded Kotlin/JVM, and bounded Go have reached supported alpha maturity, and the five-adapter hardening gate is complete. Go passes standalone, two-module `go.work`, explicit build-target, one-hop source-dependency, lexical masking, generic-function, and generated 400-source/200-test performance fixtures plus all three pinned live roles against `BurntSushi/toml`, `go-chi/chi`, and `riverqueue/river`. Those audits drove complete `testdata` ownership, recovered bounded source dependencies, fixed comment-like HTTP route strings hiding real calls, preserved nine workspace owners, recovered generic entrypoint evidence, and now occupy three passing shared-corpus roles. See [Go Alpha Support](go-alpha-support.md).
 
 Useful hardening targets:
 

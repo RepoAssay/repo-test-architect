@@ -715,6 +715,7 @@ This repository-owned artifact records the pinned public probes used to harden s
 Each case records:
 
 - a full repository commit and optional project root
+- optional bounded adapter audit options, currently an explicit Go target
 - the bounded support claim being reviewed
 - the checked-in report containing the human analysis
 - detection, ownership, command, evidence, ranking, stability, and performance score states

@@ -105,6 +105,7 @@ export function validateValidationCorpus(corpus, options = {}) {
       if (typeof entry.supportBoundary !== "string" || entry.supportBoundary.length === 0) {
         errors.push(`${caseLabel} needs a non-empty supportBoundary`);
       }
+      validateAuditOptions(entry.auditOptions, label, caseLabel, errors);
 
       for (const area of scorecardAreas) {
         const status = entry.scorecard?.[area];
@@ -175,6 +176,34 @@ export function validateValidationCorpus(corpus, options = {}) {
     caseCount: caseIds.size,
     scorecardCounts
   };
+}
+
+function validateAuditOptions(options, adapterId, caseLabel, errors) {
+  if (options === undefined) return;
+  if (!options || typeof options !== "object" || Array.isArray(options)) {
+    errors.push(`${caseLabel} auditOptions must be an object when present`);
+    return;
+  }
+  const unknownOptions = Object.keys(options).filter((key) => key !== "goTarget");
+  if (unknownOptions.length > 0) errors.push(`${caseLabel} has unsupported audit option ${unknownOptions[0]}`);
+  if (options.goTarget === undefined) return;
+  if (adapterId !== "go") errors.push(`${caseLabel} goTarget is only valid for the Go adapter`);
+  const target = options.goTarget;
+  if (!target || typeof target !== "object" || Array.isArray(target)) {
+    errors.push(`${caseLabel} auditOptions.goTarget must be an object`);
+    return;
+  }
+  const unknownTargetKeys = Object.keys(target).filter((key) => !["goos", "goarch", "tags"].includes(key));
+  if (unknownTargetKeys.length > 0) errors.push(`${caseLabel} has unsupported goTarget option ${unknownTargetKeys[0]}`);
+  if (typeof target.goos !== "string" || target.goos.length === 0) errors.push(`${caseLabel} goTarget.goos must be a non-empty string`);
+  if (typeof target.goarch !== "string" || target.goarch.length === 0) errors.push(`${caseLabel} goTarget.goarch must be a non-empty string`);
+  if (target.tags !== undefined && (
+    !Array.isArray(target.tags) ||
+    target.tags.some((tag) => typeof tag !== "string" || tag.length === 0) ||
+    new Set(target.tags).size !== target.tags.length
+  )) {
+    errors.push(`${caseLabel} goTarget.tags must contain unique non-empty strings when present`);
+  }
 }
 
 function hasRepeatedDurationSamples(observed) {

@@ -1,6 +1,6 @@
 # Go HTTP Validation Report
 
-This report records the second pinned public-repository audit for the experimental Go adapter. The source repository was cloned at an exact commit and audited locally. Native Go execution was used only to review the static artifact; ordinary audits still do not run repository code or consume coverage profiles.
+This report records the second pinned public-repository audit for the bounded Go adapter, which has since reached supported alpha maturity. The source repository was cloned at an exact commit and audited locally. Native Go execution was used only to review the static artifact; ordinary audits still do not run repository code or consume coverage profiles.
 
 ## Discovery And Selection
 
@@ -8,9 +8,9 @@ The validation finder now exposes a `go-http` profile requiring a root `go.mod`,
 
 | Repository | Audited commit | Role | Detected root command | Untested | Covered | Skipped | Median audit |
 | --- | --- | --- | --- | ---: | ---: | ---: | ---: |
-| [`go-chi/chi`](https://github.com/go-chi/chi) | `8b258c7bb28f97a5f2a856ff7ef962578fec9215` | HTTP router and middleware | `GOOS=darwin GOARCH=arm64 go test ./...` | 14 | 23 | 10 | 73 ms |
+| [`go-chi/chi`](https://github.com/go-chi/chi) | `8b258c7bb28f97a5f2a856ff7ef962578fec9215` | HTTP router and middleware | `GOOS=darwin GOARCH=arm64 go test ./...` | 14 | 23 | 10 | 77 ms |
 
-Three post-hardening audits took 105, 73, and 72 ms. They produced the same normalized audit digest, `30549ee5288778c890f6b13a165e0155fda4112eb872474431137e26de25973e`, with 66 evidence relationships.
+The promotion remeasurement took 111, 77, and 76 ms. All three audits produced the same normalized audit digest, `30549ee5288778c890f6b13a165e0155fda4112eb872474431137e26de25973e`, with 66 evidence relationships.
 
 ## Native Validation
 
@@ -54,4 +54,4 @@ The HTTP/service probe passes the reviewed detection, ownership, target, command
 
 ## Corpus Progress
 
-This checkout completes the second of the three required Go promotion roles. It remains documented here rather than entering `validation-corpus/v1` early, because the current corpus contract contains the supported adapters only. The [Go workspace ownership validation](go-ownership-validation-report.md) subsequently completed the final live role. The remaining promotion work is the generated large-module performance and evidence-count regression gate, followed by an explicit support decision and entry of all three cases into the shared corpus.
+This checkout is the framework-heavy role in `validation-corpus/v1`. Its manifest record preserves the explicit Darwin/arm64 audit target so repeated measurements remain independent of the review host. The [Go workspace ownership validation](go-ownership-validation-report.md) supplies the difficult graph role.
