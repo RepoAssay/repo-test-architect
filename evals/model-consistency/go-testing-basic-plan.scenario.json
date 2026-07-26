@@ -1,7 +1,7 @@
 {
   "schemaVersion": "model-consistency-scenario/v1",
   "id": "go-testing-basic-plan",
-  "description": "Different model profiles should preserve bounded Go planning decisions, including direct standard-library symbol evidence, an untested external client, and DTO deferral.",
+  "description": "Different model profiles should preserve bounded Go planning decisions, including direct symbol evidence, one-hop same-package dependency evidence, an untested external client, and DTO deferral.",
   "sourceArtifact": {
     "path": "evals/expected/go-testing-basic.audit.json",
     "schemaVersion": "audit/v1"
@@ -23,8 +23,8 @@
     },
     {
       "path": "summary.extendTestCount",
-      "expected": 1,
-      "reason": "The directly exercised parser should remain an extend-test item."
+      "expected": 2,
+      "reason": "The directly exercised parser and its one-hop normalizer dependency should remain extend-test items."
     },
     {
       "path": "summary.deferredCount",
@@ -53,6 +53,21 @@
     },
     {
       "path": "items[2].id",
+      "expected": "extend-test:price_normalizer.go",
+      "reason": "The bounded same-package dependency should remain a covered normalizer item."
+    },
+    {
+      "path": "items[2].existingTestEvidence[0].kind",
+      "expected": "go-source-dependency",
+      "reason": "The normalizer should retain explicit one-hop Go source dependency provenance."
+    },
+    {
+      "path": "items[2].existingTestEvidence[0].viaUsage",
+      "expected": "called",
+      "reason": "The dependency evidence must remain rooted in a directly called parser entrypoint."
+    },
+    {
+      "path": "items[3].id",
       "expected": "defer:payment.go",
       "reason": "The struct-only DTO should remain covered through consuming behavior."
     }
@@ -65,6 +80,8 @@
   "unexpectedVariations": [
     "missing go test verification command",
     "missing direct Go symbol evidence",
+    "missing bounded same-package dependency evidence",
+    "dependency evidence propagated beyond one source hop",
     "direct DTO test recommendation",
     "missing external client candidate",
     "different plan action counts"

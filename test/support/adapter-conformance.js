@@ -22,6 +22,7 @@ const portableEvidenceStrengths = {
   "browser-route-match": ["indirect"],
   "direct-relative-import": ["direct"],
   "filename-convention": ["naming"],
+  "go-source-dependency": ["indirect"],
   "go-symbol-reference": ["direct", "referenced"],
   "jvm-symbol-reference": ["direct", "referenced"],
   "package-entry-import": ["referenced"],

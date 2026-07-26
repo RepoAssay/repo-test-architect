@@ -173,3 +173,11 @@ Decision: make Go build-target ownership opt-in through an explicit `GOOS`, `GOA
 Rationale: silently inheriting the machine running the audit would make artifacts vary by host and could incorrectly connect tests to source that is not part of the selected build. Explicit target context keeps commands and evidence reproducible while covering the common platform and custom-tag cases without executing `go list` or repository code.
 
 Revisit when: a pinned live corpus demonstrates a deterministic need for cgo/toolchain/release-tag evaluation or multi-target aggregation with an artifact shape that preserves per-target ownership.
+
+## One-Hop Go Source Dependency Evidence
+
+Decision: allow one indirect `go-source-dependency` relationship from a runnable test's directly called source file to another selected file in the same package directory when the caller makes an unqualified call to a uniquely owned top-level function. Preserve `viaUsage: called`, reject visible local shadows and selectors, and never propagate from naming/type evidence or an existing indirect relationship.
+
+Rationale: the first pinned Go audit showed heavily exercised parser, type-cache, and TOML-type files as untested because tests call public decode and encode entrypoints one file away. A single explicit file dependency recovers useful coverage context while keeping receiver methods, dynamic dispatch, deeper graphs, cross-package calls, and assertion completeness outside the claim.
+
+Revisit when: the remaining pinned Go roles show that function-level call ownership or a deeper graph can be proven without turning a direct entrypoint call into package-wide coverage.

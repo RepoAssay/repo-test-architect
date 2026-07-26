@@ -45,6 +45,15 @@ export const validationProfiles = {
       { signal: "pnpm-workspace", file: "pnpm-workspace.yaml", pattern: /^\s*packages\s*:/m }
     ]
   },
+  go: {
+    description: "Conventional Go modules with standard-library tests",
+    repositoryQuery: '"go library"',
+    language: "Go",
+    searches: [
+      { signal: "go-module", file: "go.mod", pattern: /^\s*module\s+\S+/m },
+      { signal: "root-go-tests", entryPattern: /_test\.go$/ }
+    ]
+  },
   swift: {
     description: "Swift Package Manager projects",
     repositoryQuery: '"swift package"',

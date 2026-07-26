@@ -52,6 +52,7 @@ export function auditGoRepo(root, options = {}) {
   const selectedSourceFiles = sourceFiles.filter((file) => buildSelection.byPath.get(file.path)?.included !== false);
   const sourceSymbols = collectSourceSymbols(selectedSourceFiles);
   const testEvidenceBySourcePath = collectGoTestEvidence(selectedSourceFiles, sourceSymbols, testFiles, profile.modulePath);
+  addGoSourceDependencyEvidence(sourceSymbols, testEvidenceBySourcePath);
   const untestedCandidates = [];
   const coveredButRisky = [];
   const skipped = [];
@@ -688,7 +689,12 @@ function collectSourceSymbols(sourceFiles) {
     const packageName = extractPackageName(file.content);
     const directory = directoryOf(file.path);
     const symbols = collectDeclaredSymbols(file.content);
-    symbolsByPath.set(file.path, { packageName, directory, symbols });
+    symbolsByPath.set(file.path, {
+      packageName,
+      directory,
+      symbols,
+      maskedContent: maskGoSource(file.content)
+    });
     for (const symbol of symbols) {
       const key = `${directory}\0${symbol.name}`;
       symbolCounts.set(key, (symbolCounts.get(key) ?? 0) + 1);
@@ -754,6 +760,50 @@ function collectGoTestEvidence(sourceFiles, sourceSymbols, testFiles, modulePath
   }
 
   return evidenceByPath;
+}
+
+function addGoSourceDependencyEvidence(sourceSymbols, evidenceByPath) {
+  const directEvidenceByCaller = new Map();
+  for (const [sourcePath, evidence] of evidenceByPath) {
+    const calledTests = evidence.filter((entry) => entry.kind === "go-symbol-reference" && entry.usage === "called");
+    if (calledTests.length > 0) directEvidenceByCaller.set(sourcePath, calledTests);
+  }
+
+  for (const [callerPath, callerEvidence] of directEvidenceByCaller) {
+    const caller = sourceSymbols.symbolsByPath.get(callerPath);
+    for (const [dependencyPath, dependency] of sourceSymbols.symbolsByPath) {
+      if (dependencyPath === callerPath) continue;
+      if (dependency.directory !== caller.directory || dependency.packageName !== caller.packageName) continue;
+
+      const callsDependency = dependency.symbols.some((symbol) =>
+        symbol.kind === "function" &&
+        sourceSymbols.symbolCounts.get(`${dependency.directory}\0${symbol.name}`) === 1 &&
+        callsUnqualifiedFunction(caller.maskedContent, symbol.name)
+      );
+      if (!callsDependency) continue;
+
+      const dependencyEvidence = evidenceByPath.get(dependencyPath) ?? [];
+      evidenceByPath.set(dependencyPath, deduplicateEvidence([
+        ...dependencyEvidence,
+        ...callerEvidence.map((entry) => ({
+          testPath: entry.testPath,
+          kind: "go-source-dependency",
+          strength: "indirect",
+          viaUsage: "called"
+        }))
+      ]));
+    }
+  }
+}
+
+function callsUnqualifiedFunction(maskedContent, name) {
+  const escaped = escapeRegex(name);
+  if (new RegExp(`\\b${escaped}\\s*:=`).test(maskedContent)) return false;
+  if (new RegExp(`\\bvar\\s+${escaped}\\b`).test(maskedContent)) return false;
+  if (new RegExp(`\\bfunc\\s+(?:\\([^)]*\\)\\s*)?[A-Za-z_][A-Za-z0-9_]*\\s*\\([^)]*\\b${escaped}\\s+`).test(maskedContent)) {
+    return false;
+  }
+  return new RegExp(`(?:^|[^.A-Za-z0-9_])${escaped}\\s*\\(`).test(maskedContent);
 }
 
 function importedPackageAlias(imports, modulePath, directory, packageName) {
@@ -830,7 +880,7 @@ function classifySourceFile(file, allowBuildConstraint = false) {
   if (isHttpBoundary(lowerPath, content)) {
     return recommended("http-handler", ["http-boundary", "request-response"], "high", "medium", "integration", 8, 5, ["HTTP boundary behavior", "request or response handling"]);
   }
-  if (matchesAny(lowerPath, ["parser", "mapper", "validator", "formatter", "calculator", "codec"])) {
+  if (isPureLogicPath(lowerPath)) {
     return recommended("pure-logic", ["pure-logic", "edge-case-surface"], "high", "high", "unit", 9, 2, ["Pure transformation logic", "edge-case surface"]);
   }
   if (hasConcurrency(masked)) {
@@ -934,6 +984,10 @@ function maskGoComments(content) {
 
 function matchesAny(value, terms) {
   return terms.some((term) => value.includes(term));
+}
+
+function isPureLogicPath(lowerPath) {
+  return /(?:^|[/_.-])(?:parse|parser|mapper|validator|formatter|calculator|codec)(?:[/_.-]|$)/.test(lowerPath);
 }
 
 function isIncludedByChangedPaths(currentPath, changedPaths) {

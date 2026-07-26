@@ -3,11 +3,10 @@ package checkout
 import (
 	"fmt"
 	"strconv"
-	"strings"
 )
 
 func ParsePrice(value string) (int, error) {
-	trimmed := strings.TrimSpace(value)
+	trimmed := normalizePrice(value)
 	if trimmed == "" {
 		return 0, fmt.Errorf("price is required")
 	}

@@ -215,6 +215,11 @@
     "description": "React Testing Library convention was detected."
   },
   {
+    "id": "runtime-behavior",
+    "category": "behavior",
+    "description": "Runtime function or method behavior was detected."
+  },
+  {
     "id": "service-name",
     "category": "architecture",
     "description": "Service, client, repository, or similar boundary naming was detected."

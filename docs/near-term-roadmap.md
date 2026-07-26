@@ -91,11 +91,11 @@ Detection, ownership, command, evidence, ranking, stability, and performance eac
 
 Goal: prove the adapter contract keeps holding as additional ecosystems move from detection-only to audited fixtures.
 
-Status: Swift, Python, and bounded Kotlin/JVM modules reached supported alpha maturity, and the four-adapter hardening gate is complete. The experimental Go spike now passes standalone, two-module `go.work`, and explicit build-target fixtures; native module-local and target-qualified tests; `gofmt`; shared conformance; implementation coverage; golden artifact; and model-consistency gates. Promotion remains pending on the live validation corpus and a generated performance/evidence gate described in [Go Experimental Support](go-experimental-support.md).
+Status: Swift, Python, and bounded Kotlin/JVM modules reached supported alpha maturity, and the four-adapter hardening gate is complete. The experimental Go spike now passes standalone, two-module `go.work`, explicit build-target, and one-hop source-dependency fixtures plus its first pinned conventional-library probe against `BurntSushi/toml`. That live audit drove complete `testdata` ownership and recovered three statically reached core files without broadening direct evidence. Promotion remains pending on the HTTP/service and difficult-ownership live roles plus the generated performance/evidence gate described in [Go Experimental Support](go-experimental-support.md).
 
 Useful hardening targets:
 
-- Go large-module performance and pinned live-repository validation
+- Go HTTP/service and difficult-ownership live validation plus large-module performance
 - Kotlin/JVM with Gradle/Maven, bounded single-module and settings-owned all-KMP literal-JVM-target graphs with source-set-qualified API traversal, JUnit variants, bounded Kotest common specs, conventional Spock features, and method-level TestNG
 - Swift Package Manager with XCTest, Swift Testing, Quick/Nimble, and SnapshotTesting signals
 - Python fixture reachability, async/parametrized/property-based pytest conventions, Django/Flask routes, tox/nox commands, coverage configuration, and no-tests-yet blocker behavior
