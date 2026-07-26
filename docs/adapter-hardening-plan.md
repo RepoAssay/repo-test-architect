@@ -121,6 +121,8 @@ Progress: Xcode container ownership now preserves relative project/workspace pat
 
 Progress: Swift symbol evidence now retains declaration kinds so top-level functions can be distinguished from member calls. Test-local types, functions, aliases, bindings, and cases suppress a same-named source symbol for that test file, and receiver-qualified member calls cannot masquerade as bare top-level function evidence. Real constructors and bare top-level calls retain their referenced, called, or asserted usage.
 
+Progress: the first positive Swift member-evidence slice credits a static function declared directly in an extension only when its receiver/member pair resolves to one source file in the owning module and the qualified test calls that exact receiver. Cross-file overloads across a primary type or other extensions and test-local receiver declarations remain uncredited; instance and inferred-receiver relationships remain outside the supported boundary.
+
 ## Workstream 3: Cross-Adapter Trust
 
 After each adapter has a refreshed corpus:
@@ -159,7 +161,10 @@ The initial queue is:
 3. Refresh Python validation, starting with multi-package ownership, relative imports, and pytest discovery configuration.
 4. Refresh Kotlin/JVM validation, starting with Gradle/Maven ownership and conservative unsupported-graph behavior.
 5. Refresh Swift validation, starting with SwiftPM/Xcode ownership ambiguity and symbol-evidence pressure.
-6. Run the cross-adapter trust pass and set measured performance regression budgets.
+6. Re-run live-repository reports across all four adapters after Swift hardening and turn concrete drift into regression-backed fixes.
+7. Improve the human-facing validation scorecard without collapsing review completeness into reviewed pass rate.
+8. Run the broader cross-adapter trust pass, then cut the next public alpha only after the Swift, live-repository, scorecard, and exact-commit release gates pass.
+9. Reconsider another adapter or native generation.
 
 Run `npm run corpus:check` to validate corpus completeness, pins, report links, and scorecard states. Use `npm run corpus:measure -- --case <case-id> --checkout <path>` against an exact pinned Git checkout to record at least three canonical audits, raw durations, their median, the evidence count, and normalized SHA-256 digest. All 12 current cases pass every scorecard area after standardized measurements. New or repinned cases remain `pending` until their own measurements pass; historical timings alone never silently pass the gate.
 
