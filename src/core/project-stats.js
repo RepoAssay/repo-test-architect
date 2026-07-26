@@ -18,6 +18,7 @@ const IGNORED_DIRECTORIES = new Set([
   "node_modules",
   "obj",
   "target",
+  "testdata",
   "vendor"
 ]);
 

@@ -54,9 +54,10 @@ The detector skips common dependency and build output directories:
 - `node_modules`
 - `obj`
 - `target`
+- `testdata`
 - `vendor`
 
-This avoids reporting generated, vendored, or nested dependency-fixture output as independent projects. A fixture directory audited as the repository root still detects its own root marker; only nested traversal is skipped.
+This avoids reporting generated, vendored, or nested dependency-fixture and Go `testdata` output as independent projects. A fixture or `testdata` directory audited as the repository root still detects its own root marker; only nested traversal is skipped.
 
 Conventionally included Gradle modules collapse into the settings-owning aggregate only when the complete root declaration is literal and repository-contained, every declared path has a conventional child build file, and nested settings do not expand undeclared paths. Computed or unsafe includes, missing child builds, custom `projectDir` remaps, and unowned nested settings make collapse all-or-nothing, leaving child build roots separately visible. Composite builds remain separate because `includeBuild(...)` does not transfer project ownership to the audited aggregate.
 

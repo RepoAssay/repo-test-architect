@@ -105,6 +105,16 @@ describe("validation repository finder", () => {
     );
   });
 
+  it("defines a conventional Go module validation profile", () => {
+    assert.equal(validationProfiles.go.language, "Go");
+    assert.deepEqual(detectManifestSignals(validationProfiles.go.searches, {
+      "go.mod": "module example.com/parser\n\ngo 1.22\n"
+    }, [{ name: "parser_test.go", type: "file" }]), {
+      signals: ["go-module", "root-go-tests"],
+      matchedPaths: ["go.mod", "parser_test.go"]
+    });
+  });
+
   it("defines Python validation profiles for package, framework, and advanced pytest shapes", () => {
     assert.deepEqual(
       ["python", "python-pytest", "python-fastapi", "python-django", "python-flask", "python-advanced"].map((profile) => validationProfiles[profile].language),

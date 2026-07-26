@@ -41,7 +41,7 @@ Implemented:
 - shared runtime Markdown audit renderer with a TypeScript reference mirror, used directly by the CLI
 - behavioral HTTP framework classifications for routers, routes, handlers, security and general middleware, request access and validation, request bodies, queries, cookies, caching, response construction, request events, proxies, sessions, WebSockets, streaming, client response parsing, and runtime adapters, including flat utility layouts identified through HTTP boundary types
 - runtime adapter registry with supported `javascript`, `kotlin`, `python`, and `swift` adapters
-- experimental `go` registry entry with conventional `go.mod` ownership, literal repository-contained `go.work` membership, module-local command selection, explicit `GOOS`/`GOARCH`/custom-tag evaluation for boolean and filename build constraints, runnable standard-library test detection, exact package-symbol provenance, conservative source classification, explicit incomplete-workspace/unsupported-constraint/Ginkgo blockers, golden artifacts, model-consistency locking, and shared downstream conformance
+- experimental `go` registry entry with conventional `go.mod` ownership, literal repository-contained `go.work` membership, module-local command selection, explicit `GOOS`/`GOARCH`/custom-tag evaluation for boolean and filename build constraints, runnable standard-library test detection, exact package-symbol provenance, bounded one-hop same-package source dependency evidence, conservative source classification, explicit incomplete-workspace/unsupported-constraint/Ginkgo blockers, golden artifacts, model-consistency locking, and shared downstream conformance
 - Swift Xcode command selection that preserves sole, direct scheme-owning, container-name-matched, and default-plan choices while retaining nested container paths, blocking ambiguous workspaces/projects/schemes/plans, and lowering unresolved profiles from high confidence
 - Swift source-symbol evidence that remains target-qualified and unique while rejecting test-local shadow declarations and same-named receiver member calls as proof of a source type or top-level function
 - Swift static extension evidence limited to source-file-unique receiver/member ownership and an explicit qualified call, with cross-file overloads and test-local receiver declarations kept uncredited
@@ -61,7 +61,7 @@ Implemented:
 - adapter registry capability metadata for maturity, framework signals, project types, and emitted artifacts
 - CLI adapter registry output
 - deterministic project detection for polyglot repository roots
-- project-detection traversal boundaries for nested `fixtures` and `__fixtures__` dependency manifests while preserving direct fixture-root audits
+- project-detection traversal boundaries for nested `fixtures`, `__fixtures__`, and Go `testdata` dependency manifests while preserving direct fixture-root audits
 - project detection adapter match evidence and support status reasons
 - project audit artifacts that preserve adapter match evidence and support status reasons for unsupported projects
 - project audit summaries with complete, partial, or none audit coverage status
@@ -105,6 +105,7 @@ Implemented:
 - alpha-readiness checklist for the test architecture audit milestone before native generation
 - deterministic `npm run alpha:check` gate for tests, adapter implementation coverage, adapter corpus validation, all-adapter performance/evidence regression, golden audits, model consistency, demo behavior, and local MCP transport without npm packaging requirements
 - real-repo audit reports for owned JavaScript/TypeScript and Swift repositories, including Collectors Grimoire and `cg-*` sibling packages
+- first pinned Go live-library validation against `BurntSushi/toml`, including native tests, stable measurements, source-dependency evidence, and complete project ownership after excluding nested `testdata`
 - authenticated public-repository discovery and ranking profiles for React, JavaScript/TypeScript workspaces, SwiftPM, SwiftUI/Xcode, Vapor, Swift Bazel, Swift macros/plugins, CocoaPods-era Apple projects, Gradle JVM, and Maven JVM validation targets
 - product positioning note for audit-first differentiation, initial audience, business paths, proof points, and anti-positioning
 - near-term roadmap for public demo polish, second adapter proof, placement analysis, MCP transport, and generation readiness gates

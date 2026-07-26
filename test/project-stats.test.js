@@ -75,12 +75,14 @@ describe("project stats", () => {
     fs.mkdirSync(path.join(root, "src"), { recursive: true });
     fs.mkdirSync(path.join(root, "packages", "core", "src"), { recursive: true });
     fs.mkdirSync(path.join(root, "fixtures", "dependency", "src"), { recursive: true });
+    fs.mkdirSync(path.join(root, "testdata", "rust-fixture"), { recursive: true });
     fs.writeFileSync(path.join(root, "package.json"), "{}\n");
     fs.writeFileSync(path.join(root, "src", "root.ts"), "export const root = true;\n");
     fs.writeFileSync(path.join(root, "packages", "core", "package.json"), "{}\n");
     fs.writeFileSync(path.join(root, "packages", "core", "src", "core.ts"), "export const core = true;\n");
     fs.writeFileSync(path.join(root, "fixtures", "dependency", "package.json"), "{}\n");
     fs.writeFileSync(path.join(root, "fixtures", "dependency", "src", "fixture.ts"), "export const fixture = true;\n");
+    fs.writeFileSync(path.join(root, "testdata", "rust-fixture", "fixture.rs"), "pub fn fixture() {}\n");
 
     const stats = collectProjectStats(auditDetectedProjects(root));
 

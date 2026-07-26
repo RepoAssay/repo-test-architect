@@ -121,7 +121,8 @@
                   "python-pytest-fixture",
                   "python-test-client-route",
                   "jvm-symbol-reference",
-                  "go-symbol-reference"
+                  "go-symbol-reference",
+                  "go-source-dependency"
                 ]
               },
               "strength": { "enum": ["naming", "direct", "referenced", "indirect"] },

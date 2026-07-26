@@ -34,7 +34,7 @@ describe("Go adapter", () => {
       blockers: []
     });
     assert.deepEqual(audit.untestedCandidates.map((target) => target.path), ["payment_client.go"]);
-    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["price_parser.go"]);
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["price_parser.go", "price_normalizer.go"]);
     assert.deepEqual(audit.skipped.map((target) => [target.path, target.kind]), [["payment.go", "dto"]]);
     assert.deepEqual(audit.coveredButRisky[0].existingTestEvidence, [
       {
@@ -47,6 +47,14 @@ describe("Go adapter", () => {
         testPath: "price_parser_test.go",
         kind: "filename-convention",
         strength: "naming"
+      }
+    ]);
+    assert.deepEqual(audit.coveredButRisky[1].existingTestEvidence, [
+      {
+        testPath: "price_parser_test.go",
+        kind: "go-source-dependency",
+        strength: "indirect",
+        viaUsage: "called"
       }
     ]);
   });
@@ -292,6 +300,32 @@ describe("Go adapter", () => {
       strength: "direct",
       usage: "called"
     }]);
+  });
+
+  it("propagates one called same-package source dependency without two-hop or local-shadow leakage", (t) => {
+    const root = createRepo(t, {
+      "go.mod": "module example.com/dependency\n",
+      "parse.go": "package dependency\nfunc Parse() int { return helper() }\n",
+      "helper.go": "package dependency\nfunc helper() int { return deep() }\n",
+      "deep.go": "package dependency\nfunc deep() int { return 1 }\n",
+      "shadow.go": "package dependency\nfunc Shadow() int { helper := func() int { return 2 }; return helper() }\n",
+      "parse_test.go": "package dependency\nimport \"testing\"\nfunc TestParse(t *testing.T) { if Parse() != 1 { t.Fatal() } }\n",
+      "shadow_test.go": "package dependency\nimport \"testing\"\nfunc TestShadow(t *testing.T) { if Shadow() != 2 { t.Fatal() } }\n"
+    });
+
+    const audit = auditGoRepo(root);
+
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["parse.go", "helper.go", "shadow.go"]);
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.path), ["deep.go"]);
+    assert.equal(audit.coveredButRisky[0].kind, "pure-logic");
+    assert.deepEqual(audit.coveredButRisky[1].existingTestEvidence, [
+      {
+        testPath: "parse_test.go",
+        kind: "go-source-dependency",
+        strength: "indirect",
+        viaUsage: "called"
+      }
+    ]);
   });
 
   it("resolves exact external test-package imports and aliases", (t) => {

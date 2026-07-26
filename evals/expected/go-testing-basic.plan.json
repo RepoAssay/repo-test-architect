@@ -5,7 +5,7 @@
     "verificationCommand": "go test ./...",
     "blockerCount": 0,
     "addTestCount": 1,
-    "extendTestCount": 1,
+    "extendTestCount": 2,
     "deferredCount": 1
   },
   "blockers": [],
@@ -66,6 +66,36 @@
         "external-boundary"
       ],
       "existingTestPaths": []
+    },
+    {
+      "id": "extend-test:price_normalizer.go",
+      "action": "extend-test",
+      "targetId": "price_normalizer.go",
+      "target": "price_normalizer",
+      "path": "price_normalizer.go",
+      "testLevel": "unit",
+      "priority": 3,
+      "riskReductionScore": 5,
+      "maintenanceCost": 2,
+      "rationale": [
+        "Runtime function or method behavior",
+        "Existing Go test evidence detected; review missing edge cases"
+      ],
+      "sourceSignals": [
+        "runtime-behavior",
+        "matching-test"
+      ],
+      "existingTestPaths": [
+        "price_parser_test.go"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "price_parser_test.go",
+          "kind": "go-source-dependency",
+          "strength": "indirect",
+          "viaUsage": "called"
+        }
+      ]
     },
     {
       "id": "defer:payment.go",

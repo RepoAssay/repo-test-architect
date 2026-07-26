@@ -91,6 +91,36 @@
           "strength": "naming"
         }
       ]
+    },
+    {
+      "id": "price_normalizer.go",
+      "name": "price_normalizer",
+      "path": "price_normalizer.go",
+      "kind": "utility",
+      "signals": [
+        "runtime-behavior",
+        "matching-test"
+      ],
+      "risk": "medium",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 5,
+      "maintenanceCost": 2,
+      "reasons": [
+        "Runtime function or method behavior",
+        "Existing Go test evidence detected; review missing edge cases"
+      ],
+      "existingTestPaths": [
+        "price_parser_test.go"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "price_parser_test.go",
+          "kind": "go-source-dependency",
+          "strength": "indirect",
+          "viaUsage": "called"
+        }
+      ]
     }
   ],
   "recommended": [
@@ -148,6 +178,36 @@
           "testPath": "price_parser_test.go",
           "kind": "filename-convention",
           "strength": "naming"
+        }
+      ]
+    },
+    {
+      "id": "price_normalizer.go",
+      "name": "price_normalizer",
+      "path": "price_normalizer.go",
+      "kind": "utility",
+      "signals": [
+        "runtime-behavior",
+        "matching-test"
+      ],
+      "risk": "medium",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 5,
+      "maintenanceCost": 2,
+      "reasons": [
+        "Runtime function or method behavior",
+        "Existing Go test evidence detected; review missing edge cases"
+      ],
+      "existingTestPaths": [
+        "price_parser_test.go"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "price_parser_test.go",
+          "kind": "go-source-dependency",
+          "strength": "indirect",
+          "viaUsage": "called"
         }
       ]
     }
