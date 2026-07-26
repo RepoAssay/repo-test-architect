@@ -50,8 +50,10 @@ The HTTP/service probe passes the reviewed detection, ownership, target, command
 - nested example modules retain independent ownership and do not contaminate the root command
 - HTTP handlers and middleware with no native statement coverage remain untested
 - `chain.go` is recovered from an exact top-level call without claiming package-wide coverage
-- receiver methods, interface dispatch, route runtime reachability, and assertion completeness remain outside the evidence claim
+- constructor-inferred or ambiguous receiver methods, interface dispatch, route runtime reachability, and assertion completeness remain outside the evidence claim
 
 ## Corpus Progress
 
 This checkout is the framework-heavy role in `validation-corpus/v1`. Its manifest record preserves the explicit Darwin/arm64 audit target so repeated measurements remain independent of the review host. The [Go workspace ownership validation](go-ownership-validation-report.md) supplies the difficult graph role.
+
+The explicitly typed receiver-method slice was remeasured against this exact checkout without changing its candidate counts, 66 evidence relationships, or canonical digest. The new rule therefore adds no inferred HTTP receiver claims to Chi's constructor- and interface-heavy patterns.

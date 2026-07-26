@@ -58,7 +58,7 @@ Decision: begin the next ecosystem with a bounded experimental Go adapter for co
 
 Rationale: Go has strong static project, package, test-file, runnable-test, and command conventions. It exercises package-colocated tests and external `_test` packages while keeping the first build/test matrix smaller than .NET, Rust, or dynamic framework ecosystems. The first slice can therefore prove a useful `go-symbol-reference` relationship without executing repository code or weakening the shared evidence contract. The checked-in fixture subsequently passed native `go test ./...`, `go test -race ./...`, and `gofmt` validation with Go 1.26.5 on Darwin arm64.
 
-Revisit when: common Go repositories show that receiver methods or alternate execution models must enter the bounded support claim.
+Revisit when: common Go repositories show that alternate execution models must enter the bounded support claim.
 
 ## Preserve Go Workspace Module Ownership
 
@@ -197,3 +197,11 @@ Decision: mask Go comments, interpreted strings, raw strings, runes, and escapes
 Rationale: the pinned HTTP probe contained wildcard route strings with `/*` and `*/`. A comment regular expression interpreted those literal characters as a block comment and hid a real top-level function call between them, producing a false untested result for fully exercised code. Lexical states remove that ambiguity without treating text inside comments or strings as executable evidence.
 
 Revisit when: live Go syntax demonstrates a construct the bounded scanner cannot distinguish safely, or adopting a parser can improve correctness without executing repository code or introducing host-dependent behavior.
+
+## Explicitly Typed Go Receiver-Method Evidence
+
+Decision: emit direct `go-symbol-reference` evidence for a unique receiver-type/method pair only when a runnable test calls it through one unique explicitly typed short or `var` binding. Support value and pointer receivers plus exact external-package aliases; reject constructor inference, reassignment, duplicate or shadowed bindings, parameter inference, interfaces, embedding, and generic receivers.
+
+Rationale: receiver methods are ordinary Go behavior and were the largest repeated evidence gap after promotion. Requiring both the source receiver type and a concrete test binding recovers calls such as `client := PaymentClient{...}; client.Authorize(...)` without guessing what `NewClient()`, an interface value, or a reassigned variable contains. The checked-in client fixture validates the call with native `httptest`, race testing, and formatting.
+
+Revisit when: pinned live cases demonstrate a safe static constructor-return or typed-parameter rule that materially improves evidence without turning inferred or dynamic dispatch into direct coverage.
