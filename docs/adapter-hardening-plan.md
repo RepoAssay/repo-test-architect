@@ -125,6 +125,8 @@ Progress: the first positive Swift member-evidence slice credits a static functi
 
 Progress: SwiftPM test-target ownership now distinguishes local direct-string, `.target`, and locally resolving `.byName` dependencies from external `.product` dependencies. An external product whose name collides with a local target can no longer qualify that local target's source evidence, while nested literal conditions and comments remain parseable without broadening into computed manifest evaluation.
 
+Progress: source-file-unique instance functions declared in extensions now receive evidence when a test calls them directly on an explicit constructor expression. Nested constructor arguments remain parseable, while stored or inferred receivers, cross-file overloads, and test-local receiver declarations stay uncredited. This completes the current bounded Swift hardening matrix; broader type inference remains an explicit non-goal for the static adapter.
+
 ## Workstream 3: Cross-Adapter Trust
 
 After each adapter has a refreshed corpus:
@@ -162,7 +164,7 @@ The initial queue is:
 2. Refresh JavaScript/TypeScript validation, starting with workspace command ownership and configuration boundaries.
 3. Refresh Python validation, starting with multi-package ownership, relative imports, and pytest discovery configuration.
 4. Refresh Kotlin/JVM validation, starting with Gradle/Maven ownership and conservative unsupported-graph behavior.
-5. Refresh Swift validation, starting with SwiftPM/Xcode ownership ambiguity and symbol-evidence pressure. Xcode selection, local-versus-external SwiftPM dependency ownership, shadow suppression, and bounded static extension evidence are complete; instance and inferred-member relationships remain under conservative review.
+5. Refresh Swift validation, starting with SwiftPM/Xcode ownership ambiguity and symbol-evidence pressure. Complete for the bounded static matrix: Xcode selection, local-versus-external SwiftPM dependency ownership, shadow suppression, unique static extension evidence, and direct-constructor instance extension evidence are locked; stored and inferred receivers remain outside the supported boundary.
 6. Re-run live-repository reports across all four adapters after Swift hardening and turn concrete drift into regression-backed fixes.
 7. Improve the human-facing validation scorecard without collapsing review completeness into reviewed pass rate.
 8. Run the broader cross-adapter trust pass, then cut the next public alpha only after the Swift, live-repository, scorecard, and exact-commit release gates pass.
