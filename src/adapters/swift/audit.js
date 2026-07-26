@@ -158,9 +158,10 @@ function buildProfile(root, files, bazelGraph) {
   const paths = files.map((file) => normalizePath(file.path));
   const packageText = swiftPmManifestText(files);
   const testFrameworks = detectTestFrameworks(files, packageText);
-  const testCommand = detectTestCommand(paths, testFrameworks, bazelGraph, files);
+  const testCommandResolution = detectTestCommand(paths, testFrameworks, bazelGraph, files);
+  const testCommand = testCommandResolution.command;
   const existingTestLocations = detectExistingTestLocations(paths, bazelGraph);
-  const blockers = detectBlockers(testCommand, testFrameworks);
+  const blockers = detectBlockers(testCommand, testFrameworks, testCommandResolution.blockers);
 
   return {
     root,
@@ -241,22 +242,26 @@ function detectTestFrameworks(files, packageText) {
 }
 
 function detectTestCommand(paths, frameworks, bazelGraph, files) {
-  if (frameworks.length === 0) return undefined;
-  if (bazelGraph.hasSwiftTest) return "bazel test //...";
-  if (paths.includes("Package.swift")) return "swift test";
+  if (frameworks.length === 0) return { command: undefined, blockers: [] };
+  if (bazelGraph.hasSwiftTest) return { command: "bazel test //...", blockers: [] };
+  if (paths.includes("Package.swift")) return { command: "swift test", blockers: [] };
   if (hasXcodeContainer(paths)) {
     const scheme = detectXcodeScheme(paths);
+    const schemeBlocker = detectXcodeSchemeBlocker(paths, scheme);
+    if (schemeBlocker) return { command: undefined, blockers: [schemeBlocker] };
     const testPlan = detectXcodeTestPlan(paths, files, scheme);
+    const testPlanBlocker = detectXcodeTestPlanBlocker(paths, testPlan);
+    if (testPlanBlocker) return { command: undefined, blockers: [testPlanBlocker] };
     const workspace = detectXcodeWorkspace(paths, scheme);
     const project = workspace ? undefined : detectXcodeProject(paths, scheme);
     const containerOption = workspace
       ? ` -workspace ${quoteShellArgument(workspace)}`
       : project ? ` -project ${quoteShellArgument(project)}` : "";
-    if (scheme && testPlan) return `xcodebuild test${containerOption} -scheme ${quoteShellArgument(scheme)} -testPlan ${quoteShellArgument(testPlan)}`;
-    if (scheme) return `xcodebuild test${containerOption} -scheme ${quoteShellArgument(scheme)}`;
-    return `xcodebuild test${containerOption}`;
+    if (scheme && testPlan) return { command: `xcodebuild test${containerOption} -scheme ${quoteShellArgument(scheme)} -testPlan ${quoteShellArgument(testPlan)}`, blockers: [] };
+    if (scheme) return { command: `xcodebuild test${containerOption} -scheme ${quoteShellArgument(scheme)}`, blockers: [] };
+    return { command: `xcodebuild test${containerOption}`, blockers: [] };
   }
-  return undefined;
+  return { command: undefined, blockers: [] };
 }
 
 function detectExistingTestLocations(paths, bazelGraph) {
@@ -288,7 +293,7 @@ function detectSetupSignals(paths, packageText, bazelGraph, files) {
   if (paths.some(isVersionSpecificSwiftPmManifestPath)) signals.add("swiftpm version-specific manifest");
   if (paths.some((item) => item.endsWith(".xcodeproj/project.pbxproj"))) signals.add("xcode project");
   if (paths.some(isXcodeWorkspaceDataPath)) signals.add("xcode workspace");
-  if (detectXcodeScheme(paths)) signals.add("xcode shared scheme");
+  if (paths.some(isSharedXcodeSchemePath)) signals.add("xcode shared scheme");
   if (paths.some((item) => item.endsWith(".xctestplan"))) signals.add("xcode test plan");
   const scheme = detectXcodeScheme(paths);
   const testPlans = new Set(paths.filter((item) => item.endsWith(".xctestplan")).map(basenameWithoutExtension));
@@ -332,15 +337,17 @@ function detectArchitectures(paths, files, bazelGraph) {
   return [...architectures].sort();
 }
 
-function detectBlockers(testCommand, frameworks) {
+function detectBlockers(testCommand, frameworks, commandBlockers = []) {
   const blockers = [];
   if (frameworks.length === 0) blockers.push("No supported Swift test framework detected.");
-  if (!testCommand) blockers.push("No runnable Swift test command detected from Package.swift or Xcode project/workspace markers.");
+  blockers.push(...commandBlockers);
+  if (!testCommand && commandBlockers.length === 0) blockers.push("No runnable Swift test command detected from Package.swift or Xcode project/workspace markers.");
   return blockers;
 }
 
 function scoreProfileConfidence(testFrameworks, existingTestLocations, blockers) {
   if (blockers.length > 1) return "low";
+  if (blockers.length === 1) return "medium";
   if (testFrameworks.length > 0 && existingTestLocations.length > 0) return "high";
   if (testFrameworks.length > 0) return "medium";
   return "low";
@@ -1259,6 +1266,13 @@ function detectXcodeScheme(paths) {
   return undefined;
 }
 
+function detectXcodeSchemeBlocker(paths, selectedScheme) {
+  const schemePaths = paths.filter(isSharedXcodeSchemePath);
+  const schemeNames = [...new Set(schemePaths.map((item) => basenameWithoutExtension(item)))].sort();
+  if (selectedScheme || schemePaths.length <= 1) return undefined;
+  return `Multiple shared Xcode schemes detected without a unique workspace or project name match: ${schemeNames.join(", ")}.`;
+}
+
 function detectXcodeWorkspace(paths, scheme) {
   const workspaces = [...new Set(paths
     .filter(isXcodeWorkspaceDataPath)
@@ -1301,6 +1315,14 @@ function detectXcodeTestPlan(paths, files, scheme) {
   if (schemePlan) return schemePlan;
   if (testPlanNames.length === 1) return testPlanNames[0];
   return undefined;
+}
+
+function detectXcodeTestPlanBlocker(paths, selectedTestPlan) {
+  const testPlanNames = [...new Set(paths
+    .filter((item) => item.endsWith(".xctestplan"))
+    .map((item) => basenameWithoutExtension(item)))].sort();
+  if (selectedTestPlan || testPlanNames.length <= 1) return undefined;
+  return `Multiple Xcode test plans detected without a unique default or sole scheme reference: ${testPlanNames.join(", ")}.`;
 }
 
 function detectSchemeTestPlan(files, scheme, availablePlans) {
