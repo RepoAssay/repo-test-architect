@@ -27,6 +27,13 @@ describe("project audit summary", () => {
     assert.deepEqual(summary.unsupportedProjects, []);
   });
 
+  it("uses the canonical per-project ranking for top candidates", () => {
+    const projectAudits = auditDetectedProjects(path.resolve("examples/node-vitest-basic"));
+    const summary = summarizeProjectAudits(projectAudits);
+
+    assert.deepEqual(summary.projects[0].topCandidateIds, ["src/deckParser.ts", "src/authService.ts"]);
+  });
+
   it("classifies complete and empty audit coverage", () => {
     assert.equal(
       summarizeProjectAudits({

@@ -1,6 +1,7 @@
 import { validateProjectAudits } from "./project-audits-validation.js";
 import { classifyProjectAuditCoverage } from "./project-audit-coverage.js";
 import { collectUnsupportedReasons, normalizeUnsupportedProjects } from "./project-unsupported.js";
+import { rankTestCandidates } from "./rank-test-candidates.js";
 
 /**
  * @typedef {object} ProjectAuditEntry
@@ -57,6 +58,13 @@ export function summarizeProjectAudits(projectAudits) {
   validateProjectAudits(projectAudits);
 
   const projects = projectAudits.audits.map((entry) => {
+    const ranking = rankTestCandidates({
+      ...entry.audit,
+      profile: {
+        ...entry.audit.profile,
+        blockers: entry.audit.profile.blockers ?? []
+      }
+    });
     const project = {
       projectId: entry.projectId,
       projectRoot: entry.projectRoot,
@@ -66,7 +74,7 @@ export function summarizeProjectAudits(projectAudits) {
       coveredButRiskyCount: entry.audit.coveredButRisky.length,
       skippedTargetCount: entry.audit.skipped.length,
       riskCount: entry.audit.risks.length,
-      topCandidateIds: entry.audit.recommended.slice(0, 3).map((target) => target.id)
+      topCandidateIds: ranking.candidates.slice(0, 3).map((candidate) => candidate.targetId)
     };
 
     if (entry.audit.profile.testCommand) {

@@ -77,6 +77,7 @@ The protected `master` branch requires the stable Linux `pr-gate`. Normal alpha 
 
 ### Trust And Review UX
 
+- the completed [cross-adapter trust review](cross-adapter-trust-report.md) keeps direct audits and every project-aware downstream artifact aligned for JavaScript/TypeScript, Kotlin/JVM, Python, and Swift
 - one command can produce a concise repo-level summary of top findings
 - each top finding links back to the source target, matching tests if any, rationale, and recommended test level
 - low-confidence or blocked projects are clearly separated from high-confidence recommendations
