@@ -94,7 +94,7 @@ Use `analyze_repository` first for a general review. It detects project roots, a
 Use `list_adapters` before `audit_repo` when a client needs to discover supported adapter IDs.
 Use `list_project_detection_rules` when a client needs to explain what project markers the deterministic detector recognizes.
 Use `detect_projects` when a repository may contain multiple language or package roots. It accepts optional `excludeProjectRoots` entries for exact roots or subtree patterns such as `"examples/**"`.
-Use `audit_projects` to audit detected supported project roots while reporting unsupported roots separately. It accepts optional repository-relative `changedPaths` and optional `excludeProjectRoots`, then passes matching project-relative paths into each selected adapter.
+Use `audit_projects` to audit detected supported project roots while reporting unsupported roots separately. It accepts optional repository-relative `changedPaths`, optional `excludeProjectRoots`, and an optional Go target object, then passes matching project-relative paths and target context into each selected adapter.
 Use `summarize_project_audits` when a client needs compact audit coverage status, unsupported reasons, and counts before asking for detailed per-project audit data.
 Use `rank_project_candidates` when a client needs ordered candidates across audited project roots while preserving project identity.
 Use `generate_project_test_plan` when a client needs project-aware plan items before selecting future generation targets.
@@ -102,7 +102,7 @@ Use `get_plan_execution_hints` with a `plan/v1` or `project-test-plan/v1` artifa
 Use `collect_project_findings` when a client needs a concise top-findings test architecture audit across projects.
 Use `analyze_project_test_placement` when a client needs advisory placement findings derived from audited project roots.
 Use `collect_project_stats` when a client needs local artifact-derived counts and distributions for reporting or model-profile comparisons.
-`audit_repo` is for an explicitly selected single project root and adapter. It accepts an optional `adapterId` and optional repository-relative `changedPaths`, and defaults to `javascript` for compatibility. The current supported adapters are `javascript`, `kotlin`, `python`, and `swift`; experimental `go` covers bounded standalone modules and literal repository-contained `go.work` members in [Go Experimental Support](go-experimental-support.md), and Kotlin/JVM is bounded by [Kotlin/JVM Alpha Support](kotlin-jvm-alpha-support.md).
+`audit_repo` is for an explicitly selected single project root and adapter. It accepts an optional `adapterId`, optional repository-relative `changedPaths`, and optional `goTarget: { goos, goarch, tags }`, and defaults to `javascript` for compatibility. `analyze_repository` and `audit_projects` accept the same Go target object for project-aware scans. The current supported adapters are `javascript`, `kotlin`, `python`, and `swift`; experimental `go` covers bounded standalone modules, literal repository-contained `go.work` members, and explicit static build targets in [Go Experimental Support](go-experimental-support.md), and Kotlin/JVM is bounded by [Kotlin/JVM Alpha Support](kotlin-jvm-alpha-support.md).
 
 The server also publishes workflow instructions during MCP initialization. They direct connected models toward `analyze_repository`, distinguish repository scanning from existing-artifact transformations, preserve deterministic facts, and state that native generation remains deferred.
 

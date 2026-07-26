@@ -119,6 +119,20 @@ describe("tool API", () => {
     assert.equal(result.summary.skippedProjectCount, 0);
   });
 
+  it("passes explicit Go targets through direct and detected-project audits", () => {
+    const root = path.resolve("examples/go-build-target-basic");
+    const goTarget = { goos: "darwin", goarch: "arm64", tags: ["integration"] };
+    const direct = auditRepo(root, { adapterId: "go", goTarget });
+    const projects = auditRepoProjects(root, { goTarget });
+
+    assert.equal(direct.profile.testCommand, "GOOS=darwin GOARCH=arm64 go test -tags=integration ./...");
+    assert.equal(projects.audits[0].audit.profile.testCommand, direct.profile.testCommand);
+    assert.throws(
+      () => auditRepo(root, { adapterId: "go", goTarget: { goos: "", goarch: "arm64" } }),
+      /goTarget\.goos must be a non-empty string/
+    );
+  });
+
   it("audits detected repository projects with excluded roots", () => {
     const result = auditRepoProjects(path.resolve("examples/polyglot-workspace"), {
       excludeProjectRoots: ["apps/**"]

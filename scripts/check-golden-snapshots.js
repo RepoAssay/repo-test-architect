@@ -12,7 +12,7 @@ let failures = 0;
 let matches = 0;
 
 for (const fixture of loadEvalFixtures()) {
-  const audit = normalizeAuditForSnapshot(getAdapter(fixture.adapter).audit(fixture.root));
+  const audit = normalizeAuditForSnapshot(getAdapter(fixture.adapter).audit(fixture.root, fixture.options));
   const plan = normalizeJsonForSnapshot(createTestPlan(audit));
 
   const auditMatched = compareSnapshot(fixture.name, "audit", audit);

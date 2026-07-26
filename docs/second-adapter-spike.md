@@ -15,7 +15,7 @@ Later completed adapters:
 
 Current fifth-adapter spike:
 
-- experimental Go module and literal `go.work` member support with standard-library tests; see [Go Experimental Support](go-experimental-support.md)
+- experimental Go module, literal `go.work` member, and explicit static build-target support with standard-library tests; see [Go Experimental Support](go-experimental-support.md)
 
 Choose the ecosystem with the lowest local setup cost and the clearest fixture coverage. The spike should validate adapter shape, not solve every framework variant.
 

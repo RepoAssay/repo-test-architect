@@ -30,6 +30,16 @@
     "description": "Conditional or branching behavior was detected."
   },
   {
+    "id": "build-constraint",
+    "category": "structure",
+    "description": "A Go build expression or platform filename constraint controls whether this source belongs to a target."
+  },
+  {
+    "id": "build-target-selected",
+    "category": "structure",
+    "description": "The source is included by the explicit Go build target used for this audit."
+  },
+  {
     "id": "constants-only",
     "category": "low-value",
     "description": "File only defines constants and should usually be covered through consuming behavior."
@@ -223,6 +233,11 @@
     "id": "swiftui-view",
     "category": "architecture",
     "description": "SwiftUI view code was detected."
+  },
+  {
+    "id": "target-excluded",
+    "category": "structure",
+    "description": "The source is excluded by the explicit build target used for this audit."
   },
   {
     "id": "type-only",

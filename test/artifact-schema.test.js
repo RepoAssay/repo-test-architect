@@ -74,7 +74,7 @@ describe("artifact schema compatibility", () => {
     });
 
     it(`validates ${fixture.name} target explanation artifact`, () => {
-      const audit = getAdapter(fixture.adapter).audit(fixture.root);
+      const audit = getAdapter(fixture.adapter).audit(fixture.root, fixture.options);
       const target = [...audit.untestedCandidates, ...audit.coveredButRisky, ...audit.skipped][0];
       if (!target) {
         assert.deepEqual(audit.recommended, []);
@@ -86,7 +86,7 @@ describe("artifact schema compatibility", () => {
     });
 
     it(`validates ${fixture.name} candidate ranking artifact`, () => {
-      const audit = getAdapter(fixture.adapter).audit(fixture.root);
+      const audit = getAdapter(fixture.adapter).audit(fixture.root, fixture.options);
       const artifact = rankTestCandidates(audit);
 
       assertMatchesSchema(artifact, rankingSchema, `${fixture.name}.candidate-ranking.json`);

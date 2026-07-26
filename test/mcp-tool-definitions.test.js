@@ -64,6 +64,33 @@ describe("MCP tool definitions", () => {
     }
   });
 
+  it("declares bounded Go target objects on repository audit tools", () => {
+    for (const toolName of ["analyze_repository", "audit_projects", "audit_repo"]) {
+      const target = mcpTools.find((tool) => tool.name === toolName).inputSchema.properties.goTarget;
+
+      assert.equal(target.type, "object");
+      assert.equal(target.additionalProperties, false);
+      assert.deepEqual(target.required, ["goos", "goarch"]);
+      assert.equal(target.properties.tags.items.minLength, 1);
+    }
+  });
+
+  it("passes explicit Go targets through direct and project MCP tools", () => {
+    const repoRoot = path.resolve("examples/go-build-target-basic");
+    const goTarget = { goos: "darwin", goarch: "arm64", tags: ["integration"] };
+    const direct = callTool("audit_repo", { repoRoot, adapterId: "go", goTarget });
+    const projects = callTool("audit_projects", { repoRoot, goTarget });
+    const analysis = callTool("analyze_repository", { repoRoot, goTarget });
+
+    assert.equal(direct.profile.testCommand, "GOOS=darwin GOARCH=arm64 go test -tags=integration ./...");
+    assert.equal(projects.audits[0].audit.profile.testCommand, direct.profile.testCommand);
+    assert.deepEqual(analysis.verificationCommands, [{ command: direct.profile.testCommand, projectCount: 1 }]);
+    assert.throws(
+      () => callTool("audit_repo", { repoRoot, adapterId: "go", goTarget: { goos: "darwin", goarch: "arm64", extra: true } }),
+      (error) => error.kind === "invalid-arguments" && error.details.argument === "goTarget"
+    );
+  });
+
   it("dispatches adapter registry, project detection rules, project detection, project audits, audit, plan, explanation, and ranking tools", () => {
     const repositoryAnalysis = callTool("analyze_repository", {
       repoRoot: path.resolve("examples/polyglot-workspace")

@@ -8,6 +8,7 @@ import { auditSwiftRepo } from "../adapters/swift/audit.js";
  * @typedef {object} AuditRepoOptions
  * @property {string[]} [changedPaths]
  * @property {string} [repositoryRoot]
+ * @property {{ goos: string, goarch: string, tags?: string[] }} [goTarget]
  *
  * @typedef {object} RuntimeAdapter
  * @property {string} id
@@ -59,7 +60,8 @@ export const adapters = [
     emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"],
     audit(repoRoot, options = {}) {
       return auditGoRepo(repoRoot, {
-        changedPaths: options.changedPaths
+        changedPaths: options.changedPaths,
+        goTarget: options.goTarget
       });
     }
   },

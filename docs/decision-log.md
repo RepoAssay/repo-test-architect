@@ -165,3 +165,11 @@ Decision: make `analyze` in the CLI and `analyze_repository` in MCP the recommen
 Rationale: the focused artifact surface is valuable for advanced users and deterministic model workflows, but requiring humans or models to discover and sequence many similarly weighted commands creates avoidable routing errors. A canonical complete artifact preserves the audit-first boundary while giving both audiences one reliable entrypoint.
 
 Revisit when: measured usage shows that the complete artifact is too large for common clients, or a different small set of entrypoints produces more reliable human and model outcomes without hiding unsupported projects or rescanning repositories.
+
+## Explicit Go Build Targets Without Host Leakage
+
+Decision: make Go build-target ownership opt-in through an explicit `GOOS`, `GOARCH`, and custom-tag object shared by direct audits, project audits, repository analysis, CLI flags, and MCP. Evaluate bounded boolean `//go:build` expressions and standard filename suffix constraints statically. Keep nonmatching sources visible as excluded plan items, and block legacy-only, malformed, unsupported-pair, cgo, release, compiler, or architecture-feature constraints.
+
+Rationale: silently inheriting the machine running the audit would make artifacts vary by host and could incorrectly connect tests to source that is not part of the selected build. Explicit target context keeps commands and evidence reproducible while covering the common platform and custom-tag cases without executing `go list` or repository code.
+
+Revisit when: a pinned live corpus demonstrates a deterministic need for cgo/toolchain/release-tag evaluation or multi-target aggregation with an artifact shape that preserves per-target ownership.

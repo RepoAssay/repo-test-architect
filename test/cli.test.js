@@ -736,6 +736,70 @@ describe("CLI", () => {
     );
   });
 
+  it("passes explicit Go build targets through single-project audits", () => {
+    const output = execFileSync(process.execPath, [
+      cliPath,
+      "audit",
+      "examples/go-build-target-basic",
+      "--adapter=go",
+      "--goos=darwin",
+      "--goarch=arm64",
+      "--go-tag=integration",
+      "--format=json"
+    ], { encoding: "utf8" });
+    const audit = JSON.parse(output);
+
+    assert.equal(audit.profile.testCommand, "GOOS=darwin GOARCH=arm64 go test -tags=integration ./...");
+    assert.deepEqual(audit.profile.blockers, []);
+  });
+
+  it("passes explicit Go build targets through repository audits", () => {
+    const output = execFileSync(process.execPath, [
+      cliPath,
+      "audit-projects",
+      "examples/go-build-target-basic",
+      "--goos",
+      "darwin",
+      "--goarch",
+      "arm64",
+      "--go-tag",
+      "integration",
+      "--format=json"
+    ], { encoding: "utf8" });
+    const projectAudits = JSON.parse(output);
+
+    assert.equal(
+      projectAudits.audits[0].audit.profile.testCommand,
+      "GOOS=darwin GOARCH=arm64 go test -tags=integration ./..."
+    );
+  });
+
+  it("requires complete Go target flags", () => {
+    assert.throws(
+      () => execFileSync(process.execPath, [
+        cliPath,
+        "audit",
+        "examples/go-build-target-basic",
+        "--adapter=go",
+        "--goos=darwin"
+      ], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }),
+      (error) => /requires non-empty --goos and --goarch/.test(error.stderr)
+    );
+  });
+
+  it("rejects Go target flags when reusing a saved audit artifact", () => {
+    assert.throws(
+      () => execFileSync(process.execPath, [
+        cliPath,
+        "plan",
+        "--from-audit=evals/expected/go-testing-basic.audit.json",
+        "--goos=darwin",
+        "--goarch=arm64"
+      ], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }),
+      (error) => /require a repository scan/.test(error.stderr)
+    );
+  });
+
   it("uses an explicit adapter for non-default plan commands", () => {
     const output = execFileSync(
       process.execPath,

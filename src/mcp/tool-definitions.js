@@ -66,7 +66,8 @@ const toolDefinitions = [
         type: "array",
         description: "Optional exact project roots or subtree patterns such as examples/** to exclude before analysis.",
         items: { type: "string", minLength: 1 }
-      }
+      },
+      goTarget: goTargetSchema()
     }, ["repoRoot"])
   },
   {
@@ -109,7 +110,8 @@ const toolDefinitions = [
         type: "array",
         description: "Optional exact project roots or subtree patterns such as examples/** to exclude before auditing detected projects.",
         items: { type: "string", minLength: 1 }
-      }
+      },
+      goTarget: goTargetSchema()
     }, ["repoRoot"])
   },
   {
@@ -171,7 +173,8 @@ const toolDefinitions = [
         type: "array",
         description: "Optional repository-relative source paths to limit target selection.",
         items: { type: "string", minLength: 1 }
-      }
+      },
+      goTarget: goTargetSchema()
     }, ["repoRoot"])
   },
   {
@@ -259,7 +262,8 @@ export function callTool(name, args = {}) {
       case "analyze_repository":
         return analyzeRepository(requireString(args.repoRoot, "repoRoot"), {
           changedPaths: optionalStringArray(args.changedPaths, "changedPaths"),
-          excludeProjectRoots: optionalStringArray(args.excludeProjectRoots, "excludeProjectRoots")
+          excludeProjectRoots: optionalStringArray(args.excludeProjectRoots, "excludeProjectRoots"),
+          goTarget: optionalGoTarget(args.goTarget)
         });
       case "list_adapters":
         return getAdapterRegistry();
@@ -272,7 +276,8 @@ export function callTool(name, args = {}) {
       case "audit_projects":
         return auditRepoProjects(requireString(args.repoRoot, "repoRoot"), {
           changedPaths: optionalStringArray(args.changedPaths, "changedPaths"),
-          excludeProjectRoots: optionalStringArray(args.excludeProjectRoots, "excludeProjectRoots")
+          excludeProjectRoots: optionalStringArray(args.excludeProjectRoots, "excludeProjectRoots"),
+          goTarget: optionalGoTarget(args.goTarget)
         });
       case "summarize_project_audits":
         return summarizeRepoProjectAudits(requireObject(args.projectAudits, "projectAudits"));
@@ -289,7 +294,8 @@ export function callTool(name, args = {}) {
       case "audit_repo":
         return auditRepo(requireString(args.repoRoot, "repoRoot"), {
           adapterId: optionalString(args.adapterId, "adapterId"),
-          changedPaths: optionalStringArray(args.changedPaths, "changedPaths")
+          changedPaths: optionalStringArray(args.changedPaths, "changedPaths"),
+          goTarget: optionalGoTarget(args.goTarget)
         });
       case "get_audit_graph":
         return getAuditGraph(requireObject(args.audit, "audit"));
@@ -334,6 +340,18 @@ function objectSchema(properties, required) {
     required,
     properties
   };
+}
+
+function goTargetSchema() {
+  return objectSchema({
+    goos: { type: "string", minLength: 1, description: "Explicit GOOS for bounded Go build-constraint evaluation." },
+    goarch: { type: "string", minLength: 1, description: "Explicit GOARCH for bounded Go build-constraint evaluation." },
+    tags: {
+      type: "array",
+      description: "Optional custom Go build tags passed to the target-aware verification command.",
+      items: { type: "string", minLength: 1 }
+    }
+  }, ["goos", "goarch"]);
 }
 
 function artifact(schemaVersion, schemaPath) {
@@ -382,6 +400,20 @@ function optionalStringArray(value, name) {
   }
 
   return value;
+}
+
+function optionalGoTarget(value) {
+  if (value === undefined) return undefined;
+  const target = requireObject(value, "goTarget");
+  const unknownKeys = Object.keys(target).filter((key) => !["goos", "goarch", "tags"].includes(key));
+  if (unknownKeys.length > 0) {
+    throw new McpToolError("invalid-arguments", `Unsupported goTarget option: ${unknownKeys[0]}.`, { argument: "goTarget" });
+  }
+  return {
+    goos: requireString(target.goos, "goTarget.goos"),
+    goarch: requireString(target.goarch, "goTarget.goarch"),
+    tags: optionalStringArray(target.tags, "goTarget.tags") ?? []
+  };
 }
 
 function validateToolArgs(tool, args) {

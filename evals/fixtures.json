@@ -45,6 +45,18 @@
     "path": "examples/go-testing-basic"
   },
   {
+    "name": "go-build-target-basic",
+    "adapter": "go",
+    "path": "examples/go-build-target-basic",
+    "options": {
+      "goTarget": {
+        "goos": "darwin",
+        "goarch": "arm64",
+        "tags": ["integration"]
+      }
+    }
+  },
+  {
     "name": "go-workspace-checkout",
     "adapter": "go",
     "path": "examples/go-workspace-basic/services/checkout"

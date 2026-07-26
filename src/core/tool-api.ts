@@ -287,6 +287,13 @@ export interface AdapterMatch {
 export interface AuditRepoOptions {
   adapterId?: string;
   changedPaths?: string[];
+  goTarget?: GoTargetOptions;
+}
+
+export interface GoTargetOptions {
+  goos: string;
+  goarch: string;
+  tags?: string[];
 }
 
 export interface DetectRepoProjectsOptions {
@@ -296,6 +303,7 @@ export interface DetectRepoProjectsOptions {
 export interface AuditRepoProjectsOptions {
   changedPaths?: string[];
   excludeProjectRoots?: string[];
+  goTarget?: GoTargetOptions;
 }
 
 export interface GenerateTestPlanOptions {

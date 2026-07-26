@@ -12,7 +12,7 @@ The useful baseline is:
 
 - deterministic JavaScript/TypeScript audit pipeline
 - supported Swift, Python, and bounded Kotlin/JVM adapters
-- experimental conventional Go module adapter with literal repository-contained `go.work` ownership
+- experimental conventional Go module adapter with literal repository-contained `go.work` ownership and explicit static build-target selection
 - polyglot project detection with unsupported-project reporting
 - project-level ranking, planning, provider-neutral execution hints, placement, stats, and local MCP tool calls
 - disabled-by-default local MCP diagnostics, safe internal-error report IDs, runtime checks, and inspectable sanitized bundles
@@ -91,11 +91,11 @@ Detection, ownership, command, evidence, ranking, stability, and performance eac
 
 Goal: prove the adapter contract keeps holding as additional ecosystems move from detection-only to audited fixtures.
 
-Status: Swift, Python, and bounded Kotlin/JVM modules reached supported alpha maturity, and the four-adapter hardening gate is complete. The experimental Go spike now passes standalone and two-module `go.work` fixtures, native module-local `go test ./...`, `go test -race ./...`, `gofmt`, shared conformance, implementation coverage, golden artifact, and model-consistency gates. Promotion remains pending on the live validation corpus and a generated performance/evidence gate described in [Go Experimental Support](go-experimental-support.md).
+Status: Swift, Python, and bounded Kotlin/JVM modules reached supported alpha maturity, and the four-adapter hardening gate is complete. The experimental Go spike now passes standalone, two-module `go.work`, and explicit build-target fixtures; native module-local and target-qualified tests; `gofmt`; shared conformance; implementation coverage; golden artifact; and model-consistency gates. Promotion remains pending on the live validation corpus and a generated performance/evidence gate described in [Go Experimental Support](go-experimental-support.md).
 
 Useful hardening targets:
 
-- Go build-target configuration, large-module performance, and pinned live-repository validation
+- Go large-module performance and pinned live-repository validation
 - Kotlin/JVM with Gradle/Maven, bounded single-module and settings-owned all-KMP literal-JVM-target graphs with source-set-qualified API traversal, JUnit variants, bounded Kotest common specs, conventional Spock features, and method-level TestNG
 - Swift Package Manager with XCTest, Swift Testing, Quick/Nimble, and SnapshotTesting signals
 - Python fixture reachability, async/parametrized/property-based pytest conventions, Django/Flask routes, tox/nox commands, coverage configuration, and no-tests-yet blocker behavior
