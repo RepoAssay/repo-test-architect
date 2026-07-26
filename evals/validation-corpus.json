@@ -380,17 +380,17 @@
           },
           "observed": {
             "testCommand": "swift test",
-            "untestedCandidates": 90,
-            "coveredButRisky": 92,
+            "untestedCandidates": 86,
+            "coveredButRisky": 96,
             "skippedTargets": 168,
-            "auditDurationMs": 11500,
+            "auditDurationMs": 14484,
             "auditDurationSamplesMs": [
-              11518,
-              11500,
-              11430
+              14568,
+              14484,
+              14370
             ],
-            "evidenceRelationshipCount": 261,
-            "canonicalAuditSha256": "8d931c34ef431a4e34892f08d9549413228820bf858868bfd01dca8ea4b37e51"
+            "evidenceRelationshipCount": 265,
+            "canonicalAuditSha256": "73578ce9b98f0e1f3d688c0159bc7969d235cb27f73a8bc2be0f4bdccb7b5db8"
           }
         },
         {
@@ -414,17 +414,17 @@
           },
           "observed": {
             "testCommand": "bazel test //...",
-            "untestedCandidates": 29,
-            "coveredButRisky": 5,
+            "untestedCandidates": 30,
+            "coveredButRisky": 4,
             "skippedTargets": 102,
-            "auditDurationMs": 114,
+            "auditDurationMs": 135,
             "auditDurationSamplesMs": [
-              170,
-              108,
-              114
+              191,
+              135,
+              126
             ],
-            "evidenceRelationshipCount": 8,
-            "canonicalAuditSha256": "f162dac565b4d8ab2bc016efa3352f134d05f50b3edc044ffe0af240e254226c"
+            "evidenceRelationshipCount": 6,
+            "canonicalAuditSha256": "3bbeba0c41039511e4a32c0a24a999efc40d7abf3ac68309743b3c5ac2422fef"
           }
         }
       ]

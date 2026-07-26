@@ -8,6 +8,7 @@ The purpose is product validation, not regression locking. These reports record 
 
 | Report | Ecosystem | Source | Command focus | Status |
 | --- | --- | --- | --- | --- |
+| [Four-adapter live validation refresh](live-validation-refresh-2026-07-26.md) | JavaScript/TypeScript, Kotlin/JVM, Python, Swift | all 12 exact-commit validation-corpus repositories | three-run static audits, semantic drift review, and regression conversion | current |
 | [Collectors Grimoire Swift packages](cg-swift-audit-report.md) | Swift, Vapor, MongoDB | local sibling `cg-*` repositories | `findings-projects`, Swift adapter audit | current |
 | [Swift reactive libraries](swift-reactive-audit-report.md) | Swift, XCTest, RxTest, RxBlocking | `ReactiveX/RxSwift` at `132aea4`, `iZettle/Flow` at `b452ec9` | direct Swift adapter audit and evidence boundaries | current |
 | [SwiftPM ownership](swiftpm-ownership-audit-report.md) | Swift, SwiftPM, XCTest, Swift Testing | `ReactiveX/RxSwift` at `132aea4`, `apple/swift-nio` at `590dd7b` | versioned/computed manifests, multi-target ownership, and duplicate boundaries | current |
