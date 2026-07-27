@@ -1,0 +1,7 @@
+[workspace]
+members = [
+  "crates/pricing",
+  "services/checkout",
+]
+default-members = ["services/checkout"]
+resolver = "3"

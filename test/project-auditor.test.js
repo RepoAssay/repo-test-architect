@@ -6,6 +6,38 @@ import { describe, it } from "node:test";
 import { auditDetectedProjects } from "../src/core/project-auditor.js";
 
 describe("project auditor", () => {
+  it("audits Cargo workspace packages independently with exact package commands", () => {
+    const result = auditDetectedProjects(path.resolve("examples/rust-cargo-workspace-basic"));
+
+    assert.deepEqual(result.summary, {
+      projectCount: 2,
+      auditedProjectCount: 2,
+      skippedProjectCount: 0
+    });
+    assert.deepEqual(result.audits.map((entry) => ({
+      projectId: entry.projectId,
+      adapterId: entry.adapterId,
+      testCommand: entry.audit.profile.testCommand,
+      blockers: entry.audit.profile.blockers,
+      workspaceOwned: entry.audit.profile.setupSignals.includes("Cargo workspace member")
+    })), [
+      {
+        projectId: "crates/pricing",
+        adapterId: "rust",
+        testCommand: "cargo test -p workspace-pricing",
+        blockers: [],
+        workspaceOwned: true
+      },
+      {
+        projectId: "services/checkout",
+        adapterId: "rust",
+        testCommand: "cargo test -p workspace-checkout",
+        blockers: [],
+        workspaceOwned: true
+      }
+    ]);
+  });
+
   it("passes one explicit Go build target into detected Go projects", () => {
     const result = auditDetectedProjects(path.resolve("examples/go-build-target-basic"), {
       goTarget: { goos: "darwin", goarch: "arm64", tags: ["integration"] }

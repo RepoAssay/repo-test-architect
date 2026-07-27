@@ -69,7 +69,7 @@ describe("tool API", () => {
     assert.deepEqual(registry.adapters[1].supportedProjectTypes, ["go-module"]);
     assert.deepEqual(registry.adapters[2].supportedProjectTypes, ["gradle-jvm", "gradle-jvm-multimodule", "gradle-kmp-jvm", "maven-jvm", "maven-jvm-reactor"]);
     assert.deepEqual(registry.adapters[3].supportedProjectTypes, ["django", "fastapi", "flask", "python-package"]);
-    assert.deepEqual(registry.adapters[4].supportedProjectTypes, ["cargo-package"]);
+    assert.deepEqual(registry.adapters[4].supportedProjectTypes, ["cargo-package", "cargo-workspace-package"]);
     assert.deepEqual(registry.adapters[5].supportedProjectTypes, ["swift-package", "apple-xcode", "bazel-swift", "vapor"]);
   });
 

@@ -19,7 +19,7 @@ Current fifth-adapter spike:
 
 Current sixth-adapter spike:
 
-- experimental bounded single-package Cargo support with the built-in Rust test harness; see [Rust Experimental Support](rust-alpha-support.md)
+- experimental bounded Cargo package and literal workspace-member support with the built-in Rust test harness; see [Rust Experimental Support](rust-alpha-support.md)
 
 Choose the ecosystem with the lowest local setup cost and the clearest fixture coverage. The spike should validate adapter shape, not solve every framework variant.
 

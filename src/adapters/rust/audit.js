@@ -1,5 +1,10 @@
 import fs from "node:fs";
 import path from "node:path";
+import {
+  cargoSectionString,
+  findNearestCargoWorkspace,
+  hasCargoSection
+} from "./cargo-workspace.js";
 
 const IGNORED_DIRECTORIES = new Set([
   ".git",
@@ -19,7 +24,8 @@ export function auditRustRepo(root, options = {}) {
   const sourceFiles = files.filter((file) => isSourceFile(file.path));
   const integrationTests = files.filter((file) => isIntegrationTestFile(file.path) && hasRunnableRustTest(file.content));
   const inlineTestFiles = sourceFiles.filter((file) => hasInlineRustTests(file.content));
-  const profile = buildProfile(root, manifest, sourceFiles, integrationTests, inlineTestFiles);
+  const workspaceContext = findNearestCargoWorkspace(root);
+  const profile = buildProfile(root, manifest, sourceFiles, integrationTests, inlineTestFiles, workspaceContext);
   const changedPaths = options.changedPaths
     ? new Set(options.changedPaths.map((currentPath) => normalizeChangedPath(root, currentPath)))
     : undefined;
@@ -123,7 +129,7 @@ function readRepoFiles(root) {
   return files.sort((left, right) => left.path.localeCompare(right.path));
 }
 
-function buildProfile(root, manifest, sourceFiles, integrationTests, inlineTestFiles) {
+function buildProfile(root, manifest, sourceFiles, integrationTests, inlineTestFiles, workspaceContext) {
   const manifestContent = manifest?.content ?? "";
   const hasPackage = hasCargoSection(manifestContent, "package");
   const hasWorkspace = hasCargoSection(manifestContent, "workspace");
@@ -132,8 +138,14 @@ function buildProfile(root, manifest, sourceFiles, integrationTests, inlineTestF
   const hasRunnableTests = integrationTests.length > 0 || inlineTestFiles.length > 0;
   const blockers = [];
   if (!manifest) blockers.push("No root Cargo.toml detected for the bounded Rust package adapter.");
-  if (manifest && !hasPackage) blockers.push("Cargo virtual workspaces are outside the bounded single-package Rust adapter.");
-  if (hasWorkspace) blockers.push("Cargo workspace ownership is outside the bounded single-package Rust adapter.");
+  if (manifest && !hasPackage) blockers.push(workspaceContext?.local
+    ? "Cargo workspace roots must be audited through their declared package projects."
+    : "No root Cargo package detected for the bounded Rust package adapter.");
+  if (workspaceContext && !workspaceContext.complete) {
+    blockers.push("Cargo workspace members and default-members must resolve to literal repository-contained packages before command ownership is complete.");
+  } else if (workspaceContext && !workspaceContext.declared && hasPackage) {
+    blockers.push("The package is not literally declared by the nearest Cargo workspace, so command ownership is incomplete.");
+  }
   if (hasPackage && !packageName) blockers.push("Cargo package.name must be a static string for Rust import ownership.");
   if (/^\s*harness\s*=\s*false\s*$/m.test(manifestContent)) {
     blockers.push("Custom Rust test harnesses are outside the bounded built-in test support matrix.");
@@ -145,6 +157,8 @@ function buildProfile(root, manifest, sourceFiles, integrationTests, inlineTestF
   if (integrationTests.length > 0) existingTestLocations.push("tests/ integration tests");
   const architectures = [];
   if (hasPackage) architectures.push("cargo-package");
+  if (hasPackage && workspaceContext?.declared) architectures.push("cargo-workspace-package");
+  else if (hasWorkspace) architectures.push("cargo-workspace");
   if (sourceFiles.some((file) => file.path === "src/lib.rs")) architectures.push("library");
   if (sourceFiles.some((file) => file.path === "src/main.rs" || file.path.startsWith("src/bin/"))) architectures.push("binary");
   const detectedConventions = [];
@@ -152,7 +166,17 @@ function buildProfile(root, manifest, sourceFiles, integrationTests, inlineTestF
   if (integrationTests.length > 0) detectedConventions.push("Cargo integration tests");
   const setupSignals = [];
   if (manifest) setupSignals.push("Cargo.toml");
+  if (workspaceContext?.local) setupSignals.push("Cargo workspace");
+  else if (workspaceContext) setupSignals.push("Cargo.toml (nearest workspace)");
   if (edition) setupSignals.push(`Rust ${edition} edition`);
+  if (workspaceContext?.declared) setupSignals.push("Cargo workspace member");
+  if (workspaceContext?.defaultMember) setupSignals.push("Cargo workspace default member");
+
+  const testCommand = manifest && hasPackage && blockers.length === 0
+    ? workspaceContext?.declared
+      ? `cargo test -p ${packageName}`
+      : "cargo test"
+    : undefined;
 
   return {
     root,
@@ -160,7 +184,7 @@ function buildProfile(root, manifest, sourceFiles, integrationTests, inlineTestF
     packageManagers: manifest ? ["cargo"] : [],
     testFrameworks: hasRunnableTests ? ["rust-test"] : [],
     architectures,
-    ...(manifest && hasPackage && blockers.length === 0 ? { testCommand: "cargo test" } : {}),
+    ...(testCommand ? { testCommand } : {}),
     detectedConventions,
     existingTestLocations,
     setupSignals,
@@ -168,19 +192,6 @@ function buildProfile(root, manifest, sourceFiles, integrationTests, inlineTestF
     blockers,
     crateImportName: packageName?.replaceAll("-", "_")
   };
-}
-
-function hasCargoSection(content, section) {
-  return new RegExp(`^\\s*\\[${escapeRegExp(section)}\\]\\s*(?:#.*)?$`, "m").test(content);
-}
-
-function cargoSectionString(content, section, key) {
-  const sectionMatch = content.match(new RegExp(`^\\s*\\[${escapeRegExp(section)}\\]\\s*(?:#.*)?$`, "m"));
-  if (!sectionMatch) return undefined;
-  const start = sectionMatch.index + sectionMatch[0].length;
-  const nextSection = content.slice(start).search(/^\s*\[/m);
-  const body = nextSection === -1 ? content.slice(start) : content.slice(start, start + nextSection);
-  return body.match(new RegExp(`^\\s*${escapeRegExp(key)}\\s*=\\s*"([^"\\r\\n]+)"\\s*(?:#.*)?$`, "m"))?.[1];
 }
 
 function scoreProfileConfidence(manifest, hasPackage, hasRunnableTests, existingTestLocations, blockers) {
