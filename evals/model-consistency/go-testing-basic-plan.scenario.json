@@ -43,8 +43,8 @@
     },
     {
       "path": "items[0].existingTestEvidence[0].usage",
-      "expected": "called",
-      "reason": "The imported parser function remains directly called by the runnable Go test."
+      "expected": "asserted",
+      "reason": "The parser result remains consumed by an exact standard-library failure condition."
     },
     {
       "path": "items[1].id",
@@ -58,8 +58,8 @@
     },
     {
       "path": "items[1].existingTestEvidence[0].viaUsage",
-      "expected": "called",
-      "reason": "The cross-package dependency must remain rooted in the directly called parser entrypoint."
+      "expected": "asserted",
+      "reason": "The cross-package dependency must retain the asserted usage of its parser entrypoint."
     },
     {
       "path": "items[2].id",
@@ -88,8 +88,8 @@
     },
     {
       "path": "items[3].existingTestEvidence[0].viaUsage",
-      "expected": "called",
-      "reason": "The dependency evidence must remain rooted in a directly called parser entrypoint."
+      "expected": "asserted",
+      "reason": "The dependency evidence must retain the asserted usage of its parser entrypoint."
     },
     {
       "path": "items[4].id",

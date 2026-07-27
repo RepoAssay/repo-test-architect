@@ -61,7 +61,7 @@
           "testPath": "checkout_service_test.go",
           "kind": "go-symbol-reference",
           "strength": "direct",
-          "usage": "called"
+          "usage": "asserted"
         },
         {
           "testPath": "checkout_service_test.go",
@@ -98,7 +98,7 @@
           "testPath": "checkout_service_test.go",
           "kind": "go-symbol-reference",
           "strength": "direct",
-          "usage": "called"
+          "usage": "asserted"
         },
         {
           "testPath": "checkout_service_test.go",

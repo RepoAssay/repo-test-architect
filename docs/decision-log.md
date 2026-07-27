@@ -229,3 +229,11 @@ Decision: allow one indirect `go-source-dependency` hop from a directly called s
 Rationale: the initial broad file-level rule inflated River from 572 to 1,199 relationships because a large source file's many test paths were copied across every imported call. Requiring a single callable makes the file-to-function relationship unambiguous without parsing full function bodies. The bounded rule adds only four reviewed River relationships from `MetadataSet` to `MetadataUpdatesFromWorkContext` and one Zap relationship from `LoggedEntry.ContextMap` to `NewMapObjectEncoder`, with no candidate reclassification.
 
 Revisit when: a parser-backed function-body map can prove which callable owns an imported call and preserve direct test-to-symbol provenance in multi-callable files.
+
+## Bounded Go Assertion Usage
+
+Decision: upgrade a direct Go call from `called` to `asserted` only when the call appears in the final condition of an `if` whose top-level branch invokes a failure method on an exact `*testing.T` or `*testing.F` parameter, or inside a supported function from an exact Testify `assert`/`require` import. Also allow one unique, unreassigned `:=` result binding consumed by those bodies. Preserve that strength as `viaUsage` across one bounded source hop and let asserted evidence win over called evidence for the same relationship.
+
+Rationale: every other mature adapter distinguishes execution from an observed result. TOML and Chi provide conservative standard-library examples, while River and Zap provide exact Testify pressure. The retained rule upgrades 3, 2, 12, and 56 relationships respectively without changing any candidate or relationship count; Resty's unchanged 119-link audit is the negative control. Indexing result bindings once per test file keeps River's three-run median at 899 ms instead of the initial repeated-scan result near 1.43 seconds.
+
+Revisit when: parser-backed scopes can prove helper assertions, Example output checks, composite-literal initializers, or deeper result flow without treating an unrelated failure call as observation of a source result.

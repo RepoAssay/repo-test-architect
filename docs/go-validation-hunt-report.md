@@ -8,9 +8,9 @@ The validation finder now exposes a `go` profile requiring a root `go.mod` and a
 
 | Repository | Audited commit | Role | Detected command | Untested | Covered | Skipped | Median audit |
 | --- | --- | --- | --- | ---: | ---: | ---: | ---: |
-| [`BurntSushi/toml`](https://github.com/BurntSushi/toml) | `c6d720d83547bb8d7afb067ba9df8bad0323e2d1` | conventional parser library | `go test ./...` | 6 | 9 | 7 | 238 ms |
+| [`BurntSushi/toml`](https://github.com/BurntSushi/toml) | `c6d720d83547bb8d7afb067ba9df8bad0323e2d1` | conventional parser library | `go test ./...` | 6 | 9 | 7 | 245 ms |
 
-The constructor-result remeasurement took 285, 238, and 237 ms. All three audits produced the same normalized audit digest, `b256cd73b9e3b0fbbb7779749dd5ada349f7d5ed4318449415bb6be94ab170d5`, with 50 evidence relationships. The relationship added since promotion is the exact `MetaData` result of `toml.Decode` used by `toml_test.go`; candidate classifications remain unchanged.
+The assertion-usage remeasurement took 287, 245, and 238 ms. All three audits produced the same normalized audit digest, `9489b38da82cabd66db1f0ccd50a01a18e304f8f9077ceaa019d319d0b046979`, with 50 evidence relationships, including three whose existing entrypoint usage is now asserted. Candidate classifications remain unchanged.
 
 ## Native Validation
 
@@ -49,7 +49,7 @@ The first conventional-library probe passes the reviewed detection, ownership, c
 - command entrypoints and declaration-only files stay deferred
 - repeated audits are semantically stable and comfortably below the current cross-platform performance budget
 
-Receiver methods without an explicit type or exact simple concrete constructor result, interfaces, reflection, dynamic calls, deeper source graphs, ambiguous multi-callable or cross-module dependencies, assertion completeness, and runtime reachability remain outside the claim. The native coverage comparison showed why those gaps matter, but they remain visible rather than being inferred from package-wide test presence.
+Receiver methods without an explicit type or exact simple concrete constructor result, interfaces, reflection, dynamic calls, deeper source graphs, ambiguous multi-callable or cross-module dependencies, helper/custom assertions, deeper result flow, and runtime reachability remain outside the claim. The native coverage comparison showed why those gaps matter, but they remain visible rather than being inferred from package-wide test presence.
 
 ## Corpus Progress
 
@@ -58,3 +58,5 @@ This checkout is the conventional-library role in `validation-corpus/v1`. Togeth
 The explicitly typed receiver-method slice was remeasured against this exact checkout without changing its candidate counts, 49 evidence relationships, or canonical digest. Its new direct method claim remains limited to tests that visibly bind a concrete receiver type.
 
 The exact constructor-result slice retained the same candidate counts and added one reviewed direct relationship, producing 50 relationships and the digest recorded above. Only simple concrete result positions bound by `:=` qualify.
+
+The later assertion-usage slice retained all 50 relationships and candidate classifications while upgrading three exact standard-library condition relationships. Its current digest and timing are recorded above and detailed in the [Go Assertion-Usage Validation Report](go-assertion-validation-report.md).

@@ -46,7 +46,7 @@ describe("Go adapter", () => {
         testPath: "price_parser_test.go",
         kind: "go-symbol-reference",
         strength: "direct",
-        usage: "called"
+        usage: "asserted"
       },
       {
         testPath: "price_parser_test.go",
@@ -59,7 +59,7 @@ describe("Go adapter", () => {
         testPath: "price_parser_test.go",
         kind: "go-source-dependency",
         strength: "indirect",
-        viaUsage: "called"
+        viaUsage: "asserted"
       }
     ]);
     assert.deepEqual(audit.coveredButRisky.find((target) => target.path === "internal/currency/validator.go").existingTestEvidence, [
@@ -67,7 +67,7 @@ describe("Go adapter", () => {
         testPath: "price_parser_test.go",
         kind: "go-source-dependency",
         strength: "indirect",
-        viaUsage: "called"
+        viaUsage: "asserted"
       }
     ]);
   });
@@ -344,7 +344,7 @@ describe("Go adapter", () => {
       testPath: "method_test.go",
       kind: "go-symbol-reference",
       strength: "direct",
-      usage: "called"
+      usage: "asserted"
     }, {
       testPath: "method_test.go",
       kind: "go-symbol-reference",
@@ -374,7 +374,7 @@ describe("Go adapter", () => {
 
     assert.deepEqual(audit.untestedCandidates, []);
     assert.deepEqual(audit.coveredButRisky[0].existingTestEvidence, [
-      { testPath: "price/client_test.go", kind: "go-symbol-reference", strength: "direct", usage: "called" },
+      { testPath: "price/client_test.go", kind: "go-symbol-reference", strength: "direct", usage: "asserted" },
       { testPath: "price/client_test.go", kind: "go-symbol-reference", strength: "referenced" },
       { testPath: "price/client_test.go", kind: "filename-convention", strength: "naming" }
     ]);
@@ -437,14 +437,14 @@ describe("Go adapter", () => {
       "price/shadow.go"
     ]);
     assert.deepEqual(audit.coveredButRisky[1].existingTestEvidence, [
-      { testPath: "price/dot_test.go", kind: "go-symbol-reference", strength: "direct", usage: "called" },
+      { testPath: "price/dot_test.go", kind: "go-symbol-reference", strength: "direct", usage: "asserted" },
       { testPath: "price/dot_test.go", kind: "go-symbol-reference", strength: "referenced" }
     ]);
     assert.deepEqual(audit.coveredButRisky[0].existingTestEvidence, [{
       testPath: "price/dot_test.go",
       kind: "go-symbol-reference",
       strength: "direct",
-      usage: "called"
+      usage: "asserted"
     }]);
   });
 
@@ -478,11 +478,11 @@ describe("Go adapter", () => {
     assert.deepEqual(audit.untestedCandidates, []);
     for (const path of ["client.go", "validator.go"]) {
       assert.ok(audit.coveredButRisky.find((target) => target.path === path).existingTestEvidence.some((entry) =>
-        entry.testPath === "constructor_test.go" && entry.strength === "direct" && entry.usage === "called"
+        entry.testPath === "constructor_test.go" && entry.strength === "direct" && entry.usage === "asserted"
       ));
     }
     assert.ok(audit.coveredButRisky.find((target) => target.path === "factory.go").existingTestEvidence.some((entry) =>
-      entry.testPath === "constructor_test.go" && entry.strength === "direct" && entry.usage === "called"
+      entry.testPath === "constructor_test.go" && entry.strength === "direct" && entry.usage === "asserted"
     ));
   });
 
@@ -522,8 +522,8 @@ describe("Go adapter", () => {
 
     assert.deepEqual(audit.untestedCandidates, []);
     assert.deepEqual(client.existingTestEvidence, [
-      { testPath: "price/dot_test.go", kind: "go-symbol-reference", strength: "direct", usage: "called" },
-      { testPath: "price/named_test.go", kind: "go-symbol-reference", strength: "direct", usage: "called" }
+      { testPath: "price/dot_test.go", kind: "go-symbol-reference", strength: "direct", usage: "asserted" },
+      { testPath: "price/named_test.go", kind: "go-symbol-reference", strength: "direct", usage: "asserted" }
     ]);
   });
 
@@ -569,7 +569,7 @@ describe("Go adapter", () => {
     }
   });
 
-  it("propagates one called same-package source dependency without two-hop or local-shadow leakage", (t) => {
+  it("propagates one asserted same-package source dependency without two-hop or local-shadow leakage", (t) => {
     const root = createRepo(t, {
       "go.mod": "module example.com/dependency\n",
       "parse.go": "package dependency\nfunc Parse() int { return helper() }\n",
@@ -590,8 +590,140 @@ describe("Go adapter", () => {
         testPath: "parse_test.go",
         kind: "go-source-dependency",
         strength: "indirect",
-        viaUsage: "called"
+        viaUsage: "asserted"
       }
+    ]);
+  });
+
+  it("marks inline and one-hop standard-library checks as asserted", (t) => {
+    const root = createRepo(t, {
+      "go.mod": "module example.com/assertions\n",
+      "inline.go": "package assertions\nfunc Inline() int { return 1 }\n",
+      "alias.go": "package assertions\nfunc Alias() int { return 2 }\n",
+      "tuple.go": "package assertions\nfunc Tuple() (int, error) { return 3, nil }\n",
+      "smoke.go": "package assertions\nfunc Smoke() int { return 4 }\n",
+      "client.go": "package assertions\ntype Client struct{}\nfunc (Client) Fetch() int { return 5 }\n",
+      "assertions_test.go": [
+        "package assertions",
+        "import \"testing\"",
+        "func TestAssertions(t *testing.T) {",
+        "  if Inline() != 1 { t.Fatal(\"inline\") }",
+        "  got := Alias()",
+        "  if got != 2 { t.Errorf(\"alias: %d\", got) }",
+        "  value, err := Tuple()",
+        "  if err != nil || value != 3 { t.Fatalf(\"tuple: %v\", err) }",
+        "  client := Client{}",
+        "  if client.Fetch() != 5 { t.FailNow() }",
+        "  _ = Smoke()",
+        "}",
+        ""
+      ].join("\n")
+    });
+
+    const audit = auditGoRepo(root);
+
+    for (const path of ["alias.go", "inline.go", "tuple.go"]) {
+      assert.equal(audit.coveredButRisky.find((target) => target.path === path).existingTestEvidence[0].usage, "asserted");
+    }
+    assert.ok(audit.coveredButRisky.find((target) => target.path === "client.go").existingTestEvidence.some((entry) =>
+      entry.usage === "asserted"
+    ));
+    assert.equal(audit.coveredButRisky.find((target) => target.path === "smoke.go").existingTestEvidence[0].usage, "called");
+  });
+
+  it("marks exact Testify calls as asserted without accepting shadows or helper checks", (t) => {
+    const root = createRepo(t, {
+      "go.mod": "module example.com/testify\n",
+      "inline.go": "package testify\nfunc Inline() int { return 1 }\n",
+      "alias.go": "package testify\nfunc Alias() int { return 2 }\n",
+      "required.go": "package testify\nfunc Required() error { return nil }\n",
+      "helper.go": "package testify\nfunc Helper() int { return 3 }\n",
+      "shadow.go": "package testify\nfunc Shadow() int { return 4 }\n",
+      "message.go": "package testify\nfunc Message() int { return 5 }\n",
+      "failed.go": "package testify\nfunc Failed() int { return 6 }\n",
+      "assertions_test.go": [
+        "package testify",
+        "import (",
+        "  \"testing\"",
+        "  check \"github.com/stretchr/testify/assert\"",
+        "  req \"github.com/stretchr/testify/require\"",
+        ")",
+        "func TestAssertions(t *testing.T) {",
+        "  check.Equal(t, 1, Inline())",
+        "  got := Alias()",
+        "  check.Equal(t, 2, got)",
+        "  req.NoError(t, Required())",
+        "  verify(t, Helper())",
+        "  check.Equal(t, 2, got, \"message: %d\", Message())",
+        "  check.Fail(t, \"always fails\", Failed())",
+        "}",
+        "func verify(t *testing.T, value int) { if value != 3 { t.Fatal() } }",
+        ""
+      ].join("\n"),
+      "shadow_test.go": [
+        "package testify",
+        "import (",
+        "  \"testing\"",
+        "  assert \"github.com/stretchr/testify/assert\"",
+        ")",
+        "type localAssert struct{}",
+        "func (localAssert) Equal(_ ...any) bool { return true }",
+        "func TestShadow(t *testing.T) {",
+        "  assert := localAssert{}",
+        "  assert.Equal(t, 4, Shadow())",
+        "}",
+        ""
+      ].join("\n")
+    });
+
+    const audit = auditGoRepo(root);
+
+    for (const path of ["inline.go", "required.go", "alias.go"]) {
+      assert.equal(
+        audit.coveredButRisky.find((target) => target.path === path).existingTestEvidence[0].usage,
+        "asserted",
+        path
+      );
+    }
+    assert.equal(audit.coveredButRisky.find((target) => target.path === "helper.go").existingTestEvidence[0].usage, "called");
+    assert.equal(audit.coveredButRisky.find((target) => target.path === "message.go").existingTestEvidence[0].usage, "called");
+    assert.equal(audit.coveredButRisky.find((target) => target.path === "failed.go").existingTestEvidence[0].usage, "called");
+    assert.equal(audit.coveredButRisky.find((target) => target.path === "shadow.go").existingTestEvidence[0].usage, "called");
+  });
+
+  it("rejects unrelated failure branches and reassigned assertion aliases", (t) => {
+    const root = createRepo(t, {
+      "go.mod": "module example.com/assertion-controls\n",
+      "logged.go": "package controls\nfunc Logged() int { return 1 }\n",
+      "reassigned.go": "package controls\nfunc Reassigned() int { return 2 }\n",
+      "unrelated.go": "package controls\nfunc Unrelated() int { return 3 }\n",
+      "init_only.go": "package controls\nfunc InitOnly() {}\n",
+      "nested.go": "package controls\nfunc Nested() int { return 4 }\n",
+      "controls_test.go": [
+        "package controls",
+        "import \"testing\"",
+        "func TestControls(t *testing.T) {",
+        "  if Logged() != 1 { t.Log(\"not a failure\") }",
+        "  got := Reassigned()",
+        "  got = 2",
+        "  if got != 2 { t.Fatal(\"reassigned\") }",
+        "  _ = Unrelated()",
+        "  if false { t.Fatal(\"unrelated\") }",
+        "  if InitOnly(); false { t.Fatal(\"init only\") }",
+        "  if Nested() != 4 { if false { t.Fatal(\"nested\") } }",
+        "}",
+        ""
+      ].join("\n")
+    });
+
+    const audit = auditGoRepo(root);
+
+    assert.deepEqual(audit.coveredButRisky.map((target) => [target.path, target.existingTestEvidence[0].usage]), [
+      ["init_only.go", "called"],
+      ["logged.go", "called"],
+      ["nested.go", "called"],
+      ["reassigned.go", "called"],
+      ["unrelated.go", "called"]
     ]);
   });
 
@@ -628,7 +760,7 @@ describe("Go adapter", () => {
         testPath,
         kind: "go-source-dependency",
         strength: "indirect",
-        viaUsage: "called"
+        viaUsage: "asserted"
       }))
     );
   });
@@ -694,7 +826,7 @@ func TestWildcardRoute(t *testing.T) {
         testPath: "router_test.go",
         kind: "go-symbol-reference",
         strength: "direct",
-        usage: "called"
+        usage: "asserted"
       }
     ]);
   });
@@ -719,7 +851,7 @@ func TestWildcardRoute(t *testing.T) {
       "string_only.go"
     ]);
     assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["visible.go"]);
-    assert.equal(audit.coveredButRisky[0].existingTestEvidence[0].usage, "called");
+    assert.equal(audit.coveredButRisky[0].existingTestEvidence[0].usage, "asserted");
   });
 
   it("resolves exact external test-package imports and aliases", (t) => {
@@ -776,11 +908,11 @@ func TestWildcardRoute(t *testing.T) {
     assert.deepEqual(audit.untestedCandidates, []);
     assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["exercise.go", "normalize.go"]);
     assert.deepEqual(audit.coveredButRisky[0].existingTestEvidence, [
-      { testPath: "exercise_test.go", kind: "go-symbol-reference", strength: "direct", usage: "called" },
+      { testPath: "exercise_test.go", kind: "go-symbol-reference", strength: "direct", usage: "asserted" },
       { testPath: "exercise_test.go", kind: "filename-convention", strength: "naming" }
     ]);
     assert.deepEqual(audit.coveredButRisky[1].existingTestEvidence, [
-      { testPath: "exercise_test.go", kind: "go-source-dependency", strength: "indirect", viaUsage: "called" }
+      { testPath: "exercise_test.go", kind: "go-source-dependency", strength: "indirect", viaUsage: "asserted" }
     ]);
   });
 
