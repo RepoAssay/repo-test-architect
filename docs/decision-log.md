@@ -292,4 +292,12 @@ Decision: extend package source ownership with existing repository-contained `.r
 
 Rationale: ripgrep's root package declares `crates/core/main.rs` as its binary crate root, so limiting ownership to `src/` hid a real high-risk runtime file even after the exact test command was recovered. The manifest proves ownership of that file without directory heuristics. The follow-up live audit adds one root candidate while leaving every existing project, command, and evidence relationship stable.
 
-Revisit when: a pinned repository justifies parser-backed `mod` traversal, explicit `#[path]` modules, auto-discovered binaries, examples, benches, proc macros, or build-script source ownership without sweeping unrelated files into a crate.
+Revisit when: a pinned repository justifies auto-discovered binaries, examples, benches, proc macros, or build-script source ownership without sweeping unrelated files into a crate.
+
+## Traverse Literal Rust Module Graphs From Cargo Roots
+
+Decision: recursively follow top-level `mod name;` declarations from conventional and manifest-declared Cargo crate roots when exactly one native `name.rs` or `name/mod.rs` file exists. Also follow one static repository-contained `#[path = "..."]` or raw-string path attribute. Resolve crate roots, ordinary module files, and `mod.rs` with their native relative bases; stop at missing, ambiguous, escaping, unsupported, nested-package, inline-module, and macro-body edges.
+
+Rationale: owning only ripgrep's manifest-named `crates/core/main.rs` recovered one real candidate but hid the 22 files that its literal module graph compiles. The bounded traversal resolves all 23 files in that binary tree, including mutually exclusive static path modules, without treating directory proximity as ownership. It adds 19 untested candidates, one inline-tested candidate, two deferred wiring files, and one direct relationship while every project, command, blocker, and pre-existing relationship remains stable.
+
+Revisit when: a pinned repository justifies parser-backed inline-module directory contexts, `cfg_attr(path = ...)`, identifier macros, `include!`, generated modules, or target-configuration pruning without executing repository code.

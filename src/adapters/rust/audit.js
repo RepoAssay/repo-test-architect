@@ -22,9 +22,11 @@ export function auditRustRepo(root, options = {}) {
   const files = readRepoFiles(root);
   const manifest = files.find((file) => file.path === "Cargo.toml");
   const sourceTargets = collectCargoSourceTargets(manifest?.content ?? "", files);
+  const crateRootPaths = collectCargoCrateRootPaths(files, sourceTargets);
+  const moduleGraph = collectRustModuleGraph(files, crateRootPaths);
   const sourcePaths = new Set([
     ...files.filter((file) => isSourceFile(file.path)).map((file) => file.path),
-    ...sourceTargets.paths
+    ...moduleGraph.paths
   ]);
   const sourceFiles = files.filter((file) => sourcePaths.has(file.path));
   const integrationTests = files.filter((file) => isIntegrationTestFile(file.path) && hasRunnableRustTest(file.content));
@@ -39,6 +41,7 @@ export function auditRustRepo(root, options = {}) {
     inlineTestFiles,
     explicitTestTargets,
     sourceTargets,
+    moduleGraph,
     workspaceContext
   );
   const changedPaths = options.changedPaths
@@ -152,6 +155,7 @@ function buildProfile(
   inlineTestFiles,
   explicitTestTargets,
   sourceTargets,
+  moduleGraph,
   workspaceContext
 ) {
   const manifestContent = manifest?.content ?? "";
@@ -195,6 +199,7 @@ function buildProfile(
   ) architectures.push("binary");
   const detectedConventions = [];
   if (sourceTargets.paths.length > 0) detectedConventions.push("explicit Cargo source target");
+  if (moduleGraph.modulePaths.length > 0) detectedConventions.push("literal Rust module graph");
   if (inlineTestFiles.length > 0) detectedConventions.push("inline cfg(test) modules");
   if (integrationTests.length > 0) detectedConventions.push("Cargo integration tests");
   if (explicitTestTargets.length > 0) detectedConventions.push("explicit Cargo test target");
@@ -226,6 +231,122 @@ function buildProfile(
     blockers,
     crateImportName: packageName?.replaceAll("-", "_")
   };
+}
+
+function collectCargoCrateRootPaths(files, sourceTargets) {
+  const roots = new Set(sourceTargets.paths);
+  for (const file of files) {
+    const currentPath = normalizePath(file.path);
+    if (
+      currentPath === "src/lib.rs" ||
+      currentPath === "src/main.rs" ||
+      /^src\/bin\/[^/]+\.rs$/.test(currentPath) ||
+      /^src\/bin\/[^/]+\/main\.rs$/.test(currentPath)
+    ) roots.add(currentPath);
+  }
+  return [...roots].sort();
+}
+
+function collectRustModuleGraph(files, crateRootPaths) {
+  const filesByPath = new Map(files.map((file) => [normalizePath(file.path), file]));
+  const roots = new Set(crateRootPaths.filter((currentPath) => filesByPath.has(currentPath)));
+  const owned = new Set(roots);
+  const modulePaths = new Set();
+  const queue = [...roots].sort();
+  for (let index = 0; index < queue.length; index += 1) {
+    const sourcePath = queue[index];
+    const file = filesByPath.get(sourcePath);
+    for (const modulePath of collectRustModulePaths(file, roots.has(sourcePath), filesByPath)) {
+      if (owned.has(modulePath)) continue;
+      owned.add(modulePath);
+      modulePaths.add(modulePath);
+      queue.push(modulePath);
+    }
+  }
+  return {
+    paths: [...owned].sort(),
+    modulePaths: [...modulePaths].sort()
+  };
+}
+
+function collectRustModulePaths(file, isCrateRoot, filesByPath) {
+  const masked = maskRustCommentsAndStrings(file.content);
+  const pattern = /\b(?:pub(?:\s*\([^)]*\))?\s+)?mod\s+([A-Za-z_][A-Za-z0-9_]*)\s*;/g;
+  const paths = [];
+  let cursor = 0;
+  let depth = 0;
+  for (const match of masked.matchAll(pattern)) {
+    while (cursor < match.index) {
+      if (masked[cursor] === "{") depth += 1;
+      else if (masked[cursor] === "}") depth = Math.max(0, depth - 1);
+      cursor += 1;
+    }
+    if (depth !== 0) continue;
+    const attributeStart = rustAttributePrefixStart(masked, match.index);
+    const attribute = rustStaticPathAttribute(
+      file.content.slice(attributeStart, match.index),
+      masked.slice(attributeStart, match.index)
+    );
+    if (attribute.declared) {
+      const targetPath = normalizeRustModuleLink(file.path, attribute.value);
+      if (targetPath && filesByPath.has(targetPath)) paths.push(targetPath);
+      continue;
+    }
+    const base = rustModuleBasePath(file.path, isCrateRoot);
+    const candidates = [
+      path.posix.join(base, `${match[1]}.rs`),
+      path.posix.join(base, match[1], "mod.rs")
+    ].filter((candidate) => filesByPath.has(candidate));
+    if (candidates.length === 1) paths.push(candidates[0]);
+  }
+  return [...new Set(paths)].sort();
+}
+
+function rustAttributePrefixStart(masked, declarationStart) {
+  let start = declarationStart;
+  while (true) {
+    let cursor = start;
+    while (cursor > 0 && /\s/.test(masked[cursor - 1])) cursor -= 1;
+    if (masked[cursor - 1] !== "]") return start;
+    let depth = 1;
+    let open = cursor - 2;
+    for (; open >= 0; open -= 1) {
+      if (masked[open] === "]") depth += 1;
+      else if (masked[open] === "[") {
+        depth -= 1;
+        if (depth === 0) break;
+      }
+    }
+    let hash = open;
+    while (hash > 0 && /\s/.test(masked[hash - 1])) hash -= 1;
+    if (hash < 1 || masked[hash - 1] !== "#") return start;
+    start = hash - 1;
+  }
+}
+
+function rustStaticPathAttribute(attributes, maskedAttributes) {
+  const pathAssignments = [...maskedAttributes.matchAll(/\bpath\s*=/g)];
+  if (pathAssignments.length === 0) return { declared: false };
+  const values = [];
+  for (const match of attributes.matchAll(/#\s*\[\s*path\s*=\s*"([^"\\\r\n]*)"\s*\]/g)) values.push(match[1]);
+  for (const match of attributes.matchAll(/#\s*\[\s*path\s*=\s*r(#{0,255})"([^"\r\n]*)"\1\s*\]/g)) values.push(match[2]);
+  return pathAssignments.length === 1 && values.length === 1
+    ? { declared: true, value: values[0] }
+    : { declared: true };
+}
+
+function normalizeRustModuleLink(sourcePath, value) {
+  if (!value || value.includes("\\") || path.isAbsolute(value) || path.win32.isAbsolute(value)) return undefined;
+  const normalized = path.posix.normalize(path.posix.join(path.posix.dirname(normalizePath(sourcePath)), value));
+  if (!normalized.endsWith(".rs") || normalized === ".." || normalized.startsWith("../")) return undefined;
+  return normalized;
+}
+
+function rustModuleBasePath(sourcePath, isCrateRoot) {
+  const normalized = normalizePath(sourcePath);
+  const directory = path.posix.dirname(normalized);
+  if (isCrateRoot || path.posix.basename(normalized) === "mod.rs") return directory;
+  return path.posix.join(directory, path.posix.basename(normalized, ".rs"));
 }
 
 function collectCargoSourceTargets(manifestContent, files) {
