@@ -22,7 +22,7 @@ npm run detect-rules:json
 | `composer.json` | `php` | `php` | Detected, unsupported |
 | `mix.exs` | `elixir` | `elixir` | Detected, unsupported |
 | `go.mod` | `go` | `go` | Experimental bounded `go` adapter |
-| `Cargo.toml` | `rust` | `rust` | Experimental single-package Cargo adapter |
+| `Cargo.toml` | `rust` | `rust` | Experimental Cargo package/workspace-member adapter |
 | `Package.swift` | `swift` | `swift` | Supported by `swift` |
 | `MODULE.bazel` | `bazel` | `swift` | Supported by `swift` when Swift rules and sources are present |
 | `WORKSPACE` | `bazel` | `swift` | Supported by `swift` when Swift rules and sources are present |
@@ -64,6 +64,8 @@ Conventionally included Gradle modules collapse into the settings-owning aggrega
 Conventionally declared Maven `<module>` paths with direct child POMs collapse into the POM-owning reactor project. Collapse proceeds from parent to child and stops at an already collapsed intermediate reactor, so an unowned nested reactor child remains visible as a separate project instead of disappearing into a root audit that does not expand nested ownership. Profile-activated modules, property-expanded paths, directory escapes, and plugin configuration `<modules>` also remain separate because the root POM does not statically prove their ownership.
 
 Go workspaces do not collapse into one aggregate project. Every `go.mod` remains an independently detected root. The Go adapter then checks the nearest ancestor `go.work`: literal repository-contained members retain module-local `go test ./...`, while omitted modules or incomplete `use` graphs lose the command and receive an ownership blocker.
+
+Literal Cargo workspaces follow the same package-ownership principle. A complete virtual workspace root is aggregate-only, while every exact `members` package remains an independently detected project with `cargo test -p <package>`. Optional literal `default-members` are retained as setup evidence. Globs, escaping or external paths, missing manifests, excluded members, invalid defaults, and incomplete graphs prevent the detector from hiding the aggregate and suppress package commands rather than guessing.
 
 ## Output Contract
 

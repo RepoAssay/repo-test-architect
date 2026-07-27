@@ -13,7 +13,7 @@ The useful baseline is:
 - deterministic JavaScript/TypeScript audit pipeline
 - supported Swift, Python, and bounded Kotlin/JVM adapters
 - supported bounded Go module adapter with literal repository-contained `go.work` ownership and explicit static build-target selection
-- experimental bounded Rust adapter for conventional single-package Cargo roots and built-in tests
+- experimental bounded Rust adapter for conventional Cargo packages, literal repository-contained workspace members, and built-in tests
 - polyglot project detection with unsupported-project reporting
 - project-level ranking, planning, provider-neutral execution hints, placement, stats, and local MCP tool calls
 - disabled-by-default local MCP diagnostics, safe internal-error report IDs, runtime checks, and inspectable sanitized bundles
@@ -94,7 +94,7 @@ Goal: prove the adapter contract keeps holding as additional ecosystems move fro
 
 Status: Swift, Python, bounded Kotlin/JVM, and bounded Go have reached supported alpha maturity, and the five-adapter hardening gate is complete. Go passes standalone, two-module `go.work`, explicit build-target, parser-owned same-package and module-local source-dependency, bounded standard-library/Testify assertion usage, lexical masking, parser-scoped local and receiver bindings, generic-function, explicit, exact-constructor, and statically typed test-helper receiver-method evidence, multi-callable body-ownership, and generated 400-source/200-test performance fixtures plus all three pinned live roles against `BurntSushi/toml`, `go-chi/chi`, and `riverqueue/river`. Post-promotion Zap and Resty pressure additionally recovered exact dot-import, concrete constructor-result, bounded cross-package, assertion-usage, callable-owned, and test-helper-owned evidence. See [Go Alpha Support](go-alpha-support.md).
 
-The sixth-adapter spike is now underway with an experimental Rust baseline: one conventional Cargo package, the built-in `#[test]` harness, inline `#[cfg(test)]` modules, exact integration-test crate-module imports, native Cargo verification, golden artifacts, and shared conformance. Cargo workspaces, custom harnesses, nonstandard async/property frameworks, and deeper Rust module/re-export ownership remain later slices; see [Rust Experimental Support](rust-alpha-support.md).
+The sixth-adapter spike is now underway with an experimental Rust baseline: conventional Cargo packages, literal repository-contained workspace members with exact package commands, the built-in `#[test]` harness, inline `#[cfg(test)]` modules, exact integration-test crate-module imports, native Cargo verification, golden artifacts, and shared conformance. Globbed or incomplete workspaces, custom harnesses, nonstandard async/property frameworks, and deeper Rust module/re-export ownership remain later slices; see [Rust Experimental Support](rust-alpha-support.md).
 
 Useful hardening targets:
 

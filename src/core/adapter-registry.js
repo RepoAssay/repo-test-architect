@@ -101,7 +101,7 @@ export const adapters = [
     languages: ["rust"],
     maturity: "experimental",
     supportedTestFrameworks: ["rust-test"],
-    supportedProjectTypes: ["cargo-package"],
+    supportedProjectTypes: ["cargo-package", "cargo-workspace-package"],
     emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"],
     audit(repoRoot, options = {}) {
       return auditRustRepo(repoRoot, {

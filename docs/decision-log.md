@@ -268,4 +268,12 @@ Decision: register an experimental `rust` adapter for one conventional Cargo pac
 
 Rationale: Cargo already had deterministic project detection, and the built-in harness provides a small native command surface. Exact crate/module imports and same-file inline ownership produce useful audit evidence without executing target code during analysis or claiming coverage from an unused import, comment, string, ambiguous module, foreign crate, workspace, or custom harness. The checked-in fixture verifies meaningful covered, untested, and deferred source categories through the shared artifact pipeline and native Cargo commands.
 
-Revisit when: real repositories justify bounded Cargo workspace/package ownership, module re-exports, `crate`/`super` paths, receiver-method identity, feature/target selection, doctests, async runtimes, or property-based test frameworks.
+Revisit when: real repositories justify module re-exports, `crate`/`super` paths, receiver-method identity, feature/target selection, doctests, async runtimes, or property-based test frameworks.
+
+## Preserve Cargo Workspace Package Ownership
+
+Decision: parse bounded literal Cargo `workspace.members` and optional `default-members`, keep every declared package as an independently detected project, and select `cargo test -p <package>` instead of an aggregate workspace command. Treat complete virtual roots as aggregate-only and retain root packages as exact workspace members.
+
+Rationale: Cargo workspaces coordinate packages without merging their source, tests, candidate paths, or package identities. Exact repository-contained paths with existing manifests provide deterministic ownership; package-qualified commands also avoid `default-members` changing which package a root-directory invocation exercises. Globs, missing or external paths, excluded members, invalid defaults, and omitted packages suppress commands rather than widening the claim.
+
+Revisit when: a pinned repository justifies safe glob expansion, inherited manifest ownership, workspace-level feature selection, or an aggregate execution strategy without weakening package-local provenance.

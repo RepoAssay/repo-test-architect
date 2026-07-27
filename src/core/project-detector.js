@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { analyzeCargoWorkspace } from "../adapters/rust/cargo-workspace.js";
 import { analyzeGradleSettings } from "./gradle-settings.js";
 import { listAdapters } from "./adapter-registry.js";
 
@@ -191,9 +192,12 @@ export function getProjectDetectionRules() {
  */
 export function detectProjects(repoRoot, options = {}) {
   const absoluteRoot = path.resolve(repoRoot);
-  const markerGroups = collapseOwnedMavenModules(
+  const markerGroups = removeLiteralCargoWorkspaceAggregates(
     absoluteRoot,
-    collapseOwnedGradleModules(absoluteRoot, collectMarkerGroups(absoluteRoot))
+    collapseOwnedMavenModules(
+      absoluteRoot,
+      collapseOwnedGradleModules(absoluteRoot, collectMarkerGroups(absoluteRoot))
+    )
   );
   const projects = [...markerGroups.values()]
     .map((project) => toDetectedProject(absoluteRoot, project))
@@ -210,6 +214,35 @@ export function detectProjects(repoRoot, options = {}) {
       unsupportedProjectCount: projects.filter((project) => !project.supported).length
     }
   };
+}
+
+function removeLiteralCargoWorkspaceAggregates(repoRoot, markerGroups) {
+  const filtered = new Map(markerGroups);
+  for (const group of markerGroups.values()) {
+    const cargoMarker = group.markerFiles.find((markerFile) => /(?:^|\/)Cargo\.toml$/.test(markerFile));
+    if (!cargoMarker) continue;
+    const manifest = fs.readFileSync(path.resolve(repoRoot, cargoMarker), "utf8");
+    const analysis = analyzeCargoWorkspace(path.dirname(path.resolve(repoRoot, cargoMarker)), manifest);
+    if (!analysis.hasWorkspace || analysis.hasPackage || !analysis.complete) continue;
+    const allMembersDetected = analysis.memberDirectories.every((memberDirectory) => {
+      const projectRoot = group.root === "." ? memberDirectory : `${group.root}/${memberDirectory}`;
+      return markerGroups.get(projectRoot)?.markerFiles.some((markerFile) => /(?:^|\/)Cargo\.toml$/.test(markerFile));
+    });
+    if (!allMembersDetected) continue;
+
+    const markerFiles = group.markerFiles.filter((markerFile) => markerFile !== cargoMarker);
+    if (markerFiles.length === 0) {
+      filtered.delete(group.root);
+      continue;
+    }
+    filtered.set(group.root, {
+      ...group,
+      markerFiles,
+      ecosystems: new Set([...group.ecosystems].filter((ecosystem) => ecosystem !== "rust")),
+      languages: new Set([...group.languages].filter((language) => language !== "rust"))
+    });
+  }
+  return filtered;
 }
 
 function collapseOwnedMavenModules(repoRoot, markerGroups) {

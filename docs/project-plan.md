@@ -47,7 +47,7 @@ Release progression is governed by the flexible, readiness-based [Release Lifecy
 7. Improve the human-facing validation scorecard while keeping review completeness separate from reviewed pass rate. Complete: the Markdown matrix and `validation-scorecard/v1` derived artifact expose exact ratios and explicit per-area states; the richer audit-card or assay-seal visualization can build on that contract later.
 8. Complete the broader cross-adapter trust pass and cut the next public alpha after the Swift, live-repository, scorecard, and exact-commit release gates pass. Complete for public alpha `0.2.0`: shared conformance covers every project-aware downstream artifact and blocked JSON round trip for all four adapters, canonical project-summary ranking and absent verification-command serialization are corrected, and the aligned release metadata passed the exact-commit release gate.
 9. Start the fifth adapter after the four supported adapters meet the hardening definition of done. Complete; bounded Go is supported for conventional modules, literal repository-contained `go.work` members, explicit static build targets, generic top-level functions, parser-owned concrete receiver-method evidence through explicit bindings, exact simple constructor result positions, or exact statically typed test-helper results, bounded standard-library/Testify assertion usage, parser-scoped local shadow checks, callable-body-owned same-package and module-local source hops, and exact default/named/dot external-package provenance with module-local or target-qualified commands. Its standard-library tests, three pinned corpus roles, post-promotion Zap and Resty pressure, generated performance/evidence regression, shared corpus, conformance, golden artifacts, model-consistency locking, and implementation coverage pass the checked-in [Go support matrix](go-alpha-support.md).
-10. Start the sixth adapter as a bounded Rust spike. In progress; the first experimental slice audits one conventional Cargo package, selects `cargo test`, recognizes built-in inline and integration tests, emits exact direct crate-module evidence, classifies useful source targets, defers data/module wiring, and passes native fixture plus shared artifact gates. Cargo workspace ownership and broader test ecosystems remain later slices in the [Rust experimental support matrix](rust-alpha-support.md).
+10. Start the sixth adapter as a bounded Rust spike. In progress; the experimental adapter audits conventional Cargo packages and literal repository-contained workspace members, selects package-exact commands, recognizes built-in inline and integration tests, emits exact direct crate-module evidence, classifies useful source targets, defers data/module wiring, and passes native fixtures plus shared artifact gates. Broader workspace syntax and test ecosystems remain later slices in the [Rust experimental support matrix](rust-alpha-support.md).
 
 ## General Backlog
 
@@ -81,7 +81,7 @@ Early non-JavaScript adapter fixtures:
 
 Later adapter fixtures:
 
-- single-package Cargo + built-in Rust tests
+- Cargo package/workspace member + built-in Rust tests
 - `apple-xcode-mixed`
 - Swift Package Manager + XCTest
 - Swift Package Manager + Swift Testing

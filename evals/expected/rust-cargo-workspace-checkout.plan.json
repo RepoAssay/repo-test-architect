@@ -1,0 +1,64 @@
+{
+  "schemaVersion": "plan/v1",
+  "summary": {
+    "confidence": "high",
+    "verificationCommand": "cargo test -p workspace-checkout",
+    "blockerCount": 0,
+    "addTestCount": 1,
+    "extendTestCount": 1,
+    "deferredCount": 0
+  },
+  "blockers": [],
+  "items": [
+    {
+      "id": "extend-test:src/service.rs",
+      "action": "extend-test",
+      "targetId": "src/service.rs",
+      "target": "service",
+      "path": "src/service.rs",
+      "testLevel": "unit",
+      "priority": 5,
+      "riskReductionScore": 8,
+      "maintenanceCost": 3,
+      "rationale": [
+        "Branching Rust behavior",
+        "Fallible or edge-case behavior",
+        "Existing Rust test evidence detected; review missing edge cases"
+      ],
+      "sourceSignals": [
+        "service-boundary",
+        "edge-case-surface",
+        "matching-test"
+      ],
+      "existingTestPaths": [
+        "tests/service_test.rs"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "tests/service_test.rs",
+          "kind": "rust-symbol-reference",
+          "strength": "direct",
+          "usage": "asserted"
+        }
+      ]
+    },
+    {
+      "id": "add-test:src/validator.rs",
+      "action": "add-test",
+      "targetId": "src/validator.rs",
+      "target": "validator",
+      "path": "src/validator.rs",
+      "testLevel": "unit",
+      "priority": 4,
+      "riskReductionScore": 6,
+      "maintenanceCost": 2,
+      "rationale": [
+        "Deterministic Rust behavior"
+      ],
+      "sourceSignals": [
+        "pure-logic"
+      ],
+      "existingTestPaths": []
+    }
+  ]
+}

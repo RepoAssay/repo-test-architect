@@ -51,6 +51,108 @@ describe("Rust audit adapter", () => {
     assert.deepEqual(absolute.coveredButRisky.map((target) => target.path), ["src/parser.rs"]);
   });
 
+  it("keeps a literal Cargo workspace member as an independent command owner", () => {
+    const root = path.resolve("examples/rust-cargo-workspace-basic/services/checkout");
+    const audit = auditRustRepo(root);
+
+    assert.deepEqual(audit.profile, {
+      root,
+      languages: ["rust"],
+      packageManagers: ["cargo"],
+      testFrameworks: ["rust-test"],
+      architectures: ["cargo-package", "cargo-workspace-package", "library"],
+      testCommand: "cargo test -p workspace-checkout",
+      detectedConventions: ["Cargo integration tests"],
+      existingTestLocations: ["tests/ integration tests"],
+      setupSignals: [
+        "Cargo.toml",
+        "Cargo.toml (nearest workspace)",
+        "Rust 2024 edition",
+        "Cargo workspace member",
+        "Cargo workspace default member"
+      ],
+      confidence: "high",
+      blockers: []
+    });
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.path), ["src/validator.rs"]);
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["src/service.rs"]);
+    assert.deepEqual(audit.coveredButRisky[0].existingTestPaths, ["tests/service_test.rs"]);
+  });
+
+  it("keeps a virtual Cargo workspace root aggregate-only", () => {
+    const audit = auditRustRepo(path.resolve("examples/rust-cargo-workspace-basic"));
+
+    assert.equal(audit.profile.testCommand, undefined);
+    assert.deepEqual(audit.profile.architectures, ["cargo-workspace"]);
+    assert.deepEqual(audit.profile.blockers, [
+      "Cargo workspace roots must be audited through their declared package projects.",
+      "No runnable built-in Rust #[test] detected."
+    ]);
+    assert.deepEqual(audit.recommended, []);
+  });
+
+  it("blocks omitted and incomplete Cargo workspace ownership", (t) => {
+    const workspace = createRustRepo(t, {
+      "Cargo.toml": [
+        "[workspace]",
+        "members = [\"listed\", \"missing\", \"crates/*\"]",
+        "default-members = [\"unlisted\"]",
+        "resolver = \"3\"",
+        ""
+      ].join("\n"),
+      "listed/Cargo.toml": cargoPackage("listed"),
+      "unlisted/Cargo.toml": cargoPackage("unlisted"),
+      "unlisted/src/lib.rs": rustSourceWithTest("parse")
+    });
+
+    const audit = auditRustRepo(path.join(workspace, "unlisted"));
+
+    assert.equal(audit.profile.testCommand, undefined);
+    assert.deepEqual(audit.profile.blockers, [
+      "Cargo workspace members and default-members must resolve to literal repository-contained packages before command ownership is complete."
+    ]);
+    assert.ok(!audit.profile.setupSignals.includes("Cargo workspace member"));
+  });
+
+  it("blocks a valid but unlisted package in the nearest Cargo workspace", (t) => {
+    const workspace = createRustRepo(t, {
+      "Cargo.toml": "[workspace]\nmembers = [\"listed\"]\nresolver = \"3\"\n",
+      "listed/Cargo.toml": cargoPackage("listed"),
+      "unlisted/Cargo.toml": cargoPackage("unlisted"),
+      "unlisted/src/lib.rs": rustSourceWithTest("parse")
+    });
+
+    const audit = auditRustRepo(path.join(workspace, "unlisted"));
+
+    assert.equal(audit.profile.testCommand, undefined);
+    assert.deepEqual(audit.profile.blockers, [
+      "The package is not literally declared by the nearest Cargo workspace, so command ownership is incomplete."
+    ]);
+  });
+
+  it("selects an exact package command for a non-virtual workspace root", (t) => {
+    const root = createRustRepo(t, {
+      "Cargo.toml": [
+        "[package]",
+        "name = \"root-package\"",
+        "version = \"0.1.0\"",
+        "edition = \"2024\"",
+        "",
+        "[workspace]",
+        "members = []",
+        "resolver = \"3\"",
+        ""
+      ].join("\n"),
+      "src/lib.rs": rustSourceWithTest("parse")
+    });
+
+    const audit = auditRustRepo(root);
+
+    assert.equal(audit.profile.testCommand, "cargo test -p root-package");
+    assert.deepEqual(audit.profile.architectures, ["cargo-package", "cargo-workspace-package", "library"]);
+    assert.deepEqual(audit.profile.blockers, []);
+  });
+
   it("keeps exact crate imports and direct call usage bounded", (t) => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-rust-evidence-"));
     t.after(() => fs.rmSync(root, { recursive: true, force: true }));
@@ -95,13 +197,13 @@ describe("Rust audit adapter", () => {
     assert.deepEqual(audit.untestedCandidates.map((target) => target.path), ["src/unused.rs", "src/wrong.rs"]);
   });
 
-  it("blocks Cargo workspaces, custom harnesses, and packages without built-in tests", (t) => {
+  it("blocks custom harnesses and packages without built-in tests", (t) => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-rust-blocked-"));
     t.after(() => fs.rmSync(root, { recursive: true, force: true }));
     fs.mkdirSync(path.join(root, "src"), { recursive: true });
     fs.writeFileSync(
       path.join(root, "Cargo.toml"),
-      '[package]\nname = "blocked"\nversion = "0.1.0"\n[workspace]\nmembers = []\n[[test]]\nname = "custom"\nharness = false\n'
+      '[package]\nname = "blocked"\nversion = "0.1.0"\n[[test]]\nname = "custom"\nharness = false\n'
     );
     fs.writeFileSync(path.join(root, "src", "lib.rs"), "pub fn value() -> usize { 1 }\n");
 
@@ -109,7 +211,6 @@ describe("Rust audit adapter", () => {
     assert.equal(audit.profile.testCommand, undefined);
     assert.equal(audit.profile.confidence, "medium");
     assert.deepEqual(audit.profile.testFrameworks, []);
-    assert.ok(audit.profile.blockers.includes("Cargo workspace ownership is outside the bounded single-package Rust adapter."));
     assert.ok(audit.profile.blockers.includes("Custom Rust test harnesses are outside the bounded built-in test support matrix."));
     assert.ok(audit.profile.blockers.includes("No runnable built-in Rust #[test] detected."));
   });
@@ -148,3 +249,22 @@ describe("Rust audit adapter", () => {
     assert.ok(audit.profile.blockers.includes("No root Cargo.toml detected for the bounded Rust package adapter."));
   });
 });
+
+function createRustRepo(t, files) {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-rust-workspace-"));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  for (const [relativePath, content] of Object.entries(files)) {
+    const absolutePath = path.join(root, relativePath);
+    fs.mkdirSync(path.dirname(absolutePath), { recursive: true });
+    fs.writeFileSync(absolutePath, content);
+  }
+  return root;
+}
+
+function cargoPackage(name) {
+  return `[package]\nname = "${name}"\nversion = "0.1.0"\nedition = "2024"\n`;
+}
+
+function rustSourceWithTest(name) {
+  return `pub fn ${name}() -> usize { 1 }\n#[cfg(test)] mod tests { use super::${name}; #[test] fn checks() { assert_eq!(${name}(), 1); } }\n`;
+}

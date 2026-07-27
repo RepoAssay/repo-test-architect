@@ -1,17 +1,18 @@
 # Rust Experimental Support
 
-The Rust adapter is experimental. Its first bounded slice proves that a conventional single-package Cargo repository can flow through project detection, audit, ranking, planning, explanations, placement, findings, stats, CLI/MCP-shaped calls, golden snapshots, and model-consistency checks without a Rust-specific report format.
+The Rust adapter is experimental. Its current bounded slices prove that conventional Cargo packages and literal repository-contained workspace members can flow through project detection, audit, ranking, planning, explanations, placement, findings, stats, CLI/MCP-shaped calls, golden snapshots, and model-consistency checks without a Rust-specific report format.
 
 ## Supported Baseline
 
 | Area | Supported boundary |
 | --- | --- |
-| Project ownership | One root `Cargo.toml` with a static `[package].name` |
+| Project ownership | One root `Cargo.toml` with a static `[package].name`, either standalone or an exact member of the nearest literal Cargo workspace |
 | Source ownership | Rust files under `src/`; nested Cargo packages are separate detector roots |
 | Test harness | Built-in `#[test]` functions |
 | Inline tests | Runnable tests inside an inline `#[cfg(test)] mod ...` block |
 | Integration tests | Runnable `.rs` files under `tests/` |
-| Test command | `cargo test` when package ownership and the built-in harness are unambiguous |
+| Workspace graph | Literal basic/literal-string `members`, optional `default-members`, repository-contained paths, existing package manifests, and a separately detected project per member; virtual roots are aggregate-only |
+| Test command | `cargo test` for standalone packages or `cargo test -p <package>` for an exactly owned workspace package |
 | Direct evidence | A unique source function called by its inline test module, or an exact package-name and module-qualified `use` binding called by an integration test |
 | Assertion usage | Direct calls inside `assert!`, `assert_eq!`, `assert_ne!`, and their `debug_assert` variants are `asserted`; other direct calls are `called` |
 | Candidate filtering | Repository-relative and absolute `changedPaths`, including Windows separators |
@@ -23,9 +24,10 @@ The adapter normalizes Cargo package names from hyphens to underscores for Rust 
 
 ## Explicit Blockers And Exclusions
 
-The first slice does not claim support for:
+The current slices do not claim support for:
 
-- Cargo workspaces or virtual workspaces
+- globbed, computed, escaping, repository-external, missing, excluded, or otherwise incomplete Cargo workspace membership
+- aggregate auditing or commands from a virtual Cargo workspace root
 - custom test harnesses such as `harness = false`
 - dynamic or inherited manifest ownership
 - module re-exports and wildcard imports
@@ -48,4 +50,6 @@ These shapes remain visible through blockers or conservative missing evidence; t
 - an untested branching service candidate
 - data-only and module-wiring targets deferred from direct test recommendations
 
-The fixture is locked by Rust-specific unit tests, shared adapter conformance, audit and plan snapshots, and a model-consistency scenario. Promotion beyond experimental should wait for live-repository validation, workspace ownership, performance pressure, and a broader syntax/evidence boundary.
+`examples/rust-cargo-workspace-basic` adds a virtual workspace with two literal packages, an explicit default member, a path dependency, package-local inline and integration tests, exact `cargo test -p ...` commands, and an untested member-local validator.
+
+Both shapes are locked by Rust-specific unit tests, project detection/auditing coverage, audit and plan snapshots, and model-consistency scenarios. Promotion beyond experimental should still wait for live-repository validation, performance pressure, and a broader syntax/evidence boundary.

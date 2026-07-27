@@ -1,0 +1,67 @@
+{
+  "schemaVersion": "model-consistency-scenario/v1",
+  "id": "rust-cargo-workspace-checkout-plan",
+  "description": "Different model profiles should preserve exact Cargo workspace package ownership, the package-local command, and direct integration-test evidence.",
+  "sourceArtifact": {
+    "path": "evals/expected/rust-cargo-workspace-checkout.audit.json",
+    "schemaVersion": "audit/v1"
+  },
+  "toolCall": {
+    "toolName": "generate_test_plan",
+    "arguments": {}
+  },
+  "lockedFields": [
+    {
+      "path": "summary.verificationCommand",
+      "expected": "cargo test -p workspace-checkout",
+      "reason": "A literal Cargo workspace member should retain an exact package command rather than an aggregate workspace command."
+    },
+    {
+      "path": "summary.blockerCount",
+      "expected": 0,
+      "reason": "The complete repository-contained workspace graph should not introduce an ownership blocker."
+    },
+    {
+      "path": "summary.addTestCount",
+      "expected": 1,
+      "reason": "The untested validator should remain the one add-test item."
+    },
+    {
+      "path": "summary.extendTestCount",
+      "expected": 1,
+      "reason": "The asserted checkout service should remain the one extend-test item."
+    },
+    {
+      "path": "items[0].id",
+      "expected": "extend-test:src/service.rs",
+      "reason": "The covered workspace service should retain its stable plan identifier."
+    },
+    {
+      "path": "items[0].existingTestEvidence[0].kind",
+      "expected": "rust-symbol-reference",
+      "reason": "Workspace ownership must preserve exact crate-module import provenance."
+    },
+    {
+      "path": "items[0].existingTestEvidence[0].usage",
+      "expected": "asserted",
+      "reason": "The imported service call remains consumed by a built-in assertion macro."
+    },
+    {
+      "path": "items[1].id",
+      "expected": "add-test:src/validator.rs",
+      "reason": "The untested workspace validator should retain its stable add-test action."
+    }
+  ],
+  "allowedVariations": [
+    "summary wording",
+    "Rust workspace explanation wording",
+    "optional detail depth"
+  ],
+  "unexpectedVariations": [
+    "aggregate cargo test command",
+    "workspace ownership blocker",
+    "missing direct Rust symbol evidence",
+    "workspace-relative source or test identifiers",
+    "different plan action counts"
+  ]
+}
