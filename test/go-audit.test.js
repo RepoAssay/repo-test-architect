@@ -439,19 +439,103 @@ describe("Go adapter", () => {
     }]);
   });
 
-  it("rejects inferred, reassigned, and ambiguously shadowed receiver bindings", (t) => {
+  it("resolves receiver methods through exact concrete constructor result positions", (t) => {
+    const root = createRepo(t, {
+      "go.mod": "module example.com/constructors\n\ngo 1.22\n",
+      "client.go": "package constructors\ntype Client struct{}\nfunc (*Client) Fetch() int { return 1 }\n",
+      "validator.go": "package constructors\ntype Validator struct{}\nfunc (Validator) Validate() bool { return true }\n",
+      "factory.go": [
+        "package constructors",
+        "func NewClient() *Client { return &Client{} }",
+        "func NewValidator() (validator Validator, err error) { return Validator{}, nil }",
+        ""
+      ].join("\n"),
+      "constructor_test.go": [
+        "package constructors",
+        "import \"testing\"",
+        "func TestConstructors(t *testing.T) {",
+        "  client := NewClient()",
+        "  if client == nil { t.Fatal() }",
+        "  if client.Fetch() != 1 { t.Fatal() }",
+        "  validator, err := NewValidator()",
+        "  if err != nil || !validator.Validate() { t.Fatal() }",
+        "}",
+        ""
+      ].join("\n")
+    });
+
+    const audit = auditGoRepo(root);
+
+    assert.deepEqual(audit.untestedCandidates, []);
+    for (const path of ["client.go", "validator.go"]) {
+      assert.ok(audit.coveredButRisky.find((target) => target.path === path).existingTestEvidence.some((entry) =>
+        entry.testPath === "constructor_test.go" && entry.strength === "direct" && entry.usage === "called"
+      ));
+    }
+    assert.ok(audit.coveredButRisky.find((target) => target.path === "factory.go").existingTestEvidence.some((entry) =>
+      entry.testPath === "constructor_test.go" && entry.strength === "direct" && entry.usage === "called"
+    ));
+  });
+
+  it("resolves constructor bindings through exact named and dot external-package imports", (t) => {
+    const root = createRepo(t, {
+      "go.mod": "module example.com/shop\n\ngo 1.22\n",
+      "price/client.go": "package price\ntype Client struct{}\nfunc (*Client) Fetch() int { return 42 }\n",
+      "price/factory.go": "package price\nfunc NewClient() (*Client, error) { return &Client{}, nil }\n",
+      "price/named_test.go": [
+        "package price_test",
+        "import (",
+        "  \"testing\"",
+        "  pricing \"example.com/shop/price\"",
+        ")",
+        "func TestNamedConstructor(t *testing.T) {",
+        "  client, err := pricing.NewClient()",
+        "  if err != nil || client.Fetch() != 42 { t.Fatal() }",
+        "}",
+        ""
+      ].join("\n"),
+      "price/dot_test.go": [
+        "package price_test",
+        "import (",
+        "  \"testing\"",
+        "  . \"example.com/shop/price\"",
+        ")",
+        "func TestDotConstructor(t *testing.T) {",
+        "  client, err := NewClient()",
+        "  if err != nil || client.Fetch() != 42 { t.Fatal() }",
+        "}",
+        ""
+      ].join("\n")
+    });
+
+    const audit = auditGoRepo(root);
+    const client = audit.coveredButRisky.find((target) => target.path === "price/client.go");
+
+    assert.deepEqual(audit.untestedCandidates, []);
+    assert.deepEqual(client.existingTestEvidence, [
+      { testPath: "price/dot_test.go", kind: "go-symbol-reference", strength: "direct", usage: "called" },
+      { testPath: "price/named_test.go", kind: "go-symbol-reference", strength: "direct", usage: "called" }
+    ]);
+  });
+
+  it("rejects interface, alias, reassigned, and ambiguously shadowed receiver bindings", (t) => {
     const root = createRepo(t, {
       "go.mod": "module example.com/method-shadows\n\ngo 1.22\n",
-      "client.go": "package shadows\ntype Client struct{}\nfunc (Client) Fetch() int { return 1 }\n",
-      "factory.go": "package shadows\nfunc NewClient() Client { return Client{} }\n",
+      "runner.go": "package shadows\ntype Runner interface { Run() int }\ntype Client struct{}\nfunc (Client) Run() int { return 1 }\nfunc (Client) AsRunner() Runner { return Client{} }\n",
+      "alias.go": "package shadows\ntype Alias = Client\nfunc NewAlias() Alias { return Client{} }\n",
+      "factory.go": "package shadows\nfunc NewClient() Client { return Client{} }\nfunc NewRunner() Runner { return Client{} }\n",
       "service.go": "package shadows\ntype Service struct{}\nfunc (Service) Run() int { return 1 }\n",
       "worker.go": "package shadows\ntype Worker struct{}\nfunc (Worker) Work() int { return 1 }\n",
       "method_test.go": [
         "package shadows",
         "import \"testing\"",
         "func TestMethods(t *testing.T) {",
-        "  client := NewClient()",
-        "  _ = client.Fetch()",
+        "  runner := NewRunner()",
+        "  _ = runner.Run()",
+        "  alias := NewAlias()",
+        "  _ = alias.Run()",
+        "  chained := NewClient().AsRunner()",
+        "  _ = chained.Run()",
         "  service := Service{}",
         "  service = Service{}",
         "  _ = service.Run()",
@@ -465,8 +549,8 @@ describe("Go adapter", () => {
 
     const audit = auditGoRepo(root);
 
-    assert.deepEqual(audit.untestedCandidates.map((target) => target.path), ["client.go"]);
-    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["factory.go", "service.go", "worker.go"]);
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.path), ["runner.go"]);
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["alias.go", "factory.go", "service.go", "worker.go"]);
     for (const path of ["service.go", "worker.go"]) {
       assert.deepEqual(audit.coveredButRisky.find((target) => target.path === path).existingTestEvidence, [{
         testPath: "method_test.go",

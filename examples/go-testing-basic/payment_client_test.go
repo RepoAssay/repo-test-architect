@@ -13,7 +13,10 @@ func TestPaymentClientAuthorize(t *testing.T) {
 	}))
 	t.Cleanup(server.Close)
 
-	client := PaymentClient{client: server.Client()}
+	client, err := NewPaymentClient(server.Client())
+	if err != nil {
+		t.Fatalf("NewPaymentClient returned an error: %v", err)
+	}
 	if err := client.Authorize(context.Background(), server.URL); err != nil {
 		t.Fatalf("Authorize returned an error: %v", err)
 	}

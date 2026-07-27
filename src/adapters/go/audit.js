@@ -688,6 +688,7 @@ function detectRunnableKinds(content) {
 function collectSourceSymbols(sourceFiles) {
   const symbolsByPath = new Map();
   const symbolCounts = new Map();
+  const constructorsByReceiver = new Map();
 
   for (const file of sourceFiles) {
     const packageName = extractPackageName(file.content);
@@ -705,7 +706,20 @@ function collectSourceSymbols(sourceFiles) {
     }
   }
 
-  return { symbolsByPath, symbolCounts };
+  for (const source of symbolsByPath.values()) {
+    for (const symbol of source.symbols) {
+      if (symbol.kind !== "function" || !symbol.returnTypes) continue;
+      if (symbolCounts.get(sourceSymbolKey(source.directory, symbol)) !== 1) continue;
+      for (const receiverType of new Set(symbol.returnTypes)) {
+        const key = constructorReceiverKey(source.directory, source.packageName, receiverType);
+        const constructors = constructorsByReceiver.get(key) ?? [];
+        constructors.push({ name: symbol.name, returnTypes: symbol.returnTypes });
+        constructorsByReceiver.set(key, constructors);
+      }
+    }
+  }
+
+  return { symbolsByPath, symbolCounts, constructorsByReceiver };
 }
 
 function collectDeclaredSymbols(content) {
@@ -714,9 +728,16 @@ function collectDeclaredSymbols(content) {
   for (const match of masked.matchAll(/(?:^|\n)\s*func\s+([A-Za-z_][A-Za-z0-9_]*)/g)) {
     let cursor = match.index + match[0].length;
     cursor = skipGoWhitespace(masked, cursor);
-    if (masked[cursor] === "[") cursor = skipBalancedGoBrackets(masked, cursor);
+    const generic = masked[cursor] === "[";
+    if (generic) cursor = skipBalancedGoBrackets(masked, cursor);
     if (cursor !== undefined && masked[skipGoWhitespace(masked, cursor)] === "(") {
-      symbols.push({ name: match[1], kind: "function" });
+      cursor = skipBalancedGoDelimiter(masked, skipGoWhitespace(masked, cursor), "(", ")");
+      const returnTypes = generic || cursor === undefined ? undefined : parseSimpleGoReturnTypes(masked, cursor);
+      symbols.push({
+        name: match[1],
+        kind: "function",
+        ...(returnTypes ? { returnTypes } : {})
+      });
     }
   }
   for (const match of masked.matchAll(/(?:^|\n)\s*func\s*\(\s*(?:[A-Za-z_][A-Za-z0-9_]*\s+)?(\*?\s*[A-Za-z_][A-Za-z0-9_]*)\s*\)\s*([A-Za-z_][A-Za-z0-9_]*)/g)) {
@@ -735,14 +756,42 @@ function collectDeclaredSymbols(content) {
   return symbols;
 }
 
+function parseSimpleGoReturnTypes(maskedContent, start) {
+  const cursor = skipGoWhitespace(maskedContent, start);
+  if (maskedContent[cursor] === "{") return undefined;
+  if (maskedContent[cursor] !== "(") {
+    const match = maskedContent.slice(cursor).match(/^(\*?\s*[A-Za-z_][A-Za-z0-9_]*)\b/);
+    if (!match || maskedContent[skipGoWhitespace(maskedContent, cursor + match[0].length)] !== "{") return undefined;
+    return [match[1].replace(/^\*?\s*/, "")];
+  }
+
+  const end = skipBalancedGoDelimiter(maskedContent, cursor, "(", ")");
+  if (end === undefined || maskedContent[skipGoWhitespace(maskedContent, end)] !== "{") return undefined;
+  const fields = maskedContent.slice(cursor + 1, end - 1).split(",").map((field) => field.trim());
+  if (fields.length === 0 || fields.some((field) => !field)) return undefined;
+  const parsed = fields.map((field) => {
+    const match = field.match(/^(?:([A-Za-z_][A-Za-z0-9_]*)\s+)?(\*?\s*[A-Za-z_][A-Za-z0-9_]*)$/);
+    return match ? { named: Boolean(match[1]), type: match[2].replace(/^\*?\s*/, "") } : undefined;
+  });
+  if (parsed.some((field) => !field)) return undefined;
+  const namedCount = parsed.filter((field) => field.named).length;
+  if (namedCount !== 0 && namedCount !== parsed.length) return undefined;
+  return parsed.map((field) => field.type);
+}
+
 function sourceSymbolKey(directory, symbol) {
   return symbol.kind === "method"
     ? `${directory}\0method\0${symbol.receiverType}\0${symbol.name}`
     : `${directory}\0${symbol.name}`;
 }
 
+function constructorReceiverKey(directory, packageName, receiverType) {
+  return `${directory}\0${packageName}\0${receiverType}`;
+}
+
 function collectGoTestEvidence(sourceFiles, sourceSymbols, testFiles, modulePath) {
   const evidenceByPath = new Map();
+  const receiverBindings = new Map();
 
   for (const sourceFile of sourceFiles) {
     const normalizedSourcePath = normalizePath(sourceFile.path);
@@ -775,8 +824,15 @@ function collectGoTestEvidence(sourceFiles, sourceSymbols, testFiles, modulePath
         const usage = symbol.kind === "method"
           ? detectReceiverMethodUsage(
             testFile.maskedContent,
-            externalAlias && externalAlias !== "." ? `${externalAlias}.${symbol.receiverType}` : symbol.receiverType,
-            symbol.name
+            symbol.name,
+            cachedReceiverBindings(
+              receiverBindings,
+              testFile,
+              sourceSymbols,
+              source,
+              symbol.receiverType,
+              externalAlias
+            )
           )
           : detectSymbolUsage(testFile.maskedContent, reference, symbol.kind, externalAlias === ".");
         if (!usage) continue;
@@ -793,6 +849,35 @@ function collectGoTestEvidence(sourceFiles, sourceSymbols, testFiles, modulePath
   }
 
   return evidenceByPath;
+}
+
+function cachedReceiverBindings(cache, testFile, sourceSymbols, source, receiverType, externalAlias) {
+  const key = `${testFile.path}\0${source.directory}\0${source.packageName}\0${externalAlias ?? ""}\0${receiverType}`;
+  if (cache.has(key)) return cache.get(key);
+  const receiverTypeReference = externalAlias && externalAlias !== "."
+    ? `${externalAlias}.${receiverType}`
+    : receiverType;
+  const bindings = [...new Set([
+    ...collectExplicitReceiverNames(testFile.maskedContent, receiverTypeReference),
+    ...collectConstructorReceiverNames(
+      testFile.maskedContent,
+      collectReceiverConstructors(sourceSymbols, source, receiverType, externalAlias),
+      testFile.declaredSymbols
+    )
+  ])];
+  cache.set(key, bindings);
+  return bindings;
+}
+
+function collectReceiverConstructors(sourceSymbols, source, receiverType, externalAlias) {
+  const key = constructorReceiverKey(source.directory, source.packageName, receiverType);
+  return (sourceSymbols.constructorsByReceiver.get(key) ?? [])
+    .filter((constructor) => !externalAlias || isExportedGoIdentifier(constructor.name))
+    .map((constructor) => ({
+      ...constructor,
+      reference: externalAlias && externalAlias !== "." ? `${externalAlias}.${constructor.name}` : constructor.name,
+      receiverType
+    }));
 }
 
 function addGoSourceDependencyEvidence(sourceSymbols, evidenceByPath) {
@@ -874,8 +959,7 @@ function detectSymbolUsage(maskedContent, reference, kind, rejectLocalBindings =
   return undefined;
 }
 
-function detectReceiverMethodUsage(maskedContent, receiverTypeReference, methodName) {
-  const receiverNames = collectExplicitReceiverNames(maskedContent, receiverTypeReference);
+function detectReceiverMethodUsage(maskedContent, methodName, receiverNames) {
   return receiverNames.some((receiverName) =>
     hasUniqueReceiverBinding(maskedContent, receiverName) &&
     hasGoFunctionCall(
@@ -883,6 +967,37 @@ function detectReceiverMethodUsage(maskedContent, receiverTypeReference, methodN
       `\\b${escapeRegex(receiverName)}\\s*\\.\\s*${escapeRegex(methodName)}`
     )
   ) ? "called" : undefined;
+}
+
+function collectConstructorReceiverNames(maskedContent, constructors, declaredSymbols) {
+  const names = new Set();
+  for (const constructor of constructors) {
+    const bindingName = constructor.reference.includes(".") ? constructor.reference.split(".")[0] : constructor.name;
+    if (!constructor.reference.includes(".") && declaredSymbols.has(constructor.name)) continue;
+    if (hasVisibleGoNameBinding(maskedContent, bindingName)) continue;
+    const matcher = new RegExp(
+      `(?:^|[;{}\\n])\\s*([A-Za-z_][A-Za-z0-9_]*(?:\\s*,\\s*[A-Za-z_][A-Za-z0-9_]*)*)\\s*:=\\s*${escapeRegex(constructor.reference)}\\s*\\(`,
+      "g"
+    );
+    for (const match of maskedContent.matchAll(matcher)) {
+      const callStart = match.index + match[0].lastIndexOf("(");
+      const callEnd = skipBalancedGoDelimiter(maskedContent, callStart, "(", ")");
+      if (callEnd === undefined || !/^[ \t\r]*(?:\n|;|})/.test(maskedContent.slice(callEnd))) continue;
+      const bindings = match[1].split(",").map((name) => name.trim());
+      if (bindings.length !== constructor.returnTypes.length) continue;
+      constructor.returnTypes.forEach((returnType, index) => {
+        if (returnType === constructor.receiverType && bindings[index] !== "_") names.add(bindings[index]);
+      });
+    }
+  }
+  return [...names];
+}
+
+function hasVisibleGoNameBinding(maskedContent, name) {
+  const escaped = escapeRegex(name);
+  if (new RegExp(`\\b${escaped}\\s*:=`).test(maskedContent)) return true;
+  if (new RegExp(`\\bvar\\s+${escaped}\\b`).test(maskedContent)) return true;
+  return new RegExp(`(?:\\(|,)\\s*${escaped}\\s+\\*?[A-Za-z_][A-Za-z0-9_.]*`).test(maskedContent);
 }
 
 function collectExplicitReceiverNames(maskedContent, receiverTypeReference) {
@@ -903,13 +1018,23 @@ function collectExplicitReceiverNames(maskedContent, receiverTypeReference) {
 
 function hasUniqueReceiverBinding(maskedContent, receiverName) {
   const escaped = escapeRegex(receiverName);
-  const shortDeclarations = [...maskedContent.matchAll(new RegExp(`\\b${escaped}\\s*:=`, "g"))].length;
+  const shortDeclarations = countGoListBindings(maskedContent, receiverName, ":=");
   const varDeclarations = [...maskedContent.matchAll(new RegExp(`\\bvar\\s+${escaped}\\b`, "g"))].length;
   const parameterDeclarations = [...maskedContent.matchAll(
     new RegExp(`(?:\\(|,)\\s*${escaped}\\s+\\*?[A-Za-z_][A-Za-z0-9_.]*`, "g")
   )].length;
-  const assignments = [...maskedContent.matchAll(new RegExp(`\\b${escaped}\\s*=`, "g"))].length;
+  const assignments = countGoListBindings(maskedContent, receiverName, "=");
   return shortDeclarations + varDeclarations + parameterDeclarations === 1 && assignments === 0;
+}
+
+function countGoListBindings(maskedContent, name, operator) {
+  const matcher = new RegExp(
+    `(?:^|[;{}\\n]|\\b(?:for|if|switch)\\s+)\\s*([A-Za-z_][A-Za-z0-9_]*(?:\\s*,\\s*[A-Za-z_][A-Za-z0-9_]*)*)\\s*${escapeRegex(operator)}${operator === "=" ? "(?!=)" : ""}`,
+    "g"
+  );
+  return [...maskedContent.matchAll(matcher)].filter((match) =>
+    match[1].split(",").some((binding) => binding.trim() === name)
+  ).length;
 }
 
 function hasGoFunctionCall(maskedContent, prefixPattern) {

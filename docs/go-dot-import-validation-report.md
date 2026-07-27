@@ -39,3 +39,5 @@ Zap still contains constructor-created interface values and calls through those 
 The static profile continues to withhold a verification command unless build selection is fully explicit. Zap contains platform constraints, the `tools` tag, and a `go1.21` release tag; release-tag evaluation remains outside the bounded target model even though the pinned checkout's native command was reviewed successfully.
 
 All three promoted Go validation-corpus cases retained their candidate counts, evidence counts, and canonical audit digests after this change. Zap remains a post-promotion pressure report rather than a fourth passing corpus role because its release-tag command boundary is intentionally unresolved.
+
+The later exact constructor-result slice retains Zap's candidate counts, 286 relationships, and conservative interface-returning factory boundary.

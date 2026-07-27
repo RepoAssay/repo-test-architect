@@ -8,9 +8,9 @@ The validation finder now exposes a `go-http` profile requiring a root `go.mod`,
 
 | Repository | Audited commit | Role | Detected root command | Untested | Covered | Skipped | Median audit |
 | --- | --- | --- | --- | ---: | ---: | ---: | ---: |
-| [`go-chi/chi`](https://github.com/go-chi/chi) | `8b258c7bb28f97a5f2a856ff7ef962578fec9215` | HTTP router and middleware | `GOOS=darwin GOARCH=arm64 go test ./...` | 14 | 23 | 10 | 77 ms |
+| [`go-chi/chi`](https://github.com/go-chi/chi) | `8b258c7bb28f97a5f2a856ff7ef962578fec9215` | HTTP router and middleware | `GOOS=darwin GOARCH=arm64 go test ./...` | 14 | 23 | 10 | 553 ms |
 
-The promotion remeasurement took 111, 77, and 76 ms. All three audits produced the same normalized audit digest, `30549ee5288778c890f6b13a165e0155fda4112eb872474431137e26de25973e`, with 66 evidence relationships.
+The constructor-result remeasurement took 592, 533, and 553 ms. All three audits produced the same normalized audit digest, `2f9078d5c4978a2ff0ec0226bf3658fb0864e2a4de92cc3a6ee134e232cd482e`, with 70 evidence relationships. The new direct `mux.go` relationship from `mux_test.go` is rooted in `NewRouter() *Mux`; its three additional `chain.go`, `chi.go`, and `context.go` links use the existing bounded one-hop rule. Candidate classifications remain unchanged.
 
 ## Native Validation
 
@@ -50,10 +50,12 @@ The HTTP/service probe passes the reviewed detection, ownership, target, command
 - nested example modules retain independent ownership and do not contaminate the root command
 - HTTP handlers and middleware with no native statement coverage remain untested
 - `chain.go` is recovered from an exact top-level call without claiming package-wide coverage
-- constructor-inferred or ambiguous receiver methods, interface dispatch, route runtime reachability, and assertion completeness remain outside the evidence claim
+- receiver methods without an explicit type or exact simple concrete constructor result, interface dispatch, route runtime reachability, and assertion completeness remain outside the evidence claim
 
 ## Corpus Progress
 
 This checkout is the framework-heavy role in `validation-corpus/v1`. Its manifest record preserves the explicit Darwin/arm64 audit target so repeated measurements remain independent of the review host. The [Go workspace ownership validation](go-ownership-validation-report.md) supplies the difficult graph role.
 
 The explicitly typed receiver-method slice was remeasured against this exact checkout without changing its candidate counts, 66 evidence relationships, or canonical digest. The new rule therefore adds no inferred HTTP receiver claims to Chi's constructor- and interface-heavy patterns.
+
+The later exact constructor-result slice retained those candidate counts and added one reviewed direct relationship plus three existing one-hop consequences, producing 70 relationships and the digest recorded above. Interface-returning and chained constructor expressions remain uncredited.
