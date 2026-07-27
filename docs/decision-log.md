@@ -237,3 +237,11 @@ Decision: upgrade a direct Go call from `called` to `asserted` only when the cal
 Rationale: every other mature adapter distinguishes execution from an observed result. TOML and Chi provide conservative standard-library examples, while River and Zap provide exact Testify pressure. The retained rule upgrades 3, 2, 12, and 56 relationships respectively without changing any candidate or relationship count; Resty's unchanged 119-link audit is the negative control. Indexing result bindings once per test file keeps River's three-run median at 899 ms instead of the initial repeated-scan result near 1.43 seconds.
 
 Revisit when: parser-backed scopes can prove helper assertions, Example output checks, composite-literal initializers, or deeper result flow without treating an unrelated failure call as observation of a source result.
+
+## Parser-Scoped Go Shadow Resolution
+
+Decision: retain the Go-aware lexical matcher for call and construction shapes, but resolve an ambiguous parameter or local short, `var`, `const`, or `type` binding with lazy parser-backed function and block scopes. Parse and cache only functions containing both a possible binding and a candidate use. A binding in another function or an exited nested block no longer suppresses same-package, imported, Testify, constructor, or module-local dependency evidence; a binding visible at the call still does. Syntax errors keep the conservative file-wide rejection.
+
+Rationale: file-wide suppression prevented false positives but discarded valid relationships in large conventional test files. River's `client_test.go` and `producer_test.go` contain four local variables named `require`; those bindings are unrelated to valid Testify calls in other tests. The bounded scope index upgrades 14 existing River relationships without changing its 576-link graph or any candidate classification. TOML, Chi, Zap, and Resty retain their canonical semantics. A pure-JavaScript parser avoids native addons, external assets, Go toolchain execution, and target-repository code execution.
+
+Revisit when: parser-backed receiver-binding identity, callable-body ownership, or helper flow can be added without turning local syntax into type or control-flow inference.

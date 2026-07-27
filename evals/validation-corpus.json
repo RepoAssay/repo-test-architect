@@ -135,11 +135,11 @@
             "untestedCandidates": 6,
             "coveredButRisky": 9,
             "skippedTargets": 7,
-            "auditDurationMs": 245,
+            "auditDurationMs": 262,
             "auditDurationSamplesMs": [
-              287,
-              245,
-              238
+              300,
+              262,
+              254
             ],
             "evidenceRelationshipCount": 50,
             "canonicalAuditSha256": "9489b38da82cabd66db1f0ccd50a01a18e304f8f9077ceaa019d319d0b046979"
@@ -176,11 +176,11 @@
             "untestedCandidates": 14,
             "coveredButRisky": 23,
             "skippedTargets": 10,
-            "auditDurationMs": 563,
+            "auditDurationMs": 599,
             "auditDurationSamplesMs": [
-              623,
-              563,
-              560
+              656,
+              599,
+              596
             ],
             "evidenceRelationshipCount": 70,
             "canonicalAuditSha256": "d452349229f777e8ff24bd67dc0d1440451625dc6c188e41dd1c41399a00e3fc"
@@ -210,14 +210,14 @@
             "untestedCandidates": 6,
             "coveredButRisky": 47,
             "skippedTargets": 10,
-            "auditDurationMs": 899,
+            "auditDurationMs": 1037,
             "auditDurationSamplesMs": [
-              960,
-              885,
-              899
+              1129,
+              1037,
+              1024
             ],
             "evidenceRelationshipCount": 576,
-            "canonicalAuditSha256": "a9ef959b5dae0685ab338d0a41ae8e6e70f73e3137654ea4ab91b46254c2ae6d"
+            "canonicalAuditSha256": "ef4ae3299b71bbd2ad38324b812fb845cf24d93241abad65c2982f7b681ba5ca"
           }
         }
       ]

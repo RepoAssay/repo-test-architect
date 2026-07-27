@@ -8,9 +8,9 @@ The validation finder now exposes a `go-http` profile requiring a root `go.mod`,
 
 | Repository | Audited commit | Role | Detected root command | Untested | Covered | Skipped | Median audit |
 | --- | --- | --- | --- | ---: | ---: | ---: | ---: |
-| [`go-chi/chi`](https://github.com/go-chi/chi) | `8b258c7bb28f97a5f2a856ff7ef962578fec9215` | HTTP router and middleware | `GOOS=darwin GOARCH=arm64 go test ./...` | 14 | 23 | 10 | 563 ms |
+| [`go-chi/chi`](https://github.com/go-chi/chi) | `8b258c7bb28f97a5f2a856ff7ef962578fec9215` | HTTP router and middleware | `GOOS=darwin GOARCH=arm64 go test ./...` | 14 | 23 | 10 | 599 ms |
 
-The assertion-usage remeasurement took 623, 563, and 560 ms. All three audits produced the same normalized audit digest, `d452349229f777e8ff24bd67dc0d1440451625dc6c188e41dd1c41399a00e3fc`, with 70 evidence relationships, including two exact standard-library assertion upgrades. Candidate classifications remain unchanged.
+The parser-scope remeasurement took 656, 599, and 596 ms. All three audits produced the same normalized audit digest, `d452349229f777e8ff24bd67dc0d1440451625dc6c188e41dd1c41399a00e3fc`, with 70 evidence relationships, including two exact standard-library assertion upgrades. Candidate classifications remain unchanged.
 
 ## Native Validation
 

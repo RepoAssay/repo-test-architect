@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { analyzeGoSyntax } from "./syntax.js";
 
 const GO_SOURCE_EXTENSION = ".go";
 const BUILD_FILES = new Set(["go.mod", "go.sum", "go.work"]);
@@ -167,7 +168,7 @@ function buildProfile(root, files, workspaceContext, buildSelection) {
   const goMod = files.find((file) => file.path === "go.mod");
   const modulePath = goMod?.content.match(/^\s*module\s+([^\s]+)\s*$/m)?.[1];
   const selectedFiles = files.filter((file) => buildSelection.byPath.get(file.path)?.included !== false);
-  const runnableTests = selectedFiles.filter((file) => isRunnableTestFile(file)).map((file) => analyzeTestFile(file));
+  const runnableTests = selectedFiles.filter((file) => isRunnableTestFile(file)).map((file) => analyzeTestProfileFile(file));
   const allTestFiles = selectedFiles.filter((file) => isTestFile(file.path));
   const hasGinkgo = files.some((file) => /github\.com\/onsi\/(?:ginkgo|gomega)/.test(file.content));
   const testFrameworks = runnableTests.length > 0 ? ["go-testing"] : [];
@@ -662,7 +663,8 @@ function analyzeTestFile(file) {
       .map((symbol) => symbol.name)
   );
   const maskedContent = maskGoSource(file.content);
-  const assertionContent = collectGoAssertionBodies(maskedContent, imports, declaredSymbols).join("\n");
+  const syntax = lazyGoSyntax(file.content, maskedContent);
+  const assertionContent = collectGoAssertionBodies(maskedContent, imports, declaredSymbols, syntax).join("\n");
   return {
     ...file,
     path: normalizePath(file.path),
@@ -672,8 +674,19 @@ function analyzeTestFile(file) {
     imports,
     declaredSymbols,
     maskedContent,
+    syntax,
     assertionContent,
     assertedCallReferences: collectAssertedGoCallReferences(maskedContent, assertionContent)
+  };
+}
+
+function analyzeTestProfileFile(file) {
+  return {
+    ...file,
+    path: normalizePath(file.path),
+    directory: directoryOf(file.path),
+    packageName: extractPackageName(file.content),
+    runnableKinds: detectRunnableKinds(file.content)
   };
 }
 
@@ -700,12 +713,14 @@ function collectSourceSymbols(sourceFiles) {
     const packageName = extractPackageName(file.content);
     const directory = directoryOf(file.path);
     const symbols = collectDeclaredSymbols(file.content);
+    const maskedContent = maskGoSource(file.content);
     symbolsByPath.set(file.path, {
       packageName,
       directory,
       symbols,
       imports: collectImports(file.content),
-      maskedContent: maskGoSource(file.content)
+      maskedContent,
+      syntax: lazyGoSyntax(file.content, maskedContent)
     });
     for (const symbol of symbols) {
       const key = sourceSymbolKey(directory, symbol);
@@ -727,6 +742,14 @@ function collectSourceSymbols(sourceFiles) {
   }
 
   return { symbolsByPath, symbolCounts, constructorsByReceiver };
+}
+
+function lazyGoSyntax(content, maskedContent) {
+  let syntax;
+  return () => {
+    syntax ??= analyzeGoSyntax(content, maskedContent);
+    return syntax;
+  };
 }
 
 function collectDeclaredSymbols(content) {
@@ -828,6 +851,7 @@ function collectGoTestEvidence(sourceFiles, sourceSymbols, testFiles, modulePath
         if (sourceSymbols.symbolCounts.get(symbolKey) !== 1) continue;
         if (usesUnqualifiedSymbols && testFile.declaredSymbols.has(symbol.kind === "method" ? symbol.receiverType : symbol.name)) continue;
         const reference = externalAlias && externalAlias !== "." ? `${externalAlias}.${symbol.name}` : symbol.name;
+        const shadowName = externalAlias && externalAlias !== "." ? externalAlias : symbol.name;
         const usage = symbol.kind === "method"
           ? detectReceiverMethodUsage(
             testFile.maskedContent,
@@ -849,7 +873,9 @@ function collectGoTestEvidence(sourceFiles, sourceSymbols, testFiles, modulePath
             symbol.kind,
             externalAlias === ".",
             testFile.assertionContent,
-            testFile.assertedCallReferences
+            testFile.assertedCallReferences,
+            testFile.syntax,
+            shadowName
           );
         if (!usage) continue;
         evidence.push({
@@ -878,7 +904,8 @@ function cachedReceiverBindings(cache, testFile, sourceSymbols, source, receiver
     ...collectConstructorReceiverNames(
       testFile.maskedContent,
       collectReceiverConstructors(sourceSymbols, source, receiverType, externalAlias),
-      testFile.declaredSymbols
+      testFile.declaredSymbols,
+      testFile.syntax
     )
   ])];
   cache.set(key, bindings);
@@ -916,15 +943,18 @@ function addGoSourceDependencyEvidence(sourceSymbols, evidenceByPath, modulePath
         : importedPackageAlias(caller.imports, modulePath, dependency.directory, dependency.packageName);
       if (!samePackage && !externalAlias) continue;
       if (!samePackage && callerCallableCount !== 1) continue;
-      if (externalAlias && externalAlias !== "." && hasVisibleGoNameBinding(caller.maskedContent, externalAlias)) continue;
-
       const callsDependency = dependency.symbols.some((symbol) =>
         symbol.kind === "function" &&
         (samePackage || isExportedGoIdentifier(symbol.name)) &&
         sourceSymbols.symbolCounts.get(sourceSymbolKey(dependency.directory, symbol)) === 1 &&
         (externalAlias && externalAlias !== "."
-          ? hasGoFunctionCall(caller.maskedContent, `\\b${escapeRegex(externalAlias)}\\s*\\.\\s*${escapeRegex(symbol.name)}`)
-          : callsUnqualifiedFunction(caller.maskedContent, symbol.name))
+          ? hasGoFunctionCallWithScopes(
+            caller.maskedContent,
+            `\\b${escapeRegex(externalAlias)}\\s*\\.\\s*${escapeRegex(symbol.name)}`,
+            caller.syntax,
+            externalAlias
+          )
+          : callsUnqualifiedFunction(caller.maskedContent, symbol.name, caller.syntax))
       );
       if (!callsDependency) continue;
 
@@ -942,8 +972,16 @@ function addGoSourceDependencyEvidence(sourceSymbols, evidenceByPath, modulePath
   }
 }
 
-function callsUnqualifiedFunction(maskedContent, name) {
+function callsUnqualifiedFunction(maskedContent, name, syntax = undefined) {
   const escaped = escapeRegex(name);
+  if (syntax) {
+    return hasGoFunctionCallWithScopes(
+      maskedContent,
+      `(?:^|[^.A-Za-z0-9_])${escaped}`,
+      syntax,
+      name
+    );
+  }
   if (new RegExp(`\\b${escaped}\\s*:=`).test(maskedContent)) return false;
   if (new RegExp(`\\bvar\\s+${escaped}\\b`).test(maskedContent)) return false;
   if (new RegExp(`\\bfunc\\s+(?:\\([^)]*\\)\\s*)?[A-Za-z_][A-Za-z0-9_]*\\s*\\([^)]*\\b${escaped}\\s+`).test(maskedContent)) {
@@ -983,11 +1021,13 @@ function detectSymbolUsage(
   kind,
   rejectLocalBindings = false,
   assertionContent = "",
-  assertedCallReferences = new Set()
+  assertedCallReferences = new Set(),
+  syntax = undefined,
+  shadowName = reference.split(".")[0]
 ) {
   const escaped = escapeRegex(reference);
   if (kind === "function" && rejectLocalBindings && !reference.includes(".")) {
-    if (!callsUnqualifiedFunction(maskedContent, reference)) return undefined;
+    if (!callsUnqualifiedFunction(maskedContent, reference, syntax)) return undefined;
     return detectGoCallAssertion(
       `(?:^|[^.A-Za-z0-9_])${escaped}`,
       reference,
@@ -997,12 +1037,20 @@ function detectSymbolUsage(
       ? "asserted"
       : "called";
   }
-  if (kind === "function" && hasGoFunctionCall(maskedContent, `\\b${escaped}`)) {
+  if (kind === "function" && (
+    syntax
+      ? hasGoFunctionCallWithScopes(maskedContent, `\\b${escaped}`, syntax, shadowName)
+      : hasGoFunctionCall(maskedContent, `\\b${escaped}`)
+  )) {
     return detectGoCallAssertion(`\\b${escaped}`, reference, assertionContent, assertedCallReferences)
       ? "asserted"
       : "called";
   }
-  if (kind === "type" && new RegExp(`\\b${escaped}\\s*(?:\\{|\\()`).test(maskedContent)) return "referenced";
+  if (kind === "type" && (
+    syntax
+      ? hasGoTypeConstructionWithScopes(maskedContent, escaped, syntax, shadowName)
+      : new RegExp(`\\b${escaped}\\s*(?:\\{|\\()`).test(maskedContent)
+  )) return "referenced";
   return undefined;
 }
 
@@ -1029,7 +1077,7 @@ function detectReceiverMethodUsage(
   return called ? "called" : undefined;
 }
 
-function collectGoAssertionBodies(maskedContent, imports, declaredSymbols) {
+function collectGoAssertionBodies(maskedContent, imports, declaredSymbols, syntax) {
   const bodies = collectGoFailureConditions(maskedContent);
   const assertionArgumentCounts = new Map([
     ...["Condition", "Empty", "Error", "False", "IsDecreasing", "IsIncreasing", "IsNonDecreasing", "IsNonIncreasing", "Negative", "Nil", "NoError", "NotEmpty", "NotNil", "NotPanics", "NotZero", "Panics", "Positive", "True", "Zero"].map((name) => [name, 1]),
@@ -1037,30 +1085,44 @@ function collectGoAssertionBodies(maskedContent, imports, declaredSymbols) {
     ...["Eventually", "Never", "WithinDuration", "WithinRange"].map((name) => [name, 3])
   ]);
   const assertionNames = `(${[...assertionArgumentCounts.keys()].join("|")})`;
-
   for (const declaration of imports.filter((entry) =>
     ["github.com/stretchr/testify/assert", "github.com/stretchr/testify/require"].includes(entry.path) &&
     entry.alias !== "_"
   )) {
     const packageName = declaration.path.endsWith("/assert") ? "assert" : "require";
     const alias = declaration.alias ?? packageName;
-    if (alias === ".") {
-      for (const name of assertionArgumentCounts.keys()) {
-        if (declaredSymbols.has(name) || hasVisibleGoNameBinding(maskedContent, name)) continue;
-        bodies.push(...collectGoAssertionArguments(
+    if (alias !== ".") {
+      const prefixPattern = `\\b${escapeRegex(alias)}\\s*\\.\\s*${assertionNames}`;
+      bodies.push(...(hasVisibleGoNameBinding(maskedContent, alias)
+        ? collectScopedGoAssertionArguments(
           maskedContent,
-          `(?:^|[^.A-Za-z0-9_])(${escapeRegex(name)})`,
+          syntax(),
+          prefixPattern,
+          alias,
           assertionArgumentCounts
-        ));
-      }
+        )
+        : collectGoAssertionArguments(maskedContent, prefixPattern, assertionArgumentCounts)));
       continue;
     }
-    if (hasVisibleGoNameBinding(maskedContent, alias)) continue;
-    bodies.push(...collectGoAssertionArguments(
-      maskedContent,
-      `\\b${escapeRegex(alias)}\\s*\\.\\s*${assertionNames}`,
-      assertionArgumentCounts
-    ));
+    for (const [name, argumentCount] of assertionArgumentCounts) {
+      if (declaredSymbols.has(name)) continue;
+      const prefixPattern = `(?:^|[^.A-Za-z0-9_])(${escapeRegex(name)})`;
+      if (!hasVisibleGoNameBinding(maskedContent, name)) {
+        bodies.push(...collectGoAssertionArguments(
+          maskedContent,
+          prefixPattern,
+          assertionArgumentCounts
+        ));
+        continue;
+      }
+      bodies.push(...collectScopedGoAssertionArguments(
+        maskedContent,
+        syntax(),
+        prefixPattern,
+        name,
+        new Map([[name, argumentCount]])
+      ));
+    }
   }
 
   return bodies;
@@ -1132,12 +1194,25 @@ function findGoBlockStart(content, start) {
 
 function collectGoAssertionArguments(maskedContent, prefixPattern, assertionArgumentCounts) {
   const bodies = [];
-  const matcher = new RegExp(prefixPattern, "g");
-  for (const match of maskedContent.matchAll(matcher)) {
-    let cursor = skipGoWhitespace(maskedContent, match.index + match[0].length);
-    if (maskedContent[cursor] === "[") cursor = skipBalancedGoBrackets(maskedContent, cursor);
-    cursor = cursor === undefined ? undefined : skipGoWhitespace(maskedContent, cursor);
-    if (cursor === undefined || maskedContent[cursor] !== "(") continue;
+  for (const match of maskedContent.matchAll(new RegExp(prefixPattern, "g"))) {
+    const cursor = skipGoWhitespace(maskedContent, match.index + match[0].length);
+    if (maskedContent[cursor] !== "(") continue;
+    const end = skipBalancedGoDelimiter(maskedContent, cursor, "(", ")");
+    if (end === undefined) continue;
+    const argumentCount = assertionArgumentCounts.get(match[1]);
+    const args = splitTopLevelGoArguments(maskedContent.slice(cursor + 1, end - 1));
+    if (argumentCount && args.length > 1) bodies.push(args.slice(1, argumentCount + 1).join(","));
+  }
+  return bodies;
+}
+
+function collectScopedGoAssertionArguments(maskedContent, syntax, prefixPattern, shadowName, assertionArgumentCounts) {
+  const bodies = [];
+  if (!syntax.reliable && hasVisibleGoNameBinding(maskedContent, shadowName)) return bodies;
+  for (const match of maskedContent.matchAll(new RegExp(prefixPattern, "g"))) {
+    if (syntax.hasVisibleBinding(shadowName, match.index)) continue;
+    const cursor = skipGoWhitespace(maskedContent, match.index + match[0].length);
+    if (maskedContent[cursor] !== "(") continue;
     const end = skipBalancedGoDelimiter(maskedContent, cursor, "(", ")");
     if (end === undefined) continue;
     const argumentCount = assertionArgumentCounts.get(match[1]);
@@ -1221,17 +1296,21 @@ function normalizeGoCallReference(reference) {
   return reference.replace(/\s+/g, "");
 }
 
-function collectConstructorReceiverNames(maskedContent, constructors, declaredSymbols) {
+function collectConstructorReceiverNames(maskedContent, constructors, declaredSymbols, syntax) {
   const names = new Set();
   for (const constructor of constructors) {
     const bindingName = constructor.reference.includes(".") ? constructor.reference.split(".")[0] : constructor.name;
     if (!constructor.reference.includes(".") && declaredSymbols.has(constructor.name)) continue;
-    if (hasVisibleGoNameBinding(maskedContent, bindingName)) continue;
     const matcher = new RegExp(
       `(?:^|[;{}\\n])\\s*([A-Za-z_][A-Za-z0-9_]*(?:\\s*,\\s*[A-Za-z_][A-Za-z0-9_]*)*)\\s*:=\\s*${escapeRegex(constructor.reference)}\\s*\\(`,
       "g"
     );
     for (const match of maskedContent.matchAll(matcher)) {
+      const constructorStart = match.index + match[0].lastIndexOf(constructor.reference);
+      const parsedSyntax = hasVisibleGoNameBinding(maskedContent, bindingName) ? syntax() : undefined;
+      if (parsedSyntax?.reliable
+        ? parsedSyntax.hasVisibleBinding(bindingName, constructorStart)
+        : hasVisibleGoNameBinding(maskedContent, bindingName)) continue;
       const callStart = match.index + match[0].lastIndexOf("(");
       const callEnd = skipBalancedGoDelimiter(maskedContent, callStart, "(", ")");
       if (callEnd === undefined || !/^[ \t\r]*(?:\n|;|})/.test(maskedContent.slice(callEnd))) continue;
@@ -1248,7 +1327,7 @@ function collectConstructorReceiverNames(maskedContent, constructors, declaredSy
 function hasVisibleGoNameBinding(maskedContent, name) {
   const escaped = escapeRegex(name);
   if (new RegExp(`\\b${escaped}\\s*:=`).test(maskedContent)) return true;
-  if (new RegExp(`\\bvar\\s+${escaped}\\b`).test(maskedContent)) return true;
+  if (new RegExp(`\\b(?:var|const|type)\\s+${escaped}\\b`).test(maskedContent)) return true;
   return new RegExp(`(?:\\(|,)\\s*${escaped}[ \\t]+\\*?[A-Za-z_][A-Za-z0-9_.]*`).test(maskedContent);
 }
 
@@ -1287,6 +1366,45 @@ function countGoListBindings(maskedContent, name, operator) {
   return [...maskedContent.matchAll(matcher)].filter((match) =>
     match[1].split(",").some((binding) => binding.trim() === name)
   ).length;
+}
+
+function hasGoFunctionCallWithScopes(maskedContent, prefixPattern, syntax, shadowName) {
+  if (!hasVisibleGoNameBinding(maskedContent, shadowName)) {
+    return hasGoFunctionCall(maskedContent, prefixPattern);
+  }
+  return hasScopedGoFunctionCall(maskedContent, prefixPattern, syntax(), shadowName);
+}
+
+function hasGoTypeConstructionWithScopes(maskedContent, escapedReference, syntax, shadowName) {
+  if (!hasVisibleGoNameBinding(maskedContent, shadowName)) {
+    return new RegExp(`\\b${escapedReference}\\s*(?:\\{|\\()`).test(maskedContent);
+  }
+  return hasScopedGoTypeConstruction(maskedContent, escapedReference, syntax(), shadowName);
+}
+
+function hasScopedGoFunctionCall(maskedContent, prefixPattern, syntax, shadowName) {
+  if (!syntax.reliable) {
+    return !hasVisibleGoNameBinding(maskedContent, shadowName) && hasGoFunctionCall(maskedContent, prefixPattern);
+  }
+  const matcher = new RegExp(prefixPattern, "g");
+  for (const match of maskedContent.matchAll(matcher)) {
+    if (syntax.hasVisibleBinding(shadowName, match.index)) continue;
+    let cursor = skipGoWhitespace(maskedContent, match.index + match[0].length);
+    if (maskedContent[cursor] === "[") cursor = skipBalancedGoBrackets(maskedContent, cursor);
+    if (cursor !== undefined && maskedContent[skipGoWhitespace(maskedContent, cursor)] === "(") return true;
+  }
+  return false;
+}
+
+function hasScopedGoTypeConstruction(maskedContent, escapedReference, syntax, shadowName) {
+  if (!syntax.reliable) {
+    return !hasVisibleGoNameBinding(maskedContent, shadowName) &&
+      new RegExp(`\\b${escapedReference}\\s*(?:\\{|\\()`).test(maskedContent);
+  }
+  const matcher = new RegExp(`\\b${escapedReference}\\s*(?:\\{|\\()`, "g");
+  return [...maskedContent.matchAll(matcher)].some((match) =>
+    !syntax.hasVisibleBinding(shadowName, match.index)
+  );
 }
 
 function hasGoFunctionCall(maskedContent, prefixPattern) {
