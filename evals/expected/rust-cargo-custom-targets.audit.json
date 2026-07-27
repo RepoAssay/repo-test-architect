@@ -19,6 +19,7 @@
     "testCommand": "cargo test",
     "detectedConventions": [
       "explicit Cargo source target",
+      "literal Rust module graph",
       "inline cfg(test) modules"
     ],
     "existingTestLocations": [
@@ -50,6 +51,78 @@
       "reasons": [
         "Branching Rust behavior",
         "Fallible or edge-case behavior"
+      ],
+      "existingTestPaths": []
+    },
+    {
+      "id": "app/output/formatter.rs",
+      "name": "formatter",
+      "path": "app/output/formatter.rs",
+      "kind": "transformation",
+      "signals": [
+        "pure-logic"
+      ],
+      "risk": "medium",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 6,
+      "maintenanceCost": 2,
+      "reasons": [
+        "Deterministic Rust behavior"
+      ],
+      "existingTestPaths": []
+    },
+    {
+      "id": "app/output.rs",
+      "name": "output",
+      "path": "app/output.rs",
+      "kind": "business-logic",
+      "signals": [
+        "runtime-behavior"
+      ],
+      "risk": "medium",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 6,
+      "maintenanceCost": 2,
+      "reasons": [
+        "Deterministic Rust behavior"
+      ],
+      "existingTestPaths": []
+    },
+    {
+      "id": "shared/tax.rs",
+      "name": "tax",
+      "path": "shared/tax.rs",
+      "kind": "business-logic",
+      "signals": [
+        "runtime-behavior"
+      ],
+      "risk": "medium",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 6,
+      "maintenanceCost": 2,
+      "reasons": [
+        "Deterministic Rust behavior"
+      ],
+      "existingTestPaths": []
+    },
+    {
+      "id": "code/validator.rs",
+      "name": "validator",
+      "path": "code/validator.rs",
+      "kind": "validator",
+      "signals": [
+        "pure-logic"
+      ],
+      "risk": "medium",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 6,
+      "maintenanceCost": 2,
+      "reasons": [
+        "Deterministic Rust behavior"
       ],
       "existingTestPaths": []
     }
@@ -141,6 +214,78 @@
       "reasons": [
         "Branching Rust behavior",
         "Fallible or edge-case behavior"
+      ],
+      "existingTestPaths": []
+    },
+    {
+      "id": "app/output/formatter.rs",
+      "name": "formatter",
+      "path": "app/output/formatter.rs",
+      "kind": "transformation",
+      "signals": [
+        "pure-logic"
+      ],
+      "risk": "medium",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 6,
+      "maintenanceCost": 2,
+      "reasons": [
+        "Deterministic Rust behavior"
+      ],
+      "existingTestPaths": []
+    },
+    {
+      "id": "app/output.rs",
+      "name": "output",
+      "path": "app/output.rs",
+      "kind": "business-logic",
+      "signals": [
+        "runtime-behavior"
+      ],
+      "risk": "medium",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 6,
+      "maintenanceCost": 2,
+      "reasons": [
+        "Deterministic Rust behavior"
+      ],
+      "existingTestPaths": []
+    },
+    {
+      "id": "shared/tax.rs",
+      "name": "tax",
+      "path": "shared/tax.rs",
+      "kind": "business-logic",
+      "signals": [
+        "runtime-behavior"
+      ],
+      "risk": "medium",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 6,
+      "maintenanceCost": 2,
+      "reasons": [
+        "Deterministic Rust behavior"
+      ],
+      "existingTestPaths": []
+    },
+    {
+      "id": "code/validator.rs",
+      "name": "validator",
+      "path": "code/validator.rs",
+      "kind": "validator",
+      "signals": [
+        "pure-logic"
+      ],
+      "risk": "medium",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 6,
+      "maintenanceCost": 2,
+      "reasons": [
+        "Deterministic Rust behavior"
       ],
       "existingTestPaths": []
     }

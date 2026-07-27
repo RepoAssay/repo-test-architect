@@ -17,7 +17,7 @@ describe("Rust audit adapter", () => {
       testFrameworks: ["rust-test"],
       architectures: ["cargo-package", "library"],
       testCommand: "cargo test",
-      detectedConventions: ["inline cfg(test) modules", "Cargo integration tests"],
+      detectedConventions: ["literal Rust module graph", "inline cfg(test) modules", "Cargo integration tests"],
       existingTestLocations: ["inline #[cfg(test)] modules", "tests/ integration tests"],
       setupSignals: ["Cargo.toml", "Rust 2024 edition"],
       confidence: "high",
@@ -62,7 +62,7 @@ describe("Rust audit adapter", () => {
       testFrameworks: ["rust-test"],
       architectures: ["cargo-package", "cargo-workspace-package", "library"],
       testCommand: "cargo test -p workspace-checkout",
-      detectedConventions: ["Cargo integration tests"],
+      detectedConventions: ["literal Rust module graph", "Cargo integration tests"],
       existingTestLocations: ["tests/ integration tests"],
       setupSignals: [
         "Cargo.toml",
@@ -300,6 +300,89 @@ describe("Rust audit adapter", () => {
     assert.deepEqual(audit.profile.detectedConventions, ["inline cfg(test) modules"]);
     assert.ok(audit.profile.blockers.includes("Cargo lib and bin target paths must resolve to static repository-contained Rust files."));
     assert.ok(!audit.recommended.some((target) => target.path === "app/main.rs"));
+  });
+
+  it("traverses literal top-level modules from Cargo-owned crate roots", (t) => {
+    const root = createRustRepo(t, {
+      "Cargo.toml": [
+        "[package]",
+        "name = \"module-graph\"",
+        "version = \"0.1.0\"",
+        "",
+        "[[bin]]",
+        "name = \"module-graph\"",
+        "path = \"app/root.rs\"",
+        ""
+      ].join("\n"),
+      "app/root.rs": [
+        "mod direct;",
+        "mod folder;",
+        "mod dual;",
+        "mod missing;",
+        "#[path = \"../shared/explicit.rs\"]",
+        "mod explicit;",
+        "#[path = r#\"../shared/raw.rs\"#]",
+        "mod raw;",
+        "#[path = concat!(\"dynamic\", \".rs\")]",
+        "mod dynamic_owned;",
+        "#[cfg_attr(feature = \"alternate\", path = \"alternate.rs\")]",
+        "mod cfg_attr_owned;",
+        "#[path = \"../../outside.rs\"]",
+        "mod escaping_owned;",
+        "mod nested_package;",
+        "const TEXT: &str = \"mod string_owned;\";",
+        "macro_rules! hidden { () => { mod macro_owned; } }",
+        "mod inline { mod nested_owned; }",
+        "fn main() { let _ = TEXT; }",
+        ""
+      ].join("\n"),
+      "app/direct.rs": "mod child;\npub fn direct() -> usize { child::value() }\n",
+      "app/direct/child.rs": "pub fn value() -> usize { 1 }\n",
+      "app/folder/mod.rs": "mod leaf;\npub fn folder() -> usize { leaf::value() }\n",
+      "app/folder/leaf.rs": "pub fn value() -> usize { 1 }\n",
+      "shared/explicit.rs": "pub fn explicit() -> usize { 1 }\n",
+      "shared/raw.rs": "pub fn raw() -> usize { 1 }\n",
+      "app/dual.rs": "pub fn first() -> usize { 1 }\n",
+      "app/dual/mod.rs": "pub fn second() -> usize { 2 }\n",
+      "app/macro_owned.rs": "pub fn hidden() -> usize { 1 }\n",
+      "app/inline/nested_owned.rs": "pub fn nested() -> usize { 1 }\n",
+      "app/string_owned.rs": "pub fn string() -> usize { 1 }\n",
+      "app/dynamic_owned.rs": "pub fn dynamic() -> usize { 1 }\n",
+      "app/cfg_attr_owned.rs": "pub fn configured() -> usize { 1 }\n",
+      "app/nested_package/Cargo.toml": "[package]\nname = \"nested\"\nversion = \"0.1.0\"\n",
+      "app/nested_package/mod.rs": "pub fn nested_package() -> usize { 1 }\n",
+      "tests/suite.rs": "#[test]\nfn runs() { assert_eq!(1, 1); }\n"
+    });
+
+    const audit = auditRustRepo(root);
+    const ownedPaths = audit.recommended.map((target) => target.path).sort();
+
+    assert.equal(audit.profile.testCommand, "cargo test");
+    assert.deepEqual(audit.profile.detectedConventions, [
+      "explicit Cargo source target",
+      "literal Rust module graph",
+      "Cargo integration tests"
+    ]);
+    assert.deepEqual(audit.profile.blockers, []);
+    assert.deepEqual(ownedPaths, [
+      "app/direct.rs",
+      "app/direct/child.rs",
+      "app/folder/leaf.rs",
+      "app/folder/mod.rs",
+      "app/root.rs",
+      "shared/explicit.rs",
+      "shared/raw.rs"
+    ]);
+    for (const unownedPath of [
+      "app/dual.rs",
+      "app/dual/mod.rs",
+      "app/cfg_attr_owned.rs",
+      "app/dynamic_owned.rs",
+      "app/inline/nested_owned.rs",
+      "app/macro_owned.rs",
+      "app/nested_package/mod.rs",
+      "app/string_owned.rs"
+    ]) assert.ok(!ownedPaths.includes(unownedPath));
   });
 
   it("keeps exact crate imports and direct call usage bounded", (t) => {

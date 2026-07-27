@@ -1,13 +1,14 @@
 # Rust Experimental Support
 
-The Rust adapter is experimental. Its current bounded slices prove that conventional Cargo packages, static package-local source targets, and literal repository-contained workspace members can flow through project detection, audit, ranking, planning, explanations, placement, findings, stats, CLI/MCP-shaped calls, golden snapshots, and model-consistency checks without a Rust-specific report format.
+The Rust adapter is experimental. Its current bounded slices prove that conventional Cargo packages, static package-local source targets, literal source module graphs, and literal repository-contained workspace members can flow through project detection, audit, ranking, planning, explanations, placement, findings, stats, CLI/MCP-shaped calls, golden snapshots, and model-consistency checks without a Rust-specific report format.
 
 ## Supported Baseline
 
 | Area | Supported boundary |
 | --- | --- |
 | Project ownership | One root `Cargo.toml` with a static `[package].name`, either standalone or an exact member of the nearest literal Cargo workspace |
-| Source ownership | Rust files under `src/`, plus existing repository-contained `.rs` files named by static `[lib].path` and `[[bin]].path` declarations; nested Cargo packages are separate detector roots |
+| Source ownership | Rust files under `src/`, existing repository-contained `.rs` files named by static `[lib].path` and `[[bin]].path`, and their recursively resolved literal modules; nested Cargo packages are separate detector roots |
+| Module graph | Top-level `mod name;` using the unique Rust `name.rs` or `name/mod.rs` layout, plus static package-contained `#[path = "..."]` and raw-string path attributes; crate roots, ordinary module files, and `mod.rs` use their native relative bases |
 | Test harness | Built-in `#[test]` functions, or a static repository-contained `[[test]]` target using Cargo's built-in harness |
 | Inline tests | Runnable tests inside an inline `#[cfg(test)] mod ...` block |
 | Integration tests | Runnable `.rs` files under `tests/`; a static explicit target can establish the command without claiming macro-expanded symbol evidence |
@@ -31,6 +32,7 @@ The current slices do not claim support for:
 - custom test harnesses such as `harness = false`
 - disabled, feature-gated, missing, escaping, or dynamic explicit test targets
 - missing, escaping, repository-external, non-Rust, or non-static Cargo lib/bin target paths
+- ambiguous or missing module files, declarations inside inline modules or macro bodies, dynamic/unsupported path attributes, macro-generated modules, `include!`, and traversal into nested Cargo packages
 - dynamic or inherited manifest ownership
 - module re-exports and wildcard imports
 - `crate`, `self`, or `super` import traversal in integration evidence
@@ -54,8 +56,8 @@ These shapes remain visible through blockers or conservative missing evidence; t
 
 `examples/rust-cargo-workspace-basic` adds a virtual workspace with two literal packages, an explicit default member, a path dependency, package-local inline and integration tests, exact `cargo test -p ...` commands, and an untested member-local validator.
 
-`examples/rust-cargo-custom-targets` adds a library root under `code/`, a binary root under `app/`, inline evidence on the library, an untested binary candidate, and a nearby unowned Rust file that must remain excluded.
+`examples/rust-cargo-custom-targets` adds a library root under `code/`, a binary root under `app/`, recursively declared file and directory modules, a static parent-relative path module, inline evidence on the library, untested module candidates, and a nearby unowned Rust file that must remain excluded.
 
 All three shapes are locked by Rust-specific unit tests, project detection/auditing coverage, audit and plan snapshots, and model-consistency scenarios. Promotion beyond experimental should still wait for live-repository validation, performance pressure, and a broader syntax/evidence boundary.
 
-The first pinned live probe, [`BurntSushi/ripgrep`](https://github.com/BurntSushi/ripgrep) at `f9c05a949d1a0dc8e16dee28ca9605d38611faeb`, preserves the root package, ten literal workspace members, and a separate fuzz workspace. It exposed and fixed exact command ownership for a manifest-declared built-in test target whose `#[test]` functions are macro-generated, then proved static ownership of the root `[[bin]]` path at `crates/core/main.rs`. The full native workspace passed 1,220 listed tests, and three source-target audits were digest-stable with a 250 ms median. See the [Rust ripgrep Live Validation Report](rust-ripgrep-validation-report.md).
+The first pinned live probe, [`BurntSushi/ripgrep`](https://github.com/BurntSushi/ripgrep) at `f9c05a949d1a0dc8e16dee28ca9605d38611faeb`, preserves the root package, ten literal workspace members, and a separate fuzz workspace. It exposed and fixed exact command ownership for a macro-driven built-in test target, proved static ownership of the root `[[bin]]` path, and then resolved all 23 files in that binary's literal module graph. The full native workspace passed 1,220 listed tests, and three module-graph audits were digest-stable with a 385 ms median. See the [Rust ripgrep Live Validation Report](rust-ripgrep-validation-report.md).

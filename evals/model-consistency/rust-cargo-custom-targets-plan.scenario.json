@@ -1,7 +1,7 @@
 {
   "schemaVersion": "model-consistency-scenario/v1",
   "id": "rust-cargo-custom-targets-plan",
-  "description": "Different model profiles should preserve static Cargo lib and bin source ownership outside the conventional src layout.",
+  "description": "Different model profiles should preserve static Cargo lib and bin source ownership plus their recursively declared literal Rust modules outside the conventional src layout.",
   "sourceArtifact": {
     "path": "evals/expected/rust-cargo-custom-targets.audit.json",
     "schemaVersion": "audit/v1"
@@ -23,8 +23,8 @@
     },
     {
       "path": "summary.addTestCount",
-      "expected": 1,
-      "reason": "The untested custom binary root should remain one add-test item."
+      "expected": 5,
+      "reason": "The custom binary root and four manifest-rooted module files should remain add-test items."
     },
     {
       "path": "summary.extendTestCount",
@@ -57,6 +57,7 @@
     "missing Cargo test command",
     "missing inline Rust evidence",
     "ownership of other/unowned.rs",
+    "missing recursively declared module targets",
     "different plan action counts"
   ]
 }

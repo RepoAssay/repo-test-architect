@@ -33,17 +33,23 @@ After the fix, ten of twelve projects have exact package commands. The `grep` fa
 
 The root package also declares `crates/core/main.rs` through a static `[[bin]].path`. The adapter now treats an existing package-local `.rs` file named by `[lib].path` or `[[bin]].path` as an exact source root. Missing, escaping, external, non-Rust, and non-static declared paths block command confidence.
 
-This adds `crates/core/main.rs` as one high-risk untested root candidate and classifies the package as a binary. It does not claim the neighboring `crates/core/` module tree, because Cargo names only the crate root and bounded `mod` traversal is not implemented. Command ownership and all existing evidence relationships remain unchanged.
+This first follow-up added `crates/core/main.rs` as one high-risk untested root candidate and classified the package as a binary. At that stage it did not claim the neighboring `crates/core/` module tree, because Cargo names only the crate root. Command ownership and all existing evidence relationships remained unchanged.
+
+## Follow-Up Literal Module Graph Slice
+
+Starting at every conventional or manifest-declared crate root, the adapter now recursively follows top-level literal `mod name;` declarations when exactly one native `name.rs` or `name/mod.rs` file exists. Static repository-contained `#[path = "..."]` links are also followed. Declarations inside inline modules or macro bodies, ambiguous dual layouts, missing files, dynamic attributes, escaping paths, and nested Cargo packages remain excluded.
+
+The root binary graph resolves all 23 `.rs` files under `crates/core`: the manifest root plus 22 declared modules. Twenty are untested candidates, `flags/config.rs` has one direct inline-test relationship, and the two module-wiring files are deferred. The mutually exclusive static paths in `index/mod.rs` safely retain both `enabled.rs` and `disabled.rs`; no target configuration is guessed.
 
 | Result | Count |
 | --- | ---: |
 | Detected/audited projects | 12 |
 | Exact package commands | 10 |
 | Blocked no-test packages | 2 |
-| Untested candidates | 31 |
-| Covered-but-risky candidates | 24 |
-| Deferred targets | 10 |
-| Direct evidence relationships | 24 |
+| Untested candidates | 50 |
+| Covered-but-risky candidates | 25 |
+| Deferred targets | 12 |
+| Direct evidence relationships | 25 |
 
 ## Native Validation
 
@@ -58,18 +64,18 @@ The workspace run listed 1,220 tests across its native harnesses. The recovered 
 
 ## Stability And Performance
 
-Three project audits after the source-target follow-up produced the same normalized SHA-256 digest, `948b6a739ea356f92f76e053389b56cb915cfb985b0af5ba2f5fb0e67c533ad9`.
+Three project audits after the module-graph follow-up produced the same normalized SHA-256 digest, `9ddec8f08eb29b5f3bec4433cc008b16ee2cd64f17c2c7d6e04b44850c4bbbb2`.
 
 | Run | Duration |
 | --- | ---: |
-| 1 | 301 ms |
-| 2 | 250 ms |
-| 3 | 246 ms |
+| 1 | 439 ms |
+| 2 | 385 ms |
+| 3 | 379 ms |
 
-The median was 250 ms for twelve detected and audited projects.
+The median was 385 ms for twelve detected and audited projects.
 
 ## Remaining Boundary
 
-The root binary at `crates/core/main.rs` is now an exact source candidate, but its sibling modules remain outside ownership until a bounded Rust module graph can prove them. The adapter does not infer source evidence from the macro-generated integration tests. Method/trait dispatch, macro-expanded test-to-source evidence, doctest evidence, feature-specific targets, and the fuzz harness also remain outside the current matrix.
+The root binary and its complete literal file-module graph are now exact source candidates. The adapter still does not infer source evidence from macro-generated integration tests, prune mutually exclusive modules by target configuration, or resolve declarations generated inside inline modules and macros. Method/trait dispatch, macro-expanded test-to-source evidence, doctest evidence, feature-specific targets, and the fuzz harness also remain outside the current matrix.
 
-The live result supports the literal workspace, explicit built-in test target, and static lib/bin source-target slices, but it does not justify promotion beyond experimental. Bounded crate-module traversal is the clearest next source-ownership slice.
+The live result supports the literal workspace, explicit built-in test target, static lib/bin source-target, and literal module-graph slices, but it does not justify promotion beyond experimental. Module-aware `crate`/`self`/`super` evidence and receiver-method identity are the clearest remaining evidence slices.

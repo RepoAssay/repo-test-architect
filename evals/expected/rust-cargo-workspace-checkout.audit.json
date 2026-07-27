@@ -18,6 +18,7 @@
     ],
     "testCommand": "cargo test -p workspace-checkout",
     "detectedConventions": [
+      "literal Rust module graph",
       "Cargo integration tests"
     ],
     "existingTestLocations": [

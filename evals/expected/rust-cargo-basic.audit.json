@@ -17,6 +17,7 @@
     ],
     "testCommand": "cargo test",
     "detectedConventions": [
+      "literal Rust module graph",
       "inline cfg(test) modules",
       "Cargo integration tests"
     ],

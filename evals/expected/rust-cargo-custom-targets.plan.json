@@ -4,7 +4,7 @@
     "confidence": "high",
     "verificationCommand": "cargo test",
     "blockerCount": 0,
-    "addTestCount": 1,
+    "addTestCount": 5,
     "extendTestCount": 1,
     "deferredCount": 0
   },
@@ -61,6 +61,78 @@
         "runtime-behavior",
         "branching-logic",
         "edge-case-surface"
+      ],
+      "existingTestPaths": []
+    },
+    {
+      "id": "add-test:app/output/formatter.rs",
+      "action": "add-test",
+      "targetId": "app/output/formatter.rs",
+      "target": "formatter",
+      "path": "app/output/formatter.rs",
+      "testLevel": "unit",
+      "priority": 4,
+      "riskReductionScore": 6,
+      "maintenanceCost": 2,
+      "rationale": [
+        "Deterministic Rust behavior"
+      ],
+      "sourceSignals": [
+        "pure-logic"
+      ],
+      "existingTestPaths": []
+    },
+    {
+      "id": "add-test:app/output.rs",
+      "action": "add-test",
+      "targetId": "app/output.rs",
+      "target": "output",
+      "path": "app/output.rs",
+      "testLevel": "unit",
+      "priority": 4,
+      "riskReductionScore": 6,
+      "maintenanceCost": 2,
+      "rationale": [
+        "Deterministic Rust behavior"
+      ],
+      "sourceSignals": [
+        "runtime-behavior"
+      ],
+      "existingTestPaths": []
+    },
+    {
+      "id": "add-test:shared/tax.rs",
+      "action": "add-test",
+      "targetId": "shared/tax.rs",
+      "target": "tax",
+      "path": "shared/tax.rs",
+      "testLevel": "unit",
+      "priority": 4,
+      "riskReductionScore": 6,
+      "maintenanceCost": 2,
+      "rationale": [
+        "Deterministic Rust behavior"
+      ],
+      "sourceSignals": [
+        "runtime-behavior"
+      ],
+      "existingTestPaths": []
+    },
+    {
+      "id": "add-test:code/validator.rs",
+      "action": "add-test",
+      "targetId": "code/validator.rs",
+      "target": "validator",
+      "path": "code/validator.rs",
+      "testLevel": "unit",
+      "priority": 4,
+      "riskReductionScore": 6,
+      "maintenanceCost": 2,
+      "rationale": [
+        "Deterministic Rust behavior"
+      ],
+      "sourceSignals": [
+        "pure-logic"
       ],
       "existingTestPaths": []
     }
