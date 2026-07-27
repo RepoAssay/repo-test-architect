@@ -8,6 +8,7 @@ The purpose is product validation, not regression locking. These reports record 
 
 | Report | Ecosystem | Source | Command focus | Status |
 | --- | --- | --- | --- | --- |
+| [Rust ripgrep live validation](rust-ripgrep-validation-report.md) | Rust, literal Cargo workspace, explicit macro-driven test target | `BurntSushi/ripgrep` at `f9c05a9` | twelve-project ownership, exact package commands, native workspace tests, explicit built-in target recovery | current; first Rust live probe |
 | [Go validation hunt](go-validation-hunt-report.md) | Go modules, standard `testing`, parser library | `BurntSushi/toml` at `c6d720d` | project ownership, module command, direct and one-hop source evidence, native test comparison | current; passing corpus role |
 | [Go HTTP validation](go-http-validation-report.md) | Go modules, `net/http`, routers and middleware | `go-chi/chi` at `8b258c7` | explicit build target, nested-module ownership, lexical evidence, native coverage comparison | current; passing corpus role |
 | [Go workspace ownership validation](go-ownership-validation-report.md) | Go modules, literal `go.work`, nested driver packages | `riverqueue/river` at `b6c733c` | nine-owner project detection, module-local commands, generic function evidence, native prerequisite review | current; passing corpus role |
