@@ -213,3 +213,11 @@ Decision: treat `.` as an exact external-package import mode when an external `_
 Rationale: the pinned Zap pressure pass reported seven files as untested despite 92.5% module statement coverage because its external tests deliberately dot-import `zapcore` and `zaptest/observer`. The adapter already had exact package ownership but discarded the dot alias. Retaining the unqualified import mode recovers 69 evidence relationships without constructor inference, interface dispatch, or package-wide coverage claims; the two remaining untested internal helper files both have zero native coverage.
 
 Revisit when: another pinned repository demonstrates that dot-import ambiguity survives the exact package, exported identifier, unique symbol, and test-local shadow checks.
+
+## Exact Go Constructor-Result Receiver Evidence
+
+Decision: allow direct receiver-method evidence when a runnable test binds an exact result position from a unique, simple, non-generic top-level function declaration with `:=`. Support single results and entirely named or entirely unnamed simple result lists, including pointer results, through same-package and exact default, named, or dot external imports. Preserve unique binding, reassignment, shadow, package ownership, and exported external symbol checks.
+
+Rationale: pinned Resty pressure showed ordinary client methods hidden behind declarations such as `func New() *Client` and `client := New()`. The source declaration supplies the concrete type without runtime inference. Position-aware tuple matching also covers `(client *Client, err error)` without treating interface, alias, helper, chained-call, or dynamic results as concrete receivers. Resty gained three reviewed relationships and lost one stale relationship after tuple reassignment detection was corrected; TOML and Chi gained bounded corpus evidence while River stayed stable.
+
+Revisit when: a pinned case justifies a parser-backed grouped-result, generic-constructor, helper-return, or typed-parameter rule without expanding into interface dispatch or flow-sensitive type inference.

@@ -79,11 +79,6 @@
         },
         {
           "testPath": "payment_client_test.go",
-          "kind": "go-symbol-reference",
-          "strength": "referenced"
-        },
-        {
-          "testPath": "payment_client_test.go",
           "kind": "filename-convention",
           "strength": "naming"
         }

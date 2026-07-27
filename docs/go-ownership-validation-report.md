@@ -62,7 +62,7 @@ The difficult-ownership probe passes the reviewed detection, ownership, command,
 - repeated full-repository audits are semantically stable and remain below one second locally
 - database prerequisites are documented without claiming that the static command provisions them
 
-Workspace `replace` effects, repository-external members, constructor-inferred or ambiguous receiver methods, interface dispatch, generic type construction, reflection, deeper or cross-package dependencies, service provisioning, coverage profiles, runtime reachability, and assertion completeness remain outside the bounded adapter.
+Workspace `replace` effects, repository-external members, receiver methods without an explicit type or exact simple concrete constructor result, interface dispatch, generic type construction, reflection, deeper or cross-package dependencies, service provisioning, coverage profiles, runtime reachability, and assertion completeness remain outside the bounded adapter.
 
 ## Corpus Progress
 

@@ -1,7 +1,7 @@
 {
   "schemaVersion": "model-consistency-scenario/v1",
   "id": "go-testing-basic-plan",
-  "description": "Different model profiles should preserve bounded Go planning decisions, including direct top-level and explicitly typed receiver-method evidence, one-hop same-package dependency evidence, and DTO deferral.",
+  "description": "Different model profiles should preserve bounded Go planning decisions, including direct top-level and exact constructor-result receiver-method evidence, one-hop same-package dependency evidence, and DTO deferral.",
   "sourceArtifact": {
     "path": "evals/expected/go-testing-basic.audit.json",
     "schemaVersion": "audit/v1"
@@ -24,7 +24,7 @@
     {
       "path": "summary.extendTestCount",
       "expected": 3,
-      "reason": "The directly exercised parser, explicitly typed payment-client method, and one-hop normalizer dependency should remain extend-test items."
+      "reason": "The directly exercised parser, constructor-bound payment-client method, and one-hop normalizer dependency should remain extend-test items."
     },
     {
       "path": "summary.deferredCount",
@@ -49,7 +49,7 @@
     {
       "path": "items[1].id",
       "expected": "extend-test:payment_client.go",
-      "reason": "The external boundary should retain a stable extension item after its explicitly typed receiver call is proven."
+      "reason": "The external boundary should retain a stable extension item after its exact constructor-result receiver call is proven."
     },
     {
       "path": "items[1].existingTestEvidence[0].kind",
@@ -59,7 +59,7 @@
     {
       "path": "items[1].existingTestEvidence[0].usage",
       "expected": "called",
-      "reason": "The explicitly typed payment client remains directly called by the runnable test."
+      "reason": "The exactly constructor-bound payment client remains directly called by the runnable test."
     },
     {
       "path": "items[2].id",
