@@ -1,7 +1,7 @@
 {
   "schemaVersion": "model-consistency-scenario/v1",
   "id": "go-testing-basic-plan",
-  "description": "Different model profiles should preserve bounded Go planning decisions, including direct top-level and exact constructor-result receiver-method evidence, one-hop same-package dependency evidence, and DTO deferral.",
+  "description": "Different model profiles should preserve bounded Go planning decisions, including direct top-level and exact constructor-result receiver-method evidence, one-hop same- and cross-package dependency evidence, and DTO deferral.",
   "sourceArtifact": {
     "path": "evals/expected/go-testing-basic.audit.json",
     "schemaVersion": "audit/v1"
@@ -23,8 +23,8 @@
     },
     {
       "path": "summary.extendTestCount",
-      "expected": 3,
-      "reason": "The directly exercised parser, constructor-bound payment-client method, and one-hop normalizer dependency should remain extend-test items."
+      "expected": 4,
+      "reason": "The directly exercised parser, constructor-bound payment-client method, and same- plus cross-package dependencies should remain extend-test items."
     },
     {
       "path": "summary.deferredCount",
@@ -48,36 +48,51 @@
     },
     {
       "path": "items[1].id",
+      "expected": "extend-test:internal/currency/validator.go",
+      "reason": "The module-local currency validator should retain a stable cross-package dependency item."
+    },
+    {
+      "path": "items[1].existingTestEvidence[0].kind",
+      "expected": "go-source-dependency",
+      "reason": "The currency validator must retain explicit cross-package source provenance."
+    },
+    {
+      "path": "items[1].existingTestEvidence[0].viaUsage",
+      "expected": "called",
+      "reason": "The cross-package dependency must remain rooted in the directly called parser entrypoint."
+    },
+    {
+      "path": "items[2].id",
       "expected": "extend-test:payment_client.go",
       "reason": "The external boundary should retain a stable extension item after its exact constructor-result receiver call is proven."
     },
     {
-      "path": "items[1].existingTestEvidence[0].kind",
+      "path": "items[2].existingTestEvidence[0].kind",
       "expected": "go-symbol-reference",
       "reason": "The payment client must retain exact receiver-method provenance."
     },
     {
-      "path": "items[1].existingTestEvidence[0].usage",
+      "path": "items[2].existingTestEvidence[0].usage",
       "expected": "called",
       "reason": "The exactly constructor-bound payment client remains directly called by the runnable test."
     },
     {
-      "path": "items[2].id",
+      "path": "items[3].id",
       "expected": "extend-test:price_normalizer.go",
       "reason": "The bounded same-package dependency should remain a covered normalizer item."
     },
     {
-      "path": "items[2].existingTestEvidence[0].kind",
+      "path": "items[3].existingTestEvidence[0].kind",
       "expected": "go-source-dependency",
       "reason": "The normalizer should retain explicit one-hop Go source dependency provenance."
     },
     {
-      "path": "items[2].existingTestEvidence[0].viaUsage",
+      "path": "items[3].existingTestEvidence[0].viaUsage",
       "expected": "called",
       "reason": "The dependency evidence must remain rooted in a directly called parser entrypoint."
     },
     {
-      "path": "items[3].id",
+      "path": "items[4].id",
       "expected": "defer:payment.go",
       "reason": "The struct-only DTO should remain covered through consuming behavior."
     }
@@ -91,6 +106,7 @@
     "missing go test verification command",
     "missing direct Go symbol evidence",
     "missing bounded same-package dependency evidence",
+    "missing bounded cross-package dependency evidence",
     "dependency evidence propagated beyond one source hop",
     "direct DTO test recommendation",
     "receiver-method evidence downgraded to a type reference",

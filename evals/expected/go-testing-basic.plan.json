@@ -5,7 +5,7 @@
     "verificationCommand": "go test ./...",
     "blockerCount": 0,
     "addTestCount": 0,
-    "extendTestCount": 3,
+    "extendTestCount": 4,
     "deferredCount": 1
   },
   "blockers": [],
@@ -44,6 +44,38 @@
           "testPath": "price_parser_test.go",
           "kind": "filename-convention",
           "strength": "naming"
+        }
+      ]
+    },
+    {
+      "id": "extend-test:internal/currency/validator.go",
+      "action": "extend-test",
+      "targetId": "internal/currency/validator.go",
+      "target": "validator",
+      "path": "internal/currency/validator.go",
+      "testLevel": "unit",
+      "priority": 7,
+      "riskReductionScore": 9,
+      "maintenanceCost": 2,
+      "rationale": [
+        "Pure transformation logic",
+        "edge-case surface",
+        "Existing Go test evidence detected; review missing edge cases"
+      ],
+      "sourceSignals": [
+        "pure-logic",
+        "edge-case-surface",
+        "matching-test"
+      ],
+      "existingTestPaths": [
+        "price_parser_test.go"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "price_parser_test.go",
+          "kind": "go-source-dependency",
+          "strength": "indirect",
+          "viaUsage": "called"
         }
       ]
     },

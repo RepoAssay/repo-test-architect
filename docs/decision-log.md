@@ -221,3 +221,11 @@ Decision: allow direct receiver-method evidence when a runnable test binds an ex
 Rationale: pinned Resty pressure showed ordinary client methods hidden behind declarations such as `func New() *Client` and `client := New()`. The source declaration supplies the concrete type without runtime inference. Position-aware tuple matching also covers `(client *Client, err error)` without treating interface, alias, helper, chained-call, or dynamic results as concrete receivers. Resty gained three reviewed relationships and lost one stale relationship after tuple reassignment detection was corrected; TOML and Chi gained bounded corpus evidence while River stayed stable.
 
 Revisit when: a pinned case justifies a parser-backed grouped-result, generic-constructor, helper-return, or typed-parameter rule without expanding into interface dispatch or flow-sensitive type inference.
+
+## Bounded Go Cross-Package Source Evidence
+
+Decision: allow one indirect `go-source-dependency` hop from a directly called source file to an exported, uniquely owned function in another package of the same module only when the caller file has exactly one callable declaration and uses an exact default, named, or dot import. Reject blank or external imports, visible alias shadows, ambiguous multi-callable caller files, uncalled files, nested modules, and all second-hop propagation.
+
+Rationale: the initial broad file-level rule inflated River from 572 to 1,199 relationships because a large source file's many test paths were copied across every imported call. Requiring a single callable makes the file-to-function relationship unambiguous without parsing full function bodies. The bounded rule adds only four reviewed River relationships from `MetadataSet` to `MetadataUpdatesFromWorkContext` and one Zap relationship from `LoggedEntry.ContextMap` to `NewMapObjectEncoder`, with no candidate reclassification.
+
+Revisit when: a parser-backed function-body map can prove which callable owns an imported call and preserve direct test-to-symbol provenance in multi-callable files.

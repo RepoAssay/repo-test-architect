@@ -49,7 +49,7 @@ The first conventional-library probe passes the reviewed detection, ownership, c
 - command entrypoints and declaration-only files stay deferred
 - repeated audits are semantically stable and comfortably below the current cross-platform performance budget
 
-Receiver methods without an explicit type or exact simple concrete constructor result, interfaces, reflection, dynamic calls, deeper source graphs, cross-package dependencies, assertion completeness, and runtime reachability remain outside the claim. The native coverage comparison showed why those gaps matter, but they remain visible rather than being inferred from package-wide test presence.
+Receiver methods without an explicit type or exact simple concrete constructor result, interfaces, reflection, dynamic calls, deeper source graphs, ambiguous multi-callable or cross-module dependencies, assertion completeness, and runtime reachability remain outside the claim. The native coverage comparison showed why those gaps matter, but they remain visible rather than being inferred from package-wide test presence.
 
 ## Corpus Progress
 

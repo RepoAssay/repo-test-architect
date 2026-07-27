@@ -3,6 +3,8 @@ package checkout
 import (
 	"fmt"
 	"strconv"
+
+	"example.com/checkout/internal/currency"
 )
 
 func ParsePrice(value string) (int, error) {
@@ -12,7 +14,7 @@ func ParsePrice(value string) (int, error) {
 	}
 
 	price, err := strconv.Atoi(trimmed)
-	if err != nil || price < 0 {
+	if err != nil || !currency.Valid(price) {
 		return 0, fmt.Errorf("invalid price")
 	}
 	return price, nil
