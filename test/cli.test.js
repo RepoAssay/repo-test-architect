@@ -736,6 +736,19 @@ describe("CLI", () => {
     );
   });
 
+  it("audits the experimental Rust fixture through the CLI", () => {
+    const output = execFileSync(
+      process.execPath,
+      [cliPath, "audit", "examples/rust-cargo-basic", "--adapter=rust", "--format=json"],
+      { encoding: "utf8" }
+    );
+    const audit = JSON.parse(output);
+
+    assert.equal(audit.profile.testCommand, "cargo test");
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.path), ["src/service.rs"]);
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["src/parser.rs", "src/validator.rs"]);
+  });
+
   it("passes explicit Go build targets through single-project audits", () => {
     const output = execFileSync(process.execPath, [
       cliPath,
@@ -825,7 +838,7 @@ describe("CLI", () => {
           encoding: "utf8",
           stdio: "pipe"
         }),
-      /Unsupported adapter: ruby\. Available adapters: javascript, go, kotlin, python, swift\./
+      /Unsupported adapter: ruby\. Available adapters: javascript, go, kotlin, python, rust, swift\./
     );
   });
 

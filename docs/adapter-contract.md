@@ -43,6 +43,7 @@ Currently registered adapters are:
 - `go` for conventional Go modules and literal repository-contained `go.work` members using the standard `testing` package, with exact top-level and parser-owned concrete receiver-method evidence through explicit types, exact simple constructor results, or exact statically typed test-helper results, bounded standard-library and Testify assertion usage, parser-scoped local shadow checks, callable-body-owned same-package and module-local source hops, same-package or exact default/named/dot external-package imports, plus optional explicit static build-target context, supported within the [Go support matrix](go-alpha-support.md)
 - `kotlin` for conventional Kotlin and Java Gradle or Maven JVM module roots, supported within the bounded [Kotlin/JVM Alpha Support](kotlin-jvm-alpha-support.md) matrix
 - `python` for bounded Python package, FastAPI, Django, and Flask roots
+- `rust` as an experimental adapter for conventional single-package Cargo roots using the built-in test harness, bounded by the [Rust experimental support matrix](rust-alpha-support.md)
 - `swift` for the bounded Swift Package Manager, Apple Xcode, and Bazel/rules_swift patterns in the Swift alpha support matrix
 
 Non-JavaScript adapters should follow the focused [Second Adapter Spike](second-adapter-spike.md) checklist before expanding framework coverage or native generation.

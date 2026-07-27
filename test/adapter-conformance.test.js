@@ -44,6 +44,17 @@ const cases = [
     }
   },
   {
+    adapterId: "rust",
+    fixturePath: "examples/rust-cargo-basic",
+    expectedMaturity: "experimental",
+    expectedProfile: {
+      languages: ["rust"],
+      testFrameworks: ["rust-test"],
+      testCommand: "cargo test",
+      confidence: "high"
+    }
+  },
+  {
     adapterId: "swift",
     fixturePath: "examples/swift-spm-xctest",
     expectedProfile: {

@@ -1,0 +1,67 @@
+{
+  "schemaVersion": "model-consistency-scenario/v1",
+  "id": "rust-cargo-basic-plan",
+  "description": "Different model profiles should preserve the bounded single-package Cargo command, direct Rust test evidence, and candidate actions.",
+  "sourceArtifact": {
+    "path": "evals/expected/rust-cargo-basic.audit.json",
+    "schemaVersion": "audit/v1"
+  },
+  "toolCall": {
+    "toolName": "generate_test_plan",
+    "arguments": {}
+  },
+  "lockedFields": [
+    {
+      "path": "summary.verificationCommand",
+      "expected": "cargo test",
+      "reason": "A conventional single-package Cargo project with built-in tests should retain its native verification command."
+    },
+    {
+      "path": "summary.addTestCount",
+      "expected": 1,
+      "reason": "The untested checkout service should remain the one add-test item."
+    },
+    {
+      "path": "summary.extendTestCount",
+      "expected": 2,
+      "reason": "The parser integration test and inline validator test should remain bounded extend-test items."
+    },
+    {
+      "path": "items[0].id",
+      "expected": "extend-test:src/parser.rs",
+      "reason": "The directly asserted parser should retain a stable plan item."
+    },
+    {
+      "path": "items[0].existingTestEvidence[0].kind",
+      "expected": "rust-symbol-reference",
+      "reason": "The integration test should retain exact crate-module import provenance."
+    },
+    {
+      "path": "items[0].existingTestEvidence[0].usage",
+      "expected": "asserted",
+      "reason": "The imported parser call remains consumed by a built-in assertion macro."
+    },
+    {
+      "path": "items[1].id",
+      "expected": "add-test:src/service.rs",
+      "reason": "The untested branching service should retain its stable add-test item."
+    },
+    {
+      "path": "items[2].existingTestPaths[0]",
+      "expected": "src/validator.rs",
+      "reason": "The inline cfg(test) module should remain attached to its owning source file."
+    }
+  ],
+  "allowedVariations": [
+    "summary wording",
+    "Rust explanation wording",
+    "optional detail depth"
+  ],
+  "unexpectedVariations": [
+    "missing cargo test verification command",
+    "missing direct Rust symbol evidence",
+    "integration imports credited across the wrong crate or module",
+    "inline tests detached from their source owner",
+    "different plan action counts"
+  ]
+}

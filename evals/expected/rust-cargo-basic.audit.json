@@ -1,0 +1,240 @@
+{
+  "schemaVersion": "audit/v1",
+  "profile": {
+    "root": "<fixture>",
+    "languages": [
+      "rust"
+    ],
+    "packageManagers": [
+      "cargo"
+    ],
+    "testFrameworks": [
+      "rust-test"
+    ],
+    "architectures": [
+      "cargo-package",
+      "library"
+    ],
+    "testCommand": "cargo test",
+    "detectedConventions": [
+      "inline cfg(test) modules",
+      "Cargo integration tests"
+    ],
+    "existingTestLocations": [
+      "inline #[cfg(test)] modules",
+      "tests/ integration tests"
+    ],
+    "setupSignals": [
+      "Cargo.toml",
+      "Rust 2024 edition"
+    ],
+    "confidence": "high",
+    "blockers": []
+  },
+  "untestedCandidates": [
+    {
+      "id": "src/service.rs",
+      "name": "service",
+      "path": "src/service.rs",
+      "kind": "service",
+      "signals": [
+        "service-boundary",
+        "branching-logic",
+        "edge-case-surface"
+      ],
+      "risk": "high",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 8,
+      "maintenanceCost": 3,
+      "reasons": [
+        "Branching Rust behavior",
+        "Fallible or edge-case behavior"
+      ],
+      "existingTestPaths": []
+    }
+  ],
+  "coveredButRisky": [
+    {
+      "id": "src/parser.rs",
+      "name": "parser",
+      "path": "src/parser.rs",
+      "kind": "parser",
+      "signals": [
+        "pure-logic",
+        "branching-logic",
+        "edge-case-surface",
+        "matching-test"
+      ],
+      "risk": "high",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 8,
+      "maintenanceCost": 3,
+      "reasons": [
+        "Branching Rust behavior",
+        "Fallible or edge-case behavior",
+        "Existing Rust test evidence detected; review missing edge cases"
+      ],
+      "existingTestPaths": [
+        "tests/parser_test.rs"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "tests/parser_test.rs",
+          "kind": "rust-symbol-reference",
+          "strength": "direct",
+          "usage": "asserted"
+        }
+      ]
+    },
+    {
+      "id": "src/validator.rs",
+      "name": "validator",
+      "path": "src/validator.rs",
+      "kind": "validator",
+      "signals": [
+        "pure-logic",
+        "matching-test"
+      ],
+      "risk": "medium",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 6,
+      "maintenanceCost": 2,
+      "reasons": [
+        "Deterministic Rust behavior",
+        "Existing Rust test evidence detected; review missing edge cases"
+      ],
+      "existingTestPaths": [
+        "src/validator.rs"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "src/validator.rs",
+          "kind": "rust-symbol-reference",
+          "strength": "direct",
+          "usage": "asserted"
+        }
+      ]
+    }
+  ],
+  "recommended": [
+    {
+      "id": "src/parser.rs",
+      "name": "parser",
+      "path": "src/parser.rs",
+      "kind": "parser",
+      "signals": [
+        "pure-logic",
+        "branching-logic",
+        "edge-case-surface",
+        "matching-test"
+      ],
+      "risk": "high",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 8,
+      "maintenanceCost": 3,
+      "reasons": [
+        "Branching Rust behavior",
+        "Fallible or edge-case behavior",
+        "Existing Rust test evidence detected; review missing edge cases"
+      ],
+      "existingTestPaths": [
+        "tests/parser_test.rs"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "tests/parser_test.rs",
+          "kind": "rust-symbol-reference",
+          "strength": "direct",
+          "usage": "asserted"
+        }
+      ]
+    },
+    {
+      "id": "src/service.rs",
+      "name": "service",
+      "path": "src/service.rs",
+      "kind": "service",
+      "signals": [
+        "service-boundary",
+        "branching-logic",
+        "edge-case-surface"
+      ],
+      "risk": "high",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 8,
+      "maintenanceCost": 3,
+      "reasons": [
+        "Branching Rust behavior",
+        "Fallible or edge-case behavior"
+      ],
+      "existingTestPaths": []
+    },
+    {
+      "id": "src/validator.rs",
+      "name": "validator",
+      "path": "src/validator.rs",
+      "kind": "validator",
+      "signals": [
+        "pure-logic",
+        "matching-test"
+      ],
+      "risk": "medium",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 6,
+      "maintenanceCost": 2,
+      "reasons": [
+        "Deterministic Rust behavior",
+        "Existing Rust test evidence detected; review missing edge cases"
+      ],
+      "existingTestPaths": [
+        "src/validator.rs"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "src/validator.rs",
+          "kind": "rust-symbol-reference",
+          "strength": "direct",
+          "usage": "asserted"
+        }
+      ]
+    }
+  ],
+  "skipped": [
+    {
+      "id": "src/lib.rs",
+      "name": "lib",
+      "path": "src/lib.rs",
+      "kind": "module-wiring",
+      "signals": [
+        "low-runtime-behavior"
+      ],
+      "riskReductionScore": 1,
+      "maintenanceCost": 2,
+      "reason": "Module declarations and re-exports are better covered through consuming behavior.",
+      "preferredCoveragePath": "consuming module tests"
+    },
+    {
+      "id": "src/model.rs",
+      "name": "model",
+      "path": "src/model.rs",
+      "kind": "data-model",
+      "signals": [
+        "dto-only"
+      ],
+      "riskReductionScore": 1,
+      "maintenanceCost": 3,
+      "reason": "Data-only Rust types are better covered through consuming behavior.",
+      "preferredCoveragePath": "consuming behavior tests"
+    }
+  ],
+  "risks": [
+    "parser has branching rust behavior, fallible or edge-case behavior and needs edge-case review.",
+    "service has branching rust behavior, fallible or edge-case behavior and has no matching Rust test evidence."
+  ]
+}

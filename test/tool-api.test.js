@@ -64,12 +64,13 @@ describe("tool API", () => {
     const registry = getAdapterRegistry();
 
     assert.equal(registry.schemaVersion, "adapter-registry/v1");
-    assert.deepEqual(registry.adapters.map((adapter) => adapter.id), ["javascript", "go", "kotlin", "python", "swift"]);
+    assert.deepEqual(registry.adapters.map((adapter) => adapter.id), ["javascript", "go", "kotlin", "python", "rust", "swift"]);
     assert.deepEqual(registry.adapters[0].supportedProjectTypes, ["node", "express", "react", "browser-e2e"]);
     assert.deepEqual(registry.adapters[1].supportedProjectTypes, ["go-module"]);
     assert.deepEqual(registry.adapters[2].supportedProjectTypes, ["gradle-jvm", "gradle-jvm-multimodule", "gradle-kmp-jvm", "maven-jvm", "maven-jvm-reactor"]);
     assert.deepEqual(registry.adapters[3].supportedProjectTypes, ["django", "fastapi", "flask", "python-package"]);
-    assert.deepEqual(registry.adapters[4].supportedProjectTypes, ["swift-package", "apple-xcode", "bazel-swift", "vapor"]);
+    assert.deepEqual(registry.adapters[4].supportedProjectTypes, ["cargo-package"]);
+    assert.deepEqual(registry.adapters[5].supportedProjectTypes, ["swift-package", "apple-xcode", "bazel-swift", "vapor"]);
   });
 
   it("detects repository projects", () => {
@@ -274,7 +275,7 @@ describe("tool API", () => {
   it("rejects unsupported audit adapters", () => {
     assert.throws(
       () => auditRepo(path.resolve("examples/node-vitest-basic"), { adapterId: "ruby" }),
-      /Unsupported adapter: ruby\. Available adapters: javascript, go, kotlin, python, swift\./
+      /Unsupported adapter: ruby\. Available adapters: javascript, go, kotlin, python, rust, swift\./
     );
   });
 

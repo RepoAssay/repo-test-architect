@@ -91,6 +91,16 @@ describe("MCP tool definitions", () => {
     );
   });
 
+  it("calls the experimental Rust adapter through direct and project MCP tools", () => {
+    const repoRoot = path.resolve("examples/rust-cargo-basic");
+    const direct = callTool("audit_repo", { repoRoot, adapterId: "rust" });
+    const projects = callTool("audit_projects", { repoRoot });
+
+    assert.equal(direct.profile.testCommand, "cargo test");
+    assert.equal(projects.audits[0].adapterId, "rust");
+    assert.deepEqual(projects.audits[0].audit, direct);
+  });
+
   it("dispatches adapter registry, project detection rules, project detection, project audits, audit, plan, explanation, and ranking tools", () => {
     const repositoryAnalysis = callTool("analyze_repository", {
       repoRoot: path.resolve("examples/polyglot-workspace")
@@ -131,7 +141,7 @@ describe("MCP tool definitions", () => {
     assert.equal(repositoryAnalysis.projectAudits.schemaVersion, "project-audits/v1");
     assert.equal(repositoryAnalysis.findings.schemaVersion, "project-findings/v1");
     assert.equal(adapterRegistry.schemaVersion, "adapter-registry/v1");
-    assert.deepEqual(adapterRegistry.adapters.map((adapter) => adapter.id), ["javascript", "go", "kotlin", "python", "swift"]);
+    assert.deepEqual(adapterRegistry.adapters.map((adapter) => adapter.id), ["javascript", "go", "kotlin", "python", "rust", "swift"]);
     assert.equal(projectDetectionRules.schemaVersion, "project-detection-rules/v1");
     assert.ok(projectDetectionRules.markers.some((marker) => marker.fileName === "package.json"));
     assert.equal(projectDetection.schemaVersion, "project-detection/v1");

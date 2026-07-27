@@ -9,6 +9,7 @@ The current implementation can:
 - audit JavaScript/TypeScript, Python, and Swift projects through supported adapters
 - audit supported, bounded Kotlin/JVM fixtures through the same shared artifact model
 - audit conventional Go modules and literal repository-contained `go.work` members through a supported bounded adapter
+- audit conventional single-package Cargo projects through an experimental bounded Rust adapter
 - detect polyglot project roots and report unsupported ecosystems without hiding them
 - produce a complete repository analysis, findings, ranking, plan, execution hints, and verification commands in one audit pass
 - classify source files by likely test value and defer low-value direct tests
@@ -93,15 +94,16 @@ For an MCP-connected model, the equivalent default is `analyze_repository`. Use 
 
 ## Current Scope
 
-Supported adapters:
+Available adapters:
 
 - `javascript`: JavaScript/TypeScript repositories with Node's test runner (including TypeScript execution scripts), Bun test, AVA, Mocha/CommonJS, Vitest, Jest, Playwright, Cypress, Express/Supertest, React Testing Library detection, and bounded literal browser request-to-route evidence; see the [alpha support matrix](docs/javascript-typescript-alpha-support.md) for evidence boundaries and known gaps
 - `go`: conventional `go.mod` projects and literal repository-contained `go.work` members using runnable standard-library `TestXxx`, `FuzzXxx`, or `ExampleXxx` tests, package-local filename, unique top-level and parser-owned concrete receiver-method symbols through explicit types, exact simple constructor results, or exact statically typed test-helper results, bounded standard-library and Testify assertion usage, parser-scoped local shadow checks, same-package or exact external-package imports (including dot imports), generic top-level functions, and bounded callable-body-owned same-package or module-local source hops, module-local commands, and optional explicit `GOOS`/`GOARCH`/custom-tag selection; see the [alpha support matrix](docs/go-alpha-support.md) for the supported boundary and blockers
 - `kotlin`: conventional Gradle/Maven JVM module roots, settings-owned Gradle aggregates, and root-declared Maven reactors with Kotlin and/or Java standard source sets, dependency-qualified direct/exported-transitive module evidence, JUnit 4/5, `kotlin.test`, bounded Gradle/JUnit Platform Kotest common specs, conventional Gradle/Spock features, and method-level TestNG through direct Maven dependencies or Gradle `useTestNG()`; see the [Kotlin/JVM alpha support matrix](docs/kotlin-jvm-alpha-support.md)
 - `python`: bounded Python package, FastAPI, Django, and Flask layouts with declarative multi-package/namespace ownership, configured pytest discovery, exact absolute/relative imports, one-hop source dependency evidence, static framework test-client route evidence, pytest/unittest, async and property-based extensions, fixture reachability, pip/setuptools, uv, Poetry, Hatch, tox, nox, and coverage configuration; see the [Python alpha support matrix](docs/python-alpha-support.md)
+- `rust` (experimental): conventional single-package Cargo roots using the built-in `#[test]` harness, inline `#[cfg(test)]` modules, and exact crate-module imports from `tests/`; see the [Rust experimental support matrix](docs/rust-alpha-support.md)
 - `swift`: Swift Package Manager, Xcode-style and Bazel/rules_swift layouts, Swift Testing, XCTest, Quick/Nimble, SnapshotTesting, VaporTesting/XCTVapor, reactive frameworks, and generic Fluent database boundaries with driver-specific qualifiers; see the [Swift alpha support matrix](docs/swift-alpha-support.md)
 
-Project detection also reports unsupported Ruby, PHP, Elixir, Rust, and .NET roots so clients can distinguish "not audited yet" from "not present."
+Project detection also reports unsupported Ruby, PHP, Elixir, and .NET roots so clients can distinguish "not audited yet" from "not present."
 
 Don't see your stack? [Open an adapter request](https://github.com/RepoAssay/repo-test-architect/issues/new?template=feature_request.yml&title=%5BFeature%5D%3A%20Adapter%20request%20for%20) with the language or ecosystem, build system, test frameworks, and—when possible—a representative public repository. Requests help prioritize adapters against real repository shapes and user demand.
 
@@ -394,6 +396,8 @@ src/
       audit.js
     python/
       audit.js
+    rust/
+      audit.js
     swift/
       audit.js
   cli/
@@ -414,6 +418,7 @@ examples/
   python-pytest-service/
   python-uv-pytest/
   python-poetry-pytest/
+  rust-cargo-basic/
   swift-spm-xctest/
   swift-spm-swift-testing/
   swift-spm-quick-nimble/
@@ -429,7 +434,7 @@ evals/
 schemas/
 ```
 
-JavaScript/TypeScript, Python, Swift, bounded Kotlin/JVM modules, and bounded Go modules are supported adapter proof points. Go support includes literal repository-contained `go.work` members, explicit static build-target selection, bounded standard-library/Testify assertion usage, parser-scoped receiver identity through concrete local and test-helper bindings, and callable-body-owned source evidence as defined in [Go Alpha Support](docs/go-alpha-support.md). Kotlin/JVM support is limited to conventional Gradle/Maven modules and directly declared aggregate graphs, JUnit, the documented Kotest common-spec and Spock feature variants, or method-level TestNG, and standard source sets as defined in [Kotlin/JVM Alpha Support](docs/kotlin-jvm-alpha-support.md).
+JavaScript/TypeScript, Python, Swift, bounded Kotlin/JVM modules, and bounded Go modules are supported adapter proof points. The experimental Rust adapter adds conventional single-package Cargo audits with built-in tests while its evidence boundary is hardened. Go support includes literal repository-contained `go.work` members, explicit static build-target selection, bounded standard-library/Testify assertion usage, parser-scoped receiver identity through concrete local and test-helper bindings, and callable-body-owned source evidence as defined in [Go Alpha Support](docs/go-alpha-support.md). Kotlin/JVM support is limited to conventional Gradle/Maven modules and directly declared aggregate graphs, JUnit, the documented Kotest common-spec and Spock feature variants, or method-level TestNG, and standard source sets as defined in [Kotlin/JVM Alpha Support](docs/kotlin-jvm-alpha-support.md).
 
 Important runtime surfaces:
 
@@ -467,6 +472,7 @@ Important runtime surfaces:
 - [Go parser-scoped binding validation report](docs/go-parser-scope-validation-report.md)
 - [Go receiver and callable ownership validation report](docs/go-callable-ownership-validation-report.md)
 - [Go test-helper receiver validation report](docs/go-helper-return-validation-report.md)
+- [Rust experimental support](docs/rust-alpha-support.md)
 - [Kotlin/JVM validation hunt report](docs/kotlin-jvm-validation-hunt-report.md)
 - [Adapter contract](docs/adapter-contract.md)
 - [Artifact contract](docs/artifact-contract.md)

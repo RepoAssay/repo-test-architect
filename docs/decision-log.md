@@ -261,3 +261,11 @@ Decision: accept a concrete receiver binding from a unique, non-generic test hel
 Rationale: Resty's conventional tests centralize `*Client` construction in `dcnl` and `dcldb`, then bind those statically typed results across many test files. The retained rule adds five exact direct `client.go` relationships without changing any candidate classification or upgrading Resty's custom assertion helpers. TOML, Chi, River, and Zap retain their canonical graphs. Indexing helper declarations, result bindings, and receiver calls once keeps the exact Resty audit near its prior performance envelope.
 
 Revisit when: parameter or field receiver identity, cross-file external-package helpers, helper assertions, or deeper helper flow can be proven with the same static ownership guarantees.
+
+## Experimental Single-Package Rust Baseline
+
+Decision: register an experimental `rust` adapter for one conventional Cargo package with a static `[package].name`, the built-in `#[test]` harness, source files under `src/`, inline `#[cfg(test)]` modules, and integration tests under `tests/`. Emit direct `rust-symbol-reference` evidence only for a unique source function called from its inline test module or through an exact package-name and module-qualified `use` binding; built-in assertion macros upgrade the usage to `asserted`.
+
+Rationale: Cargo already had deterministic project detection, and the built-in harness provides a small native command surface. Exact crate/module imports and same-file inline ownership produce useful audit evidence without executing target code during analysis or claiming coverage from an unused import, comment, string, ambiguous module, foreign crate, workspace, or custom harness. The checked-in fixture verifies meaningful covered, untested, and deferred source categories through the shared artifact pipeline and native Cargo commands.
+
+Revisit when: real repositories justify bounded Cargo workspace/package ownership, module re-exports, `crate`/`super` paths, receiver-method identity, feature/target selection, doctests, async runtimes, or property-based test frameworks.

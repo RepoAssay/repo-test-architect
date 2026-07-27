@@ -31,6 +31,7 @@ const portableEvidenceStrengths = {
   "python-pytest-fixture": ["indirect"],
   "python-test-client-route": ["indirect"],
   "referenced-relative-reexport": ["referenced"],
+  "rust-symbol-reference": ["direct"],
   "swift-symbol-reference": ["referenced"],
   "tsconfig-path-import": ["direct"]
 };
