@@ -1,0 +1,68 @@
+{
+  "schemaVersion": "plan/v1",
+  "summary": {
+    "confidence": "high",
+    "verificationCommand": "cargo test",
+    "blockerCount": 0,
+    "addTestCount": 1,
+    "extendTestCount": 1,
+    "deferredCount": 0
+  },
+  "blockers": [],
+  "items": [
+    {
+      "id": "extend-test:code/library.rs",
+      "action": "extend-test",
+      "targetId": "code/library.rs",
+      "target": "library",
+      "path": "code/library.rs",
+      "testLevel": "unit",
+      "priority": 5,
+      "riskReductionScore": 8,
+      "maintenanceCost": 3,
+      "rationale": [
+        "Branching Rust behavior",
+        "Fallible or edge-case behavior",
+        "Existing Rust test evidence detected; review missing edge cases"
+      ],
+      "sourceSignals": [
+        "runtime-behavior",
+        "branching-logic",
+        "edge-case-surface",
+        "matching-test"
+      ],
+      "existingTestPaths": [
+        "code/library.rs"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "code/library.rs",
+          "kind": "rust-symbol-reference",
+          "strength": "direct",
+          "usage": "asserted"
+        }
+      ]
+    },
+    {
+      "id": "add-test:app/main.rs",
+      "action": "add-test",
+      "targetId": "app/main.rs",
+      "target": "main",
+      "path": "app/main.rs",
+      "testLevel": "unit",
+      "priority": 5,
+      "riskReductionScore": 8,
+      "maintenanceCost": 3,
+      "rationale": [
+        "Branching Rust behavior",
+        "Fallible or edge-case behavior"
+      ],
+      "sourceSignals": [
+        "runtime-behavior",
+        "branching-logic",
+        "edge-case-surface"
+      ],
+      "existingTestPaths": []
+    }
+  ]
+}

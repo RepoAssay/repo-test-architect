@@ -1,0 +1,153 @@
+{
+  "schemaVersion": "audit/v1",
+  "profile": {
+    "root": "<fixture>",
+    "languages": [
+      "rust"
+    ],
+    "packageManagers": [
+      "cargo"
+    ],
+    "testFrameworks": [
+      "rust-test"
+    ],
+    "architectures": [
+      "cargo-package",
+      "library",
+      "binary"
+    ],
+    "testCommand": "cargo test",
+    "detectedConventions": [
+      "explicit Cargo source target",
+      "inline cfg(test) modules"
+    ],
+    "existingTestLocations": [
+      "inline #[cfg(test)] modules"
+    ],
+    "setupSignals": [
+      "Cargo.toml",
+      "Rust 2024 edition"
+    ],
+    "confidence": "high",
+    "blockers": []
+  },
+  "untestedCandidates": [
+    {
+      "id": "app/main.rs",
+      "name": "main",
+      "path": "app/main.rs",
+      "kind": "business-logic",
+      "signals": [
+        "runtime-behavior",
+        "branching-logic",
+        "edge-case-surface"
+      ],
+      "risk": "high",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 8,
+      "maintenanceCost": 3,
+      "reasons": [
+        "Branching Rust behavior",
+        "Fallible or edge-case behavior"
+      ],
+      "existingTestPaths": []
+    }
+  ],
+  "coveredButRisky": [
+    {
+      "id": "code/library.rs",
+      "name": "library",
+      "path": "code/library.rs",
+      "kind": "business-logic",
+      "signals": [
+        "runtime-behavior",
+        "branching-logic",
+        "edge-case-surface",
+        "matching-test"
+      ],
+      "risk": "high",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 8,
+      "maintenanceCost": 3,
+      "reasons": [
+        "Branching Rust behavior",
+        "Fallible or edge-case behavior",
+        "Existing Rust test evidence detected; review missing edge cases"
+      ],
+      "existingTestPaths": [
+        "code/library.rs"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "code/library.rs",
+          "kind": "rust-symbol-reference",
+          "strength": "direct",
+          "usage": "asserted"
+        }
+      ]
+    }
+  ],
+  "recommended": [
+    {
+      "id": "code/library.rs",
+      "name": "library",
+      "path": "code/library.rs",
+      "kind": "business-logic",
+      "signals": [
+        "runtime-behavior",
+        "branching-logic",
+        "edge-case-surface",
+        "matching-test"
+      ],
+      "risk": "high",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 8,
+      "maintenanceCost": 3,
+      "reasons": [
+        "Branching Rust behavior",
+        "Fallible or edge-case behavior",
+        "Existing Rust test evidence detected; review missing edge cases"
+      ],
+      "existingTestPaths": [
+        "code/library.rs"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "code/library.rs",
+          "kind": "rust-symbol-reference",
+          "strength": "direct",
+          "usage": "asserted"
+        }
+      ]
+    },
+    {
+      "id": "app/main.rs",
+      "name": "main",
+      "path": "app/main.rs",
+      "kind": "business-logic",
+      "signals": [
+        "runtime-behavior",
+        "branching-logic",
+        "edge-case-surface"
+      ],
+      "risk": "high",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 8,
+      "maintenanceCost": 3,
+      "reasons": [
+        "Branching Rust behavior",
+        "Fallible or edge-case behavior"
+      ],
+      "existingTestPaths": []
+    }
+  ],
+  "skipped": [],
+  "risks": [
+    "main has branching rust behavior, fallible or edge-case behavior and has no matching Rust test evidence.",
+    "library has branching rust behavior, fallible or edge-case behavior and needs edge-case review."
+  ]
+}

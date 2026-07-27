@@ -21,7 +21,12 @@ const IGNORED_DIRECTORIES = new Set([
 export function auditRustRepo(root, options = {}) {
   const files = readRepoFiles(root);
   const manifest = files.find((file) => file.path === "Cargo.toml");
-  const sourceFiles = files.filter((file) => isSourceFile(file.path));
+  const sourceTargets = collectCargoSourceTargets(manifest?.content ?? "", files);
+  const sourcePaths = new Set([
+    ...files.filter((file) => isSourceFile(file.path)).map((file) => file.path),
+    ...sourceTargets.paths
+  ]);
+  const sourceFiles = files.filter((file) => sourcePaths.has(file.path));
   const integrationTests = files.filter((file) => isIntegrationTestFile(file.path) && hasRunnableRustTest(file.content));
   const inlineTestFiles = sourceFiles.filter((file) => hasInlineRustTests(file.content));
   const explicitTestTargets = collectCargoExplicitTestTargets(manifest?.content ?? "", files);
@@ -33,6 +38,7 @@ export function auditRustRepo(root, options = {}) {
     integrationTests,
     inlineTestFiles,
     explicitTestTargets,
+    sourceTargets,
     workspaceContext
   );
   const changedPaths = options.changedPaths
@@ -145,6 +151,7 @@ function buildProfile(
   integrationTests,
   inlineTestFiles,
   explicitTestTargets,
+  sourceTargets,
   workspaceContext
 ) {
   const manifestContent = manifest?.content ?? "";
@@ -168,6 +175,9 @@ function buildProfile(
   if (/^\s*harness\s*=\s*false\s*$/m.test(manifestContent)) {
     blockers.push("Custom Rust test harnesses are outside the bounded built-in test support matrix.");
   }
+  if (!sourceTargets.complete) {
+    blockers.push("Cargo lib and bin target paths must resolve to static repository-contained Rust files.");
+  }
   if (!hasBuiltInTestHarness) blockers.push("No runnable built-in Rust #[test] detected.");
 
   const existingTestLocations = [];
@@ -178,9 +188,13 @@ function buildProfile(
   if (hasPackage) architectures.push("cargo-package");
   if (hasPackage && workspaceContext?.declared) architectures.push("cargo-workspace-package");
   else if (hasWorkspace) architectures.push("cargo-workspace");
-  if (sourceFiles.some((file) => file.path === "src/lib.rs")) architectures.push("library");
-  if (sourceFiles.some((file) => file.path === "src/main.rs" || file.path.startsWith("src/bin/"))) architectures.push("binary");
+  if (sourceFiles.some((file) => file.path === "src/lib.rs") || sourceTargets.libraryPaths.length > 0) architectures.push("library");
+  if (
+    sourceFiles.some((file) => file.path === "src/main.rs" || file.path.startsWith("src/bin/")) ||
+    sourceTargets.binaryPaths.length > 0
+  ) architectures.push("binary");
   const detectedConventions = [];
+  if (sourceTargets.paths.length > 0) detectedConventions.push("explicit Cargo source target");
   if (inlineTestFiles.length > 0) detectedConventions.push("inline cfg(test) modules");
   if (integrationTests.length > 0) detectedConventions.push("Cargo integration tests");
   if (explicitTestTargets.length > 0) detectedConventions.push("explicit Cargo test target");
@@ -214,6 +228,39 @@ function buildProfile(
   };
 }
 
+function collectCargoSourceTargets(manifestContent, files) {
+  const filePaths = new Set(files.map((file) => normalizePath(file.path)));
+  const libraryPaths = [];
+  const binaryPaths = [];
+  let complete = true;
+  const libraryBody = cargoTableBody(manifestContent, "lib");
+  if (libraryBody !== undefined) {
+    const target = cargoDeclaredTargetPath(libraryBody, filePaths);
+    if (!target.complete) complete = false;
+    if (target.path) libraryPaths.push(target.path);
+  }
+  for (const body of cargoArrayTableBodies(manifestContent, "bin")) {
+    const target = cargoDeclaredTargetPath(body, filePaths);
+    if (!target.complete) complete = false;
+    if (target.path) binaryPaths.push(target.path);
+  }
+  return {
+    complete,
+    libraryPaths: [...new Set(libraryPaths)].sort(),
+    binaryPaths: [...new Set(binaryPaths)].sort(),
+    paths: [...new Set([...libraryPaths, ...binaryPaths])].sort()
+  };
+}
+
+function cargoDeclaredTargetPath(body, filePaths) {
+  const assignments = [...body.matchAll(/^\s*path\s*=/gm)];
+  if (assignments.length === 0) return { complete: true };
+  if (assignments.length !== 1) return { complete: false };
+  const targetPath = normalizeCargoTargetPath(cargoTableString(body, "path"));
+  if (!targetPath || !filePaths.has(targetPath)) return { complete: false };
+  return { complete: true, path: targetPath };
+}
+
 function collectCargoExplicitTestTargets(manifestContent, files) {
   const filePaths = new Set(files.map((file) => normalizePath(file.path)));
   const targets = [];
@@ -222,7 +269,7 @@ function collectCargoExplicitTestTargets(manifestContent, files) {
     if (/^\s*required-features\s*=/m.test(body)) continue;
     const name = cargoTableString(body, "name");
     const declaredPath = cargoTableString(body, "path");
-    const targetPath = normalizeCargoTestTargetPath(declaredPath ?? (name ? `tests/${name}.rs` : undefined));
+    const targetPath = normalizeCargoTargetPath(declaredPath ?? (name ? `tests/${name}.rs` : undefined));
     if (!targetPath || !filePaths.has(targetPath)) continue;
     targets.push(targetPath);
   }
@@ -237,6 +284,14 @@ function cargoArrayTableBodies(content, table) {
     const nextTable = content.slice(start).search(/^\s*\[/m);
     return nextTable === -1 ? content.slice(start) : content.slice(start, start + nextTable);
   });
+}
+
+function cargoTableBody(content, table) {
+  const match = content.match(new RegExp(`^\\s*\\[${escapeRegExp(table)}\\]\\s*(?:#.*)?$`, "m"));
+  if (!match) return undefined;
+  const start = match.index + match[0].length;
+  const nextTable = content.slice(start).search(/^\s*\[/m);
+  return nextTable === -1 ? content.slice(start) : content.slice(start, start + nextTable);
 }
 
 function cargoTableString(body, key) {
@@ -256,7 +311,7 @@ function cargoTableBoolean(body, key) {
   return value === undefined ? undefined : value === "true";
 }
 
-function normalizeCargoTestTargetPath(value) {
+function normalizeCargoTargetPath(value) {
   if (!value || path.isAbsolute(value) || path.win32.isAbsolute(value)) return undefined;
   const normalized = normalizePath(value).replace(/^\.\//, "").replace(/\/$/, "");
   if (!normalized.endsWith(".rs") || normalized.split("/").includes("..")) return undefined;

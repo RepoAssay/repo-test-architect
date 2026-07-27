@@ -1,0 +1,62 @@
+{
+  "schemaVersion": "model-consistency-scenario/v1",
+  "id": "rust-cargo-custom-targets-plan",
+  "description": "Different model profiles should preserve static Cargo lib and bin source ownership outside the conventional src layout.",
+  "sourceArtifact": {
+    "path": "evals/expected/rust-cargo-custom-targets.audit.json",
+    "schemaVersion": "audit/v1"
+  },
+  "toolCall": {
+    "toolName": "generate_test_plan",
+    "arguments": {}
+  },
+  "lockedFields": [
+    {
+      "path": "summary.verificationCommand",
+      "expected": "cargo test",
+      "reason": "Complete package-local source target ownership should retain the native Cargo command."
+    },
+    {
+      "path": "summary.blockerCount",
+      "expected": 0,
+      "reason": "Existing static repository-contained lib and bin paths should not introduce blockers."
+    },
+    {
+      "path": "summary.addTestCount",
+      "expected": 1,
+      "reason": "The untested custom binary root should remain one add-test item."
+    },
+    {
+      "path": "summary.extendTestCount",
+      "expected": 1,
+      "reason": "The inline-tested custom library root should remain one extend-test item."
+    },
+    {
+      "path": "items[0].id",
+      "expected": "extend-test:code/library.rs",
+      "reason": "The custom library path should remain a stable source target with inline evidence."
+    },
+    {
+      "path": "items[0].existingTestEvidence[0].usage",
+      "expected": "asserted",
+      "reason": "The library root's inline built-in test should retain asserted direct evidence."
+    },
+    {
+      "path": "items[1].id",
+      "expected": "add-test:app/main.rs",
+      "reason": "The custom binary root should retain its manifest-owned path in the plan."
+    }
+  ],
+  "allowedVariations": [
+    "summary wording",
+    "Cargo target ownership explanation wording",
+    "optional detail depth"
+  ],
+  "unexpectedVariations": [
+    "conventional src path substitution",
+    "missing Cargo test command",
+    "missing inline Rust evidence",
+    "ownership of other/unowned.rs",
+    "different plan action counts"
+  ]
+}
