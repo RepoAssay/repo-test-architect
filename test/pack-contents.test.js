@@ -22,11 +22,14 @@ describe("package contents", () => {
   it("requires check script dependencies needed by packaged release verification", () => {
     assert.ok(requiredFiles.includes("src/diagnostics/diagnostics.js"));
     assert.ok(requiredFiles.includes("src/adapters/go/audit.js"));
+    assert.ok(requiredFiles.includes("src/adapters/rust/audit.js"));
     assert.ok(requiredFiles.includes("docs/go-alpha-support.md"));
+    assert.ok(requiredFiles.includes("docs/rust-alpha-support.md"));
     assert.ok(requiredFiles.includes("examples/go-testing-basic/go.mod"));
     assert.ok(requiredFiles.includes("examples/go-build-target-basic/go.mod"));
     assert.ok(requiredFiles.includes("examples/go-workspace-basic/go.work"));
     assert.ok(requiredFiles.includes("examples/go-workspace-basic/services/checkout/go.mod"));
+    assert.ok(requiredFiles.includes("examples/rust-cargo-basic/Cargo.toml"));
     assert.ok(requiredFiles.includes("schemas/diagnostic-event-v1.schema.json"));
     assert.ok(requiredFiles.includes("schemas/doctor-report-v1.schema.json"));
     assert.ok(requiredFiles.includes("schemas/diagnostic-bundle-v1.schema.json"));

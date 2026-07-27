@@ -117,6 +117,7 @@ describe("model consistency runner", () => {
         ["python-pytest-service-plan", []],
         ["python-uv-pytest-plan", []],
         ["react-testing-library-plan", []],
+        ["rust-cargo-basic-plan", []],
         ["swift-spm-quick-nimble-plan", []],
         ["swift-spm-swift-testing-plan", []],
         ["swift-spm-xctest-plan", []],
@@ -137,10 +138,10 @@ describe("model consistency runner", () => {
     assert.equal(summary.schemaVersion, "model-consistency-summary/v1");
     assert.equal(summary.profileName, "deterministic-baseline");
     assert.deepEqual(summary.summary, {
-      scenarioCount: 54,
-      passedScenarioCount: 54,
+      scenarioCount: 55,
+      passedScenarioCount: 55,
       failedScenarioCount: 0,
-      checkedFieldCount: 475,
+      checkedFieldCount: 483,
       failureCount: 0
     });
     assert.equal(summary.scenarios[19].scenarioId, "node-ava-basic-plan");
@@ -158,8 +159,8 @@ describe("model consistency runner", () => {
     assert.equal(comparison.baselineProfile, "deterministic-baseline");
     assert.equal(comparison.candidateProfile, "local-small");
     assert.deepEqual(comparison.summary, {
-      scenarioCount: 54,
-      alignedScenarioCount: 54,
+      scenarioCount: 55,
+      alignedScenarioCount: 55,
       driftedScenarioCount: 0,
       missingScenarioCount: 0,
       unexpectedScenarioCount: 0,
@@ -201,12 +202,12 @@ describe("model consistency runner", () => {
     const comparison = compareModelConsistencySummaries(baseline, candidate);
 
     assert.deepEqual(comparison.summary, {
-      scenarioCount: 55,
-      alignedScenarioCount: 52,
+      scenarioCount: 56,
+      alignedScenarioCount: 53,
       driftedScenarioCount: 1,
       missingScenarioCount: 1,
       unexpectedScenarioCount: 1,
-      checkedFieldDelta: -320,
+      checkedFieldDelta: -328,
       failureDelta: 3
     });
     assert.deepEqual(
@@ -260,6 +261,7 @@ describe("model consistency runner", () => {
         ["python-pytest-service-plan", "aligned"],
         ["python-uv-pytest-plan", "aligned"],
         ["react-testing-library-plan", "aligned"],
+        ["rust-cargo-basic-plan", "aligned"],
         ["swift-spm-quick-nimble-plan", "aligned"],
         ["swift-spm-swift-testing-plan", "aligned"],
         ["swift-spm-xctest-plan", "aligned"],

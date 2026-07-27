@@ -676,7 +676,7 @@ describe("project detector", () => {
           root: "crates/worker",
           ecosystems: ["rust"],
           languages: ["rust"],
-          supported: false
+          supported: true
         }
       ]
     );

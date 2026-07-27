@@ -22,7 +22,7 @@ npm run detect-rules:json
 | `composer.json` | `php` | `php` | Detected, unsupported |
 | `mix.exs` | `elixir` | `elixir` | Detected, unsupported |
 | `go.mod` | `go` | `go` | Experimental bounded `go` adapter |
-| `Cargo.toml` | `rust` | `rust` | Detected, unsupported |
+| `Cargo.toml` | `rust` | `rust` | Experimental single-package Cargo adapter |
 | `Package.swift` | `swift` | `swift` | Supported by `swift` |
 | `MODULE.bazel` | `bazel` | `swift` | Supported by `swift` when Swift rules and sources are present |
 | `WORKSPACE` | `bazel` | `swift` | Supported by `swift` when Swift rules and sources are present |

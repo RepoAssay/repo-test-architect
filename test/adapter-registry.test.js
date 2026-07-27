@@ -43,6 +43,15 @@ describe("adapter registry", () => {
         emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"]
       },
       {
+        id: "rust",
+        ecosystems: ["rust"],
+        languages: ["rust"],
+        maturity: "experimental",
+        supportedTestFrameworks: ["rust-test"],
+        supportedProjectTypes: ["cargo-package"],
+        emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"]
+      },
+      {
         id: "swift",
         ecosystems: ["apple", "bazel", "swift"],
         languages: ["objective-c", "swift"],
@@ -92,6 +101,15 @@ describe("adapter registry", () => {
         maturity: "supported",
         supportedTestFrameworks: ["anyio", "hypothesis", "pytest", "pytest-asyncio", "unittest"],
         supportedProjectTypes: ["django", "fastapi", "flask", "python-package"],
+        emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"]
+      },
+      {
+        id: "rust",
+        ecosystems: ["rust"],
+        languages: ["rust"],
+        maturity: "experimental",
+        supportedTestFrameworks: ["rust-test"],
+        supportedProjectTypes: ["cargo-package"],
         emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"]
       },
       {
@@ -152,7 +170,7 @@ describe("adapter registry", () => {
   it("rejects unsupported adapters", () => {
     assert.throws(
       () => getAdapter("ruby"),
-      /Unsupported adapter: ruby\. Available adapters: javascript, go, kotlin, python, swift\./
+      /Unsupported adapter: ruby\. Available adapters: javascript, go, kotlin, python, rust, swift\./
     );
   });
 
@@ -178,6 +196,14 @@ describe("adapter registry", () => {
 
     assert.equal(audit.schemaVersion, "audit/v1");
     assert.deepEqual(audit.profile.testFrameworks, ["XCTest"]);
+  });
+
+  it("audits through the Rust adapter", () => {
+    const adapter = getAdapter("rust");
+    const audit = adapter.audit(path.resolve("examples/rust-cargo-basic"));
+
+    assert.equal(audit.schemaVersion, "audit/v1");
+    assert.deepEqual(audit.profile.testFrameworks, ["rust-test"]);
   });
 
   it("audits through the Python adapter", () => {

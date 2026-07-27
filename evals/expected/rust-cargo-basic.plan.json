@@ -1,0 +1,98 @@
+{
+  "schemaVersion": "plan/v1",
+  "summary": {
+    "confidence": "high",
+    "verificationCommand": "cargo test",
+    "blockerCount": 0,
+    "addTestCount": 1,
+    "extendTestCount": 2,
+    "deferredCount": 0
+  },
+  "blockers": [],
+  "items": [
+    {
+      "id": "extend-test:src/parser.rs",
+      "action": "extend-test",
+      "targetId": "src/parser.rs",
+      "target": "parser",
+      "path": "src/parser.rs",
+      "testLevel": "unit",
+      "priority": 5,
+      "riskReductionScore": 8,
+      "maintenanceCost": 3,
+      "rationale": [
+        "Branching Rust behavior",
+        "Fallible or edge-case behavior",
+        "Existing Rust test evidence detected; review missing edge cases"
+      ],
+      "sourceSignals": [
+        "pure-logic",
+        "branching-logic",
+        "edge-case-surface",
+        "matching-test"
+      ],
+      "existingTestPaths": [
+        "tests/parser_test.rs"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "tests/parser_test.rs",
+          "kind": "rust-symbol-reference",
+          "strength": "direct",
+          "usage": "asserted"
+        }
+      ]
+    },
+    {
+      "id": "add-test:src/service.rs",
+      "action": "add-test",
+      "targetId": "src/service.rs",
+      "target": "service",
+      "path": "src/service.rs",
+      "testLevel": "unit",
+      "priority": 5,
+      "riskReductionScore": 8,
+      "maintenanceCost": 3,
+      "rationale": [
+        "Branching Rust behavior",
+        "Fallible or edge-case behavior"
+      ],
+      "sourceSignals": [
+        "service-boundary",
+        "branching-logic",
+        "edge-case-surface"
+      ],
+      "existingTestPaths": []
+    },
+    {
+      "id": "extend-test:src/validator.rs",
+      "action": "extend-test",
+      "targetId": "src/validator.rs",
+      "target": "validator",
+      "path": "src/validator.rs",
+      "testLevel": "unit",
+      "priority": 4,
+      "riskReductionScore": 6,
+      "maintenanceCost": 2,
+      "rationale": [
+        "Deterministic Rust behavior",
+        "Existing Rust test evidence detected; review missing edge cases"
+      ],
+      "sourceSignals": [
+        "pure-logic",
+        "matching-test"
+      ],
+      "existingTestPaths": [
+        "src/validator.rs"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "src/validator.rs",
+          "kind": "rust-symbol-reference",
+          "strength": "direct",
+          "usage": "asserted"
+        }
+      ]
+    }
+  ]
+}

@@ -23,6 +23,12 @@ export const adapterCoverageCases = [
     thresholds: { lines: 95, branches: 85, functions: 95 }
   },
   {
+    adapterId: "rust",
+    sourcePath: "src/adapters/rust/audit.js",
+    testPath: "test/rust-audit.test.js",
+    thresholds: { lines: 95, branches: 88, functions: 97 }
+  },
+  {
     adapterId: "kotlin",
     sourcePath: "src/adapters/kotlin/audit.js",
     testPath: "test/kotlin-audit.test.js",

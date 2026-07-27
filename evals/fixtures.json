@@ -62,6 +62,11 @@
     "path": "examples/go-workspace-basic/services/checkout"
   },
   {
+    "name": "rust-cargo-basic",
+    "adapter": "rust",
+    "path": "examples/rust-cargo-basic"
+  },
+  {
     "name": "kotlin-junit-basic",
     "adapter": "kotlin",
     "path": "examples/kotlin-junit-basic"

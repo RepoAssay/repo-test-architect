@@ -40,7 +40,8 @@ Implemented:
 - bounded Markdown display of existing-test evidence with complete path lists preserved in JSON artifacts
 - shared runtime Markdown audit renderer with a TypeScript reference mirror, used directly by the CLI
 - behavioral HTTP framework classifications for routers, routes, handlers, security and general middleware, request access and validation, request bodies, queries, cookies, caching, response construction, request events, proxies, sessions, WebSockets, streaming, client response parsing, and runtime adapters, including flat utility layouts identified through HTTP boundary types
-- runtime adapter registry with supported `javascript`, `go`, `kotlin`, `python`, and `swift` adapters
+- runtime adapter registry with supported `javascript`, `go`, `kotlin`, `python`, and `swift` adapters plus an experimental bounded `rust` adapter
+- experimental Rust single-package Cargo audits with built-in `#[test]`, inline `#[cfg(test)]`, exact integration-test crate-module imports, golden artifacts, model-consistency locking, and shared downstream conformance
 - supported `go` registry entry with conventional `go.mod` ownership, literal repository-contained `go.work` membership, module-local command selection, explicit `GOOS`/`GOARCH`/custom-tag evaluation for boolean and filename build constraints, runnable standard-library test detection, Go-aware lexical masking, lazy parser-scoped local shadow checks, generic top-level function declarations and calls, parser-owned concrete value/pointer receiver-method calls through explicit bindings, exact simple constructor result positions, or exact statically typed test-helper results, bounded standard-library and exact Testify assertion usage with one-hop result bindings, exact default/named/dot external-package provenance restricted to exported symbols, bounded one-hop same-package and module-local source dependency evidence owned by the directly exercised callable body, conservative source classification, explicit incomplete-workspace/unsupported-constraint/Ginkgo blockers, golden artifacts, model-consistency locking, and shared downstream conformance
 - Swift Xcode command selection that preserves sole, direct scheme-owning, container-name-matched, and default-plan choices while retaining nested container paths, blocking ambiguous workspaces/projects/schemes/plans, and lowering unresolved profiles from high confidence
 - Swift source-symbol evidence that remains target-qualified and unique while rejecting test-local shadow declarations and same-named receiver member calls as proof of a source type or top-level function
@@ -69,7 +70,7 @@ Implemented:
 - shared project-audits validation for saved artifact reuse across CLI and MCP-style flows
 - file-backed MCP invoke arguments for local calls that reuse saved artifacts
 - checked-in MCP args fixture for project-audits derived local examples
-- unsupported Ruby, PHP, Elixir, Rust, and .NET project reporting with ecosystem and language labels
+- unsupported Ruby, PHP, Elixir, and .NET project reporting with ecosystem and language labels
 - documented project detection marker rules
 - CLI output for project detection marker rules
 - fixture-based regression coverage

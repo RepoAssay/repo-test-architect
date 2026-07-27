@@ -2,6 +2,7 @@ import { auditJavaScriptRepo } from "../adapters/javascript/audit.js";
 import { auditGoRepo } from "../adapters/go/audit.js";
 import { auditKotlinRepo } from "../adapters/kotlin/audit.js";
 import { auditPythonRepo } from "../adapters/python/audit.js";
+import { auditRustRepo } from "../adapters/rust/audit.js";
 import { auditSwiftRepo } from "../adapters/swift/audit.js";
 
 /**
@@ -91,6 +92,20 @@ export const adapters = [
       return auditPythonRepo(repoRoot, {
         changedPaths: options.changedPaths,
         repositoryRoot: options.repositoryRoot
+      });
+    }
+  },
+  {
+    id: "rust",
+    ecosystems: ["rust"],
+    languages: ["rust"],
+    maturity: "experimental",
+    supportedTestFrameworks: ["rust-test"],
+    supportedProjectTypes: ["cargo-package"],
+    emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"],
+    audit(repoRoot, options = {}) {
+      return auditRustRepo(repoRoot, {
+        changedPaths: options.changedPaths
       });
     }
   },
