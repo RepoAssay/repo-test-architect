@@ -103,6 +103,8 @@ Supported adapters:
 
 Project detection also reports unsupported Ruby, PHP, Elixir, Rust, and .NET roots so clients can distinguish "not audited yet" from "not present."
 
+Don't see your stack? [Open an adapter request](https://github.com/RepoAssay/repo-test-architect/issues/new?template=feature_request.yml&title=%5BFeature%5D%3A%20Adapter%20request%20for%20) with the language or ecosystem, build system, test frameworks, and—when possible—a representative public repository. Requests help prioritize adapters against real repository shapes and user demand.
+
 The public package exposes the audit CLI, the stdio MCP server, and a deterministic MCP invoke harness under the stable binary names documented below.
 
 ## Advanced CLI and Contributor Reference
