@@ -317,6 +317,105 @@ describe("Go adapter", () => {
     }]);
   });
 
+  it("uses parser scopes to isolate same-package, imported, and Testify shadows", (t) => {
+    const root = createRepo(t, {
+      "go.mod": "module example.com/scopes\n\ngo 1.22\n",
+      "parse.go": "package scopes\nfunc Parse() int { return 1 }\n",
+      "format.go": "package scopes\nfunc Format() int { return 2 }\n",
+      "asserted.go": "package scopes\nfunc Asserted() int { return 3 }\n",
+      "assert_shadow.go": "package scopes\nfunc AssertShadow() int { return 4 }\n",
+      "scope_test.go": [
+        "package scopes",
+        "import (",
+        "  \"testing\"",
+        "  \"github.com/stretchr/testify/assert\"",
+        ")",
+        "type localAssert struct{}",
+        "func (localAssert) Equal(_ ...any) bool { return true }",
+        "func helper(Parse func() int) { _ = Parse() }",
+        "func TestScopedCalls(t *testing.T) {",
+        "  if true { Parse := func() int { return 9 }; _ = Parse() }",
+        "  _ = Parse()",
+        "  Format := func() int { return 9 }",
+        "  _ = Format()",
+        "}",
+        "func TestScopedAssert(t *testing.T) {",
+        "  assert.Equal(t, 3, Asserted())",
+        "}",
+        "func TestAssertShadow(t *testing.T) {",
+        "  assert := localAssert{}",
+        "  assert.Equal(t, 4, AssertShadow())",
+        "}",
+        ""
+      ].join("\n"),
+      "external/parser.go": "package external\nfunc Parse() int { return 5 }\n",
+      "external/shadow.go": "package external\nfunc Shadow() int { return 6 }\n",
+      "external/scope_test.go": [
+        "package external_test",
+        "import (",
+        "  \"testing\"",
+        "  scoped \"example.com/scopes/external\"",
+        ")",
+        "type localPackage struct{}",
+        "func (localPackage) Shadow() int { return 9 }",
+        "func TestExternal(t *testing.T) { _ = scoped.Parse() }",
+        "func TestExternalShadow(t *testing.T) {",
+        "  scoped := localPackage{}",
+        "  _ = scoped.Shadow()",
+        "}",
+        ""
+      ].join("\n")
+    });
+
+    const audit = auditGoRepo(root);
+
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), [
+      "parse.go",
+      "external/parser.go",
+      "assert_shadow.go",
+      "asserted.go"
+    ]);
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.path), [
+      "format.go",
+      "external/shadow.go"
+    ]);
+    assert.equal(audit.coveredButRisky.find((target) => target.path === "asserted.go").existingTestEvidence[0].usage, "asserted");
+    assert.equal(audit.coveredButRisky.find((target) => target.path === "assert_shadow.go").existingTestEvidence[0].usage, "called");
+  });
+
+  it("uses parser scopes for module-local source dependency aliases", (t) => {
+    const root = createRepo(t, {
+      "go.mod": "module example.com/source-scopes\n\ngo 1.22\n",
+      "entry.go": [
+        "package sourcescopes",
+        "import dependency \"example.com/source-scopes/dependency\"",
+        "func Entry() int {",
+        "  value := dependency.Valid()",
+        "  if true {",
+        "    dependency := struct { Shadow func() int }{Shadow: func() int { return 9 }}",
+        "    _ = dependency.Shadow()",
+        "  }",
+        "  return value",
+        "}",
+        ""
+      ].join("\n"),
+      "entry_test.go": "package sourcescopes\nimport \"testing\"\nfunc TestEntry(t *testing.T) { if Entry() != 5 { t.Fatal() } }\n",
+      "dependency/valid.go": "package dependency\nfunc Valid() int { return 5 }\n",
+      "dependency/shadow.go": "package dependency\nfunc Shadow() int { return 6 }\n"
+    });
+
+    const audit = auditGoRepo(root);
+
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["entry.go", "dependency/valid.go"]);
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.path), ["dependency/shadow.go"]);
+    assert.deepEqual(audit.coveredButRisky.find((target) => target.path === "dependency/valid.go").existingTestEvidence, [{
+      testPath: "entry_test.go",
+      kind: "go-source-dependency",
+      strength: "indirect",
+      viaUsage: "asserted"
+    }]);
+  });
+
   it("resolves receiver methods through unique explicitly typed local bindings", (t) => {
     const root = createRepo(t, {
       "go.mod": "module example.com/methods\n\ngo 1.22\n",

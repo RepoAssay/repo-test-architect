@@ -8,9 +8,9 @@ The validation finder now exposes a `go` profile requiring a root `go.mod` and a
 
 | Repository | Audited commit | Role | Detected command | Untested | Covered | Skipped | Median audit |
 | --- | --- | --- | --- | ---: | ---: | ---: | ---: |
-| [`BurntSushi/toml`](https://github.com/BurntSushi/toml) | `c6d720d83547bb8d7afb067ba9df8bad0323e2d1` | conventional parser library | `go test ./...` | 6 | 9 | 7 | 245 ms |
+| [`BurntSushi/toml`](https://github.com/BurntSushi/toml) | `c6d720d83547bb8d7afb067ba9df8bad0323e2d1` | conventional parser library | `go test ./...` | 6 | 9 | 7 | 262 ms |
 
-The assertion-usage remeasurement took 287, 245, and 238 ms. All three audits produced the same normalized audit digest, `9489b38da82cabd66db1f0ccd50a01a18e304f8f9077ceaa019d319d0b046979`, with 50 evidence relationships, including three whose existing entrypoint usage is now asserted. Candidate classifications remain unchanged.
+The parser-scope remeasurement took 300, 262, and 254 ms. All three audits produced the same normalized audit digest, `9489b38da82cabd66db1f0ccd50a01a18e304f8f9077ceaa019d319d0b046979`, with 50 evidence relationships, including three whose existing entrypoint usage is asserted. Candidate classifications remain unchanged.
 
 ## Native Validation
 

@@ -12,7 +12,7 @@ The validation finder now exposes a `go-workspace` profile requiring a root `go.
 
 Three post-hardening repository audits took 712, 622, and 614 ms. They produced the same normalized project-audit digest, `62dff714c5ccadb78383acb9796e9627bb4cca5cddfdb2d3c032fb5b855df383`, with 662 evidence relationships. The pinned tree contains 296 Go files, including 144 test files.
 
-The shared corpus measures the same exact checkout through the direct root-module adapter contract: the assertion-usage remeasurement took 960, 885, and 899 ms, for an 899 ms median, 6 untested, 47 covered, 10 skipped, and 576 evidence relationships. Twelve exact Testify relationships are now marked asserted, producing normalized audit digest `a9ef959b5dae0685ab338d0a41ae8e6e70f73e3137654ea4ab91b46254c2ae6d`. The repository-level figures above remain the ownership review across all nine detected projects; the direct measurement is the reproducible per-case corpus baseline.
+The shared corpus measures the same exact checkout through the direct root-module adapter contract: the parser-scope remeasurement took 1,129, 1,037, and 1,024 ms, for a 1,037 ms median, 6 untested, 47 covered, 10 skipped, and 576 evidence relationships. Twenty-six relationships are now marked asserted after call-site scopes recovered 14 valid Testify relationships outside unrelated local `require` bindings, producing normalized audit digest `ef4ae3299b71bbd2ad38324b812fb845cf24d93241abad65c2982f7b681ba5ca`. The repository-level figures above remain the ownership review across all nine detected projects; the direct measurement is the reproducible per-case corpus baseline.
 
 ## Native Validation
 

@@ -147,6 +147,7 @@
   ],
   "license": "MIT",
   "dependencies": {
+    "@lezer/go": "^1.0.1",
     "@modelcontextprotocol/sdk": "^1.29.0"
   },
   "overrides": {
