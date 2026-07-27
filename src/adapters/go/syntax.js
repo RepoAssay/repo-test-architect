@@ -11,6 +11,20 @@ export function analyzeGoSyntax(content, maskedContent = content) {
   const functionRanges = collectTopLevelGoFunctionRanges(maskedContent);
   const bindingPositions = new Map();
   const parsedFunctions = new Map();
+  let parsedFile;
+
+  function analyzeFunction(range) {
+    let analysis = parsedFunctions.get(range.from);
+    if (!analysis) {
+      const prefix = "package scope\n";
+      analysis = {
+        prefixLength: prefix.length,
+        syntax: parseGoSyntax(`${prefix}${content.slice(range.from, range.to)}`)
+      };
+      parsedFunctions.set(range.from, analysis);
+    }
+    return analysis;
+  }
 
   return {
     reliable: true,
@@ -25,20 +39,33 @@ export function analyzeGoSyntax(content, maskedContent = content) {
         return false;
       }
 
-      let analysis = parsedFunctions.get(callRange.from);
-      if (!analysis) {
-        const prefix = "package scope\n";
-        analysis = {
-          prefixLength: prefix.length,
-          syntax: parseGoSyntax(`${prefix}${content.slice(callRange.from, callRange.to)}`)
-        };
-        parsedFunctions.set(callRange.from, analysis);
-      }
+      const analysis = analyzeFunction(callRange);
       if (!analysis.syntax.reliable) return true;
       return analysis.syntax.hasVisibleBinding(
         name,
         analysis.prefixLength + position - callRange.from
       );
+    },
+    ownsBinding(name, declarationPosition, position) {
+      const callRange = functionRanges.find((range) => position >= range.from && position < range.to);
+      if (!callRange || declarationPosition < callRange.from || declarationPosition >= callRange.to) return false;
+      const analysis = analyzeFunction(callRange);
+      if (!analysis.syntax.reliable) return false;
+      const binding = analysis.syntax.bindingAt(
+        name,
+        analysis.prefixLength + position - callRange.from
+      );
+      return binding?.position === analysis.prefixLength + declarationPosition - callRange.from;
+    },
+    callableBody(symbol) {
+      parsedFile ??= parseGoSyntax(content);
+      if (!parsedFile.reliable) return undefined;
+      const matches = parsedFile.callables.filter((callable) =>
+        callable.kind === symbol.kind &&
+        callable.name === symbol.name &&
+        (callable.receiverType ?? "") === (symbol.receiverType ?? "")
+      );
+      return matches.length === 1 ? matches[0].body : undefined;
     }
   };
 }
@@ -46,10 +73,15 @@ export function analyzeGoSyntax(content, maskedContent = content) {
 function parseGoSyntax(content) {
   const tree = parser.parse(content);
   const declarations = [];
+  const callables = [];
   let reliable = true;
 
   visit(tree.topNode, (node) => {
     if (node.type.isError) reliable = false;
+    if (["FunctionDecl", "MethodDecl"].includes(node.name)) {
+      const callable = describeCallable(content, node);
+      if (callable) callables.push(callable);
+    }
     if (node.name === "DefName") {
       const declaration = describeDeclaration(content, node, tree.topNode);
       if (declaration && declaration.name !== "_") declarations.push(declaration);
@@ -62,6 +94,7 @@ function parseGoSyntax(content) {
       if (name && body) {
         declarations.push({
           name: content.slice(name.from, name.to),
+          position: name.from,
           activeFrom: body.from,
           scopeFrom: body.from,
           scopeTo: body.to
@@ -74,15 +107,52 @@ function parseGoSyntax(content) {
 
   return {
     reliable,
+    callables,
     hasVisibleBinding(name, position) {
-      return declarations.some((declaration) =>
-        declaration.name === name &&
-        position >= declaration.activeFrom &&
-        position >= declaration.scopeFrom &&
-        position < declaration.scopeTo
-      );
+      return Boolean(resolveBinding(declarations, name, position));
+    },
+    bindingAt(name, position) {
+      return resolveBinding(declarations, name, position);
     }
   };
+}
+
+function resolveBinding(declarations, name, position) {
+  return declarations
+    .filter((declaration) =>
+      declaration.name === name &&
+      position >= declaration.activeFrom &&
+      position >= declaration.scopeFrom &&
+      position < declaration.scopeTo
+    )
+    .sort((left, right) =>
+      (left.scopeTo - left.scopeFrom) - (right.scopeTo - right.scopeFrom) ||
+      right.activeFrom - left.activeFrom ||
+      right.position - left.position
+    )[0];
+}
+
+function describeCallable(content, node) {
+  const body = lastNamedChild(node, "Block");
+  if (!body) return undefined;
+  if (node.name === "FunctionDecl") {
+    const name = firstNamedChild(node, "DefName");
+    return name ? {
+      kind: "function",
+      name: content.slice(name.from, name.to),
+      body: { from: body.from, to: body.to }
+    } : undefined;
+  }
+
+  const name = firstNamedChild(node, "FieldName");
+  const receiver = firstNamedChild(node, "Parameters");
+  const receiverType = receiver && firstDescendant(receiver, "TypeName");
+  return name && receiverType ? {
+    kind: "method",
+    name: content.slice(name.from, name.to),
+    receiverType: content.slice(receiverType.from, receiverType.to),
+    body: { from: body.from, to: body.to }
+  } : undefined;
 }
 
 function collectTopLevelGoFunctionRanges(maskedContent) {
@@ -172,6 +242,7 @@ function describeDeclaration(content, node, root) {
 function fileDeclaration(content, node, root) {
   return {
     name: content.slice(node.from, node.to),
+    position: node.from,
     activeFrom: root.from,
     scopeFrom: root.from,
     scopeTo: root.to
@@ -181,6 +252,7 @@ function fileDeclaration(content, node, root) {
 function scopedDeclaration(content, node, scope, activeFrom) {
   return {
     name: content.slice(node.from, node.to),
+    position: node.from,
     activeFrom,
     scopeFrom: scope.from,
     scopeTo: scope.to
@@ -255,6 +327,15 @@ function namedChildren(node) {
 
 function firstNamedChild(node, name) {
   return namedChildren(node).find((child) => child.name === name);
+}
+
+function firstDescendant(node, name) {
+  if (node.name === name) return node;
+  for (const child of namedChildren(node)) {
+    const match = firstDescendant(child, name);
+    if (match) return match;
+  }
+  return undefined;
 }
 
 function lastNamedChild(node, name) {

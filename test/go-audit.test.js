@@ -479,6 +479,77 @@ describe("Go adapter", () => {
     ]);
   });
 
+  it("resolves receiver identity across nested and unrelated same-named bindings", (t) => {
+    const root = createRepo(t, {
+      "go.mod": "module example.com/scoped-methods\n\ngo 1.22\n",
+      "client.go": "package scoped\ntype Client struct{}\nfunc (Client) Fetch() int { return 1 }\n",
+      "alternate.go": "package scoped\ntype Alternate struct{}\nfunc (Alternate) Fetch() int { return 2 }\n",
+      "factory.go": "package scoped\nfunc NewClient() Client { return Client{} }\nfunc NewAlternate() Alternate { return Alternate{} }\n",
+      "method_test.go": [
+        "package scoped",
+        "import \"testing\"",
+        "func TestExplicit(t *testing.T) {",
+        "  item := Client{}",
+        "  if item.Fetch() != 1 { t.Fatal() }",
+        "}",
+        "func TestConstructed(t *testing.T) {",
+        "  item := NewClient()",
+        "  if item.Fetch() != 1 { t.Fatal() }",
+        "  if true {",
+        "    item := NewAlternate()",
+        "    if item.Fetch() != 2 { t.Fatal() }",
+        "  }",
+        "  if item.Fetch() != 1 { t.Fatal() }",
+        "}",
+        "func TestUnrelated(t *testing.T) {",
+        "  item := Alternate{}",
+        "  if item.Fetch() != 2 { t.Fatal() }",
+        "}",
+        ""
+      ].join("\n")
+    });
+
+    const audit = auditGoRepo(root);
+
+    assert.deepEqual(audit.untestedCandidates, []);
+    for (const path of ["alternate.go", "client.go"]) {
+      assert.ok(audit.coveredButRisky.find((target) => target.path === path).existingTestEvidence.some((entry) =>
+        entry.testPath === "method_test.go" && entry.strength === "direct" && entry.usage === "asserted"
+      ));
+    }
+  });
+
+  it("attributes assertion usage to the receiver binding at the exact call site", (t) => {
+    const root = createRepo(t, {
+      "go.mod": "module example.com/receiver-assertions\n\ngo 1.22\n",
+      "plain.go": "package receiverassertions\ntype Plain struct{}\nfunc (Plain) Inspect() int { return 1 }\n",
+      "checked.go": "package receiverassertions\ntype Checked struct{}\nfunc (Checked) Inspect() int { return 2 }\n",
+      "receiver_test.go": [
+        "package receiverassertions",
+        "import \"testing\"",
+        "func TestReceiverAssertions(t *testing.T) {",
+        "  item := Plain{}",
+        "  _ = item.Inspect()",
+        "  if true {",
+        "    item := Checked{}",
+        "    if item.Inspect() != 2 { t.Fatal() }",
+        "  }",
+        "}",
+        ""
+      ].join("\n")
+    });
+
+    const audit = auditGoRepo(root);
+
+    assert.deepEqual(audit.coveredButRisky.map((target) => [
+      target.path,
+      target.existingTestEvidence.find((entry) => entry.strength === "direct").usage
+    ]), [
+      ["checked.go", "asserted"],
+      ["plain.go", "called"]
+    ]);
+  });
+
   it("resolves exact external-package dot imports without blank-import or local-shadow leakage", (t) => {
     const root = createRepo(t, {
       "go.mod": "module example.com/shop\n\ngo 1.22\n",
@@ -626,7 +697,7 @@ describe("Go adapter", () => {
     ]);
   });
 
-  it("rejects interface, alias, reassigned, and ambiguously shadowed receiver bindings", (t) => {
+  it("rejects interface and alias receivers while preserving concrete identity through reassignment and shadows", (t) => {
     const root = createRepo(t, {
       "go.mod": "module example.com/method-shadows\n\ngo 1.22\n",
       "runner.go": "package shadows\ntype Runner interface { Run() int }\ntype Client struct{}\nfunc (Client) Run() int { return 1 }\nfunc (Client) AsRunner() Runner { return Client{} }\n",
@@ -660,11 +731,19 @@ describe("Go adapter", () => {
     assert.deepEqual(audit.untestedCandidates.map((target) => target.path), ["runner.go"]);
     assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["alias.go", "factory.go", "service.go", "worker.go"]);
     for (const path of ["service.go", "worker.go"]) {
-      assert.deepEqual(audit.coveredButRisky.find((target) => target.path === path).existingTestEvidence, [{
-        testPath: "method_test.go",
-        kind: "go-symbol-reference",
-        strength: "referenced"
-      }]);
+      assert.deepEqual(audit.coveredButRisky.find((target) => target.path === path).existingTestEvidence, [
+        {
+          testPath: "method_test.go",
+          kind: "go-symbol-reference",
+          strength: "direct",
+          usage: "called"
+        },
+        {
+          testPath: "method_test.go",
+          kind: "go-symbol-reference",
+          strength: "referenced"
+        }
+      ]);
     }
   });
 
@@ -864,6 +943,61 @@ describe("Go adapter", () => {
     );
   });
 
+  it("attributes dependency edges to exercised function and method bodies in multi-callable files", (t) => {
+    const root = createRepo(t, {
+      "go.mod": "module example.com/owned-bodies\n\ngo 1.22\n",
+      "entry.go": [
+        "package owned",
+        "import (",
+        "  \"example.com/owned-bodies/internal/alpha\"",
+        "  \"example.com/owned-bodies/internal/beta\"",
+        "  \"example.com/owned-bodies/internal/gamma\"",
+        "  \"example.com/owned-bodies/internal/delta\"",
+        ")",
+        "func Handle() int { return alpha.Run() }",
+        "func Spare() int { return beta.Run() }",
+        "type Worker struct{}",
+        "func (Worker) Work() int { return gamma.Run() }",
+        "func (Worker) Idle() int { return delta.Run() }",
+        ""
+      ].join("\n"),
+      "entry_test.go": [
+        "package owned",
+        "import \"testing\"",
+        "func TestOwnedBodies(t *testing.T) {",
+        "  if Handle() != 1 { t.Fatal() }",
+        "  worker := Worker{}",
+        "  if worker.Work() != 3 { t.Fatal() }",
+        "}",
+        ""
+      ].join("\n"),
+      "internal/alpha/run.go": "package alpha\nfunc Run() int { return 1 }\n",
+      "internal/beta/run.go": "package beta\nfunc Run() int { return 2 }\n",
+      "internal/gamma/run.go": "package gamma\nfunc Run() int { return 3 }\n",
+      "internal/delta/run.go": "package delta\nfunc Run() int { return 4 }\n"
+    });
+
+    const audit = auditGoRepo(root);
+
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), [
+      "entry.go",
+      "internal/alpha/run.go",
+      "internal/gamma/run.go"
+    ]);
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.path), [
+      "internal/beta/run.go",
+      "internal/delta/run.go"
+    ]);
+    for (const path of ["internal/alpha/run.go", "internal/gamma/run.go"]) {
+      assert.deepEqual(audit.coveredButRisky.find((target) => target.path === path).existingTestEvidence, [{
+        testPath: "entry_test.go",
+        kind: "go-source-dependency",
+        strength: "indirect",
+        viaUsage: "asserted"
+      }]);
+    }
+  });
+
   it("rejects external, blank, shadowed, and uncalled cross-package source edges", (t) => {
     const root = createRepo(t, {
       "go.mod": "module example.com/service\n\ngo 1.22\n",
@@ -873,29 +1007,32 @@ describe("Go adapter", () => {
         "var _ = validator.Normalize",
         "type localValidator struct{}",
         "func (localValidator) Normalize(value string) string { return value }",
-        "func Handle(value string) string { validator := localValidator{}; return validator.Normalize(value) }",
+        "func Handle(validator localValidator, value string) string { return validator.Normalize(value) }",
         ""
       ].join("\n"),
-      "service_test.go": "package service\nimport \"testing\"\nfunc TestHandle(t *testing.T) { if Handle(\"ok\") != \"ok\" { t.Fatal() } }\n",
+      "service_test.go": "package service\nimport \"testing\"\nfunc TestHandle(t *testing.T) { if Handle(localValidator{}, \"ok\") != \"ok\" { t.Fatal() } }\n",
       "internal/validate/normalize.go": "package validate\nfunc Normalize(value string) string { return value }\n",
       "internal/blank/blank.go": "package blank\nfunc Run() int { return 1 }\n",
       "blank.go": "package service\nimport _ \"example.com/service/internal/blank\"\nfunc Blank() int { return 1 }\n",
       "external.go": "package service\nimport outside \"example.net/outside\"\nfunc External() int { return outside.Run() }\n",
       "uncalled.go": "package service\nimport \"example.com/service/internal/unused\"\nfunc Uncalled() int { return unused.Run() }\n",
       "internal/unused/unused.go": "package unused\nfunc Run() int { return 1 }\n",
-      "ambiguous.go": "package service\nimport multi \"example.com/service/internal/multi\"\nfunc First() int { return multi.Run() }\nfunc Second() int { return 2 }\n",
+      "ambiguous.go": "package service\nimport (\n  multi \"example.com/service/internal/multi\"\n  \"example.com/service/internal/unused\"\n)\nfunc First() int { return multi.Run() }\nfunc Second() int { return unused.Run() }\n",
       "ambiguous_test.go": "package service\nimport \"testing\"\nfunc TestFirst(t *testing.T) { if First() != 1 { t.Fatal() } }\n",
       "internal/multi/multi.go": "package multi\nfunc Run() int { return 1 }\n"
     });
 
     const audit = auditGoRepo(root);
 
-    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["ambiguous.go", "service.go"]);
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), [
+      "ambiguous.go",
+      "internal/multi/multi.go",
+      "service.go"
+    ]);
     assert.deepEqual(audit.untestedCandidates.map((target) => target.path), [
       "blank.go",
       "internal/blank/blank.go",
       "external.go",
-      "internal/multi/multi.go",
       "internal/validate/normalize.go",
       "uncalled.go",
       "internal/unused/unused.go"

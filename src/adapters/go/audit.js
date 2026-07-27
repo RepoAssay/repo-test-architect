@@ -52,8 +52,18 @@ export function auditGoRepo(root, options = {}) {
   const sourceFiles = files.filter((file) => isSourceFile(file.path));
   const selectedSourceFiles = sourceFiles.filter((file) => buildSelection.byPath.get(file.path)?.included !== false);
   const sourceSymbols = collectSourceSymbols(selectedSourceFiles);
-  const testEvidenceBySourcePath = collectGoTestEvidence(selectedSourceFiles, sourceSymbols, testFiles, profile.modulePath);
-  addGoSourceDependencyEvidence(sourceSymbols, testEvidenceBySourcePath, profile.modulePath);
+  const { evidenceByPath: testEvidenceBySourcePath, directEvidenceByCallable } = collectGoTestEvidence(
+    selectedSourceFiles,
+    sourceSymbols,
+    testFiles,
+    profile.modulePath
+  );
+  addGoSourceDependencyEvidence(
+    sourceSymbols,
+    testEvidenceBySourcePath,
+    directEvidenceByCallable,
+    profile.modulePath
+  );
   const untestedCandidates = [];
   const coveredButRisky = [];
   const skipped = [];
@@ -664,7 +674,9 @@ function analyzeTestFile(file) {
   );
   const maskedContent = maskGoSource(file.content);
   const syntax = lazyGoSyntax(file.content, maskedContent);
-  const assertionContent = collectGoAssertionBodies(maskedContent, imports, declaredSymbols, syntax).join("\n");
+  const assertionBodies = collectGoAssertionBodies(maskedContent, imports, declaredSymbols, syntax);
+  const assertionContent = assertionBodies.map((body) => body.content).join("\n");
+  const assertedCalls = collectAssertedGoCallReferences(maskedContent, assertionContent);
   return {
     ...file,
     path: normalizePath(file.path),
@@ -676,7 +688,9 @@ function analyzeTestFile(file) {
     maskedContent,
     syntax,
     assertionContent,
-    assertedCallReferences: collectAssertedGoCallReferences(maskedContent, assertionContent)
+    assertionRanges: assertionBodies.map(({ from, to }) => ({ from, to })),
+    assertedCallReferences: assertedCalls.references,
+    assertedCallPositions: assertedCalls.positions
   };
 }
 
@@ -821,6 +835,7 @@ function constructorReceiverKey(directory, packageName, receiverType) {
 
 function collectGoTestEvidence(sourceFiles, sourceSymbols, testFiles, modulePath) {
   const evidenceByPath = new Map();
+  const directEvidenceByCallable = new Map();
   const receiverBindings = new Map();
 
   for (const sourceFile of sourceFiles) {
@@ -864,8 +879,9 @@ function collectGoTestEvidence(sourceFiles, sourceSymbols, testFiles, modulePath
               symbol.receiverType,
               externalAlias
             ),
-            testFile.assertionContent,
-            testFile.assertedCallReferences
+            testFile.syntax,
+            testFile.assertionRanges,
+            testFile.assertedCallPositions
           )
           : detectSymbolUsage(
             testFile.maskedContent,
@@ -878,19 +894,33 @@ function collectGoTestEvidence(sourceFiles, sourceSymbols, testFiles, modulePath
             shadowName
           );
         if (!usage) continue;
-        evidence.push({
+        const symbolEvidence = {
           testPath: testFile.path,
           kind: "go-symbol-reference",
           strength: symbol.kind === "type" ? "referenced" : "direct",
           ...(["called", "asserted"].includes(usage) ? { usage } : {})
-        });
+        };
+        evidence.push(symbolEvidence);
+        if (symbol.kind !== "type" && ["called", "asserted"].includes(usage)) {
+          const callableKey = `${normalizedSourcePath}\0${sourceSymbolKey(source.directory, symbol)}`;
+          const callable = directEvidenceByCallable.get(callableKey) ?? {
+            sourcePath: normalizedSourcePath,
+            symbol,
+            evidence: []
+          };
+          callable.evidence.push(symbolEvidence);
+          directEvidenceByCallable.set(callableKey, callable);
+        }
       }
     }
 
     evidenceByPath.set(normalizedSourcePath, deduplicateEvidence(evidence));
   }
 
-  return evidenceByPath;
+  for (const callable of directEvidenceByCallable.values()) {
+    callable.evidence = deduplicateEvidence(callable.evidence);
+  }
+  return { evidenceByPath, directEvidenceByCallable };
 }
 
 function cachedReceiverBindings(cache, testFile, sourceSymbols, source, receiverType, externalAlias) {
@@ -899,15 +929,15 @@ function cachedReceiverBindings(cache, testFile, sourceSymbols, source, receiver
   const receiverTypeReference = externalAlias && externalAlias !== "."
     ? `${externalAlias}.${receiverType}`
     : receiverType;
-  const bindings = [...new Set([
-    ...collectExplicitReceiverNames(testFile.maskedContent, receiverTypeReference),
-    ...collectConstructorReceiverNames(
+  const bindings = uniqueReceiverBindings([
+    ...collectExplicitReceiverBindings(testFile.maskedContent, receiverTypeReference),
+    ...collectConstructorReceiverBindings(
       testFile.maskedContent,
       collectReceiverConstructors(sourceSymbols, source, receiverType, externalAlias),
       testFile.declaredSymbols,
       testFile.syntax
     )
-  ])];
+  ]);
   cache.set(key, bindings);
   return bindings;
 }
@@ -923,18 +953,12 @@ function collectReceiverConstructors(sourceSymbols, source, receiverType, extern
     }));
 }
 
-function addGoSourceDependencyEvidence(sourceSymbols, evidenceByPath, modulePath) {
-  const directEvidenceByCaller = new Map();
-  for (const [sourcePath, evidence] of evidenceByPath) {
-    const calledTests = evidence.filter((entry) =>
-      entry.kind === "go-symbol-reference" && ["called", "asserted"].includes(entry.usage)
-    );
-    if (calledTests.length > 0) directEvidenceByCaller.set(sourcePath, calledTests);
-  }
-
-  for (const [callerPath, callerEvidence] of directEvidenceByCaller) {
+function addGoSourceDependencyEvidence(sourceSymbols, evidenceByPath, directEvidenceByCallable, modulePath) {
+  for (const { sourcePath: callerPath, symbol: callerSymbol, evidence: callerEvidence } of directEvidenceByCallable.values()) {
     const caller = sourceSymbols.symbolsByPath.get(callerPath);
-    const callerCallableCount = caller.symbols.filter((symbol) => symbol.kind !== "type").length;
+    const callableBody = caller.syntax().callableBody(callerSymbol);
+    if (!callableBody) continue;
+    const callableContent = caller.maskedContent.slice(callableBody.from, callableBody.to);
     for (const [dependencyPath, dependency] of sourceSymbols.symbolsByPath) {
       if (dependencyPath === callerPath) continue;
       const samePackage = dependency.directory === caller.directory && dependency.packageName === caller.packageName;
@@ -942,19 +966,19 @@ function addGoSourceDependencyEvidence(sourceSymbols, evidenceByPath, modulePath
         ? undefined
         : importedPackageAlias(caller.imports, modulePath, dependency.directory, dependency.packageName);
       if (!samePackage && !externalAlias) continue;
-      if (!samePackage && callerCallableCount !== 1) continue;
       const callsDependency = dependency.symbols.some((symbol) =>
         symbol.kind === "function" &&
         (samePackage || isExportedGoIdentifier(symbol.name)) &&
         sourceSymbols.symbolCounts.get(sourceSymbolKey(dependency.directory, symbol)) === 1 &&
         (externalAlias && externalAlias !== "."
           ? hasGoFunctionCallWithScopes(
-            caller.maskedContent,
+            callableContent,
             `\\b${escapeRegex(externalAlias)}\\s*\\.\\s*${escapeRegex(symbol.name)}`,
             caller.syntax,
-            externalAlias
+            externalAlias,
+            callableBody.from
           )
-          : callsUnqualifiedFunction(caller.maskedContent, symbol.name, caller.syntax))
+          : callsUnqualifiedFunction(callableContent, symbol.name, caller.syntax, callableBody.from))
       );
       if (!callsDependency) continue;
 
@@ -972,14 +996,15 @@ function addGoSourceDependencyEvidence(sourceSymbols, evidenceByPath, modulePath
   }
 }
 
-function callsUnqualifiedFunction(maskedContent, name, syntax = undefined) {
+function callsUnqualifiedFunction(maskedContent, name, syntax = undefined, positionOffset = 0) {
   const escaped = escapeRegex(name);
   if (syntax) {
     return hasGoFunctionCallWithScopes(
       maskedContent,
       `(?:^|[^.A-Za-z0-9_])${escaped}`,
       syntax,
-      name
+      name,
+      positionOffset
     );
   }
   if (new RegExp(`\\b${escaped}\\s*:=`).test(maskedContent)) return false;
@@ -1057,22 +1082,26 @@ function detectSymbolUsage(
 function detectReceiverMethodUsage(
   maskedContent,
   methodName,
-  receiverNames,
-  assertionContent = "",
-  assertedCallReferences = new Set()
+  receiverBindings,
+  syntax = undefined,
+  assertionRanges = [],
+  assertedCallPositions = new Set()
 ) {
   let called = false;
-  for (const receiverName of receiverNames) {
-    if (!hasUniqueReceiverBinding(maskedContent, receiverName)) continue;
-    const pattern = `\\b${escapeRegex(receiverName)}\\s*\\.\\s*${escapeRegex(methodName)}`;
-    if (!hasGoFunctionCall(maskedContent, pattern)) continue;
-    called = true;
-    if (detectGoCallAssertion(
-      pattern,
-      `${receiverName}.${methodName}`,
-      assertionContent,
-      assertedCallReferences
-    )) return "asserted";
+  const parsedSyntax = syntax?.();
+  if (!parsedSyntax) return undefined;
+  for (const receiver of receiverBindings) {
+    const pattern = `\\b${escapeRegex(receiver.name)}\\s*\\.\\s*${escapeRegex(methodName)}`;
+    const matcher = new RegExp(pattern, "g");
+    for (const match of maskedContent.matchAll(matcher)) {
+      if (!parsedSyntax.ownsBinding(receiver.name, receiver.position, match.index)) continue;
+      const cursor = skipGoWhitespace(maskedContent, match.index + match[0].length);
+      if (maskedContent[cursor] !== "(") continue;
+      called = true;
+      if (assertedCallPositions.has(match.index) || assertionRanges.some((range) =>
+        match.index >= range.from && match.index < range.to
+      )) return "asserted";
+    }
   }
   return called ? "called" : undefined;
 }
@@ -1146,7 +1175,11 @@ function collectGoFailureConditions(maskedContent) {
     if (bodyEnd === undefined) continue;
     const body = maskedContent.slice(bodyStart + 1, bodyEnd - 1);
     if (hasTopLevelGoMatch(body, failure)) {
-      conditions.push(finalGoIfCondition(maskedContent.slice(match.index + match[0].length, bodyStart)));
+      const conditionStart = match.index + match[0].length;
+      conditions.push(finalGoIfCondition(
+        maskedContent.slice(conditionStart, bodyStart),
+        conditionStart
+      ));
     }
   }
 
@@ -1164,7 +1197,7 @@ function hasTopLevelGoMatch(content, pattern) {
   return [...content.matchAll(new RegExp(pattern.source, "g"))].some((match) => depths[match.index] === 0);
 }
 
-function finalGoIfCondition(content) {
+function finalGoIfCondition(content, positionOffset = 0) {
   let parentheses = 0;
   let brackets = 0;
   let lastSeparator = -1;
@@ -1175,7 +1208,11 @@ function finalGoIfCondition(content) {
     else if (content[cursor] === "]") brackets = Math.max(0, brackets - 1);
     else if (content[cursor] === ";" && parentheses === 0 && brackets === 0) lastSeparator = cursor;
   }
-  return content.slice(lastSeparator + 1);
+  return {
+    content: content.slice(lastSeparator + 1),
+    from: positionOffset + lastSeparator + 1,
+    to: positionOffset + content.length
+  };
 }
 
 function findGoBlockStart(content, start) {
@@ -1200,8 +1237,8 @@ function collectGoAssertionArguments(maskedContent, prefixPattern, assertionArgu
     const end = skipBalancedGoDelimiter(maskedContent, cursor, "(", ")");
     if (end === undefined) continue;
     const argumentCount = assertionArgumentCounts.get(match[1]);
-    const args = splitTopLevelGoArguments(maskedContent.slice(cursor + 1, end - 1));
-    if (argumentCount && args.length > 1) bodies.push(args.slice(1, argumentCount + 1).join(","));
+    const args = splitTopLevelGoArgumentRanges(maskedContent, cursor + 1, end - 1);
+    if (argumentCount && args.length > 1) bodies.push(...args.slice(1, argumentCount + 1));
   }
   return bodies;
 }
@@ -1216,8 +1253,8 @@ function collectScopedGoAssertionArguments(maskedContent, syntax, prefixPattern,
     const end = skipBalancedGoDelimiter(maskedContent, cursor, "(", ")");
     if (end === undefined) continue;
     const argumentCount = assertionArgumentCounts.get(match[1]);
-    const args = splitTopLevelGoArguments(maskedContent.slice(cursor + 1, end - 1));
-    if (argumentCount && args.length > 1) bodies.push(args.slice(1, argumentCount + 1).join(","));
+    const args = splitTopLevelGoArgumentRanges(maskedContent, cursor + 1, end - 1);
+    if (argumentCount && args.length > 1) bodies.push(...args.slice(1, argumentCount + 1));
   }
   return bodies;
 }
@@ -1244,6 +1281,14 @@ function splitTopLevelGoArguments(content) {
   return args;
 }
 
+function splitTopLevelGoArgumentRanges(content, from, to) {
+  return splitTopLevelGoArguments(content.slice(from, to)).map((argument, index, argumentsList) => {
+    const previousLength = argumentsList.slice(0, index).reduce((sum, value) => sum + value.length + 1, 0);
+    const start = from + previousLength;
+    return { content: argument, from: start, to: start + argument.length };
+  });
+}
+
 function detectGoCallAssertion(prefixPattern, reference, assertionContent, assertedCallReferences) {
   if (hasGoFunctionCall(assertionContent, prefixPattern)) return true;
   return assertedCallReferences.has(normalizeGoCallReference(reference));
@@ -1251,6 +1296,7 @@ function detectGoCallAssertion(prefixPattern, reference, assertionContent, asser
 
 function collectAssertedGoCallReferences(maskedContent, assertionContent) {
   const references = new Set();
+  const positions = new Set();
   const bindingCounts = collectGoBindingCounts(maskedContent);
   const matcher = new RegExp(
     "(?:^|[;{}\\n])\\s*([A-Za-z_][A-Za-z0-9_]*(?:\\s*,\\s*[A-Za-z_][A-Za-z0-9_]*)*)\\s*:=\\s*" +
@@ -1266,9 +1312,12 @@ function collectAssertedGoCallReferences(maskedContent, assertionContent) {
       bindingCounts.get(name) === 1 &&
       new RegExp(`\\b${escapeRegex(name)}\\b`).test(assertionContent)
     );
-    if (assertedBinding) references.add(normalizeGoCallReference(match[2]));
+    if (assertedBinding) {
+      references.add(normalizeGoCallReference(match[2]));
+      positions.add(match.index + match[0].lastIndexOf(match[2]));
+    }
   }
-  return references;
+  return { references, positions };
 }
 
 function collectGoBindingCounts(maskedContent) {
@@ -1296,8 +1345,8 @@ function normalizeGoCallReference(reference) {
   return reference.replace(/\s+/g, "");
 }
 
-function collectConstructorReceiverNames(maskedContent, constructors, declaredSymbols, syntax) {
-  const names = new Set();
+function collectConstructorReceiverBindings(maskedContent, constructors, declaredSymbols, syntax) {
+  const bindingsByIdentity = new Map();
   for (const constructor of constructors) {
     const bindingName = constructor.reference.includes(".") ? constructor.reference.split(".")[0] : constructor.name;
     if (!constructor.reference.includes(".") && declaredSymbols.has(constructor.name)) continue;
@@ -1316,12 +1365,24 @@ function collectConstructorReceiverNames(maskedContent, constructors, declaredSy
       if (callEnd === undefined || !/^[ \t\r]*(?:\n|;|})/.test(maskedContent.slice(callEnd))) continue;
       const bindings = match[1].split(",").map((name) => name.trim());
       if (bindings.length !== constructor.returnTypes.length) continue;
+      const bindingListStart = match.index + match[0].indexOf(match[1]);
+      let bindingCursor = 0;
       constructor.returnTypes.forEach((returnType, index) => {
-        if (returnType === constructor.receiverType && bindings[index] !== "_") names.add(bindings[index]);
+        const name = bindings[index];
+        const relativePosition = match[1].indexOf(name, bindingCursor);
+        bindingCursor = relativePosition + name.length;
+        if (returnType === constructor.receiverType && name !== "_") {
+          const binding = { name, position: bindingListStart + relativePosition };
+          bindingsByIdentity.set(`${binding.name}\0${binding.position}`, binding);
+        }
       });
     }
   }
-  return [...names];
+  return [...bindingsByIdentity.values()];
+}
+
+function uniqueReceiverBindings(bindings) {
+  return [...new Map(bindings.map((binding) => [`${binding.name}\0${binding.position}`, binding])).values()];
 }
 
 function hasVisibleGoNameBinding(maskedContent, name) {
@@ -1331,7 +1392,7 @@ function hasVisibleGoNameBinding(maskedContent, name) {
   return new RegExp(`(?:\\(|,)\\s*${escaped}[ \\t]+\\*?[A-Za-z_][A-Za-z0-9_.]*`).test(maskedContent);
 }
 
-function collectExplicitReceiverNames(maskedContent, receiverTypeReference) {
+function collectExplicitReceiverBindings(maskedContent, receiverTypeReference) {
   const escapedType = escapeRegex(receiverTypeReference);
   const names = new Set();
   const shortDeclaration = new RegExp(
@@ -1342,37 +1403,23 @@ function collectExplicitReceiverNames(maskedContent, receiverTypeReference) {
     `(?:^|[;{}\\n])\\s*var\\s+([A-Za-z_][A-Za-z0-9_]*)\\s+\\*?\\s*${escapedType}\\b`,
     "g"
   );
-  for (const match of maskedContent.matchAll(shortDeclaration)) names.add(match[1]);
-  for (const match of maskedContent.matchAll(varDeclaration)) names.add(match[1]);
-  return [...names];
+  for (const match of maskedContent.matchAll(shortDeclaration)) {
+    names.add(`${match[1]}\0${match.index + match[0].indexOf(match[1])}`);
+  }
+  for (const match of maskedContent.matchAll(varDeclaration)) {
+    names.add(`${match[1]}\0${match.index + match[0].indexOf(match[1])}`);
+  }
+  return [...names].map((identity) => {
+    const [name, position] = identity.split("\0");
+    return { name, position: Number(position) };
+  });
 }
 
-function hasUniqueReceiverBinding(maskedContent, receiverName) {
-  const escaped = escapeRegex(receiverName);
-  const shortDeclarations = countGoListBindings(maskedContent, receiverName, ":=");
-  const varDeclarations = [...maskedContent.matchAll(new RegExp(`\\bvar\\s+${escaped}\\b`, "g"))].length;
-  const parameterDeclarations = [...maskedContent.matchAll(
-    new RegExp(`(?:\\(|,)\\s*${escaped}[ \\t]+\\*?[A-Za-z_][A-Za-z0-9_.]*`, "g")
-  )].length;
-  const assignments = countGoListBindings(maskedContent, receiverName, "=");
-  return shortDeclarations + varDeclarations + parameterDeclarations === 1 && assignments === 0;
-}
-
-function countGoListBindings(maskedContent, name, operator) {
-  const matcher = new RegExp(
-    `(?:^|[;{}\\n]|\\b(?:for|if|switch)\\s+)\\s*([A-Za-z_][A-Za-z0-9_]*(?:\\s*,\\s*[A-Za-z_][A-Za-z0-9_]*)*)\\s*${escapeRegex(operator)}${operator === "=" ? "(?!=)" : ""}`,
-    "g"
-  );
-  return [...maskedContent.matchAll(matcher)].filter((match) =>
-    match[1].split(",").some((binding) => binding.trim() === name)
-  ).length;
-}
-
-function hasGoFunctionCallWithScopes(maskedContent, prefixPattern, syntax, shadowName) {
-  if (!hasVisibleGoNameBinding(maskedContent, shadowName)) {
+function hasGoFunctionCallWithScopes(maskedContent, prefixPattern, syntax, shadowName, positionOffset = 0) {
+  if (positionOffset === 0 && !hasVisibleGoNameBinding(maskedContent, shadowName)) {
     return hasGoFunctionCall(maskedContent, prefixPattern);
   }
-  return hasScopedGoFunctionCall(maskedContent, prefixPattern, syntax(), shadowName);
+  return hasScopedGoFunctionCall(maskedContent, prefixPattern, syntax(), shadowName, positionOffset);
 }
 
 function hasGoTypeConstructionWithScopes(maskedContent, escapedReference, syntax, shadowName) {
@@ -1382,13 +1429,13 @@ function hasGoTypeConstructionWithScopes(maskedContent, escapedReference, syntax
   return hasScopedGoTypeConstruction(maskedContent, escapedReference, syntax(), shadowName);
 }
 
-function hasScopedGoFunctionCall(maskedContent, prefixPattern, syntax, shadowName) {
+function hasScopedGoFunctionCall(maskedContent, prefixPattern, syntax, shadowName, positionOffset = 0) {
   if (!syntax.reliable) {
     return !hasVisibleGoNameBinding(maskedContent, shadowName) && hasGoFunctionCall(maskedContent, prefixPattern);
   }
   const matcher = new RegExp(prefixPattern, "g");
   for (const match of maskedContent.matchAll(matcher)) {
-    if (syntax.hasVisibleBinding(shadowName, match.index)) continue;
+    if (syntax.hasVisibleBinding(shadowName, positionOffset + match.index)) continue;
     let cursor = skipGoWhitespace(maskedContent, match.index + match[0].length);
     if (maskedContent[cursor] === "[") cursor = skipBalancedGoBrackets(maskedContent, cursor);
     if (cursor !== undefined && maskedContent[skipGoWhitespace(maskedContent, cursor)] === "(") return true;

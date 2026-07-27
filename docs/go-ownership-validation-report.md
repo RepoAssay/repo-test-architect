@@ -12,7 +12,7 @@ The validation finder now exposes a `go-workspace` profile requiring a root `go.
 
 Three post-hardening repository audits took 712, 622, and 614 ms. They produced the same normalized project-audit digest, `62dff714c5ccadb78383acb9796e9627bb4cca5cddfdb2d3c032fb5b855df383`, with 662 evidence relationships. The pinned tree contains 296 Go files, including 144 test files.
 
-The shared corpus measures the same exact checkout through the direct root-module adapter contract: the parser-scope remeasurement took 1,129, 1,037, and 1,024 ms, for a 1,037 ms median, 6 untested, 47 covered, 10 skipped, and 576 evidence relationships. Twenty-six relationships are now marked asserted after call-site scopes recovered 14 valid Testify relationships outside unrelated local `require` bindings, producing normalized audit digest `ef4ae3299b71bbd2ad38324b812fb845cf24d93241abad65c2982f7b681ba5ca`. The repository-level figures above remain the ownership review across all nine detected projects; the direct measurement is the reproducible per-case corpus baseline.
+The shared corpus measures the same exact checkout through the direct root-module adapter contract: the callable-ownership remeasurement took 1,131, 1,031, and 1,011 ms, for a 1,031 ms median, 6 untested, 47 covered, 10 skipped, and 284 evidence relationships. Seventeen relationships are marked asserted, and the normalized audit digest is `4974785310a9d70ca93ee36e139e09707cedc6b65b7b1e530b738430bd8c86f9`. The repository-level figures above remain the historical ownership review across all nine detected projects; the direct measurement is the reproducible per-case corpus baseline.
 
 ## Native Validation
 
@@ -28,7 +28,7 @@ The complete checkout was `gofmt` clean. The other six module-local suites were 
 
 The pre-hardening audit preserved all nine owners and commands, but the `riverdriver/riverdrivertest` conformance module reported six untested files, zero covered files, nine skipped files, and no evidence. Its external-package tests call the exported generic entrypoint `riverdrivertest.Exercise`, which then calls same-package generic helpers across the module. The declaration collector only recognized `func Name(`, so it missed `func Name[T constraint](`. The runtime classifier had the same blind spot and could mistake files containing local structs plus generic functions for DTO-only files.
 
-Top-level generic function declarations are now parsed with balanced type-parameter brackets, including nested slice or array syntax and multiline declarations. Direct evidence recognizes both inferred calls and explicit instantiations such as `Exercise[int](...)`. Runtime function classification uses the same balanced declaration rule, and the existing one-hop rule may then connect a directly called generic entrypoint to unique same-package helper functions. Receiver methods without exact bindings, deeper hops, ambiguous multi-callable cross-package files, and runtime dispatch remain outside the claim.
+Top-level generic function declarations are now parsed with balanced type-parameter brackets, including nested slice or array syntax and multiline declarations. Direct evidence recognizes both inferred calls and explicit instantiations such as `Exercise[int](...)`. Runtime function classification uses the same balanced declaration rule, and the existing one-hop rule may then connect a directly called generic entrypoint to unique same-package helper functions. Receiver methods without exact bindings, deeper hops, and runtime dispatch remain outside the claim.
 
 The focused fixture uses an aliased external test package, an explicitly instantiated generic entrypoint, a generic helper constraint, and one same-package source hop. After the fix, `riverdriver/riverdrivertest` reports all 15 production files covered with 15 evidence relationships and no untested or skipped files.
 
@@ -62,7 +62,7 @@ The difficult-ownership probe passes the reviewed detection, ownership, command,
 - repeated full-repository audits are semantically stable and remain below one second locally
 - database prerequisites are documented without claiming that the static command provisions them
 
-Workspace `replace` effects, repository-external members, receiver methods without an explicit type or exact simple concrete constructor result, interface dispatch, generic type construction, reflection, deeper dependencies, ambiguous multi-callable or cross-module edges, service provisioning, coverage profiles, runtime reachability, helper/custom assertions, and deeper assertion-result flow remain outside the bounded adapter.
+Workspace `replace` effects, repository-external members, receiver methods without an explicit type or exact simple concrete constructor result, interface dispatch, generic type construction, reflection, deeper dependencies, cross-module edges, service provisioning, coverage profiles, runtime reachability, helper/custom assertions, and deeper assertion-result flow remain outside the bounded adapter.
 
 ## Corpus Progress
 
@@ -72,4 +72,6 @@ The explicitly typed receiver-method slice was remeasured against this exact che
 
 The later constructor slice retained 572 relationships. Bounded cross-package evidence then added four reviewed relationships from tests that directly call the sole `MetadataSet` declaration in `metadata.go` to its exact module-local `internal/jobexecutor.MetadataUpdatesFromWorkContext` dependency. Candidate counts remain unchanged at 6 untested, 47 covered, and 10 skipped.
 
-The assertion-usage slice then retained all 576 relationships and candidate classifications while upgrading 12 exact Testify relationships. Its current direct-corpus digest and timing are recorded above and detailed in the [Go Assertion-Usage Validation Report](go-assertion-validation-report.md).
+The assertion-usage slice then retained all 576 relationships and candidate classifications while upgrading 12 exact Testify relationships. Its then-current direct-corpus digest and timing are detailed in the [Go Assertion-Usage Validation Report](go-assertion-validation-report.md).
+
+The parser-owned receiver and callable slice retains all root candidate classifications while reducing the graph from 576 to 284 relationships. It removes 296 file-wide indirect links, adds four exact callable-body dependencies, and recovers three exact direct method relationships. The current direct-corpus digest and timing are recorded above and detailed in the [Go Receiver And Callable Ownership Validation Report](go-callable-ownership-validation-report.md).
