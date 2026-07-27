@@ -697,6 +697,95 @@ describe("Go adapter", () => {
     ]);
   });
 
+  it("resolves receiver methods through exact same-package test helper return positions", (t) => {
+    const root = createRepo(t, {
+      "go.mod": "module example.com/helper-receivers\n\ngo 1.22\n",
+      "client.go": "package helpers\ntype Client struct{}\nfunc (*Client) Fetch() int { return 1 }\n",
+      "validator.go": "package helpers\ntype Validator struct{}\nfunc (Validator) Validate() bool { return true }\n",
+      "service.go": "package helpers\ntype Service struct{}\nfunc (*Service) Serve() bool { return true }\n",
+      "shared_helper_test.go": "package helpers\nfunc testService() *Service { return &Service{} }\n",
+      "helper_test.go": [
+        "package helpers",
+        "import \"testing\"",
+        "func testClient(t *testing.T) *Client { return &Client{} }",
+        "func testValidator(t *testing.T) (validator Validator, err error) {",
+        "  return Validator{}, nil",
+        "}",
+        "func TestHelperReceivers(t *testing.T) {",
+        "  client := testClient(t)",
+        "  if client.Fetch() != 1 { t.Fatal() }",
+        "  validator, err := testValidator(t)",
+        "  if err != nil || !validator.Validate() { t.Fatal() }",
+        "  service := testService()",
+        "  if !service.Serve() { t.Fatal() }",
+        "}",
+        ""
+      ].join("\n")
+    });
+
+    const audit = auditGoRepo(root);
+
+    assert.deepEqual(audit.untestedCandidates, []);
+    for (const path of ["client.go", "service.go", "validator.go"]) {
+      assert.ok(audit.coveredButRisky.find((target) => target.path === path).existingTestEvidence.some((entry) =>
+        entry.testPath === "helper_test.go" && entry.strength === "direct" && entry.usage === "asserted"
+      ));
+    }
+  });
+
+  it("keeps test helper receiver ownership same-file, exact-type, and shadow-aware", (t) => {
+    const root = createRepo(t, {
+      "go.mod": "module example.com/helper-boundaries\n\ngo 1.22\n",
+      "price/client.go": "package price\ntype Client struct{}\nfunc (*Client) Fetch() int { return 1 }\n",
+      "price/alternate.go": "package price\ntype Alternate struct{}\nfunc (*Alternate) Fetch() int { return 2 }\n",
+      "price/remote.go": "package price\ntype Remote struct{}\nfunc (*Remote) Fetch() int { return 3 }\n",
+      "price/helper_test.go": [
+        "package price_test",
+        "import (",
+        "  \"testing\"",
+        "  pricing \"example.com/helper-boundaries/price\"",
+        ")",
+        "func testClient(t *testing.T) *pricing.Client { return &pricing.Client{} }",
+        "func testAlternate(t *testing.T) *pricing.Alternate { return &pricing.Alternate{} }",
+        "func TestClient(t *testing.T) {",
+        "  client := testClient(t)",
+        "  if client.Fetch() != 1 { t.Fatal() }",
+        "}",
+        "func TestShadow(t *testing.T) {",
+        "  testAlternate := func(*testing.T) *pricing.Client { return &pricing.Client{} }",
+        "  alternate := testAlternate(t)",
+        "  _ = alternate.Fetch()",
+        "}",
+        ""
+      ].join("\n"),
+      "price/cross_file_helper_test.go": [
+        "package price_test",
+        "import pricing \"example.com/helper-boundaries/price\"",
+        "func testRemote() *pricing.Remote { return &pricing.Remote{} }",
+        ""
+      ].join("\n"),
+      "price/remote_test.go": [
+        "package price_test",
+        "import \"testing\"",
+        "func TestRemote(t *testing.T) {",
+        "  remote := testRemote()",
+        "  if remote.Fetch() != 3 { t.Fatal() }",
+        "}",
+        ""
+      ].join("\n")
+    });
+
+    const audit = auditGoRepo(root);
+    const client = audit.coveredButRisky.find((target) => target.path === "price/client.go");
+    const alternate = audit.coveredButRisky.find((target) => target.path === "price/alternate.go");
+
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.path), ["price/remote.go"]);
+    assert.ok(client.existingTestEvidence.some((entry) =>
+      entry.testPath === "price/helper_test.go" && entry.strength === "direct" && entry.usage === "asserted"
+    ));
+    assert.ok(alternate.existingTestEvidence.every((entry) => entry.strength !== "direct"));
+  });
+
   it("rejects interface and alias receivers while preserving concrete identity through reassignment and shadows", (t) => {
     const root = createRepo(t, {
       "go.mod": "module example.com/method-shadows\n\ngo 1.22\n",

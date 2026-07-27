@@ -48,7 +48,12 @@ export function analyzeGoSyntax(content, maskedContent = content) {
     },
     ownsBinding(name, declarationPosition, position) {
       const callRange = functionRanges.find((range) => position >= range.from && position < range.to);
-      if (!callRange || declarationPosition < callRange.from || declarationPosition >= callRange.to) return false;
+      if (!callRange) return false;
+      if (declarationPosition < callRange.from || declarationPosition >= callRange.to) {
+        parsedFile ??= parseGoSyntax(content);
+        if (!parsedFile.reliable) return false;
+        return parsedFile.bindingAt(name, position)?.position === declarationPosition;
+      }
       const analysis = analyzeFunction(callRange);
       if (!analysis.syntax.reliable) return false;
       const binding = analysis.syntax.bindingAt(

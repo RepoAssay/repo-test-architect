@@ -45,10 +45,11 @@ export function auditGoRepo(root, options = {}) {
   const changedPaths = options.changedPaths
     ? new Set(options.changedPaths.map((currentPath) => normalizeChangedPath(root, currentPath)))
     : undefined;
-  const testFiles = files
-    .filter((file) => buildSelection.byPath.get(file.path)?.included !== false && isRunnableTestFile(file))
+  const analyzedTestFiles = files
+    .filter((file) => buildSelection.byPath.get(file.path)?.included !== false && isTestFile(file.path))
     .map((file) => analyzeTestFile(file))
     .sort((left, right) => left.path.localeCompare(right.path));
+  const testFiles = analyzedTestFiles.filter((file) => file.runnableKinds.size > 0);
   const sourceFiles = files.filter((file) => isSourceFile(file.path));
   const selectedSourceFiles = sourceFiles.filter((file) => buildSelection.byPath.get(file.path)?.included !== false);
   const sourceSymbols = collectSourceSymbols(selectedSourceFiles);
@@ -56,7 +57,8 @@ export function auditGoRepo(root, options = {}) {
     selectedSourceFiles,
     sourceSymbols,
     testFiles,
-    profile.modulePath
+    profile.modulePath,
+    analyzedTestFiles
   );
   addGoSourceDependencyEvidence(
     sourceSymbols,
@@ -667,8 +669,9 @@ function analyzeTestFile(file) {
   const packageName = extractPackageName(file.content);
   const runnableKinds = detectRunnableKinds(file.content);
   const imports = collectImports(file.content);
+  const symbols = collectDeclaredSymbols(file.content);
   const declaredSymbols = new Set(
-    collectDeclaredSymbols(file.content)
+    symbols
       .filter((symbol) => symbol.kind !== "method")
       .map((symbol) => symbol.name)
   );
@@ -685,6 +688,7 @@ function analyzeTestFile(file) {
     runnableKinds,
     imports,
     declaredSymbols,
+    helperFunctions: symbols.filter((symbol) => symbol.kind === "function" && symbol.returnTypes),
     maskedContent,
     syntax,
     assertionContent,
@@ -780,6 +784,7 @@ function collectDeclaredSymbols(content) {
       symbols.push({
         name: match[1],
         kind: "function",
+        position: match.index + match[0].lastIndexOf(match[1]),
         ...(returnTypes ? { returnTypes } : {})
       });
     }
@@ -804,9 +809,9 @@ function parseSimpleGoReturnTypes(maskedContent, start) {
   const cursor = skipGoWhitespace(maskedContent, start);
   if (maskedContent[cursor] === "{") return undefined;
   if (maskedContent[cursor] !== "(") {
-    const match = maskedContent.slice(cursor).match(/^(\*?\s*[A-Za-z_][A-Za-z0-9_]*)\b/);
+    const match = maskedContent.slice(cursor).match(/^(\*?\s*[A-Za-z_][A-Za-z0-9_]*(?:\s*\.\s*[A-Za-z_][A-Za-z0-9_]*)?)/);
     if (!match || maskedContent[skipGoWhitespace(maskedContent, cursor + match[0].length)] !== "{") return undefined;
-    return [match[1].replace(/^\*?\s*/, "")];
+    return [normalizeSimpleGoType(match[1])];
   }
 
   const end = skipBalancedGoDelimiter(maskedContent, cursor, "(", ")");
@@ -814,13 +819,17 @@ function parseSimpleGoReturnTypes(maskedContent, start) {
   const fields = maskedContent.slice(cursor + 1, end - 1).split(",").map((field) => field.trim());
   if (fields.length === 0 || fields.some((field) => !field)) return undefined;
   const parsed = fields.map((field) => {
-    const match = field.match(/^(?:([A-Za-z_][A-Za-z0-9_]*)\s+)?(\*?\s*[A-Za-z_][A-Za-z0-9_]*)$/);
-    return match ? { named: Boolean(match[1]), type: match[2].replace(/^\*?\s*/, "") } : undefined;
+    const match = field.match(/^(?:([A-Za-z_][A-Za-z0-9_]*)\s+)?(\*?\s*[A-Za-z_][A-Za-z0-9_]*(?:\s*\.\s*[A-Za-z_][A-Za-z0-9_]*)?)$/);
+    return match ? { named: Boolean(match[1]), type: normalizeSimpleGoType(match[2]) } : undefined;
   });
   if (parsed.some((field) => !field)) return undefined;
   const namedCount = parsed.filter((field) => field.named).length;
   if (namedCount !== 0 && namedCount !== parsed.length) return undefined;
   return parsed.map((field) => field.type);
+}
+
+function normalizeSimpleGoType(value) {
+  return value.replace(/^\*?\s*/, "").replace(/\s+/g, "");
 }
 
 function sourceSymbolKey(directory, symbol) {
@@ -833,10 +842,13 @@ function constructorReceiverKey(directory, packageName, receiverType) {
   return `${directory}\0${packageName}\0${receiverType}`;
 }
 
-function collectGoTestEvidence(sourceFiles, sourceSymbols, testFiles, modulePath) {
+function collectGoTestEvidence(sourceFiles, sourceSymbols, testFiles, modulePath, helperFiles = testFiles) {
   const evidenceByPath = new Map();
   const directEvidenceByCallable = new Map();
   const receiverBindings = new Map();
+  const receiverUsages = new Map();
+  const testHelpers = indexTestReceiverHelpers(helperFiles);
+  const testHelperBindings = new Map();
 
   for (const sourceFile of sourceFiles) {
     const normalizedSourcePath = normalizePath(sourceFile.path);
@@ -868,21 +880,17 @@ function collectGoTestEvidence(sourceFiles, sourceSymbols, testFiles, modulePath
         const reference = externalAlias && externalAlias !== "." ? `${externalAlias}.${symbol.name}` : symbol.name;
         const shadowName = externalAlias && externalAlias !== "." ? externalAlias : symbol.name;
         const usage = symbol.kind === "method"
-          ? detectReceiverMethodUsage(
-            testFile.maskedContent,
-            symbol.name,
-            cachedReceiverBindings(
-              receiverBindings,
-              testFile,
-              sourceSymbols,
-              source,
-              symbol.receiverType,
-              externalAlias
-            ),
-            testFile.syntax,
-            testFile.assertionRanges,
-            testFile.assertedCallPositions
-          )
+          ? cachedReceiverMethodUsages(
+            receiverUsages,
+            receiverBindings,
+            testFile,
+            sourceSymbols,
+            source,
+            symbol.receiverType,
+            externalAlias,
+            testHelpers,
+            testHelperBindings
+          ).get(symbol.name)
           : detectSymbolUsage(
             testFile.maskedContent,
             reference,
@@ -923,12 +931,26 @@ function collectGoTestEvidence(sourceFiles, sourceSymbols, testFiles, modulePath
   return { evidenceByPath, directEvidenceByCallable };
 }
 
-function cachedReceiverBindings(cache, testFile, sourceSymbols, source, receiverType, externalAlias) {
-  const key = `${testFile.path}\0${source.directory}\0${source.packageName}\0${externalAlias ?? ""}\0${receiverType}`;
+function cachedReceiverBindings(
+  cache,
+  testFile,
+  sourceSymbols,
+  source,
+  receiverType,
+  externalAlias,
+  testHelpers,
+  testHelperBindings
+) {
+  const key = receiverCacheKey(testFile, source, receiverType, externalAlias);
   if (cache.has(key)) return cache.get(key);
   const receiverTypeReference = externalAlias && externalAlias !== "."
     ? `${externalAlias}.${receiverType}`
     : receiverType;
+  let helperBindings = testHelperBindings.get(testFile.path);
+  if (!helperBindings) {
+    helperBindings = collectTestHelperReceiverBindings(testHelpers, testFile);
+    testHelperBindings.set(testFile.path, helperBindings);
+  }
   const bindings = uniqueReceiverBindings([
     ...collectExplicitReceiverBindings(testFile.maskedContent, receiverTypeReference),
     ...collectConstructorReceiverBindings(
@@ -936,10 +958,114 @@ function cachedReceiverBindings(cache, testFile, sourceSymbols, source, receiver
       collectReceiverConstructors(sourceSymbols, source, receiverType, externalAlias),
       testFile.declaredSymbols,
       testFile.syntax
-    )
+    ),
+    ...(helperBindings.get(receiverTypeReference) ?? [])
+      .filter((binding) => !externalAlias || binding.helperPath === testFile.path)
   ]);
   cache.set(key, bindings);
   return bindings;
+}
+
+function cachedReceiverMethodUsages(
+  usageCache,
+  bindingCache,
+  testFile,
+  sourceSymbols,
+  source,
+  receiverType,
+  externalAlias,
+  testHelpers,
+  testHelperBindings
+) {
+  const key = receiverCacheKey(testFile, source, receiverType, externalAlias);
+  if (usageCache.has(key)) return usageCache.get(key);
+  const usages = detectReceiverMethodUsages(
+    testFile.maskedContent,
+    cachedReceiverBindings(
+      bindingCache,
+      testFile,
+      sourceSymbols,
+      source,
+      receiverType,
+      externalAlias,
+      testHelpers,
+      testHelperBindings
+    ),
+    testFile.syntax,
+    testFile.assertionRanges,
+    testFile.assertedCallPositions
+  );
+  usageCache.set(key, usages);
+  return usages;
+}
+
+function receiverCacheKey(testFile, source, receiverType, externalAlias) {
+  return `${testFile.path}\0${source.directory}\0${source.packageName}\0${externalAlias ?? ""}\0${receiverType}`;
+}
+
+function indexTestReceiverHelpers(helperFiles) {
+  const candidatesByPackage = new Map();
+  for (const file of helperFiles) {
+    for (const symbol of file.helperFunctions) {
+      const packageKey = `${file.directory}\0${file.packageName}`;
+      candidatesByPackage.set(packageKey, [
+        ...(candidatesByPackage.get(packageKey) ?? []),
+        { symbol, file }
+      ]);
+    }
+  }
+  const byPackage = new Map();
+  for (const [packageKey, helpers] of candidatesByPackage) {
+    const counts = new Map();
+    for (const { symbol } of helpers) counts.set(symbol.name, (counts.get(symbol.name) ?? 0) + 1);
+    byPackage.set(packageKey, new Map(
+      helpers
+        .filter(({ symbol }) => counts.get(symbol.name) === 1)
+        .map((helper) => [helper.symbol.name, helper])
+    ));
+  }
+  return byPackage;
+}
+
+function collectTestHelperReceiverBindings(testHelpers, testFile) {
+  const helpers = testHelpers.get(`${testFile.directory}\0${testFile.packageName}`) ?? new Map();
+  const bindingsByType = new Map();
+  const matcher = new RegExp(
+    "(?:^|[;{}\\n])\\s*" +
+      "([A-Za-z_][A-Za-z0-9_]*(?:\\s*,\\s*[A-Za-z_][A-Za-z0-9_]*)*)\\s*:=\\s*" +
+      "([A-Za-z_][A-Za-z0-9_]*)\\s*\\(",
+    "g"
+  );
+  for (const match of testFile.maskedContent.matchAll(matcher)) {
+    const helper = helpers.get(match[2]);
+    if (!helper) continue;
+    const { symbol, file } = helper;
+    const helperStart = match.index + match[0].lastIndexOf(symbol.name);
+    if (file.path === testFile.path) {
+      if (!testFile.syntax().ownsBinding(symbol.name, symbol.position, helperStart)) continue;
+    } else if (testFile.syntax().hasVisibleBinding(symbol.name, helperStart)) continue;
+    const callStart = match.index + match[0].lastIndexOf("(");
+    const callEnd = skipBalancedGoDelimiter(testFile.maskedContent, callStart, "(", ")");
+    if (callEnd === undefined || !/^[ \t\r]*(?:\n|;|})/.test(testFile.maskedContent.slice(callEnd))) continue;
+    const names = match[1].split(",").map((name) => name.trim());
+    if (names.length !== symbol.returnTypes.length) continue;
+    const bindingListStart = match.index + match[0].indexOf(match[1]);
+    let bindingCursor = 0;
+    symbol.returnTypes.forEach((returnType, index) => {
+      const name = names[index];
+      const relativePosition = match[1].indexOf(name, bindingCursor);
+      bindingCursor = relativePosition + name.length;
+      if (name === "_") return;
+      const bindings = bindingsByType.get(returnType) ?? [];
+      bindings.push({
+        name,
+        position: bindingListStart + relativePosition,
+        helperPath: file.path
+      });
+      bindingsByType.set(returnType, bindings);
+    });
+  }
+  return bindingsByType;
 }
 
 function collectReceiverConstructors(sourceSymbols, source, receiverType, externalAlias) {
@@ -1079,31 +1205,28 @@ function detectSymbolUsage(
   return undefined;
 }
 
-function detectReceiverMethodUsage(
+function detectReceiverMethodUsages(
   maskedContent,
-  methodName,
   receiverBindings,
   syntax = undefined,
   assertionRanges = [],
   assertedCallPositions = new Set()
 ) {
-  let called = false;
+  const usages = new Map();
   const parsedSyntax = syntax?.();
-  if (!parsedSyntax) return undefined;
+  if (!parsedSyntax) return usages;
   for (const receiver of receiverBindings) {
-    const pattern = `\\b${escapeRegex(receiver.name)}\\s*\\.\\s*${escapeRegex(methodName)}`;
+    const pattern = `\\b${escapeRegex(receiver.name)}\\s*\\.\\s*([A-Za-z_][A-Za-z0-9_]*)\\s*\\(`;
     const matcher = new RegExp(pattern, "g");
     for (const match of maskedContent.matchAll(matcher)) {
       if (!parsedSyntax.ownsBinding(receiver.name, receiver.position, match.index)) continue;
-      const cursor = skipGoWhitespace(maskedContent, match.index + match[0].length);
-      if (maskedContent[cursor] !== "(") continue;
-      called = true;
-      if (assertedCallPositions.has(match.index) || assertionRanges.some((range) =>
+      const asserted = assertedCallPositions.has(match.index) || assertionRanges.some((range) =>
         match.index >= range.from && match.index < range.to
-      )) return "asserted";
+      );
+      if (asserted || !usages.has(match[1])) usages.set(match[1], asserted ? "asserted" : "called");
     }
   }
-  return called ? "called" : undefined;
+  return usages;
 }
 
 function collectGoAssertionBodies(maskedContent, imports, declaredSymbols, syntax) {
