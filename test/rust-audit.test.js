@@ -227,6 +227,81 @@ describe("Rust audit adapter", () => {
     assert.ok(audit.profile.blockers.includes("No runnable built-in Rust #[test] detected."));
   });
 
+  it("owns static package-local Cargo lib and bin source targets", (t) => {
+    const root = createRustRepo(t, {
+      "Cargo.toml": [
+        "[package]",
+        "name = \"custom-targets\"",
+        "version = \"0.1.0\"",
+        "edition = \"2024\"",
+        "",
+        "[lib]",
+        "path = 'code/library.rs'",
+        "",
+        "[[bin]]",
+        "name = \"custom-targets\"",
+        "path = \"./app/main.rs\"",
+        ""
+      ].join("\n"),
+      "code/library.rs": [
+        "pub fn calculate(value: usize) -> usize { value + 1 }",
+        "#[cfg(test)]",
+        "mod tests { use super::calculate; #[test] fn calculates() { assert_eq!(calculate(1), 2); } }",
+        ""
+      ].join("\n"),
+      "app/main.rs": "fn render(value: usize) -> String { value.to_string() }\nfn main() { println!(\"{}\", render(1)); }\n",
+      "other/unowned.rs": "pub fn unrelated() -> usize { 1 }\n"
+    });
+
+    const audit = auditRustRepo(root);
+
+    assert.deepEqual(audit.profile.architectures, ["cargo-package", "library", "binary"]);
+    assert.equal(audit.profile.testCommand, "cargo test");
+    assert.deepEqual(audit.profile.detectedConventions, ["explicit Cargo source target", "inline cfg(test) modules"]);
+    assert.deepEqual(audit.profile.blockers, []);
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["code/library.rs"]);
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.path), ["app/main.rs"]);
+    assert.equal(audit.coveredButRisky[0].existingTestEvidence[0].testPath, "code/library.rs");
+    assert.ok(!audit.recommended.some((target) => target.path === "other/unowned.rs"));
+  });
+
+  it("blocks unresolved Cargo lib and bin paths without widening source ownership", (t) => {
+    const root = createRustRepo(t, {
+      "Cargo.toml": [
+        "[package]",
+        "name = \"unresolved-targets\"",
+        "version = \"0.1.0\"",
+        "",
+        "[lib]",
+        "path = \"../outside.rs\"",
+        "",
+        "[[bin]]",
+        "name = \"missing\"",
+        "path = \"app/missing.rs\"",
+        "",
+        "[[bin]]",
+        "name = \"dynamic\"",
+        "path = { value = \"app/main.rs\" }",
+        "",
+        "[[bin]]",
+        "name = \"duplicate\"",
+        "path = \"app/main.rs\"",
+        "path = \"app/other.rs\"",
+        ""
+      ].join("\n"),
+      "src/lib.rs": rustSourceWithTest("conventional"),
+      "app/main.rs": "fn main() {}\n"
+    });
+
+    const audit = auditRustRepo(root);
+
+    assert.equal(audit.profile.testCommand, undefined);
+    assert.deepEqual(audit.profile.architectures, ["cargo-package", "library"]);
+    assert.deepEqual(audit.profile.detectedConventions, ["inline cfg(test) modules"]);
+    assert.ok(audit.profile.blockers.includes("Cargo lib and bin target paths must resolve to static repository-contained Rust files."));
+    assert.ok(!audit.recommended.some((target) => target.path === "app/main.rs"));
+  });
+
   it("keeps exact crate imports and direct call usage bounded", (t) => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-rust-evidence-"));
     t.after(() => fs.rmSync(root, { recursive: true, force: true }));

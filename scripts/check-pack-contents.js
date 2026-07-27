@@ -44,6 +44,7 @@ export const requiredFiles = [
   "examples/go-workspace-basic/go.work",
   "examples/go-workspace-basic/services/checkout/go.mod",
   "examples/rust-cargo-basic/Cargo.toml",
+  "examples/rust-cargo-custom-targets/Cargo.toml",
   "examples/rust-cargo-workspace-basic/Cargo.toml",
   "examples/rust-cargo-workspace-basic/services/checkout/Cargo.toml",
   "schemas/audit-v1.schema.json",

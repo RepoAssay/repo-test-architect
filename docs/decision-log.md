@@ -285,3 +285,11 @@ Decision: treat a static repository-contained `[[test]]` target as built-in Rust
 Rationale: ripgrep disables automatic integration-test discovery and routes 323 integration tests through one explicit target whose local macro expands to `#[test]`. The manifest proves that `cargo test -p ripgrep` owns a built-in test executable, while macro expansion is outside the deterministic source matcher. Separating command proof from relationship proof recovers a native command without claiming coverage that static analysis did not observe.
 
 Revisit when: parser-backed macro invocation ownership or Cargo metadata can prove generated test bodies, required-feature selection, custom harness semantics, or nonstandard target layouts without executing target code.
+
+## Preserve Static Cargo Lib And Bin Source Paths
+
+Decision: extend package source ownership with existing repository-contained `.rs` files named by static `[lib].path` and `[[bin]].path` declarations. Keep conventional `src/` ownership, reject unresolved declared paths with a command blocker, and do not infer ownership for neighboring files that Cargo does not name directly.
+
+Rationale: ripgrep's root package declares `crates/core/main.rs` as its binary crate root, so limiting ownership to `src/` hid a real high-risk runtime file even after the exact test command was recovered. The manifest proves ownership of that file without directory heuristics. The follow-up live audit adds one root candidate while leaving every existing project, command, and evidence relationship stable.
+
+Revisit when: a pinned repository justifies parser-backed `mod` traversal, explicit `#[path]` modules, auto-discovered binaries, examples, benches, proc macros, or build-script source ownership without sweeping unrelated files into a crate.
