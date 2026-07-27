@@ -54,3 +54,5 @@ The later assertion-usage slice leaves Resty byte-for-byte unchanged at 119 rela
 The other pressure repositories remain conservative: `go-retryablehttp`, Afero, and Zap do not change. No pressure repository changes candidate category.
 
 This slice closes the common direct-constructor receiver gap without claiming interface dispatch, flow-sensitive inference, or package-wide coverage.
+
+The later receiver/callable-ownership slice resolves each constructor binding at its exact call site and removes file-wide indirect leakage. Resty now reports `1 / 18 / 2` candidates and 98 relationships while recovering five direct client/response method links; `debug.go` loses only unrelated indirect evidence. Current measurements are recorded in the [Go Receiver And Callable Ownership Validation Report](go-callable-ownership-validation-report.md).

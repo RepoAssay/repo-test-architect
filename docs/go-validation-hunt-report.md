@@ -8,9 +8,9 @@ The validation finder now exposes a `go` profile requiring a root `go.mod` and a
 
 | Repository | Audited commit | Role | Detected command | Untested | Covered | Skipped | Median audit |
 | --- | --- | --- | --- | ---: | ---: | ---: | ---: |
-| [`BurntSushi/toml`](https://github.com/BurntSushi/toml) | `c6d720d83547bb8d7afb067ba9df8bad0323e2d1` | conventional parser library | `go test ./...` | 6 | 9 | 7 | 262 ms |
+| [`BurntSushi/toml`](https://github.com/BurntSushi/toml) | `c6d720d83547bb8d7afb067ba9df8bad0323e2d1` | conventional parser library | `go test ./...` | 8 | 7 | 7 | 252 ms |
 
-The parser-scope remeasurement took 300, 262, and 254 ms. All three audits produced the same normalized audit digest, `9489b38da82cabd66db1f0ccd50a01a18e304f8f9077ceaa019d319d0b046979`, with 50 evidence relationships, including three whose existing entrypoint usage is asserted. Candidate classifications remain unchanged.
+The callable-ownership remeasurement took 314, 252, and 245 ms. All three audits produced the same normalized audit digest, `66badf372d16fbf101c350ebf23fd6b6e16609456158de38f3a9073f468e2538`, with 28 evidence relationships, including two whose existing entrypoint usage is asserted.
 
 ## Native Validation
 
@@ -32,7 +32,7 @@ The direct Go audit also exposed conservative evidence gaps. `parse.go`, `type_f
 - that source file makes an unqualified call to a uniquely owned top-level function in another selected file in the same package directory
 - no local variable, package variable, or function parameter visibly shadows that dependency name
 
-The relationship is `indirect` with `viaUsage: called`. It is not propagated from filename evidence, type references, existing indirect evidence, selectors, other packages, or a second source hop. This moved the three genuinely exercised core files from untested to covered without upgrading the six zero-coverage command-support, tag-tooling, conformance-runner, and OSS-Fuzz files.
+The relationship is `indirect` with `viaUsage: called`. It is not propagated from filename evidence, type references, existing indirect evidence, selectors, other packages, or a second source hop. At that stage this moved three core files from untested to covered without upgrading the six zero-coverage command-support, tag-tooling, conformance-runner, and OSS-Fuzz files. Later callable-body review showed that `type_fields.go` and `type_toml.go` received only file-wide links copied from unrelated sibling callables, so those two targets are again honestly untested under the exact one-hop model.
 
 The live parser file also revealed that an exact `parse.go` basename was classified as a generic branching utility because the bounded pure-logic vocabulary recognized `parser` but not `parse`. Exact path-token recognition now treats `parse` as pure transformation logic without matching unrelated names such as `sparse`.
 
@@ -49,7 +49,7 @@ The first conventional-library probe passes the reviewed detection, ownership, c
 - command entrypoints and declaration-only files stay deferred
 - repeated audits are semantically stable and comfortably below the current cross-platform performance budget
 
-Receiver methods without an explicit type or exact simple concrete constructor result, interfaces, reflection, dynamic calls, deeper source graphs, ambiguous multi-callable or cross-module dependencies, helper/custom assertions, deeper result flow, and runtime reachability remain outside the claim. The native coverage comparison showed why those gaps matter, but they remain visible rather than being inferred from package-wide test presence.
+Receiver methods without an explicit type or exact simple concrete constructor result, interfaces, reflection, dynamic calls, deeper source graphs, cross-module dependencies, helper/custom assertions, deeper result flow, and runtime reachability remain outside the claim. The native coverage comparison showed why those gaps matter, but they remain visible rather than being inferred from package-wide test presence.
 
 ## Corpus Progress
 
@@ -59,4 +59,6 @@ The explicitly typed receiver-method slice was remeasured against this exact che
 
 The exact constructor-result slice retained the same candidate counts and added one reviewed direct relationship, producing 50 relationships and the digest recorded above. Only simple concrete result positions bound by `:=` qualify.
 
-The later assertion-usage slice retained all 50 relationships and candidate classifications while upgrading three exact standard-library condition relationships. Its current digest and timing are recorded above and detailed in the [Go Assertion-Usage Validation Report](go-assertion-validation-report.md).
+The later assertion-usage slice retained all 50 relationships and candidate classifications while upgrading three exact standard-library condition relationships. Its then-current digest and timing are detailed in the [Go Assertion-Usage Validation Report](go-assertion-validation-report.md).
+
+The parser-owned receiver and callable slice supersedes that file-wide relationship baseline. It removes 26 leaked indirect links, recovers four exact direct method links across `lex.go`, `error.go`, and `meta.go`, and produces the current counts and digest above. The reviewed delta is detailed in the [Go Receiver And Callable Ownership Validation Report](go-callable-ownership-validation-report.md).

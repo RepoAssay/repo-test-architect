@@ -22,13 +22,13 @@ All candidate and relationship counts remained unchanged:
 | [`go-chi/chi`](https://github.com/go-chi/chi) at `8b258c7` | `14 / 23 / 10` | 70 | 2 | `656 / 599 / 596` | 599 |
 | [`riverqueue/river`](https://github.com/riverqueue/river) at `b6c733c` | `6 / 47 / 10` | 576 | 26 | `1129 / 1037 / 1024` | 1037 |
 
-The normalized corpus digests are now:
+The normalized corpus digests at the parser-scope stage were:
 
 - TOML: `9489b38da82cabd66db1f0ccd50a01a18e304f8f9077ceaa019d319d0b046979`
 - Chi: `d452349229f777e8ff24bd67dc0d1440451625dc6c188e41dd1c41399a00e3fc`
 - River: `ef4ae3299b71bbd2ad38324b812fb845cf24d93241abad65c2982f7b681ba5ca`
 
-TOML and Chi provide the standard-library proof. River's initial 12 upgrades are exact `require` calls, including `ClientFromContext`, notifier behavior, maintenance startup, uniqueness checks, and worker output. Parser-scoped alias handling adds 14 upgrades from `client_test.go` and `producer_test.go`, whose valid Testify calls were previously hidden by four unrelated local variables named `require`. Function-fragment parsing keeps the current 1,037 ms median bounded while preserving all candidate and relationship counts.
+TOML and Chi provide the standard-library proof. River's initial 12 upgrades are exact `require` calls, including `ClientFromContext`, notifier behavior, maintenance startup, uniqueness checks, and worker output. Parser-scoped alias handling adds 14 upgrades from `client_test.go` and `producer_test.go`, whose valid Testify calls were previously hidden by four unrelated local variables named `require`. Function-fragment parsing kept the then-current 1,037 ms median bounded while preserving all candidate and relationship counts.
 
 ## Post-Promotion Controls
 
@@ -37,3 +37,5 @@ Zap provides the strongest Testify pressure. Its audit retains `2 / 48 / 9` cand
 Resty is the negative control. It retains `0 / 19 / 2`, 119 relationships, zero assertion upgrades, and its previous digest `1609fc14f89b36babe350822ca98737eaa321f0e409b7370a0b8be5eadaad487`; its three samples were 1,631, 1,594, and 1,594 ms. The rule therefore does not infer assertion usage merely from constructor-heavy tests or a nearby failure API.
 
 The generated 400-source/200-test fixture remains exactly 200 covered, 200 untested, and 200 evidence relationships inside its five-second ceiling; the parser-scope run took 347 ms. The checked-in native Go fixtures continue to pass ordinary, race-enabled, and formatting checks. Example output comments, custom/helper assertion APIs, multi-hop aliases, and full control-flow completeness remain outside this claim.
+
+The later receiver/callable-ownership slice ties receiver assertions to exact call positions and replaces file-wide dependency propagation. Its current graph has 2, 4, 17, 40, and 0 asserted direct relationships in TOML, Chi, River, Zap, and Resty respectively; current counts and digests are recorded in the [Go Receiver And Callable Ownership Validation Report](go-callable-ownership-validation-report.md). The table above remains the historical assertion-slice baseline.

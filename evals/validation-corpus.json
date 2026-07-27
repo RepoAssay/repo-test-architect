@@ -132,17 +132,17 @@
           },
           "observed": {
             "testCommand": "go test ./...",
-            "untestedCandidates": 6,
-            "coveredButRisky": 9,
+            "untestedCandidates": 8,
+            "coveredButRisky": 7,
             "skippedTargets": 7,
-            "auditDurationMs": 262,
+            "auditDurationMs": 252,
             "auditDurationSamplesMs": [
-              300,
-              262,
-              254
+              314,
+              252,
+              245
             ],
-            "evidenceRelationshipCount": 50,
-            "canonicalAuditSha256": "9489b38da82cabd66db1f0ccd50a01a18e304f8f9077ceaa019d319d0b046979"
+            "evidenceRelationshipCount": 28,
+            "canonicalAuditSha256": "66badf372d16fbf101c350ebf23fd6b6e16609456158de38f3a9073f468e2538"
           }
         },
         {
@@ -173,17 +173,17 @@
           },
           "observed": {
             "testCommand": "GOOS=darwin GOARCH=arm64 go test ./...",
-            "untestedCandidates": 14,
-            "coveredButRisky": 23,
+            "untestedCandidates": 15,
+            "coveredButRisky": 22,
             "skippedTargets": 10,
-            "auditDurationMs": 599,
+            "auditDurationMs": 264,
             "auditDurationSamplesMs": [
-              656,
-              599,
-              596
+              341,
+              264,
+              257
             ],
-            "evidenceRelationshipCount": 70,
-            "canonicalAuditSha256": "d452349229f777e8ff24bd67dc0d1440451625dc6c188e41dd1c41399a00e3fc"
+            "evidenceRelationshipCount": 68,
+            "canonicalAuditSha256": "9780f0686bdbbb77ffca2b83d1724ab0cb63093d2186d06ce9a5490d599dc361"
           }
         },
         {
@@ -210,14 +210,14 @@
             "untestedCandidates": 6,
             "coveredButRisky": 47,
             "skippedTargets": 10,
-            "auditDurationMs": 1037,
+            "auditDurationMs": 1031,
             "auditDurationSamplesMs": [
-              1129,
-              1037,
-              1024
+              1131,
+              1031,
+              1011
             ],
-            "evidenceRelationshipCount": 576,
-            "canonicalAuditSha256": "ef4ae3299b71bbd2ad38324b812fb845cf24d93241abad65c2982f7b681ba5ca"
+            "evidenceRelationshipCount": 284,
+            "canonicalAuditSha256": "4974785310a9d70ca93ee36e139e09707cedc6b65b7b1e530b738430bd8c86f9"
           }
         }
       ]

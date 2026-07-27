@@ -8,9 +8,9 @@ The validation finder now exposes a `go-http` profile requiring a root `go.mod`,
 
 | Repository | Audited commit | Role | Detected root command | Untested | Covered | Skipped | Median audit |
 | --- | --- | --- | --- | ---: | ---: | ---: | ---: |
-| [`go-chi/chi`](https://github.com/go-chi/chi) | `8b258c7bb28f97a5f2a856ff7ef962578fec9215` | HTTP router and middleware | `GOOS=darwin GOARCH=arm64 go test ./...` | 14 | 23 | 10 | 599 ms |
+| [`go-chi/chi`](https://github.com/go-chi/chi) | `8b258c7bb28f97a5f2a856ff7ef962578fec9215` | HTTP router and middleware | `GOOS=darwin GOARCH=arm64 go test ./...` | 15 | 22 | 10 | 264 ms |
 
-The parser-scope remeasurement took 656, 599, and 596 ms. All three audits produced the same normalized audit digest, `d452349229f777e8ff24bd67dc0d1440451625dc6c188e41dd1c41399a00e3fc`, with 70 evidence relationships, including two exact standard-library assertion upgrades. Candidate classifications remain unchanged.
+The callable-ownership remeasurement took 341, 264, and 257 ms. All three audits produced the same normalized audit digest, `9780f0686bdbbb77ffca2b83d1724ab0cb63093d2186d06ce9a5490d599dc361`, with 68 evidence relationships, including four asserted direct calls.
 
 ## Native Validation
 
@@ -60,4 +60,6 @@ The explicitly typed receiver-method slice was remeasured against this exact che
 
 The later exact constructor-result slice retained those candidate counts and added one reviewed direct relationship plus three existing one-hop consequences, producing 70 relationships and the digest recorded above. Interface-returning and chained constructor expressions remain uncredited.
 
-The assertion-usage slice retained all 70 relationships and candidate classifications while upgrading two exact standard-library checks. Its current digest and timing are recorded above and detailed in the [Go Assertion-Usage Validation Report](go-assertion-validation-report.md).
+The assertion-usage slice retained all 70 relationships and candidate classifications while upgrading two exact standard-library checks. Its then-current digest and timing are detailed in the [Go Assertion-Usage Validation Report](go-assertion-validation-report.md).
+
+The parser-owned receiver and callable slice supersedes that file-wide relationship baseline. It removes seven leaked indirect links, adds two exact body-owned dependencies, recovers five direct receiver-method relationships, and leaves `middleware/terminal.go` untested after its unrelated `recoverer_test.go` link is removed. The current counts and digest above are detailed in the [Go Receiver And Callable Ownership Validation Report](go-callable-ownership-validation-report.md).
