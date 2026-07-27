@@ -52,7 +52,7 @@ export function auditGoRepo(root, options = {}) {
   const selectedSourceFiles = sourceFiles.filter((file) => buildSelection.byPath.get(file.path)?.included !== false);
   const sourceSymbols = collectSourceSymbols(selectedSourceFiles);
   const testEvidenceBySourcePath = collectGoTestEvidence(selectedSourceFiles, sourceSymbols, testFiles, profile.modulePath);
-  addGoSourceDependencyEvidence(sourceSymbols, testEvidenceBySourcePath);
+  addGoSourceDependencyEvidence(sourceSymbols, testEvidenceBySourcePath, profile.modulePath);
   const untestedCandidates = [];
   const coveredButRisky = [];
   const skipped = [];
@@ -698,6 +698,7 @@ function collectSourceSymbols(sourceFiles) {
       packageName,
       directory,
       symbols,
+      imports: collectImports(file.content),
       maskedContent: maskGoSource(file.content)
     });
     for (const symbol of symbols) {
@@ -880,7 +881,7 @@ function collectReceiverConstructors(sourceSymbols, source, receiverType, extern
     }));
 }
 
-function addGoSourceDependencyEvidence(sourceSymbols, evidenceByPath) {
+function addGoSourceDependencyEvidence(sourceSymbols, evidenceByPath, modulePath) {
   const directEvidenceByCaller = new Map();
   for (const [sourcePath, evidence] of evidenceByPath) {
     const calledTests = evidence.filter((entry) => entry.kind === "go-symbol-reference" && entry.usage === "called");
@@ -889,14 +890,24 @@ function addGoSourceDependencyEvidence(sourceSymbols, evidenceByPath) {
 
   for (const [callerPath, callerEvidence] of directEvidenceByCaller) {
     const caller = sourceSymbols.symbolsByPath.get(callerPath);
+    const callerCallableCount = caller.symbols.filter((symbol) => symbol.kind !== "type").length;
     for (const [dependencyPath, dependency] of sourceSymbols.symbolsByPath) {
       if (dependencyPath === callerPath) continue;
-      if (dependency.directory !== caller.directory || dependency.packageName !== caller.packageName) continue;
+      const samePackage = dependency.directory === caller.directory && dependency.packageName === caller.packageName;
+      const externalAlias = samePackage
+        ? undefined
+        : importedPackageAlias(caller.imports, modulePath, dependency.directory, dependency.packageName);
+      if (!samePackage && !externalAlias) continue;
+      if (!samePackage && callerCallableCount !== 1) continue;
+      if (externalAlias && externalAlias !== "." && hasVisibleGoNameBinding(caller.maskedContent, externalAlias)) continue;
 
       const callsDependency = dependency.symbols.some((symbol) =>
         symbol.kind === "function" &&
+        (samePackage || isExportedGoIdentifier(symbol.name)) &&
         sourceSymbols.symbolCounts.get(sourceSymbolKey(dependency.directory, symbol)) === 1 &&
-        callsUnqualifiedFunction(caller.maskedContent, symbol.name)
+        (externalAlias && externalAlias !== "."
+          ? hasGoFunctionCall(caller.maskedContent, `\\b${escapeRegex(externalAlias)}\\s*\\.\\s*${escapeRegex(symbol.name)}`)
+          : callsUnqualifiedFunction(caller.maskedContent, symbol.name))
       );
       if (!callsDependency) continue;
 

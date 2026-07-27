@@ -47,6 +47,8 @@ The removed relationship is a precision correction, not lost constructor support
 
 All three promoted Go roles retain their candidate classifications. TOML moves from 49 to 50 relationships through the concrete `MetaData` result of `toml.Decode`; Chi moves from 66 to 70 through `NewRouter() *Mux` plus three existing bounded one-hop consequences; River remains at 572 relationships with the same canonical digest.
 
+The subsequent cross-package slice keeps TOML and Chi stable and moves River from 572 to 576 relationships through four reviewed module-local edges; it is documented separately in the [Go Cross-Package Source Validation Report](go-cross-package-validation-report.md).
+
 The other pressure repositories remain conservative: `go-retryablehttp`, Afero, and Zap do not change. No pressure repository changes candidate category.
 
 This slice closes the common direct-constructor receiver gap without claiming interface dispatch, flow-sensitive inference, or package-wide coverage.

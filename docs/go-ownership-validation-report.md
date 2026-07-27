@@ -12,7 +12,7 @@ The validation finder now exposes a `go-workspace` profile requiring a root `go.
 
 Three post-hardening repository audits took 712, 622, and 614 ms. They produced the same normalized project-audit digest, `62dff714c5ccadb78383acb9796e9627bb4cca5cddfdb2d3c032fb5b855df383`, with 662 evidence relationships. The pinned tree contains 296 Go files, including 144 test files.
 
-The shared corpus measures the same exact checkout through the direct root-module adapter contract: three audits took 540, 458, and 467 ms, for a 467 ms median, 6 untested, 47 covered, 10 skipped, and 572 evidence relationships. Their normalized audit digest is `ec066fabe92b0af4c352a72b4098636b9a2c6a21fd3276b91ee99bebae5b9ae9`. The repository-level figures above remain the ownership review across all nine detected projects; the direct measurement is the reproducible per-case corpus baseline.
+The shared corpus measures the same exact checkout through the direct root-module adapter contract: the bounded cross-package remeasurement took 983, 896, and 937 ms, for a 937 ms median, 6 untested, 47 covered, 10 skipped, and 576 evidence relationships. Their normalized audit digest is `37c91a11954bed715e62be18e779e4dbf4ee20606f348ea2b84878bee293a7eb`. The repository-level figures above remain the ownership review across all nine detected projects; the direct measurement is the reproducible per-case corpus baseline.
 
 ## Native Validation
 
@@ -28,7 +28,7 @@ The complete checkout was `gofmt` clean. The other six module-local suites were 
 
 The pre-hardening audit preserved all nine owners and commands, but the `riverdriver/riverdrivertest` conformance module reported six untested files, zero covered files, nine skipped files, and no evidence. Its external-package tests call the exported generic entrypoint `riverdrivertest.Exercise`, which then calls same-package generic helpers across the module. The declaration collector only recognized `func Name(`, so it missed `func Name[T constraint](`. The runtime classifier had the same blind spot and could mistake files containing local structs plus generic functions for DTO-only files.
 
-Top-level generic function declarations are now parsed with balanced type-parameter brackets, including nested slice or array syntax and multiline declarations. Direct evidence recognizes both inferred calls and explicit instantiations such as `Exercise[int](...)`. Runtime function classification uses the same balanced declaration rule, and the existing one-hop rule may then connect a directly called generic entrypoint to unique same-package helper functions. Receiver methods, deeper hops, cross-package dependencies, and runtime dispatch remain outside the claim.
+Top-level generic function declarations are now parsed with balanced type-parameter brackets, including nested slice or array syntax and multiline declarations. Direct evidence recognizes both inferred calls and explicit instantiations such as `Exercise[int](...)`. Runtime function classification uses the same balanced declaration rule, and the existing one-hop rule may then connect a directly called generic entrypoint to unique same-package helper functions. Receiver methods without exact bindings, deeper hops, ambiguous multi-callable cross-package files, and runtime dispatch remain outside the claim.
 
 The focused fixture uses an aliased external test package, an explicitly instantiated generic entrypoint, a generic helper constraint, and one same-package source hop. After the fix, `riverdriver/riverdrivertest` reports all 15 production files covered with 15 evidence relationships and no untested or skipped files.
 
@@ -58,14 +58,16 @@ The difficult-ownership probe passes the reviewed detection, ownership, command,
 - nested module boundaries exclude descendant sources and tests from parent evidence
 - all nine runnable owners receive module-local commands without an aggregate substitute
 - generic top-level calls retain exact package, directory, and symbol provenance
-- generic entrypoints may contribute only the existing one same-package source hop
+- generic entrypoints may contribute only one bounded source hop
 - repeated full-repository audits are semantically stable and remain below one second locally
 - database prerequisites are documented without claiming that the static command provisions them
 
-Workspace `replace` effects, repository-external members, receiver methods without an explicit type or exact simple concrete constructor result, interface dispatch, generic type construction, reflection, deeper or cross-package dependencies, service provisioning, coverage profiles, runtime reachability, and assertion completeness remain outside the bounded adapter.
+Workspace `replace` effects, repository-external members, receiver methods without an explicit type or exact simple concrete constructor result, interface dispatch, generic type construction, reflection, deeper dependencies, ambiguous multi-callable or cross-module edges, service provisioning, coverage profiles, runtime reachability, and assertion completeness remain outside the bounded adapter.
 
 ## Corpus Progress
 
 This checkout is the difficult-ownership role in `validation-corpus/v1`. The conventional-library, HTTP/service, and difficult-ownership probes are all pinned, measured, reviewed, and passing. Together with the generated large-module gate and complete release surface, they support Go's promotion to bounded supported alpha maturity.
 
 The explicitly typed receiver-method slice was remeasured against this exact checkout without changing its candidate counts, 572 evidence relationships, or canonical digest. A test-local method name initially exposed and fixed a shadow-set regression before the corpus baseline could move; methods no longer suppress same-named top-level source functions.
+
+The later constructor slice retained 572 relationships. Bounded cross-package evidence then added four reviewed relationships from tests that directly call the sole `MetadataSet` declaration in `metadata.go` to its exact module-local `internal/jobexecutor.MetadataUpdatesFromWorkContext` dependency. Candidate counts remain unchanged at 6 untested, 47 covered, and 10 skipped.

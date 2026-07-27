@@ -40,4 +40,4 @@ The static profile continues to withhold a verification command unless build sel
 
 All three promoted Go validation-corpus cases retained their candidate counts, evidence counts, and canonical audit digests after this change. Zap remains a post-promotion pressure report rather than a fourth passing corpus role because its release-tag command boundary is intentionally unresolved.
 
-The later exact constructor-result slice retains Zap's candidate counts, 286 relationships, and conservative interface-returning factory boundary.
+The later exact constructor-result slice retains Zap's candidate counts, 286 relationships, and conservative interface-returning factory boundary. Bounded cross-package source evidence subsequently adds one indirect relationship from `zaptest/observer/logged_entry_test.go` through the sole `LoggedEntry.ContextMap` callable to `zapcore.NewMapObjectEncoder`, for 287 relationships without changing a candidate category.

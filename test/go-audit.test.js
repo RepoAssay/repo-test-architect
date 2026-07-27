@@ -37,6 +37,7 @@ describe("Go adapter", () => {
     assert.deepEqual(audit.coveredButRisky.map((target) => target.path), [
       "payment_client.go",
       "price_parser.go",
+      "internal/currency/validator.go",
       "price_normalizer.go"
     ]);
     assert.deepEqual(audit.skipped.map((target) => [target.path, target.kind]), [["payment.go", "dto"]]);
@@ -54,6 +55,14 @@ describe("Go adapter", () => {
       }
     ]);
     assert.deepEqual(audit.coveredButRisky.find((target) => target.path === "price_normalizer.go").existingTestEvidence, [
+      {
+        testPath: "price_parser_test.go",
+        kind: "go-source-dependency",
+        strength: "indirect",
+        viaUsage: "called"
+      }
+    ]);
+    assert.deepEqual(audit.coveredButRisky.find((target) => target.path === "internal/currency/validator.go").existingTestEvidence, [
       {
         testPath: "price_parser_test.go",
         kind: "go-source-dependency",
@@ -583,6 +592,82 @@ describe("Go adapter", () => {
         strength: "indirect",
         viaUsage: "called"
       }
+    ]);
+  });
+
+  it("propagates one exact module-local cross-package function dependency", (t) => {
+    const root = createRepo(t, {
+      "go.mod": "module example.com/service\n\ngo 1.22\n",
+      "service.go": [
+        "package service",
+        "import \"example.com/service/internal/validate\"",
+        "func Handle(value string) string { return validate.Normalize(value) }",
+        ""
+      ].join("\n"),
+      "service_test.go": "package service\nimport \"testing\"\nfunc TestHandle(t *testing.T) { if Handle(\"ok\") != \"ok\" { t.Fatal() } }\n",
+      "named.go": "package service\nimport validator \"example.com/service/internal/validate\"\nfunc Named(value string) string { return validator.Normalize(value) }\n",
+      "named_test.go": "package service\nimport \"testing\"\nfunc TestNamed(t *testing.T) { if Named(\"ok\") != \"ok\" { t.Fatal() } }\n",
+      "dot.go": "package service\nimport . \"example.com/service/internal/validate\"\nfunc Dot(value string) string { return Normalize(value) }\n",
+      "dot_test.go": "package service\nimport \"testing\"\nfunc TestDot(t *testing.T) { if Dot(\"ok\") != \"ok\" { t.Fatal() } }\n",
+      "internal/validate/normalize.go": "package validate\nfunc Normalize(value string) string { return deep(value) }\n",
+      "internal/validate/deep.go": "package validate\nfunc deep(value string) string { return value }\n"
+    });
+
+    const audit = auditGoRepo(root);
+
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path).sort(), [
+      "dot.go",
+      "internal/validate/normalize.go",
+      "named.go",
+      "service.go"
+    ]);
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.path), ["internal/validate/deep.go"]);
+    assert.deepEqual(
+      audit.coveredButRisky.find((target) => target.path === "internal/validate/normalize.go").existingTestEvidence,
+      ["dot_test.go", "named_test.go", "service_test.go"].map((testPath) => ({
+        testPath,
+        kind: "go-source-dependency",
+        strength: "indirect",
+        viaUsage: "called"
+      }))
+    );
+  });
+
+  it("rejects external, blank, shadowed, and uncalled cross-package source edges", (t) => {
+    const root = createRepo(t, {
+      "go.mod": "module example.com/service\n\ngo 1.22\n",
+      "service.go": [
+        "package service",
+        "import validator \"example.com/service/internal/validate\"",
+        "var _ = validator.Normalize",
+        "type localValidator struct{}",
+        "func (localValidator) Normalize(value string) string { return value }",
+        "func Handle(value string) string { validator := localValidator{}; return validator.Normalize(value) }",
+        ""
+      ].join("\n"),
+      "service_test.go": "package service\nimport \"testing\"\nfunc TestHandle(t *testing.T) { if Handle(\"ok\") != \"ok\" { t.Fatal() } }\n",
+      "internal/validate/normalize.go": "package validate\nfunc Normalize(value string) string { return value }\n",
+      "internal/blank/blank.go": "package blank\nfunc Run() int { return 1 }\n",
+      "blank.go": "package service\nimport _ \"example.com/service/internal/blank\"\nfunc Blank() int { return 1 }\n",
+      "external.go": "package service\nimport outside \"example.net/outside\"\nfunc External() int { return outside.Run() }\n",
+      "uncalled.go": "package service\nimport \"example.com/service/internal/unused\"\nfunc Uncalled() int { return unused.Run() }\n",
+      "internal/unused/unused.go": "package unused\nfunc Run() int { return 1 }\n",
+      "ambiguous.go": "package service\nimport multi \"example.com/service/internal/multi\"\nfunc First() int { return multi.Run() }\nfunc Second() int { return 2 }\n",
+      "ambiguous_test.go": "package service\nimport \"testing\"\nfunc TestFirst(t *testing.T) { if First() != 1 { t.Fatal() } }\n",
+      "internal/multi/multi.go": "package multi\nfunc Run() int { return 1 }\n"
+    });
+
+    const audit = auditGoRepo(root);
+
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["ambiguous.go", "service.go"]);
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.path), [
+      "blank.go",
+      "internal/blank/blank.go",
+      "external.go",
+      "internal/multi/multi.go",
+      "internal/validate/normalize.go",
+      "uncalled.go",
+      "internal/unused/unused.go"
     ]);
   });
 

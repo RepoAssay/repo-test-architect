@@ -91,11 +91,11 @@ Detection, ownership, command, evidence, ranking, stability, and performance eac
 
 Goal: prove the adapter contract keeps holding as additional ecosystems move from detection-only to audited fixtures.
 
-Status: Swift, Python, bounded Kotlin/JVM, and bounded Go have reached supported alpha maturity, and the five-adapter hardening gate is complete. Go passes standalone, two-module `go.work`, explicit build-target, one-hop source-dependency, lexical masking, generic-function, explicit and exact-constructor receiver-method, and generated 400-source/200-test performance fixtures plus all three pinned live roles against `BurntSushi/toml`, `go-chi/chi`, and `riverqueue/river`. Post-promotion Zap and Resty pressure additionally recovered exact dot-import and concrete constructor-result evidence. See [Go Alpha Support](go-alpha-support.md).
+Status: Swift, Python, bounded Kotlin/JVM, and bounded Go have reached supported alpha maturity, and the five-adapter hardening gate is complete. Go passes standalone, two-module `go.work`, explicit build-target, same-package and single-callable module-local source-dependency, lexical masking, generic-function, explicit and exact-constructor receiver-method, and generated 400-source/200-test performance fixtures plus all three pinned live roles against `BurntSushi/toml`, `go-chi/chi`, and `riverqueue/river`. Post-promotion Zap and Resty pressure additionally recovered exact dot-import, concrete constructor-result, and bounded cross-package evidence. See [Go Alpha Support](go-alpha-support.md).
 
 Useful hardening targets:
 
-- Go live-corpus pressure for bounded cross-package source edges while interface dispatch, helper-return inference, and deeper dependency graphs remain excluded
+- Go assertion-usage pressure and parser-backed declaration hardening while interface dispatch, helper-return inference, ambiguous multi-callable cross-package edges, and deeper dependency graphs remain excluded
 - Kotlin/JVM with Gradle/Maven, bounded single-module and settings-owned all-KMP literal-JVM-target graphs with source-set-qualified API traversal, JUnit variants, bounded Kotest common specs, conventional Spock features, and method-level TestNG
 - Swift Package Manager with XCTest, Swift Testing, Quick/Nimble, and SnapshotTesting signals
 - Python fixture reachability, async/parametrized/property-based pytest conventions, Django/Flask routes, tox/nox commands, coverage configuration, and no-tests-yet blocker behavior
