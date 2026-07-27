@@ -25,3 +25,5 @@ The same pass recovers exact direct method evidence that the former file-wide re
 ## Remaining Boundary
 
 This slice does not infer interface dispatch, aliases, embedded promotion, parameter or field types, helper-return receivers, chained or generic constructors, direct composite-literal method calls, helper assertions, init-time ownership, cross-module calls, second-hop dependencies, or runtime reachability. Parser-backed body ownership proves lexical containment and exact static provenance; it does not claim that every path through the callable executes the dependency.
+
+The later test-helper slice supports exact simple result positions from unique statically typed helpers while retaining complex, chained, aliased, interface, and parameter/field flow as exclusions. Current measurements are recorded in the [Go Test-Helper Receiver Validation Report](go-helper-return-validation-report.md); the table above remains the callable-ownership baseline.

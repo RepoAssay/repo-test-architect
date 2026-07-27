@@ -56,3 +56,5 @@ The other pressure repositories remain conservative: `go-retryablehttp`, Afero, 
 This slice closes the common direct-constructor receiver gap without claiming interface dispatch, flow-sensitive inference, or package-wide coverage.
 
 The later receiver/callable-ownership slice resolves each constructor binding at its exact call site and removes file-wide indirect leakage. Resty now reports `1 / 18 / 2` candidates and 98 relationships while recovering five direct client/response method links; `debug.go` loses only unrelated indirect evidence. Current measurements are recorded in the [Go Receiver And Callable Ownership Validation Report](go-callable-ownership-validation-report.md).
+
+The later test-helper slice extends the same exact result-position model to statically typed test helpers. Resty retains `1 / 18 / 2` candidates and adds five reviewed direct client relationships; current measurements are recorded in the [Go Test-Helper Receiver Validation Report](go-helper-return-validation-report.md).

@@ -253,3 +253,11 @@ Decision: attach each supported concrete receiver candidate to its declaration p
 Rationale: the former file-wide receiver-name count discarded valid calls whenever a nested block or unrelated test reused the same variable name. The former one-hop rule also copied every direct test path on a source file to dependencies called by unrelated sibling functions. Exact-pin review removes those leaked links while recovering concrete method calls across all five pressure repositories. River keeps every candidate classification while moving from 576 to 284 relationships; the bounded TOML, Chi, Zap, and Resty candidate transitions are explained in the [Go Receiver And Callable Ownership Validation Report](go-callable-ownership-validation-report.md). Parser errors withhold receiver and body ownership rather than guessing.
 
 Revisit when: a pinned case justifies parameter/field type identity, interface dispatch, helper-return inference, or a second dependency hop with equally exact provenance.
+
+## Statically Typed Go Test-Helper Receivers
+
+Decision: accept a concrete receiver binding from a unique, non-generic test helper only when its simple named or unnamed return list contains the exact source receiver type and a direct `:=` call maps that result position to the local binding. Allow shared helpers across same-package `_test.go` files; require an external-package helper and its import-qualified return type to be in the calling file. Resolve same-file helper identity and every receiver call with the parser, reject visible local shadows for shared helpers, and keep complex, chained, aliased, interface, parameter, and field flow excluded.
+
+Rationale: Resty's conventional tests centralize `*Client` construction in `dcnl` and `dcldb`, then bind those statically typed results across many test files. The retained rule adds five exact direct `client.go` relationships without changing any candidate classification or upgrading Resty's custom assertion helpers. TOML, Chi, River, and Zap retain their canonical graphs. Indexing helper declarations, result bindings, and receiver calls once keeps the exact Resty audit near its prior performance envelope.
+
+Revisit when: parameter or field receiver identity, cross-file external-package helpers, helper assertions, or deeper helper flow can be proven with the same static ownership guarantees.
