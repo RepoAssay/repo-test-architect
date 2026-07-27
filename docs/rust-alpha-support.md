@@ -8,9 +8,9 @@ The Rust adapter is experimental. Its current bounded slices prove that conventi
 | --- | --- |
 | Project ownership | One root `Cargo.toml` with a static `[package].name`, either standalone or an exact member of the nearest literal Cargo workspace |
 | Source ownership | Rust files under `src/`; nested Cargo packages are separate detector roots |
-| Test harness | Built-in `#[test]` functions |
+| Test harness | Built-in `#[test]` functions, or a static repository-contained `[[test]]` target using Cargo's built-in harness |
 | Inline tests | Runnable tests inside an inline `#[cfg(test)] mod ...` block |
-| Integration tests | Runnable `.rs` files under `tests/` |
+| Integration tests | Runnable `.rs` files under `tests/`; a static explicit target can establish the command without claiming macro-expanded symbol evidence |
 | Workspace graph | Literal basic/literal-string `members`, optional `default-members`, repository-contained paths, existing package manifests, and a separately detected project per member; virtual roots are aggregate-only |
 | Test command | `cargo test` for standalone packages or `cargo test -p <package>` for an exactly owned workspace package |
 | Direct evidence | A unique source function called by its inline test module, or an exact package-name and module-qualified `use` binding called by an integration test |
@@ -29,6 +29,7 @@ The current slices do not claim support for:
 - globbed, computed, escaping, repository-external, missing, excluded, or otherwise incomplete Cargo workspace membership
 - aggregate auditing or commands from a virtual Cargo workspace root
 - custom test harnesses such as `harness = false`
+- disabled, feature-gated, missing, escaping, or dynamic explicit test targets
 - dynamic or inherited manifest ownership
 - module re-exports and wildcard imports
 - `crate`, `self`, or `super` import traversal in integration evidence
@@ -53,3 +54,5 @@ These shapes remain visible through blockers or conservative missing evidence; t
 `examples/rust-cargo-workspace-basic` adds a virtual workspace with two literal packages, an explicit default member, a path dependency, package-local inline and integration tests, exact `cargo test -p ...` commands, and an untested member-local validator.
 
 Both shapes are locked by Rust-specific unit tests, project detection/auditing coverage, audit and plan snapshots, and model-consistency scenarios. Promotion beyond experimental should still wait for live-repository validation, performance pressure, and a broader syntax/evidence boundary.
+
+The first pinned live probe, [`BurntSushi/ripgrep`](https://github.com/BurntSushi/ripgrep) at `f9c05a949d1a0dc8e16dee28ca9605d38611faeb`, preserves the root package, ten literal workspace members, and a separate fuzz workspace. It exposed and fixed exact command ownership for a manifest-declared built-in test target whose `#[test]` functions are macro-generated. The full native workspace passed 1,220 listed tests, and three post-fix audits were digest-stable with a 248 ms median. See the [Rust ripgrep Live Validation Report](rust-ripgrep-validation-report.md).

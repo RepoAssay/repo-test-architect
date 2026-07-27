@@ -24,8 +24,17 @@ export function auditRustRepo(root, options = {}) {
   const sourceFiles = files.filter((file) => isSourceFile(file.path));
   const integrationTests = files.filter((file) => isIntegrationTestFile(file.path) && hasRunnableRustTest(file.content));
   const inlineTestFiles = sourceFiles.filter((file) => hasInlineRustTests(file.content));
+  const explicitTestTargets = collectCargoExplicitTestTargets(manifest?.content ?? "", files);
   const workspaceContext = findNearestCargoWorkspace(root);
-  const profile = buildProfile(root, manifest, sourceFiles, integrationTests, inlineTestFiles, workspaceContext);
+  const profile = buildProfile(
+    root,
+    manifest,
+    sourceFiles,
+    integrationTests,
+    inlineTestFiles,
+    explicitTestTargets,
+    workspaceContext
+  );
   const changedPaths = options.changedPaths
     ? new Set(options.changedPaths.map((currentPath) => normalizeChangedPath(root, currentPath)))
     : undefined;
@@ -129,13 +138,22 @@ function readRepoFiles(root) {
   return files.sort((left, right) => left.path.localeCompare(right.path));
 }
 
-function buildProfile(root, manifest, sourceFiles, integrationTests, inlineTestFiles, workspaceContext) {
+function buildProfile(
+  root,
+  manifest,
+  sourceFiles,
+  integrationTests,
+  inlineTestFiles,
+  explicitTestTargets,
+  workspaceContext
+) {
   const manifestContent = manifest?.content ?? "";
   const hasPackage = hasCargoSection(manifestContent, "package");
   const hasWorkspace = hasCargoSection(manifestContent, "workspace");
   const packageName = cargoSectionString(manifestContent, "package", "name");
   const edition = cargoSectionString(manifestContent, "package", "edition");
   const hasRunnableTests = integrationTests.length > 0 || inlineTestFiles.length > 0;
+  const hasBuiltInTestHarness = hasRunnableTests || explicitTestTargets.length > 0;
   const blockers = [];
   if (!manifest) blockers.push("No root Cargo.toml detected for the bounded Rust package adapter.");
   if (manifest && !hasPackage) blockers.push(workspaceContext?.local
@@ -150,11 +168,12 @@ function buildProfile(root, manifest, sourceFiles, integrationTests, inlineTestF
   if (/^\s*harness\s*=\s*false\s*$/m.test(manifestContent)) {
     blockers.push("Custom Rust test harnesses are outside the bounded built-in test support matrix.");
   }
-  if (!hasRunnableTests) blockers.push("No runnable built-in Rust #[test] detected.");
+  if (!hasBuiltInTestHarness) blockers.push("No runnable built-in Rust #[test] detected.");
 
   const existingTestLocations = [];
   if (inlineTestFiles.length > 0) existingTestLocations.push("inline #[cfg(test)] modules");
   if (integrationTests.length > 0) existingTestLocations.push("tests/ integration tests");
+  if (explicitTestTargets.length > 0) existingTestLocations.push("Cargo explicit test targets");
   const architectures = [];
   if (hasPackage) architectures.push("cargo-package");
   if (hasPackage && workspaceContext?.declared) architectures.push("cargo-workspace-package");
@@ -164,6 +183,7 @@ function buildProfile(root, manifest, sourceFiles, integrationTests, inlineTestF
   const detectedConventions = [];
   if (inlineTestFiles.length > 0) detectedConventions.push("inline cfg(test) modules");
   if (integrationTests.length > 0) detectedConventions.push("Cargo integration tests");
+  if (explicitTestTargets.length > 0) detectedConventions.push("explicit Cargo test target");
   const setupSignals = [];
   if (manifest) setupSignals.push("Cargo.toml");
   if (workspaceContext?.local) setupSignals.push("Cargo workspace");
@@ -182,16 +202,65 @@ function buildProfile(root, manifest, sourceFiles, integrationTests, inlineTestF
     root,
     languages: ["rust"],
     packageManagers: manifest ? ["cargo"] : [],
-    testFrameworks: hasRunnableTests ? ["rust-test"] : [],
+    testFrameworks: hasBuiltInTestHarness ? ["rust-test"] : [],
     architectures,
     ...(testCommand ? { testCommand } : {}),
     detectedConventions,
     existingTestLocations,
     setupSignals,
-    confidence: scoreProfileConfidence(manifest, hasPackage, hasRunnableTests, existingTestLocations, blockers),
+    confidence: scoreProfileConfidence(manifest, hasPackage, hasBuiltInTestHarness, existingTestLocations, blockers),
     blockers,
     crateImportName: packageName?.replaceAll("-", "_")
   };
+}
+
+function collectCargoExplicitTestTargets(manifestContent, files) {
+  const filePaths = new Set(files.map((file) => normalizePath(file.path)));
+  const targets = [];
+  for (const body of cargoArrayTableBodies(manifestContent, "test")) {
+    if (cargoTableBoolean(body, "harness") === false || cargoTableBoolean(body, "test") === false) continue;
+    if (/^\s*required-features\s*=/m.test(body)) continue;
+    const name = cargoTableString(body, "name");
+    const declaredPath = cargoTableString(body, "path");
+    const targetPath = normalizeCargoTestTargetPath(declaredPath ?? (name ? `tests/${name}.rs` : undefined));
+    if (!targetPath || !filePaths.has(targetPath)) continue;
+    targets.push(targetPath);
+  }
+  return [...new Set(targets)].sort();
+}
+
+function cargoArrayTableBodies(content, table) {
+  const pattern = new RegExp(`^\\s*\\[\\[${escapeRegExp(table)}\\]\\]\\s*(?:#.*)?$`, "gm");
+  const matches = [...content.matchAll(pattern)];
+  return matches.map((match) => {
+    const start = match.index + match[0].length;
+    const nextTable = content.slice(start).search(/^\s*\[/m);
+    return nextTable === -1 ? content.slice(start) : content.slice(start, start + nextTable);
+  });
+}
+
+function cargoTableString(body, key) {
+  const raw = body.match(new RegExp(`^\\s*${escapeRegExp(key)}\\s*=\\s*("(?:[^"\\\\]|\\\\.)*"|'[^'\\r\\n]*')\\s*(?:#.*)?$`, "m"))?.[1];
+  if (!raw) return undefined;
+  if (raw.startsWith("'")) return raw.slice(1, -1);
+  try {
+    const value = JSON.parse(raw);
+    return typeof value === "string" ? value : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function cargoTableBoolean(body, key) {
+  const value = body.match(new RegExp(`^\\s*${escapeRegExp(key)}\\s*=\\s*(true|false)\\s*(?:#.*)?$`, "m"))?.[1];
+  return value === undefined ? undefined : value === "true";
+}
+
+function normalizeCargoTestTargetPath(value) {
+  if (!value || path.isAbsolute(value) || path.win32.isAbsolute(value)) return undefined;
+  const normalized = normalizePath(value).replace(/^\.\//, "").replace(/\/$/, "");
+  if (!normalized.endsWith(".rs") || normalized.split("/").includes("..")) return undefined;
+  return normalized;
 }
 
 function scoreProfileConfidence(manifest, hasPackage, hasRunnableTests, existingTestLocations, blockers) {

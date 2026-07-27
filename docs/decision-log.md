@@ -277,3 +277,11 @@ Decision: parse bounded literal Cargo `workspace.members` and optional `default-
 Rationale: Cargo workspaces coordinate packages without merging their source, tests, candidate paths, or package identities. Exact repository-contained paths with existing manifests provide deterministic ownership; package-qualified commands also avoid `default-members` changing which package a root-directory invocation exercises. Globs, missing or external paths, excluded members, invalid defaults, and omitted packages suppress commands rather than widening the claim.
 
 Revisit when: a pinned repository justifies safe glob expansion, inherited manifest ownership, workspace-level feature selection, or an aggregate execution strategy without weakening package-local provenance.
+
+## Recognize Static Cargo Test Targets Without Inventing Evidence
+
+Decision: treat a static repository-contained `[[test]]` target as built-in Rust harness evidence when its file exists, it is enabled, it uses Cargo's default harness, and it has no required feature selection. Use that fact for framework and command selection only; do not attach source evidence unless literal runnable test bodies prove exact calls.
+
+Rationale: ripgrep disables automatic integration-test discovery and routes 323 integration tests through one explicit target whose local macro expands to `#[test]`. The manifest proves that `cargo test -p ripgrep` owns a built-in test executable, while macro expansion is outside the deterministic source matcher. Separating command proof from relationship proof recovers a native command without claiming coverage that static analysis did not observe.
+
+Revisit when: parser-backed macro invocation ownership or Cargo metadata can prove generated test bodies, required-feature selection, custom harness semantics, or nonstandard target layouts without executing target code.

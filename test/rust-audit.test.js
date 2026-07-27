@@ -153,6 +153,80 @@ describe("Rust audit adapter", () => {
     assert.deepEqual(audit.profile.blockers, []);
   });
 
+  it("selects a built-in explicit Cargo test target without inventing macro evidence", (t) => {
+    const root = createRustRepo(t, {
+      "Cargo.toml": [
+        "[package]",
+        "name = \"macro-tests\"",
+        "version = \"0.1.0\"",
+        "edition = \"2024\"",
+        "autotests = false",
+        "",
+        "[[test]]",
+        "name = \"integration\"",
+        "path = \"tests/suite.rs\"",
+        ""
+      ].join("\n"),
+      "src/lib.rs": "pub fn parse() -> usize { 1 }\n",
+      "tests/suite.rs": [
+        "macro_rules! generated_test {",
+        "    ($name:ident) => { #[test] fn $name() { assert_eq!(1, 1); } };",
+        "}",
+        "generated_test!(works);",
+        ""
+      ].join("\n")
+    });
+
+    const audit = auditRustRepo(root);
+
+    assert.equal(audit.profile.testCommand, "cargo test");
+    assert.deepEqual(audit.profile.testFrameworks, ["rust-test"]);
+    assert.deepEqual(audit.profile.detectedConventions, ["explicit Cargo test target"]);
+    assert.deepEqual(audit.profile.existingTestLocations, ["Cargo explicit test targets"]);
+    assert.deepEqual(audit.profile.blockers, []);
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.path), ["src/lib.rs"]);
+    assert.deepEqual(audit.coveredButRisky, []);
+  });
+
+  it("does not select disabled, custom, feature-gated, or escaping Cargo test targets", (t) => {
+    const root = createRustRepo(t, {
+      "Cargo.toml": [
+        "[package]",
+        "name = \"bounded-targets\"",
+        "version = \"0.1.0\"",
+        "",
+        "[[test]]",
+        "name = \"disabled\"",
+        "test = false",
+        "",
+        "[[test]]",
+        "name = \"custom\"",
+        "harness = false",
+        "",
+        "[[test]]",
+        "name = \"feature\"",
+        "required-features = [\"integration\"]",
+        "",
+        "[[test]]",
+        "name = \"escaping\"",
+        "path = \"../outside.rs\"",
+        ""
+      ].join("\n"),
+      "src/lib.rs": "pub fn parse() -> usize { 1 }\n",
+      "tests/disabled.rs": "fn helper() {}\n",
+      "tests/custom.rs": "fn main() {}\n",
+      "tests/feature.rs": "fn helper() {}\n"
+    });
+
+    const audit = auditRustRepo(root);
+
+    assert.equal(audit.profile.testCommand, undefined);
+    assert.deepEqual(audit.profile.testFrameworks, []);
+    assert.deepEqual(audit.profile.detectedConventions, []);
+    assert.ok(audit.profile.blockers.includes("Custom Rust test harnesses are outside the bounded built-in test support matrix."));
+    assert.ok(audit.profile.blockers.includes("No runnable built-in Rust #[test] detected."));
+  });
+
   it("keeps exact crate imports and direct call usage bounded", (t) => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-rust-evidence-"));
     t.after(() => fs.rmSync(root, { recursive: true, force: true }));

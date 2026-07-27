@@ -31,6 +31,7 @@ describe("package contents", () => {
     assert.ok(requiredFiles.includes("examples/go-workspace-basic/services/checkout/go.mod"));
     assert.ok(requiredFiles.includes("examples/rust-cargo-basic/Cargo.toml"));
     assert.ok(requiredFiles.includes("src/adapters/rust/cargo-workspace.js"));
+    assert.ok(requiredFiles.includes("docs/rust-ripgrep-validation-report.md"));
     assert.ok(requiredFiles.includes("examples/rust-cargo-workspace-basic/Cargo.toml"));
     assert.ok(requiredFiles.includes("examples/rust-cargo-workspace-basic/services/checkout/Cargo.toml"));
     assert.ok(requiredFiles.includes("schemas/diagnostic-event-v1.schema.json"));
