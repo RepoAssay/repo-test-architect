@@ -41,3 +41,5 @@ TOML, Chi, Resty, `go-retryablehttp`, and Afero remain semantically unchanged. T
 The checked-in standalone fixture now calls `internal/currency.Valid` from the directly tested, single-callable `price_parser.go`. On 2026-07-27 it passed `go test ./...`, `go test -race ./...`, and `gofmt` with Go 1.26.5 on Darwin arm64. Its golden audit and model-consistency scenario lock the cross-package `go-source-dependency` relationship and resulting plan item.
 
 This slice does not claim multi-callable function-body ownership, cross-module reachability, interfaces, runtime dispatch, or dependencies beyond one source hop.
+
+The later assertion-usage slice preserves the same River and Zap candidate and relationship counts while enriching entrypoint usage. River's current root digest is `a9ef959b5dae0685ab338d0a41ae8e6e70f73e3137654ea4ab91b46254c2ae6d`; Zap's is `ef7f291da706cf6f59f0f73c9ada5c455e9914c81edac203491b9387874eba61`. The assertion boundary is documented separately in the [Go Assertion-Usage Validation Report](go-assertion-validation-report.md).

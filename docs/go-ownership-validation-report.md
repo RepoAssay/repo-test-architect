@@ -12,7 +12,7 @@ The validation finder now exposes a `go-workspace` profile requiring a root `go.
 
 Three post-hardening repository audits took 712, 622, and 614 ms. They produced the same normalized project-audit digest, `62dff714c5ccadb78383acb9796e9627bb4cca5cddfdb2d3c032fb5b855df383`, with 662 evidence relationships. The pinned tree contains 296 Go files, including 144 test files.
 
-The shared corpus measures the same exact checkout through the direct root-module adapter contract: the bounded cross-package remeasurement took 983, 896, and 937 ms, for a 937 ms median, 6 untested, 47 covered, 10 skipped, and 576 evidence relationships. Their normalized audit digest is `37c91a11954bed715e62be18e779e4dbf4ee20606f348ea2b84878bee293a7eb`. The repository-level figures above remain the ownership review across all nine detected projects; the direct measurement is the reproducible per-case corpus baseline.
+The shared corpus measures the same exact checkout through the direct root-module adapter contract: the assertion-usage remeasurement took 960, 885, and 899 ms, for an 899 ms median, 6 untested, 47 covered, 10 skipped, and 576 evidence relationships. Twelve exact Testify relationships are now marked asserted, producing normalized audit digest `a9ef959b5dae0685ab338d0a41ae8e6e70f73e3137654ea4ab91b46254c2ae6d`. The repository-level figures above remain the ownership review across all nine detected projects; the direct measurement is the reproducible per-case corpus baseline.
 
 ## Native Validation
 
@@ -62,7 +62,7 @@ The difficult-ownership probe passes the reviewed detection, ownership, command,
 - repeated full-repository audits are semantically stable and remain below one second locally
 - database prerequisites are documented without claiming that the static command provisions them
 
-Workspace `replace` effects, repository-external members, receiver methods without an explicit type or exact simple concrete constructor result, interface dispatch, generic type construction, reflection, deeper dependencies, ambiguous multi-callable or cross-module edges, service provisioning, coverage profiles, runtime reachability, and assertion completeness remain outside the bounded adapter.
+Workspace `replace` effects, repository-external members, receiver methods without an explicit type or exact simple concrete constructor result, interface dispatch, generic type construction, reflection, deeper dependencies, ambiguous multi-callable or cross-module edges, service provisioning, coverage profiles, runtime reachability, helper/custom assertions, and deeper assertion-result flow remain outside the bounded adapter.
 
 ## Corpus Progress
 
@@ -71,3 +71,5 @@ This checkout is the difficult-ownership role in `validation-corpus/v1`. The con
 The explicitly typed receiver-method slice was remeasured against this exact checkout without changing its candidate counts, 572 evidence relationships, or canonical digest. A test-local method name initially exposed and fixed a shadow-set regression before the corpus baseline could move; methods no longer suppress same-named top-level source functions.
 
 The later constructor slice retained 572 relationships. Bounded cross-package evidence then added four reviewed relationships from tests that directly call the sole `MetadataSet` declaration in `metadata.go` to its exact module-local `internal/jobexecutor.MetadataUpdatesFromWorkContext` dependency. Candidate counts remain unchanged at 6 untested, 47 covered, and 10 skipped.
+
+The assertion-usage slice then retained all 576 relationships and candidate classifications while upgrading 12 exact Testify relationships. Its current direct-corpus digest and timing are recorded above and detailed in the [Go Assertion-Usage Validation Report](go-assertion-validation-report.md).

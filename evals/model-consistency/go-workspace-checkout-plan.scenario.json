@@ -43,8 +43,8 @@
     },
     {
       "path": "items[0].existingTestEvidence[0].usage",
-      "expected": "called",
-      "reason": "The owned checkout function remains directly called by its runnable test."
+      "expected": "asserted",
+      "reason": "The owned checkout function remains consumed by an exact standard-library failure condition."
     }
   ],
   "allowedVariations": [

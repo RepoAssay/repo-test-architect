@@ -119,7 +119,7 @@
             "commit": "c6d720d83547bb8d7afb067ba9df8bad0323e2d1",
             "projectRoot": "."
           },
-          "supportBoundary": "Conventional parser module with standard-library tests, fuzz and example functions, fixture-owned testdata, and bounded one-hop source evidence.",
+          "supportBoundary": "Conventional parser module with standard-library tests, fuzz and example functions, fixture-owned testdata, bounded assertion usage, and one-hop source evidence.",
           "reportPath": "docs/go-validation-hunt-report.md",
           "scorecard": {
             "detection": "pass",
@@ -135,14 +135,14 @@
             "untestedCandidates": 6,
             "coveredButRisky": 9,
             "skippedTargets": 7,
-            "auditDurationMs": 238,
+            "auditDurationMs": 245,
             "auditDurationSamplesMs": [
-              285,
-              238,
-              237
+              287,
+              245,
+              238
             ],
             "evidenceRelationshipCount": 50,
-            "canonicalAuditSha256": "b256cd73b9e3b0fbbb7779749dd5ada349f7d5ed4318449415bb6be94ab170d5"
+            "canonicalAuditSha256": "9489b38da82cabd66db1f0ccd50a01a18e304f8f9077ceaa019d319d0b046979"
           }
         },
         {
@@ -160,7 +160,7 @@
               "tags": []
             }
           },
-          "supportBoundary": "HTTP router and middleware module with an explicit static target, nested example-module boundaries, and Go-aware lexical evidence.",
+          "supportBoundary": "HTTP router and middleware module with an explicit static target, nested example-module boundaries, Go-aware lexical evidence, and bounded standard-library assertion usage.",
           "reportPath": "docs/go-http-validation-report.md",
           "scorecard": {
             "detection": "pass",
@@ -176,14 +176,14 @@
             "untestedCandidates": 14,
             "coveredButRisky": 23,
             "skippedTargets": 10,
-            "auditDurationMs": 553,
+            "auditDurationMs": 563,
             "auditDurationSamplesMs": [
-              592,
-              533,
-              553
+              623,
+              563,
+              560
             ],
             "evidenceRelationshipCount": 70,
-            "canonicalAuditSha256": "2f9078d5c4978a2ff0ec0226bf3658fb0864e2a4de92cc3a6ee134e232cd482e"
+            "canonicalAuditSha256": "d452349229f777e8ff24bd67dc0d1440451625dc6c188e41dd1c41399a00e3fc"
           }
         },
         {
@@ -194,7 +194,7 @@
             "commit": "b6c733cf8699eeb825a0c719c6c81041817d87c9",
             "projectRoot": "."
           },
-          "supportBoundary": "Nine-member literal go.work graph whose root module excludes eight nested module owners while retaining generic top-level function evidence.",
+          "supportBoundary": "Nine-member literal go.work graph whose root module excludes eight nested module owners while retaining generic top-level function and exact Testify assertion evidence.",
           "reportPath": "docs/go-ownership-validation-report.md",
           "scorecard": {
             "detection": "pass",
@@ -210,14 +210,14 @@
             "untestedCandidates": 6,
             "coveredButRisky": 47,
             "skippedTargets": 10,
-            "auditDurationMs": 937,
+            "auditDurationMs": 899,
             "auditDurationSamplesMs": [
-              983,
-              896,
-              937
+              960,
+              885,
+              899
             ],
             "evidenceRelationshipCount": 576,
-            "canonicalAuditSha256": "37c91a11954bed715e62be18e779e4dbf4ee20606f348ea2b84878bee293a7eb"
+            "canonicalAuditSha256": "a9ef959b5dae0685ab338d0a41ae8e6e70f73e3137654ea4ab91b46254c2ae6d"
           }
         }
       ]

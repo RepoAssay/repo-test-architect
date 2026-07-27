@@ -38,7 +38,7 @@
           "testPath": "price_parser_test.go",
           "kind": "go-symbol-reference",
           "strength": "direct",
-          "usage": "called"
+          "usage": "asserted"
         },
         {
           "testPath": "price_parser_test.go",
@@ -75,7 +75,7 @@
           "testPath": "price_parser_test.go",
           "kind": "go-source-dependency",
           "strength": "indirect",
-          "viaUsage": "called"
+          "viaUsage": "asserted"
         }
       ]
     },
@@ -142,7 +142,7 @@
           "testPath": "price_parser_test.go",
           "kind": "go-source-dependency",
           "strength": "indirect",
-          "viaUsage": "called"
+          "viaUsage": "asserted"
         }
       ]
     },

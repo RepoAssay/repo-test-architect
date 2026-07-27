@@ -49,6 +49,8 @@ All three promoted Go roles retain their candidate classifications. TOML moves f
 
 The subsequent cross-package slice keeps TOML and Chi stable and moves River from 572 to 576 relationships through four reviewed module-local edges; it is documented separately in the [Go Cross-Package Source Validation Report](go-cross-package-validation-report.md).
 
+The later assertion-usage slice leaves Resty byte-for-byte unchanged at 119 relationships and normalized digest `1609fc14f89b36babe350822ca98737eaa321f0e409b7370a0b8be5eadaad487`, making it the negative control for assertion inference. Details are recorded in the [Go Assertion-Usage Validation Report](go-assertion-validation-report.md).
+
 The other pressure repositories remain conservative: `go-retryablehttp`, Afero, and Zap do not change. No pressure repository changes candidate category.
 
 This slice closes the common direct-constructor receiver gap without claiming interface dispatch, flow-sensitive inference, or package-wide coverage.
