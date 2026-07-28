@@ -67,6 +67,8 @@ Go workspaces do not collapse into one aggregate project. Every `go.mod` remains
 
 Literal Cargo workspaces follow the same package-ownership principle. A complete virtual workspace root is aggregate-only, while every exact `members` package remains an independently detected project with `cargo test -p <package>`. Optional literal `default-members` are retained as setup evidence. Globs, escaping or external paths, missing manifests, excluded members, invalid defaults, and incomplete graphs prevent the detector from hiding the aggregate and suppress package commands rather than guessing.
 
+Exactly two otherwise independent C# project roots collapse to their common audit root only when one is statically a test project and contains one unconditional literal relative `ProjectReference` resolving to the other project. Dynamic, conditional, absolute, escaping, missing, additional, and larger `.csproj` graphs remain separately detected so repository-wide analysis cannot invent aggregate ownership.
+
 ## Output Contract
 
 Detection emits `project-detection/v1` with:

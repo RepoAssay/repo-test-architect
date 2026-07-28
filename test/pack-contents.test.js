@@ -43,6 +43,8 @@ describe("package contents", () => {
     assert.ok(requiredFiles.includes("docs/rust-alpha-support.md"));
     assert.ok(requiredFiles.includes("examples/go-testing-basic/go.mod"));
     assert.ok(requiredFiles.includes("examples/csharp-sdk-xunit-basic/CheckoutRules.Tests.csproj"));
+    assert.ok(requiredFiles.includes("examples/csharp-sdk-project-pair/src/CheckoutRules/CheckoutRules.csproj"));
+    assert.ok(requiredFiles.includes("examples/csharp-sdk-project-pair/tests/CheckoutRules.Tests/CheckoutRules.Tests.csproj"));
     assert.ok(requiredFiles.includes("examples/go-build-target-basic/go.mod"));
     assert.ok(requiredFiles.includes("examples/go-workspace-basic/go.work"));
     assert.ok(requiredFiles.includes("examples/go-workspace-basic/services/checkout/go.mod"));

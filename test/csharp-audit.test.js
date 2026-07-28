@@ -27,6 +27,27 @@ describe("C# audit adapter", () => {
     assert.deepEqual(audit.skipped.map((target) => target.path), ["CheckoutRequest.cs"]);
   });
 
+  it("audits a literal SDK-style production/test project pair", () => {
+    const audit = auditCSharpRepo(path.resolve("examples/csharp-sdk-project-pair"));
+
+    assert.deepEqual(audit.profile.architectures, ["dotnet-sdk-project", "dotnet-project-pair", "dotnet-test-project", "library"]);
+    assert.equal(audit.profile.testCommand, "dotnet test tests/CheckoutRules.Tests/CheckoutRules.Tests.csproj");
+    assert.deepEqual(audit.profile.setupSignals.slice(0, 2), [
+      "src/CheckoutRules/CheckoutRules.csproj",
+      "tests/CheckoutRules.Tests/CheckoutRules.Tests.csproj"
+    ]);
+    assert.equal(audit.profile.confidence, "high");
+    assert.deepEqual(audit.profile.blockers, []);
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.path), ["src/CheckoutRules/CheckoutService.cs"]);
+    assert.deepEqual(audit.coveredButRisky[0].existingTestEvidence, [{
+      testPath: "tests/CheckoutRules.Tests/DiscountCalculatorTests.cs",
+      kind: "csharp-symbol-reference",
+      strength: "direct",
+      usage: "asserted"
+    }]);
+    assert.deepEqual(audit.skipped.map((target) => target.path), ["src/CheckoutRules/CheckoutRequest.cs"]);
+  });
+
   it("detects bounded NUnit and MSTest attributed tests", (t) => {
     const nunit = createRepo(t, {
       "Example.Tests.csproj": projectFile("NUnit", "<IsTestProject>true</IsTestProject>"),
@@ -69,7 +90,7 @@ describe("C# audit adapter", () => {
     const audit = auditCSharpRepo(root);
 
     assert.equal(audit.profile.testCommand, undefined);
-    assert.ok(audit.profile.blockers.includes("Exactly one root .csproj is required before C# command ownership is unambiguous."));
+    assert.ok(audit.profile.blockers.includes("Exactly one root test .csproj or one literal production/test project pair is required before C# command ownership is unambiguous."));
     assert.ok(audit.profile.blockers.includes("No runnable attributed C# tests detected."));
   });
 
@@ -94,8 +115,8 @@ describe("C# audit adapter", () => {
     assert.ok(blockers.includes("A single static TargetFramework is required for bounded C# command selection."));
     assert.ok(blockers.includes("Multi-targeted C# projects are outside the first bounded adapter slice."));
     assert.ok(blockers.includes("Custom MSBuild Compile item graphs are outside the first bounded C# source-ownership slice."));
-    assert.ok(blockers.includes("ProjectReference and solution graphs require a later C# ownership slice."));
-    assert.ok(blockers.includes("Microsoft.NET.Test.Sdk is required for the first bounded C# test command."));
+    assert.ok(blockers.includes("ProjectReference is supported only for one literal production/test project pair."));
+    assert.ok(blockers.includes("Microsoft.NET.Test.Sdk is required for the bounded C# test command."));
   });
 
   it("does not credit comments, strings, duplicate types, or test-local shadows", (t) => {
@@ -139,12 +160,12 @@ describe("C# audit adapter", () => {
     assert.equal(audit.profile.confidence, "medium");
     assert.equal(audit.profile.testCommand, undefined);
     assert.deepEqual(audit.profile.blockers, [
-      "No root .csproj detected for the bounded C# SDK project adapter.",
+      "No .csproj detected for the bounded C# SDK project adapter.",
       "No runnable attributed C# tests detected."
     ]);
   });
 
-  it("keeps nested SDK projects outside the owning project audit", (t) => {
+  it("does not join an unreferenced nested SDK project into the audit", (t) => {
     const root = createRepo(t, {
       "Example.Tests.csproj": projectFile("xunit"),
       "RootService.cs": "public class RootService { public int Run() => 1; }\n",
@@ -154,7 +175,58 @@ describe("C# audit adapter", () => {
     });
 
     const audit = auditCSharpRepo(root);
-    assert.deepEqual(audit.untestedCandidates.map((target) => target.path), ["RootService.cs"]);
+    assert.equal(audit.profile.testCommand, undefined);
+    assert.ok(audit.profile.blockers.includes("The test project must contain exactly one literal ProjectReference to the production project, with no other project edges."));
+    assert.ok(audit.recommended.every((target) => target.path !== "RootService.cs"));
+  });
+
+  it("normalizes a portable literal ProjectReference", (t) => {
+    const root = createRepo(t, {
+      "src/Core/Core.csproj": productionProjectFile(),
+      "src/Core/Calculator.cs": "public static class Calculator { public static int Add(int a, int b) => a + b; }\n",
+      "tests/Core.Tests/Core.Tests.csproj": testProjectFile("..\\..\\src\\Core\\Core.csproj"),
+      "tests/Core.Tests/CalculatorTests.cs": "public class CalculatorTests { [Fact] public void Adds() { Assert.Equal(3, Calculator.Add(1, 2)); } }\n"
+    });
+
+    const audit = auditCSharpRepo(root);
+    assert.equal(audit.profile.testCommand, "dotnet test tests/Core.Tests/Core.Tests.csproj");
+    assert.deepEqual(audit.profile.blockers, []);
+  });
+
+  it("supports a root production project with one nested test project", (t) => {
+    const root = createRepo(t, {
+      "Core.csproj": productionProjectFile(),
+      "Calculator.cs": "public static class Calculator { public static int Add(int a, int b) => a + b; }\n",
+      "tests/Core.Tests/Core.Tests.csproj": testProjectFile("../../Core.csproj"),
+      "tests/Core.Tests/CalculatorTests.cs": "public class CalculatorTests { [Fact] public void Adds() { Assert.Equal(3, Calculator.Add(1, 2)); } }\n",
+      "tests/Core.Tests/TestDataBuilder.cs": "public class TestDataBuilder { public int Value() => 1; }\n"
+    });
+
+    const audit = auditCSharpRepo(root);
+    assert.deepEqual(audit.profile.blockers, []);
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["Calculator.cs"]);
+    assert.ok(audit.recommended.every((target) => target.path !== "tests/Core.Tests/TestDataBuilder.cs"));
+  });
+
+  it("blocks dynamic, mismatched, and additional project graph shapes", (t) => {
+    const dynamic = createRepo(t, {
+      "src/Core/Core.csproj": productionProjectFile("net9.0"),
+      "src/Core/Core.cs": "public class Core { public int Run() => 1; }\n",
+      "tests/Core.Tests/Core.Tests.csproj": testProjectFile("$(CoreProject)"),
+      "tests/Core.Tests/CoreTests.cs": "public class CoreTests { [Fact] public void Runs() { Assert.Equal(1, new Core().Run()); } }\n"
+    });
+    const additional = createRepo(t, {
+      "src/Core/Core.csproj": productionProjectFile(),
+      "src/Other/Other.csproj": productionProjectFile(),
+      "tests/Core.Tests/Core.Tests.csproj": testProjectFile("../../src/Core/Core.csproj"),
+      "tests/Core.Tests/CoreTests.cs": "public class CoreTests { [Fact] public void Runs() { Assert.True(true); } }\n"
+    });
+
+    const dynamicBlockers = auditCSharpRepo(dynamic).profile.blockers;
+    assert.ok(dynamicBlockers.includes("The test project must contain exactly one literal ProjectReference to the production project, with no other project edges."));
+    assert.ok(dynamicBlockers.includes("The production and test projects must use the same static TargetFramework in this slice."));
+    assert.deepEqual(auditCSharpRepo(dynamic).coveredButRisky, []);
+    assert.ok(auditCSharpRepo(additional).profile.blockers.includes("Exactly one root test .csproj or one literal production/test project pair is required before C# command ownership is unambiguous."));
   });
 
   it("classifies application wiring and common boundary types", (t) => {
@@ -206,6 +278,14 @@ describe("C# audit adapter", () => {
 
 function projectFile(framework, extra = "") {
   return `<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><TargetFramework>net10.0</TargetFramework>${extra}</PropertyGroup><ItemGroup><PackageReference Include="Microsoft.NET.Test.Sdk" /><PackageReference Include="${framework}" /></ItemGroup></Project>`;
+}
+
+function productionProjectFile(targetFramework = "net10.0") {
+  return `<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><TargetFramework>${targetFramework}</TargetFramework></PropertyGroup></Project>`;
+}
+
+function testProjectFile(reference) {
+  return `<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><TargetFramework>net10.0</TargetFramework><IsTestProject>true</IsTestProject></PropertyGroup><ItemGroup><PackageReference Include="Microsoft.NET.Test.Sdk" /><PackageReference Include="xunit" /><ProjectReference Include="${reference}" /></ItemGroup></Project>`;
 }
 
 function createRepo(t, files) {

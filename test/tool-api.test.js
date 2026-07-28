@@ -66,7 +66,7 @@ describe("tool API", () => {
     assert.equal(registry.schemaVersion, "adapter-registry/v1");
     assert.deepEqual(registry.adapters.map((adapter) => adapter.id), ["javascript", "csharp", "go", "kotlin", "python", "rust", "swift"]);
     assert.deepEqual(registry.adapters[0].supportedProjectTypes, ["node", "express", "react", "browser-e2e"]);
-    assert.deepEqual(registry.adapters.find((adapter) => adapter.id === "csharp").supportedProjectTypes, ["dotnet-sdk-test-project"]);
+    assert.deepEqual(registry.adapters.find((adapter) => adapter.id === "csharp").supportedProjectTypes, ["dotnet-sdk-test-project", "dotnet-sdk-project-pair"]);
     assert.deepEqual(registry.adapters.find((adapter) => adapter.id === "go").supportedProjectTypes, ["go-module"]);
     assert.deepEqual(registry.adapters.find((adapter) => adapter.id === "kotlin").supportedProjectTypes, ["gradle-jvm", "gradle-jvm-multimodule", "gradle-kmp-jvm", "maven-jvm", "maven-jvm-reactor"]);
     assert.deepEqual(registry.adapters.find((adapter) => adapter.id === "python").supportedProjectTypes, ["django", "fastapi", "flask", "python-package"]);

@@ -58,7 +58,7 @@ export const adapters = [
     languages: ["csharp"],
     maturity: "experimental",
     supportedTestFrameworks: ["mstest", "nunit", "xunit"],
-    supportedProjectTypes: ["dotnet-sdk-test-project"],
+    supportedProjectTypes: ["dotnet-sdk-test-project", "dotnet-sdk-project-pair"],
     emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"],
     audit(repoRoot, options = {}) {
       return auditCSharpRepo(repoRoot, {

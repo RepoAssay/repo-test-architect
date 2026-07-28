@@ -1,0 +1,76 @@
+{
+  "schemaVersion": "model-consistency-scenario/v1",
+  "id": "csharp-sdk-project-pair-plan",
+  "description": "Different model profiles should preserve the literal C# production/test project edge, exact test-project command, cross-project direct evidence, and production-owned target paths.",
+  "sourceArtifact": {
+    "path": "evals/expected/csharp-sdk-project-pair.audit.json",
+    "schemaVersion": "audit/v1"
+  },
+  "toolCall": {
+    "toolName": "generate_test_plan",
+    "arguments": {}
+  },
+  "lockedFields": [
+    {
+      "path": "summary.verificationCommand",
+      "expected": "dotnet test tests/CheckoutRules.Tests/CheckoutRules.Tests.csproj",
+      "reason": "The verified pair should retain the exact test-project command."
+    },
+    {
+      "path": "summary.blockerCount",
+      "expected": 0,
+      "reason": "The literal pair fixture should remain inside the bounded ownership contract."
+    },
+    {
+      "path": "summary.addTestCount",
+      "expected": 1,
+      "reason": "The untested production service should remain the one add-test item."
+    },
+    {
+      "path": "summary.extendTestCount",
+      "expected": 1,
+      "reason": "The directly asserted production calculator should remain the one extend-test item."
+    },
+    {
+      "path": "summary.deferredCount",
+      "expected": 1,
+      "reason": "The data-only production request should remain deferred."
+    },
+    {
+      "path": "items[0].id",
+      "expected": "add-test:src/CheckoutRules/CheckoutService.cs",
+      "reason": "The service identity must retain its production-project path."
+    },
+    {
+      "path": "items[1].id",
+      "expected": "extend-test:src/CheckoutRules/DiscountCalculator.cs",
+      "reason": "The calculator identity must retain its production-project path."
+    },
+    {
+      "path": "items[1].existingTestEvidence[0].testPath",
+      "expected": "tests/CheckoutRules.Tests/DiscountCalculatorTests.cs",
+      "reason": "Direct evidence must remain attached to the test-project-owned attributed test."
+    },
+    {
+      "path": "items[1].existingTestEvidence[0].usage",
+      "expected": "asserted",
+      "reason": "The exact calculator call remains nested inside the xUnit assertion."
+    },
+    {
+      "path": "items[2].id",
+      "expected": "defer:src/CheckoutRules/CheckoutRequest.cs",
+      "reason": "The production data-only record should not become a direct test recommendation."
+    }
+  ],
+  "allowedVariations": [
+    "summary wording",
+    "additional non-locked C# project-pair metadata",
+    "optional detail depth"
+  ],
+  "unexpectedVariations": [
+    "missing exact test-project command",
+    "missing direct cross-project calculator evidence",
+    "test-project helper promoted as a source candidate",
+    "solution or transitive project ownership claim"
+  ]
+}

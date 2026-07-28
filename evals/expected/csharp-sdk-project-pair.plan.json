@@ -1,0 +1,86 @@
+{
+  "schemaVersion": "plan/v1",
+  "summary": {
+    "confidence": "high",
+    "verificationCommand": "dotnet test tests/CheckoutRules.Tests/CheckoutRules.Tests.csproj",
+    "blockerCount": 0,
+    "addTestCount": 1,
+    "extendTestCount": 1,
+    "deferredCount": 1
+  },
+  "blockers": [],
+  "items": [
+    {
+      "id": "add-test:src/CheckoutRules/CheckoutService.cs",
+      "action": "add-test",
+      "targetId": "src/CheckoutRules/CheckoutService.cs",
+      "target": "CheckoutService",
+      "path": "src/CheckoutRules/CheckoutService.cs",
+      "testLevel": "unit",
+      "priority": 5,
+      "riskReductionScore": 8,
+      "maintenanceCost": 3,
+      "rationale": [
+        "Branching C# behavior",
+        "Fallible or edge-case behavior"
+      ],
+      "sourceSignals": [
+        "service-boundary",
+        "branching-logic",
+        "edge-case-surface"
+      ],
+      "existingTestPaths": []
+    },
+    {
+      "id": "extend-test:src/CheckoutRules/DiscountCalculator.cs",
+      "action": "extend-test",
+      "targetId": "src/CheckoutRules/DiscountCalculator.cs",
+      "target": "DiscountCalculator",
+      "path": "src/CheckoutRules/DiscountCalculator.cs",
+      "testLevel": "unit",
+      "priority": 5,
+      "riskReductionScore": 8,
+      "maintenanceCost": 3,
+      "rationale": [
+        "Branching C# behavior",
+        "Fallible or edge-case behavior",
+        "Existing C# test evidence detected; review missing edge cases"
+      ],
+      "sourceSignals": [
+        "pure-logic",
+        "branching-logic",
+        "edge-case-surface",
+        "matching-test"
+      ],
+      "existingTestPaths": [
+        "tests/CheckoutRules.Tests/DiscountCalculatorTests.cs"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "tests/CheckoutRules.Tests/DiscountCalculatorTests.cs",
+          "kind": "csharp-symbol-reference",
+          "strength": "direct",
+          "usage": "asserted"
+        }
+      ]
+    },
+    {
+      "id": "defer:src/CheckoutRules/CheckoutRequest.cs",
+      "action": "defer",
+      "targetId": "src/CheckoutRules/CheckoutRequest.cs",
+      "target": "CheckoutRequest",
+      "path": "src/CheckoutRules/CheckoutRequest.cs",
+      "testLevel": "none",
+      "priority": 0,
+      "riskReductionScore": 2,
+      "maintenanceCost": 2,
+      "rationale": [
+        "Data-only C# models are better exercised through consuming behavior."
+      ],
+      "sourceSignals": [
+        "dto-only"
+      ],
+      "existingTestPaths": []
+    }
+  ]
+}

@@ -6,6 +6,16 @@ import { describe, it } from "node:test";
 import { auditDetectedProjects } from "../src/core/project-auditor.js";
 
 describe("project auditor", () => {
+  it("audits a literal C# production/test pair once at the common root", () => {
+    const result = auditDetectedProjects(path.resolve("examples/csharp-sdk-project-pair"));
+
+    assert.deepEqual(result.summary, { projectCount: 1, auditedProjectCount: 1, skippedProjectCount: 0 });
+    assert.equal(result.audits[0].projectId, ".");
+    assert.equal(result.audits[0].adapterId, "csharp");
+    assert.equal(result.audits[0].audit.profile.testCommand, "dotnet test tests/CheckoutRules.Tests/CheckoutRules.Tests.csproj");
+    assert.deepEqual(result.audits[0].audit.profile.blockers, []);
+  });
+
   it("audits Cargo workspace packages independently with exact package commands", () => {
     const result = auditDetectedProjects(path.resolve("examples/rust-cargo-workspace-basic"));
 

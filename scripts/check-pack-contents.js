@@ -43,6 +43,8 @@ export const requiredFiles = [
   "docs/rust-ripgrep-validation-report.md",
   "examples/go-testing-basic/go.mod",
   "examples/csharp-sdk-xunit-basic/CheckoutRules.Tests.csproj",
+  "examples/csharp-sdk-project-pair/src/CheckoutRules/CheckoutRules.csproj",
+  "examples/csharp-sdk-project-pair/tests/CheckoutRules.Tests/CheckoutRules.Tests.csproj",
   "examples/go-build-target-basic/go.mod",
   "examples/go-workspace-basic/go.work",
   "examples/go-workspace-basic/services/checkout/go.mod",

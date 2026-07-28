@@ -16,16 +16,30 @@ const IGNORED_DIRECTORIES = new Set([
 
 export function auditCSharpRepo(root, options = {}) {
   const files = readRepoFiles(root);
-  const projectFiles = files.filter((file) => !file.path.includes("/") && file.path.endsWith(".csproj"));
-  const project = projectFiles.length === 1 ? projectFiles[0] : undefined;
-  const projectAnalysis = analyzeProject(project?.content ?? "");
-  const testFiles = files.filter((file) => isRunnableTestFile(file, projectAnalysis.testFrameworks));
-  const sourceFiles = files.filter((file) => file.path.endsWith(".cs") && !testFiles.includes(file));
-  const profile = buildProfile(root, projectFiles, project, projectAnalysis, sourceFiles, testFiles);
+  const projects = files
+    .filter((file) => file.path.endsWith(".csproj"))
+    .map((file) => ({ ...file, analysis: analyzeProject(file.content) }));
+  const layout = selectProjectLayout(projects);
+  const testFrameworks = layout.testProject?.analysis.testFrameworks ?? [];
+  const testFiles = files.filter((file) => (
+    file.path.endsWith(".cs") &&
+    isOwnedByProject(file.path, layout.testProject, layout.kind === "pair" ? [layout.sourceProject] : []) &&
+    isRunnableTestFile(file, testFrameworks)
+  ));
+  const sourceFiles = files.filter((file) => (
+    file.path.endsWith(".cs") &&
+    (
+      (layout.kind === "unsupported" && projects.length === 0) ||
+      isOwnedByProject(file.path, layout.sourceProject, layout.kind === "pair" ? [layout.testProject] : [])
+    ) &&
+    !testFiles.includes(file)
+  ));
+  const profile = buildProfile(root, projects, layout, sourceFiles, testFiles);
   const changedPaths = options.changedPaths
     ? new Set(options.changedPaths.map((currentPath) => normalizeChangedPath(root, currentPath)))
     : undefined;
-  const evidenceBySourcePath = collectTestEvidence(sourceFiles, testFiles);
+  const canCrossProjectEvidence = layout.kind !== "pair" || referencesProjectLiterally(layout.testProject, layout.sourceProject);
+  const evidenceBySourcePath = canCrossProjectEvidence ? collectTestEvidence(sourceFiles, testFiles) : new Map();
   const untestedCandidates = [];
   const coveredButRisky = [];
   const skipped = [];
@@ -103,7 +117,6 @@ function readRepoFiles(root) {
       const relative = normalizePath(path.relative(root, absolute));
       if (entry.isSymbolicLink()) continue;
       if (entry.isDirectory()) {
-        if (directoryHasProjectFile(absolute)) continue;
         visit(absolute);
       } else if (relative.endsWith(".cs") || relative.endsWith(".csproj")) {
         files.push({ path: relative, content: fs.readFileSync(absolute, "utf8") });
@@ -113,11 +126,6 @@ function readRepoFiles(root) {
 
   visit(root);
   return files.sort((left, right) => left.path.localeCompare(right.path));
-}
-
-function directoryHasProjectFile(directory) {
-  return fs.readdirSync(directory, { withFileTypes: true })
-    .some((entry) => entry.isFile() && entry.name.endsWith(".csproj"));
 }
 
 function analyzeProject(content) {
@@ -133,6 +141,10 @@ function analyzeProject(content) {
     : undefined;
   const sdk = content.match(/<Project\b[^>]*\bSdk\s*=\s*["']([^"']+)["']/i)?.[1];
   const hasTestSdk = packageReferences.includes("microsoft.net.test.sdk");
+  const projectReferenceTags = [...content.matchAll(/<ProjectReference\b[^>]*>/gi)].map((match) => match[0]);
+  const projectReferences = projectReferenceTags
+    .map((tag) => tag.match(/\bInclude\s*=\s*["']([^"']+)["']/i)?.[1])
+    .filter(Boolean);
 
   return {
     sdk,
@@ -141,38 +153,93 @@ function analyzeProject(content) {
     testFrameworks,
     hasTestSdk,
     isTestProject: /<IsTestProject>\s*true\s*<\/IsTestProject>/i.test(content) || hasTestSdk,
-    hasProjectReferences: /<ProjectReference\b/i.test(content),
+    projectReferences,
+    hasProjectReferences: projectReferenceTags.length > 0,
+    hasDynamicProjectReferences: projectReferences.length !== projectReferenceTags.length ||
+      projectReferences.some((reference) => /[$*?]/.test(reference)) ||
+      projectReferenceTags.some((tag) => /\bCondition\s*=/i.test(tag)),
     hasDynamicCompileItems: /<EnableDefaultCompileItems>\s*false\s*<\/EnableDefaultCompileItems>/i.test(content) || /<Compile\b[^>]*(?:Include|Remove|Update)\s*=/i.test(content),
     hasMultipleTargetFrameworks: /<TargetFrameworks>/i.test(content) || targetFrameworkMatches.length > 1
   };
 }
 
-function buildProfile(root, projectFiles, project, analysis, sourceFiles, testFiles) {
-  const blockers = [];
-  if (projectFiles.length === 0) blockers.push("No root .csproj detected for the bounded C# SDK project adapter.");
-  if (projectFiles.length > 1) blockers.push("Exactly one root .csproj is required before C# command ownership is unambiguous.");
-  if (project && !analysis.sdkStyle) blockers.push("Only static SDK-style Microsoft.NET.Sdk projects are supported in the first C# slice.");
-  if (project && !analysis.targetFramework) blockers.push("A single static TargetFramework is required for bounded C# command selection.");
-  if (analysis.hasMultipleTargetFrameworks) blockers.push("Multi-targeted C# projects are outside the first bounded adapter slice.");
-  if (analysis.hasDynamicCompileItems) blockers.push("Custom MSBuild Compile item graphs are outside the first bounded C# source-ownership slice.");
-  if (analysis.hasProjectReferences) blockers.push("ProjectReference and solution graphs require a later C# ownership slice.");
-  if (project && !analysis.isTestProject) blockers.push("The root SDK project is not statically identified as a test project.");
+function selectProjectLayout(projects) {
+  if (projects.length === 0) {
+    return { kind: "unsupported", blockers: ["No .csproj detected for the bounded C# SDK project adapter."] };
+  }
+  if (projects.length === 1) {
+    const project = projects[0];
+    const blockers = project.path.includes("/")
+      ? ["A lone C# project must be rooted at the selected audit directory before source ownership is unambiguous."]
+      : [];
+    return { kind: "single", sourceProject: project, testProject: project, blockers };
+  }
+  if (projects.length === 2) {
+    const testProjects = projects.filter((project) => project.analysis.isTestProject);
+    const sourceProjects = projects.filter((project) => !project.analysis.isTestProject);
+    if (testProjects.length === 1 && sourceProjects.length === 1) {
+      return {
+        kind: "pair",
+        sourceProject: sourceProjects[0],
+        testProject: testProjects[0],
+        blockers: []
+      };
+    }
+  }
+  return {
+    kind: "unsupported",
+    blockers: ["Exactly one root test .csproj or one literal production/test project pair is required before C# command ownership is unambiguous."]
+  };
+}
+
+function buildProfile(root, projects, layout, sourceFiles, testFiles) {
+  const blockers = [...layout.blockers];
+  const project = layout.testProject;
+  const analysis = project?.analysis ?? analyzeProject("");
+
+  if (layout.kind === "single") {
+    if (!analysis.sdkStyle) blockers.push("Only static SDK-style Microsoft.NET.Sdk projects are supported in the first C# slice.");
+    if (!analysis.targetFramework) blockers.push("A single static TargetFramework is required for bounded C# command selection.");
+    if (analysis.hasMultipleTargetFrameworks) blockers.push("Multi-targeted C# projects are outside the first bounded adapter slice.");
+    if (analysis.hasDynamicCompileItems) blockers.push("Custom MSBuild Compile item graphs are outside the first bounded C# source-ownership slice.");
+    if (analysis.hasProjectReferences) blockers.push("ProjectReference is supported only for one literal production/test project pair.");
+    if (!analysis.isTestProject) blockers.push("The root SDK project is not statically identified as a test project.");
+  }
+
+  if (layout.kind === "pair") {
+    const sourceAnalysis = layout.sourceProject.analysis;
+    const pairAnalyses = [sourceAnalysis, analysis];
+    if (pairAnalyses.some((current) => !current.sdkStyle)) blockers.push("Both projects must use a static Microsoft.NET.Sdk project shape.");
+    if (pairAnalyses.some((current) => !current.targetFramework)) blockers.push("Both projects require one static TargetFramework for bounded command selection.");
+    if (pairAnalyses.some((current) => current.hasMultipleTargetFrameworks)) blockers.push("Multi-targeted C# project pairs are outside the bounded adapter slice.");
+    if (pairAnalyses.some((current) => current.hasDynamicCompileItems)) blockers.push("Custom MSBuild Compile item graphs are outside the bounded C# project-pair slice.");
+    if (sourceAnalysis.hasProjectReferences || !referencesProjectLiterally(project, layout.sourceProject)) {
+      blockers.push("The test project must contain exactly one literal ProjectReference to the production project, with no other project edges.");
+    }
+    if (sourceAnalysis.targetFramework && analysis.targetFramework && sourceAnalysis.targetFramework !== analysis.targetFramework) {
+      blockers.push("The production and test projects must use the same static TargetFramework in this slice.");
+    }
+  }
+
   if (analysis.isTestProject && analysis.testFrameworks.length === 0) blockers.push("No supported xUnit, NUnit, or MSTest package reference detected.");
-  if (analysis.isTestProject && !analysis.hasTestSdk) blockers.push("Microsoft.NET.Test.Sdk is required for the first bounded C# test command.");
+  if (analysis.isTestProject && !analysis.hasTestSdk) blockers.push("Microsoft.NET.Test.Sdk is required for the bounded C# test command.");
   if (testFiles.length === 0) blockers.push("No runnable attributed C# tests detected.");
 
   const architectures = [];
   if (analysis.sdkStyle) architectures.push("dotnet-sdk-project");
+  if (layout.kind === "pair") architectures.push("dotnet-project-pair");
   if (analysis.isTestProject) architectures.push("dotnet-test-project");
-  if (!/<OutputType>\s*Exe\s*<\/OutputType>/i.test(project?.content ?? "")) architectures.push("library");
+  if (layout.sourceProject && !/<OutputType>\s*Exe\s*<\/OutputType>/i.test(layout.sourceProject.content)) architectures.push("library");
   const detectedConventions = [];
   if (analysis.sdkStyle) detectedConventions.push("SDK-style project");
+  if (layout.kind === "pair") detectedConventions.push("literal production/test project pair");
   if (analysis.isTestProject) detectedConventions.push(".NET test project");
   if (testFiles.length > 0) detectedConventions.push("attributed C# tests");
   const existingTestLocations = [...new Set(testFiles.map((file) => (
-    file.path.includes("/") ? `${file.path.split("/")[0]}/ attributed tests` : "project-root attributed tests"
+    file.path.includes("/") ? `${path.posix.dirname(file.path)}/ attributed tests` : "project-root attributed tests"
   )))].sort();
   const setupSignals = [];
+  if (layout.kind === "pair") setupSignals.push(layout.sourceProject.path);
   if (project) setupSignals.push(project.path);
   if (analysis.sdk) setupSignals.push(analysis.sdk);
   if (analysis.targetFramework) setupSignals.push(analysis.targetFramework);
@@ -181,7 +248,7 @@ function buildProfile(root, projectFiles, project, analysis, sourceFiles, testFi
   return {
     root,
     languages: ["csharp"],
-    packageManagers: project ? ["nuget"] : [],
+    packageManagers: projects.length > 0 ? ["nuget"] : [],
     testFrameworks: analysis.testFrameworks,
     architectures,
     ...(testCommand ? { testCommand } : {}),
@@ -191,6 +258,33 @@ function buildProfile(root, projectFiles, project, analysis, sourceFiles, testFi
     confidence: scoreProfileConfidence(project, sourceFiles, testFiles, blockers),
     blockers
   };
+}
+
+function referencesProjectLiterally(testProject, sourceProject) {
+  const analysis = testProject.analysis;
+  if (analysis.hasDynamicProjectReferences || analysis.projectReferences.length !== 1) return false;
+  const reference = normalizePath(analysis.projectReferences[0]);
+  if (path.posix.isAbsolute(reference) || /^[A-Za-z]:\//.test(reference)) return false;
+  const resolved = path.posix.normalize(path.posix.join(path.posix.dirname(testProject.path), reference));
+  return !resolved.startsWith("../") && resolved === sourceProject.path;
+}
+
+function isOwnedByProject(filePath, project, excludedProjects = []) {
+  if (!project || !isPathWithinProject(filePath, project.path)) return false;
+  return excludedProjects.filter(Boolean).every((excluded) => (
+    !isProjectNestedWithin(excluded.path, project.path) || !isPathWithinProject(filePath, excluded.path)
+  ));
+}
+
+function isPathWithinProject(filePath, projectPath) {
+  const projectDirectory = path.posix.dirname(projectPath);
+  return projectDirectory === "." || filePath.startsWith(`${projectDirectory}/`);
+}
+
+function isProjectNestedWithin(nestedProjectPath, ownerProjectPath) {
+  const nestedDirectory = path.posix.dirname(nestedProjectPath);
+  const ownerDirectory = path.posix.dirname(ownerProjectPath);
+  return nestedDirectory !== ownerDirectory && (ownerDirectory === "." || nestedDirectory.startsWith(`${ownerDirectory}/`));
 }
 
 function isRunnableTestFile(file, frameworks) {
