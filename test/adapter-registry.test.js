@@ -21,7 +21,7 @@ describe("adapter registry", () => {
         languages: ["csharp"],
         maturity: "experimental",
         supportedTestFrameworks: ["mstest", "nunit", "xunit"],
-        supportedProjectTypes: ["dotnet-sdk-test-project"],
+        supportedProjectTypes: ["dotnet-sdk-test-project", "dotnet-sdk-project-pair"],
         emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"]
       },
       {
@@ -91,7 +91,7 @@ describe("adapter registry", () => {
           languages: ["csharp"],
           maturity: "experimental",
           supportedTestFrameworks: ["mstest", "nunit", "xunit"],
-          supportedProjectTypes: ["dotnet-sdk-test-project"],
+          supportedProjectTypes: ["dotnet-sdk-test-project", "dotnet-sdk-project-pair"],
           emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"]
         },
         {
@@ -210,10 +210,11 @@ describe("adapter registry", () => {
 
   it("audits through the C# adapter", () => {
     const adapter = getAdapter("csharp");
-    const audit = adapter.audit(path.resolve("examples/csharp-sdk-xunit-basic"));
+    const audit = adapter.audit(path.resolve("examples/csharp-sdk-project-pair"));
 
     assert.equal(audit.schemaVersion, "audit/v1");
     assert.deepEqual(audit.profile.testFrameworks, ["xunit"]);
+    assert.ok(audit.profile.architectures.includes("dotnet-project-pair"));
   });
 
   it("audits through the Swift adapter", () => {

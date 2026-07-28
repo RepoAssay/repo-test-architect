@@ -255,5 +255,10 @@
     "name": "csharp-sdk-xunit-basic",
     "adapter": "csharp",
     "path": "examples/csharp-sdk-xunit-basic"
+  },
+  {
+    "name": "csharp-sdk-project-pair",
+    "adapter": "csharp",
+    "path": "examples/csharp-sdk-project-pair"
   }
 ]

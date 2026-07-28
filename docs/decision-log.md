@@ -324,4 +324,10 @@ Decision: register an experimental `csharp` adapter for exactly one root SDK-sty
 
 Rationale: `.csproj` detection already provides a strong project marker, and the SDK default compile graph plus conventional attributed tests creates a small first command surface. A unique source class, record, or struct used through `Type.Method(...)` or `new Type(...)` produces useful direct evidence without invoking MSBuild or claiming solution semantics. The checked fixture passes natively on .NET 10.0.302 while the ordinary audit remains static.
 
+### 2026-07-28: admit one literal C# production/test project pair
+
+Decision: extend the experimental C# adapter to exactly two static SDK-style projects when one is a production project, one is a supported test project, both use the same literal target framework and default compile ownership, and the test project has exactly one literal relative `ProjectReference` resolving to the production project. Select the test-project command, source candidates only from the production project, and test evidence only from the test project.
+
+Rationale: the conventional `src/<name>` plus `tests/<name>.Tests` shape is the smallest useful cross-project .NET boundary. Requiring the literal edge and equal static frameworks provides deterministic ownership without evaluating MSBuild. Dynamic, escaping, extra, reverse, and transitive edges remain blockers, as do solution-level and central-property semantics.
+
 Revisit when: a repository-contained production/test project pair can be joined through a literal `ProjectReference` without evaluating arbitrary MSBuild, then when pinned repositories justify solution ownership, central properties, multi-targeting, Microsoft.Testing.Platform, or deeper receiver and result-flow evidence.

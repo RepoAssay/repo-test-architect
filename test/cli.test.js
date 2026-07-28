@@ -749,17 +749,17 @@ describe("CLI", () => {
     assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["src/parser.rs", "src/validator.rs"]);
   });
 
-  it("audits the experimental C# fixture through the CLI", () => {
+  it("audits the experimental C# project-pair fixture through the CLI", () => {
     const output = execFileSync(
       process.execPath,
-      [cliPath, "audit", "examples/csharp-sdk-xunit-basic", "--adapter=csharp", "--format=json"],
+      [cliPath, "audit", "examples/csharp-sdk-project-pair", "--adapter=csharp", "--format=json"],
       { encoding: "utf8" }
     );
     const audit = JSON.parse(output);
 
-    assert.equal(audit.profile.testCommand, "dotnet test CheckoutRules.Tests.csproj");
-    assert.deepEqual(audit.untestedCandidates.map((target) => target.path), ["CheckoutService.cs"]);
-    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["PriceParser.cs"]);
+    assert.equal(audit.profile.testCommand, "dotnet test tests/CheckoutRules.Tests/CheckoutRules.Tests.csproj");
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.path), ["src/CheckoutRules/CheckoutService.cs"]);
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["src/CheckoutRules/DiscountCalculator.cs"]);
   });
 
   it("passes explicit Go build targets through single-project audits", () => {

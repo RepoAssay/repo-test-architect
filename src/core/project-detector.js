@@ -196,7 +196,10 @@ export function detectProjects(repoRoot, options = {}) {
     absoluteRoot,
     collapseOwnedMavenModules(
       absoluteRoot,
-      collapseOwnedGradleModules(absoluteRoot, collectMarkerGroups(absoluteRoot))
+      collapseOwnedGradleModules(
+        absoluteRoot,
+        collapseLiteralCSharpProjectPair(absoluteRoot, collectMarkerGroups(absoluteRoot))
+      )
     )
   );
   const projects = [...markerGroups.values()]
@@ -214,6 +217,74 @@ export function detectProjects(repoRoot, options = {}) {
       unsupportedProjectCount: projects.filter((project) => !project.supported).length
     }
   };
+}
+
+function collapseLiteralCSharpProjectPair(repoRoot, markerGroups) {
+  const allProjectMarkers = [...markerGroups.values()].flatMap((group) => (
+    group.markerFiles.filter((markerFile) => markerFile.endsWith(".csproj"))
+  ));
+  if (allProjectMarkers.length !== 2) return markerGroups;
+
+  const candidates = [...markerGroups.values()].flatMap((group) => {
+    const projectMarkers = group.markerFiles.filter((markerFile) => markerFile.endsWith(".csproj"));
+    return projectMarkers.length === 1 && group.markerFiles.length === 1
+      ? [{ group, markerFile: projectMarkers[0] }]
+      : [];
+  });
+  if (candidates.length !== 2) return markerGroups;
+
+  const projects = candidates.map((candidate) => ({
+    ...candidate,
+    content: fs.readFileSync(path.resolve(repoRoot, candidate.markerFile), "utf8")
+  }));
+  const testProjects = projects.filter((project) => isDetectorCSharpTestProject(project.content));
+  const sourceProjects = projects.filter((project) => !isDetectorCSharpTestProject(project.content));
+  if (testProjects.length !== 1 || sourceProjects.length !== 1) return markerGroups;
+
+  const testProject = testProjects[0];
+  const sourceProject = sourceProjects[0];
+  if (!hasLiteralDetectorProjectReference(testProject.markerFile, testProject.content, sourceProject.markerFile)) {
+    return markerGroups;
+  }
+
+  const aggregateRoot = commonProjectRoot(testProject.group.root, sourceProject.group.root);
+  const existingAggregate = markerGroups.get(aggregateRoot);
+  if (existingAggregate && !candidates.some((candidate) => candidate.group.root === aggregateRoot)) return markerGroups;
+
+  const collapsed = new Map(markerGroups);
+  collapsed.delete(testProject.group.root);
+  collapsed.delete(sourceProject.group.root);
+  collapsed.set(aggregateRoot, {
+    root: aggregateRoot,
+    markerFiles: [sourceProject.markerFile, testProject.markerFile].sort(),
+    ecosystems: new Set(["dotnet"]),
+    languages: new Set(["csharp"])
+  });
+  return collapsed;
+}
+
+function isDetectorCSharpTestProject(content) {
+  return /<IsTestProject>\s*true\s*<\/IsTestProject>/i.test(content) ||
+    /<PackageReference\b[^>]*\bInclude\s*=\s*["']Microsoft\.NET\.Test\.Sdk["']/i.test(content);
+}
+
+function hasLiteralDetectorProjectReference(testMarker, content, sourceMarker) {
+  const tags = [...content.matchAll(/<ProjectReference\b[^>]*>/gi)].map((match) => match[0]);
+  if (tags.length !== 1 || /\bCondition\s*=/i.test(tags[0])) return false;
+  const reference = tags[0].match(/\bInclude\s*=\s*["']([^"']+)["']/i)?.[1]?.replaceAll("\\", "/");
+  if (!reference || /[$*?]/.test(reference) || path.posix.isAbsolute(reference) || /^[A-Za-z]:\//.test(reference)) return false;
+  const resolved = path.posix.normalize(path.posix.join(path.posix.dirname(testMarker), reference));
+  return !resolved.startsWith("../") && resolved === sourceMarker;
+}
+
+function commonProjectRoot(left, right) {
+  const leftParts = left === "." ? [] : left.split("/");
+  const rightParts = right === "." ? [] : right.split("/");
+  const common = [];
+  while (common.length < leftParts.length && common.length < rightParts.length && leftParts[common.length] === rightParts[common.length]) {
+    common.push(leftParts[common.length]);
+  }
+  return common.join("/") || ".";
 }
 
 function removeLiteralCargoWorkspaceAggregates(repoRoot, markerGroups) {

@@ -457,6 +457,39 @@ describe("project detector", () => {
     }]);
   });
 
+  it("collapses one literal C# production/test pair to its common audit root", () => {
+    const detection = detectProjects(path.resolve("examples/csharp-sdk-project-pair"));
+
+    assert.deepEqual(detection.summary, {
+      projectCount: 1,
+      supportedProjectCount: 1,
+      unsupportedProjectCount: 0
+    });
+    assert.deepEqual(detection.projects.map((project) => ({
+      root: project.root,
+      markerFiles: project.markerFiles,
+      adapterIds: project.adapterIds
+    })), [{
+      root: ".",
+      markerFiles: [
+        "src/CheckoutRules/CheckoutRules.csproj",
+        "tests/CheckoutRules.Tests/CheckoutRules.Tests.csproj"
+      ],
+      adapterIds: ["csharp"]
+    }]);
+  });
+
+  it("keeps dynamic C# project references as separate detected projects", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-dotnet-dynamic-pair-"));
+    fs.mkdirSync(path.join(root, "src", "Core"), { recursive: true });
+    fs.mkdirSync(path.join(root, "tests", "Core.Tests"), { recursive: true });
+    fs.writeFileSync(path.join(root, "src", "Core", "Core.csproj"), "<Project Sdk=\"Microsoft.NET.Sdk\" />\n");
+    fs.writeFileSync(path.join(root, "tests", "Core.Tests", "Core.Tests.csproj"), "<Project Sdk=\"Microsoft.NET.Sdk\"><ItemGroup><PackageReference Include=\"Microsoft.NET.Test.Sdk\" /><ProjectReference Include=\"$(CoreProject)\" /></ItemGroup></Project>\n");
+
+    const detection = detectProjects(root);
+    assert.deepEqual(detection.projects.map((project) => project.root), ["src/Core", "tests/Core.Tests"]);
+  });
+
   it("detects Xcode project directories as supported Swift adapter projects", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-xcode-"));
     fs.mkdirSync(path.join(root, "apps", "ios", "Checkout.xcodeproj"), { recursive: true });
