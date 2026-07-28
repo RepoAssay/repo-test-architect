@@ -468,7 +468,7 @@ function collectRustTestEvidence(crateImportName, sourceFiles, integrationTests,
   const sourceFilesByPath = new Map(sourceFiles.map((file) => [normalizePath(file.path), file]));
   const sourcePathsByModule = collectRustSourcePathsByModule(sourceFiles, moduleGraph);
   const moduleNamesBySourcePath = collectRustModuleNamesBySourcePath(sourceFiles, moduleGraph);
-  const declaredFunctionsBySourcePath = new Map();
+  const ownedCallablesBySourcePath = new Map();
   for (const sourceFile of inlineTestFiles) {
     const masked = maskRustCommentsAndStrings(sourceFile.content);
     const usage = collectInlineRustUsage(masked);
@@ -479,7 +479,7 @@ function collectRustTestEvidence(crateImportName, sourceFiles, integrationTests,
       moduleNamesBySourcePath.get(normalizePath(sourceFile.path)) ?? [],
       sourcePathsByModule,
       sourceFilesByPath,
-      declaredFunctionsBySourcePath
+      ownedCallablesBySourcePath
     )) {
       addRustEvidence(
         evidenceBySourcePath,
@@ -498,8 +498,18 @@ function collectRustTestEvidence(crateImportName, sourceFiles, integrationTests,
     for (const currentImport of collectRustImports(masked, crateImportName)) {
       const ownedPaths = sourcePathsByModule.get(currentImport.moduleName) ?? [];
       if (ownedPaths.length !== 1) continue;
+      const targetFile = sourceFilesByPath.get(ownedPaths[0]);
+      if (!targetFile) continue;
       let usage;
-      for (const testBody of testBodies) usage = strongerRustUsage(usage, rustBindingUsage(testBody, currentImport.binding));
+      for (const testBody of testBodies) {
+        usage = strongerRustUsage(usage, rustImportedBindingUsage(
+          targetFile,
+          currentImport.sourceName,
+          currentImport.binding,
+          testBody,
+          ownedCallablesBySourcePath
+        ));
+      }
       if (usage) addRustEvidence(evidenceBySourcePath, ownedPaths[0], testFile.path, usage);
     }
   }
@@ -547,7 +557,7 @@ function collectInlineRustModuleEvidence(
   currentModuleNames,
   sourcePathsByModule,
   sourceFilesByPath,
-  declaredFunctionsBySourcePath
+  ownedCallablesBySourcePath
 ) {
   if (currentModuleNames.length === 0) return [];
   const evidence = new Map();
@@ -569,11 +579,13 @@ function collectInlineRustModuleEvidence(
         );
         const targetFile = sourcePath ? sourceFilesByPath.get(sourcePath) : undefined;
         if (!targetFile) continue;
-        if (!declaredFunctionsBySourcePath.has(sourcePath)) {
-          declaredFunctionsBySourcePath.set(sourcePath, collectTopLevelRustFunctionNames(targetFile.content));
-        }
-        if (!declaredFunctionsBySourcePath.get(sourcePath).has(currentImport.sourceName)) continue;
-        const usage = rustBindingUsage(testBody, currentImport.binding);
+        const usage = rustImportedBindingUsage(
+          targetFile,
+          currentImport.sourceName,
+          currentImport.binding,
+          testBody,
+          ownedCallablesBySourcePath
+        );
         if (!usage) continue;
         evidence.set(sourcePath, strongerRustUsage(evidence.get(sourcePath), usage));
       }
@@ -654,6 +666,68 @@ function collectTopLevelRustFunctionNames(content) {
   return new Set([...counts].filter(([, count]) => count === 1).map(([name]) => name));
 }
 
+function rustImportedBindingUsage(targetFile, sourceName, binding, testBody, ownedCallablesBySourcePath) {
+  if (rustDeclaresLocalBinding(testBody, binding)) return undefined;
+  const sourcePath = normalizePath(targetFile.path);
+  if (!ownedCallablesBySourcePath.has(sourcePath)) {
+    ownedCallablesBySourcePath.set(sourcePath, collectOwnedRustCallables(targetFile.content));
+  }
+  const callables = ownedCallablesBySourcePath.get(sourcePath);
+  let usage;
+  if (callables.functions.has(sourceName)) usage = rustBindingUsage(testBody, binding);
+  const methods = callables.associatedMethods.get(sourceName);
+  if (methods?.size > 0) usage = strongerRustUsage(usage, rustAssociatedBindingUsage(testBody, binding, methods));
+  return usage;
+}
+
+function collectOwnedRustCallables(content) {
+  const lexical = maskRustCommentsAndStrings(content);
+  const masked = maskRanges(lexical, rustCfgTestModuleRanges(lexical));
+  const functions = collectTopLevelRustFunctionNames(content);
+  const typeCounts = new Map();
+  const typePattern = /\b(?:struct|enum|union)\s+([A-Za-z_][A-Za-z0-9_]*)/g;
+  for (const match of rustMatchesAtDepth(masked, typePattern, 0)) {
+    typeCounts.set(match[1], (typeCounts.get(match[1]) ?? 0) + 1);
+  }
+  const uniqueTypes = new Set([...typeCounts].filter(([, count]) => count === 1).map(([name]) => name));
+  const methodCountsByType = new Map();
+  const implPattern = /\bimpl(?:\s*<[^>{;]*>)?\s+([A-Za-z_][A-Za-z0-9_]*)(?:\s*<[^>{;]*>)?\s*(?:where\s+[^{}]+)?\s*\{/g;
+  for (const match of rustMatchesAtDepth(masked, implPattern, 0)) {
+    const typeName = match[1];
+    if (!uniqueTypes.has(typeName)) continue;
+    const open = masked.indexOf("{", match.index);
+    const close = findMatchingRustBrace(masked, open);
+    if (close === -1) continue;
+    const body = masked.slice(open + 1, close);
+    const methodPattern = /\b(?:pub(?:\s*\([^)]*\))?\s+)?(?:(?:async|const|unsafe)\s+)*fn\s+([A-Za-z_][A-Za-z0-9_]*)\s*(?:<[^>{;]*>)?\s*\(/g;
+    const counts = methodCountsByType.get(typeName) ?? new Map();
+    for (const method of rustMatchesAtDepth(body, methodPattern, 0)) {
+      counts.set(method[1], (counts.get(method[1]) ?? 0) + 1);
+    }
+    methodCountsByType.set(typeName, counts);
+  }
+  const associatedMethods = new Map([...methodCountsByType].map(([typeName, counts]) => [
+    typeName,
+    new Set([...counts].filter(([, count]) => count === 1).map(([name]) => name))
+  ]));
+  return { functions, associatedMethods };
+}
+
+function rustAssociatedBindingUsage(masked, binding, methods) {
+  const receiver = escapeRegExp(binding);
+  const method = [...methods].map(escapeRegExp).join("|");
+  if (!method) return undefined;
+  const callPattern = new RegExp(`\\b${receiver}\\s*::\\s*(?:${method})\\s*\\(`, "m");
+  if (!callPattern.test(masked)) return undefined;
+  const assertionPattern = new RegExp(`\\b(?:assert|assert_eq|assert_ne|debug_assert|debug_assert_eq|debug_assert_ne)!\\s*\\([^;]*\\b${receiver}\\s*::\\s*(?:${method})\\s*\\(`, "m");
+  return assertionPattern.test(masked) ? "asserted" : "called";
+}
+
+function rustDeclaresLocalBinding(masked, binding) {
+  const name = escapeRegExp(binding);
+  return new RegExp(`\\b(?:struct|enum|union|type|trait|fn|mod|const|static)\\s+${name}\\b`, "m").test(masked);
+}
+
 function rustMatchesAtDepth(masked, pattern, targetDepth) {
   const matches = [];
   let depth = 0;
@@ -692,13 +766,13 @@ function collectRustImports(masked, crateImportName) {
   const crate = escapeRegExp(crateImportName);
   const singlePattern = new RegExp(`\\buse\\s+${crate}::([A-Za-z_][A-Za-z0-9_]*(?:::[A-Za-z_][A-Za-z0-9_]*)*)::([A-Za-z_][A-Za-z0-9_]*)(?:\\s+as\\s+([A-Za-z_][A-Za-z0-9_]*))?\\s*;`, "g");
   for (const match of masked.matchAll(singlePattern)) {
-    imports.push({ moduleName: match[1], binding: match[3] ?? match[2] });
+    imports.push({ moduleName: match[1], sourceName: match[2], binding: match[3] ?? match[2] });
   }
   const groupedPattern = new RegExp(`\\buse\\s+${crate}::([A-Za-z_][A-Za-z0-9_]*(?:::[A-Za-z_][A-Za-z0-9_]*)*)::\\{([^{};]+)\\}\\s*;`, "g");
   for (const match of masked.matchAll(groupedPattern)) {
     for (const item of match[2].split(",")) {
       const itemMatch = item.trim().match(/^([A-Za-z_][A-Za-z0-9_]*)(?:\s+as\s+([A-Za-z_][A-Za-z0-9_]*))?$/);
-      if (itemMatch) imports.push({ moduleName: match[1], binding: itemMatch[2] ?? itemMatch[1] });
+      if (itemMatch) imports.push({ moduleName: match[1], sourceName: itemMatch[1], binding: itemMatch[2] ?? itemMatch[1] });
     }
   }
   return imports;

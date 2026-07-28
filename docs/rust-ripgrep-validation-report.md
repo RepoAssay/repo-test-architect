@@ -47,15 +47,21 @@ The adapter now retains each module's logical name from the literal declaration 
 
 The pinned ripgrep result remains unchanged at 50 untested, 25 covered, 12 deferred, and 25 direct relationships. Its relevant cross-module unit imports primarily bind types used through receiver methods, wildcard imports, or re-exports, which this function-only slice deliberately does not credit. The unchanged normalized digest proves the new logical index did not widen any existing ripgrep claim.
 
+## Follow-Up Inherent Associated Call Slice
+
+A named logical-module type import can now prove `Type::method(...)` when one owned source file uniquely declares that type and one inherent implementation method with the called name. Trait implementations, duplicate types or methods, local shadows, wildcard imports, and instance receiver calls remain excluded.
+
+This moves `crates/globset/src/glob.rs` from untested to covered through exact `Glob` and `GlobBuilder` calls in `src/lib.rs`. It also adds two cross-file relationships from `crates/searcher/src/searcher/glue.rs` and `searcher/mod.rs` to the already-covered `testutil.rs`. The repository totals become 49 untested, 26 covered, 12 deferred, and 28 direct relationships.
+
 | Result | Count |
 | --- | ---: |
 | Detected/audited projects | 12 |
 | Exact package commands | 10 |
 | Blocked no-test packages | 2 |
-| Untested candidates | 50 |
-| Covered-but-risky candidates | 25 |
+| Untested candidates | 49 |
+| Covered-but-risky candidates | 26 |
 | Deferred targets | 12 |
-| Direct evidence relationships | 25 |
+| Direct evidence relationships | 28 |
 
 ## Native Validation
 
@@ -70,18 +76,18 @@ The workspace run listed 1,220 tests across its native harnesses. The recovered 
 
 ## Stability And Performance
 
-Three project audits after the logical-module evidence follow-up produced the same normalized SHA-256 digest as the prior module-graph slice, `9ddec8f08eb29b5f3bec4433cc008b16ee2cd64f17c2c7d6e04b44850c4bbbb2`.
+Three project audits after the inherent-associated-call follow-up produced the same normalized SHA-256 digest, `9b9e35025de0d23c9465b6c9913ac00d9c85496b04b40538b47218ff16f82614`.
 
 | Run | Duration |
 | --- | ---: |
-| 1 | 478 ms |
-| 2 | 423 ms |
-| 3 | 417 ms |
+| 1 | 516 ms |
+| 2 | 458 ms |
+| 3 | 456 ms |
 
-The median was 423 ms for twelve detected and audited projects. A first implementation rescanned large source prefixes for every declaration and measured about 0.91 seconds; replacing that with a single forward lexical-depth pass removed the regression before the slice was retained.
+The median was 458 ms for twelve detected and audited projects. The logical-module slice's single forward lexical-depth pass is reused for inherent method ownership, keeping the additional analysis bounded.
 
 ## Remaining Boundary
 
-The root binary and its complete literal file-module graph are now exact source candidates. The adapter still does not infer source evidence from macro-generated integration tests, prune mutually exclusive modules by target configuration, or resolve declarations generated inside inline modules and macros. Method/trait dispatch, macro-expanded test-to-source evidence, doctest evidence, feature-specific targets, and the fuzz harness also remain outside the current matrix.
+The root binary and its complete literal file-module graph are now exact source candidates. The adapter still does not infer source evidence from macro-generated integration tests, prune mutually exclusive modules by target configuration, or resolve declarations generated inside inline modules and macros. Instance receiver and trait dispatch, macro-expanded test-to-source evidence, doctest evidence, feature-specific targets, and the fuzz harness also remain outside the current matrix.
 
-The live result supports the literal workspace, explicit built-in test target, static lib/bin source-target, literal module-graph, and logical function-import evidence slices, but it does not justify promotion beyond experimental. Receiver-method identity is now the clearest remaining evidence slice.
+The live result supports the literal workspace, explicit built-in test target, static lib/bin source-target, literal module-graph, logical function-import, and inherent-associated-call evidence slices, but it does not justify promotion beyond experimental. Direct-constructor instance receiver identity is now the clearest remaining evidence slice.

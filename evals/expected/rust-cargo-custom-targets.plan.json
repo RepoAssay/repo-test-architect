@@ -5,7 +5,7 @@
     "verificationCommand": "cargo test",
     "blockerCount": 0,
     "addTestCount": 4,
-    "extendTestCount": 2,
+    "extendTestCount": 3,
     "deferredCount": 0
   },
   "blockers": [],
@@ -63,6 +63,36 @@
         "edge-case-surface"
       ],
       "existingTestPaths": []
+    },
+    {
+      "id": "extend-test:code/calculator.rs",
+      "action": "extend-test",
+      "targetId": "code/calculator.rs",
+      "target": "calculator",
+      "path": "code/calculator.rs",
+      "testLevel": "unit",
+      "priority": 4,
+      "riskReductionScore": 6,
+      "maintenanceCost": 2,
+      "rationale": [
+        "Deterministic Rust behavior",
+        "Existing Rust test evidence detected; review missing edge cases"
+      ],
+      "sourceSignals": [
+        "pure-logic",
+        "matching-test"
+      ],
+      "existingTestPaths": [
+        "tests/calculator_test.rs"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "tests/calculator_test.rs",
+          "kind": "rust-symbol-reference",
+          "strength": "direct",
+          "usage": "asserted"
+        }
+      ]
     },
     {
       "id": "add-test:app/output/formatter.rs",

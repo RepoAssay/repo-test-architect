@@ -146,6 +146,36 @@
       ]
     },
     {
+      "id": "code/calculator.rs",
+      "name": "calculator",
+      "path": "code/calculator.rs",
+      "kind": "calculator",
+      "signals": [
+        "pure-logic",
+        "matching-test"
+      ],
+      "risk": "medium",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 6,
+      "maintenanceCost": 2,
+      "reasons": [
+        "Deterministic Rust behavior",
+        "Existing Rust test evidence detected; review missing edge cases"
+      ],
+      "existingTestPaths": [
+        "tests/calculator_test.rs"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "tests/calculator_test.rs",
+          "kind": "rust-symbol-reference",
+          "strength": "direct",
+          "usage": "asserted"
+        }
+      ]
+    },
+    {
       "id": "code/validator.rs",
       "name": "validator",
       "path": "code/validator.rs",
@@ -237,6 +267,36 @@
         "Fallible or edge-case behavior"
       ],
       "existingTestPaths": []
+    },
+    {
+      "id": "code/calculator.rs",
+      "name": "calculator",
+      "path": "code/calculator.rs",
+      "kind": "calculator",
+      "signals": [
+        "pure-logic",
+        "matching-test"
+      ],
+      "risk": "medium",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 6,
+      "maintenanceCost": 2,
+      "reasons": [
+        "Deterministic Rust behavior",
+        "Existing Rust test evidence detected; review missing edge cases"
+      ],
+      "existingTestPaths": [
+        "tests/calculator_test.rs"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "tests/calculator_test.rs",
+          "kind": "rust-symbol-reference",
+          "strength": "direct",
+          "usage": "asserted"
+        }
+      ]
     },
     {
       "id": "app/output/formatter.rs",
