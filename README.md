@@ -10,7 +10,7 @@ The current implementation can:
 - audit supported, bounded Kotlin/JVM fixtures through the same shared artifact model
 - audit conventional Go modules and literal repository-contained `go.work` members through a supported bounded adapter
 - audit conventional Cargo packages and literal repository-contained workspace members through an experimental bounded Rust adapter
-- audit one conventional SDK-style C# test project through an experimental bounded .NET adapter
+- audit one conventional SDK-style C# test project or one literal production/test project pair through an experimental bounded .NET adapter
 - detect polyglot project roots and report unsupported ecosystems without hiding them
 - produce a complete repository analysis, findings, ranking, plan, execution hints, and verification commands in one audit pass
 - classify source files by likely test value and defer low-value direct tests
@@ -441,7 +441,7 @@ evals/
 schemas/
 ```
 
-JavaScript/TypeScript, Python, Swift, bounded Kotlin/JVM modules, and bounded Go modules are supported adapter proof points. The experimental Rust adapter adds conventional Cargo package audits, including literal repository-contained workspace members with exact package commands, while its evidence boundary is hardened. The experimental C# adapter starts with one conventional SDK-style test project and exact project-file commands while separate project and solution ownership remains excluded. Go support includes literal repository-contained `go.work` members, explicit static build-target selection, bounded standard-library/Testify assertion usage, parser-scoped receiver identity through concrete local and test-helper bindings, and callable-body-owned source evidence as defined in [Go Alpha Support](docs/go-alpha-support.md). Kotlin/JVM support is limited to conventional Gradle/Maven modules and directly declared aggregate graphs, JUnit, the documented Kotest common-spec and Spock feature variants, or method-level TestNG, and standard source sets as defined in [Kotlin/JVM Alpha Support](docs/kotlin-jvm-alpha-support.md).
+JavaScript/TypeScript, Python, Swift, bounded Kotlin/JVM modules, and bounded Go modules are supported adapter proof points. The experimental Rust adapter adds conventional Cargo package audits, including literal repository-contained workspace members with exact package commands, while its evidence boundary is hardened. The experimental C# adapter covers one conventional SDK-style test project or one literal production/test project pair with exact test-project commands, while solution ownership remains excluded. Go support includes literal repository-contained `go.work` members, explicit static build-target selection, bounded standard-library/Testify assertion usage, parser-scoped receiver identity through concrete local and test-helper bindings, and callable-body-owned source evidence as defined in [Go Alpha Support](docs/go-alpha-support.md). Kotlin/JVM support is limited to conventional Gradle/Maven modules and directly declared aggregate graphs, JUnit, the documented Kotest common-spec and Spock feature variants, or method-level TestNG, and standard source sets as defined in [Kotlin/JVM Alpha Support](docs/kotlin-jvm-alpha-support.md).
 
 Important runtime surfaces:
 
@@ -481,6 +481,7 @@ Important runtime surfaces:
 - [Go test-helper receiver validation report](docs/go-helper-return-validation-report.md)
 - [Rust experimental support](docs/rust-alpha-support.md)
 - [C# experimental support](docs/csharp-alpha-support.md)
+- [C# TDD live validation report](docs/csharp-tdd-validation-report.md)
 - [Kotlin/JVM validation hunt report](docs/kotlin-jvm-validation-hunt-report.md)
 - [Adapter contract](docs/adapter-contract.md)
 - [Artifact contract](docs/artifact-contract.md)

@@ -35,6 +35,12 @@ The ordinary adapter audit does not execute `dotnet`, MSBuild, NuGet restore, so
 dotnet test tests/CheckoutRules.Tests/CheckoutRules.Tests.csproj
 ```
 
+## Live Validation
+
+The first pinned live probe audits [`aelassas/tdd`](https://github.com/aelassas/tdd) at `aa81c10a1f251ed7f4c7fa3a64a79780a9f3f4fe`. Project detection collapses its literal `net8.0` production/test pair to one supported root, selects the exact test-project command, and reports four covered-but-risky behavioral classes plus two deferred interfaces with no blockers. Five repeated audits are digest-stable with a 70.4 ms median.
+
+Native validation builds cleanly and executes all 26 tests. Twenty-two pass on Darwin; four file-loader tests fail because their fixture paths use Windows backslashes and the upstream workflow runs on `windows-latest`. The static audit had already classified that loader as a high-risk external boundary and recommended integration-level review. See the [C# TDD Live Validation Report](csharp-tdd-validation-report.md).
+
 ## Explicit Exclusions
 
 The first slice does not claim:
@@ -48,4 +54,4 @@ The first slice does not claim:
 - namespace, alias, partial-type, generic-type, overload, receiver, local-result, helper, mock, reflection, source-generator, or dependency-graph resolution
 - cross-project evidence outside the one verified production/test edge, or any transitive evidence
 
-The next ownership slice should pressure this pair boundary against representative live repositories before deciding whether solution files, central package management, or deeper call evidence are the more valuable expansion.
+The live pair pressure is complete. Bounded instance-receiver and local-result flow is now a stronger next slice than solution ownership: it can improve called-versus-asserted precision for conventional tests without evaluating arbitrary MSBuild.

@@ -331,3 +331,11 @@ Decision: extend the experimental C# adapter to exactly two static SDK-style pro
 Rationale: the conventional `src/<name>` plus `tests/<name>.Tests` shape is the smallest useful cross-project .NET boundary. Requiring the literal edge and equal static frameworks provides deterministic ownership without evaluating MSBuild. Dynamic, escaping, extra, reverse, and transitive edges remain blockers, as do solution-level and central-property semantics.
 
 Revisit when: a repository-contained production/test project pair can be joined through a literal `ProjectReference` without evaluating arbitrary MSBuild, then when pinned repositories justify solution ownership, central properties, multi-targeting, Microsoft.Testing.Platform, or deeper receiver and result-flow evidence.
+
+### 2026-07-28: validate the literal C# pair before widening ownership
+
+Decision: pin `aelassas/tdd` at `aa81c10a1f251ed7f4c7fa3a64a79780a9f3f4fe` as the first C# live probe and keep the adapter experimental. Preserve the exact test-project command and the existing external-boundary recommendation even though the upstream loader tests expose a Darwin portability failure.
+
+Rationale: the repository exercises the intended two-project boundary without inherited MSBuild semantics. Detection produces one supported root, five repeated audits are digest-stable with a 70.4 ms median, the solution builds cleanly, and the native test command reaches all 26 tests. The four failures all come from Windows-style fixture paths in the file-loader tests; the audit already keeps that loader prominent as a high-risk integration boundary. This supports deeper receiver/result-flow evidence next, not broader solution ownership.
+
+Revisit when: exact concrete local bindings and their instance calls can retain type identity through one assignment and into a recognized assertion without accepting reassignment, member flow, interface dispatch, or helper indirection.
