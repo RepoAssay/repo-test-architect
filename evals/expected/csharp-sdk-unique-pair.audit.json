@@ -1,0 +1,115 @@
+{
+  "schemaVersion": "audit/v1",
+  "profile": {
+    "root": "<fixture>",
+    "languages": [
+      "csharp"
+    ],
+    "packageManagers": [
+      "nuget"
+    ],
+    "testFrameworks": [
+      "xunit"
+    ],
+    "architectures": [
+      "dotnet-sdk-project",
+      "dotnet-project-pair",
+      "dotnet-test-project",
+      "library"
+    ],
+    "testCommand": "dotnet test tests/Pricing.Tests/Pricing.Tests.csproj",
+    "detectedConventions": [
+      "SDK-style project",
+      "literal production/test project pair",
+      "unique literal test edge among unrelated projects",
+      ".NET test project",
+      "attributed C# tests"
+    ],
+    "existingTestLocations": [
+      "tests/Pricing.Tests/ attributed tests"
+    ],
+    "setupSignals": [
+      "src/Pricing/Pricing.csproj",
+      "tests/Pricing.Tests/Pricing.Tests.csproj",
+      "Microsoft.NET.Sdk",
+      "net10.0"
+    ],
+    "confidence": "high",
+    "blockers": []
+  },
+  "untestedCandidates": [],
+  "coveredButRisky": [
+    {
+      "id": "src/Pricing/PriceCalculator.cs",
+      "name": "PriceCalculator",
+      "path": "src/Pricing/PriceCalculator.cs",
+      "kind": "calculator",
+      "signals": [
+        "pure-logic",
+        "branching-logic",
+        "edge-case-surface",
+        "matching-test"
+      ],
+      "risk": "high",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 8,
+      "maintenanceCost": 3,
+      "reasons": [
+        "Branching C# behavior",
+        "Fallible or edge-case behavior",
+        "Existing C# test evidence detected; review missing edge cases"
+      ],
+      "existingTestPaths": [
+        "tests/Pricing.Tests/PriceCalculatorTests.cs"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "tests/Pricing.Tests/PriceCalculatorTests.cs",
+          "kind": "csharp-symbol-reference",
+          "strength": "direct",
+          "usage": "asserted"
+        }
+      ]
+    }
+  ],
+  "recommended": [
+    {
+      "id": "src/Pricing/PriceCalculator.cs",
+      "name": "PriceCalculator",
+      "path": "src/Pricing/PriceCalculator.cs",
+      "kind": "calculator",
+      "signals": [
+        "pure-logic",
+        "branching-logic",
+        "edge-case-surface",
+        "matching-test"
+      ],
+      "risk": "high",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 8,
+      "maintenanceCost": 3,
+      "reasons": [
+        "Branching C# behavior",
+        "Fallible or edge-case behavior",
+        "Existing C# test evidence detected; review missing edge cases"
+      ],
+      "existingTestPaths": [
+        "tests/Pricing.Tests/PriceCalculatorTests.cs"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "tests/Pricing.Tests/PriceCalculatorTests.cs",
+          "kind": "csharp-symbol-reference",
+          "strength": "direct",
+          "usage": "asserted"
+        }
+      ]
+    }
+  ],
+  "skipped": [],
+  "risks": [
+    "PriceCalculator has branching c# behavior, fallible or edge-case behavior and needs edge-case review."
+  ]
+}

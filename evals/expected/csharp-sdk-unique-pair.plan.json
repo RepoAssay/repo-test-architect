@@ -1,0 +1,47 @@
+{
+  "schemaVersion": "plan/v1",
+  "summary": {
+    "confidence": "high",
+    "verificationCommand": "dotnet test tests/Pricing.Tests/Pricing.Tests.csproj",
+    "blockerCount": 0,
+    "addTestCount": 0,
+    "extendTestCount": 1,
+    "deferredCount": 0
+  },
+  "blockers": [],
+  "items": [
+    {
+      "id": "extend-test:src/Pricing/PriceCalculator.cs",
+      "action": "extend-test",
+      "targetId": "src/Pricing/PriceCalculator.cs",
+      "target": "PriceCalculator",
+      "path": "src/Pricing/PriceCalculator.cs",
+      "testLevel": "unit",
+      "priority": 5,
+      "riskReductionScore": 8,
+      "maintenanceCost": 3,
+      "rationale": [
+        "Branching C# behavior",
+        "Fallible or edge-case behavior",
+        "Existing C# test evidence detected; review missing edge cases"
+      ],
+      "sourceSignals": [
+        "pure-logic",
+        "branching-logic",
+        "edge-case-surface",
+        "matching-test"
+      ],
+      "existingTestPaths": [
+        "tests/Pricing.Tests/PriceCalculatorTests.cs"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "tests/Pricing.Tests/PriceCalculatorTests.cs",
+          "kind": "csharp-symbol-reference",
+          "strength": "direct",
+          "usage": "asserted"
+        }
+      ]
+    }
+  ]
+}

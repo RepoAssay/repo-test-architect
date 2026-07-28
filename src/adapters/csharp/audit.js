@@ -186,9 +186,37 @@ function selectProjectLayout(projects) {
       };
     }
   }
+  if (projects.length > 2) {
+    const testProjects = projects.filter((project) => project.analysis.isTestProject);
+    const sourceProjects = projects.filter((project) => !project.analysis.isTestProject);
+    const literalPairs = testProjects.flatMap((testProject) => (
+      sourceProjects
+        .filter((sourceProject) => referencesProjectLiterally(testProject, sourceProject))
+        .map((sourceProject) => ({ sourceProject, testProject }))
+    ));
+    if (literalPairs.length === 1) {
+      const selectedProjects = new Set([literalPairs[0].sourceProject, literalPairs[0].testProject]);
+      const unrelatedProjects = projects.filter((project) => !selectedProjects.has(project));
+      const hasOverlappingProject = unrelatedProjects.some((project) => (
+        [...selectedProjects].some((selected) => projectDirectoriesOverlap(project.path, selected.path))
+      ));
+      if (hasOverlappingProject) {
+        return {
+          kind: "unsupported",
+          blockers: ["The unique C# production/test edge overlaps another project's default compile ownership."]
+        };
+      }
+      return {
+        kind: "pair",
+        ...literalPairs[0],
+        unrelatedProjectCount: unrelatedProjects.length,
+        blockers: []
+      };
+    }
+  }
   return {
     kind: "unsupported",
-    blockers: ["Exactly one root test .csproj or one literal production/test project pair is required before C# command ownership is unambiguous."]
+    blockers: ["Exactly one root test .csproj or one unique literal production/test project edge is required before C# command ownership is unambiguous."]
   };
 }
 
@@ -233,6 +261,7 @@ function buildProfile(root, projects, layout, sourceFiles, testFiles) {
   const detectedConventions = [];
   if (analysis.sdkStyle) detectedConventions.push("SDK-style project");
   if (layout.kind === "pair") detectedConventions.push("literal production/test project pair");
+  if (layout.unrelatedProjectCount > 0) detectedConventions.push("unique literal test edge among unrelated projects");
   if (analysis.isTestProject) detectedConventions.push(".NET test project");
   if (testFiles.length > 0) detectedConventions.push("attributed C# tests");
   const existingTestLocations = [...new Set(testFiles.map((file) => (
@@ -285,6 +314,16 @@ function isProjectNestedWithin(nestedProjectPath, ownerProjectPath) {
   const nestedDirectory = path.posix.dirname(nestedProjectPath);
   const ownerDirectory = path.posix.dirname(ownerProjectPath);
   return nestedDirectory !== ownerDirectory && (ownerDirectory === "." || nestedDirectory.startsWith(`${ownerDirectory}/`));
+}
+
+function projectDirectoriesOverlap(leftProjectPath, rightProjectPath) {
+  const leftDirectory = path.posix.dirname(leftProjectPath);
+  const rightDirectory = path.posix.dirname(rightProjectPath);
+  return leftDirectory === rightDirectory ||
+    leftDirectory === "." ||
+    rightDirectory === "." ||
+    leftDirectory.startsWith(`${rightDirectory}/`) ||
+    rightDirectory.startsWith(`${leftDirectory}/`);
 }
 
 function isRunnableTestFile(file, frameworks) {

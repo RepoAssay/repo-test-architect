@@ -1,13 +1,13 @@
 # C# Experimental Support
 
-The C# adapter is experimental. Its bounded slices prove that one conventional SDK-style test project or one literal production/test project pair can flow through project detection, audit, ranking, planning, explanations, findings, stats, CLI/MCP-shaped calls, golden snapshots, and model-consistency checks without a C#-specific report format.
+The C# adapter is experimental. Its bounded slices prove that one conventional SDK-style test project or one unique literal production/test project edge, including that pair amid unrelated projects, can flow through project detection, audit, ranking, planning, explanations, findings, stats, CLI/MCP-shaped calls, golden snapshots, and model-consistency checks without a C#-specific report format.
 
 ## Supported Boundary
 
 | Area | Supported in this slice | Evidence or blocker boundary |
 | --- | --- | --- |
-| Project shape | Exactly one root SDK-style test `.csproj`, or exactly one production project and one test project using `Microsoft.NET.Sdk` or a direct derivative such as the Web SDK | Larger graphs, two test projects, two production projects, and non-SDK projects are not merged into one owner |
-| Project-pair edge | The test project has exactly one literal repository-contained `ProjectReference` resolving to the production project; the production project has no project edges | Property-expanded, wildcard, absolute, escaping, missing, additional, reverse, and transitive edges block command selection |
+| Project shape | Exactly one root SDK-style test `.csproj`, or one unique literal production/test edge using `Microsoft.NET.Sdk` or a direct derivative such as the Web SDK; unrelated projects remain separate | Two valid test edges, overlapping aggregate roots, and non-SDK projects are not merged into one owner |
+| Project-pair edge | The selected test project has exactly one literal repository-contained `ProjectReference` resolving to the selected production project; the production project has no project edges | Property-expanded, wildcard, absolute, escaping, missing, additional, reverse, ambiguous, and transitive edges block command selection |
 | Target framework | One static `<TargetFramework>` per project; a pair uses the same literal value | `<TargetFrameworks>`, repeated, property-expanded, or mismatched pair values block command selection |
 | Source ownership | Default SDK compile ownership below the selected production project directory; collocated single-project source remains owned below the audit root | Test-project helpers are not candidates; `bin`, `obj`, dependencies, fixtures, and custom `Compile` graphs are excluded |
 | Test project | `Microsoft.NET.Test.Sdk` or static `<IsTestProject>true</IsTestProject>` plus a supported framework package | The exact test SDK remains required for the bounded native command |
@@ -35,6 +35,12 @@ The ordinary adapter audit does not execute `dotnet`, MSBuild, NuGet restore, so
 dotnet test tests/CheckoutRules.Tests/CheckoutRules.Tests.csproj
 ```
 
+`examples/csharp-sdk-unique-pair` adds unrelated Worker and benchmark projects around one Pricing/Pricing.Tests edge. Detection collapses only the exact pair, direct audit excludes unrelated source, and the fixture locks the command and asserted evidence through golden and model-consistency artifacts. It passes:
+
+```sh
+dotnet test tests/Pricing.Tests/Pricing.Tests.csproj
+```
+
 ## Live Validation
 
 The first pinned live probe audits [`aelassas/tdd`](https://github.com/aelassas/tdd) at `aa81c10a1f251ed7f4c7fa3a64a79780a9f3f4fe`. Project detection collapses its literal `net8.0` production/test pair to one supported root, selects the exact test-project command, and reports four covered-but-risky behavioral classes plus two deferred interfaces with no blockers. Five repeated audits are digest-stable with a 70.4 ms median.
@@ -43,12 +49,14 @@ Native validation builds cleanly and executes all 26 tests. Twenty-two pass on D
 
 The receiver/result follow-up preserves all four candidate classifications and all five direct relationships while upgrading usage from one asserted/four called to four asserted/one called. `Translator`, `TranslatorLoader`, and `TranslatorParser` gain assertion proof; `TranslatorException` remains conservatively called. Five follow-up audits are digest-stable with a 72.0 ms median.
 
+The second pinned probe audits [`jjosh102/sharp-cast`](https://github.com/jjosh102/sharp-cast) at `57cd4f345af3d98698f9227b6b4de610c131686c`. Its four-project repository contains one unique xUnit-to-library edge plus unrelated Blazor and benchmark projects. The adapter selects the exact pair, emits a command that passes 165/165 upstream tests, reports `7 / 4 / 1` untested/covered/deferred targets with five direct relationships, and excludes every unrelated source file. Five audits are digest-stable with a 14.4 ms median. See the [C# Sharp Cast Live Validation Report](csharp-sharp-cast-validation-report.md).
+
 ## Explicit Exclusions
 
 The first slice does not claim:
 
 - `.sln` or `.slnx` ownership
-- more than one production/test project pair, transitive project edges, or multiple references
+- more than one selectable production/test project edge, transitive project edges, multiple references, or solution-wide ownership
 - `Directory.Build.props`, `Directory.Build.targets`, imported SDKs, conditional properties, or evaluated MSBuild graphs
 - custom, removed, or explicitly included `Compile` items
 - multi-targeted projects
@@ -56,4 +64,4 @@ The first slice does not claim:
 - namespace, alias, partial-type, generic-type, overload, target-typed construction, receiver/result reassignment, interface/field/property receiver identity, helper-return, nested local-function, deferred-lambda, mock, reflection, source-generator, or dependency-graph resolution
 - cross-project evidence outside the one verified production/test edge, or any transitive evidence
 
-The live pair and bounded concrete-local receiver pressure are complete. Further live probes should decide whether inherited build/package metadata or additional receiver sources provide the larger practical gain before solution ownership is widened.
+Literal pair selection now covers a unique test edge amid unrelated projects without claiming solution ownership. Sharp Cast makes exact test-class field receivers initialized through target-typed `new()` the clearest next evidence slice; inherited build/package metadata remains the next ownership pressure.
