@@ -1,0 +1,76 @@
+{
+  "schemaVersion": "model-consistency-scenario/v1",
+  "id": "csharp-sdk-xunit-basic-plan",
+  "description": "Different model profiles should preserve bounded SDK-style C# project ownership, the exact project command, direct asserted type evidence, and data-model deferral.",
+  "sourceArtifact": {
+    "path": "evals/expected/csharp-sdk-xunit-basic.audit.json",
+    "schemaVersion": "audit/v1"
+  },
+  "toolCall": {
+    "toolName": "generate_test_plan",
+    "arguments": {}
+  },
+  "lockedFields": [
+    {
+      "path": "summary.verificationCommand",
+      "expected": "dotnet test CheckoutRules.Tests.csproj",
+      "reason": "One static root SDK test project should retain its exact project-file command."
+    },
+    {
+      "path": "summary.blockerCount",
+      "expected": 0,
+      "reason": "The checked single-project fixture should remain inside the first bounded ownership contract."
+    },
+    {
+      "path": "summary.addTestCount",
+      "expected": 1,
+      "reason": "The untested checkout service should remain the one add-test item."
+    },
+    {
+      "path": "summary.extendTestCount",
+      "expected": 1,
+      "reason": "The directly asserted price parser should remain the one extend-test item."
+    },
+    {
+      "path": "summary.deferredCount",
+      "expected": 1,
+      "reason": "The data-only checkout request should remain deferred."
+    },
+    {
+      "path": "items[0].id",
+      "expected": "add-test:CheckoutService.cs",
+      "reason": "The branching service should retain its source-owned plan identity."
+    },
+    {
+      "path": "items[1].id",
+      "expected": "extend-test:PriceParser.cs",
+      "reason": "The parser should remain covered but worthy of edge-case extension."
+    },
+    {
+      "path": "items[1].existingTestEvidence[0].testPath",
+      "expected": "Tests/PriceParserTests.cs",
+      "reason": "The exact unique-type call should remain attached to its attributed xUnit test."
+    },
+    {
+      "path": "items[1].existingTestEvidence[0].usage",
+      "expected": "asserted",
+      "reason": "The static parser call remains nested inside the xUnit assertion statement."
+    },
+    {
+      "path": "items[2].id",
+      "expected": "defer:CheckoutRequest.cs",
+      "reason": "Data-only records should not become direct test recommendations."
+    }
+  ],
+  "allowedVariations": [
+    "summary wording",
+    "additional non-locked C# metadata",
+    "optional detail depth"
+  ],
+  "unexpectedVariations": [
+    "missing exact dotnet test command",
+    "missing direct parser evidence",
+    "direct data-record test recommendation",
+    "solution or project-reference ownership claim"
+  ]
+}

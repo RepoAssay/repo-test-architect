@@ -123,6 +123,7 @@ describe("CLI", () => {
     });
 
     assert.match(output, /^# Adapter Registry/);
+    assert.match(output, /csharp: experimental; ecosystems dotnet; languages csharp/);
     assert.match(output, /javascript: supported; ecosystems javascript; languages javascript, typescript/);
     assert.match(output, /frameworks ava, bun-test, cypress, jest, mocha, node-test, playwright, react-testing-library, supertest, vitest/);
     assert.match(output, /go: supported; ecosystems go; languages go/);
@@ -139,10 +140,9 @@ describe("CLI", () => {
     assert.equal(registry.schemaVersion, "adapter-registry/v1");
     assert.equal(registry.adapters[0].id, "javascript");
     assert.equal(registry.adapters[0].maturity, "supported");
-    assert.equal(registry.adapters[1].id, "go");
-    assert.equal(registry.adapters[1].maturity, "supported");
-    assert.equal(registry.adapters[2].id, "kotlin");
-    assert.equal(registry.adapters[2].maturity, "supported");
+    assert.equal(registry.adapters.find((adapter) => adapter.id === "csharp").maturity, "experimental");
+    assert.equal(registry.adapters.find((adapter) => adapter.id === "go").maturity, "supported");
+    assert.equal(registry.adapters.find((adapter) => adapter.id === "kotlin").maturity, "supported");
     assert.equal(registry.adapters.find((adapter) => adapter.id === "swift").maturity, "supported");
     assert.deepEqual(registry.adapters[0].supportedTestFrameworks, [
       "ava",
@@ -749,6 +749,19 @@ describe("CLI", () => {
     assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["src/parser.rs", "src/validator.rs"]);
   });
 
+  it("audits the experimental C# fixture through the CLI", () => {
+    const output = execFileSync(
+      process.execPath,
+      [cliPath, "audit", "examples/csharp-sdk-xunit-basic", "--adapter=csharp", "--format=json"],
+      { encoding: "utf8" }
+    );
+    const audit = JSON.parse(output);
+
+    assert.equal(audit.profile.testCommand, "dotnet test CheckoutRules.Tests.csproj");
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.path), ["CheckoutService.cs"]);
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["PriceParser.cs"]);
+  });
+
   it("passes explicit Go build targets through single-project audits", () => {
     const output = execFileSync(process.execPath, [
       cliPath,
@@ -838,7 +851,7 @@ describe("CLI", () => {
           encoding: "utf8",
           stdio: "pipe"
         }),
-      /Unsupported adapter: ruby\. Available adapters: javascript, go, kotlin, python, rust, swift\./
+      /Unsupported adapter: ruby\. Available adapters: javascript, csharp, go, kotlin, python, rust, swift\./
     );
   });
 

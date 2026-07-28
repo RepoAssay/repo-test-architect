@@ -141,7 +141,7 @@ describe("MCP tool definitions", () => {
     assert.equal(repositoryAnalysis.projectAudits.schemaVersion, "project-audits/v1");
     assert.equal(repositoryAnalysis.findings.schemaVersion, "project-findings/v1");
     assert.equal(adapterRegistry.schemaVersion, "adapter-registry/v1");
-    assert.deepEqual(adapterRegistry.adapters.map((adapter) => adapter.id), ["javascript", "go", "kotlin", "python", "rust", "swift"]);
+    assert.deepEqual(adapterRegistry.adapters.map((adapter) => adapter.id), ["javascript", "csharp", "go", "kotlin", "python", "rust", "swift"]);
     assert.equal(projectDetectionRules.schemaVersion, "project-detection-rules/v1");
     assert.ok(projectDetectionRules.markers.some((marker) => marker.fileName === "package.json"));
     assert.equal(projectDetection.schemaVersion, "project-detection/v1");

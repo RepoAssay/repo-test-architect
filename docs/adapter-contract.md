@@ -39,6 +39,7 @@ Runtime adapter registration lives in `src/core/adapter-registry.js`.
 
 Currently registered adapters are:
 
+- `csharp` as an experimental adapter for one static SDK-style .NET test project using xUnit, NUnit, or MSTest, bounded by the [C# experimental support matrix](csharp-alpha-support.md)
 - `javascript` for the JavaScript ecosystem, covering JavaScript and TypeScript repositories
 - `go` for conventional Go modules and literal repository-contained `go.work` members using the standard `testing` package, with exact top-level and parser-owned concrete receiver-method evidence through explicit types, exact simple constructor results, or exact statically typed test-helper results, bounded standard-library and Testify assertion usage, parser-scoped local shadow checks, callable-body-owned same-package and module-local source hops, same-package or exact default/named/dot external-package imports, plus optional explicit static build-target context, supported within the [Go support matrix](go-alpha-support.md)
 - `kotlin` for conventional Kotlin and Java Gradle or Maven JVM module roots, supported within the bounded [Kotlin/JVM Alpha Support](kotlin-jvm-alpha-support.md) matrix

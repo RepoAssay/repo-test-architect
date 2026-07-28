@@ -33,13 +33,16 @@ export const requiredFiles = [
   "src/mcp/server-info.js",
   "src/mcp/tool-definitions.js",
   "src/diagnostics/diagnostics.js",
+  "src/adapters/csharp/audit.js",
   "src/adapters/go/audit.js",
   "src/adapters/rust/audit.js",
   "src/adapters/rust/cargo-workspace.js",
   "docs/go-alpha-support.md",
+  "docs/csharp-alpha-support.md",
   "docs/rust-alpha-support.md",
   "docs/rust-ripgrep-validation-report.md",
   "examples/go-testing-basic/go.mod",
+  "examples/csharp-sdk-xunit-basic/CheckoutRules.Tests.csproj",
   "examples/go-build-target-basic/go.mod",
   "examples/go-workspace-basic/go.work",
   "examples/go-workspace-basic/services/checkout/go.mod",
@@ -89,8 +92,9 @@ export function runPackContentsCheck() {
   const unexpectedTopLevelEntries = [...topLevelEntries].filter((entry) => !allowedTopLevelEntries.has(entry)).sort();
   const missingRequiredFiles = requiredFiles.filter((filePath) => !paths.includes(filePath));
   const leakedTestFiles = paths.filter((filePath) => filePath === "test" || filePath.startsWith("test/")).sort();
+  const leakedBuildOutputs = findLeakedBuildOutputs(paths);
 
-  if (unexpectedTopLevelEntries.length > 0 || missingRequiredFiles.length > 0 || leakedTestFiles.length > 0) {
+  if (unexpectedTopLevelEntries.length > 0 || missingRequiredFiles.length > 0 || leakedTestFiles.length > 0 || leakedBuildOutputs.length > 0) {
     if (unexpectedTopLevelEntries.length > 0) {
       console.error(`Unexpected packed top-level entries: ${unexpectedTopLevelEntries.join(", ")}`);
     }
@@ -103,10 +107,18 @@ export function runPackContentsCheck() {
       console.error(`Test files should not be packed: ${leakedTestFiles.join(", ")}`);
     }
 
+    if (leakedBuildOutputs.length > 0) {
+      console.error(`Generated build outputs should not be packed: ${leakedBuildOutputs.join(", ")}`);
+    }
+
     process.exit(1);
   }
 
   console.log(`Pack contents check passed (${paths.length} files).`);
+}
+
+export function findLeakedBuildOutputs(paths) {
+  return paths.filter((filePath) => /(?:^|\/)(?:bin|obj)\//.test(normalizePath(filePath))).sort();
 }
 
 function normalizePath(filePath) {

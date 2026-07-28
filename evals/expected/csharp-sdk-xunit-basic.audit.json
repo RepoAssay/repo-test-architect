@@ -1,0 +1,168 @@
+{
+  "schemaVersion": "audit/v1",
+  "profile": {
+    "root": "<fixture>",
+    "languages": [
+      "csharp"
+    ],
+    "packageManagers": [
+      "nuget"
+    ],
+    "testFrameworks": [
+      "xunit"
+    ],
+    "architectures": [
+      "dotnet-sdk-project",
+      "dotnet-test-project",
+      "library"
+    ],
+    "testCommand": "dotnet test CheckoutRules.Tests.csproj",
+    "detectedConventions": [
+      "SDK-style project",
+      ".NET test project",
+      "attributed C# tests"
+    ],
+    "existingTestLocations": [
+      "Tests/ attributed tests"
+    ],
+    "setupSignals": [
+      "CheckoutRules.Tests.csproj",
+      "Microsoft.NET.Sdk",
+      "net10.0"
+    ],
+    "confidence": "high",
+    "blockers": []
+  },
+  "untestedCandidates": [
+    {
+      "id": "CheckoutService.cs",
+      "name": "CheckoutService",
+      "path": "CheckoutService.cs",
+      "kind": "service",
+      "signals": [
+        "service-boundary",
+        "branching-logic",
+        "edge-case-surface"
+      ],
+      "risk": "high",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 8,
+      "maintenanceCost": 3,
+      "reasons": [
+        "Branching C# behavior",
+        "Fallible or edge-case behavior"
+      ],
+      "existingTestPaths": []
+    }
+  ],
+  "coveredButRisky": [
+    {
+      "id": "PriceParser.cs",
+      "name": "PriceParser",
+      "path": "PriceParser.cs",
+      "kind": "parser",
+      "signals": [
+        "pure-logic",
+        "branching-logic",
+        "edge-case-surface",
+        "matching-test"
+      ],
+      "risk": "high",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 8,
+      "maintenanceCost": 3,
+      "reasons": [
+        "Branching C# behavior",
+        "Fallible or edge-case behavior",
+        "Existing C# test evidence detected; review missing edge cases"
+      ],
+      "existingTestPaths": [
+        "Tests/PriceParserTests.cs"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "Tests/PriceParserTests.cs",
+          "kind": "csharp-symbol-reference",
+          "strength": "direct",
+          "usage": "asserted"
+        }
+      ]
+    }
+  ],
+  "recommended": [
+    {
+      "id": "CheckoutService.cs",
+      "name": "CheckoutService",
+      "path": "CheckoutService.cs",
+      "kind": "service",
+      "signals": [
+        "service-boundary",
+        "branching-logic",
+        "edge-case-surface"
+      ],
+      "risk": "high",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 8,
+      "maintenanceCost": 3,
+      "reasons": [
+        "Branching C# behavior",
+        "Fallible or edge-case behavior"
+      ],
+      "existingTestPaths": []
+    },
+    {
+      "id": "PriceParser.cs",
+      "name": "PriceParser",
+      "path": "PriceParser.cs",
+      "kind": "parser",
+      "signals": [
+        "pure-logic",
+        "branching-logic",
+        "edge-case-surface",
+        "matching-test"
+      ],
+      "risk": "high",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 8,
+      "maintenanceCost": 3,
+      "reasons": [
+        "Branching C# behavior",
+        "Fallible or edge-case behavior",
+        "Existing C# test evidence detected; review missing edge cases"
+      ],
+      "existingTestPaths": [
+        "Tests/PriceParserTests.cs"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "Tests/PriceParserTests.cs",
+          "kind": "csharp-symbol-reference",
+          "strength": "direct",
+          "usage": "asserted"
+        }
+      ]
+    }
+  ],
+  "skipped": [
+    {
+      "id": "CheckoutRequest.cs",
+      "name": "CheckoutRequest",
+      "path": "CheckoutRequest.cs",
+      "kind": "data-model",
+      "signals": [
+        "dto-only"
+      ],
+      "riskReductionScore": 2,
+      "maintenanceCost": 2,
+      "reason": "Data-only C# models are better exercised through consuming behavior."
+    }
+  ],
+  "risks": [
+    "CheckoutService has branching c# behavior, fallible or edge-case behavior and has no matching C# test evidence.",
+    "PriceParser has branching c# behavior, fallible or edge-case behavior and needs edge-case review."
+  ]
+}

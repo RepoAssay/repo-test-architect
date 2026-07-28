@@ -1,0 +1,86 @@
+{
+  "schemaVersion": "plan/v1",
+  "summary": {
+    "confidence": "high",
+    "verificationCommand": "dotnet test CheckoutRules.Tests.csproj",
+    "blockerCount": 0,
+    "addTestCount": 1,
+    "extendTestCount": 1,
+    "deferredCount": 1
+  },
+  "blockers": [],
+  "items": [
+    {
+      "id": "add-test:CheckoutService.cs",
+      "action": "add-test",
+      "targetId": "CheckoutService.cs",
+      "target": "CheckoutService",
+      "path": "CheckoutService.cs",
+      "testLevel": "unit",
+      "priority": 5,
+      "riskReductionScore": 8,
+      "maintenanceCost": 3,
+      "rationale": [
+        "Branching C# behavior",
+        "Fallible or edge-case behavior"
+      ],
+      "sourceSignals": [
+        "service-boundary",
+        "branching-logic",
+        "edge-case-surface"
+      ],
+      "existingTestPaths": []
+    },
+    {
+      "id": "extend-test:PriceParser.cs",
+      "action": "extend-test",
+      "targetId": "PriceParser.cs",
+      "target": "PriceParser",
+      "path": "PriceParser.cs",
+      "testLevel": "unit",
+      "priority": 5,
+      "riskReductionScore": 8,
+      "maintenanceCost": 3,
+      "rationale": [
+        "Branching C# behavior",
+        "Fallible or edge-case behavior",
+        "Existing C# test evidence detected; review missing edge cases"
+      ],
+      "sourceSignals": [
+        "pure-logic",
+        "branching-logic",
+        "edge-case-surface",
+        "matching-test"
+      ],
+      "existingTestPaths": [
+        "Tests/PriceParserTests.cs"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "Tests/PriceParserTests.cs",
+          "kind": "csharp-symbol-reference",
+          "strength": "direct",
+          "usage": "asserted"
+        }
+      ]
+    },
+    {
+      "id": "defer:CheckoutRequest.cs",
+      "action": "defer",
+      "targetId": "CheckoutRequest.cs",
+      "target": "CheckoutRequest",
+      "path": "CheckoutRequest.cs",
+      "testLevel": "none",
+      "priority": 0,
+      "riskReductionScore": 2,
+      "maintenanceCost": 2,
+      "rationale": [
+        "Data-only C# models are better exercised through consuming behavior."
+      ],
+      "sourceSignals": [
+        "dto-only"
+      ],
+      "existingTestPaths": []
+    }
+  ]
+}

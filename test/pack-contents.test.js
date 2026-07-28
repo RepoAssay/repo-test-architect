@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { describe, it } from "node:test";
-import { allowedTopLevelEntries, requiredFiles } from "../scripts/check-pack-contents.js";
+import { allowedTopLevelEntries, findLeakedBuildOutputs, requiredFiles } from "../scripts/check-pack-contents.js";
 
 describe("package contents", () => {
   it("keeps npm pack dry-run contents within the runtime allowlist", () => {
@@ -19,13 +19,30 @@ describe("package contents", () => {
     assert.ok(requiredFiles.includes("server.json"));
   });
 
+  it("rejects generated .NET build outputs anywhere in the package", () => {
+    assert.deepEqual(
+      findLeakedBuildOutputs([
+        "examples/csharp-sdk-xunit-basic/bin/Debug/net10.0/project.dll",
+        "examples/csharp-sdk-xunit-basic/obj/project.assets.json",
+        "src/adapters/csharp/audit.js"
+      ]),
+      [
+        "examples/csharp-sdk-xunit-basic/bin/Debug/net10.0/project.dll",
+        "examples/csharp-sdk-xunit-basic/obj/project.assets.json"
+      ]
+    );
+  });
+
   it("requires check script dependencies needed by packaged release verification", () => {
     assert.ok(requiredFiles.includes("src/diagnostics/diagnostics.js"));
     assert.ok(requiredFiles.includes("src/adapters/go/audit.js"));
+    assert.ok(requiredFiles.includes("src/adapters/csharp/audit.js"));
     assert.ok(requiredFiles.includes("src/adapters/rust/audit.js"));
     assert.ok(requiredFiles.includes("docs/go-alpha-support.md"));
+    assert.ok(requiredFiles.includes("docs/csharp-alpha-support.md"));
     assert.ok(requiredFiles.includes("docs/rust-alpha-support.md"));
     assert.ok(requiredFiles.includes("examples/go-testing-basic/go.mod"));
+    assert.ok(requiredFiles.includes("examples/csharp-sdk-xunit-basic/CheckoutRules.Tests.csproj"));
     assert.ok(requiredFiles.includes("examples/go-build-target-basic/go.mod"));
     assert.ok(requiredFiles.includes("examples/go-workspace-basic/go.work"));
     assert.ok(requiredFiles.includes("examples/go-workspace-basic/services/checkout/go.mod"));
