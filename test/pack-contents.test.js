@@ -40,6 +40,7 @@ describe("package contents", () => {
     assert.ok(requiredFiles.includes("src/adapters/rust/audit.js"));
     assert.ok(requiredFiles.includes("docs/go-alpha-support.md"));
     assert.ok(requiredFiles.includes("docs/csharp-alpha-support.md"));
+    assert.ok(requiredFiles.includes("docs/csharp-tdd-validation-report.md"));
     assert.ok(requiredFiles.includes("docs/rust-alpha-support.md"));
     assert.ok(requiredFiles.includes("examples/go-testing-basic/go.mod"));
     assert.ok(requiredFiles.includes("examples/csharp-sdk-xunit-basic/CheckoutRules.Tests.csproj"));

@@ -39,6 +39,7 @@ export const requiredFiles = [
   "src/adapters/rust/cargo-workspace.js",
   "docs/go-alpha-support.md",
   "docs/csharp-alpha-support.md",
+  "docs/csharp-tdd-validation-report.md",
   "docs/rust-alpha-support.md",
   "docs/rust-ripgrep-validation-report.md",
   "examples/go-testing-basic/go.mod",
