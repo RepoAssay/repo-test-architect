@@ -28,8 +28,8 @@
     },
     {
       "path": "summary.extendTestCount",
-      "expected": 2,
-      "reason": "The library root and its module-tested validator should remain extend-test items."
+      "expected": 3,
+      "reason": "The library root, associated-function calculator, and module-tested validator should remain extend-test items."
     },
     {
       "path": "items[0].id",
@@ -47,17 +47,27 @@
       "reason": "The custom binary root should retain its manifest-owned path in the plan."
     },
     {
-      "path": "items[5].id",
+      "path": "items[2].id",
+      "expected": "extend-test:code/calculator.rs",
+      "reason": "The logical calculator module should retain exact associated-function evidence."
+    },
+    {
+      "path": "items[2].existingTestEvidence[0].testPath",
+      "expected": "tests/calculator_test.rs",
+      "reason": "The named Calculator import should preserve its asserted associated call."
+    },
+    {
+      "path": "items[6].id",
       "expected": "extend-test:code/validator.rs",
       "reason": "The logical validator module should retain direct unit and integration evidence."
     },
     {
-      "path": "items[5].existingTestEvidence[0].testPath",
+      "path": "items[6].existingTestEvidence[0].testPath",
       "expected": "code/library.rs",
       "reason": "The crate-relative unit-test import should remain attached to the validator module."
     },
     {
-      "path": "items[5].existingTestEvidence[1].testPath",
+      "path": "items[6].existingTestEvidence[1].testPath",
       "expected": "tests/validator_test.rs",
       "reason": "The package-name integration import should resolve through the custom logical module graph."
     }

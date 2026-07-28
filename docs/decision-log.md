@@ -309,3 +309,11 @@ Decision: retain the logical module name discovered at each literal `mod` edge a
 Rationale: physical paths are not Rust module identities. A custom `[lib].path` can declare `validator` from `code/validator.rs`, while a static `#[path]` can place the same logical shape elsewhere. Recording the declaration edge lets unit and integration tests prove those functions without falling back to directory guesses. Wildcards, unused or shadowed bindings, `self::` test ownership, types, methods, re-exports, ambiguous modules, and deeper source propagation remain uncredited.
 
 Revisit when: receiver construction, module re-exports, direct qualified calls, or one-hop source dependencies can be proven without weakening callable identity.
+
+## Credit Exact Rust Inherent Associated Calls
+
+Decision: extend named logical-module imports with direct evidence for `Type::method(...)` when one owned source file uniquely declares the imported struct, enum, or union and one inherent implementation method with that name. Preserve call/assertion usage and reject local shadows, duplicate types or methods, wildcard imports, and trait implementations.
+
+Rationale: Rust builders and constructors are commonly exercised through associated calls before any instance receiver exists. The named import plus unique logical module, type declaration, and inherent method provides a complete static ownership chain. On pinned ripgrep this moves `globset/src/glob.rs` into covered-but-risky through `Glob`/`GlobBuilder` calls in `src/lib.rs` and adds two exact `searcher/testutil.rs` relationships without claiming macro-generated tests or trait dispatch.
+
+Revisit when: a direct constructor result can be bound to one local variable and an instance method can be proven without receiver reassignment, field flow, deref coercion, or trait ambiguity.

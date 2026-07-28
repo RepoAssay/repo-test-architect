@@ -396,7 +396,22 @@ describe("Rust audit adapter", () => {
         "path = \"code/root.rs\"",
         ""
       ].join("\n"),
-      "code/root.rs": "pub mod helpers;\npub mod nested;\n",
+      "code/root.rs": [
+        "pub mod duplicate;",
+        "pub mod factory;",
+        "pub mod helpers;",
+        "pub mod imposter;",
+        "pub mod nested;",
+        "pub mod trait_only;",
+        ""
+      ].join("\n"),
+      "code/duplicate.rs": [
+        "pub struct Duplicate;",
+        "#[cfg(unix)] impl Duplicate { pub fn make() -> usize { 7 } }",
+        "#[cfg(windows)] impl Duplicate { pub fn make() -> usize { 8 } }",
+        ""
+      ].join("\n"),
+      "code/factory.rs": "pub struct Factory;\nimpl Factory { pub fn create() -> usize { 6 } }\n",
       "code/helpers.rs": [
         "pub fn crate_value() -> usize { 1 }",
         "pub fn integration_value() -> usize { 2 }",
@@ -406,11 +421,22 @@ describe("Rust audit adapter", () => {
       ].join("\n"),
       "code/nested/mod.rs": "pub mod sibling;\npub mod worker;\n",
       "code/nested/sibling.rs": "pub fn sibling_value() -> usize { 4 }\n",
+      "code/imposter.rs": "pub struct Imposter;\nimpl Imposter { pub fn new() -> usize { 9 } }\n",
+      "code/trait_only.rs": [
+        "pub trait Build { fn make() -> usize; }",
+        "pub struct TraitOnly;",
+        "impl Build for TraitOnly { fn make() -> usize { 10 } }",
+        ""
+      ].join("\n"),
       "code/nested/worker.rs": [
         "pub fn local_value() -> usize { 5 }",
         "#[cfg(test)]",
         "mod tests {",
+        "    use crate::duplicate::Duplicate;",
+        "    use crate::factory::Factory as ExactFactory;",
         "    use crate::helpers::{Factory, crate_value as imported_value, integration_value as shadowed_value, unused_value};",
+        "    use crate::imposter::Imposter as LocalFactory;",
+        "    use crate::trait_only::TraitOnly;",
         "    use super::local_value;",
         "    use super::super::sibling::sibling_value;",
         "    use self::test_only;",
@@ -420,19 +446,29 @@ describe("Rust audit adapter", () => {
         "    #[test]",
         "    fn checks_exact_modules() {",
         "        use self::test_only as shadowed_value;",
+        "        struct LocalFactory;",
+        "        impl LocalFactory { fn new() -> usize { 0 } }",
         "        let _factory = Factory;",
         "        local_value();",
+        "        assert_eq!(ExactFactory::create(), 6);",
         "        assert_eq!(imported_value(), 1);",
         "        assert_eq!(sibling_value(), 4);",
+        "        Duplicate::make();",
+        "        LocalFactory::new();",
+        "        TraitOnly::make();",
         "        shadowed_value();",
         "    }",
         "}",
         ""
       ].join("\n"),
       "tests/module_test.rs": [
+        "use module_evidence::factory::Factory;",
         "use module_evidence::helpers::integration_value;",
         "#[test]",
-        "fn checks_custom_root_module() { assert_eq!(integration_value(), 2); }",
+        "fn checks_custom_root_module() {",
+        "    assert_eq!(Factory::create(), 6);",
+        "    assert_eq!(integration_value(), 2);",
+        "}",
         ""
       ].join("\n")
     });
@@ -444,9 +480,24 @@ describe("Rust audit adapter", () => {
     ]));
 
     assert.deepEqual(audit.coveredButRisky.map((target) => target.path), [
+      "code/factory.rs",
       "code/helpers.rs",
       "code/nested/sibling.rs",
       "code/nested/worker.rs"
+    ]);
+    assert.deepEqual(evidenceByPath["code/factory.rs"], [
+      {
+        testPath: "code/nested/worker.rs",
+        kind: "rust-symbol-reference",
+        strength: "direct",
+        usage: "asserted"
+      },
+      {
+        testPath: "tests/module_test.rs",
+        kind: "rust-symbol-reference",
+        strength: "direct",
+        usage: "asserted"
+      }
     ]);
     assert.deepEqual(evidenceByPath["code/helpers.rs"], [
       {
@@ -474,7 +525,11 @@ describe("Rust audit adapter", () => {
       strength: "direct",
       usage: "called"
     }]);
-    assert.deepEqual(audit.untestedCandidates.map((target) => target.path), []);
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.path), [
+      "code/duplicate.rs",
+      "code/imposter.rs",
+      "code/trait_only.rs"
+    ]);
   });
 
   it("keeps exact crate imports and direct call usage bounded", (t) => {

@@ -1,3 +1,4 @@
+pub mod calculator;
 pub mod validator;
 
 #[path = "../shared/tax.rs"]
