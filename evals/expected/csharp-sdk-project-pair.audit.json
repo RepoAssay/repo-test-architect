@@ -36,7 +36,8 @@
     "confidence": "high",
     "blockers": []
   },
-  "untestedCandidates": [
+  "untestedCandidates": [],
+  "coveredButRisky": [
     {
       "id": "src/CheckoutRules/CheckoutService.cs",
       "name": "CheckoutService",
@@ -45,7 +46,8 @@
       "signals": [
         "service-boundary",
         "branching-logic",
-        "edge-case-surface"
+        "edge-case-surface",
+        "matching-test"
       ],
       "risk": "high",
       "testability": "high",
@@ -54,12 +56,21 @@
       "maintenanceCost": 3,
       "reasons": [
         "Branching C# behavior",
-        "Fallible or edge-case behavior"
+        "Fallible or edge-case behavior",
+        "Existing C# test evidence detected; review missing edge cases"
       ],
-      "existingTestPaths": []
-    }
-  ],
-  "coveredButRisky": [
+      "existingTestPaths": [
+        "tests/CheckoutRules.Tests/CheckoutServiceTests.cs"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "tests/CheckoutRules.Tests/CheckoutServiceTests.cs",
+          "kind": "csharp-symbol-reference",
+          "strength": "direct",
+          "usage": "asserted"
+        }
+      ]
+    },
     {
       "id": "src/CheckoutRules/DiscountCalculator.cs",
       "name": "DiscountCalculator",
@@ -103,7 +114,8 @@
       "signals": [
         "service-boundary",
         "branching-logic",
-        "edge-case-surface"
+        "edge-case-surface",
+        "matching-test"
       ],
       "risk": "high",
       "testability": "high",
@@ -112,9 +124,20 @@
       "maintenanceCost": 3,
       "reasons": [
         "Branching C# behavior",
-        "Fallible or edge-case behavior"
+        "Fallible or edge-case behavior",
+        "Existing C# test evidence detected; review missing edge cases"
       ],
-      "existingTestPaths": []
+      "existingTestPaths": [
+        "tests/CheckoutRules.Tests/CheckoutServiceTests.cs"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "tests/CheckoutRules.Tests/CheckoutServiceTests.cs",
+          "kind": "csharp-symbol-reference",
+          "strength": "direct",
+          "usage": "asserted"
+        }
+      ]
     },
     {
       "id": "src/CheckoutRules/DiscountCalculator.cs",
@@ -165,7 +188,7 @@
     }
   ],
   "risks": [
-    "CheckoutService has branching c# behavior, fallible or edge-case behavior and has no matching C# test evidence.",
+    "CheckoutService has branching c# behavior, fallible or edge-case behavior and needs edge-case review.",
     "DiscountCalculator has branching c# behavior, fallible or edge-case behavior and needs edge-case review."
   ]
 }

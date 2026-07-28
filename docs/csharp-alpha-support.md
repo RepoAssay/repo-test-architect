@@ -13,8 +13,8 @@ The C# adapter is experimental. Its bounded slices prove that one conventional S
 | Test project | `Microsoft.NET.Test.Sdk` or static `<IsTestProject>true</IsTestProject>` plus a supported framework package | The exact test SDK remains required for the bounded native command |
 | Frameworks | xUnit `[Fact]`/`[Theory]`, NUnit `[Test]`/`[TestCase]`/`[TestCaseSource]`, and MSTest `[TestMethod]`/`[DataTestMethod]` | Package and runnable attributed-test evidence must agree |
 | Command | `dotnet test <test-project>.csproj` | Emitted only when project, edge, target, compile, test-runner, and ownership checks are complete |
-| Direct evidence | One uniquely owned class, record, or struct used through `Type.Method(...)` or `new Type(...)` in a runnable test | Test-local declarations, duplicate source types, comments, strings, characters, and unused names contribute nothing |
-| Assertion usage | Direct calls inside an `Assert.*` or `.Should(...)` statement are `asserted`; other exact calls are `called` | The adapter does not infer result flow through locals or helper assertions |
+| Direct evidence | One uniquely owned class, record, or struct used through `Type.Method(...)`, `new Type(...)`, or an exact local initialized with `new Type(...)` inside a runnable attributed test body | Test-local declarations, duplicate source types, comments, strings, characters, and unused names contribute nothing |
+| Receiver/result usage | A stable `var value = new Type(...)` or `Type value = new Type(...)` can prove `value.Method(...)`; the direct call or one stable local result consumed by `Assert.*` or `.Should(...)` is `asserted` | Receiver/result reassignment, `ref`/`out`, interface-typed locals, fields, properties, helpers, nested local functions, deferred lambdas, and deeper result flow are rejected |
 | Naming evidence | A unique `Foo.cs` to `FooTest.cs`/`FooTests.cs`/`FooSpec.cs`/`FooSpecs.cs` fallback | Used only when the same test has no stronger direct evidence for that source file |
 
 The adapter classifies branching and fallible behavior, service and external boundaries, parsers, validators, calculators, formatters, mappers, repositories, controllers, and clients. Generated files, application startup wiring, data-only models, and interfaces are deferred with explicit reasons rather than promoted as direct test targets.
@@ -29,7 +29,7 @@ dotnet test CheckoutRules.Tests.csproj
 
 The ordinary adapter audit does not execute `dotnet`, MSBuild, NuGet restore, source generators, target-repository code, or tests. The reported command is deterministic repository guidance; native execution is a fixture-validation gate performed separately.
 
-`examples/csharp-sdk-project-pair` contains `src/CheckoutRules/CheckoutRules.csproj` and `tests/CheckoutRules.Tests/CheckoutRules.Tests.csproj` connected by one literal relative `ProjectReference`. It keeps test helpers outside the candidate set, carries direct asserted evidence from the test project to `DiscountCalculator`, leaves `CheckoutService` untested, and defers the data-only `CheckoutRequest`. The fixture passes:
+`examples/csharp-sdk-project-pair` contains `src/CheckoutRules/CheckoutRules.csproj` and `tests/CheckoutRules.Tests/CheckoutRules.Tests.csproj` connected by one literal relative `ProjectReference`. It keeps test helpers outside the candidate set, carries direct asserted evidence from a static call to `DiscountCalculator`, follows an exact `CheckoutService` local receiver through one result into xUnit, and defers the data-only `CheckoutRequest`. The fixture passes:
 
 ```sh
 dotnet test tests/CheckoutRules.Tests/CheckoutRules.Tests.csproj
@@ -41,6 +41,8 @@ The first pinned live probe audits [`aelassas/tdd`](https://github.com/aelassas/
 
 Native validation builds cleanly and executes all 26 tests. Twenty-two pass on Darwin; four file-loader tests fail because their fixture paths use Windows backslashes and the upstream workflow runs on `windows-latest`. The static audit had already classified that loader as a high-risk external boundary and recommended integration-level review. See the [C# TDD Live Validation Report](csharp-tdd-validation-report.md).
 
+The receiver/result follow-up preserves all four candidate classifications and all five direct relationships while upgrading usage from one asserted/four called to four asserted/one called. `Translator`, `TranslatorLoader`, and `TranslatorParser` gain assertion proof; `TranslatorException` remains conservatively called. Five follow-up audits are digest-stable with a 72.0 ms median.
+
 ## Explicit Exclusions
 
 The first slice does not claim:
@@ -51,7 +53,7 @@ The first slice does not claim:
 - custom, removed, or explicitly included `Compile` items
 - multi-targeted projects
 - central package management, custom test adapters, Microsoft.Testing.Platform-only layouts, or framework versions inferred through imported properties
-- namespace, alias, partial-type, generic-type, overload, receiver, local-result, helper, mock, reflection, source-generator, or dependency-graph resolution
+- namespace, alias, partial-type, generic-type, overload, target-typed construction, receiver/result reassignment, interface/field/property receiver identity, helper-return, nested local-function, deferred-lambda, mock, reflection, source-generator, or dependency-graph resolution
 - cross-project evidence outside the one verified production/test edge, or any transitive evidence
 
-The live pair pressure is complete. Bounded instance-receiver and local-result flow is now a stronger next slice than solution ownership: it can improve called-versus-asserted precision for conventional tests without evaluating arbitrary MSBuild.
+The live pair and bounded concrete-local receiver pressure are complete. Further live probes should decide whether inherited build/package metadata or additional receiver sources provide the larger practical gain before solution ownership is widened.

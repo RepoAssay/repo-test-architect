@@ -38,8 +38,18 @@ describe("C# audit adapter", () => {
     ]);
     assert.equal(audit.profile.confidence, "high");
     assert.deepEqual(audit.profile.blockers, []);
-    assert.deepEqual(audit.untestedCandidates.map((target) => target.path), ["src/CheckoutRules/CheckoutService.cs"]);
+    assert.deepEqual(audit.untestedCandidates, []);
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), [
+      "src/CheckoutRules/CheckoutService.cs",
+      "src/CheckoutRules/DiscountCalculator.cs"
+    ]);
     assert.deepEqual(audit.coveredButRisky[0].existingTestEvidence, [{
+      testPath: "tests/CheckoutRules.Tests/CheckoutServiceTests.cs",
+      kind: "csharp-symbol-reference",
+      strength: "direct",
+      usage: "asserted"
+    }]);
+    assert.deepEqual(audit.coveredButRisky[1].existingTestEvidence, [{
       testPath: "tests/CheckoutRules.Tests/DiscountCalculatorTests.cs",
       kind: "csharp-symbol-reference",
       strength: "direct",
@@ -133,6 +143,77 @@ describe("C# audit adapter", () => {
     });
 
     assert.deepEqual(auditCSharpRepo(root).coveredButRisky, []);
+  });
+
+  it("tracks concrete local receiver calls and one-hop asserted results", (t) => {
+    const root = createRepo(t, {
+      "Example.Tests.csproj": projectFile("xunit"),
+      "InlineParser.cs": "public class InlineParser { public int Parse(int value) { if (value < 0) throw new Exception(); return value; } }\n",
+      "ResultParser.cs": "public class ResultParser { public int Parse(int value) { if (value < 0) throw new Exception(); return value; } }\n",
+      "CalledParser.cs": "public class CalledParser { public int Parse(int value) { if (value < 0) throw new Exception(); return value; } }\n",
+      "FluentParser.cs": "public class FluentParser { public int Parse(int value) { if (value < 0) throw new Exception(); return value; } }\n",
+      "Tests.cs": [
+        "public class Tests {",
+        "  [Fact] public void AssertsInline() { var parser = new InlineParser(); Assert.Equal(1, parser.Parse(1)); }",
+        "  [Fact] public void AssertsResult() { ResultParser parser = new ResultParser(); var result = parser.Parse(1); Assert.Equal(1, result); }",
+        "  [Fact] public void AssertsFluentResult() { var parser = new FluentParser(); var result = parser.Parse(1); result.Should().Be(1); }",
+        "  [Fact] public void OnlyCalls() { var parser = new CalledParser(); parser.Parse(1); }",
+        "}"
+      ].join("\n")
+    });
+
+    assert.deepEqual(
+      auditCSharpRepo(root).coveredButRisky.map((target) => [target.path, target.existingTestEvidence[0].usage]),
+      [
+        ["CalledParser.cs", "called"],
+        ["FluentParser.cs", "asserted"],
+        ["InlineParser.cs", "asserted"],
+        ["ResultParser.cs", "asserted"]
+      ]
+    );
+  });
+
+  it("rejects reassigned receivers and results plus interface, field, ref, and helper flow", (t) => {
+    const root = createRepo(t, {
+      "Example.Tests.csproj": projectFile("xunit"),
+      "ReassignedParser.cs": "public class ReassignedParser { public int Parse() => 1; }\n",
+      "ChangedResultParser.cs": "public class ChangedResultParser { public int Parse() => 1; }\n",
+      "InterfaceParser.cs": "public interface IParser { int Parse(); } public class InterfaceParser : IParser { public int Parse() => 1; }\n",
+      "FieldParser.cs": "public class FieldParser { public int Parse() => 1; }\n",
+      "RefParser.cs": "public class RefParser { public int Parse() => 1; }\n",
+      "HelperParser.cs": "public class HelperParser { public int Parse() => 1; }\n",
+      "LocalHelperParser.cs": "public class LocalHelperParser { public int Parse() => 1; }\n",
+      "LambdaParser.cs": "public class LambdaParser { public int Parse() => 1; }\n",
+      "Tests.cs": [
+        "public class Tests {",
+        "  private readonly FieldParser fieldParser = new FieldParser();",
+        "  [Fact] public void RejectsReceiverReassignment() { var parser = new ReassignedParser(); parser = new ReassignedParser(); Assert.Equal(1, parser.Parse()); }",
+        "  [Fact] public void RejectsResultReassignment() { var parser = new ChangedResultParser(); var result = parser.Parse(); result = 2; Assert.Equal(2, result); }",
+        "  [Fact] public void RejectsInterfaceBinding() { IParser parser = new InterfaceParser(); Assert.Equal(1, parser.Parse()); }",
+        "  [Fact] public void RejectsFieldFlow() { Assert.Equal(1, fieldParser.Parse()); }",
+        "  [Fact] public void RejectsRefMutation() { var parser = new RefParser(); Mutate(ref parser); Assert.Equal(1, parser.Parse()); }",
+        "  [Fact] public void RejectsHelperFlow() { var parser = CreateParser(); Assert.Equal(1, parser.Parse()); }",
+        "  [Fact] public void RejectsLocalHelper() { var parser = new LocalHelperParser(); void Verify() { Assert.Equal(1, parser.Parse()); } Verify(); }",
+        "  [Fact] public void RejectsDeferredLambda() { var parser = new LambdaParser(); Action verify = () => Assert.Equal(1, parser.Parse()); verify(); }",
+        "  private static void Mutate(ref RefParser parser) { parser = new RefParser(); }",
+        "  private static HelperParser CreateParser() => new HelperParser();",
+        "}"
+      ].join("\n")
+    });
+
+    assert.deepEqual(
+      auditCSharpRepo(root).coveredButRisky.map((target) => [target.path, target.existingTestEvidence[0].usage]),
+      [
+        ["ChangedResultParser.cs", "called"],
+        ["FieldParser.cs", "called"],
+        ["HelperParser.cs", "called"],
+        ["InterfaceParser.cs", "called"],
+        ["LambdaParser.cs", "called"],
+        ["LocalHelperParser.cs", "called"],
+        ["ReassignedParser.cs", "called"],
+        ["RefParser.cs", "called"]
+      ]
+    );
   });
 
   it("filters candidates with portable changed paths and classifies generated and contract files", (t) => {

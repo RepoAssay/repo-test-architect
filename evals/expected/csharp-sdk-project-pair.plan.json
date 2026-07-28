@@ -4,15 +4,15 @@
     "confidence": "high",
     "verificationCommand": "dotnet test tests/CheckoutRules.Tests/CheckoutRules.Tests.csproj",
     "blockerCount": 0,
-    "addTestCount": 1,
-    "extendTestCount": 1,
+    "addTestCount": 0,
+    "extendTestCount": 2,
     "deferredCount": 1
   },
   "blockers": [],
   "items": [
     {
-      "id": "add-test:src/CheckoutRules/CheckoutService.cs",
-      "action": "add-test",
+      "id": "extend-test:src/CheckoutRules/CheckoutService.cs",
+      "action": "extend-test",
       "targetId": "src/CheckoutRules/CheckoutService.cs",
       "target": "CheckoutService",
       "path": "src/CheckoutRules/CheckoutService.cs",
@@ -22,14 +22,26 @@
       "maintenanceCost": 3,
       "rationale": [
         "Branching C# behavior",
-        "Fallible or edge-case behavior"
+        "Fallible or edge-case behavior",
+        "Existing C# test evidence detected; review missing edge cases"
       ],
       "sourceSignals": [
         "service-boundary",
         "branching-logic",
-        "edge-case-surface"
+        "edge-case-surface",
+        "matching-test"
       ],
-      "existingTestPaths": []
+      "existingTestPaths": [
+        "tests/CheckoutRules.Tests/CheckoutServiceTests.cs"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "tests/CheckoutRules.Tests/CheckoutServiceTests.cs",
+          "kind": "csharp-symbol-reference",
+          "strength": "direct",
+          "usage": "asserted"
+        }
+      ]
     },
     {
       "id": "extend-test:src/CheckoutRules/DiscountCalculator.cs",
