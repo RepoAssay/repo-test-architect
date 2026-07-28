@@ -1,7 +1,7 @@
 {
   "schemaVersion": "model-consistency-scenario/v1",
   "id": "csharp-sdk-project-pair-plan",
-  "description": "Different model profiles should preserve the literal C# production/test project edge, exact test-project command, cross-project direct evidence, and production-owned target paths.",
+  "description": "Different model profiles should preserve the literal C# production/test project edge, exact test-project command, direct static and concrete-local receiver evidence, and production-owned target paths.",
   "sourceArtifact": {
     "path": "evals/expected/csharp-sdk-project-pair.audit.json",
     "schemaVersion": "audit/v1"
@@ -23,13 +23,13 @@
     },
     {
       "path": "summary.addTestCount",
-      "expected": 1,
-      "reason": "The untested production service should remain the one add-test item."
+      "expected": 0,
+      "reason": "The concrete service receiver and asserted one-hop result should prevent a duplicate add-test recommendation."
     },
     {
       "path": "summary.extendTestCount",
-      "expected": 1,
-      "reason": "The directly asserted production calculator should remain the one extend-test item."
+      "expected": 2,
+      "reason": "The asserted service receiver flow and static calculator call should remain two extend-test items."
     },
     {
       "path": "summary.deferredCount",
@@ -38,23 +38,23 @@
     },
     {
       "path": "items[0].id",
-      "expected": "add-test:src/CheckoutRules/CheckoutService.cs",
-      "reason": "The service identity must retain its production-project path."
+      "expected": "extend-test:src/CheckoutRules/CheckoutService.cs",
+      "reason": "The service identity and existing-test action must retain the production-project path."
+    },
+    {
+      "path": "items[0].existingTestEvidence[0].testPath",
+      "expected": "tests/CheckoutRules.Tests/CheckoutServiceTests.cs",
+      "reason": "The concrete receiver and one-hop result must remain attached to the owning attributed test."
+    },
+    {
+      "path": "items[0].existingTestEvidence[0].usage",
+      "expected": "asserted",
+      "reason": "The exact service result remains consumed by the xUnit assertion."
     },
     {
       "path": "items[1].id",
       "expected": "extend-test:src/CheckoutRules/DiscountCalculator.cs",
       "reason": "The calculator identity must retain its production-project path."
-    },
-    {
-      "path": "items[1].existingTestEvidence[0].testPath",
-      "expected": "tests/CheckoutRules.Tests/DiscountCalculatorTests.cs",
-      "reason": "Direct evidence must remain attached to the test-project-owned attributed test."
-    },
-    {
-      "path": "items[1].existingTestEvidence[0].usage",
-      "expected": "asserted",
-      "reason": "The exact calculator call remains nested inside the xUnit assertion."
     },
     {
       "path": "items[2].id",
@@ -69,7 +69,7 @@
   ],
   "unexpectedVariations": [
     "missing exact test-project command",
-    "missing direct cross-project calculator evidence",
+    "missing direct cross-project calculator or concrete receiver evidence",
     "test-project helper promoted as a source candidate",
     "solution or transitive project ownership claim"
   ]

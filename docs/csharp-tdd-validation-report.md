@@ -41,7 +41,18 @@ The four behavioral classes remain visible for review instead of disappearing be
 
 `ITranslatorLoader.cs` and `ITranslatorParser.cs` are deferred as contracts. Test helpers remain outside the production candidate set.
 
-The five direct links consist of one `asserted` constructor use and four `called` uses. This is conservative: the tests store constructed instances in locals before invoking most methods, so the current adapter does not upgrade those method results to asserted evidence through receiver or local-result flow.
+The initial five direct links consisted of one `asserted` constructor use and four `called` uses. The tests store constructed instances in locals before invoking most methods, making this repository the pressure case for the bounded receiver/result follow-up below.
+
+## Follow-Up Receiver And Result Flow
+
+The adapter now follows a concrete local only when a runnable attributed test body initializes it through exact `var value = new Type(...)` or `Type value = new Type(...)` syntax. A direct `value.Method(...)` is `called`; that call inside `Assert.*`/`.Should(...)`, or one stable local result consumed by those APIs, is `asserted`.
+
+The flow stops at receiver or result reassignment, `ref`/`out`, interface-typed locals, fields, properties, helper returns, nested local functions, and deferred lambdas. Candidate ownership, project ownership, and evidence strength do not widen.
+
+On the pinned repository, all four candidate classifications and all five evidence relationships remain unchanged. Usage improves from one asserted/four called to four asserted/one called:
+
+- `Translator`, `TranslatorLoader`, and `TranslatorParser` gain assertion proof from exact local receivers and results
+- `TranslatorException` remains `called` because the observed construction is not itself assertion-result flow
 
 ## Native Validation
 
@@ -65,20 +76,20 @@ This is target-repository portability behavior, not an adapter command defect: t
 
 ## Stability And Performance
 
-Five direct C# audits produced the same root-normalized SHA-256 digest, `092b7170addd080987743e9ccdc2ee95e9982872e1acca28561a1ecb04220565`.
+Five direct C# audits after the receiver/result follow-up produced the same root-normalized SHA-256 digest, `fc70124699126c6a859273829d860b5ff2bde3e9a3a37ec8272b1dc1e23c041f`. The changed digest is expected from the three reviewed usage upgrades; candidate and relationship counts remain stable.
 
 | Run | Duration |
 | --- | ---: |
-| 1 | 72.5 ms |
-| 2 | 70.4 ms |
-| 3 | 70.4 ms |
-| 4 | 70.4 ms |
-| 5 | 70.3 ms |
+| 1 | 72.0 ms |
+| 2 | 73.0 ms |
+| 3 | 72.1 ms |
+| 4 | 70.7 ms |
+| 5 | 70.5 ms |
 
-The median was 70.4 ms for one collapsed production/test project pair.
+The median was 72.0 ms for one collapsed production/test project pair.
 
 ## Remaining Boundary
 
 The live probe validates the current literal pair boundary without requiring solution evaluation. It does not justify `.sln` ownership, inherited MSBuild properties, central package management, multi-targeting, transitive project graphs, or Microsoft.Testing.Platform-only layouts.
 
-The clearest next evidence slice is bounded instance-receiver and local-result flow. The repository's tests construct concrete production types, store them in locals, call instance methods, and assert their results; recovering that chain would improve `called` versus `asserted` precision without widening project ownership or evaluating arbitrary MSBuild.
+Concrete local receiver and one-result assertion flow are now covered. Field/property ownership, interface dispatch, target-typed construction, receiver or result reassignment, helpers, nested local functions, deferred lambdas, and deeper data flow remain outside the evidence boundary. Another live probe should determine whether one of those patterns or inherited build/package metadata is the more valuable next slice.

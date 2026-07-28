@@ -339,3 +339,11 @@ Decision: pin `aelassas/tdd` at `aa81c10a1f251ed7f4c7fa3a64a79780a9f3f4fe` as th
 Rationale: the repository exercises the intended two-project boundary without inherited MSBuild semantics. Detection produces one supported root, five repeated audits are digest-stable with a 70.4 ms median, the solution builds cleanly, and the native test command reaches all 26 tests. The four failures all come from Windows-style fixture paths in the file-loader tests; the audit already keeps that loader prominent as a high-risk integration boundary. This supports deeper receiver/result-flow evidence next, not broader solution ownership.
 
 Revisit when: exact concrete local bindings and their instance calls can retain type identity through one assignment and into a recognized assertion without accepting reassignment, member flow, interface dispatch, or helper indirection.
+
+### 2026-07-28: credit stable concrete C# receivers and one assertion result
+
+Decision: inside a runnable attributed test body, bind a uniquely owned source type through exact `var value = new Type(...)` or `Type value = new Type(...)`, credit direct `value.Method(...)`, and upgrade usage when that call or one stable local result reaches `Assert.*` or `.Should(...)`.
+
+Rationale: the pinned `aelassas/tdd` tests use this conventional shape throughout. The bounded flow upgrades `Translator`, `TranslatorLoader`, and `TranslatorParser` from called to asserted while keeping four covered candidates, two deferred contracts, and five direct relationships unchanged. Five follow-up audits share one digest with a 72.0 ms median. Receiver/result reassignment, `ref`/`out`, interfaces, fields, properties, helpers, nested local functions, and deferred lambdas remain rejected.
+
+Revisit when: another pinned repository shows that target-typed construction, inherited build/package metadata, or one excluded receiver source creates a larger practical gap than the others.

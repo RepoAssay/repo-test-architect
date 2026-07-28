@@ -758,8 +758,11 @@ describe("CLI", () => {
     const audit = JSON.parse(output);
 
     assert.equal(audit.profile.testCommand, "dotnet test tests/CheckoutRules.Tests/CheckoutRules.Tests.csproj");
-    assert.deepEqual(audit.untestedCandidates.map((target) => target.path), ["src/CheckoutRules/CheckoutService.cs"]);
-    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["src/CheckoutRules/DiscountCalculator.cs"]);
+    assert.deepEqual(audit.untestedCandidates, []);
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), [
+      "src/CheckoutRules/CheckoutService.cs",
+      "src/CheckoutRules/DiscountCalculator.cs"
+    ]);
   });
 
   it("passes explicit Go build targets through single-project audits", () => {

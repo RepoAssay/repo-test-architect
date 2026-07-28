@@ -366,7 +366,136 @@ function csharpTypeCallUsage(content, typeName) {
       usage = current;
     }
   }
+  for (const body of collectRunnableTestBodies(content)) {
+    const receiverUsage = csharpLocalReceiverUsage(body, typeName);
+    if (receiverUsage === "asserted") return receiverUsage;
+    if (receiverUsage === "called") usage = receiverUsage;
+  }
   return usage;
+}
+
+function collectRunnableTestBodies(content) {
+  const bodies = [];
+  const bodyStarts = new Set();
+  const attributePattern = /\[(?:Fact|Theory|Test|TestCase|TestCaseSource|TestMethod|DataTestMethod)\b[^\]]*\]/g;
+
+  for (const attribute of content.matchAll(attributePattern)) {
+    const signatureStart = attribute.index + attribute[0].length;
+    const bodyStart = content.indexOf("{", signatureStart);
+    if (bodyStart === -1 || bodyStarts.has(bodyStart)) continue;
+    const signature = content.slice(signatureStart, bodyStart);
+    if (signature.includes(";") || !/\([^;{}]*\)\s*$/.test(signature)) continue;
+    const bodyEnd = matchingBraceIndex(content, bodyStart);
+    if (bodyEnd === -1) continue;
+    bodyStarts.add(bodyStart);
+    bodies.push(content.slice(bodyStart + 1, bodyEnd));
+  }
+
+  return bodies;
+}
+
+function matchingBraceIndex(content, openingIndex) {
+  let depth = 0;
+  for (let index = openingIndex; index < content.length; index += 1) {
+    if (content[index] === "{") depth += 1;
+    if (content[index] === "}") depth -= 1;
+    if (depth === 0) return index;
+  }
+  return -1;
+}
+
+function csharpLocalReceiverUsage(body, typeName) {
+  const escapedType = escapeRegExp(typeName);
+  const genericSuffix = "(?:\\s*<[^;{}()=]+>)?";
+  const bindingPattern = new RegExp(
+    `\\b(?:var|${escapedType}${genericSuffix})\\s+([A-Za-z_][A-Za-z0-9_]*)\\s*=\\s*new\\s+${escapedType}${genericSuffix}\\s*\\(`,
+    "g"
+  );
+  let usage;
+
+  for (const binding of body.matchAll(bindingPattern)) {
+    if (braceDepthAt(body, binding.index) !== 0) continue;
+    const receiver = binding[1];
+    const bindingEnd = body.indexOf(";", binding.index);
+    if (bindingEnd === -1) continue;
+    const remainingBody = body.slice(bindingEnd + 1);
+    const receiverMutation = identifierMutationIndex(remainingBody, receiver);
+    const receiverSegment = receiverMutation === -1 ? remainingBody : remainingBody.slice(0, receiverMutation);
+    const callPattern = new RegExp(`\\b${escapeRegExp(receiver)}\\s*\\.\\s*[A-Za-z_][A-Za-z0-9_]*\\s*\\(`, "g");
+
+    for (const call of receiverSegment.matchAll(callPattern)) {
+      if (braceDepthAt(receiverSegment, call.index) !== 0) continue;
+      const statement = statementAt(receiverSegment, call.index);
+      if (isAssertionStatement(statement.text)) return "asserted";
+      usage = "called";
+
+      const callOffset = call.index - statement.start;
+      const resultBinding = statement.text.slice(0, callOffset).match(
+        /\b(?:var|[A-Za-z_][A-Za-z0-9_.<>,?\[\]]*)\s+([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(?:await\s+)?$/
+      );
+      if (!resultBinding) continue;
+      const afterStatement = receiverSegment.slice(statement.end);
+      if (isLocalResultAsserted(afterStatement, resultBinding[1])) return "asserted";
+    }
+  }
+
+  return usage;
+}
+
+function statementAt(content, index) {
+  const statementStart = Math.max(
+    content.lastIndexOf(";", index - 1),
+    content.lastIndexOf("{", index - 1),
+    content.lastIndexOf("}", index - 1)
+  ) + 1;
+  const statementEndMatch = content.slice(index).search(/[;{}]/);
+  const statementEnd = statementEndMatch === -1 ? content.length : index + statementEndMatch + 1;
+  return {
+    start: statementStart,
+    end: statementEnd,
+    text: content.slice(statementStart, statementEnd)
+  };
+}
+
+function isLocalResultAsserted(content, resultName) {
+  const mutation = identifierMutationIndex(content, resultName);
+  const stableContent = mutation === -1 ? content : content.slice(0, mutation);
+  const escaped = escapeRegExp(resultName);
+  const resultPattern = new RegExp(`\\b${escaped}\\b`);
+  const assertionPatterns = [/\bAssert\s*\./g, /\.Should\s*\(/g];
+  for (const assertionPattern of assertionPatterns) {
+    for (const assertion of stableContent.matchAll(assertionPattern)) {
+      if (braceDepthAt(stableContent, assertion.index) !== 0) continue;
+      const statement = statementAt(stableContent, assertion.index).text;
+      if (isAssertionStatement(statement) && resultPattern.test(statement)) return true;
+    }
+  }
+  return false;
+}
+
+function identifierMutationIndex(content, identifier) {
+  const escaped = escapeRegExp(identifier);
+  const patterns = [
+    new RegExp(`\\b${escaped}\\s*(?:\\+\\+|--|\\?\\?=|<<=|>>=|[+\\-*/%&|^]=|=(?!=|>))`),
+    new RegExp(`(?:\\+\\+|--)\\s*\\b${escaped}\\b`),
+    new RegExp(`\\b(?:ref|out)\\s+${escaped}\\b`)
+  ];
+  const indices = patterns.map((pattern) => content.search(pattern)).filter((index) => index !== -1);
+  return indices.length === 0 ? -1 : Math.min(...indices);
+}
+
+function isAssertionStatement(statement) {
+  const assertionIndex = statement.search(/\bAssert\s*\.|\.Should\s*\(/);
+  return assertionIndex !== -1 && !statement.slice(0, assertionIndex).includes("=>");
+}
+
+function braceDepthAt(content, targetIndex) {
+  let depth = 0;
+  for (let index = 0; index < targetIndex; index += 1) {
+    if (content[index] === "{") depth += 1;
+    if (content[index] === "}") depth = Math.max(0, depth - 1);
+  }
+  return depth;
 }
 
 function addEvidence(evidence, sourcePath, item) {
