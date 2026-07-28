@@ -479,6 +479,46 @@ describe("project detector", () => {
     }]);
   });
 
+  it("collapses one unique C# test edge while preserving unrelated projects", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-dotnet-unique-pair-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    for (const directory of ["src/Core", "src/Other", "tests/Core.Tests", "benchmarks/Benchmarks"]) {
+      fs.mkdirSync(path.join(root, directory), { recursive: true });
+    }
+    fs.writeFileSync(path.join(root, "src/Core/Core.csproj"), "<Project Sdk=\"Microsoft.NET.Sdk\" />\n");
+    fs.writeFileSync(path.join(root, "src/Other/Other.csproj"), "<Project Sdk=\"Microsoft.NET.Sdk\" />\n");
+    fs.writeFileSync(path.join(root, "benchmarks/Benchmarks/Benchmarks.csproj"), "<Project Sdk=\"Microsoft.NET.Sdk\" />\n");
+    fs.writeFileSync(path.join(root, "tests/Core.Tests/Core.Tests.csproj"), "<Project Sdk=\"Microsoft.NET.Sdk\"><ItemGroup><PackageReference Include=\"Microsoft.NET.Test.Sdk\" /><ProjectReference Include=\"../../src/Core/Core.csproj\" /></ItemGroup></Project>\n");
+
+    const detection = detectProjects(root);
+    assert.deepEqual(detection.projects.map((project) => ({ root: project.root, markerFiles: project.markerFiles })), [
+      {
+        root: ".",
+        markerFiles: ["src/Core/Core.csproj", "tests/Core.Tests/Core.Tests.csproj"]
+      },
+      {
+        root: "benchmarks/Benchmarks",
+        markerFiles: ["benchmarks/Benchmarks/Benchmarks.csproj"]
+      },
+      {
+        root: "src/Other",
+        markerFiles: ["src/Other/Other.csproj"]
+      }
+    ]);
+  });
+
+  it("does not collapse a C# pair across an occupied aggregate root", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-dotnet-overlap-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "src/Core"), { recursive: true });
+    fs.mkdirSync(path.join(root, "tests/Core.Tests"), { recursive: true });
+    fs.writeFileSync(path.join(root, "Root.csproj"), "<Project Sdk=\"Microsoft.NET.Sdk\" />\n");
+    fs.writeFileSync(path.join(root, "src/Core/Core.csproj"), "<Project Sdk=\"Microsoft.NET.Sdk\" />\n");
+    fs.writeFileSync(path.join(root, "tests/Core.Tests/Core.Tests.csproj"), "<Project Sdk=\"Microsoft.NET.Sdk\"><ItemGroup><PackageReference Include=\"Microsoft.NET.Test.Sdk\" /><ProjectReference Include=\"../../src/Core/Core.csproj\" /></ItemGroup></Project>\n");
+
+    assert.deepEqual(detectProjects(root).projects.map((project) => project.root), [".", "src/Core", "tests/Core.Tests"]);
+  });
+
   it("keeps dynamic C# project references as separate detected projects", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-dotnet-dynamic-pair-"));
     fs.mkdirSync(path.join(root, "src", "Core"), { recursive: true });

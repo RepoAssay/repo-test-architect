@@ -100,7 +100,7 @@ describe("C# audit adapter", () => {
     const audit = auditCSharpRepo(root);
 
     assert.equal(audit.profile.testCommand, undefined);
-    assert.ok(audit.profile.blockers.includes("Exactly one root test .csproj or one literal production/test project pair is required before C# command ownership is unambiguous."));
+    assert.ok(audit.profile.blockers.includes("Exactly one root test .csproj or one unique literal production/test project edge is required before C# command ownership is unambiguous."));
     assert.ok(audit.profile.blockers.includes("No runnable attributed C# tests detected."));
   });
 
@@ -289,25 +289,63 @@ describe("C# audit adapter", () => {
     assert.ok(audit.recommended.every((target) => target.path !== "tests/Core.Tests/TestDataBuilder.cs"));
   });
 
-  it("blocks dynamic, mismatched, and additional project graph shapes", (t) => {
+  it("selects one unique literal project edge without absorbing unrelated projects", (t) => {
+    const root = createRepo(t, {
+      "src/Core/Core.csproj": productionProjectFile(),
+      "src/Core/Core.cs": "public class Core { public int Run(int value) { if (value < 0) throw new Exception(); return value; } }\n",
+      "src/Other/Other.csproj": productionProjectFile(),
+      "src/Other/Other.cs": "public class Other { public int Run() => 2; }\n",
+      "tests/Core.Tests/Core.Tests.csproj": testProjectFile("../../src/Core/Core.csproj"),
+      "tests/Core.Tests/CoreTests.cs": "public class CoreTests { [Fact] public void Runs() { Assert.Equal(1, new Core().Run(1)); } }\n",
+      "benchmarks/Benchmarks/Benchmarks.csproj": productionProjectFile()
+    });
+
+    const audit = auditCSharpRepo(root);
+    assert.deepEqual(audit.profile.blockers, []);
+    assert.equal(audit.profile.testCommand, "dotnet test tests/Core.Tests/Core.Tests.csproj");
+    assert.ok(audit.profile.detectedConventions.includes("unique literal test edge among unrelated projects"));
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["src/Core/Core.cs"]);
+    assert.ok(audit.recommended.every((target) => !target.path.includes("Other")));
+  });
+
+  it("blocks dynamic, mismatched, and ambiguous project graph shapes", (t) => {
     const dynamic = createRepo(t, {
       "src/Core/Core.csproj": productionProjectFile("net9.0"),
       "src/Core/Core.cs": "public class Core { public int Run() => 1; }\n",
       "tests/Core.Tests/Core.Tests.csproj": testProjectFile("$(CoreProject)"),
       "tests/Core.Tests/CoreTests.cs": "public class CoreTests { [Fact] public void Runs() { Assert.Equal(1, new Core().Run()); } }\n"
     });
-    const additional = createRepo(t, {
+    const ambiguous = createRepo(t, {
       "src/Core/Core.csproj": productionProjectFile(),
+      "src/Core/Core.cs": "public class Core { public int Run() => 1; }\n",
       "src/Other/Other.csproj": productionProjectFile(),
+      "src/Other/Other.cs": "public class Other { public int Run() => 2; }\n",
       "tests/Core.Tests/Core.Tests.csproj": testProjectFile("../../src/Core/Core.csproj"),
-      "tests/Core.Tests/CoreTests.cs": "public class CoreTests { [Fact] public void Runs() { Assert.True(true); } }\n"
+      "tests/Core.Tests/CoreTests.cs": "public class CoreTests { [Fact] public void Runs() { Assert.Equal(1, new Core().Run()); } }\n",
+      "tests/Other.Tests/Other.Tests.csproj": testProjectFile("../../src/Other/Other.csproj"),
+      "tests/Other.Tests/OtherTests.cs": "public class OtherTests { [Fact] public void Runs() { Assert.Equal(2, new Other().Run()); } }\n"
     });
 
     const dynamicBlockers = auditCSharpRepo(dynamic).profile.blockers;
     assert.ok(dynamicBlockers.includes("The test project must contain exactly one literal ProjectReference to the production project, with no other project edges."));
     assert.ok(dynamicBlockers.includes("The production and test projects must use the same static TargetFramework in this slice."));
     assert.deepEqual(auditCSharpRepo(dynamic).coveredButRisky, []);
-    assert.ok(auditCSharpRepo(additional).profile.blockers.includes("Exactly one root test .csproj or one literal production/test project pair is required before C# command ownership is unambiguous."));
+    assert.ok(auditCSharpRepo(ambiguous).profile.blockers.includes("Exactly one root test .csproj or one unique literal production/test project edge is required before C# command ownership is unambiguous."));
+  });
+
+  it("blocks a unique pair that overlaps another project's default compile ownership", (t) => {
+    const root = createRepo(t, {
+      "Root.csproj": productionProjectFile(),
+      "src/Core/Core.csproj": productionProjectFile(),
+      "src/Core/Core.cs": "public class Core { public int Run() => 1; }\n",
+      "tests/Core.Tests/Core.Tests.csproj": testProjectFile("../../src/Core/Core.csproj"),
+      "tests/Core.Tests/CoreTests.cs": "public class CoreTests { [Fact] public void Runs() { Assert.Equal(1, new Core().Run()); } }\n"
+    });
+
+    const audit = auditCSharpRepo(root);
+    assert.equal(audit.profile.testCommand, undefined);
+    assert.ok(audit.profile.blockers.includes("The unique C# production/test edge overlaps another project's default compile ownership."));
+    assert.deepEqual(audit.coveredButRisky, []);
   });
 
   it("classifies application wiring and common boundary types", (t) => {

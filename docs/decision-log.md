@@ -347,3 +347,11 @@ Decision: inside a runnable attributed test body, bind a uniquely owned source t
 Rationale: the pinned `aelassas/tdd` tests use this conventional shape throughout. The bounded flow upgrades `Translator`, `TranslatorLoader`, and `TranslatorParser` from called to asserted while keeping four covered candidates, two deferred contracts, and five direct relationships unchanged. Five follow-up audits share one digest with a 72.0 ms median. Receiver/result reassignment, `ref`/`out`, interfaces, fields, properties, helpers, nested local functions, and deferred lambdas remain rejected.
 
 Revisit when: another pinned repository shows that target-typed construction, inherited build/package metadata, or one excluded receiver source creates a larger practical gap than the others.
+
+### 2026-07-28: select one unique C# test edge amid unrelated projects
+
+Decision: when a larger SDK-style repository contains exactly one statically identified test project with one literal repository-contained `ProjectReference` to one production project, collapse and audit only that pair. Preserve every unrelated project as a separate detected root, and block selection when two valid test edges exist.
+
+Rationale: pinned `jjosh102/sharp-cast` contains a converter library and its xUnit project alongside an unrelated Blazor application and benchmark executable. The unique edge selects an exact command that passes 165/165 upstream tests, while no UI or benchmark source enters the pair's candidates or evidence. Five static audits retain one digest with a 14.4 ms median. This widens practical repository coverage without interpreting the solution file, evaluating MSBuild, or merging the entire graph.
+
+Revisit when: exact test-class field receivers initialized through target-typed construction can recover the two reviewed Sharp Cast converter gaps without allowing mutable, inherited, interface-typed, or helper-created fields.

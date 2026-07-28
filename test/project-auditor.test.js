@@ -16,6 +16,24 @@ describe("project auditor", () => {
     assert.deepEqual(result.audits[0].audit.profile.blockers, []);
   });
 
+  it("audits one unique C# test edge without merging unrelated projects", () => {
+    const result = auditDetectedProjects(path.resolve("examples/csharp-sdk-unique-pair"));
+
+    assert.deepEqual(result.summary, { projectCount: 3, auditedProjectCount: 3, skippedProjectCount: 0 });
+    const selectedPair = result.audits.find((entry) => entry.projectId === ".");
+    assert.equal(selectedPair.adapterId, "csharp");
+    assert.equal(selectedPair.audit.profile.testCommand, "dotnet test tests/Pricing.Tests/Pricing.Tests.csproj");
+    assert.deepEqual(selectedPair.audit.profile.blockers, []);
+    assert.deepEqual(selectedPair.audit.coveredButRisky.map((target) => target.path), ["src/Pricing/PriceCalculator.cs"]);
+    assert.deepEqual(
+      result.audits.filter((entry) => entry.projectId !== ".").map((entry) => [entry.projectId, entry.audit.profile.testCommand]),
+      [
+        ["benchmarks/Pricing.Benchmarks", undefined],
+        ["src/Worker", undefined]
+      ]
+    );
+  });
+
   it("audits Cargo workspace packages independently with exact package commands", () => {
     const result = auditDetectedProjects(path.resolve("examples/rust-cargo-workspace-basic"));
 

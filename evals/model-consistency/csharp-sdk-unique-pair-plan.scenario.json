@@ -1,0 +1,61 @@
+{
+  "schemaVersion": "model-consistency-scenario/v1",
+  "id": "csharp-sdk-unique-pair-plan",
+  "description": "Different model profiles should preserve the unique literal C# test edge, exclude unrelated projects, and retain the exact test-project command and asserted source evidence.",
+  "sourceArtifact": {
+    "path": "evals/expected/csharp-sdk-unique-pair.audit.json",
+    "schemaVersion": "audit/v1"
+  },
+  "toolCall": {
+    "toolName": "generate_test_plan",
+    "arguments": {}
+  },
+  "lockedFields": [
+    {
+      "path": "summary.verificationCommand",
+      "expected": "dotnet test tests/Pricing.Tests/Pricing.Tests.csproj",
+      "reason": "The unique literal test edge should retain its exact test-project command."
+    },
+    {
+      "path": "summary.blockerCount",
+      "expected": 0,
+      "reason": "Unrelated projects must not block the one unambiguous production/test pair."
+    },
+    {
+      "path": "summary.addTestCount",
+      "expected": 0,
+      "reason": "The asserted calculator receiver should prevent a duplicate add-test recommendation."
+    },
+    {
+      "path": "summary.extendTestCount",
+      "expected": 1,
+      "reason": "Only the selected Pricing project contributes one extend-test item."
+    },
+    {
+      "path": "items[0].id",
+      "expected": "extend-test:src/Pricing/PriceCalculator.cs",
+      "reason": "The selected production-project path must remain stable."
+    },
+    {
+      "path": "items[0].existingTestEvidence[0].testPath",
+      "expected": "tests/Pricing.Tests/PriceCalculatorTests.cs",
+      "reason": "Evidence must remain attached to the selected test project."
+    },
+    {
+      "path": "items[0].existingTestEvidence[0].usage",
+      "expected": "asserted",
+      "reason": "The exact receiver call remains inside the xUnit assertion."
+    }
+  ],
+  "allowedVariations": [
+    "summary wording",
+    "additional non-locked C# project metadata",
+    "optional detail depth"
+  ],
+  "unexpectedVariations": [
+    "missing exact test-project command",
+    "unrelated Worker or benchmark project promoted into the selected plan",
+    "multiple project pairs merged into one owner",
+    "solution or transitive project ownership claim"
+  ]
+}

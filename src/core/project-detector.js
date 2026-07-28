@@ -220,18 +220,13 @@ export function detectProjects(repoRoot, options = {}) {
 }
 
 function collapseLiteralCSharpProjectPair(repoRoot, markerGroups) {
-  const allProjectMarkers = [...markerGroups.values()].flatMap((group) => (
-    group.markerFiles.filter((markerFile) => markerFile.endsWith(".csproj"))
-  ));
-  if (allProjectMarkers.length !== 2) return markerGroups;
-
   const candidates = [...markerGroups.values()].flatMap((group) => {
     const projectMarkers = group.markerFiles.filter((markerFile) => markerFile.endsWith(".csproj"));
     return projectMarkers.length === 1 && group.markerFiles.length === 1
       ? [{ group, markerFile: projectMarkers[0] }]
       : [];
   });
-  if (candidates.length !== 2) return markerGroups;
+  if (candidates.length < 2) return markerGroups;
 
   const projects = candidates.map((candidate) => ({
     ...candidate,
@@ -239,17 +234,23 @@ function collapseLiteralCSharpProjectPair(repoRoot, markerGroups) {
   }));
   const testProjects = projects.filter((project) => isDetectorCSharpTestProject(project.content));
   const sourceProjects = projects.filter((project) => !isDetectorCSharpTestProject(project.content));
-  if (testProjects.length !== 1 || sourceProjects.length !== 1) return markerGroups;
+  const literalPairs = testProjects.flatMap((testProject) => (
+    sourceProjects
+      .filter((sourceProject) => hasLiteralDetectorProjectReference(
+        testProject.markerFile,
+        testProject.content,
+        sourceProject.markerFile
+      ))
+      .map((sourceProject) => ({ sourceProject, testProject }))
+  ));
+  if (literalPairs.length !== 1) return markerGroups;
 
-  const testProject = testProjects[0];
-  const sourceProject = sourceProjects[0];
-  if (!hasLiteralDetectorProjectReference(testProject.markerFile, testProject.content, sourceProject.markerFile)) {
-    return markerGroups;
-  }
+  const { sourceProject, testProject } = literalPairs[0];
 
   const aggregateRoot = commonProjectRoot(testProject.group.root, sourceProject.group.root);
   const existingAggregate = markerGroups.get(aggregateRoot);
-  if (existingAggregate && !candidates.some((candidate) => candidate.group.root === aggregateRoot)) return markerGroups;
+  const selectedOwnsAggregate = testProject.group.root === aggregateRoot || sourceProject.group.root === aggregateRoot;
+  if (existingAggregate && !selectedOwnsAggregate) return markerGroups;
 
   const collapsed = new Map(markerGroups);
   collapsed.delete(testProject.group.root);
