@@ -301,3 +301,11 @@ Decision: recursively follow top-level `mod name;` declarations from conventiona
 Rationale: owning only ripgrep's manifest-named `crates/core/main.rs` recovered one real candidate but hid the 22 files that its literal module graph compiles. The bounded traversal resolves all 23 files in that binary tree, including mutually exclusive static path modules, without treating directory proximity as ownership. It adds 19 untested candidates, one inline-tested candidate, two deferred wiring files, and one direct relationship while every project, command, blocker, and pre-existing relationship remains stable.
 
 Revisit when: a pinned repository justifies parser-backed inline-module directory contexts, `cfg_attr(path = ...)`, identifier macros, `include!`, generated modules, or target-configuration pruning without executing repository code.
+
+## Preserve Logical Rust Modules In Direct Test Evidence
+
+Decision: retain the logical module name discovered at each literal `mod` edge and use it for direct function evidence. A runnable inline unit test may claim one source file through an exact `crate::` or parent-relative `super::` import when the binding is called, the target module resolves to one owned file, and that file uniquely declares the imported top-level function. Package-name integration imports use the same logical index, including custom Cargo roots outside `src/`.
+
+Rationale: physical paths are not Rust module identities. A custom `[lib].path` can declare `validator` from `code/validator.rs`, while a static `#[path]` can place the same logical shape elsewhere. Recording the declaration edge lets unit and integration tests prove those functions without falling back to directory guesses. Wildcards, unused or shadowed bindings, `self::` test ownership, types, methods, re-exports, ambiguous modules, and deeper source propagation remain uncredited.
+
+Revisit when: receiver construction, module re-exports, direct qualified calls, or one-hop source dependencies can be proven without weakening callable identity.

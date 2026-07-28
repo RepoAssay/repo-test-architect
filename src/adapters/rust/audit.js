@@ -51,7 +51,8 @@ export function auditRustRepo(root, options = {}) {
     profile.crateImportName,
     sourceFiles,
     integrationTests,
-    inlineTestFiles
+    inlineTestFiles,
+    moduleGraph
   );
   const untestedCandidates = [];
   const coveredButRisky = [];
@@ -252,27 +253,42 @@ function collectRustModuleGraph(files, crateRootPaths) {
   const roots = new Set(crateRootPaths.filter((currentPath) => filesByPath.has(currentPath)));
   const owned = new Set(roots);
   const modulePaths = new Set();
-  const queue = [...roots].sort();
+  const modules = [];
+  const visited = new Set();
+  const queue = [...roots].sort().map((rootPath) => ({
+    path: rootPath,
+    moduleName: "",
+    rootPath
+  }));
   for (let index = 0; index < queue.length; index += 1) {
-    const sourcePath = queue[index];
+    const current = queue[index];
+    const sourcePath = current.path;
+    const visitKey = `${current.rootPath}\0${sourcePath}`;
+    if (visited.has(visitKey)) continue;
+    visited.add(visitKey);
+    modules.push(current);
     const file = filesByPath.get(sourcePath);
-    for (const modulePath of collectRustModulePaths(file, roots.has(sourcePath), filesByPath)) {
-      if (owned.has(modulePath)) continue;
-      owned.add(modulePath);
-      modulePaths.add(modulePath);
-      queue.push(modulePath);
+    for (const child of collectRustModulePaths(file, roots.has(sourcePath), filesByPath)) {
+      owned.add(child.path);
+      modulePaths.add(child.path);
+      queue.push({
+        path: child.path,
+        moduleName: current.moduleName ? `${current.moduleName}::${child.name}` : child.name,
+        rootPath: current.rootPath
+      });
     }
   }
   return {
     paths: [...owned].sort(),
-    modulePaths: [...modulePaths].sort()
+    modulePaths: [...modulePaths].sort(),
+    modules: modules.sort((left, right) => left.path.localeCompare(right.path) || left.moduleName.localeCompare(right.moduleName))
   };
 }
 
 function collectRustModulePaths(file, isCrateRoot, filesByPath) {
   const masked = maskRustCommentsAndStrings(file.content);
   const pattern = /\b(?:pub(?:\s*\([^)]*\))?\s+)?mod\s+([A-Za-z_][A-Za-z0-9_]*)\s*;/g;
-  const paths = [];
+  const modules = [];
   let cursor = 0;
   let depth = 0;
   for (const match of masked.matchAll(pattern)) {
@@ -289,7 +305,7 @@ function collectRustModulePaths(file, isCrateRoot, filesByPath) {
     );
     if (attribute.declared) {
       const targetPath = normalizeRustModuleLink(file.path, attribute.value);
-      if (targetPath && filesByPath.has(targetPath)) paths.push(targetPath);
+      if (targetPath && filesByPath.has(targetPath)) modules.push({ name: match[1], path: targetPath });
       continue;
     }
     const base = rustModuleBasePath(file.path, isCrateRoot);
@@ -297,9 +313,11 @@ function collectRustModulePaths(file, isCrateRoot, filesByPath) {
       path.posix.join(base, `${match[1]}.rs`),
       path.posix.join(base, match[1], "mod.rs")
     ].filter((candidate) => filesByPath.has(candidate));
-    if (candidates.length === 1) paths.push(candidates[0]);
+    if (candidates.length === 1) modules.push({ name: match[1], path: candidates[0] });
   }
-  return [...new Set(paths)].sort();
+  return modules.filter((current, index) => modules.findIndex((candidate) => (
+    candidate.name === current.name && candidate.path === current.path
+  )) === index).sort((left, right) => left.path.localeCompare(right.path) || left.name.localeCompare(right.name));
 }
 
 function rustAttributePrefixStart(masked, declarationStart) {
@@ -445,21 +463,34 @@ function scoreProfileConfidence(manifest, hasPackage, hasRunnableTests, existing
   return "low";
 }
 
-function collectRustTestEvidence(crateImportName, sourceFiles, integrationTests, inlineTestFiles) {
+function collectRustTestEvidence(crateImportName, sourceFiles, integrationTests, inlineTestFiles, moduleGraph) {
   const evidenceBySourcePath = new Map();
+  const sourceFilesByPath = new Map(sourceFiles.map((file) => [normalizePath(file.path), file]));
+  const sourcePathsByModule = collectRustSourcePathsByModule(sourceFiles, moduleGraph);
+  const moduleNamesBySourcePath = collectRustModuleNamesBySourcePath(sourceFiles, moduleGraph);
+  const declaredFunctionsBySourcePath = new Map();
   for (const sourceFile of inlineTestFiles) {
-    const usage = collectInlineRustUsage(sourceFile.content);
+    const masked = maskRustCommentsAndStrings(sourceFile.content);
+    const usage = collectInlineRustUsage(masked);
     if (usage) addRustEvidence(evidenceBySourcePath, sourceFile.path, sourceFile.path, usage);
+    for (const moduleEvidence of collectInlineRustModuleEvidence(
+      sourceFile,
+      masked,
+      moduleNamesBySourcePath.get(normalizePath(sourceFile.path)) ?? [],
+      sourcePathsByModule,
+      sourceFilesByPath,
+      declaredFunctionsBySourcePath
+    )) {
+      addRustEvidence(
+        evidenceBySourcePath,
+        moduleEvidence.sourcePath,
+        sourceFile.path,
+        moduleEvidence.usage
+      );
+    }
   }
 
   if (!crateImportName) return evidenceBySourcePath;
-  const sourcePathsByModule = new Map();
-  for (const sourceFile of sourceFiles) {
-    const moduleName = rustModuleName(sourceFile.path);
-    if (!moduleName) continue;
-    const paths = sourcePathsByModule.get(moduleName) ?? [];
-    sourcePathsByModule.set(moduleName, [...paths, normalizePath(sourceFile.path)]);
-  }
 
   for (const testFile of integrationTests) {
     const masked = maskRustCommentsAndStrings(testFile.content);
@@ -475,8 +506,170 @@ function collectRustTestEvidence(crateImportName, sourceFiles, integrationTests,
   return evidenceBySourcePath;
 }
 
-function collectInlineRustUsage(content) {
-  const masked = maskRustCommentsAndStrings(content);
+function collectRustSourcePathsByModule(sourceFiles, moduleGraph) {
+  const sourcePaths = new Set(sourceFiles.map((file) => normalizePath(file.path)));
+  const pathsByModule = new Map();
+  for (const module of moduleGraph.modules) {
+    if (!module.moduleName || !sourcePaths.has(module.path)) continue;
+    const paths = pathsByModule.get(module.moduleName) ?? new Set();
+    paths.add(module.path);
+    pathsByModule.set(module.moduleName, paths);
+  }
+  for (const sourceFile of sourceFiles) {
+    const moduleName = rustModuleName(sourceFile.path);
+    if (!moduleName) continue;
+    const paths = pathsByModule.get(moduleName) ?? new Set();
+    paths.add(normalizePath(sourceFile.path));
+    pathsByModule.set(moduleName, paths);
+  }
+  return new Map([...pathsByModule].map(([moduleName, paths]) => [moduleName, [...paths].sort()]));
+}
+
+function collectRustModuleNamesBySourcePath(sourceFiles, moduleGraph) {
+  const namesByPath = new Map();
+  for (const module of moduleGraph.modules) {
+    const names = namesByPath.get(module.path) ?? new Set();
+    names.add(module.moduleName);
+    namesByPath.set(module.path, names);
+  }
+  for (const sourceFile of sourceFiles) {
+    const sourcePath = normalizePath(sourceFile.path);
+    const fallback = rustModuleName(sourcePath);
+    if (!fallback || namesByPath.has(sourcePath)) continue;
+    namesByPath.set(sourcePath, new Set([fallback]));
+  }
+  return new Map([...namesByPath].map(([sourcePath, names]) => [sourcePath, [...names].sort()]));
+}
+
+function collectInlineRustModuleEvidence(
+  sourceFile,
+  masked,
+  currentModuleNames,
+  sourcePathsByModule,
+  sourceFilesByPath,
+  declaredFunctionsBySourcePath
+) {
+  if (currentModuleNames.length === 0) return [];
+  const evidence = new Map();
+  for (const moduleRange of rustCfgTestModuleRanges(masked)) {
+    const testModule = masked.slice(moduleRange.start, moduleRange.end);
+    const moduleImports = collectRustRelativeImports(testModule, 1);
+    for (const testRange of rustRunnableTestRanges(testModule)) {
+      const testBody = testModule.slice(testRange.start, testRange.end);
+      const imports = uniqueRustImportsByBinding([
+        ...moduleImports,
+        ...collectRustRelativeImports(testBody, 1)
+      ]);
+      for (const currentImport of imports) {
+        const sourcePath = resolveRustRelativeImport(
+          currentImport,
+          normalizePath(sourceFile.path),
+          currentModuleNames,
+          sourcePathsByModule
+        );
+        const targetFile = sourcePath ? sourceFilesByPath.get(sourcePath) : undefined;
+        if (!targetFile) continue;
+        if (!declaredFunctionsBySourcePath.has(sourcePath)) {
+          declaredFunctionsBySourcePath.set(sourcePath, collectTopLevelRustFunctionNames(targetFile.content));
+        }
+        if (!declaredFunctionsBySourcePath.get(sourcePath).has(currentImport.sourceName)) continue;
+        const usage = rustBindingUsage(testBody, currentImport.binding);
+        if (!usage) continue;
+        evidence.set(sourcePath, strongerRustUsage(evidence.get(sourcePath), usage));
+      }
+    }
+  }
+  return [...evidence].map(([sourcePath, usage]) => ({ sourcePath, usage }))
+    .sort((left, right) => left.sourcePath.localeCompare(right.sourcePath));
+}
+
+function collectRustRelativeImports(masked, depth) {
+  const imports = [];
+  const singlePattern = /\buse\s+((?:crate|self|super)(?:::(?:super|[A-Za-z_][A-Za-z0-9_]*))+)(?:\s+as\s+([A-Za-z_][A-Za-z0-9_]*))?\s*;/g;
+  for (const match of rustMatchesAtDepth(masked, singlePattern, depth)) {
+    const segments = match[1].split("::");
+    const sourceName = segments.at(-1);
+    imports.push({ segments, sourceName, binding: match[2] ?? sourceName });
+  }
+  const groupedPattern = /\buse\s+((?:crate|self|super)(?:::(?:super|[A-Za-z_][A-Za-z0-9_]*))*)::\{([^{};]+)\}\s*;/g;
+  for (const match of rustMatchesAtDepth(masked, groupedPattern, depth)) {
+    const prefix = match[1].split("::");
+    for (const item of match[2].split(",")) {
+      const itemMatch = item.trim().match(/^([A-Za-z_][A-Za-z0-9_]*)(?:\s+as\s+([A-Za-z_][A-Za-z0-9_]*))?$/);
+      if (!itemMatch) continue;
+      imports.push({
+        segments: [...prefix, itemMatch[1]],
+        sourceName: itemMatch[1],
+        binding: itemMatch[2] ?? itemMatch[1]
+      });
+    }
+  }
+  return uniqueRustImportsByBinding(imports);
+}
+
+function uniqueRustImportsByBinding(imports) {
+  const bindings = new Map();
+  for (const currentImport of imports) {
+    const current = bindings.get(currentImport.binding) ?? [];
+    current.push(currentImport);
+    bindings.set(currentImport.binding, current);
+  }
+  return [...bindings.values()].filter((candidates) => candidates.length === 1).flat();
+}
+
+function resolveRustRelativeImport(currentImport, currentSourcePath, currentModuleNames, sourcePathsByModule) {
+  const [root, ...segments] = currentImport.segments;
+  if (root === "crate") {
+    if (segments.length < 2) return undefined;
+    return uniqueRustModuleSourcePath(segments.slice(0, -1).join("::"), sourcePathsByModule);
+  }
+  if (root !== "super" || segments.length === 0) return undefined;
+  let extraParents = 0;
+  while (segments[extraParents] === "super") extraParents += 1;
+  const moduleSuffix = segments.slice(extraParents, -1);
+  const resolvedPaths = new Set();
+  for (const currentModuleName of currentModuleNames) {
+    const currentSegments = currentModuleName ? currentModuleName.split("::") : [];
+    if (extraParents > currentSegments.length) continue;
+    const targetModule = [...currentSegments.slice(0, currentSegments.length - extraParents), ...moduleSuffix].join("::");
+    const sourcePath = targetModule === currentModuleName
+      ? currentSourcePath
+      : uniqueRustModuleSourcePath(targetModule, sourcePathsByModule);
+    if (sourcePath) resolvedPaths.add(sourcePath);
+  }
+  return resolvedPaths.size === 1 ? [...resolvedPaths][0] : undefined;
+}
+
+function uniqueRustModuleSourcePath(moduleName, sourcePathsByModule) {
+  const paths = sourcePathsByModule.get(moduleName) ?? [];
+  return paths.length === 1 ? paths[0] : undefined;
+}
+
+function collectTopLevelRustFunctionNames(content) {
+  const lexical = maskRustCommentsAndStrings(content);
+  const masked = maskRanges(lexical, rustCfgTestModuleRanges(lexical));
+  const counts = new Map();
+  const pattern = /\b(?:pub(?:\s*\([^)]*\))?\s+)?(?:async\s+)?fn\s+([A-Za-z_][A-Za-z0-9_]*)\s*(?:<[^>{;]*>)?\s*\(/g;
+  for (const match of rustMatchesAtDepth(masked, pattern, 0)) counts.set(match[1], (counts.get(match[1]) ?? 0) + 1);
+  return new Set([...counts].filter(([, count]) => count === 1).map(([name]) => name));
+}
+
+function rustMatchesAtDepth(masked, pattern, targetDepth) {
+  const matches = [];
+  let depth = 0;
+  let cursor = 0;
+  for (const match of masked.matchAll(pattern)) {
+    while (cursor < match.index) {
+      if (masked[cursor] === "{") depth += 1;
+      else if (masked[cursor] === "}") depth = Math.max(0, depth - 1);
+      cursor += 1;
+    }
+    if (depth === targetDepth) matches.push(match);
+  }
+  return matches;
+}
+
+function collectInlineRustUsage(masked) {
   const testModules = rustCfgTestModuleRanges(masked);
   if (testModules.length === 0) return undefined;
   const runtime = maskRanges(masked, testModules);
