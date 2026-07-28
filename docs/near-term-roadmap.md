@@ -96,6 +96,8 @@ Status: Swift, Python, bounded Kotlin/JVM, and bounded Go have reached supported
 
 The sixth-adapter spike is now underway with an experimental Rust baseline: conventional Cargo packages, literal repository-contained workspace members with exact package commands, the built-in `#[test]` harness, inline `#[cfg(test)]` modules, exact integration-test crate-module imports, native Cargo verification, golden artifacts, and shared conformance. Globbed or incomplete workspaces, custom harnesses, nonstandard async/property frameworks, and deeper Rust module/re-export ownership remain later slices; see [Rust Experimental Support](rust-alpha-support.md).
 
+The provisional adapter sequence after the current Rust spike is C#/.NET, Ruby, PHP, then Elixir. C#/.NET is the next planned adapter because `.csproj` project detection already exists and conventional SDK-style projects provide a bounded starting point for project ownership, test discovery, and exact `dotnet test` command selection. The sequence is directional rather than a release promise: representative public repositories and concrete adapter requests can reorder the later ecosystems when they provide stronger evidence of user demand.
+
 Useful hardening targets:
 
 - Go parameter/field receiver identity, complex or chained helper-return flow, helper assertions, interface dispatch, and deeper dependency graphs remain excluded after parser-backed local, helper-result, and callable-body ownership
