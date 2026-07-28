@@ -4,8 +4,8 @@
     "confidence": "high",
     "verificationCommand": "cargo test",
     "blockerCount": 0,
-    "addTestCount": 5,
-    "extendTestCount": 1,
+    "addTestCount": 4,
+    "extendTestCount": 2,
     "deferredCount": 0
   },
   "blockers": [],
@@ -119,8 +119,8 @@
       "existingTestPaths": []
     },
     {
-      "id": "add-test:code/validator.rs",
-      "action": "add-test",
+      "id": "extend-test:code/validator.rs",
+      "action": "extend-test",
       "targetId": "code/validator.rs",
       "target": "validator",
       "path": "code/validator.rs",
@@ -129,12 +129,31 @@
       "riskReductionScore": 6,
       "maintenanceCost": 2,
       "rationale": [
-        "Deterministic Rust behavior"
+        "Deterministic Rust behavior",
+        "Existing Rust test evidence detected; review missing edge cases"
       ],
       "sourceSignals": [
-        "pure-logic"
+        "pure-logic",
+        "matching-test"
       ],
-      "existingTestPaths": []
+      "existingTestPaths": [
+        "code/library.rs",
+        "tests/validator_test.rs"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "code/library.rs",
+          "kind": "rust-symbol-reference",
+          "strength": "direct",
+          "usage": "asserted"
+        },
+        {
+          "testPath": "tests/validator_test.rs",
+          "kind": "rust-symbol-reference",
+          "strength": "direct",
+          "usage": "asserted"
+        }
+      ]
     }
   ]
 }

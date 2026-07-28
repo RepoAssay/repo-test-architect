@@ -14,14 +14,14 @@ The Rust adapter is experimental. Its current bounded slices prove that conventi
 | Integration tests | Runnable `.rs` files under `tests/`; a static explicit target can establish the command without claiming macro-expanded symbol evidence |
 | Workspace graph | Literal basic/literal-string `members`, optional `default-members`, repository-contained paths, existing package manifests, and a separately detected project per member; virtual roots are aggregate-only |
 | Test command | `cargo test` for standalone packages or `cargo test -p <package>` for an exactly owned workspace package |
-| Direct evidence | A unique source function called by its inline test module, or an exact package-name and module-qualified `use` binding called by an integration test |
+| Direct evidence | A unique source function called by its inline test module; an exact `crate::` or parent-relative `super::` function import called by that unit test; or an exact package-name and logical-module-qualified import called by an integration test |
 | Assertion usage | Direct calls inside `assert!`, `assert_eq!`, `assert_ne!`, and their `debug_assert` variants are `asserted`; other direct calls are `called` |
 | Candidate filtering | Repository-relative and absolute `changedPaths`, including Windows separators |
 | Native fixture gate | `cargo test`, `cargo check`, and `cargo fmt --check` |
 
 The adapter normalizes Cargo package names from hyphens to underscores for Rust import ownership. It masks comments, ordinary strings, raw strings, and simple character literals before recognizing tests, imports, calls, and assertion usage. An import alone never creates evidence.
 
-`rust-symbol-reference` is deliberately direct and narrow. Integration evidence requires the exact audited crate name and one unique file owning the imported module path. Inline evidence remains attached to the source file that contains the runnable test module. Calls in comments or strings, unused imports, foreign crates, and ambiguous modules are excluded.
+`rust-symbol-reference` is deliberately direct and narrow. Integration evidence requires the exact audited crate name and one unique file owning the imported logical module path, including modules rooted outside `src/`. Inline evidence can remain attached to its containing source file or follow an exact `crate::`/`super::` import to one logical module with one uniquely declared top-level function. Calls in comments or strings, unused or shadowed imports, test-local `self::` paths, wildcard imports, types, methods, foreign crates, and ambiguous modules are excluded.
 
 ## Explicit Blockers And Exclusions
 
@@ -35,7 +35,7 @@ The current slices do not claim support for:
 - ambiguous or missing module files, declarations inside inline modules or macro bodies, dynamic/unsupported path attributes, macro-generated modules, `include!`, and traversal into nested Cargo packages
 - dynamic or inherited manifest ownership
 - module re-exports and wildcard imports
-- `crate`, `self`, or `super` import traversal in integration evidence
+- test-local `self::` ownership and `crate`, `self`, or `super` import traversal in integration evidence
 - receiver-method or trait-dispatch identity
 - feature, target, platform, or profile-specific command selection
 - doctests, examples, benches, proc macros, build scripts, or generated-source ownership
@@ -56,7 +56,7 @@ These shapes remain visible through blockers or conservative missing evidence; t
 
 `examples/rust-cargo-workspace-basic` adds a virtual workspace with two literal packages, an explicit default member, a path dependency, package-local inline and integration tests, exact `cargo test -p ...` commands, and an untested member-local validator.
 
-`examples/rust-cargo-custom-targets` adds a library root under `code/`, a binary root under `app/`, recursively declared file and directory modules, a static parent-relative path module, inline evidence on the library, untested module candidates, and a nearby unowned Rust file that must remain excluded.
+`examples/rust-cargo-custom-targets` adds a library root under `code/`, a binary root under `app/`, recursively declared file and directory modules, a static parent-relative path module, exact crate-relative unit and package-name integration evidence on a custom-root validator module, untested module candidates, and a nearby unowned Rust file that must remain excluded.
 
 All three shapes are locked by Rust-specific unit tests, project detection/auditing coverage, audit and plan snapshots, and model-consistency scenarios. Promotion beyond experimental should still wait for live-repository validation, performance pressure, and a broader syntax/evidence boundary.
 

@@ -41,6 +41,12 @@ Starting at every conventional or manifest-declared crate root, the adapter now 
 
 The root binary graph resolves all 23 `.rs` files under `crates/core`: the manifest root plus 22 declared modules. Twenty are untested candidates, `flags/config.rs` has one direct inline-test relationship, and the two module-wiring files are deferred. The mutually exclusive static paths in `index/mod.rs` safely retain both `enabled.rs` and `disabled.rs`; no target configuration is guessed.
 
+## Follow-Up Logical Module Evidence Slice
+
+The adapter now retains each module's logical name from the literal declaration graph instead of reconstructing identity from its physical path. Runnable inline tests can therefore prove a uniquely declared top-level function through an exact `crate::` or parent-relative `super::` import, and package-name integration imports can resolve custom Cargo roots outside `src/`.
+
+The pinned ripgrep result remains unchanged at 50 untested, 25 covered, 12 deferred, and 25 direct relationships. Its relevant cross-module unit imports primarily bind types used through receiver methods, wildcard imports, or re-exports, which this function-only slice deliberately does not credit. The unchanged normalized digest proves the new logical index did not widen any existing ripgrep claim.
+
 | Result | Count |
 | --- | ---: |
 | Detected/audited projects | 12 |
@@ -64,18 +70,18 @@ The workspace run listed 1,220 tests across its native harnesses. The recovered 
 
 ## Stability And Performance
 
-Three project audits after the module-graph follow-up produced the same normalized SHA-256 digest, `9ddec8f08eb29b5f3bec4433cc008b16ee2cd64f17c2c7d6e04b44850c4bbbb2`.
+Three project audits after the logical-module evidence follow-up produced the same normalized SHA-256 digest as the prior module-graph slice, `9ddec8f08eb29b5f3bec4433cc008b16ee2cd64f17c2c7d6e04b44850c4bbbb2`.
 
 | Run | Duration |
 | --- | ---: |
-| 1 | 439 ms |
-| 2 | 385 ms |
-| 3 | 379 ms |
+| 1 | 478 ms |
+| 2 | 423 ms |
+| 3 | 417 ms |
 
-The median was 385 ms for twelve detected and audited projects.
+The median was 423 ms for twelve detected and audited projects. A first implementation rescanned large source prefixes for every declaration and measured about 0.91 seconds; replacing that with a single forward lexical-depth pass removed the regression before the slice was retained.
 
 ## Remaining Boundary
 
 The root binary and its complete literal file-module graph are now exact source candidates. The adapter still does not infer source evidence from macro-generated integration tests, prune mutually exclusive modules by target configuration, or resolve declarations generated inside inline modules and macros. Method/trait dispatch, macro-expanded test-to-source evidence, doctest evidence, feature-specific targets, and the fuzz harness also remain outside the current matrix.
 
-The live result supports the literal workspace, explicit built-in test target, static lib/bin source-target, and literal module-graph slices, but it does not justify promotion beyond experimental. Module-aware `crate`/`self`/`super` evidence and receiver-method identity are the clearest remaining evidence slices.
+The live result supports the literal workspace, explicit built-in test target, static lib/bin source-target, literal module-graph, and logical function-import evidence slices, but it does not justify promotion beyond experimental. Receiver-method identity is now the clearest remaining evidence slice.

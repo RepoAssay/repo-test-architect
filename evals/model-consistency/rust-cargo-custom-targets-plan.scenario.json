@@ -1,7 +1,7 @@
 {
   "schemaVersion": "model-consistency-scenario/v1",
   "id": "rust-cargo-custom-targets-plan",
-  "description": "Different model profiles should preserve static Cargo lib and bin source ownership plus their recursively declared literal Rust modules outside the conventional src layout.",
+  "description": "Different model profiles should preserve static Cargo lib and bin source ownership, logical module paths, and exact test evidence outside the conventional src layout.",
   "sourceArtifact": {
     "path": "evals/expected/rust-cargo-custom-targets.audit.json",
     "schemaVersion": "audit/v1"
@@ -23,13 +23,13 @@
     },
     {
       "path": "summary.addTestCount",
-      "expected": 5,
-      "reason": "The custom binary root and four manifest-rooted module files should remain add-test items."
+      "expected": 4,
+      "reason": "The custom binary root and three still-untested manifest-rooted module files should remain add-test items."
     },
     {
       "path": "summary.extendTestCount",
-      "expected": 1,
-      "reason": "The inline-tested custom library root should remain one extend-test item."
+      "expected": 2,
+      "reason": "The library root and its module-tested validator should remain extend-test items."
     },
     {
       "path": "items[0].id",
@@ -45,6 +45,21 @@
       "path": "items[1].id",
       "expected": "add-test:app/main.rs",
       "reason": "The custom binary root should retain its manifest-owned path in the plan."
+    },
+    {
+      "path": "items[5].id",
+      "expected": "extend-test:code/validator.rs",
+      "reason": "The logical validator module should retain direct unit and integration evidence."
+    },
+    {
+      "path": "items[5].existingTestEvidence[0].testPath",
+      "expected": "code/library.rs",
+      "reason": "The crate-relative unit-test import should remain attached to the validator module."
+    },
+    {
+      "path": "items[5].existingTestEvidence[1].testPath",
+      "expected": "tests/validator_test.rs",
+      "reason": "The package-name integration import should resolve through the custom logical module graph."
     }
   ],
   "allowedVariations": [
@@ -55,7 +70,7 @@
   "unexpectedVariations": [
     "conventional src path substitution",
     "missing Cargo test command",
-    "missing inline Rust evidence",
+    "missing logical-module Rust evidence",
     "ownership of other/unowned.rs",
     "missing recursively declared module targets",
     "different plan action counts"

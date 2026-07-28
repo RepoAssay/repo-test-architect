@@ -385,6 +385,98 @@ describe("Rust audit adapter", () => {
     ]) assert.ok(!ownedPaths.includes(unownedPath));
   });
 
+  it("maps exact crate-relative and parent-relative unit-test imports through the logical module graph", (t) => {
+    const root = createRustRepo(t, {
+      "Cargo.toml": [
+        "[package]",
+        "name = \"module-evidence\"",
+        "version = \"0.1.0\"",
+        "",
+        "[lib]",
+        "path = \"code/root.rs\"",
+        ""
+      ].join("\n"),
+      "code/root.rs": "pub mod helpers;\npub mod nested;\n",
+      "code/helpers.rs": [
+        "pub fn crate_value() -> usize { 1 }",
+        "pub fn integration_value() -> usize { 2 }",
+        "pub fn unused_value() -> usize { 3 }",
+        "pub struct Factory;",
+        ""
+      ].join("\n"),
+      "code/nested/mod.rs": "pub mod sibling;\npub mod worker;\n",
+      "code/nested/sibling.rs": "pub fn sibling_value() -> usize { 4 }\n",
+      "code/nested/worker.rs": [
+        "pub fn local_value() -> usize { 5 }",
+        "#[cfg(test)]",
+        "mod tests {",
+        "    use crate::helpers::{Factory, crate_value as imported_value, integration_value as shadowed_value, unused_value};",
+        "    use super::local_value;",
+        "    use super::super::sibling::sibling_value;",
+        "    use self::test_only;",
+        "    use crate::helpers::*;",
+        "    fn helper_only() { unused_value(); }",
+        "    fn test_only() -> usize { 0 }",
+        "    #[test]",
+        "    fn checks_exact_modules() {",
+        "        use self::test_only as shadowed_value;",
+        "        let _factory = Factory;",
+        "        local_value();",
+        "        assert_eq!(imported_value(), 1);",
+        "        assert_eq!(sibling_value(), 4);",
+        "        shadowed_value();",
+        "    }",
+        "}",
+        ""
+      ].join("\n"),
+      "tests/module_test.rs": [
+        "use module_evidence::helpers::integration_value;",
+        "#[test]",
+        "fn checks_custom_root_module() { assert_eq!(integration_value(), 2); }",
+        ""
+      ].join("\n")
+    });
+
+    const audit = auditRustRepo(root);
+    const evidenceByPath = Object.fromEntries(audit.coveredButRisky.map((target) => [
+      target.path,
+      target.existingTestEvidence
+    ]));
+
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), [
+      "code/helpers.rs",
+      "code/nested/sibling.rs",
+      "code/nested/worker.rs"
+    ]);
+    assert.deepEqual(evidenceByPath["code/helpers.rs"], [
+      {
+        testPath: "code/nested/worker.rs",
+        kind: "rust-symbol-reference",
+        strength: "direct",
+        usage: "asserted"
+      },
+      {
+        testPath: "tests/module_test.rs",
+        kind: "rust-symbol-reference",
+        strength: "direct",
+        usage: "asserted"
+      }
+    ]);
+    assert.deepEqual(evidenceByPath["code/nested/sibling.rs"], [{
+      testPath: "code/nested/worker.rs",
+      kind: "rust-symbol-reference",
+      strength: "direct",
+      usage: "asserted"
+    }]);
+    assert.deepEqual(evidenceByPath["code/nested/worker.rs"], [{
+      testPath: "code/nested/worker.rs",
+      kind: "rust-symbol-reference",
+      strength: "direct",
+      usage: "called"
+    }]);
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.path), []);
+  });
+
   it("keeps exact crate imports and direct call usage bounded", (t) => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-rust-evidence-"));
     t.after(() => fs.rmSync(root, { recursive: true, force: true }));
