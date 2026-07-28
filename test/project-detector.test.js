@@ -445,10 +445,16 @@ describe("project detector", () => {
           ecosystems: ["dotnet"],
           languages: ["csharp"],
           markerFiles: ["services/catalog/Catalog.Api.csproj"],
-          supported: false
+          supported: true
         }
       ]
     );
+    assert.deepEqual(detection.projects[0].adapterMatches, [{
+      adapterId: "csharp",
+      maturity: "experimental",
+      matchedEcosystems: ["dotnet"],
+      matchedLanguages: ["csharp"]
+    }]);
   });
 
   it("detects Xcode project directories as supported Swift adapter projects", () => {

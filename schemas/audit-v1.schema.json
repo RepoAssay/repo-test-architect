@@ -115,6 +115,7 @@
                   "package-entry-import",
                   "bounded-dependency",
                   "browser-route-match",
+                  "csharp-symbol-reference",
                   "swift-symbol-reference",
                   "python-module-import",
                   "python-package-reexport",

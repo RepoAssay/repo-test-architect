@@ -4,6 +4,8 @@ node_modules/
 # Build, coverage, and package outputs
 coverage/
 dist/
+**/bin/
+**/obj/
 *.tgz
 
 # Local environment and logs

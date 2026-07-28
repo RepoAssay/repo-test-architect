@@ -317,3 +317,11 @@ Decision: extend named logical-module imports with direct evidence for `Type::me
 Rationale: Rust builders and constructors are commonly exercised through associated calls before any instance receiver exists. The named import plus unique logical module, type declaration, and inherent method provides a complete static ownership chain. On pinned ripgrep this moves `globset/src/glob.rs` into covered-but-risky through `Glob`/`GlobBuilder` calls in `src/lib.rs` and adds two exact `searcher/testutil.rs` relationships without claiming macro-generated tests or trait dispatch.
 
 Revisit when: a direct constructor result can be bound to one local variable and an instance method can be proven without receiver reassignment, field flow, deref coercion, or trait ambiguity.
+
+## C# As The Seventh Adapter Spike
+
+Decision: register an experimental `csharp` adapter for exactly one root SDK-style test `.csproj` with one static target framework, default compile ownership, `Microsoft.NET.Test.Sdk`, and bounded xUnit, NUnit, or MSTest attributed tests. Select `dotnet test <project>.csproj` only when every ownership and runner check is complete.
+
+Rationale: `.csproj` detection already provides a strong project marker, and the SDK default compile graph plus conventional attributed tests creates a small first command surface. A unique source class, record, or struct used through `Type.Method(...)` or `new Type(...)` produces useful direct evidence without invoking MSBuild or claiming solution semantics. The checked fixture passes natively on .NET 10.0.302 while the ordinary audit remains static.
+
+Revisit when: a repository-contained production/test project pair can be joined through a literal `ProjectReference` without evaluating arbitrary MSBuild, then when pinned repositories justify solution ownership, central properties, multi-targeting, Microsoft.Testing.Platform, or deeper receiver and result-flow evidence.

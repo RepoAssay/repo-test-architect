@@ -250,5 +250,10 @@
     "name": "python-flask-nox-coverage",
     "adapter": "python",
     "path": "examples/python-flask-nox-coverage"
+  },
+  {
+    "name": "csharp-sdk-xunit-basic",
+    "adapter": "csharp",
+    "path": "examples/csharp-sdk-xunit-basic"
   }
 ]

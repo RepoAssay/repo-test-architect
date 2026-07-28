@@ -20,6 +20,7 @@ import {
 const portableEvidenceStrengths = {
   "bounded-dependency": ["indirect"],
   "browser-route-match": ["indirect"],
+  "csharp-symbol-reference": ["direct"],
   "direct-relative-import": ["direct"],
   "filename-convention": ["naming"],
   "go-source-dependency": ["indirect"],

@@ -29,7 +29,7 @@ npm run detect-rules:json
 | `WORKSPACE.bazel` | `bazel` | `swift` | Supported by `swift` when Swift rules and sources are present |
 | `*.xcodeproj` | `apple` | `swift`, `objective-c` | Supported by `swift` |
 | `*.xcworkspace` | `apple` | `swift`, `objective-c` | Supported by `swift` |
-| `*.csproj` | `dotnet` | `csharp` | Detected, unsupported |
+| `*.csproj` | `dotnet` | `csharp` | Experimental bounded `csharp` adapter |
 | `pom.xml` | `jvm` | `java`, `kotlin` | Supported by bounded `kotlin` |
 | `build.gradle` | `jvm` | `kotlin`, `java` | Supported by bounded `kotlin` |
 | `build.gradle.kts` | `jvm` | `kotlin`, `java` | Supported by bounded `kotlin` |

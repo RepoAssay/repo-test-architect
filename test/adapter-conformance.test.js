@@ -3,6 +3,17 @@ import { assertAdapterConformance } from "./support/adapter-conformance.js";
 
 const cases = [
   {
+    adapterId: "csharp",
+    fixturePath: "examples/csharp-sdk-xunit-basic",
+    expectedMaturity: "experimental",
+    expectedProfile: {
+      languages: ["csharp"],
+      testFrameworks: ["xunit"],
+      testCommand: "dotnet test CheckoutRules.Tests.csproj",
+      confidence: "high"
+    }
+  },
+  {
     adapterId: "javascript",
     fixturePath: "examples/node-vitest-basic",
     expectedProfile: {

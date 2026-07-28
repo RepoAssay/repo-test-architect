@@ -1,0 +1,220 @@
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { describe, it } from "node:test";
+import { auditCSharpRepo } from "../src/adapters/csharp/audit.js";
+
+describe("C# audit adapter", () => {
+  it("audits the checked SDK-style xUnit fixture", () => {
+    const audit = auditCSharpRepo(path.resolve("examples/csharp-sdk-xunit-basic"));
+
+    assert.deepEqual(audit.profile.languages, ["csharp"]);
+    assert.deepEqual(audit.profile.packageManagers, ["nuget"]);
+    assert.deepEqual(audit.profile.testFrameworks, ["xunit"]);
+    assert.deepEqual(audit.profile.architectures, ["dotnet-sdk-project", "dotnet-test-project", "library"]);
+    assert.equal(audit.profile.testCommand, "dotnet test CheckoutRules.Tests.csproj");
+    assert.equal(audit.profile.confidence, "high");
+    assert.deepEqual(audit.profile.blockers, []);
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.path), ["CheckoutService.cs"]);
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["PriceParser.cs"]);
+    assert.deepEqual(audit.coveredButRisky[0].existingTestEvidence, [{
+      testPath: "Tests/PriceParserTests.cs",
+      kind: "csharp-symbol-reference",
+      strength: "direct",
+      usage: "asserted"
+    }]);
+    assert.deepEqual(audit.skipped.map((target) => target.path), ["CheckoutRequest.cs"]);
+  });
+
+  it("detects bounded NUnit and MSTest attributed tests", (t) => {
+    const nunit = createRepo(t, {
+      "Example.Tests.csproj": projectFile("NUnit", "<IsTestProject>true</IsTestProject>"),
+      "Calculator.cs": "public static class Calculator { public static int Add(int a, int b) => a + b; }\n",
+      "CalculatorTests.cs": "public class CalculatorTests { [TestCase] public void Adds() { Assert.That(Calculator.Add(1, 2), Is.EqualTo(3)); } }\n"
+    });
+    const mstest = createRepo(t, {
+      "Example.Tests.csproj": projectFile("MSTest.TestFramework", "<IsTestProject>true</IsTestProject>"),
+      "Validator.cs": "public static class Validator { public static bool IsValid(int value) => value > 0; }\n",
+      "ValidatorTest.cs": "public class ValidatorTest { [DataTestMethod] public void Validates() { Assert.IsTrue(Validator.IsValid(1)); } }\n"
+    });
+
+    assert.deepEqual(auditCSharpRepo(nunit).profile.testFrameworks, ["nunit"]);
+    assert.equal(auditCSharpRepo(nunit).coveredButRisky[0].existingTestEvidence[0].usage, "asserted");
+    assert.deepEqual(auditCSharpRepo(mstest).profile.testFrameworks, ["mstest"]);
+    assert.equal(auditCSharpRepo(mstest).profile.testCommand, "dotnet test Example.Tests.csproj");
+  });
+
+  it("falls back to a unique filename convention without inventing symbol usage", (t) => {
+    const root = createRepo(t, {
+      "Example.Tests.csproj": projectFile("xunit"),
+      "Formatter.cs": "public static class Formatter { public static string Format(int value) => value.ToString(); }\n",
+      "FormatterTests.cs": "public class FormatterTests { [Fact] public void Formats() { Assert.Equal(\"1\", Run()); } private string Run() => \"1\"; }\n"
+    });
+
+    assert.deepEqual(auditCSharpRepo(root).coveredButRisky[0].existingTestEvidence, [{
+      testPath: "FormatterTests.cs",
+      kind: "filename-convention",
+      strength: "naming"
+    }]);
+  });
+
+  it("rejects ambiguous and dynamic project ownership", (t) => {
+    const root = createRepo(t, {
+      "One.csproj": projectFile("xunit", "<TargetFrameworks>net9.0;net10.0</TargetFrameworks><ProjectReference Include=\"../Core/Core.csproj\" /><EnableDefaultCompileItems>false</EnableDefaultCompileItems>"),
+      "Two.csproj": projectFile("xunit"),
+      "Source.cs": "public class Source { public int Run() => 1; }\n",
+      "Tests.cs": "public class Tests { [Fact] public void Runs() { _ = new Source(); } }\n"
+    });
+    const audit = auditCSharpRepo(root);
+
+    assert.equal(audit.profile.testCommand, undefined);
+    assert.ok(audit.profile.blockers.includes("Exactly one root .csproj is required before C# command ownership is unambiguous."));
+    assert.ok(audit.profile.blockers.includes("No runnable attributed C# tests detected."));
+  });
+
+  it("blocks unsupported single-project MSBuild shapes", (t) => {
+    const root = createRepo(t, {
+      "Example.Tests.csproj": [
+        "<Project Sdk=\"Custom.Sdk\"><PropertyGroup>",
+        "<TargetFrameworks>net9.0;net10.0</TargetFrameworks>",
+        "<EnableDefaultCompileItems>false</EnableDefaultCompileItems>",
+        "<IsTestProject>true</IsTestProject>",
+        "</PropertyGroup><ItemGroup>",
+        "<ProjectReference Include=\"../Core/Core.csproj\" />",
+        "<PackageReference Include=\"xunit\" />",
+        "</ItemGroup></Project>"
+      ].join(""),
+      "Source.cs": "public class Source { public int Run() => 1; }\n",
+      "SourceTests.cs": "public class SourceTests { [Fact] public void Runs() { _ = new Source(); } }\n"
+    });
+    const blockers = auditCSharpRepo(root).profile.blockers;
+
+    assert.ok(blockers.includes("Only static SDK-style Microsoft.NET.Sdk projects are supported in the first C# slice."));
+    assert.ok(blockers.includes("A single static TargetFramework is required for bounded C# command selection."));
+    assert.ok(blockers.includes("Multi-targeted C# projects are outside the first bounded adapter slice."));
+    assert.ok(blockers.includes("Custom MSBuild Compile item graphs are outside the first bounded C# source-ownership slice."));
+    assert.ok(blockers.includes("ProjectReference and solution graphs require a later C# ownership slice."));
+    assert.ok(blockers.includes("Microsoft.NET.Test.Sdk is required for the first bounded C# test command."));
+  });
+
+  it("does not credit comments, strings, duplicate types, or test-local shadows", (t) => {
+    const root = createRepo(t, {
+      "Example.Tests.csproj": projectFile("xunit"),
+      "First.cs": "public static class Duplicate { public static int Run() => 1; } public static class Shadowed { public static int Run() => 1; }\n",
+      "Second.cs": "public static class Duplicate { public static int Other() => 2; }\n",
+      "Tests.cs": [
+        "public class Tests {",
+        "  [Fact] public void IgnoresText() { var text = \"Shadowed.Run()\"; /* Duplicate.Run(); */ Assert.NotNull(text); }",
+        "  private class Shadowed { public static int Run() => 3; }",
+        "}"
+      ].join("\n")
+    });
+
+    assert.deepEqual(auditCSharpRepo(root).coveredButRisky, []);
+  });
+
+  it("filters candidates with portable changed paths and classifies generated and contract files", (t) => {
+    const root = createRepo(t, {
+      "Example.Tests.csproj": projectFile("xunit"),
+      "Service.cs": "public class Service { public int Run(int value) { if (value < 0) throw new Exception(); return value; } }\n",
+      "Other.cs": "public class Other { public int Run() => 1; }\n",
+      "Generated.g.cs": "public class Generated { }\n",
+      "IClock.cs": "public interface IClock { int Hour { get; } }\n",
+      "Tests.cs": "public class Tests { [Fact] public void Runs() { Assert.True(true); } }\n"
+    });
+    const audit = auditCSharpRepo(root, { changedPaths: [".\\Service.cs", path.join(root, "Generated.g.cs"), "IClock.cs"] });
+
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.path), ["Service.cs"]);
+    assert.deepEqual(audit.skipped.map((target) => [target.path, target.kind]), [
+      ["Generated.g.cs", "generated-code"],
+      ["IClock.cs", "contract"]
+    ]);
+  });
+
+  it("reports a bounded blocker when no root project or runnable test exists", (t) => {
+    const root = createRepo(t, { "Service.cs": "public class Service { public int Run() => 1; }\n" });
+    const audit = auditCSharpRepo(root);
+
+    assert.equal(audit.profile.confidence, "medium");
+    assert.equal(audit.profile.testCommand, undefined);
+    assert.deepEqual(audit.profile.blockers, [
+      "No root .csproj detected for the bounded C# SDK project adapter.",
+      "No runnable attributed C# tests detected."
+    ]);
+  });
+
+  it("keeps nested SDK projects outside the owning project audit", (t) => {
+    const root = createRepo(t, {
+      "Example.Tests.csproj": projectFile("xunit"),
+      "RootService.cs": "public class RootService { public int Run() => 1; }\n",
+      "RootTests.cs": "public class RootTests { [Fact] public void Runs() { Assert.True(true); } }\n",
+      "nested/Nested.csproj": "<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><TargetFramework>net10.0</TargetFramework></PropertyGroup></Project>",
+      "nested/NestedService.cs": "public class NestedService { public int Run() => 1; }\n"
+    });
+
+    const audit = auditCSharpRepo(root);
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.path), ["RootService.cs"]);
+  });
+
+  it("classifies application wiring and common boundary types", (t) => {
+    const root = createRepo(t, {
+      "Example.Tests.csproj": projectFile("xunit"),
+      "Program.cs": "var builder = WebApplication.CreateBuilder(args);\n",
+      "OrderRepository.cs": "public class OrderRepository { public async Task Save() { await Task.Delay(1); } }\n",
+      "OrderController.cs": "public class OrderController { public int Get(int id) => id; }\n",
+      "PaymentClient.cs": "public class PaymentClient { private readonly HttpClient client = new(); public int Run() => 1; }\n",
+      "Tests.cs": "public class Tests { [Fact] public void Runs() { Assert.True(true); } }\n"
+    });
+
+    const audit = auditCSharpRepo(root);
+    assert.deepEqual(audit.untestedCandidates.map((target) => [target.path, target.kind, target.recommendedTestLevel]), [
+      ["OrderController.cs", "http-controller", "unit"],
+      ["OrderRepository.cs", "repository", "integration"],
+      ["PaymentClient.cs", "client", "integration"]
+    ]);
+    assert.deepEqual(audit.skipped.map((target) => [target.path, target.preferredCoveragePath]), [["Program.cs", "integration"]]);
+  });
+
+  it("masks line comments, interpolated, verbatim, and character literals", (t) => {
+    const root = createRepo(t, {
+      "Example.Tests.csproj": projectFile("xunit"),
+      "Hidden.cs": "public static class Hidden { public static int Run() => 1; }\n",
+      "Tests.cs": [
+        "public class Tests {",
+        "  [Fact] public void IgnoresText() {",
+        "    // Hidden.Run();",
+        "    var one = $\"Hidden.Run() {1}\";",
+        "    var two = @\"Hidden.Run() \"\"quoted\"\"\";",
+        "    var three = $@\"Hidden.Run() {one}\";",
+        "    var four = @$\"Hidden.Run() {two}\";",
+        "    var slash = '\\\\';",
+        "    Assert.NotNull(one + two + three + four + slash);",
+        "  }",
+        "}"
+      ].join("\n")
+    });
+
+    assert.deepEqual(auditCSharpRepo(root).coveredButRisky, []);
+  });
+
+  it("reports low confidence for an empty directory", (t) => {
+    const root = createRepo(t, {});
+    assert.equal(auditCSharpRepo(root).profile.confidence, "low");
+  });
+});
+
+function projectFile(framework, extra = "") {
+  return `<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><TargetFramework>net10.0</TargetFramework>${extra}</PropertyGroup><ItemGroup><PackageReference Include="Microsoft.NET.Test.Sdk" /><PackageReference Include="${framework}" /></ItemGroup></Project>`;
+}
+
+function createRepo(t, files) {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-csharp-"));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  for (const [relativePath, content] of Object.entries(files)) {
+    const absolute = path.join(root, relativePath);
+    fs.mkdirSync(path.dirname(absolute), { recursive: true });
+    fs.writeFileSync(absolute, content);
+  }
+  return root;
+}

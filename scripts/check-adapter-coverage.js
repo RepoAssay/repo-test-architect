@@ -5,6 +5,12 @@ import { fileURLToPath } from "node:url";
 
 export const adapterCoverageCases = [
   {
+    adapterId: "csharp",
+    sourcePath: "src/adapters/csharp/audit.js",
+    testPath: "test/csharp-audit.test.js",
+    thresholds: { lines: 94, branches: 88, functions: 95 }
+  },
+  {
     adapterId: "javascript",
     sourcePath: "src/adapters/javascript/audit.js",
     testPath: "test/javascript-audit.test.js",

@@ -1,4 +1,5 @@
 import { auditJavaScriptRepo } from "../adapters/javascript/audit.js";
+import { auditCSharpRepo } from "../adapters/csharp/audit.js";
 import { auditGoRepo } from "../adapters/go/audit.js";
 import { auditKotlinRepo } from "../adapters/kotlin/audit.js";
 import { auditPythonRepo } from "../adapters/python/audit.js";
@@ -47,6 +48,20 @@ export const adapters = [
     emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"],
     audit(repoRoot, options = {}) {
       return auditJavaScriptRepo(repoRoot, {
+        changedPaths: options.changedPaths
+      });
+    }
+  },
+  {
+    id: "csharp",
+    ecosystems: ["dotnet"],
+    languages: ["csharp"],
+    maturity: "experimental",
+    supportedTestFrameworks: ["mstest", "nunit", "xunit"],
+    supportedProjectTypes: ["dotnet-sdk-test-project"],
+    emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"],
+    audit(repoRoot, options = {}) {
+      return auditCSharpRepo(repoRoot, {
         changedPaths: options.changedPaths
       });
     }
