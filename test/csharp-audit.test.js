@@ -784,6 +784,65 @@ describe("C# audit adapter", () => {
     );
   });
 
+  it("recognizes provenance-backed NUnit ClassicAssert without crediting lookalikes", (t) => {
+    const nunit = createRepo(t, {
+      "Example.Tests.csproj": projectFile("NUnit", "<IsTestProject>true</IsTestProject>"),
+      "DirectClassicTarget.cs": "public static class DirectClassicTarget { public static bool Read() => true; }\n",
+      "StableClassicTarget.cs": "public static class StableClassicTarget { public static string Read() => \"value\"; }\n",
+      "HelperClassicTarget.cs": "public static class HelperClassicTarget { public static int Read() => 1; }\n",
+      "AliasedClassicTarget.cs": "public static class AliasedClassicTarget { public static bool Read() => true; }\n",
+      "QualifiedClassicTarget.cs": "public static class QualifiedClassicTarget { public static bool Read() => true; }\n",
+      "CustomClassicTarget.cs": "public static class CustomClassicTarget { public static bool Read() => true; }\n",
+      "LegacyTests.cs": [
+        "using NUnit.Framework.Legacy;",
+        "public class LegacyTests {",
+        "  [Test] public void Direct() { ClassicAssert.IsTrue(DirectClassicTarget.Read()); }",
+        "  [Test] public void Stable() { var result = StableClassicTarget.Read(); ClassicAssert.AreEqual(\"value\", result); }",
+        "  [Test] public void Helper() { Verify(); }",
+        "  private static void Verify() { ClassicAssert.AreEqual(1, HelperClassicTarget.Read()); }",
+        "}"
+      ].join("\n"),
+      "AliasTests.cs": [
+        "using ClassicAssert = global::NUnit.Framework.Legacy.ClassicAssert;",
+        "public class AliasTests { [Test] public void Reads() { ClassicAssert.IsTrue(AliasedClassicTarget.Read()); } }"
+      ].join("\n"),
+      "QualifiedTests.cs": "public class QualifiedTests { [Test] public void Reads() { NUnit.Framework.Legacy.ClassicAssert.IsTrue(QualifiedClassicTarget.Read()); } }\n",
+      "CustomTests.cs": [
+        "using NUnit.Framework.Legacy;",
+        "public static class ClassicAssert { public static void IsTrue(bool value) { } }",
+        "public class CustomTests { [Test] public void Reads() { ClassicAssert.IsTrue(CustomClassicTarget.Read()); } }"
+      ].join("\n")
+    });
+    const mstest = createRepo(t, {
+      "Example.Tests.csproj": projectFile("MSTest.TestFramework", "<IsTestProject>true</IsTestProject>"),
+      "LookalikeClassicTarget.cs": "public static class LookalikeClassicTarget { public static bool Read() => true; }\n",
+      "Tests.cs": "using NUnit.Framework.Legacy; public class Tests { [TestMethod] public void Reads() { ClassicAssert.IsTrue(LookalikeClassicTarget.Read()); } }\n"
+    });
+    const sourceCollision = createRepo(t, {
+      "Example.Tests.csproj": projectFile("NUnit", "<IsTestProject>true</IsTestProject>"),
+      "ClassicAssert.cs": "public static class ClassicAssert { public static void IsTrue(bool value) { } }\n",
+      "CollisionTarget.cs": "public static class CollisionTarget { public static bool Read() => true; }\n",
+      "Tests.cs": "using NUnit.Framework.Legacy; public class Tests { [Test] public void Reads() { ClassicAssert.IsTrue(CollisionTarget.Read()); } }\n"
+    });
+
+    assert.deepEqual(
+      auditCSharpRepo(nunit).coveredButRisky.map((target) => [target.path, target.existingTestEvidence[0]]),
+      [
+        ["AliasedClassicTarget.cs", { testPath: "AliasTests.cs", kind: "csharp-symbol-reference", strength: "direct", usage: "asserted" }],
+        ["CustomClassicTarget.cs", { testPath: "CustomTests.cs", kind: "csharp-symbol-reference", strength: "direct", usage: "called" }],
+        ["DirectClassicTarget.cs", { testPath: "LegacyTests.cs", kind: "csharp-symbol-reference", strength: "direct", usage: "asserted" }],
+        ["HelperClassicTarget.cs", { testPath: "LegacyTests.cs", kind: "csharp-test-helper", strength: "indirect", viaUsage: "asserted" }],
+        ["QualifiedClassicTarget.cs", { testPath: "QualifiedTests.cs", kind: "csharp-symbol-reference", strength: "direct", usage: "asserted" }],
+        ["StableClassicTarget.cs", { testPath: "LegacyTests.cs", kind: "csharp-symbol-reference", strength: "direct", usage: "asserted" }]
+      ]
+    );
+    assert.equal(auditCSharpRepo(mstest).coveredButRisky[0].existingTestEvidence[0].usage, "called");
+    assert.deepEqual(
+      auditCSharpRepo(sourceCollision).coveredButRisky.map((target) => [target.path, target.existingTestEvidence[0].usage]),
+      [["ClassicAssert.cs", "called"], ["CollisionTarget.cs", "called"]]
+    );
+  });
+
   it("rejects uncalled, non-private, overloaded, ambiguous, nested, lambda, and shadowed test helpers", (t) => {
     const root = createRepo(t, {
       "Example.Tests.csproj": projectFile("xunit"),
