@@ -24,6 +24,37 @@ const IGNORED_DIRECTORIES = new Set([
   "vendor"
 ]);
 
+const SYSTEM_ROOT_TYPE_NAMES = new Set([
+  "Array",
+  "Boolean",
+  "Byte",
+  "Char",
+  "Convert",
+  "DateTime",
+  "DateTimeOffset",
+  "Decimal",
+  "Double",
+  "Exception",
+  "Guid",
+  "Int16",
+  "Int32",
+  "Int64",
+  "Math",
+  "Object",
+  "Random",
+  "SByte",
+  "Single",
+  "String",
+  "TimeSpan",
+  "Tuple",
+  "Type",
+  "UInt16",
+  "UInt32",
+  "UInt64",
+  "Uri",
+  "Version"
+]);
+
 export function auditCSharpRepo(root, options = {}) {
   const requestedRepositoryRoot = path.resolve(options.repositoryRoot ?? root);
   const auditRoot = path.resolve(root);
@@ -625,17 +656,32 @@ function isRunnableTestFile(file, frameworks) {
 function collectTestEvidence(sourceFiles, testFiles, { testFrameworks = [] } = {}) {
   const evidence = new Map();
   const sourceTypes = collectUniqueSourceTypes(sourceFiles);
+  const sourceTypeAliasPatterns = collectSourceTypeAliasPatterns(sourceTypes, sourceFiles);
 
   for (const testFile of testFiles) {
     const masked = maskCSharpCommentsAndStrings(testFile.content);
+    const typeReferenceContext = {
+      importsSystemNamespace: /^\s*using\s+System\s*;/m.test(masked),
+      explicitSourceAliases: collectExplicitSourceTypeAliases(masked, sourceTypeAliasPatterns)
+    };
     const expectedExceptionTypes = testFrameworks.includes("mstest")
-      ? collectExpectedExceptionAssertedTypes(masked, sourceTypes)
+      ? collectExpectedExceptionAssertedTypes(masked, sourceTypes, typeReferenceContext)
       : new Set();
-    const exceptionAssertionTypes = collectExceptionAssertionAssertedTypes(masked, sourceTypes, testFrameworks);
-    const helperEvidence = collectOneHopTestHelperEvidence(masked, sourceTypes, testFrameworks);
+    const exceptionAssertionTypes = collectExceptionAssertionAssertedTypes(
+      masked,
+      sourceTypes,
+      testFrameworks,
+      typeReferenceContext
+    );
+    const helperEvidence = collectOneHopTestHelperEvidence(
+      masked,
+      sourceTypes,
+      testFrameworks,
+      typeReferenceContext
+    );
     for (const [typeName, sourcePath] of sourceTypes) {
       if (declaresType(masked, typeName)) continue;
-      const detectedUsage = csharpTypeCallUsage(masked, typeName, testFrameworks);
+      const detectedUsage = csharpTypeCallUsage(masked, typeName, testFrameworks, typeReferenceContext);
       const usage = expectedExceptionTypes.has(typeName) || exceptionAssertionTypes.has(typeName)
         ? "asserted"
         : detectedUsage;
@@ -686,11 +732,38 @@ function collectUniqueSourceTypes(sourceFiles) {
   return new Map([...owners].filter(([, paths]) => paths.size === 1).map(([name, paths]) => [name, [...paths][0]]));
 }
 
+function collectSourceTypeAliasPatterns(sourceTypes, sourceFiles) {
+  const sourceFilesByPath = new Map(sourceFiles.map((file) => [file.path, file]));
+  const patterns = new Map();
+
+  for (const [typeName, sourcePath] of sourceTypes) {
+    const sourceContent = sourceFilesByPath.get(sourcePath)?.content ?? "";
+    const namespaceMatches = [...sourceContent.matchAll(/\bnamespace\s+([A-Za-z_][A-Za-z0-9_.]*)\s*(?:[;{])/g)];
+    if (namespaceMatches.length !== 1) continue;
+    const qualifiedType = `${namespaceMatches[0][1]}.${typeName}`;
+    patterns.set(typeName, new RegExp(
+      `^\\s*using\\s+${escapeRegExp(typeName)}\\s*=\\s*(?:global\\s*::\\s*)?${escapeRegExp(qualifiedType)}\\s*;`,
+      "m"
+    ));
+  }
+
+  return patterns;
+}
+
+function collectExplicitSourceTypeAliases(content, sourceTypeAliasPatterns) {
+  const aliases = new Set();
+  for (const [typeName, pattern] of sourceTypeAliasPatterns) {
+    if (pattern.test(content)) aliases.add(typeName);
+  }
+
+  return aliases;
+}
+
 function declaresType(content, typeName) {
   return new RegExp(`\\b(?:class|record(?:\\s+(?:class|struct))?|struct)\\s+${escapeRegExp(typeName)}\\b`).test(content);
 }
 
-function csharpTypeCallUsage(content, typeName, testFrameworks) {
+function csharpTypeCallUsage(content, typeName, testFrameworks, typeReferenceContext) {
   const escaped = escapeRegExp(typeName);
   const testBodies = collectRunnableTestBodies(content);
   const patterns = [
@@ -701,6 +774,7 @@ function csharpTypeCallUsage(content, typeName, testFrameworks) {
   for (const body of testBodies) {
     for (const pattern of patterns) {
       for (const match of body.matchAll(pattern)) {
+        if (!isEligibleSourceTypeReference(body, typeName, typeReferenceIndex(match, typeName), typeReferenceContext)) continue;
         if (braceDepthAt(body, match.index) !== 0) continue;
         const statement = statementAt(body, match.index);
         if (statement.text.slice(0, match.index - statement.start).includes("=>")) continue;
@@ -710,13 +784,23 @@ function csharpTypeCallUsage(content, typeName, testFrameworks) {
       }
     }
   }
-  const fieldUsage = csharpReadonlyFieldReceiverUsage(content, typeName, testFrameworks);
+  const fieldUsage = csharpReadonlyFieldReceiverUsage(
+    content,
+    typeName,
+    testFrameworks,
+    typeReferenceContext
+  );
   if (fieldUsage === "asserted") return fieldUsage;
   if (fieldUsage === "called") usage = fieldUsage;
   for (const body of testBodies) {
-    const directResultUsage = csharpDirectTypeResultUsage(body, typeName, testFrameworks);
+    const directResultUsage = csharpDirectTypeResultUsage(
+      body,
+      typeName,
+      testFrameworks,
+      typeReferenceContext
+    );
     if (directResultUsage === "asserted") return directResultUsage;
-    const receiverUsage = csharpLocalReceiverUsage(body, typeName, testFrameworks);
+    const receiverUsage = csharpLocalReceiverUsage(body, typeName, testFrameworks, typeReferenceContext);
     if (receiverUsage === "asserted") return receiverUsage;
     if (receiverUsage === "called") usage = receiverUsage;
   }
@@ -752,7 +836,7 @@ function collectRunnableTestBodies(content) {
   return collectRunnableTests(content).map((test) => test.body);
 }
 
-function collectExpectedExceptionAssertedTypes(content, sourceTypes) {
+function collectExpectedExceptionAssertedTypes(content, sourceTypes, typeReferenceContext) {
   const assertedTypes = new Set();
 
   for (const test of collectRunnableTests(content)) {
@@ -768,6 +852,12 @@ function collectExpectedExceptionAssertedTypes(content, sourceTypes) {
 
       for (const pattern of patterns) {
         for (const call of test.body.matchAll(pattern)) {
+          if (!isEligibleSourceTypeReference(
+            test.body,
+            typeName,
+            typeReferenceIndex(call, typeName),
+            typeReferenceContext
+          )) continue;
           if (!isSoleDirectCallStatement(test.body, call.index)) continue;
           eligibleCalls.push(typeName);
         }
@@ -780,7 +870,7 @@ function collectExpectedExceptionAssertedTypes(content, sourceTypes) {
   return assertedTypes;
 }
 
-function collectExceptionAssertionAssertedTypes(content, sourceTypes, testFrameworks) {
+function collectExceptionAssertionAssertedTypes(content, sourceTypes, testFrameworks, typeReferenceContext) {
   const methodNames = [];
   if (testFrameworks.includes("xunit")) methodNames.push("Throws", "ThrowsAny", "ThrowsAsync", "ThrowsAnyAsync");
   if (testFrameworks.includes("nunit")) methodNames.push("Throws", "ThrowsAsync", "Catch", "CatchAsync");
@@ -806,7 +896,11 @@ function collectExceptionAssertionAssertedTypes(content, sourceTypes, testFramew
       const assertionClosing = matchingParenthesisIndex(test.body, assertionOpening);
       if (assertionClosing === -1 || !/^\s*;\s*$/.test(test.body.slice(assertionClosing + 1, statement.end))) continue;
       const argumentsText = test.body.slice(assertionOpening + 1, assertionClosing);
-      const eligibleCalls = collectDirectExceptionLambdaCalls(argumentsText, sourceTypes);
+      const eligibleCalls = collectDirectExceptionLambdaCalls(
+        argumentsText,
+        sourceTypes,
+        typeReferenceContext
+      );
       if (eligibleCalls.length === 1) assertedTypes.add(eligibleCalls[0]);
     }
   }
@@ -814,7 +908,7 @@ function collectExceptionAssertionAssertedTypes(content, sourceTypes, testFramew
   return assertedTypes;
 }
 
-function collectDirectExceptionLambdaCalls(argumentsText, sourceTypes) {
+function collectDirectExceptionLambdaCalls(argumentsText, sourceTypes, typeReferenceContext) {
   const calls = [];
 
   for (const [typeName] of sourceTypes) {
@@ -826,12 +920,18 @@ function collectDirectExceptionLambdaCalls(argumentsText, sourceTypes) {
 
     for (const pattern of patterns) {
       for (const call of argumentsText.matchAll(pattern)) {
+        if (!isEligibleSourceTypeReference(
+          argumentsText,
+          typeName,
+          typeReferenceIndex(call, typeName),
+          typeReferenceContext
+        )) continue;
         const prefix = argumentsText.slice(0, call.index);
         if (!/^\s*(?:async\s+)?\(\s*\)\s*=>\s*(?:await\s+)?(?:[A-Za-z_][A-Za-z0-9_]*\s*\.\s*)*$/.test(prefix)) continue;
         const callOpening = argumentsText.indexOf("(", call.index);
         const callClosing = callOpening === -1 ? -1 : matchingParenthesisIndex(argumentsText, callOpening);
         if (callClosing === -1 || !/^\s*(?:,\s*[\s\S]*)?$/.test(argumentsText.slice(callClosing + 1))) continue;
-        if (countSourceTypeCalls(argumentsText, sourceTypes) !== 1) continue;
+        if (countSourceTypeCalls(argumentsText, sourceTypes, typeReferenceContext) !== 1) continue;
         calls.push(typeName);
       }
     }
@@ -840,19 +940,27 @@ function collectDirectExceptionLambdaCalls(argumentsText, sourceTypes) {
   return calls;
 }
 
-function countSourceTypeCalls(content, sourceTypes) {
+function countSourceTypeCalls(content, sourceTypes, typeReferenceContext) {
   let count = 0;
   for (const [typeName] of sourceTypes) {
     const escapedType = escapeRegExp(typeName);
-    count += [...content.matchAll(new RegExp(
+    const calls = content.matchAll(new RegExp(
       `\\b(?:${escapedType}\\s*\\.\\s*[A-Za-z_][A-Za-z0-9_]*|new\\s+${escapedType}(?:\\s*<[^;{}()=]+>)?)\\s*\\(`,
       "g"
-    ))].length;
+    ));
+    for (const call of calls) {
+      if (isEligibleSourceTypeReference(
+        content,
+        typeName,
+        typeReferenceIndex(call, typeName),
+        typeReferenceContext
+      )) count += 1;
+    }
   }
   return count;
 }
 
-function collectOneHopTestHelperEvidence(content, sourceTypes, testFrameworks) {
+function collectOneHopTestHelperEvidence(content, sourceTypes, testFrameworks, typeReferenceContext) {
   const evidence = new Map();
 
   for (const classBody of collectClassBodies(content)) {
@@ -864,13 +972,22 @@ function collectOneHopTestHelperEvidence(content, sourceTypes, testFrameworks) {
     for (const helper of helpers) {
       if (helperNameCounts.get(helper.name) !== 1) continue;
       if (!tests.some((test) => testCallsHelperDirectly(test, helper.name))) continue;
-      const sourceCalls = collectTopLevelSourceTypeCalls(helper.body, sourceTypes);
+      const sourceCalls = collectTopLevelSourceTypeCalls(
+        helper.body,
+        sourceTypes,
+        typeReferenceContext
+      );
       if (sourceCalls.length !== 1) continue;
 
       const sourceCall = sourceCalls[0];
       const statement = statementAt(helper.body, sourceCall.index).text;
       const viaUsage = isAssertionStatement(statement, testFrameworks) ||
-        csharpDirectTypeResultUsage(helper.body, sourceCall.typeName, testFrameworks) === "asserted"
+        csharpDirectTypeResultUsage(
+          helper.body,
+          sourceCall.typeName,
+          testFrameworks,
+          typeReferenceContext
+        ) === "asserted"
         ? "asserted"
         : "called";
       if (viaUsage === "asserted" || !evidence.has(sourceCall.typeName)) {
@@ -916,7 +1033,7 @@ function testCallsHelperDirectly(test, helperName) {
   return false;
 }
 
-function collectTopLevelSourceTypeCalls(content, sourceTypes) {
+function collectTopLevelSourceTypeCalls(content, sourceTypes, typeReferenceContext) {
   const calls = [];
 
   for (const [typeName] of sourceTypes) {
@@ -927,6 +1044,12 @@ function collectTopLevelSourceTypeCalls(content, sourceTypes) {
     ];
     for (const pattern of patterns) {
       for (const call of content.matchAll(pattern)) {
+        if (!isEligibleSourceTypeReference(
+          content,
+          typeName,
+          typeReferenceIndex(call, typeName),
+          typeReferenceContext
+        )) continue;
         if (braceDepthAt(content, call.index) !== 0) continue;
         const statement = statementAt(content, call.index);
         if (statement.text.slice(0, call.index - statement.start).includes("=>")) continue;
@@ -970,7 +1093,8 @@ function matchingParenthesisIndex(content, openingIndex) {
   return -1;
 }
 
-function csharpReadonlyFieldReceiverUsage(content, typeName, testFrameworks) {
+function csharpReadonlyFieldReceiverUsage(content, typeName, testFrameworks, typeReferenceContext) {
+  if (!isEligibleSourceTypeReference(content, typeName, -1, typeReferenceContext)) return undefined;
   const escapedType = escapeRegExp(typeName);
   const fieldPattern = new RegExp(
     `\\bprivate\\s+readonly\\s+${escapedType}\\s+([A-Za-z_][A-Za-z0-9_]*)\\s*(?:=\\s*([^;]+))?;`,
@@ -1116,7 +1240,7 @@ function delimiterDepthAt(content, targetIndex) {
   return depth;
 }
 
-function csharpDirectTypeResultUsage(body, typeName, testFrameworks) {
+function csharpDirectTypeResultUsage(body, typeName, testFrameworks, typeReferenceContext) {
   const escapedType = escapeRegExp(typeName);
   const callPatterns = [
     { pattern: new RegExp(`\\b${escapedType}\\s*\\.\\s*[A-Za-z_][A-Za-z0-9_]*\\s*\\(`, "g"), construction: false },
@@ -1125,6 +1249,12 @@ function csharpDirectTypeResultUsage(body, typeName, testFrameworks) {
 
   for (const { pattern, construction } of callPatterns) {
     for (const call of body.matchAll(pattern)) {
+      if (!isEligibleSourceTypeReference(
+        body,
+        typeName,
+        typeReferenceIndex(call, typeName),
+        typeReferenceContext
+      )) continue;
       if (braceDepthAt(body, call.index) !== 0) continue;
       const statement = statementAt(body, call.index);
       const callOffset = call.index - statement.start;
@@ -1145,7 +1275,7 @@ function csharpDirectTypeResultUsage(body, typeName, testFrameworks) {
   return undefined;
 }
 
-function csharpLocalReceiverUsage(body, typeName, testFrameworks) {
+function csharpLocalReceiverUsage(body, typeName, testFrameworks, typeReferenceContext) {
   const escapedType = escapeRegExp(typeName);
   const genericSuffix = "(?:\\s*<[^;{}()=]+>)?";
   const bindingPattern = new RegExp(
@@ -1155,6 +1285,12 @@ function csharpLocalReceiverUsage(body, typeName, testFrameworks) {
   let usage;
 
   for (const binding of body.matchAll(bindingPattern)) {
+    if (!isEligibleSourceTypeReference(
+      body,
+      typeName,
+      typeReferenceIndex(binding, typeName, true),
+      typeReferenceContext
+    )) continue;
     if (braceDepthAt(body, binding.index) !== 0) continue;
     const receiver = binding[1];
     const bindingEnd = body.indexOf(";", binding.index);
@@ -1219,6 +1355,21 @@ function isAssertionStatement(statement, testFrameworks = []) {
     : /\bAssert\s*\.|\.Should\s*\(/;
   const assertionIndex = statement.search(assertionPattern);
   return assertionIndex !== -1 && !statement.includes("=>");
+}
+
+function typeReferenceIndex(match, typeName, preferLast = false) {
+  const offset = preferLast ? match[0].lastIndexOf(typeName) : match[0].indexOf(typeName);
+  return offset === -1 ? -1 : match.index + offset;
+}
+
+function isEligibleSourceTypeReference(content, typeName, typeIndex, typeReferenceContext) {
+  if (!typeReferenceContext.importsSystemNamespace || !SYSTEM_ROOT_TYPE_NAMES.has(typeName)) return true;
+  if (typeReferenceContext.explicitSourceAliases.has(typeName)) return true;
+  if (typeIndex < 0) return false;
+
+  const prefix = content.slice(0, typeIndex);
+  if (/(?:global\s*::\s*)?System\s*\.\s*$/.test(prefix)) return false;
+  return /\.\s*$/.test(prefix);
 }
 
 function braceDepthAt(content, targetIndex) {

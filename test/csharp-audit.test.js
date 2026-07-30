@@ -645,6 +645,33 @@ describe("C# audit adapter", () => {
     assert.deepEqual(auditCSharpRepo(root).coveredButRisky, []);
   });
 
+  it("rejects unqualified well-known System type collisions while preserving qualified source calls", (t) => {
+    const root = createRepo(t, {
+      "Example.Tests.csproj": projectFile("xunit"),
+      "Boolean.cs": "namespace Product.Types { public static class Boolean { public static int Run() => 1; } }\n",
+      "DateTime.cs": "namespace Product.Types { public class DateTime { public static int Parse() => 1; } }\n",
+      "Guid.cs": "namespace Product.Types { public class Guid { public static int Parse() => 1; } }\n",
+      "String.cs": "namespace Product.Types { public static class String { public static int Run() => 1; } }\n",
+      "Tests.cs": [
+        "using System;",
+        "using Boolean = Product.Types.Boolean;",
+        "public class Tests {",
+        "  [Fact] public void FrameworkTypes() { _ = new DateTime(); _ = Guid.Parse(); _ = System.String.Concat(\"a\", \"b\"); VerifyFrameworkDateTime(); }",
+        "  [Fact] public void QualifiedSource() { Assert.Equal(1, Product.Types.String.Run()); }",
+        "  [Fact] public void AliasedSource() { Assert.Equal(1, Boolean.Run()); }",
+        "  private static void VerifyFrameworkDateTime() { Assert.Equal(1, DateTime.Parse()); }",
+        "}"
+      ].join("\n")
+    });
+
+    const audit = auditCSharpRepo(root);
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.path), ["DateTime.cs", "Guid.cs"]);
+    assert.deepEqual(audit.coveredButRisky.map((target) => [target.path, target.existingTestEvidence[0]]), [
+      ["Boolean.cs", { testPath: "Tests.cs", kind: "csharp-symbol-reference", strength: "direct", usage: "asserted" }],
+      ["String.cs", { testPath: "Tests.cs", kind: "csharp-symbol-reference", strength: "direct", usage: "asserted" }]
+    ]);
+  });
+
   it("does not credit source calls outside runnable attributed test bodies", (t) => {
     const root = createRepo(t, {
       "Example.Tests.csproj": projectFile("xunit"),
