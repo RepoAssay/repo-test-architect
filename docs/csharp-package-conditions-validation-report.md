@@ -24,10 +24,17 @@ Project detection selects `S7.Net/S7.Net.csproj` and `S7.Net.UnitTest/S7.Net.Uni
 | Covered but risky | 13 |
 | Deferred/skipped | 1 |
 | Evidence relationships | 19 |
+| Asserted / called after direct-result follow-up | 14 / 5 |
 
 Five repeated audits produced one root-normalized SHA-256 digest, `4d873dc46f7baed53e0a8ba83816b6e3d109e4b85fa0d160a8425157c64879e1`, with an 88 ms median from samples `124, 88, 88, 89, 85`. The profile records `literal target-conditioned package references` alongside the existing literal project-pair and multi-target conventions.
 
 The live probe also exposed and locked an adjacent XML parsing defect: a `PackageReference` with child metadata previously swallowed later self-closing package entries. S7.Net places `GitHubActionsTestLogger` with child metadata before its self-closing test SDK and MSTest references. The corrected parser now retains all entries regardless of those two ordinary XML forms.
+
+### Direct-result evidence follow-up
+
+The same pin exposed four exact direct type calls whose stable local results are consumed by top-level MSTest assertions. The bounded follow-up upgrades `DataItem.FromAddress(...)`, `TPKT.Read(...)`, and two `Conversion` call paths from `called` to `asserted`. It accepts only a top-level `var` or explicit local assignment from `Type.Method(...)`, or a `var`/same-concrete-type assignment from `new Type(...)`, followed by a direct `Assert.*` or `.Should(...)` use before mutation. Interface-typed construction, reassignment, helper indirection, local functions, lambdas, and deeper flow remain excluded.
+
+Candidate counts and the 19 relationship identities remain unchanged. Five follow-up audits produced one root-normalized digest, `0d1c131f69be3229cb6f431c6905ee7ffc6e5ed56c94c0bd2f79d241cec3da80`, with a 101 ms median from samples `139, 101, 98, 104, 99`. Usage changes from 10 asserted and 9 called relationships to 14 asserted and 5 called.
 
 ## Native Validation
 

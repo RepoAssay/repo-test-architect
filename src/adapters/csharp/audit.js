@@ -695,6 +695,8 @@ function csharpTypeCallUsage(content, typeName) {
   if (fieldUsage === "asserted") return fieldUsage;
   if (fieldUsage === "called") usage = fieldUsage;
   for (const body of collectRunnableTestBodies(content)) {
+    const directResultUsage = csharpDirectTypeResultUsage(body, typeName);
+    if (directResultUsage === "asserted") return directResultUsage;
     const receiverUsage = csharpLocalReceiverUsage(body, typeName);
     if (receiverUsage === "asserted") return receiverUsage;
     if (receiverUsage === "called") usage = receiverUsage;
@@ -894,6 +896,35 @@ function delimiterDepthAt(content, targetIndex) {
     }
   }
   return depth;
+}
+
+function csharpDirectTypeResultUsage(body, typeName) {
+  const escapedType = escapeRegExp(typeName);
+  const callPatterns = [
+    { pattern: new RegExp(`\\b${escapedType}\\s*\\.\\s*[A-Za-z_][A-Za-z0-9_]*\\s*\\(`, "g"), construction: false },
+    { pattern: new RegExp(`\\bnew\\s+${escapedType}(?:\\s*<[^;{}()=]+>)?\\s*\\(`, "g"), construction: true }
+  ];
+
+  for (const { pattern, construction } of callPatterns) {
+    for (const call of body.matchAll(pattern)) {
+      if (braceDepthAt(body, call.index) !== 0) continue;
+      const statement = statementAt(body, call.index);
+      const callOffset = call.index - statement.start;
+      const resultBinding = statement.text.slice(0, callOffset).match(
+        /^\s*(var|[A-Za-z_][A-Za-z0-9_.<>,?\[\]]*)\s+([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(?:await\s+)?$/
+      );
+      if (!resultBinding) continue;
+      if (construction && resultBinding[1] !== "var" &&
+        !new RegExp(`^${escapedType}(?:<[^;{}()=]+>)?$`).test(resultBinding[1])) continue;
+
+      const callOpening = body.indexOf("(", call.index);
+      const callClosing = callOpening === -1 ? -1 : matchingParenthesisIndex(body, callOpening);
+      if (callClosing === -1 || !/^\s*;\s*$/.test(body.slice(callClosing + 1, statement.end))) continue;
+      if (isLocalResultAsserted(body.slice(statement.end), resultBinding[2])) return "asserted";
+    }
+  }
+
+  return undefined;
 }
 
 function csharpLocalReceiverUsage(body, typeName) {
