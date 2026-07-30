@@ -30,12 +30,15 @@ describe("C# audit adapter", () => {
   it("audits a literal SDK-style production/test project pair", () => {
     const audit = auditCSharpRepo(path.resolve("examples/csharp-sdk-project-pair"));
 
-    assert.deepEqual(audit.profile.architectures, ["dotnet-sdk-project", "dotnet-project-pair", "dotnet-test-project", "library"]);
+    assert.deepEqual(audit.profile.architectures, ["dotnet-sdk-project", "dotnet-project-pair", "dotnet-multi-target-project", "dotnet-test-project", "library"]);
     assert.equal(audit.profile.testCommand, "dotnet test tests/CheckoutRules.Tests/CheckoutRules.Tests.csproj");
     assert.deepEqual(audit.profile.setupSignals.slice(0, 2), [
       "src/CheckoutRules/CheckoutRules.csproj",
       "tests/CheckoutRules.Tests/CheckoutRules.Tests.csproj"
     ]);
+    assert.ok(audit.profile.setupSignals.includes("net8.0;net9.0;net10.0"));
+    assert.ok(audit.profile.setupSignals.includes("net10.0"));
+    assert.ok(audit.profile.detectedConventions.includes("literal multi-target framework ownership"));
     assert.equal(audit.profile.confidence, "high");
     assert.deepEqual(audit.profile.blockers, []);
     assert.deepEqual(audit.untestedCandidates, []);
@@ -93,7 +96,120 @@ describe("C# audit adapter", () => {
     });
 
     const blockers = auditCSharpRepo(root).profile.blockers;
-    assert.ok(blockers.includes("The production and test projects must use the same static TargetFramework in this slice."));
+    assert.ok(blockers.includes("Every test target framework must be listed literally by the production project in this bounded slice."));
+  });
+
+  it("audits one literal multi-target test project", (t) => {
+    const root = createRepo(t, {
+      "Example.Tests.csproj": [
+        "<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup>",
+        "<TargetFrameworks>net9.0;net10.0</TargetFrameworks><IsTestProject>true</IsTestProject>",
+        "</PropertyGroup><ItemGroup><PackageReference Include=\"Microsoft.NET.Test.Sdk\" />",
+        "<PackageReference Include=\"xunit\" /></ItemGroup></Project>"
+      ].join(""),
+      "Source.cs": "public static class Source { public static int Run() => 1; }\n",
+      "SourceTests.cs": "public class SourceTests { [Fact] public void Runs() { Assert.Equal(1, Source.Run()); } }\n"
+    });
+
+    const audit = auditCSharpRepo(root);
+    assert.equal(audit.profile.testCommand, "dotnet test Example.Tests.csproj");
+    assert.deepEqual(audit.profile.blockers, []);
+    assert.ok(audit.profile.architectures.includes("dotnet-multi-target-project"));
+    assert.ok(audit.profile.detectedConventions.includes("literal multi-target framework ownership"));
+    assert.ok(audit.profile.setupSignals.includes("net9.0;net10.0"));
+  });
+
+  it("audits a production target superset and a single-target test project", (t) => {
+    const root = createRepo(t, {
+      "src/Core/Core.csproj": "<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks></PropertyGroup></Project>",
+      "src/Core/Core.cs": "public static class Core { public static int Run() => 1; }\n",
+      "tests/Core.Tests/Core.Tests.csproj": testProjectFile("../../src/Core/Core.csproj", "net10.0"),
+      "tests/Core.Tests/CoreTests.cs": "public class CoreTests { [Fact] public void Runs() { Assert.Equal(1, Core.Run()); } }\n"
+    });
+
+    const audit = auditCSharpRepo(root);
+    assert.equal(audit.profile.testCommand, "dotnet test tests/Core.Tests/Core.Tests.csproj");
+    assert.deepEqual(audit.profile.blockers, []);
+    assert.deepEqual(audit.profile.setupSignals.slice(3, 5), ["net8.0;net9.0;net10.0", "net10.0"]);
+    assert.ok(audit.profile.detectedConventions.includes("literal multi-target framework ownership"));
+  });
+
+  it("inherits one literal multi-target list from Directory.Build.props", (t) => {
+    const root = createRepo(t, {
+      "Directory.Build.props": "<Project><PropertyGroup><TargetFrameworks>net9.0;net10.0</TargetFrameworks></PropertyGroup></Project>",
+      "src/Core/Core.csproj": "<Project Sdk=\"Microsoft.NET.Sdk\" />",
+      "src/Core/Core.cs": "public static class Core { public static int Run() => 1; }\n",
+      "tests/Core.Tests/Core.Tests.csproj": testProjectFile("../../src/Core/Core.csproj", ""),
+      "tests/Core.Tests/CoreTests.cs": "public class CoreTests { [Fact] public void Runs() { Assert.Equal(1, Core.Run()); } }\n"
+    });
+
+    const audit = auditCSharpRepo(root);
+    assert.equal(audit.profile.testCommand, "dotnet test tests/Core.Tests/Core.Tests.csproj");
+    assert.deepEqual(audit.profile.blockers, []);
+    assert.ok(audit.profile.setupSignals.includes("net9.0;net10.0"));
+    assert.ok(audit.profile.setupSignals.includes("Directory.Build.props"));
+  });
+
+  it("blocks multi-target metadata that requires MSBuild evaluation", (t) => {
+    const cases = [
+      "<TargetFrameworks>$(TargetFrameworkList)</TargetFrameworks>",
+      "<TargetFrameworks Condition=\"'$(Mode)' == 'test'\">net9.0;net10.0</TargetFrameworks>",
+      "<TargetFrameworks>net9.0;net9.0</TargetFrameworks>",
+      "<TargetFrameworks>net9.0;;net10.0</TargetFrameworks>",
+      "<TargetFramework>net10.0</TargetFramework><TargetFrameworks>net9.0;net10.0</TargetFrameworks>"
+    ];
+
+    for (const targetMetadata of cases) {
+      const root = createRepo(t, {
+        "Example.Tests.csproj": `<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup>${targetMetadata}<IsTestProject>true</IsTestProject></PropertyGroup><ItemGroup><PackageReference Include="Microsoft.NET.Test.Sdk" /><PackageReference Include="xunit" /></ItemGroup></Project>`,
+        "Tests.cs": "public class Tests { [Fact] public void Runs() { Assert.True(true); } }\n"
+      });
+      const audit = auditCSharpRepo(root);
+      assert.equal(audit.profile.testCommand, undefined);
+      assert.ok(audit.profile.blockers.some((blocker) => blocker.startsWith("C# target framework metadata requires unsupported MSBuild evaluation:")));
+    }
+
+    const inheritedConflict = createRepo(t, {
+      "Directory.Build.props": "<Project><PropertyGroup><TargetFrameworks>net9.0;net10.0</TargetFrameworks></PropertyGroup></Project>",
+      "Example.Tests.csproj": projectFile("xunit"),
+      "Tests.cs": "public class Tests { [Fact] public void Runs() { Assert.True(true); } }\n"
+    });
+    assert.ok(auditCSharpRepo(inheritedConflict).profile.blockers.some((blocker) => (
+      blocker.includes("conflicting inherited target framework metadata")
+    )));
+
+    const reverseInheritedConflict = createRepo(t, {
+      "Directory.Build.props": "<Project><PropertyGroup><TargetFramework>net10.0</TargetFramework></PropertyGroup></Project>",
+      "Example.Tests.csproj": [
+        "<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup>",
+        "<TargetFrameworks>net9.0;net10.0</TargetFrameworks><IsTestProject>true</IsTestProject>",
+        "</PropertyGroup><ItemGroup><PackageReference Include=\"Microsoft.NET.Test.Sdk\" />",
+        "<PackageReference Include=\"xunit\" /></ItemGroup></Project>"
+      ].join(""),
+      "Tests.cs": "public class Tests { [Fact] public void Runs() { Assert.True(true); } }\n"
+    });
+    assert.ok(auditCSharpRepo(reverseInheritedConflict).profile.blockers.some((blocker) => (
+      blocker.includes("conflicting inherited target framework metadata")
+    )));
+  });
+
+  it("requires literal target membership instead of inferring framework compatibility", (t) => {
+    const missingTarget = createRepo(t, {
+      "src/Core/Core.csproj": "<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><TargetFrameworks>net8.0;net9.0</TargetFrameworks></PropertyGroup></Project>",
+      "src/Core/Core.cs": "public static class Core { public static int Run() => 1; }\n",
+      "tests/Core.Tests/Core.Tests.csproj": testProjectFile("../../src/Core/Core.csproj", "net10.0"),
+      "tests/Core.Tests/CoreTests.cs": "public class CoreTests { [Fact] public void Runs() { Assert.Equal(1, Core.Run()); } }\n"
+    });
+    const compatibilityShaped = createRepo(t, {
+      "src/Core/Core.csproj": "<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><TargetFrameworks>netstandard2.0;net8.0;net10.0</TargetFrameworks></PropertyGroup></Project>",
+      "src/Core/Core.cs": "public static class Core { public static int Run() => 1; }\n",
+      "tests/Core.Tests/Core.Tests.csproj": "<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><TargetFrameworks>net462;net8.0;net10.0</TargetFrameworks><IsTestProject>true</IsTestProject></PropertyGroup><ItemGroup><PackageReference Include=\"Microsoft.NET.Test.Sdk\" /><PackageReference Include=\"xunit\" /><ProjectReference Include=\"../../src/Core/Core.csproj\" /></ItemGroup></Project>",
+      "tests/Core.Tests/CoreTests.cs": "public class CoreTests { [Fact] public void Runs() { Assert.Equal(1, Core.Run()); } }\n"
+    });
+
+    const blocker = "Every test target framework must be listed literally by the production project in this bounded slice.";
+    assert.ok(auditCSharpRepo(missingTarget).profile.blockers.includes(blocker));
+    assert.ok(auditCSharpRepo(compatibilityShaped).profile.blockers.includes(blocker));
   });
 
   it("blocks Directory.Build.props shapes that require MSBuild evaluation", (t) => {
@@ -272,8 +388,6 @@ describe("C# audit adapter", () => {
     const blockers = auditCSharpRepo(root).profile.blockers;
 
     assert.ok(blockers.includes("Only static SDK-style Microsoft.NET.Sdk projects are supported in the first C# slice."));
-    assert.ok(blockers.includes("A single static TargetFramework is required for bounded C# command selection."));
-    assert.ok(blockers.includes("Multi-targeted C# projects are outside the first bounded adapter slice."));
     assert.ok(blockers.includes("Custom MSBuild Compile item graphs are outside the first bounded C# source-ownership slice."));
     assert.ok(blockers.includes("ProjectReference is supported only for one literal production/test project pair."));
     assert.ok(blockers.includes("Microsoft.NET.Test.Sdk is required for the bounded C# test command."));
@@ -656,7 +770,7 @@ describe("C# audit adapter", () => {
 
     const dynamicBlockers = auditCSharpRepo(dynamic).profile.blockers;
     assert.ok(dynamicBlockers.includes("The test project must contain exactly one literal ProjectReference to the production project, with no other project edges."));
-    assert.ok(dynamicBlockers.includes("The production and test projects must use the same static TargetFramework in this slice."));
+    assert.ok(dynamicBlockers.includes("Every test target framework must be listed literally by the production project in this bounded slice."));
     assert.deepEqual(auditCSharpRepo(dynamic).coveredButRisky, []);
     assert.ok(auditCSharpRepo(ambiguous).profile.blockers.includes("Exactly one root test .csproj or one unique literal production/test project edge is required before C# command ownership is unambiguous."));
   });

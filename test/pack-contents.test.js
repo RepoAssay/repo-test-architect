@@ -44,6 +44,7 @@ describe("package contents", () => {
     assert.ok(requiredFiles.includes("docs/csharp-tdd-validation-report.md"));
     assert.ok(requiredFiles.includes("docs/csharp-sharp-cast-validation-report.md"));
     assert.ok(requiredFiles.includes("docs/csharp-central-packages-validation-report.md"));
+    assert.ok(requiredFiles.includes("docs/csharp-multi-target-validation-report.md"));
     assert.ok(requiredFiles.includes("docs/rust-alpha-support.md"));
     assert.ok(requiredFiles.includes("examples/go-testing-basic/go.mod"));
     assert.ok(requiredFiles.includes("examples/csharp-sdk-xunit-basic/CheckoutRules.Tests.csproj"));

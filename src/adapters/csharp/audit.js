@@ -3,6 +3,7 @@ import path from "node:path";
 import {
   analyzeDirectoryBuildProps,
   analyzePackageReferenceTag,
+  analyzeTargetFrameworkDeclaration,
   extractPackageReferenceTags,
   findNearestDirectoryBuildProps
 } from "./directory-build-props.js";
@@ -176,11 +177,20 @@ function analyzeProject(content, inherited, inheritedPath, centralPackages) {
   if (packageReferences.some((name) => name === "xunit" || name === "xunit.v3")) testFrameworks.push("xunit");
   if (packageReferences.some((name) => name === "nunit")) testFrameworks.push("nunit");
   if (packageReferences.some((name) => name === "mstest.testframework")) testFrameworks.push("mstest");
-  const targetFrameworkMatches = [...content.matchAll(/<TargetFramework>\s*([^<]+?)\s*<\/TargetFramework>/gi)];
-  const localTargetFramework = targetFrameworkMatches.length === 1 && !targetFrameworkMatches[0][1].includes("$")
-    ? targetFrameworkMatches[0][1].trim()
-    : undefined;
-  const targetFramework = localTargetFramework ?? (targetFrameworkMatches.length === 0 ? inherited?.targetFramework : undefined);
+  const localFramework = analyzeTargetFrameworkDeclaration(content);
+  const inheritedTargetFrameworks = inherited?.targetFrameworks ?? (inherited?.targetFramework ? [inherited.targetFramework] : []);
+  const targetFrameworks = localFramework.hasDeclaration
+    ? localFramework.targetFrameworks
+    : inheritedTargetFrameworks;
+  const targetFrameworkProperty = localFramework.hasDeclaration
+    ? localFramework.property
+    : inherited?.targetFrameworkProperty;
+  const targetFramework = targetFrameworks.length === 1 ? targetFrameworks[0] : undefined;
+  const targetFrameworkBlockers = [...localFramework.blockers];
+  if (localFramework.property && inherited?.targetFrameworkProperty &&
+    localFramework.property !== inherited.targetFrameworkProperty) {
+    targetFrameworkBlockers.push("conflicting inherited target framework metadata");
+  }
   const sdk = content.match(/<Project\b[^>]*\bSdk\s*=\s*["']([^"']+)["']/i)?.[1];
   const hasTestSdk = packageReferences.includes("microsoft.net.test.sdk");
   const localIsTestProjectMatches = [...content.matchAll(/<IsTestProject>\s*([^<]+?)\s*<\/IsTestProject>/gi)];
@@ -188,7 +198,7 @@ function analyzeProject(content, inherited, inheritedPath, centralPackages) {
     ? localIsTestProjectMatches[0][1].trim().toLowerCase()
     : undefined;
   const usesInheritedMetadata = Boolean(
-    (targetFrameworkMatches.length === 0 && inherited?.targetFramework) ||
+    (!localFramework.hasDeclaration && inheritedTargetFrameworks.length > 0) ||
     (localIsTestProject === undefined && inherited?.isTestProject !== undefined) ||
     inherited?.packageReferences.some((name) => [
       "microsoft.net.test.sdk",
@@ -254,6 +264,10 @@ function analyzeProject(content, inherited, inheritedPath, centralPackages) {
     sdk,
     sdkStyle: Boolean(sdk?.startsWith("Microsoft.NET.Sdk")),
     targetFramework,
+    targetFrameworks,
+    targetFrameworkProperty,
+    isMultiTargeted: targetFrameworkProperty === "TargetFrameworks" && targetFrameworks.length > 1,
+    targetFrameworkBlockers: [...new Set(targetFrameworkBlockers)],
     testFrameworks,
     hasTestSdk,
     isTestProject: (localIsTestProject === "true" || (localIsTestProject === undefined && inherited?.isTestProject === true)) || hasTestSdk,
@@ -263,7 +277,6 @@ function analyzeProject(content, inherited, inheritedPath, centralPackages) {
       projectReferences.some((reference) => /[$*?]/.test(reference)) ||
       projectReferenceTags.some((tag) => /\bCondition\s*=/i.test(tag)),
     hasDynamicCompileItems: /<EnableDefaultCompileItems>\s*false\s*<\/EnableDefaultCompileItems>/i.test(content) || /<Compile\b[^>]*(?:Include|Remove|Update)\s*=/i.test(content),
-    hasMultipleTargetFrameworks: /<TargetFrameworks>/i.test(content) || targetFrameworkMatches.length > 1,
     inheritedMetadataPath: usesInheritedMetadata ? inheritedPath : undefined,
     inheritedBlockers: inherited?.blockers ?? [],
     centralPackagesEnabled: centralPackagesEnabled === true,
@@ -365,6 +378,13 @@ function buildProfile(root, projects, layout, sourceFiles, testFiles) {
   if (inheritedBlockers.length > 0) {
     blockers.push(`Directory.Build.props requires unsupported MSBuild evaluation: ${inheritedBlockers.join(", ")}.`);
   }
+  const targetFrameworkBlockers = [...new Set([
+    ...(layout.sourceProject?.analysis.targetFrameworkBlockers ?? []),
+    ...(layout.testProject?.analysis.targetFrameworkBlockers ?? [])
+  ])];
+  if (targetFrameworkBlockers.length > 0) {
+    blockers.push(`C# target framework metadata requires unsupported MSBuild evaluation: ${targetFrameworkBlockers.join(", ")}.`);
+  }
   const centralPackageBlockers = [...new Set([
     ...(layout.sourceProject?.analysis.centralPackageBlockers ?? []),
     ...(layout.testProject?.analysis.centralPackageBlockers ?? [])
@@ -375,8 +395,7 @@ function buildProfile(root, projects, layout, sourceFiles, testFiles) {
 
   if (layout.kind === "single") {
     if (!analysis.sdkStyle) blockers.push("Only static SDK-style Microsoft.NET.Sdk projects are supported in the first C# slice.");
-    if (!analysis.targetFramework) blockers.push("A single static TargetFramework is required for bounded C# command selection.");
-    if (analysis.hasMultipleTargetFrameworks) blockers.push("Multi-targeted C# projects are outside the first bounded adapter slice.");
+    if (analysis.targetFrameworks.length === 0) blockers.push("At least one static TargetFramework or TargetFrameworks value is required for bounded C# command selection.");
     if (analysis.hasDynamicCompileItems) blockers.push("Custom MSBuild Compile item graphs are outside the first bounded C# source-ownership slice.");
     if (analysis.hasProjectReferences) blockers.push("ProjectReference is supported only for one literal production/test project pair.");
     if (!analysis.isTestProject) blockers.push("The root SDK project is not statically identified as a test project.");
@@ -386,14 +405,14 @@ function buildProfile(root, projects, layout, sourceFiles, testFiles) {
     const sourceAnalysis = layout.sourceProject.analysis;
     const pairAnalyses = [sourceAnalysis, analysis];
     if (pairAnalyses.some((current) => !current.sdkStyle)) blockers.push("Both projects must use a static Microsoft.NET.Sdk project shape.");
-    if (pairAnalyses.some((current) => !current.targetFramework)) blockers.push("Both projects require one static TargetFramework for bounded command selection.");
-    if (pairAnalyses.some((current) => current.hasMultipleTargetFrameworks)) blockers.push("Multi-targeted C# project pairs are outside the bounded adapter slice.");
+    if (pairAnalyses.some((current) => current.targetFrameworks.length === 0)) blockers.push("Both projects require static TargetFramework or TargetFrameworks values for bounded command selection.");
     if (pairAnalyses.some((current) => current.hasDynamicCompileItems)) blockers.push("Custom MSBuild Compile item graphs are outside the bounded C# project-pair slice.");
     if (sourceAnalysis.hasProjectReferences || !referencesProjectLiterally(project, layout.sourceProject)) {
       blockers.push("The test project must contain exactly one literal ProjectReference to the production project, with no other project edges.");
     }
-    if (sourceAnalysis.targetFramework && analysis.targetFramework && sourceAnalysis.targetFramework !== analysis.targetFramework) {
-      blockers.push("The production and test projects must use the same static TargetFramework in this slice.");
+    const sourceTargets = new Set(sourceAnalysis.targetFrameworks.map((target) => target.toLowerCase()));
+    if (analysis.targetFrameworks.some((target) => !sourceTargets.has(target.toLowerCase()))) {
+      blockers.push("Every test target framework must be listed literally by the production project in this bounded slice.");
     }
   }
 
@@ -404,11 +423,15 @@ function buildProfile(root, projects, layout, sourceFiles, testFiles) {
   const architectures = [];
   if (analysis.sdkStyle) architectures.push("dotnet-sdk-project");
   if (layout.kind === "pair") architectures.push("dotnet-project-pair");
+  if (layout.sourceProject?.analysis.isMultiTargeted || layout.testProject?.analysis.isMultiTargeted) architectures.push("dotnet-multi-target-project");
   if (analysis.isTestProject) architectures.push("dotnet-test-project");
   if (layout.sourceProject && !/<OutputType>\s*Exe\s*<\/OutputType>/i.test(layout.sourceProject.content)) architectures.push("library");
   const detectedConventions = [];
   if (analysis.sdkStyle) detectedConventions.push("SDK-style project");
   if (layout.kind === "pair") detectedConventions.push("literal production/test project pair");
+  if (layout.sourceProject?.analysis.isMultiTargeted || layout.testProject?.analysis.isMultiTargeted) {
+    detectedConventions.push("literal multi-target framework ownership");
+  }
   if (layout.unrelatedProjectCount > 0) detectedConventions.push("unique literal test edge among unrelated projects");
   if (analysis.isTestProject) detectedConventions.push(".NET test project");
   if (layout.sourceProject?.analysis.inheritedMetadataPath || layout.testProject?.analysis.inheritedMetadataPath) {
@@ -425,7 +448,10 @@ function buildProfile(root, projects, layout, sourceFiles, testFiles) {
   if (layout.kind === "pair") setupSignals.push(layout.sourceProject.path);
   if (project) setupSignals.push(project.path);
   if (analysis.sdk) setupSignals.push(analysis.sdk);
-  if (analysis.targetFramework) setupSignals.push(analysis.targetFramework);
+  for (const targetFrameworks of [...new Set([
+    layout.sourceProject?.analysis.targetFrameworks.join(";"),
+    layout.testProject?.analysis.targetFrameworks.join(";")
+  ].filter(Boolean))]) setupSignals.push(targetFrameworks);
   for (const inheritedPath of [...new Set([
     layout.sourceProject?.analysis.inheritedMetadataPath,
     layout.testProject?.analysis.inheritedMetadataPath
