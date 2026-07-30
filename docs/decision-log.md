@@ -427,3 +427,11 @@ Decision: when MSTest is the selected framework, treat `[ExpectedException]` or 
 Rationale: pinned S7.Net contains exact expected-exception methods for `DateTime` and `DateTimeLong`. The rule upgrades only those two relationships, preserving 35 untested, 13 covered, 1 deferred, and 19 total relationships while producing 11 asserted direct, 5 called direct, and 3 naming links. Five audits share digest `2fbaecbad8128b75d36447257589943c851ef4da42ee69f9d540c65a3d3c5ce7` with a 104 ms median.
 
 Revisit when: NUnit/xUnit exception constructs or multi-statement MSTest methods can identify the throwing call without general control-flow or exception analysis.
+
+### 2026-07-30: credit exact framework exception assertion lambdas
+
+Decision: for the selected xUnit, NUnit, or MSTest framework, credit one direct source call inside an exact top-level single-expression lambda passed to the framework's static exception assertion method. Admit synchronous and async/await forms plus a trailing assertion message. Reject block lambdas, multiple or wrapped source calls, captured assertion results, nested control flow, custom assertion owners, and wrong-framework method names.
+
+Rationale: pinned S7.Net directly calls `S7String` and `S7WString` inside MSTest `Assert.ThrowsException(...)` lambdas. The rule moves those two relationships from naming to asserted direct evidence while preserving all 35 untested, 13 covered, 1 deferred, and 19 relationship slots. Five audits share digest `bb035df93e749bfec265b13e1801e25ab4946a50a0cb36e6a853640926f7791d` with a 106 ms median and produce 13 asserted direct, 5 called direct, and 1 naming relationship.
+
+Revisit when: a pinned repository justifies captured exception results, exact block-lambda ownership, or framework-specific assertion overloads without general lambda/control-flow inference.

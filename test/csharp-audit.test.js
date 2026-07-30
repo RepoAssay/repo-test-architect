@@ -481,6 +481,85 @@ describe("C# audit adapter", () => {
     assert.equal(auditCSharpRepo(xunit).coveredButRisky[0].existingTestEvidence[0].usage, "called");
   });
 
+  it("credits exact framework exception-assertion expression lambdas", (t) => {
+    const xunit = createRepo(t, {
+      "Example.Tests.csproj": projectFile("xunit"),
+      "XunitThrower.cs": "public static class XunitThrower { public static void Run() => throw new System.Exception(); }\n",
+      "XunitAsyncThrower.cs": "public static class XunitAsyncThrower { public static System.Threading.Tasks.Task RunAsync() => throw new System.Exception(); }\n",
+      "XunitConstructor.cs": "public class XunitConstructor { public XunitConstructor() => throw new System.Exception(); }\n",
+      "Tests.cs": [
+        "public class Tests {",
+        "  [Fact] public void Sync() { Assert.Throws<System.Exception>(() => XunitThrower.Run()); }",
+        "  [Fact] public async System.Threading.Tasks.Task Async() { await Assert.ThrowsAsync<System.Exception>(async () => await XunitAsyncThrower.RunAsync()); }",
+        "  [Fact] public void Constructor() { Assert.Throws<System.Exception>(() => new XunitConstructor()); }",
+        "}"
+      ].join("\n")
+    });
+    const nunit = createRepo(t, {
+      "Example.Tests.csproj": projectFile("NUnit", "<IsTestProject>true</IsTestProject>"),
+      "NunitThrower.cs": "public static class NunitThrower { public static void Run() => throw new System.Exception(); }\n",
+      "Tests.cs": "public class Tests { [Test] public void Runs() { Assert.Catch<System.Exception>(() => NunitThrower.Run()); } }\n"
+    });
+    const mstest = createRepo(t, {
+      "Example.Tests.csproj": projectFile("MSTest.TestFramework", "<IsTestProject>true</IsTestProject>"),
+      "MstestThrower.cs": "public static class MstestThrower { public static void Run() => throw new System.Exception(); }\n",
+      "MstestAsyncThrower.cs": "public static class MstestAsyncThrower { public static System.Threading.Tasks.Task RunAsync() => throw new System.Exception(); }\n",
+      "Tests.cs": [
+        "public class Tests {",
+        "  [TestMethod] public void Sync() { Assert.ThrowsException<System.Exception>(() => MstestThrower.Run(), \"must throw\"); }",
+        "  [TestMethod] public async System.Threading.Tasks.Task Async() { await Assert.ThrowsExceptionAsync<System.Exception>(async () => await MstestAsyncThrower.RunAsync()); }",
+        "}"
+      ].join("\n")
+    });
+
+    assert.deepEqual(auditCSharpRepo(xunit).coveredButRisky.map((target) => [target.path, target.existingTestEvidence[0].usage]), [
+      ["XunitAsyncThrower.cs", "asserted"],
+      ["XunitConstructor.cs", "asserted"],
+      ["XunitThrower.cs", "asserted"]
+    ]);
+    assert.equal(auditCSharpRepo(nunit).coveredButRisky[0].existingTestEvidence[0].usage, "asserted");
+    assert.deepEqual(auditCSharpRepo(mstest).coveredButRisky.map((target) => [target.path, target.existingTestEvidence[0].usage]), [
+      ["MstestAsyncThrower.cs", "asserted"],
+      ["MstestThrower.cs", "asserted"]
+    ]);
+  });
+
+  it("rejects ambiguous, block, wrapped, captured, nested, and non-framework exception lambdas", (t) => {
+    const root = createRepo(t, {
+      "Example.Tests.csproj": projectFile("xunit"),
+      "AmbiguousOuter.cs": "public static class AmbiguousOuter { public static void Run(int value) { } }\n",
+      "AmbiguousInner.cs": "public static class AmbiguousInner { public static int Run() => 1; }\n",
+      "BlockThrower.cs": "public static class BlockThrower { public static void Run() { } }\n",
+      "WrappedThrower.cs": "public static class WrappedThrower { public static int Run() => 1; }\n",
+      "CapturedThrower.cs": "public static class CapturedThrower { public static void Run() { } }\n",
+      "NestedThrower.cs": "public static class NestedThrower { public static void Run() { } }\n",
+      "CustomThrower.cs": "public static class CustomThrower { public static void Run() { } }\n",
+      "Tests.cs": [
+        "public class Tests {",
+        "  [Fact] public void Ambiguous() { Assert.Throws<System.Exception>(() => AmbiguousOuter.Run(AmbiguousInner.Run())); }",
+        "  [Fact] public void Block() { Assert.Throws<System.Exception>(() => { BlockThrower.Run(); }); }",
+        "  [Fact] public void Wrapped() { Assert.Throws<System.Exception>(() => Consume(WrappedThrower.Run())); }",
+        "  [Fact] public void Captured() { var error = Assert.Throws<System.Exception>(() => CapturedThrower.Run()); }",
+        "  [Fact] public void Nested() { if (true) { Assert.Throws<System.Exception>(() => NestedThrower.Run()); } }",
+        "  [Fact] public void Custom() { Verify.Throws<System.Exception>(() => CustomThrower.Run()); }",
+        "  private static void Consume(int value) { }",
+        "}",
+        "public static class Verify { public static void Throws<T>(System.Action action) { } }"
+      ].join("\n")
+    });
+
+    assert.deepEqual(auditCSharpRepo(root).coveredButRisky, []);
+    assert.deepEqual(auditCSharpRepo(root).untestedCandidates.map((target) => target.path), [
+      "AmbiguousInner.cs",
+      "AmbiguousOuter.cs",
+      "BlockThrower.cs",
+      "CapturedThrower.cs",
+      "CustomThrower.cs",
+      "NestedThrower.cs",
+      "WrappedThrower.cs"
+    ]);
+  });
+
   it("keeps self-closing test packages after package references with child metadata", (t) => {
     const root = createRepo(t, {
       "Example.Tests.csproj": [

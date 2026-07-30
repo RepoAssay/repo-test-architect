@@ -76,7 +76,7 @@ export function auditCSharpRepo(root, options = {}) {
     : undefined;
   const canCrossProjectEvidence = layout.kind !== "pair" || referencesProjectLiterally(layout.testProject, layout.sourceProject);
   const evidenceBySourcePath = canCrossProjectEvidence
-    ? collectTestEvidence(sourceFiles, testFiles, { mstestExpectedException: testFrameworks.includes("mstest") })
+    ? collectTestEvidence(sourceFiles, testFiles, { testFrameworks })
     : new Map();
   const untestedCandidates = [];
   const coveredButRisky = [];
@@ -622,19 +622,22 @@ function isRunnableTestFile(file, frameworks) {
     (frameworks.includes("mstest") && /\[(?:TestMethod|DataTestMethod)\b[^\]]*\]/.test(masked));
 }
 
-function collectTestEvidence(sourceFiles, testFiles, { mstestExpectedException = false } = {}) {
+function collectTestEvidence(sourceFiles, testFiles, { testFrameworks = [] } = {}) {
   const evidence = new Map();
   const sourceTypes = collectUniqueSourceTypes(sourceFiles);
 
   for (const testFile of testFiles) {
     const masked = maskCSharpCommentsAndStrings(testFile.content);
-    const expectedExceptionTypes = mstestExpectedException
+    const expectedExceptionTypes = testFrameworks.includes("mstest")
       ? collectExpectedExceptionAssertedTypes(masked, sourceTypes)
       : new Set();
+    const exceptionAssertionTypes = collectExceptionAssertionAssertedTypes(masked, sourceTypes, testFrameworks);
     for (const [typeName, sourcePath] of sourceTypes) {
       if (declaresType(masked, typeName)) continue;
       const detectedUsage = csharpTypeCallUsage(masked, typeName);
-      const usage = detectedUsage && expectedExceptionTypes.has(typeName) ? "asserted" : detectedUsage;
+      const usage = expectedExceptionTypes.has(typeName) || exceptionAssertionTypes.has(typeName)
+        ? "asserted"
+        : detectedUsage;
       if (usage) {
         addEvidence(evidence, sourcePath, {
           testPath: testFile.path,
@@ -767,6 +770,78 @@ function collectExpectedExceptionAssertedTypes(content, sourceTypes) {
   }
 
   return assertedTypes;
+}
+
+function collectExceptionAssertionAssertedTypes(content, sourceTypes, testFrameworks) {
+  const methodNames = [];
+  if (testFrameworks.includes("xunit")) methodNames.push("Throws", "ThrowsAny", "ThrowsAsync", "ThrowsAnyAsync");
+  if (testFrameworks.includes("nunit")) methodNames.push("Throws", "ThrowsAsync", "Catch", "CatchAsync");
+  if (testFrameworks.includes("mstest")) {
+    methodNames.push("ThrowsException", "ThrowsExceptionAsync", "ThrowsExactly", "ThrowsExactlyAsync");
+  }
+  if (methodNames.length === 0) return new Set();
+
+  const assertedTypes = new Set();
+  const assertionPattern = new RegExp(
+    `\\bAssert\\s*\\.\\s*(?:${[...new Set(methodNames)].join("|")})(?:\\s*<[^;{}()]+>)?\\s*\\(`,
+    "g"
+  );
+
+  for (const test of collectRunnableTests(content)) {
+    for (const assertion of test.body.matchAll(assertionPattern)) {
+      if (braceDepthAt(test.body, assertion.index) !== 0) continue;
+      const statement = statementAt(test.body, assertion.index);
+      const assertionOffset = assertion.index - statement.start;
+      if (!/^\s*(?:await\s+)?$/.test(statement.text.slice(0, assertionOffset))) continue;
+
+      const assertionOpening = assertion.index + assertion[0].lastIndexOf("(");
+      const assertionClosing = matchingParenthesisIndex(test.body, assertionOpening);
+      if (assertionClosing === -1 || !/^\s*;\s*$/.test(test.body.slice(assertionClosing + 1, statement.end))) continue;
+      const argumentsText = test.body.slice(assertionOpening + 1, assertionClosing);
+      const eligibleCalls = collectDirectExceptionLambdaCalls(argumentsText, sourceTypes);
+      if (eligibleCalls.length === 1) assertedTypes.add(eligibleCalls[0]);
+    }
+  }
+
+  return assertedTypes;
+}
+
+function collectDirectExceptionLambdaCalls(argumentsText, sourceTypes) {
+  const calls = [];
+
+  for (const [typeName] of sourceTypes) {
+    const escapedType = escapeRegExp(typeName);
+    const patterns = [
+      new RegExp(`\\b${escapedType}\\s*\\.\\s*[A-Za-z_][A-Za-z0-9_]*\\s*\\(`, "g"),
+      new RegExp(`\\bnew\\s+${escapedType}(?:\\s*<[^;{}()=]+>)?\\s*\\(`, "g")
+    ];
+
+    for (const pattern of patterns) {
+      for (const call of argumentsText.matchAll(pattern)) {
+        const prefix = argumentsText.slice(0, call.index);
+        if (!/^\s*(?:async\s+)?\(\s*\)\s*=>\s*(?:await\s+)?(?:[A-Za-z_][A-Za-z0-9_]*\s*\.\s*)*$/.test(prefix)) continue;
+        const callOpening = argumentsText.indexOf("(", call.index);
+        const callClosing = callOpening === -1 ? -1 : matchingParenthesisIndex(argumentsText, callOpening);
+        if (callClosing === -1 || !/^\s*(?:,\s*[\s\S]*)?$/.test(argumentsText.slice(callClosing + 1))) continue;
+        if (countSourceTypeCalls(argumentsText, sourceTypes) !== 1) continue;
+        calls.push(typeName);
+      }
+    }
+  }
+
+  return calls;
+}
+
+function countSourceTypeCalls(content, sourceTypes) {
+  let count = 0;
+  for (const [typeName] of sourceTypes) {
+    const escapedType = escapeRegExp(typeName);
+    count += [...content.matchAll(new RegExp(
+      `\\b(?:${escapedType}\\s*\\.\\s*[A-Za-z_][A-Za-z0-9_]*|new\\s+${escapedType}(?:\\s*<[^;{}()=]+>)?)\\s*\\(`,
+      "g"
+    ))].length;
+  }
+  return count;
 }
 
 function isSoleDirectCallStatement(body, callIndex) {
