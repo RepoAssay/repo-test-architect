@@ -173,7 +173,7 @@ describe("C# audit adapter", () => {
     );
   });
 
-  it("rejects reassigned receivers and results plus interface, field, ref, and helper flow", (t) => {
+  it("rejects reassigned receivers and results plus interface, mutable-field, ref, and helper flow", (t) => {
     const root = createRepo(t, {
       "Example.Tests.csproj": projectFile("xunit"),
       "ReassignedParser.cs": "public class ReassignedParser { public int Parse() => 1; }\n",
@@ -186,7 +186,7 @@ describe("C# audit adapter", () => {
       "LambdaParser.cs": "public class LambdaParser { public int Parse() => 1; }\n",
       "Tests.cs": [
         "public class Tests {",
-        "  private readonly FieldParser fieldParser = new FieldParser();",
+        "  private FieldParser fieldParser = new FieldParser();",
         "  [Fact] public void RejectsReceiverReassignment() { var parser = new ReassignedParser(); parser = new ReassignedParser(); Assert.Equal(1, parser.Parse()); }",
         "  [Fact] public void RejectsResultReassignment() { var parser = new ChangedResultParser(); var result = parser.Parse(); result = 2; Assert.Equal(2, result); }",
         "  [Fact] public void RejectsInterfaceBinding() { IParser parser = new InterfaceParser(); Assert.Equal(1, parser.Parse()); }",
@@ -214,6 +214,111 @@ describe("C# audit adapter", () => {
         ["RefParser.cs", "called"]
       ]
     );
+  });
+
+  it("tracks exact private readonly concrete field receivers", (t) => {
+    const root = createRepo(t, {
+      "Example.Tests.csproj": projectFile("xunit"),
+      "InlineFieldParser.cs": "public class InlineFieldParser { public int Parse() => 1; }\n",
+      "ExplicitFieldParser.cs": "public class ExplicitFieldParser { public int Parse() => 1; }\n",
+      "ConstructorFieldParser.cs": "public class ConstructorFieldParser { public int Parse() => 1; }\n",
+      "CalledFieldParser.cs": "public class CalledFieldParser { public int Parse() => 1; }\n",
+      "Tests.cs": [
+        "public class Tests {",
+        "  private readonly InlineFieldParser _inline = new();",
+        "  private readonly ExplicitFieldParser _explicit = new ExplicitFieldParser();",
+        "  private readonly ConstructorFieldParser _constructor;",
+        "  private readonly CalledFieldParser _called = new();",
+        "  public Tests() { this._constructor = new(); }",
+        "  [Fact] public void AssertsInline() { Assert.Equal(1, _inline.Parse()); }",
+        "  [Fact] public void AssertsExplicitResult() { var result = _explicit.Parse(); Assert.Equal(1, result); }",
+        "  [Fact] public void AssertsConstructorResult() { var result = this._constructor.Parse(); Assert.Equal(1, result); }",
+        "  [Fact] public void OnlyCalls() { _called.Parse(); }",
+        "}"
+      ].join("\n")
+    });
+
+    assert.deepEqual(
+      auditCSharpRepo(root).coveredButRisky.map((target) => [target.path, target.existingTestEvidence[0].usage]),
+      [
+        ["CalledFieldParser.cs", "called"],
+        ["ConstructorFieldParser.cs", "asserted"],
+        ["ExplicitFieldParser.cs", "asserted"],
+        ["InlineFieldParser.cs", "asserted"]
+      ]
+    );
+  });
+
+  it("rejects mutable, shared, indirect, ambiguous, shadowed, and deferred fields", (t) => {
+    const root = createRepo(t, {
+      "Example.Tests.csproj": projectFile("xunit"),
+      "MutableParser.cs": "public class MutableParser { public int Parse() => 1; }\n",
+      "StaticParser.cs": "public class StaticParser { public int Parse() => 1; }\n",
+      "PropertyParser.cs": "public class PropertyParser { public int Parse() => 1; }\n",
+      "HelperParser.cs": "public class HelperParser { public int Parse() => 1; }\n",
+      "MultiConstructorParser.cs": "public class MultiConstructorParser { public int Parse() => 1; }\n",
+      "ConstructorShadowParser.cs": "public class ConstructorShadowParser { public int Parse() => 1; }\n",
+      "ConditionalFieldParser.cs": "public class ConditionalFieldParser { public int Parse() => 1; }\n",
+      "ReassignedFieldParser.cs": "public class ReassignedFieldParser { public int Parse() => 1; }\n",
+      "InheritedParser.cs": "public class InheritedParser { public int Parse() => 1; }\n",
+      "PartialParser.cs": "public class PartialParser { public int Parse() => 1; }\n",
+      "ShadowedFieldParser.cs": "public class ShadowedFieldParser { public int Parse() => 1; }\n",
+      "ParameterFieldParser.cs": "public class ParameterFieldParser { public int Parse() => 1; }\n",
+      "LocalFunctionFieldParser.cs": "public class LocalFunctionFieldParser { public int Parse() => 1; }\n",
+      "LambdaFieldParser.cs": "public class LambdaFieldParser { public int Parse() => 1; }\n",
+      "Tests.cs": [
+        "public class TestsBase { protected readonly InheritedParser _inherited = new(); }",
+        "public partial class Tests {",
+        "  private MutableParser _mutable = new();",
+        "  private static readonly StaticParser _static = new();",
+        "  private PropertyParser Property { get; } = new();",
+        "  private readonly HelperParser _helper = CreateHelper();",
+        "  private readonly MultiConstructorParser _multi;",
+        "  private readonly ConstructorShadowParser _constructorShadow;",
+        "  private readonly ConditionalFieldParser _conditional;",
+        "  private readonly ReassignedFieldParser _reassigned = new();",
+        "  private readonly ShadowedFieldParser _shadowed = new();",
+        "  private readonly ParameterFieldParser _parameter = new();",
+        "  private readonly LocalFunctionFieldParser _localFunction = new();",
+        "  private readonly LambdaFieldParser _lambda = new();",
+        "  public Tests() { _multi = new(); ConstructorShadowParser _constructorShadow = new(); if (true) { _conditional = new(); } _reassigned = new(); }",
+        "  public Tests(int value) : this() { }",
+        "  [Fact] public void Mutable() { Assert.Equal(1, _mutable.Parse()); }",
+        "  [Fact] public void Static() { Assert.Equal(1, _static.Parse()); }",
+        "  [Fact] public void PropertyTest() { Assert.Equal(1, Property.Parse()); }",
+        "  [Fact] public void Helper() { Assert.Equal(1, _helper.Parse()); }",
+        "  [Fact] public void Multi() { Assert.Equal(1, _multi.Parse()); }",
+        "  [Fact] public void ConstructorShadow() { Assert.Equal(1, _constructorShadow.Parse()); }",
+        "  [Fact] public void Conditional() { Assert.Equal(1, _conditional.Parse()); }",
+        "  [Fact] public void Reassigned() { Assert.Equal(1, _reassigned.Parse()); }",
+        "  [Fact] public void LocalShadow() { var _shadowed = new object(); Assert.NotNull(_shadowed); }",
+        "  [Fact] public void ParameterShadow(ParameterFieldParser _parameter) { Assert.Equal(1, _parameter.Parse()); }",
+        "  [Fact] public void NestedFunction() { void Verify() { Assert.Equal(1, _localFunction.Parse()); } Verify(); }",
+        "  [Fact] public void DeferredLambda() { System.Func<int> verify = () => _lambda.Parse(); Assert.Equal(1, verify()); }",
+        "  private static HelperParser CreateHelper() => throw new System.Exception();",
+        "}",
+        "public partial class Tests { private readonly PartialParser _partial = new(); }",
+        "public class DerivedTests : TestsBase { [Fact] public void Inherited() { Assert.Equal(1, _inherited.Parse()); } }"
+      ].join("\n")
+    });
+
+    assert.deepEqual(auditCSharpRepo(root).coveredButRisky, []);
+    assert.deepEqual(auditCSharpRepo(root).untestedCandidates.map((target) => target.path), [
+      "ConditionalFieldParser.cs",
+      "ConstructorShadowParser.cs",
+      "HelperParser.cs",
+      "InheritedParser.cs",
+      "LambdaFieldParser.cs",
+      "LocalFunctionFieldParser.cs",
+      "MultiConstructorParser.cs",
+      "MutableParser.cs",
+      "ParameterFieldParser.cs",
+      "PartialParser.cs",
+      "PropertyParser.cs",
+      "ReassignedFieldParser.cs",
+      "ShadowedFieldParser.cs",
+      "StaticParser.cs"
+    ]);
   });
 
   it("filters candidates with portable changed paths and classifies generated and contract files", (t) => {

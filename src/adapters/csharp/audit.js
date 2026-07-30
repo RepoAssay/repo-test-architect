@@ -405,6 +405,9 @@ function csharpTypeCallUsage(content, typeName) {
       usage = current;
     }
   }
+  const fieldUsage = csharpReadonlyFieldReceiverUsage(content, typeName);
+  if (fieldUsage === "asserted") return fieldUsage;
+  if (fieldUsage === "called") usage = fieldUsage;
   for (const body of collectRunnableTestBodies(content)) {
     const receiverUsage = csharpLocalReceiverUsage(body, typeName);
     if (receiverUsage === "asserted") return receiverUsage;
@@ -413,12 +416,13 @@ function csharpTypeCallUsage(content, typeName) {
   return usage;
 }
 
-function collectRunnableTestBodies(content) {
-  const bodies = [];
+function collectRunnableTests(content, attributeDepth) {
+  const tests = [];
   const bodyStarts = new Set();
   const attributePattern = /\[(?:Fact|Theory|Test|TestCase|TestCaseSource|TestMethod|DataTestMethod)\b[^\]]*\]/g;
 
   for (const attribute of content.matchAll(attributePattern)) {
+    if (attributeDepth !== undefined && braceDepthAt(content, attribute.index) !== attributeDepth) continue;
     const signatureStart = attribute.index + attribute[0].length;
     const bodyStart = content.indexOf("{", signatureStart);
     if (bodyStart === -1 || bodyStarts.has(bodyStart)) continue;
@@ -427,10 +431,17 @@ function collectRunnableTestBodies(content) {
     const bodyEnd = matchingBraceIndex(content, bodyStart);
     if (bodyEnd === -1) continue;
     bodyStarts.add(bodyStart);
-    bodies.push(content.slice(bodyStart + 1, bodyEnd));
+    tests.push({
+      body: content.slice(bodyStart + 1, bodyEnd),
+      signature
+    });
   }
 
-  return bodies;
+  return tests;
+}
+
+function collectRunnableTestBodies(content) {
+  return collectRunnableTests(content).map((test) => test.body);
 }
 
 function matchingBraceIndex(content, openingIndex) {
@@ -441,6 +452,124 @@ function matchingBraceIndex(content, openingIndex) {
     if (depth === 0) return index;
   }
   return -1;
+}
+
+function csharpReadonlyFieldReceiverUsage(content, typeName) {
+  const escapedType = escapeRegExp(typeName);
+  const fieldPattern = new RegExp(
+    `\\bprivate\\s+readonly\\s+${escapedType}\\s+([A-Za-z_][A-Za-z0-9_]*)\\s*(?:=\\s*([^;]+))?;`,
+    "g"
+  );
+  let usage;
+
+  for (const classBody of collectClassBodies(content)) {
+    const constructors = collectConstructors(classBody.body, classBody.name);
+    for (const field of classBody.body.matchAll(fieldPattern)) {
+      if (braceDepthAt(classBody.body, field.index) !== 0) continue;
+      const receiver = field[1];
+      if (!hasExactReadonlyFieldInitializer(constructors, receiver, field[2], typeName)) continue;
+
+      for (const test of collectRunnableTests(classBody.body, 0)) {
+        if (testShadowsReceiver(test, receiver)) continue;
+        const current = csharpReceiverUsage(test.body, receiver);
+        if (current === "asserted") return current;
+        if (current === "called") usage = current;
+      }
+    }
+  }
+
+  return usage;
+}
+
+function collectClassBodies(content) {
+  const classes = [];
+  const classPattern = /\bclass\s+([A-Za-z_][A-Za-z0-9_]*)\b[^;{}]*\{/g;
+  for (const declaration of content.matchAll(classPattern)) {
+    const bodyStart = declaration.index + declaration[0].lastIndexOf("{");
+    const bodyEnd = matchingBraceIndex(content, bodyStart);
+    if (bodyEnd === -1) continue;
+    classes.push({
+      name: declaration[1],
+      body: content.slice(bodyStart + 1, bodyEnd)
+    });
+  }
+  return classes;
+}
+
+function collectConstructors(classBody, className) {
+  const constructors = [];
+  const constructorPattern = new RegExp(
+    `\\b${escapeRegExp(className)}\\s*\\(([^)]*)\\)\\s*` +
+      `(?:\\:\\s*(?:this|base)\\s*\\([^)]*\\)\\s*)?\\{`,
+    "g"
+  );
+  for (const declaration of classBody.matchAll(constructorPattern)) {
+    if (braceDepthAt(classBody, declaration.index) !== 0) continue;
+    if (/\\bnew\\s*$/.test(classBody.slice(0, declaration.index))) continue;
+    const bodyStart = declaration.index + declaration[0].lastIndexOf("{");
+    const bodyEnd = matchingBraceIndex(classBody, bodyStart);
+    if (bodyEnd === -1) continue;
+    constructors.push({
+      body: classBody.slice(bodyStart + 1, bodyEnd),
+      parameterless: declaration[1].trim() === ""
+    });
+  }
+  return constructors;
+}
+
+function hasExactReadonlyFieldInitializer(constructors, receiver, fieldInitializer, typeName) {
+  const assignmentPattern = new RegExp(`\\b(?:this\\s*\\.\\s*)?${escapeRegExp(receiver)}\\s*=`);
+  if (fieldInitializer !== undefined) {
+    return isExactFieldConstruction(fieldInitializer, typeName) &&
+      constructors.every((constructor) => !assignmentPattern.test(constructor.body));
+  }
+  if (constructors.length !== 1 || !constructors[0].parameterless) return false;
+  const assignmentMatches = [...constructors[0].body.matchAll(new RegExp(
+    `\\b(?:this\\s*\\.\\s*)?${escapeRegExp(receiver)}\\s*=\\s*([^;]+);`,
+    "g"
+  ))];
+  const assignments = assignmentMatches.filter((assignment) => {
+    if (braceDepthAt(constructors[0].body, assignment.index) !== 0) return false;
+    const statement = statementAt(constructors[0].body, assignment.index).text;
+    return new RegExp(
+      `^\\s*(?:this\\s*\\.\\s*)?${escapeRegExp(receiver)}\\s*=\\s*[^;]+;\\s*$`
+    ).test(statement);
+  });
+  return assignments.length === 1 && isExactFieldConstruction(assignments[0][1], typeName);
+}
+
+function isExactFieldConstruction(initializer, typeName) {
+  const escapedType = escapeRegExp(typeName);
+  return new RegExp(`^\\s*new\\s*(?:${escapedType}\\s*)?\\([^;{}]*\\)\\s*$`).test(initializer);
+}
+
+function testShadowsReceiver(test, receiver) {
+  const escaped = escapeRegExp(receiver);
+  return new RegExp(`\\([^)]*\\b${escaped}\\b[^)]*\\)`).test(test.signature) ||
+    new RegExp(`\\b(?:var|[A-Za-z_][A-Za-z0-9_.<>,?\\[\\]]*)\\s+${escaped}\\b`).test(test.body);
+}
+
+function csharpReceiverUsage(content, receiver) {
+  const callPattern = new RegExp(
+    `(?:\\bthis\\s*\\.\\s*)?\\b${escapeRegExp(receiver)}\\s*\\.\\s*[A-Za-z_][A-Za-z0-9_]*\\s*\\(`,
+    "g"
+  );
+  let usage;
+  for (const call of content.matchAll(callPattern)) {
+    if (braceDepthAt(content, call.index) !== 0) continue;
+    const statement = statementAt(content, call.index);
+    const callOffset = call.index - statement.start;
+    if (statement.text.slice(0, callOffset).includes("=>")) continue;
+    if (isAssertionStatement(statement.text)) return "asserted";
+    usage = "called";
+
+    const resultBinding = statement.text.slice(0, callOffset).match(
+      /\b(?:var|[A-Za-z_][A-Za-z0-9_.<>,?\[\]]*)\s+([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(?:await\s+)?$/
+    );
+    if (!resultBinding) continue;
+    if (isLocalResultAsserted(content.slice(statement.end), resultBinding[1])) return "asserted";
+  }
+  return usage;
 }
 
 function csharpLocalReceiverUsage(body, typeName) {
@@ -460,22 +589,9 @@ function csharpLocalReceiverUsage(body, typeName) {
     const remainingBody = body.slice(bindingEnd + 1);
     const receiverMutation = identifierMutationIndex(remainingBody, receiver);
     const receiverSegment = receiverMutation === -1 ? remainingBody : remainingBody.slice(0, receiverMutation);
-    const callPattern = new RegExp(`\\b${escapeRegExp(receiver)}\\s*\\.\\s*[A-Za-z_][A-Za-z0-9_]*\\s*\\(`, "g");
-
-    for (const call of receiverSegment.matchAll(callPattern)) {
-      if (braceDepthAt(receiverSegment, call.index) !== 0) continue;
-      const statement = statementAt(receiverSegment, call.index);
-      if (isAssertionStatement(statement.text)) return "asserted";
-      usage = "called";
-
-      const callOffset = call.index - statement.start;
-      const resultBinding = statement.text.slice(0, callOffset).match(
-        /\b(?:var|[A-Za-z_][A-Za-z0-9_.<>,?\[\]]*)\s+([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(?:await\s+)?$/
-      );
-      if (!resultBinding) continue;
-      const afterStatement = receiverSegment.slice(statement.end);
-      if (isLocalResultAsserted(afterStatement, resultBinding[1])) return "asserted";
-    }
+    const current = csharpReceiverUsage(receiverSegment, receiver);
+    if (current === "asserted") return current;
+    if (current === "called") usage = current;
   }
 
   return usage;

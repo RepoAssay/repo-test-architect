@@ -355,3 +355,11 @@ Decision: when a larger SDK-style repository contains exactly one statically ide
 Rationale: pinned `jjosh102/sharp-cast` contains a converter library and its xUnit project alongside an unrelated Blazor application and benchmark executable. The unique edge selects an exact command that passes 165/165 upstream tests, while no UI or benchmark source enters the pair's candidates or evidence. Five static audits retain one digest with a 14.4 ms median. This widens practical repository coverage without interpreting the solution file, evaluating MSBuild, or merging the entire graph.
 
 Revisit when: exact test-class field receivers initialized through target-typed construction can recover the two reviewed Sharp Cast converter gaps without allowing mutable, inherited, interface-typed, or helper-created fields.
+
+### 2026-07-30: credit exact immutable C# test-field receivers
+
+Decision: inside one test class, bind a uniquely owned concrete source type through an exact `private readonly Type field` initialized with `new()`/`new Type(...)`, or through exactly one such assignment in the class's sole parameterless constructor. Credit only body-local calls from runnable attributed tests, retain the existing one-hop result assertion upgrade, and reject mutable, static, interface-typed, property, inherited, helper-created, cross-partial, multiply constructed, reassigned, shadowed, local-function, and deferred-lambda shapes.
+
+Rationale: pinned Sharp Cast uses both supported initialization forms. The bounded rule moves `JsonToCSharpConverter` and `TypeScriptToCSharpConverter` from untested to covered, changing the audit from `7 / 4 / 1` candidates and five relationships to `5 / 6 / 1` and eight without absorbing UI or benchmark source. `TypeScriptToCSharpConverter` is asserted; the two JSON relationships remain called because their asserted output is carried through `out`. Five audits share digest `f3806a31ad40af325eaeb51710daa91bb9725e2d5a552959259a19dd373f2c07` with a 22.9 ms median, and the exact native command still passes 165/165 tests.
+
+Revisit when: bounded `out`-argument identity can prove the two reviewed JSON assertion flows without accepting ref/out mutation generally, or when inherited MSBuild/package metadata creates the larger practical gap.

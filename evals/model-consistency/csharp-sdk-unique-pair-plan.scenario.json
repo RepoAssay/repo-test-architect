@@ -1,7 +1,7 @@
 {
   "schemaVersion": "model-consistency-scenario/v1",
   "id": "csharp-sdk-unique-pair-plan",
-  "description": "Different model profiles should preserve the unique literal C# test edge, exclude unrelated projects, and retain the exact test-project command and asserted source evidence.",
+  "description": "Different model profiles should preserve the unique literal C# test edge, exclude unrelated projects, and retain the exact test-project command and asserted readonly-field receiver evidence.",
   "sourceArtifact": {
     "path": "evals/expected/csharp-sdk-unique-pair.audit.json",
     "schemaVersion": "audit/v1"
@@ -24,7 +24,7 @@
     {
       "path": "summary.addTestCount",
       "expected": 0,
-      "reason": "The asserted calculator receiver should prevent a duplicate add-test recommendation."
+      "reason": "The asserted private readonly calculator field should prevent a duplicate add-test recommendation."
     },
     {
       "path": "summary.extendTestCount",
@@ -44,7 +44,7 @@
     {
       "path": "items[0].existingTestEvidence[0].usage",
       "expected": "asserted",
-      "reason": "The exact receiver call remains inside the xUnit assertion."
+      "reason": "The exact private readonly field receiver call remains inside the xUnit assertion."
     }
   ],
   "allowedVariations": [
