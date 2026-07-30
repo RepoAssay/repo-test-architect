@@ -25,7 +25,7 @@ Project detection selects `S7.Net/S7.Net.csproj` and `S7.Net.UnitTest/S7.Net.Uni
 | Deferred/skipped | 1 |
 | Evidence relationships | 19 |
 | Asserted / called after direct-result follow-up | 14 / 5 |
-| Latest direct asserted / called / naming | 11 / 5 / 3 |
+| Latest direct asserted / called / naming | 13 / 5 / 1 |
 
 Five repeated audits produced one root-normalized SHA-256 digest, `4d873dc46f7baed53e0a8ba83816b6e3d109e4b85fa0d160a8425157c64879e1`, with an 88 ms median from samples `124, 88, 88, 89, 85`. The profile records `literal target-conditioned package references` alongside the existing literal project-pair and multi-target conventions.
 
@@ -48,6 +48,12 @@ S7.Net makes the distinction visible without changing any candidate count: helpe
 The pinned `DateTime` and `DateTimeLong` tests also use MSTest `[ExpectedException]` methods whose complete body is one direct source call. The bounded rule upgrades that call only when the selected framework is MSTest, the attributed method contains one statement, and exactly one top-level `Type.Method(...)` or `new Type(...)` source call owns that statement. Multiple source calls, setup statements, wrapper calls, helpers, local functions, deferred lambdas, and similarly named non-MSTest attributes remain called or uncredited.
 
 This moves only the `DateTime` and `DateTimeLong` relationships from called to asserted. Counts stay at 35 untested, 13 covered, 1 deferred, and 19 relationships, now split into 11 asserted direct, 5 called direct, and 3 naming. Five audits produced digest `2fbaecbad8128b75d36447257589943c851ef4da42ee69f9d540c65a3d3c5ce7` with a 104 ms median from samples `145, 104, 106, 103, 100`.
+
+### Framework exception-assertion lambda follow-up
+
+The next bounded rule recognizes exact single-expression lambdas owned by the selected framework's exception assertion methods: xUnit `Throws*`, NUnit `Throws*`/`Catch*`, and MSTest `ThrowsException*`/`ThrowsExactly*`. The assertion statement and lambda remain top-level, the lambda contains exactly one direct source `Type.Method(...)` or `new Type(...)` call, and optional async/await plus a trailing framework message are admitted. Block lambdas, wrapped or multiple source calls, captured assertion results, nested assertions, custom helpers, and wrong-framework method names remain excluded.
+
+S7.Net upgrades only `S7String` and `S7WString` from filename conventions to direct asserted relationships. Plain `String` remains naming-only because its exception checks call test helpers instead of the source inside the framework lambda. Counts remain 35 untested, 13 covered, 1 deferred, and 19 relationships, now split into 13 asserted direct, 5 called direct, and 1 naming. Five audits produced digest `bb035df93e749bfec265b13e1801e25ab4946a50a0cb36e6a853640926f7791d` with a 106 ms median from samples `151, 104, 106, 109, 103`.
 
 ## Native Validation
 
