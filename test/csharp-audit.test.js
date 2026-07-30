@@ -267,6 +267,70 @@ describe("C# audit adapter", () => {
     assert.ok(audit.profile.setupSignals.includes("Directory.Packages.props"));
   });
 
+  it("audits finite project-local target-framework package conditions", (t) => {
+    const root = createRepo(t, {
+      "Directory.Packages.props": [
+        "<Project><PropertyGroup><ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally></PropertyGroup><ItemGroup>",
+        "<PackageVersion Include=\"System.Memory\" Version=\"4.6.3\" />",
+        "<PackageVersion Include=\"System.Buffers\" Version=\"4.6.1\" />",
+        "<PackageVersion Include=\"System.Text.Json\" Version=\"10.0.0\" />",
+        "<PackageVersion Include=\"Microsoft.NET.Test.Sdk\" Version=\"18.8.1\" />",
+        "<PackageVersion Include=\"xunit\" Version=\"2.9.3\" />",
+        "</ItemGroup></Project>"
+      ].join(""),
+      "src/Core/Core.csproj": [
+        "<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup>",
+        "<TargetFrameworks>netstandard2.0;net8.0;net10.0</TargetFrameworks>",
+        "</PropertyGroup>",
+        "<ItemGroup Condition=\"'$(TargetFramework)' != 'net8.0' And '$(TargetFramework)' != 'net10.0'\"><PackageReference Include=\"System.Memory\" /></ItemGroup>",
+        "<ItemGroup Condition=\"'$(TargetFramework)' == 'net8.0' Or '$(TargetFramework)' == 'net10.0'\"><PackageReference Include=\"System.Buffers\" /></ItemGroup>",
+        "<ItemGroup><PackageReference Include=\"System.Text.Json\" Condition=\"$(TargetFramework) == 'net8.0'\" /></ItemGroup>",
+        "</Project>"
+      ].join(""),
+      "src/Core/Core.cs": "public static class Core { public static int Run() => 1; }\n",
+      "tests/Core.Tests/Core.Tests.csproj": [
+        "<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><TargetFramework>net10.0</TargetFramework></PropertyGroup><ItemGroup>",
+        "<PackageReference Include=\"Microsoft.NET.Test.Sdk\" /><PackageReference Include=\"xunit\" />",
+        "<ProjectReference Include=\"../../src/Core/Core.csproj\" />",
+        "</ItemGroup></Project>"
+      ].join(""),
+      "tests/Core.Tests/CoreTests.cs": "public class CoreTests { [Fact] public void Runs() { Assert.Equal(1, Core.Run()); } }\n"
+    });
+
+    const audit = auditCSharpRepo(root);
+    assert.equal(audit.profile.testCommand, "dotnet test tests/Core.Tests/Core.Tests.csproj");
+    assert.deepEqual(audit.profile.blockers, []);
+    assert.ok(audit.profile.detectedConventions.includes("literal target-conditioned package references"));
+    assert.ok(audit.profile.detectedConventions.includes("bounded central package management"));
+  });
+
+  it("blocks package conditions outside the finite target-framework boundary", (t) => {
+    const cases = [
+      ["non-literal target package reference conditions", "<ItemGroup><PackageReference Include=\"System.Memory\" Condition=\"'$(Mode)' == 'test'\" /></ItemGroup>"],
+      ["non-literal target package reference conditions", "<ItemGroup><PackageReference Include=\"System.Memory\" Condition=\"'$(TargetFramework)' != 'net8.0' And '$(TargetFramework)' == 'net10.0'\" /></ItemGroup>"],
+      ["non-literal target package reference conditions", "<ItemGroup><PackageReference Include=\"System.Memory\" Condition=\"'$(TargetFramework)' == 'net8.0' Or '$(Mode)' == 'test'\" /></ItemGroup>"],
+      ["non-literal target package reference conditions", "<ItemGroup><PackageReference Include=\"System.Memory\" Condition=\"('$(TargetFramework)' == 'net8.0')\" /></ItemGroup>"],
+      ["condition target net7.0 is absent", "<ItemGroup><PackageReference Include=\"System.Memory\" Condition=\"'$(TargetFramework)' == 'net7.0'\" /></ItemGroup>"],
+      ["conditional test infrastructure", "<ItemGroup><PackageReference Include=\"Microsoft.NET.Test.Sdk\" Condition=\"'$(TargetFramework)' == 'net10.0'\" /><PackageReference Include=\"xunit\" /></ItemGroup>"],
+      ["nested package reference conditions", "<ItemGroup Condition=\"'$(TargetFramework)' == 'net8.0'\"><PackageReference Include=\"System.Memory\" Condition=\"'$(TargetFramework)' == 'net8.0'\" /></ItemGroup>"]
+    ];
+
+    for (const [expected, packageItems] of cases) {
+      const root = createRepo(t, {
+        "Example.Tests.csproj": [
+          "<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><TargetFrameworks>net8.0;net10.0</TargetFrameworks><IsTestProject>true</IsTestProject></PropertyGroup>",
+          packageItems,
+          packageItems.includes("Microsoft.NET.Test.Sdk") ? "" : "<ItemGroup><PackageReference Include=\"Microsoft.NET.Test.Sdk\" /><PackageReference Include=\"xunit\" /></ItemGroup>",
+          "</Project>"
+        ].join(""),
+        "Tests.cs": "public class Tests { [Fact] public void Runs() { Assert.True(true); } }\n"
+      });
+      const audit = auditCSharpRepo(root);
+      assert.equal(audit.profile.testCommand, undefined);
+      assert.ok(audit.profile.blockers.some((blocker) => blocker.includes(expected)), expected);
+    }
+  });
+
   it("uses the nearest bounded Directory.Packages.props independently for each selected project", (t) => {
     const root = createRepo(t, {
       "Directory.Build.props": "<Project><PropertyGroup><TargetFramework>net10.0</TargetFramework></PropertyGroup></Project>",
@@ -294,7 +358,7 @@ describe("C# audit adapter", () => {
       ["missing central versions for xunit", "<Project><PropertyGroup><ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally></PropertyGroup><ItemGroup><PackageVersion Include=\"Microsoft.NET.Test.Sdk\" Version=\"18.8.1\" /></ItemGroup></Project>", ""],
       ["project-local package versions", "<Project><PropertyGroup><ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally></PropertyGroup><ItemGroup><PackageVersion Include=\"xunit\" Version=\"2.9.3\" /><PackageVersion Include=\"Microsoft.NET.Test.Sdk\" Version=\"18.8.1\" /></ItemGroup></Project>", " Version=\"2.9.3\""],
       ["project-local package versions", "<Project><PropertyGroup><ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally></PropertyGroup><ItemGroup><PackageVersion Include=\"xunit\" Version=\"2.9.3\" /><PackageVersion Include=\"Microsoft.NET.Test.Sdk\" Version=\"18.8.1\" /></ItemGroup></Project>", " VersionOverride=\"2.9.4\""],
-      ["conditional package references", "<Project><PropertyGroup><ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally></PropertyGroup><ItemGroup><PackageVersion Include=\"xunit\" Version=\"2.9.3\" /><PackageVersion Include=\"Microsoft.NET.Test.Sdk\" Version=\"18.8.1\" /></ItemGroup></Project>", " Condition=\"'$(Mode)' == 'test'\""],
+      ["conditional test infrastructure package references", "<Project><PropertyGroup><ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally></PropertyGroup><ItemGroup><PackageVersion Include=\"xunit\" Version=\"2.9.3\" /><PackageVersion Include=\"Microsoft.NET.Test.Sdk\" Version=\"18.8.1\" /></ItemGroup></Project>", " Condition=\"'$(Mode)' == 'test'\""],
       ["global package references", "<Project><PropertyGroup><ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally></PropertyGroup><ItemGroup><GlobalPackageReference Include=\"Build.Tool\" Version=\"1.0.0\" /><PackageVersion Include=\"xunit\" Version=\"2.9.3\" /><PackageVersion Include=\"Microsoft.NET.Test.Sdk\" Version=\"18.8.1\" /></ItemGroup></Project>", ""]
     ];
 
@@ -340,6 +404,24 @@ describe("C# audit adapter", () => {
     assert.equal(auditCSharpRepo(nunit).coveredButRisky[0].existingTestEvidence[0].usage, "asserted");
     assert.deepEqual(auditCSharpRepo(mstest).profile.testFrameworks, ["mstest"]);
     assert.equal(auditCSharpRepo(mstest).profile.testCommand, "dotnet test Example.Tests.csproj");
+  });
+
+  it("keeps self-closing test packages after package references with child metadata", (t) => {
+    const root = createRepo(t, {
+      "Example.Tests.csproj": [
+        "<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><TargetFramework>net10.0</TargetFramework></PropertyGroup><ItemGroup>",
+        "<PackageReference Include=\"coverlet.collector\"><PrivateAssets>all</PrivateAssets></PackageReference>",
+        "<PackageReference Include=\"Microsoft.NET.Test.Sdk\" />",
+        "<PackageReference Include=\"MSTest.TestFramework\" />",
+        "</ItemGroup></Project>"
+      ].join(""),
+      "Tests.cs": "public class Tests { [TestMethod] public void Runs() { Assert.IsTrue(true); } }\n"
+    });
+
+    const audit = auditCSharpRepo(root);
+    assert.deepEqual(audit.profile.testFrameworks, ["mstest"]);
+    assert.equal(audit.profile.testCommand, "dotnet test Example.Tests.csproj");
+    assert.deepEqual(audit.profile.blockers, []);
   });
 
   it("falls back to a unique filename convention without inventing symbol usage", (t) => {

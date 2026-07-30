@@ -162,6 +162,6 @@ export function analyzePackageReferenceTag(tag) {
 }
 
 export function extractPackageReferenceTags(content) {
-  return [...content.matchAll(/<PackageReference\b[^>]*(?:\/>|>[\s\S]*?<\/PackageReference>)/gi)]
+  return [...content.matchAll(/<PackageReference\b[^>]*(?:\/\s*>|>(?:(?!<PackageReference\b)[\s\S])*?<\/PackageReference\s*>)/gi)]
     .map((match) => match[0]);
 }

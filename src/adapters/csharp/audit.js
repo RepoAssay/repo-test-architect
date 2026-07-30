@@ -4,7 +4,6 @@ import {
   analyzeDirectoryBuildProps,
   analyzePackageReferenceTag,
   analyzeTargetFrameworkDeclaration,
-  extractPackageReferenceTags,
   findNearestDirectoryBuildProps
 } from "./directory-build-props.js";
 import {
@@ -166,17 +165,6 @@ function readRepoFiles(root) {
 }
 
 function analyzeProject(content, inherited, inheritedPath, centralPackages) {
-  const localPackageReferenceTags = extractPackageReferenceTags(content);
-  const localPackageReferenceDetails = localPackageReferenceTags.map(analyzePackageReferenceTag);
-  const hasConditionalPackageReferenceGroups = [...content.matchAll(/<ItemGroup\b([^>]*)>([\s\S]*?)<\/ItemGroup>/gi)]
-    .some((match) => /\bCondition\s*=/i.test(match[1]) && /<PackageReference\b/i.test(match[2]));
-  const localPackageReferences = localPackageReferenceDetails.map((reference) => reference.name).filter(Boolean);
-  const packageReferenceDetails = [...(inherited?.packageReferenceDetails ?? []), ...localPackageReferenceDetails];
-  const packageReferences = [...(inherited?.packageReferences ?? []), ...localPackageReferences];
-  const testFrameworks = [];
-  if (packageReferences.some((name) => name === "xunit" || name === "xunit.v3")) testFrameworks.push("xunit");
-  if (packageReferences.some((name) => name === "nunit")) testFrameworks.push("nunit");
-  if (packageReferences.some((name) => name === "mstest.testframework")) testFrameworks.push("mstest");
   const localFramework = analyzeTargetFrameworkDeclaration(content);
   const inheritedTargetFrameworks = inherited?.targetFrameworks ?? (inherited?.targetFramework ? [inherited.targetFramework] : []);
   const targetFrameworks = localFramework.hasDeclaration
@@ -191,6 +179,15 @@ function analyzeProject(content, inherited, inheritedPath, centralPackages) {
     localFramework.property !== inherited.targetFrameworkProperty) {
     targetFrameworkBlockers.push("conflicting inherited target framework metadata");
   }
+  const localPackageAnalysis = analyzeLocalPackageReferences(content, targetFrameworks);
+  const localPackageReferenceDetails = localPackageAnalysis.references;
+  const localPackageReferences = localPackageReferenceDetails.map((reference) => reference.name).filter(Boolean);
+  const packageReferenceDetails = [...(inherited?.packageReferenceDetails ?? []), ...localPackageReferenceDetails];
+  const packageReferences = [...(inherited?.packageReferences ?? []), ...localPackageReferences];
+  const testFrameworks = [];
+  if (packageReferences.some((name) => name === "xunit" || name === "xunit.v3")) testFrameworks.push("xunit");
+  if (packageReferences.some((name) => name === "nunit")) testFrameworks.push("nunit");
+  if (packageReferences.some((name) => name === "mstest.testframework")) testFrameworks.push("mstest");
   const sdk = content.match(/<Project\b[^>]*\bSdk\s*=\s*["']([^"']+)["']/i)?.[1];
   const hasTestSdk = packageReferences.includes("microsoft.net.test.sdk");
   const localIsTestProjectMatches = [...content.matchAll(/<IsTestProject>\s*([^<]+?)\s*<\/IsTestProject>/gi)];
@@ -242,9 +239,8 @@ function analyzeProject(content, inherited, inheritedPath, centralPackages) {
       if (packageReferenceDetails.some((reference) => !reference.name || reference.hasUpdate)) {
         centralPackageBlockers.push("dynamic package references");
       }
-      if (hasConditionalPackageReferenceGroups ||
-        inherited?.hasConditionalPackageReferenceGroups ||
-        packageReferenceDetails.some((reference) => reference.hasCondition)) {
+      if (inherited?.hasConditionalPackageReferenceGroups ||
+        inherited?.packageReferenceDetails.some((reference) => reference.hasCondition)) {
         centralPackageBlockers.push("conditional package references");
       }
       if (packageReferenceDetails.some((reference) => reference.hasVersion || reference.hasVersionOverride)) {
@@ -268,6 +264,8 @@ function analyzeProject(content, inherited, inheritedPath, centralPackages) {
     targetFrameworkProperty,
     isMultiTargeted: targetFrameworkProperty === "TargetFrameworks" && targetFrameworks.length > 1,
     targetFrameworkBlockers: [...new Set(targetFrameworkBlockers)],
+    packageReferenceBlockers: localPackageAnalysis.blockers,
+    hasTargetConditionedPackageReferences: localPackageAnalysis.hasTargetConditions,
     testFrameworks,
     hasTestSdk,
     isTestProject: (localIsTestProject === "true" || (localIsTestProject === undefined && inherited?.isTestProject === true)) || hasTestSdk,
@@ -283,6 +281,95 @@ function analyzeProject(content, inherited, inheritedPath, centralPackages) {
     centralPackagesPath: centralPackagesEnabled === true ? centralPackages?.path : undefined,
     centralPackageBlockers: [...new Set(centralPackageBlockers)]
   };
+}
+
+function analyzeLocalPackageReferences(content, targetFrameworks) {
+  const source = content.replace(/<!--[\s\S]*?-->/g, (comment) => " ".repeat(comment.length));
+  const itemGroups = [...source.matchAll(/<ItemGroup\b([^>]*)>([\s\S]*?)<\/ItemGroup>/gi)].map((match) => ({
+    attributes: match[1],
+    start: match.index,
+    end: match.index + match[0].length
+  }));
+  const targetSet = new Set(targetFrameworks.map((target) => target.toLowerCase()));
+  const blockers = [];
+  let hasTargetConditions = false;
+  const references = [...source.matchAll(/<PackageReference\b[^>]*(?:\/\s*>|>(?:(?!<PackageReference\b)[\s\S])*?<\/PackageReference\s*>)/gi)].map((match) => {
+    const tag = match[0];
+    const reference = analyzePackageReferenceTag(tag);
+    const group = itemGroups.find((candidate) => match.index > candidate.start && match.index < candidate.end);
+    const tagConditions = extractConditionValues(tag);
+    const groupConditions = group ? extractConditionValues(group.attributes) : [];
+    const tagMentionsCondition = /\bCondition\s*=/i.test(tag);
+    const groupMentionsCondition = Boolean(group && /\bCondition\s*=/i.test(group.attributes));
+
+    if ((tagMentionsCondition && tagConditions.length !== 1) ||
+      (groupMentionsCondition && groupConditions.length !== 1)) {
+      blockers.push("malformed package reference conditions");
+      return reference;
+    }
+    if (tagConditions.length > 0 && groupConditions.length > 0) {
+      blockers.push("nested package reference conditions");
+      return reference;
+    }
+    const condition = tagConditions[0] ?? groupConditions[0];
+    if (!condition) return reference;
+    if (["microsoft.net.test.sdk", "xunit", "xunit.v3", "nunit", "mstest.testframework"].includes(reference.name)) {
+      blockers.push("conditional test infrastructure package references");
+      return reference;
+    }
+    const mentionedTargets = packageConditionTargetLiterals(condition);
+    const missingTarget = mentionedTargets.find((target) => !targetSet.has(target.toLowerCase()));
+    if (missingTarget) {
+      blockers.push(`package reference condition target ${missingTarget} is absent from the project target frameworks`);
+      return reference;
+    }
+    const conditionTargets = parseLiteralTargetFrameworkCondition(condition, targetFrameworks);
+    if (!conditionTargets) {
+      blockers.push("non-literal target package reference conditions");
+      return reference;
+    }
+    hasTargetConditions = true;
+    return { ...reference, conditionTargets };
+  });
+
+  return {
+    references,
+    blockers: [...new Set(blockers)],
+    hasTargetConditions
+  };
+}
+
+function extractConditionValues(attributes) {
+  return [...attributes.matchAll(/\bCondition\s*=\s*(["'])([\s\S]*?)\1/gi)].map((match) => match[2].trim());
+}
+
+function packageConditionTargetLiterals(condition) {
+  const literals = [];
+  const atomPattern = /(["']?)\s*\$\(\s*TargetFramework\s*\)\s*\1\s*(?:==|!=)\s*(["'])([A-Za-z0-9][A-Za-z0-9._+-]*)\2/gi;
+  for (const match of condition.matchAll(atomPattern)) literals.push(match[3]);
+  return literals;
+}
+
+function parseLiteralTargetFrameworkCondition(condition, targetFrameworks) {
+  const parts = condition.trim().split(/\s+(and|or)\s+/i);
+  if (parts.length === 0 || parts.length % 2 === 0) return undefined;
+  const operators = parts.filter((_, index) => index % 2 === 1).map((operator) => operator.toLowerCase());
+  if (new Set(operators).size > 1) return undefined;
+  const atoms = parts.filter((_, index) => index % 2 === 0).map((source) => {
+    const match = source.match(/^(["']?)\s*\$\(\s*TargetFramework\s*\)\s*\1\s*(==|!=)\s*(["'])([A-Za-z0-9][A-Za-z0-9._+-]*)\3$/i);
+    return match ? { comparison: match[2], target: match[4].toLowerCase() } : undefined;
+  });
+  if (atoms.some((atom) => !atom)) return undefined;
+  if (new Set(atoms.map((atom) => atom.comparison)).size > 1) return undefined;
+  const declaredTargets = new Set(targetFrameworks.map((target) => target.toLowerCase()));
+  if (atoms.some((atom) => !declaredTargets.has(atom.target))) return undefined;
+  const selectedTargets = targetFrameworks.filter((target) => {
+    const results = atoms.map((atom) => atom.comparison === "=="
+      ? target.toLowerCase() === atom.target
+      : target.toLowerCase() !== atom.target);
+    return operators[0] === "or" ? results.some(Boolean) : results.every(Boolean);
+  });
+  return selectedTargets.length > 0 && selectedTargets.length < targetFrameworks.length ? selectedTargets : undefined;
 }
 
 function analyzeCentralPackageSetting(content) {
@@ -385,6 +472,13 @@ function buildProfile(root, projects, layout, sourceFiles, testFiles) {
   if (targetFrameworkBlockers.length > 0) {
     blockers.push(`C# target framework metadata requires unsupported MSBuild evaluation: ${targetFrameworkBlockers.join(", ")}.`);
   }
+  const packageReferenceBlockers = [...new Set([
+    ...(layout.sourceProject?.analysis.packageReferenceBlockers ?? []),
+    ...(layout.testProject?.analysis.packageReferenceBlockers ?? [])
+  ])];
+  if (packageReferenceBlockers.length > 0) {
+    blockers.push(`C# package references require unsupported MSBuild evaluation: ${packageReferenceBlockers.join(", ")}.`);
+  }
   const centralPackageBlockers = [...new Set([
     ...(layout.sourceProject?.analysis.centralPackageBlockers ?? []),
     ...(layout.testProject?.analysis.centralPackageBlockers ?? [])
@@ -439,6 +533,10 @@ function buildProfile(root, projects, layout, sourceFiles, testFiles) {
   }
   if (layout.sourceProject?.analysis.centralPackagesEnabled || layout.testProject?.analysis.centralPackagesEnabled) {
     detectedConventions.push("bounded central package management");
+  }
+  if (layout.sourceProject?.analysis.hasTargetConditionedPackageReferences ||
+    layout.testProject?.analysis.hasTargetConditionedPackageReferences) {
+    detectedConventions.push("literal target-conditioned package references");
   }
   if (testFiles.length > 0) detectedConventions.push("attributed C# tests");
   const existingTestLocations = [...new Set(testFiles.map((file) => (
