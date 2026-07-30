@@ -403,3 +403,11 @@ Decision: admit one project-local condition on either a `PackageReference` or it
 Rationale: pinned `S7NetPlus/s7netplus` at `534d9fd69dedb6db1a61f0ce13b94ab8e7f98f26` uses three literal inequalities joined by `And` to include `System.Memory` on four of seven production targets. Its MSTest project targets a literal production subset through one exact edge. The zero-blocker audit reports `35 / 13 / 1` candidates and 19 relationships; five runs share digest `4d873dc46f7baed53e0a8ba83816b6e3d109e4b85fa0d160a8425157c64879e1` at an 88 ms median. The probe also locked package-tag parsing when a child-metadata reference precedes self-closing test packages. The exact command restores and builds all targets, then records expected local host failures for x64 .NET, Mono, and the unavailable macOS Snap7 native library rather than changing the emitted command.
 
 Revisit when: conditional test infrastructure, target compatibility, or a richer boolean grammar can be proven from a pinned repository without invoking general MSBuild evaluation.
+
+### 2026-07-30: credit one stable direct C# type-call result
+
+Decision: inside a runnable attributed test body, upgrade an already recognized direct `Type.Method(...)` or `new Type(...)` call when its complete top-level expression is assigned to one stable local that later reaches a direct `Assert.*` or `.Should(...)` statement. Accept `var` or an explicit result type for static calls, but require `var` or the exact concrete source type for construction. Reject mutation, interface-typed construction, helper indirection, nested local functions, deferred lambdas, and deeper expression flow.
+
+Rationale: pinned S7.Net assigns results from `DataItem.FromAddress(...)`, `TPKT.Read(...)`, and two `Conversion` calls before asserting their values. The rule preserves 35 untested, 13 covered, 1 deferred, and 19 relationships while moving usage from 10 asserted/9 called to 14 asserted/5 called. Five audits share digest `0d1c131f69be3229cb6f431c6905ee7ffc6e5ed56c94c0bd2f79d241cec3da80` with a 101 ms median.
+
+Revisit when: a pinned repository demonstrates that property chains, tuple/deconstruction results, helper returns, or deeper result flow can be proven without general data-flow inference.

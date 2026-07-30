@@ -519,6 +519,66 @@ describe("C# audit adapter", () => {
     );
   });
 
+  it("tracks one stable direct type-call or constructor result into a later assertion", (t) => {
+    const root = createRepo(t, {
+      "Example.Tests.csproj": projectFile("xunit"),
+      "StaticFactory.cs": "public static class StaticFactory { public static int Create() => 1; }\n",
+      "ExplicitFactory.cs": "public static class ExplicitFactory { public static int Create() => 1; }\n",
+      "FluentFactory.cs": "public static class FluentFactory { public static int Create() => 1; }\n",
+      "ConstructedResult.cs": "public class ConstructedResult { public int Value => 1; }\n",
+      "CalledFactory.cs": "public static class CalledFactory { public static int Create() => 1; }\n",
+      "Tests.cs": [
+        "public class Tests {",
+        "  [Fact] public void AssertsStaticResult() { var result = StaticFactory.Create(); Assert.Equal(1, result); }",
+        "  [Fact] public void AssertsExplicitResult() { int result = ExplicitFactory.Create(); Assert.Equal(1, result); }",
+        "  [Fact] public void AssertsFluentResult() { var result = FluentFactory.Create(); result.Should().Be(1); }",
+        "  [Fact] public void AssertsConstructedResult() { var result = new ConstructedResult(); Assert.Equal(1, result.Value); }",
+        "  [Fact] public void OnlyCalls() { var result = CalledFactory.Create(); }",
+        "}"
+      ].join("\n")
+    });
+
+    assert.deepEqual(
+      auditCSharpRepo(root).coveredButRisky.map((target) => [target.path, target.existingTestEvidence[0].usage]),
+      [
+        ["CalledFactory.cs", "called"],
+        ["ConstructedResult.cs", "asserted"],
+        ["ExplicitFactory.cs", "asserted"],
+        ["FluentFactory.cs", "asserted"],
+        ["StaticFactory.cs", "asserted"]
+      ]
+    );
+  });
+
+  it("rejects changed, nested, deferred, and indirect direct-call result flow", (t) => {
+    const root = createRepo(t, {
+      "Example.Tests.csproj": projectFile("xunit"),
+      "ChangedFactory.cs": "public static class ChangedFactory { public static int Create() => 1; }\n",
+      "LocalFunctionFactory.cs": "public static class LocalFunctionFactory { public static int Create() => 1; }\n",
+      "LambdaFactory.cs": "public static class LambdaFactory { public static int Create() => 1; }\n",
+      "IndirectFactory.cs": "public static class IndirectFactory { public static int Create() => 1; }\n",
+      "Tests.cs": [
+        "public class Tests {",
+        "  [Fact] public void Changed() { var result = ChangedFactory.Create(); result = 2; Assert.Equal(2, result); }",
+        "  [Fact] public void NestedFunction() { void Verify() { var result = LocalFunctionFactory.Create(); Assert.Equal(1, result); } Verify(); }",
+        "  [Fact] public void DeferredLambda() { System.Func<int> verify = () => { var result = LambdaFactory.Create(); Assert.Equal(1, result); return result; }; verify(); }",
+        "  [Fact] public void IndirectHelper() { var result = Create(); Assert.Equal(1, result); }",
+        "  private static int Create() => IndirectFactory.Create();",
+        "}"
+      ].join("\n")
+    });
+
+    assert.deepEqual(
+      auditCSharpRepo(root).coveredButRisky.map((target) => [target.path, target.existingTestEvidence[0].usage]),
+      [
+        ["ChangedFactory.cs", "called"],
+        ["IndirectFactory.cs", "called"],
+        ["LambdaFactory.cs", "called"],
+        ["LocalFunctionFactory.cs", "called"]
+      ]
+    );
+  });
+
   it("rejects reassigned receivers and results plus interface, mutable-field, ref, and helper flow", (t) => {
     const root = createRepo(t, {
       "Example.Tests.csproj": projectFile("xunit"),
