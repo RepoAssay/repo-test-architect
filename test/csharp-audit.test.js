@@ -117,6 +117,97 @@ describe("C# audit adapter", () => {
     }
   });
 
+  it("validates bounded central package versions for the selected project pair", (t) => {
+    const root = createRepo(t, {
+      "Directory.Build.props": [
+        "<Project><PropertyGroup>",
+        "<TargetFramework>net10.0</TargetFramework>",
+        "<ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>",
+        "</PropertyGroup></Project>"
+      ].join(""),
+      "Directory.Packages.props": [
+        "<Project><PropertyGroup><CoreVersion>[10.0.10, 11.0.0)</CoreVersion></PropertyGroup><ItemGroup>",
+        "<PackageVersion Include=\"Core.Dependency\" Version=\"$(CoreVersion)\" />",
+        "<PackageVersion Include=\"Microsoft.NET.Test.Sdk\" Version=\"18.8.1\" />",
+        "<PackageVersion Include=\"xunit\" Version=\"2.9.3\" />",
+        "</ItemGroup></Project>"
+      ].join(""),
+      "src/Core/Core.csproj": "<Project Sdk=\"Microsoft.NET.Sdk\"><ItemGroup><PackageReference Include=\"Core.Dependency\" /></ItemGroup></Project>",
+      "src/Core/Core.cs": "public static class Core { public static int Run() => 1; }\n",
+      "tests/Core.Tests/Core.Tests.csproj": [
+        "<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally></PropertyGroup><ItemGroup>",
+        "<PackageReference Include=\"Microsoft.NET.Test.Sdk\" />",
+        "<PackageReference Include=\"xunit\" />",
+        "<ProjectReference Include=\"../../src/Core/Core.csproj\" />",
+        "</ItemGroup></Project>"
+      ].join(""),
+      "tests/Core.Tests/CoreTests.cs": "public class CoreTests { [Fact] public void Runs() { Assert.Equal(1, Core.Run()); } }\n"
+    });
+
+    const audit = auditCSharpRepo(root);
+    assert.equal(audit.profile.testCommand, "dotnet test tests/Core.Tests/Core.Tests.csproj");
+    assert.deepEqual(audit.profile.blockers, []);
+    assert.ok(audit.profile.detectedConventions.includes("bounded central package management"));
+    assert.ok(audit.profile.setupSignals.includes("Directory.Packages.props"));
+  });
+
+  it("uses the nearest bounded Directory.Packages.props independently for each selected project", (t) => {
+    const root = createRepo(t, {
+      "Directory.Build.props": "<Project><PropertyGroup><TargetFramework>net10.0</TargetFramework></PropertyGroup></Project>",
+      "Directory.Packages.props": "<Project><PropertyGroup><ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally></PropertyGroup><ItemGroup><PackageVersion Include=\"Core.Dependency\" Version=\"1.0.0\" /></ItemGroup></Project>",
+      "src/Core/Core.csproj": "<Project Sdk=\"Microsoft.NET.Sdk\"><ItemGroup><PackageReference Include=\"Core.Dependency\" /></ItemGroup></Project>",
+      "src/Core/Core.cs": "public static class Core { public static int Run() => 1; }\n",
+      "tests/Directory.Packages.props": "<Project><PropertyGroup><ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally></PropertyGroup><ItemGroup><PackageVersion Include=\"Microsoft.NET.Test.Sdk\" Version=\"18.8.1\" /><PackageVersion Include=\"xunit\" Version=\"2.9.3\" /></ItemGroup></Project>",
+      "tests/Core.Tests/Core.Tests.csproj": testProjectFile("../../src/Core/Core.csproj", ""),
+      "tests/Core.Tests/CoreTests.cs": "public class CoreTests { [Fact] public void Runs() { Assert.Equal(1, Core.Run()); } }\n"
+    });
+
+    const audit = auditCSharpRepo(root);
+    assert.deepEqual(audit.profile.blockers, []);
+    assert.ok(audit.profile.setupSignals.includes("Directory.Packages.props"));
+    assert.ok(audit.profile.setupSignals.includes("tests/Directory.Packages.props"));
+  });
+
+  it("blocks central package shapes that require broader MSBuild evaluation", (t) => {
+    const cases = [
+      ["imports", "<Project><Import Project=\"shared.props\" /><PropertyGroup><ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally></PropertyGroup></Project>", ""],
+      ["conditional central package versions", "<Project><PropertyGroup><ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally></PropertyGroup><ItemGroup Condition=\"'$(Mode)' == 'test'\"><PackageVersion Include=\"xunit\" Version=\"2.9.3\" /><PackageVersion Include=\"Microsoft.NET.Test.Sdk\" Version=\"18.8.1\" /></ItemGroup></Project>", ""],
+      ["property-expanded central package versions", "<Project><PropertyGroup><ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally><VersionAlias>$(OtherVersion)</VersionAlias></PropertyGroup><ItemGroup><PackageVersion Include=\"xunit\" Version=\"$(VersionAlias)\" /><PackageVersion Include=\"Microsoft.NET.Test.Sdk\" Version=\"18.8.1\" /></ItemGroup></Project>", ""],
+      ["property-expanded central package versions", "<Project><PropertyGroup><ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally></PropertyGroup><ItemGroup><PackageVersion Include=\"xunit\" Version=\"$(VersionAlias)\" /><PackageVersion Include=\"Microsoft.NET.Test.Sdk\" Version=\"18.8.1\" /></ItemGroup><PropertyGroup><VersionAlias>2.9.3</VersionAlias></PropertyGroup></Project>", ""],
+      ["repeated central package versions", "<Project><PropertyGroup><ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally></PropertyGroup><ItemGroup><PackageVersion Include=\"xunit\" Version=\"2.9.3\" /><PackageVersion Include=\"xunit\" Version=\"2.9.4\" /><PackageVersion Include=\"Microsoft.NET.Test.Sdk\" Version=\"18.8.1\" /></ItemGroup></Project>", ""],
+      ["missing central versions for xunit", "<Project><PropertyGroup><ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally></PropertyGroup><ItemGroup><PackageVersion Include=\"Microsoft.NET.Test.Sdk\" Version=\"18.8.1\" /></ItemGroup></Project>", ""],
+      ["project-local package versions", "<Project><PropertyGroup><ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally></PropertyGroup><ItemGroup><PackageVersion Include=\"xunit\" Version=\"2.9.3\" /><PackageVersion Include=\"Microsoft.NET.Test.Sdk\" Version=\"18.8.1\" /></ItemGroup></Project>", " Version=\"2.9.3\""],
+      ["project-local package versions", "<Project><PropertyGroup><ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally></PropertyGroup><ItemGroup><PackageVersion Include=\"xunit\" Version=\"2.9.3\" /><PackageVersion Include=\"Microsoft.NET.Test.Sdk\" Version=\"18.8.1\" /></ItemGroup></Project>", " VersionOverride=\"2.9.4\""],
+      ["conditional package references", "<Project><PropertyGroup><ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally></PropertyGroup><ItemGroup><PackageVersion Include=\"xunit\" Version=\"2.9.3\" /><PackageVersion Include=\"Microsoft.NET.Test.Sdk\" Version=\"18.8.1\" /></ItemGroup></Project>", " Condition=\"'$(Mode)' == 'test'\""],
+      ["global package references", "<Project><PropertyGroup><ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally></PropertyGroup><ItemGroup><GlobalPackageReference Include=\"Build.Tool\" Version=\"1.0.0\" /><PackageVersion Include=\"xunit\" Version=\"2.9.3\" /><PackageVersion Include=\"Microsoft.NET.Test.Sdk\" Version=\"18.8.1\" /></ItemGroup></Project>", ""]
+    ];
+
+    for (const [expected, packagesProps, xunitMetadata] of cases) {
+      const root = createRepo(t, {
+        "Directory.Packages.props": packagesProps,
+        "Example.Tests.csproj": `<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><TargetFramework>net10.0</TargetFramework></PropertyGroup><ItemGroup><PackageReference Include="Microsoft.NET.Test.Sdk" /><PackageReference Include="xunit"${xunitMetadata} /></ItemGroup></Project>`,
+        "Tests.cs": "public class Tests { [Fact] public void Runs() { Assert.True(true); } }\n"
+      });
+      const audit = auditCSharpRepo(root);
+      assert.equal(audit.profile.testCommand, undefined);
+      assert.ok(audit.profile.blockers.some((blocker) => blocker.includes(expected)), expected);
+    }
+  });
+
+  it("blocks symbolic central package metadata paths", (t) => {
+    const root = createRepo(t, {
+      "Directory.Build.props": "<Project><PropertyGroup><ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally></PropertyGroup></Project>",
+      "central.props": "<Project />",
+      "Example.Tests.csproj": projectFile("xunit"),
+      "Tests.cs": "public class Tests { [Fact] public void Runs() { Assert.True(true); } }\n"
+    });
+    fs.symlinkSync(path.join(root, "central.props"), path.join(root, "Directory.Packages.props"));
+
+    const audit = auditCSharpRepo(root);
+    assert.equal(audit.profile.testCommand, undefined);
+    assert.ok(audit.profile.blockers.some((blocker) => blocker.includes("symbolic central packages path")));
+  });
+
   it("detects bounded NUnit and MSTest attributed tests", (t) => {
     const nunit = createRepo(t, {
       "Example.Tests.csproj": projectFile("NUnit", "<IsTestProject>true</IsTestProject>"),

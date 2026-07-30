@@ -46,4 +46,4 @@ All 179 tests passed in 183 ms. The adapter continues to emit the repository-nat
 
 This probe justifies bounded `Directory.Build.props` inheritance for the nearest exact-cased, non-symbolic, repository-local file. Project-local values retain precedence. Literal unconditional `<TargetFramework>`, `<IsTestProject>`, and supported test-package `Include` declarations can participate in selection.
 
-It does not justify `Directory.Build.targets`, imports, conditional relevant declarations, property-expanded values, inherited project or compile items, central package evaluation, multiple target frameworks, or arbitrary MSBuild graph execution. Those shapes remain explicit command blockers.
+It does not justify `Directory.Build.targets`, imports, conditional relevant declarations, property-expanded values, inherited project or compile items, multiple target frameworks, or arbitrary MSBuild graph execution. At the time of this probe, it also did not justify central package evaluation; the later [C# Central Packages Live Validation Report](csharp-central-packages-validation-report.md) widens that separate boundary without changing Glob's evidence.

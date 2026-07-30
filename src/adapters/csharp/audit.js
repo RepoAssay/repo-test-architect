@@ -1,6 +1,15 @@
 import fs from "node:fs";
 import path from "node:path";
-import { analyzeDirectoryBuildProps, findNearestDirectoryBuildProps } from "./directory-build-props.js";
+import {
+  analyzeDirectoryBuildProps,
+  analyzePackageReferenceTag,
+  extractPackageReferenceTags,
+  findNearestDirectoryBuildProps
+} from "./directory-build-props.js";
+import {
+  analyzeDirectoryPackagesProps,
+  findNearestDirectoryPackagesProps
+} from "./directory-packages-props.js";
 
 const IGNORED_DIRECTORIES = new Set([
   ".git",
@@ -32,7 +41,19 @@ export function auditCSharpRepo(root, options = {}) {
       const inherited = propsAnalysis
         ? { ...propsAnalysis, blockers: [...(propsFile.pathBlockers ?? []), ...propsAnalysis.blockers] }
         : undefined;
-      return { ...file, analysis: analyzeProject(file.content, inherited, propsFile?.path) };
+      const packagesFile = findNearestDirectoryPackagesProps(metadataRoot, repositoryProjectPath);
+      const packagesAnalysis = packagesFile ? analyzeDirectoryPackagesProps(packagesFile.content) : undefined;
+      const centralPackages = packagesFile
+        ? {
+            path: packagesFile.path,
+            pathBlockers: packagesFile.pathBlockers ?? [],
+            ...packagesAnalysis
+          }
+        : undefined;
+      return {
+        ...file,
+        analysis: analyzeProject(file.content, inherited, propsFile?.path, centralPackages)
+      };
     });
   const layout = selectProjectLayout(projects);
   const testFrameworks = layout.testProject?.analysis.testFrameworks ?? [];
@@ -143,9 +164,13 @@ function readRepoFiles(root) {
   return files.sort((left, right) => left.path.localeCompare(right.path));
 }
 
-function analyzeProject(content, inherited, inheritedPath) {
-  const localPackageReferences = [...content.matchAll(/<PackageReference\b[^>]*\bInclude\s*=\s*["']([^"']+)["'][^>]*>/gi)]
-    .map((match) => match[1].toLowerCase());
+function analyzeProject(content, inherited, inheritedPath, centralPackages) {
+  const localPackageReferenceTags = extractPackageReferenceTags(content);
+  const localPackageReferenceDetails = localPackageReferenceTags.map(analyzePackageReferenceTag);
+  const hasConditionalPackageReferenceGroups = [...content.matchAll(/<ItemGroup\b([^>]*)>([\s\S]*?)<\/ItemGroup>/gi)]
+    .some((match) => /\bCondition\s*=/i.test(match[1]) && /<PackageReference\b/i.test(match[2]));
+  const localPackageReferences = localPackageReferenceDetails.map((reference) => reference.name).filter(Boolean);
+  const packageReferenceDetails = [...(inherited?.packageReferenceDetails ?? []), ...localPackageReferenceDetails];
   const packageReferences = [...(inherited?.packageReferences ?? []), ...localPackageReferences];
   const testFrameworks = [];
   if (packageReferences.some((name) => name === "xunit" || name === "xunit.v3")) testFrameworks.push("xunit");
@@ -177,6 +202,53 @@ function analyzeProject(content, inherited, inheritedPath) {
   const projectReferences = projectReferenceTags
     .map((tag) => tag.match(/\bInclude\s*=\s*["']([^"']+)["']/i)?.[1])
     .filter(Boolean);
+  const centralSetting = analyzeCentralPackageSetting(content);
+  const inheritedCentralValues = [
+    inherited?.managePackageVersionsCentrally,
+    centralPackages?.managePackageVersionsCentrally
+  ].filter((value) => value !== undefined);
+  const centralPackageBlockers = [...centralSetting.blockers];
+  if (centralSetting.value === undefined && new Set(inheritedCentralValues).size > 1) {
+    centralPackageBlockers.push("conflicting central package enablement");
+  }
+  const centralPackagesEnabled = centralSetting.value ?? (
+    new Set(inheritedCentralValues).size === 1 ? inheritedCentralValues[0] : undefined
+  );
+  const hasUnversionedPackageReferences = packageReferenceDetails.some((reference) => (
+    reference.name && !reference.hasVersion && !reference.hasVersionOverride
+  ));
+  const centralPackagesCandidate = centralPackagesEnabled === true || (
+    centralPackagesEnabled === undefined && centralPackages && hasUnversionedPackageReferences
+  );
+
+  if (centralPackagesCandidate && centralPackagesEnabled !== true) {
+    centralPackageBlockers.push("non-literal central package enablement");
+  }
+  if (centralPackagesEnabled === true) {
+    if (!centralPackages) {
+      centralPackageBlockers.push("missing Directory.Packages.props");
+    } else {
+      centralPackageBlockers.push(...centralPackages.pathBlockers, ...centralPackages.blockers);
+      if (packageReferenceDetails.some((reference) => !reference.name || reference.hasUpdate)) {
+        centralPackageBlockers.push("dynamic package references");
+      }
+      if (hasConditionalPackageReferenceGroups ||
+        inherited?.hasConditionalPackageReferenceGroups ||
+        packageReferenceDetails.some((reference) => reference.hasCondition)) {
+        centralPackageBlockers.push("conditional package references");
+      }
+      if (packageReferenceDetails.some((reference) => reference.hasVersion || reference.hasVersionOverride)) {
+        centralPackageBlockers.push("project-local package versions");
+      }
+      const missingVersions = [...new Set(packageReferenceDetails
+        .map((reference) => reference.name)
+        .filter((name) => name && !centralPackages.packageVersions.has(name)))]
+        .sort();
+      if (missingVersions.length > 0) {
+        centralPackageBlockers.push(`missing central versions for ${missingVersions.join(", ")}`);
+      }
+    }
+  }
 
   return {
     sdk,
@@ -193,7 +265,34 @@ function analyzeProject(content, inherited, inheritedPath) {
     hasDynamicCompileItems: /<EnableDefaultCompileItems>\s*false\s*<\/EnableDefaultCompileItems>/i.test(content) || /<Compile\b[^>]*(?:Include|Remove|Update)\s*=/i.test(content),
     hasMultipleTargetFrameworks: /<TargetFrameworks>/i.test(content) || targetFrameworkMatches.length > 1,
     inheritedMetadataPath: usesInheritedMetadata ? inheritedPath : undefined,
-    inheritedBlockers: inherited?.blockers ?? []
+    inheritedBlockers: inherited?.blockers ?? [],
+    centralPackagesEnabled: centralPackagesEnabled === true,
+    centralPackagesPath: centralPackagesEnabled === true ? centralPackages?.path : undefined,
+    centralPackageBlockers: [...new Set(centralPackageBlockers)]
+  };
+}
+
+function analyzeCentralPackageSetting(content) {
+  const source = content.replace(/<!--[\s\S]*?-->/g, " ");
+  const matches = [...source.matchAll(/<ManagePackageVersionsCentrally\b([^>]*)>\s*([^<]+?)\s*<\/ManagePackageVersionsCentrally>/gi)];
+  const blockers = [];
+  if (matches.length > 1) blockers.push("repeated project central package metadata");
+  if (matches.some((match) => /\bCondition\s*=/i.test(match[1]))) blockers.push("conditional project central package metadata");
+  if (matches.some((match) => match[2].includes("$"))) blockers.push("property-expanded project central package metadata");
+  if (matches.some((match) => !/^(?:true|false)$/i.test(match[2].trim()))) {
+    blockers.push("non-literal project central package metadata");
+  }
+  const conditionalGroup = [...source.matchAll(/<PropertyGroup\b([^>]*)>([\s\S]*?)<\/PropertyGroup>/gi)]
+    .some((match) => /\bCondition\s*=/i.test(match[1]) && /<ManagePackageVersionsCentrally\b/i.test(match[2]));
+  if (conditionalGroup ||
+    (/<Project\b[^>]*\bCondition\s*=/i.test(source) && matches.length > 0) ||
+    (/<(?:Choose|When|Otherwise)\b/i.test(source) && matches.length > 0)) {
+    blockers.push("conditional project central package metadata");
+  }
+  const rawValue = matches.length === 1 ? matches[0][2].trim().toLowerCase() : undefined;
+  return {
+    value: rawValue === "true" ? true : rawValue === "false" ? false : undefined,
+    blockers
   };
 }
 
@@ -266,6 +365,13 @@ function buildProfile(root, projects, layout, sourceFiles, testFiles) {
   if (inheritedBlockers.length > 0) {
     blockers.push(`Directory.Build.props requires unsupported MSBuild evaluation: ${inheritedBlockers.join(", ")}.`);
   }
+  const centralPackageBlockers = [...new Set([
+    ...(layout.sourceProject?.analysis.centralPackageBlockers ?? []),
+    ...(layout.testProject?.analysis.centralPackageBlockers ?? [])
+  ])];
+  if (centralPackageBlockers.length > 0) {
+    blockers.push(`Directory.Packages.props requires unsupported central package evaluation: ${centralPackageBlockers.join(", ")}.`);
+  }
 
   if (layout.kind === "single") {
     if (!analysis.sdkStyle) blockers.push("Only static SDK-style Microsoft.NET.Sdk projects are supported in the first C# slice.");
@@ -308,6 +414,9 @@ function buildProfile(root, projects, layout, sourceFiles, testFiles) {
   if (layout.sourceProject?.analysis.inheritedMetadataPath || layout.testProject?.analysis.inheritedMetadataPath) {
     detectedConventions.push("inherited Directory.Build.props metadata");
   }
+  if (layout.sourceProject?.analysis.centralPackagesEnabled || layout.testProject?.analysis.centralPackagesEnabled) {
+    detectedConventions.push("bounded central package management");
+  }
   if (testFiles.length > 0) detectedConventions.push("attributed C# tests");
   const existingTestLocations = [...new Set(testFiles.map((file) => (
     file.path.includes("/") ? `${path.posix.dirname(file.path)}/ attributed tests` : "project-root attributed tests"
@@ -321,6 +430,10 @@ function buildProfile(root, projects, layout, sourceFiles, testFiles) {
     layout.sourceProject?.analysis.inheritedMetadataPath,
     layout.testProject?.analysis.inheritedMetadataPath
   ].filter(Boolean))]) setupSignals.push(inheritedPath);
+  for (const centralPackagesPath of [...new Set([
+    layout.sourceProject?.analysis.centralPackagesPath,
+    layout.testProject?.analysis.centralPackagesPath
+  ].filter(Boolean))]) setupSignals.push(centralPackagesPath);
   const testCommand = project && blockers.length === 0 ? `dotnet test ${project.path}` : undefined;
 
   return {

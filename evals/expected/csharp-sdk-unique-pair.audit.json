@@ -24,6 +24,7 @@
       "unique literal test edge among unrelated projects",
       ".NET test project",
       "inherited Directory.Build.props metadata",
+      "bounded central package management",
       "attributed C# tests"
     ],
     "existingTestLocations": [
@@ -34,7 +35,8 @@
       "tests/Pricing.Tests/Pricing.Tests.csproj",
       "Microsoft.NET.Sdk",
       "net10.0",
-      "Directory.Build.props"
+      "Directory.Build.props",
+      "Directory.Packages.props"
     ],
     "confidence": "high",
     "blockers": []
