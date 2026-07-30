@@ -2,8 +2,8 @@ import fs from "node:fs";
 import path from "node:path";
 
 const RELEVANT_PROPERTY = /<(?:TargetFrameworks?|IsTestProject|EnableDefaultCompileItems|ManagePackageVersionsCentrally)\b/i;
-const RELEVANT_ITEM = /<(?:ProjectReference|Compile)\b|<PackageReference\b[^>]*\bInclude\s*=\s*["'](?:Microsoft\.NET\.Test\.Sdk|xunit(?:\.v3)?|nunit|MSTest\.TestFramework)["']/i;
-const TEST_PACKAGE = /\bInclude\s*=\s*["'](?:Microsoft\.NET\.Test\.Sdk|xunit(?:\.v3)?|nunit|MSTest\.TestFramework)["']/i;
+const RELEVANT_ITEM = /<(?:ProjectReference|Compile)\b|<PackageReference\b[^>]*\bInclude\s*=\s*["'](?:Microsoft\.NET\.Test\.Sdk|Microsoft\.Testing\.Platform\.MSBuild|xunit(?:\.v3(?:\.mtp-v2)?)?|nunit|MSTest\.TestFramework)["']/i;
+const TEST_PACKAGE = /\bInclude\s*=\s*["'](?:Microsoft\.NET\.Test\.Sdk|Microsoft\.Testing\.Platform\.MSBuild|xunit(?:\.v3(?:\.mtp-v2)?)?|nunit|MSTest\.TestFramework)["']/i;
 
 export function findNearestDirectoryBuildProps(repoRoot, projectPath) {
   return findNearestMsbuildFile(repoRoot, projectPath, "Directory.Build.props", "symbolic props path");
@@ -152,8 +152,11 @@ function parseTargetFrameworks(value, property) {
 
 export function analyzePackageReferenceTag(tag) {
   const name = tag.match(/\bInclude\s*=\s*["']([^"']+)["']/i)?.[1];
+  const rawVersion = tag.match(/\bVersion\s*=\s*["']([^"']+)["']/i)?.[1] ??
+    tag.match(/<Version\b[^>]*>\s*([^<]+?)\s*<\/Version>/i)?.[1];
   return {
     name: name && !/[$*?]/.test(name) ? name.toLowerCase() : undefined,
+    version: rawVersion && !rawVersion.includes("$") ? rawVersion.trim() : undefined,
     hasVersion: /\bVersion\s*=/i.test(tag) || /<Version\b/i.test(tag),
     hasVersionOverride: /\bVersionOverride\s*=/i.test(tag) || /<VersionOverride\b/i.test(tag),
     hasUpdate: /\bUpdate\s*=/i.test(tag),

@@ -10,6 +10,7 @@ import {
   analyzeDirectoryPackagesProps,
   findNearestDirectoryPackagesProps
 } from "./directory-packages-props.js";
+import { analyzeRepositoryGlobalJson } from "./global-json.js";
 
 const IGNORED_DIRECTORIES = new Set([
   ".git",
@@ -64,6 +65,7 @@ export function auditCSharpRepo(root, options = {}) {
     ? requestedRepositoryRoot
     : auditRoot;
   const files = readRepoFiles(root);
+  const globalJson = analyzeRepositoryGlobalJson(metadataRoot);
   const projects = files
     .filter((file) => file.path.endsWith(".csproj"))
     .map((file) => {
@@ -102,7 +104,7 @@ export function auditCSharpRepo(root, options = {}) {
     ) &&
     !testFiles.includes(file)
   ));
-  const profile = buildProfile(root, projects, layout, sourceFiles, testFiles);
+  const profile = buildProfile(root, projects, layout, sourceFiles, testFiles, globalJson);
   const changedPaths = options.changedPaths
     ? new Set(options.changedPaths.map((currentPath) => normalizeChangedPath(root, currentPath)))
     : undefined;
@@ -219,11 +221,13 @@ function analyzeProject(content, inherited, inheritedPath, centralPackages) {
   const packageReferenceDetails = [...(inherited?.packageReferenceDetails ?? []), ...localPackageReferenceDetails];
   const packageReferences = [...(inherited?.packageReferences ?? []), ...localPackageReferences];
   const testFrameworks = [];
-  if (packageReferences.some((name) => name === "xunit" || name === "xunit.v3")) testFrameworks.push("xunit");
+  if (packageReferences.some((name) => ["xunit", "xunit.v3", "xunit.v3.mtp-v2"].includes(name))) testFrameworks.push("xunit");
   if (packageReferences.some((name) => name === "nunit")) testFrameworks.push("nunit");
   if (packageReferences.some((name) => name === "mstest.testframework")) testFrameworks.push("mstest");
   const sdk = content.match(/<Project\b[^>]*\bSdk\s*=\s*["']([^"']+)["']/i)?.[1];
   const hasTestSdk = packageReferences.includes("microsoft.net.test.sdk");
+  const hasMtpMsbuild = packageReferences.includes("microsoft.testing.platform.msbuild");
+  const hasXunitMtpV2 = packageReferences.includes("xunit.v3.mtp-v2");
   const localIsTestProjectMatches = [...content.matchAll(/<IsTestProject>\s*([^<]+?)\s*<\/IsTestProject>/gi)];
   const localIsTestProject = localIsTestProjectMatches.length === 1
     ? localIsTestProjectMatches[0][1].trim().toLowerCase()
@@ -233,8 +237,10 @@ function analyzeProject(content, inherited, inheritedPath, centralPackages) {
     (localIsTestProject === undefined && inherited?.isTestProject !== undefined) ||
     inherited?.packageReferences.some((name) => [
       "microsoft.net.test.sdk",
+      "microsoft.testing.platform.msbuild",
       "xunit",
       "xunit.v3",
+      "xunit.v3.mtp-v2",
       "nunit",
       "mstest.testframework"
     ].includes(name))
@@ -289,6 +295,11 @@ function analyzeProject(content, inherited, inheritedPath, centralPackages) {
       }
     }
   }
+  const mtpMsbuildReference = packageReferenceDetails.find((reference) => reference.name === "microsoft.testing.platform.msbuild");
+  const mtpMsbuildVersion = mtpMsbuildReference?.version ?? (
+    centralPackagesEnabled === true ? centralPackages?.packageVersions.get("microsoft.testing.platform.msbuild") : undefined
+  );
+  const mtpMsbuildMajor = mtpMsbuildVersion?.match(/^(\d+)\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/)?.[1];
 
   return {
     sdk,
@@ -302,7 +313,11 @@ function analyzeProject(content, inherited, inheritedPath, centralPackages) {
     hasTargetConditionedPackageReferences: localPackageAnalysis.hasTargetConditions,
     testFrameworks,
     hasTestSdk,
-    isTestProject: (localIsTestProject === "true" || (localIsTestProject === undefined && inherited?.isTestProject === true)) || hasTestSdk,
+    hasMtpMsbuild,
+    hasMtpV2Host: hasMtpMsbuild && Number(mtpMsbuildMajor) >= 2,
+    hasXunitMtpV2,
+    mtpMsbuildVersion,
+    isTestProject: (localIsTestProject === "true" || (localIsTestProject === undefined && inherited?.isTestProject === true)) || hasTestSdk || hasXunitMtpV2,
     projectReferences,
     hasProjectReferences: projectReferenceTags.length > 0,
     hasDynamicProjectReferences: projectReferences.length !== projectReferenceTags.length ||
@@ -347,7 +362,7 @@ function analyzeLocalPackageReferences(content, targetFrameworks) {
     }
     const condition = tagConditions[0] ?? groupConditions[0];
     if (!condition) return reference;
-    if (["microsoft.net.test.sdk", "xunit", "xunit.v3", "nunit", "mstest.testframework"].includes(reference.name)) {
+    if (["microsoft.net.test.sdk", "microsoft.testing.platform.msbuild", "xunit", "xunit.v3", "xunit.v3.mtp-v2", "nunit", "mstest.testframework"].includes(reference.name)) {
       blockers.push("conditional test infrastructure package references");
       return reference;
     }
@@ -487,7 +502,7 @@ function selectProjectLayout(projects) {
   };
 }
 
-function buildProfile(root, projects, layout, sourceFiles, testFiles) {
+function buildProfile(root, projects, layout, sourceFiles, testFiles, globalJson = { present: false, blockers: [] }) {
   const blockers = [...layout.blockers];
   const project = layout.testProject;
   const analysis = project?.analysis ?? analyzeProject("");
@@ -545,7 +560,17 @@ function buildProfile(root, projects, layout, sourceFiles, testFiles) {
   }
 
   if (analysis.isTestProject && analysis.testFrameworks.length === 0) blockers.push("No supported xUnit, NUnit, or MSTest package reference detected.");
-  if (analysis.isTestProject && !analysis.hasTestSdk) blockers.push("Microsoft.NET.Test.Sdk is required for the bounded C# test command.");
+  const hasDotnet10RunnerContext = globalJson.sdkMajor === undefined
+    ? analysis.targetFrameworks.length > 0 && analysis.targetFrameworks.every((target) => Number(target.match(/^net(\d+)\./i)?.[1]) >= 10)
+    : globalJson.sdkMajor >= 10;
+  const usesBoundedMtpV2 = analysis.hasXunitMtpV2 && analysis.hasMtpV2Host &&
+    globalJson.runner === "Microsoft.Testing.Platform" && hasDotnet10RunnerContext && globalJson.blockers.length === 0;
+  if (analysis.isTestProject && !analysis.hasTestSdk && !usesBoundedMtpV2) {
+    if (analysis.hasXunitMtpV2 || analysis.hasMtpMsbuild || globalJson.runner === "Microsoft.Testing.Platform") {
+      blockers.push("Native Microsoft.Testing.Platform v2 requires xunit.v3.mtp-v2, Microsoft.Testing.Platform.MSBuild 2.x or newer, and repository-root global.json selecting Microsoft.Testing.Platform with a literal .NET 10+ SDK or exclusively net10.0+ test targets.");
+      if (globalJson.blockers.length > 0) blockers.push(`global.json requires bounded static metadata: ${globalJson.blockers.join(", ")}.`);
+    } else blockers.push("Microsoft.NET.Test.Sdk is required for the bounded C# test command.");
+  }
   if (testFiles.length === 0) blockers.push("No runnable attributed C# tests detected.");
 
   const architectures = [];
@@ -562,6 +587,7 @@ function buildProfile(root, projects, layout, sourceFiles, testFiles) {
   }
   if (layout.unrelatedProjectCount > 0) detectedConventions.push("unique literal test edge among unrelated projects");
   if (analysis.isTestProject) detectedConventions.push(".NET test project");
+  if (usesBoundedMtpV2) detectedConventions.push("repository-owned Microsoft.Testing.Platform v2 runner");
   if (layout.sourceProject?.analysis.inheritedMetadataPath || layout.testProject?.analysis.inheritedMetadataPath) {
     detectedConventions.push("inherited Directory.Build.props metadata");
   }
@@ -592,6 +618,9 @@ function buildProfile(root, projects, layout, sourceFiles, testFiles) {
     layout.sourceProject?.analysis.centralPackagesPath,
     layout.testProject?.analysis.centralPackagesPath
   ].filter(Boolean))]) setupSignals.push(centralPackagesPath);
+  if (usesBoundedMtpV2) {
+    setupSignals.push(globalJson.path, `Microsoft.Testing.Platform.MSBuild@${analysis.mtpMsbuildVersion}`);
+  }
   const testCommand = project && blockers.length === 0 ? `dotnet test ${project.path}` : undefined;
 
   return {
