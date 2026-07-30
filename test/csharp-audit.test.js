@@ -249,6 +249,79 @@ describe("C# audit adapter", () => {
     );
   });
 
+  it("tracks one exact inline out variable into a later assertion", (t) => {
+    const root = createRepo(t, {
+      "Example.Tests.csproj": projectFile("xunit"),
+      "LocalOutParser.cs": "public class LocalOutParser { public bool Parse(out int value) { value = 1; return true; } }\n",
+      "FieldOutParser.cs": "public class FieldOutParser { public bool Parse(out int value) { value = 1; return true; } }\n",
+      "FluentOutParser.cs": "public class FluentOutParser { public bool Parse(out int value) { value = 1; return true; } }\n",
+      "CalledOutParser.cs": "public class CalledOutParser { public bool Parse(out int value) { value = 1; return true; } }\n",
+      "Tests.cs": [
+        "public class Tests {",
+        "  private readonly FieldOutParser _field = new();",
+        "  private readonly FluentOutParser _fluent = new();",
+        "  private readonly CalledOutParser _called = new();",
+        "  [Fact] public void AssertsLocalOut() { var parser = new LocalOutParser(); parser.Parse(out var output); Assert.Equal(1, output); }",
+        "  [Fact] public void AssertsFieldOut() { this._field.Parse(out var output); Assert.Equal(1, output); }",
+        "  [Fact] public void AssertsFluentOut() { _fluent.Parse(out var output); output.Should().Be(1); }",
+        "  [Fact] public void OnlyCallsOut() { _called.Parse(out var output); }",
+        "}"
+      ].join("\n")
+    });
+
+    assert.deepEqual(
+      auditCSharpRepo(root).coveredButRisky.map((target) => [target.path, target.existingTestEvidence[0].usage]),
+      [
+        ["CalledOutParser.cs", "called"],
+        ["FieldOutParser.cs", "asserted"],
+        ["FluentOutParser.cs", "asserted"],
+        ["LocalOutParser.cs", "asserted"]
+      ]
+    );
+  });
+
+  it("rejects predeclared, changed, forwarded, nested, multiple, and deferred out flow", (t) => {
+    const root = createRepo(t, {
+      "Example.Tests.csproj": projectFile("xunit"),
+      "PredeclaredOutParser.cs": "public class PredeclaredOutParser { public bool Parse(out int value) { value = 1; return true; } }\n",
+      "ChangedOutParser.cs": "public class ChangedOutParser { public bool Parse(out int value) { value = 1; return true; } }\n",
+      "ForwardedOutParser.cs": "public class ForwardedOutParser { public bool Parse(out int value) { value = 1; return true; } }\n",
+      "NestedOutParser.cs": "public class NestedOutParser { public bool Parse(int value) => true; }\n",
+      "MultipleOutParser.cs": "public class MultipleOutParser { public bool Parse(out int first, out int second) { first = 1; second = 2; return true; } }\n",
+      "LocalFunctionOutParser.cs": "public class LocalFunctionOutParser { public bool Parse(out int value) { value = 1; return true; } }\n",
+      "LambdaOutParser.cs": "public class LambdaOutParser { public bool Parse(out int value) { value = 1; return true; } }\n",
+      "AssertionLambdaOutParser.cs": "public class AssertionLambdaOutParser { public bool Parse(out int value) { value = 1; return true; } }\n",
+      "Tests.cs": [
+        "public class Tests {",
+        "  [Fact] public void Predeclared() { var parser = new PredeclaredOutParser(); int output; parser.Parse(out output); Assert.Equal(1, output); }",
+        "  [Fact] public void Changed() { var parser = new ChangedOutParser(); parser.Parse(out var output); output = 2; Assert.Equal(2, output); }",
+        "  [Fact] public void Forwarded() { var parser = new ForwardedOutParser(); parser.Parse(out var output); Mutate(ref output); Assert.Equal(2, output); }",
+        "  [Fact] public void NestedHelperOwnsOut() { var parser = new NestedOutParser(); parser.Parse(Helper(out var output)); Assert.Equal(1, output); }",
+        "  [Fact] public void Multiple() { var parser = new MultipleOutParser(); parser.Parse(out var first, out var second); Assert.Equal(1, first); }",
+        "  [Fact] public void NestedFunction() { var parser = new LocalFunctionOutParser(); parser.Parse(out var output); void Verify() { Assert.Equal(1, output); } Verify(); }",
+        "  [Fact] public void DeferredLambda() { var parser = new LambdaOutParser(); parser.Parse(out var output); System.Action verify = () => Assert.Equal(1, output); verify(); }",
+        "  [Fact] public void AssertionLambda() { var parser = new AssertionLambdaOutParser(); parser.Parse(out var output); Assert.All(new[] { 1 }, value => Assert.Equal(value, output)); }",
+        "  private static int Helper(out int value) { value = 1; return value; }",
+        "  private static void Mutate(ref int value) { value = 2; }",
+        "}"
+      ].join("\n")
+    });
+
+    assert.deepEqual(
+      auditCSharpRepo(root).coveredButRisky.map((target) => [target.path, target.existingTestEvidence[0].usage]),
+      [
+        ["AssertionLambdaOutParser.cs", "called"],
+        ["ChangedOutParser.cs", "called"],
+        ["ForwardedOutParser.cs", "called"],
+        ["LambdaOutParser.cs", "called"],
+        ["LocalFunctionOutParser.cs", "called"],
+        ["MultipleOutParser.cs", "called"],
+        ["NestedOutParser.cs", "called"],
+        ["PredeclaredOutParser.cs", "called"]
+      ]
+    );
+  });
+
   it("rejects mutable, shared, indirect, ambiguous, shadowed, and deferred fields", (t) => {
     const root = createRepo(t, {
       "Example.Tests.csproj": projectFile("xunit"),

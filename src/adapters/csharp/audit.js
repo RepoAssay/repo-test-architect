@@ -454,6 +454,16 @@ function matchingBraceIndex(content, openingIndex) {
   return -1;
 }
 
+function matchingParenthesisIndex(content, openingIndex) {
+  let depth = 0;
+  for (let index = openingIndex; index < content.length; index += 1) {
+    if (content[index] === "(") depth += 1;
+    if (content[index] === ")") depth -= 1;
+    if (depth === 0) return index;
+  }
+  return -1;
+}
+
 function csharpReadonlyFieldReceiverUsage(content, typeName) {
   const escapedType = escapeRegExp(typeName);
   const fieldPattern = new RegExp(
@@ -563,13 +573,41 @@ function csharpReceiverUsage(content, receiver) {
     if (isAssertionStatement(statement.text)) return "asserted";
     usage = "called";
 
+    const callOpening = content.indexOf("(", call.index);
+    const callClosing = callOpening === -1 ? -1 : matchingParenthesisIndex(content, callOpening);
+    const callStatementEnd = callClosing === -1 ? -1 : content.indexOf(";", callClosing);
+    const afterCall = callStatementEnd === -1 ? content.slice(statement.end) : content.slice(callStatementEnd + 1);
+
     const resultBinding = statement.text.slice(0, callOffset).match(
       /\b(?:var|[A-Za-z_][A-Za-z0-9_.<>,?\[\]]*)\s+([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(?:await\s+)?$/
     );
-    if (!resultBinding) continue;
-    if (isLocalResultAsserted(content.slice(statement.end), resultBinding[1])) return "asserted";
+    if (resultBinding && isLocalResultAsserted(afterCall, resultBinding[1])) return "asserted";
+
+    if (callClosing === -1) continue;
+    const outVariables = collectTopLevelOutVariables(content.slice(callOpening + 1, callClosing));
+    if (outVariables.length === 1 && isLocalResultAsserted(afterCall, outVariables[0])) return "asserted";
   }
   return usage;
+}
+
+function collectTopLevelOutVariables(argumentsText) {
+  const variables = [];
+  for (const declaration of argumentsText.matchAll(/\bout\s+var\s+([A-Za-z_][A-Za-z0-9_]*)\b/g)) {
+    if (declaration[1] === "_" || delimiterDepthAt(argumentsText, declaration.index) !== 0) continue;
+    variables.push(declaration[1]);
+  }
+  return variables;
+}
+
+function delimiterDepthAt(content, targetIndex) {
+  let depth = 0;
+  for (let index = 0; index < targetIndex; index += 1) {
+    if (content[index] === "(" || content[index] === "[" || content[index] === "{") depth += 1;
+    if (content[index] === ")" || content[index] === "]" || content[index] === "}") {
+      depth = Math.max(0, depth - 1);
+    }
+  }
+  return depth;
 }
 
 function csharpLocalReceiverUsage(body, typeName) {
@@ -641,7 +679,7 @@ function identifierMutationIndex(content, identifier) {
 
 function isAssertionStatement(statement) {
   const assertionIndex = statement.search(/\bAssert\s*\.|\.Should\s*\(/);
-  return assertionIndex !== -1 && !statement.slice(0, assertionIndex).includes("=>");
+  return assertionIndex !== -1 && !statement.includes("=>");
 }
 
 function braceDepthAt(content, targetIndex) {
