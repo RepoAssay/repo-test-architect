@@ -48,6 +48,7 @@ describe("package contents", () => {
     assert.ok(requiredFiles.includes("examples/csharp-sdk-project-pair/src/CheckoutRules/CheckoutRules.csproj"));
     assert.ok(requiredFiles.includes("examples/csharp-sdk-project-pair/tests/CheckoutRules.Tests/CheckoutRules.Tests.csproj"));
     assert.ok(requiredFiles.includes("examples/csharp-sdk-project-pair/tests/CheckoutRules.Tests/CheckoutServiceTests.cs"));
+    assert.ok(requiredFiles.includes("examples/csharp-sdk-unique-pair/Directory.Build.props"));
     assert.ok(requiredFiles.includes("examples/csharp-sdk-unique-pair/src/Pricing/Pricing.csproj"));
     assert.ok(requiredFiles.includes("examples/csharp-sdk-unique-pair/tests/Pricing.Tests/Pricing.Tests.csproj"));
     assert.ok(requiredFiles.includes("examples/csharp-sdk-unique-pair/tests/Pricing.Tests/PriceCalculatorTests.cs"));

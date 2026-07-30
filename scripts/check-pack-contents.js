@@ -48,6 +48,7 @@ export const requiredFiles = [
   "examples/csharp-sdk-project-pair/src/CheckoutRules/CheckoutRules.csproj",
   "examples/csharp-sdk-project-pair/tests/CheckoutRules.Tests/CheckoutRules.Tests.csproj",
   "examples/csharp-sdk-project-pair/tests/CheckoutRules.Tests/CheckoutServiceTests.cs",
+  "examples/csharp-sdk-unique-pair/Directory.Build.props",
   "examples/csharp-sdk-unique-pair/src/Pricing/Pricing.csproj",
   "examples/csharp-sdk-unique-pair/tests/Pricing.Tests/Pricing.Tests.csproj",
   "examples/csharp-sdk-unique-pair/tests/Pricing.Tests/PriceCalculatorTests.cs",

@@ -23,6 +23,7 @@
       "literal production/test project pair",
       "unique literal test edge among unrelated projects",
       ".NET test project",
+      "inherited Directory.Build.props metadata",
       "attributed C# tests"
     ],
     "existingTestLocations": [
@@ -32,7 +33,8 @@
       "src/Pricing/Pricing.csproj",
       "tests/Pricing.Tests/Pricing.Tests.csproj",
       "Microsoft.NET.Sdk",
-      "net10.0"
+      "net10.0",
+      "Directory.Build.props"
     ],
     "confidence": "high",
     "blockers": []
