@@ -706,6 +706,57 @@ describe("C# audit adapter", () => {
     );
   });
 
+  it("recognizes NUnit and MSTest collection/string assertion owners without crediting xUnit lookalikes", (t) => {
+    const mstest = createRepo(t, {
+      "Example.Tests.csproj": projectFile("MSTest.TestFramework", "<IsTestProject>true</IsTestProject>"),
+      "DirectCollectionTarget.cs": "public static class DirectCollectionTarget { public static int[] Read() => new[] { 1 }; }\n",
+      "StableStringTarget.cs": "public static class StableStringTarget { public static string Read() => \"value\"; }\n",
+      "HelperCollectionTarget.cs": "public static class HelperCollectionTarget { public static int[] Read() => new[] { 1 }; }\n",
+      "Tests.cs": [
+        "public class Tests {",
+        "  [TestMethod] public void DirectCollection() { CollectionAssert.AreEqual(null, DirectCollectionTarget.Read()); }",
+        "  [TestMethod] public void StableString() { var result = StableStringTarget.Read(); StringAssert.Contains(result, \"value\"); }",
+        "  [TestMethod] public void HelperCollection() { VerifyCollection(); }",
+        "  private static void VerifyCollection() { CollectionAssert.AreEqual(null, HelperCollectionTarget.Read()); }",
+        "}"
+      ].join("\n")
+    });
+    const nunit = createRepo(t, {
+      "Example.Tests.csproj": projectFile("NUnit", "<IsTestProject>true</IsTestProject>"),
+      "NunitStringTarget.cs": "public static class NunitStringTarget { public static string Read() => \"value\"; }\n",
+      "Tests.cs": "public class Tests { [Test] public void Reads() { StringAssert.StartsWith(\"val\", NunitStringTarget.Read()); } }\n"
+    });
+    const xunit = createRepo(t, {
+      "Example.Tests.csproj": projectFile("xunit"),
+      "LookalikeDirectTarget.cs": "public static class LookalikeDirectTarget { public static int[] Read() => new[] { 1 }; }\n",
+      "LookalikeHelperTarget.cs": "public static class LookalikeHelperTarget { public static int[] Read() => new[] { 1 }; }\n",
+      "Tests.cs": [
+        "public class Tests {",
+        "  [Fact] public void Direct() { CollectionAssert.AreEqual(null, LookalikeDirectTarget.Read()); }",
+        "  [Fact] public void Helper() { Verify(); }",
+        "  private static void Verify() { StringAssert.AreEqual(\"value\", LookalikeHelperTarget.Read()); }",
+        "}"
+      ].join("\n")
+    });
+
+    assert.deepEqual(
+      auditCSharpRepo(mstest).coveredButRisky.map((target) => [target.path, target.existingTestEvidence[0]]),
+      [
+        ["DirectCollectionTarget.cs", { testPath: "Tests.cs", kind: "csharp-symbol-reference", strength: "direct", usage: "asserted" }],
+        ["HelperCollectionTarget.cs", { testPath: "Tests.cs", kind: "csharp-test-helper", strength: "indirect", viaUsage: "asserted" }],
+        ["StableStringTarget.cs", { testPath: "Tests.cs", kind: "csharp-symbol-reference", strength: "direct", usage: "asserted" }]
+      ]
+    );
+    assert.equal(auditCSharpRepo(nunit).coveredButRisky[0].existingTestEvidence[0].usage, "asserted");
+    assert.deepEqual(
+      auditCSharpRepo(xunit).coveredButRisky.map((target) => [target.path, target.existingTestEvidence[0]]),
+      [
+        ["LookalikeDirectTarget.cs", { testPath: "Tests.cs", kind: "csharp-symbol-reference", strength: "direct", usage: "called" }],
+        ["LookalikeHelperTarget.cs", { testPath: "Tests.cs", kind: "csharp-test-helper", strength: "indirect", viaUsage: "called" }]
+      ]
+    );
+  });
+
   it("rejects uncalled, non-private, overloaded, ambiguous, nested, lambda, and shadowed test helpers", (t) => {
     const root = createRepo(t, {
       "Example.Tests.csproj": projectFile("xunit"),

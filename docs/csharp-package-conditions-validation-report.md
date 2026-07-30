@@ -25,7 +25,7 @@ Project detection selects `S7.Net/S7.Net.csproj` and `S7.Net.UnitTest/S7.Net.Uni
 | Deferred/skipped | 1 |
 | Evidence relationships | 19 |
 | Asserted / called after direct-result follow-up | 14 / 5 |
-| Latest direct asserted / called / indirect called | 13 / 5 / 1 |
+| Latest direct asserted / called / indirect asserted | 15 / 3 / 1 |
 
 Five repeated audits produced one root-normalized SHA-256 digest, `4d873dc46f7baed53e0a8ba83816b6e3d109e4b85fa0d160a8425157c64879e1`, with an 88 ms median from samples `124, 88, 88, 89, 85`. The profile records `literal target-conditioned package references` alongside the existing literal project-pair and multi-target conventions.
 
@@ -60,6 +60,12 @@ S7.Net upgrades only `S7String` and `S7WString` from filename conventions to dir
 The remaining `String` relationship is exercised through a same-class `private static` test helper. The bounded helper rule requires a unique non-generic block-bodied helper, one direct top-level helper call from a runnable test, and exactly one top-level source type call in the helper. It emits a distinct `csharp-test-helper` relationship with indirect strength and `viaUsage`, allowing downstream reports to distinguish helper reachability from a direct test-body call. Direct evidence from the same test file wins rather than creating a duplicate relationship.
 
 Uncalled, public or instance, overloaded, multi-source, nested, lambda-owned, locally shadowed, cross-class/file, chained, receiver, and helper-return shapes remain excluded. `String` moves from naming to indirect called evidence because its helper assertion uses `CollectionAssert`, which is not yet part of the bounded assertion vocabulary. Counts remain 35 untested, 13 covered, 1 deferred, and 19 relationships, split into 13 asserted direct, 5 called direct, and 1 called indirect. Five audits produced digest `7eb1d36f04368c7ca4dc845cde920870a809a2294cba81ae3fb14af192a5cf0e` with a 115 ms median from samples `159, 114, 115, 119, 112`.
+
+### Framework collection/string assertion follow-up
+
+The selected NUnit or MSTest framework now admits top-level static `CollectionAssert.*` and `StringAssert.*` statements to the same bounded assertion-usage paths as `Assert.*`: inline direct calls, stable direct or receiver results, exact inline `out var` results, immutable test-field receivers, and the one-hop helper body. xUnit projects keep those owner spellings called rather than asserted, preventing a lookalike custom class from gaining framework credit there. Existing mutation, nesting, deferred-lambda, and deeper-flow rejections remain unchanged.
+
+On S7.Net, `ConnectionRequest` and `TsapPair` move from direct called to direct asserted usage inside visible `CollectionAssert.AreEqual(...)` statements, while `String` moves from indirect called to indirect asserted through its bounded helper. Counts remain 35 untested, 13 covered, 1 deferred, and 19 relationships, now split into 15 asserted direct, 3 called direct, and 1 asserted indirect. Five audits produced digest `fe016f99fc7ab972eb6048dcc9e7e7c0dabe190eed4ffb2a8f08964ecadbfc9e` with a 113 ms median from samples `162, 113, 112, 115, 111`.
 
 ## Native Validation
 

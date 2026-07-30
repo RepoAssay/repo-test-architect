@@ -632,10 +632,10 @@ function collectTestEvidence(sourceFiles, testFiles, { testFrameworks = [] } = {
       ? collectExpectedExceptionAssertedTypes(masked, sourceTypes)
       : new Set();
     const exceptionAssertionTypes = collectExceptionAssertionAssertedTypes(masked, sourceTypes, testFrameworks);
-    const helperEvidence = collectOneHopTestHelperEvidence(masked, sourceTypes);
+    const helperEvidence = collectOneHopTestHelperEvidence(masked, sourceTypes, testFrameworks);
     for (const [typeName, sourcePath] of sourceTypes) {
       if (declaresType(masked, typeName)) continue;
-      const detectedUsage = csharpTypeCallUsage(masked, typeName);
+      const detectedUsage = csharpTypeCallUsage(masked, typeName, testFrameworks);
       const usage = expectedExceptionTypes.has(typeName) || exceptionAssertionTypes.has(typeName)
         ? "asserted"
         : detectedUsage;
@@ -690,7 +690,7 @@ function declaresType(content, typeName) {
   return new RegExp(`\\b(?:class|record(?:\\s+(?:class|struct))?|struct)\\s+${escapeRegExp(typeName)}\\b`).test(content);
 }
 
-function csharpTypeCallUsage(content, typeName) {
+function csharpTypeCallUsage(content, typeName, testFrameworks) {
   const escaped = escapeRegExp(typeName);
   const testBodies = collectRunnableTestBodies(content);
   const patterns = [
@@ -704,19 +704,19 @@ function csharpTypeCallUsage(content, typeName) {
         if (braceDepthAt(body, match.index) !== 0) continue;
         const statement = statementAt(body, match.index);
         if (statement.text.slice(0, match.index - statement.start).includes("=>")) continue;
-        const current = isAssertionStatement(statement.text) ? "asserted" : "called";
+        const current = isAssertionStatement(statement.text, testFrameworks) ? "asserted" : "called";
         if (current === "asserted") return current;
         usage = current;
       }
     }
   }
-  const fieldUsage = csharpReadonlyFieldReceiverUsage(content, typeName);
+  const fieldUsage = csharpReadonlyFieldReceiverUsage(content, typeName, testFrameworks);
   if (fieldUsage === "asserted") return fieldUsage;
   if (fieldUsage === "called") usage = fieldUsage;
   for (const body of testBodies) {
-    const directResultUsage = csharpDirectTypeResultUsage(body, typeName);
+    const directResultUsage = csharpDirectTypeResultUsage(body, typeName, testFrameworks);
     if (directResultUsage === "asserted") return directResultUsage;
-    const receiverUsage = csharpLocalReceiverUsage(body, typeName);
+    const receiverUsage = csharpLocalReceiverUsage(body, typeName, testFrameworks);
     if (receiverUsage === "asserted") return receiverUsage;
     if (receiverUsage === "called") usage = receiverUsage;
   }
@@ -852,7 +852,7 @@ function countSourceTypeCalls(content, sourceTypes) {
   return count;
 }
 
-function collectOneHopTestHelperEvidence(content, sourceTypes) {
+function collectOneHopTestHelperEvidence(content, sourceTypes, testFrameworks) {
   const evidence = new Map();
 
   for (const classBody of collectClassBodies(content)) {
@@ -869,8 +869,8 @@ function collectOneHopTestHelperEvidence(content, sourceTypes) {
 
       const sourceCall = sourceCalls[0];
       const statement = statementAt(helper.body, sourceCall.index).text;
-      const viaUsage = isAssertionStatement(statement) ||
-        csharpDirectTypeResultUsage(helper.body, sourceCall.typeName) === "asserted"
+      const viaUsage = isAssertionStatement(statement, testFrameworks) ||
+        csharpDirectTypeResultUsage(helper.body, sourceCall.typeName, testFrameworks) === "asserted"
         ? "asserted"
         : "called";
       if (viaUsage === "asserted" || !evidence.has(sourceCall.typeName)) {
@@ -970,7 +970,7 @@ function matchingParenthesisIndex(content, openingIndex) {
   return -1;
 }
 
-function csharpReadonlyFieldReceiverUsage(content, typeName) {
+function csharpReadonlyFieldReceiverUsage(content, typeName, testFrameworks) {
   const escapedType = escapeRegExp(typeName);
   const fieldPattern = new RegExp(
     `\\bprivate\\s+readonly\\s+${escapedType}\\s+([A-Za-z_][A-Za-z0-9_]*)\\s*(?:=\\s*([^;]+))?;`,
@@ -987,7 +987,7 @@ function csharpReadonlyFieldReceiverUsage(content, typeName) {
 
       for (const test of collectRunnableTests(classBody.body, 0)) {
         if (testShadowsReceiver(test, receiver)) continue;
-        const current = csharpReceiverUsage(test.body, receiver);
+        const current = csharpReceiverUsage(test.body, receiver, testFrameworks);
         if (current === "asserted") return current;
         if (current === "called") usage = current;
       }
@@ -1065,7 +1065,7 @@ function testShadowsReceiver(test, receiver) {
     new RegExp(`\\b(?:var|[A-Za-z_][A-Za-z0-9_.<>,?\\[\\]]*)\\s+${escaped}\\b`).test(test.body);
 }
 
-function csharpReceiverUsage(content, receiver) {
+function csharpReceiverUsage(content, receiver, testFrameworks) {
   const callPattern = new RegExp(
     `(?:\\bthis\\s*\\.\\s*)?\\b${escapeRegExp(receiver)}\\s*\\.\\s*[A-Za-z_][A-Za-z0-9_]*\\s*\\(`,
     "g"
@@ -1076,7 +1076,7 @@ function csharpReceiverUsage(content, receiver) {
     const statement = statementAt(content, call.index);
     const callOffset = call.index - statement.start;
     if (statement.text.slice(0, callOffset).includes("=>")) continue;
-    if (isAssertionStatement(statement.text)) return "asserted";
+    if (isAssertionStatement(statement.text, testFrameworks)) return "asserted";
     usage = "called";
 
     const callOpening = content.indexOf("(", call.index);
@@ -1087,11 +1087,11 @@ function csharpReceiverUsage(content, receiver) {
     const resultBinding = statement.text.slice(0, callOffset).match(
       /\b(?:var|[A-Za-z_][A-Za-z0-9_.<>,?\[\]]*)\s+([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(?:await\s+)?$/
     );
-    if (resultBinding && isLocalResultAsserted(afterCall, resultBinding[1])) return "asserted";
+    if (resultBinding && isLocalResultAsserted(afterCall, resultBinding[1], testFrameworks)) return "asserted";
 
     if (callClosing === -1) continue;
     const outVariables = collectTopLevelOutVariables(content.slice(callOpening + 1, callClosing));
-    if (outVariables.length === 1 && isLocalResultAsserted(afterCall, outVariables[0])) return "asserted";
+    if (outVariables.length === 1 && isLocalResultAsserted(afterCall, outVariables[0], testFrameworks)) return "asserted";
   }
   return usage;
 }
@@ -1116,7 +1116,7 @@ function delimiterDepthAt(content, targetIndex) {
   return depth;
 }
 
-function csharpDirectTypeResultUsage(body, typeName) {
+function csharpDirectTypeResultUsage(body, typeName, testFrameworks) {
   const escapedType = escapeRegExp(typeName);
   const callPatterns = [
     { pattern: new RegExp(`\\b${escapedType}\\s*\\.\\s*[A-Za-z_][A-Za-z0-9_]*\\s*\\(`, "g"), construction: false },
@@ -1138,14 +1138,14 @@ function csharpDirectTypeResultUsage(body, typeName) {
       const callOpening = body.indexOf("(", call.index);
       const callClosing = callOpening === -1 ? -1 : matchingParenthesisIndex(body, callOpening);
       if (callClosing === -1 || !/^\s*;\s*$/.test(body.slice(callClosing + 1, statement.end))) continue;
-      if (isLocalResultAsserted(body.slice(statement.end), resultBinding[2])) return "asserted";
+      if (isLocalResultAsserted(body.slice(statement.end), resultBinding[2], testFrameworks)) return "asserted";
     }
   }
 
   return undefined;
 }
 
-function csharpLocalReceiverUsage(body, typeName) {
+function csharpLocalReceiverUsage(body, typeName, testFrameworks) {
   const escapedType = escapeRegExp(typeName);
   const genericSuffix = "(?:\\s*<[^;{}()=]+>)?";
   const bindingPattern = new RegExp(
@@ -1162,7 +1162,7 @@ function csharpLocalReceiverUsage(body, typeName) {
     const remainingBody = body.slice(bindingEnd + 1);
     const receiverMutation = identifierMutationIndex(remainingBody, receiver);
     const receiverSegment = receiverMutation === -1 ? remainingBody : remainingBody.slice(0, receiverMutation);
-    const current = csharpReceiverUsage(receiverSegment, receiver);
+    const current = csharpReceiverUsage(receiverSegment, receiver, testFrameworks);
     if (current === "asserted") return current;
     if (current === "called") usage = current;
   }
@@ -1185,17 +1185,17 @@ function statementAt(content, index) {
   };
 }
 
-function isLocalResultAsserted(content, resultName) {
+function isLocalResultAsserted(content, resultName, testFrameworks) {
   const mutation = identifierMutationIndex(content, resultName);
   const stableContent = mutation === -1 ? content : content.slice(0, mutation);
   const escaped = escapeRegExp(resultName);
   const resultPattern = new RegExp(`\\b${escaped}\\b`);
-  const assertionPatterns = [/\bAssert\s*\./g, /\.Should\s*\(/g];
+  const assertionPatterns = [/\b(?:Assert|CollectionAssert|StringAssert)\s*\./g, /\.Should\s*\(/g];
   for (const assertionPattern of assertionPatterns) {
     for (const assertion of stableContent.matchAll(assertionPattern)) {
       if (braceDepthAt(stableContent, assertion.index) !== 0) continue;
       const statement = statementAt(stableContent, assertion.index).text;
-      if (isAssertionStatement(statement) && resultPattern.test(statement)) return true;
+      if (isAssertionStatement(statement, testFrameworks) && resultPattern.test(statement)) return true;
     }
   }
   return false;
@@ -1212,8 +1212,12 @@ function identifierMutationIndex(content, identifier) {
   return indices.length === 0 ? -1 : Math.min(...indices);
 }
 
-function isAssertionStatement(statement) {
-  const assertionIndex = statement.search(/\bAssert\s*\.|\.Should\s*\(/);
+function isAssertionStatement(statement, testFrameworks = []) {
+  const supportsSpecializedAssertions = testFrameworks.includes("nunit") || testFrameworks.includes("mstest");
+  const assertionPattern = supportsSpecializedAssertions
+    ? /\b(?:Assert|CollectionAssert|StringAssert)\s*\.|\.Should\s*\(/
+    : /\bAssert\s*\.|\.Should\s*\(/;
+  const assertionIndex = statement.search(assertionPattern);
   return assertionIndex !== -1 && !statement.includes("=>");
 }
 
