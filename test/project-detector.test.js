@@ -525,6 +525,24 @@ describe("project detector", () => {
     assert.deepEqual(detectProjects(root).projects.map((project) => project.root), ["."]);
   });
 
+  it("collapses a repository-versioned MSTest.Sdk project pair", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-dotnet-mstest-sdk-pair-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "src", "Core"), { recursive: true });
+    fs.mkdirSync(path.join(root, "tests", "Core.Tests"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "global.json"),
+      "{\"msbuild-sdks\":{\"MSTest.Sdk\":\"4.3.3\"},\"test\":{\"runner\":\"Microsoft.Testing.Platform\"}}\n"
+    );
+    fs.writeFileSync(path.join(root, "src", "Core", "Core.csproj"), "<Project Sdk=\"Microsoft.NET.Sdk\" />\n");
+    fs.writeFileSync(
+      path.join(root, "tests", "Core.Tests", "Core.Tests.csproj"),
+      "<Project Sdk=\"MSTest.Sdk\"><ItemGroup><ProjectReference Include=\"../../src/Core/Core.csproj\" /></ItemGroup></Project>\n"
+    );
+
+    assert.deepEqual(detectProjects(root).projects.map((project) => project.root), ["."]);
+  });
+
   it("does not collapse a C# pair across an occupied aggregate root", (t) => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-dotnet-overlap-"));
     t.after(() => fs.rmSync(root, { recursive: true, force: true }));
