@@ -443,3 +443,11 @@ Decision: follow one unique same-class `private static` helper when a runnable t
 Rationale: pinned S7.Net's `StringTests` exercises `String.ToByteArray(...)` only through one directly invoked assertion helper. The new relationship replaces its filename convention without changing any candidate or relationship count, producing 13 asserted direct, 5 called direct, and 1 called indirect link. Five audits share digest `7eb1d36f04368c7ca4dc845cde920870a809a2294cba81ae3fb14af192a5cf0e` with a 115 ms median.
 
 Revisit when: collection assertions can upgrade the helper's entrypoint usage, or a pinned repository justifies cross-file helpers, receiver identity, helper returns, or a second helper hop without name-only reachability.
+
+### 2026-07-30: recognize selected C# collection and string assertion owners
+
+Decision: when NUnit or MSTest is selected, treat top-level static `CollectionAssert.*` and `StringAssert.*` statements as assertion usage across the existing direct-call, stable-result, receiver, inline-`out`, immutable-field, and one-hop-helper paths. Do not grant those specialized owner spellings assertion status in xUnit projects.
+
+Rationale: pinned S7.Net uses MSTest `CollectionAssert.AreEqual(...)` around direct `ConnectionRequest` and `TsapPair` calls and around the bounded helper's sole `String.ToByteArray(...)` call. Exactly those three relationships move from called to asserted, retaining 35 untested, 13 covered, 1 deferred, and 19 relationships. Five audits share digest `fe016f99fc7ab972eb6048dcc9e7e7c0dabe190eed4ffb2a8f08964ecadbfc9e` with a 113 ms median.
+
+Revisit when: a pinned repository justifies namespace/import provenance for assertion owners, constraint-based NUnit assertion forms, or another framework-owned assertion family without broad name-only inference.
