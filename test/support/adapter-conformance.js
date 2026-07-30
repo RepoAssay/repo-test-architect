@@ -21,6 +21,7 @@ const portableEvidenceStrengths = {
   "bounded-dependency": ["indirect"],
   "browser-route-match": ["indirect"],
   "csharp-symbol-reference": ["direct"],
+  "csharp-test-helper": ["indirect"],
   "direct-relative-import": ["direct"],
   "filename-convention": ["naming"],
   "go-source-dependency": ["indirect"],

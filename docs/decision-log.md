@@ -435,3 +435,11 @@ Decision: for the selected xUnit, NUnit, or MSTest framework, credit one direct 
 Rationale: pinned S7.Net directly calls `S7String` and `S7WString` inside MSTest `Assert.ThrowsException(...)` lambdas. The rule moves those two relationships from naming to asserted direct evidence while preserving all 35 untested, 13 covered, 1 deferred, and 19 relationship slots. Five audits share digest `bb035df93e749bfec265b13e1801e25ab4946a50a0cb36e6a853640926f7791d` with a 106 ms median and produce 13 asserted direct, 5 called direct, and 1 naming relationship.
 
 Revisit when: a pinned repository justifies captured exception results, exact block-lambda ownership, or framework-specific assertion overloads without general lambda/control-flow inference.
+
+### 2026-07-30: emit bounded indirect C# test-helper evidence
+
+Decision: follow one unique same-class `private static` helper when a runnable test calls it directly and its top-level block body contains exactly one source `Type.Method(...)` or `new Type(...)` call. Emit `csharp-test-helper` with indirect strength and called/asserted `viaUsage`; suppress it when the same test file already proves direct evidence for that source.
+
+Rationale: pinned S7.Net's `StringTests` exercises `String.ToByteArray(...)` only through one directly invoked assertion helper. The new relationship replaces its filename convention without changing any candidate or relationship count, producing 13 asserted direct, 5 called direct, and 1 called indirect link. Five audits share digest `7eb1d36f04368c7ca4dc845cde920870a809a2294cba81ae3fb14af192a5cf0e` with a 115 ms median.
+
+Revisit when: collection assertions can upgrade the helper's entrypoint usage, or a pinned repository justifies cross-file helpers, receiver identity, helper returns, or a second helper hop without name-only reachability.

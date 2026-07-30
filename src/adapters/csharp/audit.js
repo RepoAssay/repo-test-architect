@@ -632,6 +632,7 @@ function collectTestEvidence(sourceFiles, testFiles, { testFrameworks = [] } = {
       ? collectExpectedExceptionAssertedTypes(masked, sourceTypes)
       : new Set();
     const exceptionAssertionTypes = collectExceptionAssertionAssertedTypes(masked, sourceTypes, testFrameworks);
+    const helperEvidence = collectOneHopTestHelperEvidence(masked, sourceTypes);
     for (const [typeName, sourcePath] of sourceTypes) {
       if (declaresType(masked, typeName)) continue;
       const detectedUsage = csharpTypeCallUsage(masked, typeName);
@@ -644,6 +645,13 @@ function collectTestEvidence(sourceFiles, testFiles, { testFrameworks = [] } = {
           kind: "csharp-symbol-reference",
           strength: "direct",
           usage
+        });
+      } else if (helperEvidence.has(typeName)) {
+        addEvidence(evidence, sourcePath, {
+          testPath: testFile.path,
+          kind: "csharp-test-helper",
+          strength: "indirect",
+          viaUsage: helperEvidence.get(typeName)
         });
       }
     }
@@ -842,6 +850,92 @@ function countSourceTypeCalls(content, sourceTypes) {
     ))].length;
   }
   return count;
+}
+
+function collectOneHopTestHelperEvidence(content, sourceTypes) {
+  const evidence = new Map();
+
+  for (const classBody of collectClassBodies(content)) {
+    const tests = collectRunnableTests(classBody.body, 0);
+    const helpers = collectPrivateStaticHelpers(classBody.body);
+    const helperNameCounts = new Map();
+    for (const helper of helpers) helperNameCounts.set(helper.name, (helperNameCounts.get(helper.name) ?? 0) + 1);
+
+    for (const helper of helpers) {
+      if (helperNameCounts.get(helper.name) !== 1) continue;
+      if (!tests.some((test) => testCallsHelperDirectly(test, helper.name))) continue;
+      const sourceCalls = collectTopLevelSourceTypeCalls(helper.body, sourceTypes);
+      if (sourceCalls.length !== 1) continue;
+
+      const sourceCall = sourceCalls[0];
+      const statement = statementAt(helper.body, sourceCall.index).text;
+      const viaUsage = isAssertionStatement(statement) ||
+        csharpDirectTypeResultUsage(helper.body, sourceCall.typeName) === "asserted"
+        ? "asserted"
+        : "called";
+      if (viaUsage === "asserted" || !evidence.has(sourceCall.typeName)) {
+        evidence.set(sourceCall.typeName, viaUsage);
+      }
+    }
+  }
+
+  return evidence;
+}
+
+function collectPrivateStaticHelpers(classBody) {
+  const helpers = [];
+  const helperPattern = /\bprivate\s+static\s+(?:async\s+)?[A-Za-z_][A-Za-z0-9_.<>,?\[\]]*\s+([A-Za-z_][A-Za-z0-9_]*)\s*\([^;{}]*\)\s*\{/g;
+
+  for (const declaration of classBody.matchAll(helperPattern)) {
+    if (braceDepthAt(classBody, declaration.index) !== 0) continue;
+    const bodyStart = declaration.index + declaration[0].lastIndexOf("{");
+    const bodyEnd = matchingBraceIndex(classBody, bodyStart);
+    if (bodyEnd === -1) continue;
+    helpers.push({
+      name: declaration[1],
+      body: classBody.slice(bodyStart + 1, bodyEnd)
+    });
+  }
+
+  return helpers;
+}
+
+function testCallsHelperDirectly(test, helperName) {
+  const escaped = escapeRegExp(helperName);
+  const localDeclaration = new RegExp(
+    `\\b(?:void|[A-Za-z_][A-Za-z0-9_.<>,?\\[\\]]*)\\s+${escaped}\\s*\\([^;{}]*\\)\\s*(?:=>|\\{)`
+  );
+  if (localDeclaration.test(test.body)) return false;
+
+  const callPattern = new RegExp(`\\b${escaped}\\s*\\(`, "g");
+  for (const call of test.body.matchAll(callPattern)) {
+    if (braceDepthAt(test.body, call.index) !== 0 || test.body[call.index - 1] === ".") continue;
+    const statement = statementAt(test.body, call.index);
+    if (!statement.text.slice(0, call.index - statement.start).includes("=>")) return true;
+  }
+  return false;
+}
+
+function collectTopLevelSourceTypeCalls(content, sourceTypes) {
+  const calls = [];
+
+  for (const [typeName] of sourceTypes) {
+    const escapedType = escapeRegExp(typeName);
+    const patterns = [
+      new RegExp(`\\b${escapedType}\\s*\\.\\s*[A-Za-z_][A-Za-z0-9_]*\\s*\\(`, "g"),
+      new RegExp(`\\bnew\\s+${escapedType}(?:\\s*<[^;{}()=]+>)?\\s*\\(`, "g")
+    ];
+    for (const pattern of patterns) {
+      for (const call of content.matchAll(pattern)) {
+        if (braceDepthAt(content, call.index) !== 0) continue;
+        const statement = statementAt(content, call.index);
+        if (statement.text.slice(0, call.index - statement.start).includes("=>")) continue;
+        calls.push({ typeName, index: call.index });
+      }
+    }
+  }
+
+  return calls;
 }
 
 function isSoleDirectCallStatement(body, callIndex) {
