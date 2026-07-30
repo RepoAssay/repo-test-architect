@@ -419,3 +419,11 @@ Decision: emit basic direct `Type.Method(...)` and `new Type(...)` evidence only
 Rationale: the former file-wide scan made helper-owned calls look direct and could inherit helper-owned assertions. On pinned S7.Net, the tighter rule preserves 35 untested, 13 covered, 1 deferred, and 19 relationship slots while changing the honest evidence mix to 9 asserted direct, 7 called direct, and 3 naming. Five audits share digest `681b34f64d18bb4019550c871a3d43b4d573df826d4ef3275ea8cc6eb8e5c5ff` with a 103 ms median.
 
 Revisit when: helper declarations, exact call sites, parameters/results, and assertion ownership can be joined without file-wide or name-only reachability.
+
+### 2026-07-30: credit one sole-call MSTest expected exception
+
+Decision: when MSTest is the selected framework, treat `[ExpectedException]` or `[ExpectedExceptionAttribute]` as asserted usage only if its runnable method body is exactly one statement containing exactly one direct top-level source `Type.Method(...)` or `new Type(...)` call. Keep multiple calls, preceding setup, wrappers, helpers, nested local functions, deferred lambdas, and non-MSTest attributes called or uncredited under the existing rules.
+
+Rationale: pinned S7.Net contains exact expected-exception methods for `DateTime` and `DateTimeLong`. The rule upgrades only those two relationships, preserving 35 untested, 13 covered, 1 deferred, and 19 total relationships while producing 11 asserted direct, 5 called direct, and 3 naming links. Five audits share digest `2fbaecbad8128b75d36447257589943c851ef4da42ee69f9d540c65a3d3c5ce7` with a 104 ms median.
+
+Revisit when: NUnit/xUnit exception constructs or multi-statement MSTest methods can identify the throwing call without general control-flow or exception analysis.

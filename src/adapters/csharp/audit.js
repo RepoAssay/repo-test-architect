@@ -75,7 +75,9 @@ export function auditCSharpRepo(root, options = {}) {
     ? new Set(options.changedPaths.map((currentPath) => normalizeChangedPath(root, currentPath)))
     : undefined;
   const canCrossProjectEvidence = layout.kind !== "pair" || referencesProjectLiterally(layout.testProject, layout.sourceProject);
-  const evidenceBySourcePath = canCrossProjectEvidence ? collectTestEvidence(sourceFiles, testFiles) : new Map();
+  const evidenceBySourcePath = canCrossProjectEvidence
+    ? collectTestEvidence(sourceFiles, testFiles, { mstestExpectedException: testFrameworks.includes("mstest") })
+    : new Map();
   const untestedCandidates = [];
   const coveredButRisky = [];
   const skipped = [];
@@ -620,15 +622,19 @@ function isRunnableTestFile(file, frameworks) {
     (frameworks.includes("mstest") && /\[(?:TestMethod|DataTestMethod)\b[^\]]*\]/.test(masked));
 }
 
-function collectTestEvidence(sourceFiles, testFiles) {
+function collectTestEvidence(sourceFiles, testFiles, { mstestExpectedException = false } = {}) {
   const evidence = new Map();
   const sourceTypes = collectUniqueSourceTypes(sourceFiles);
 
   for (const testFile of testFiles) {
     const masked = maskCSharpCommentsAndStrings(testFile.content);
+    const expectedExceptionTypes = mstestExpectedException
+      ? collectExpectedExceptionAssertedTypes(masked, sourceTypes)
+      : new Set();
     for (const [typeName, sourcePath] of sourceTypes) {
       if (declaresType(masked, typeName)) continue;
-      const usage = csharpTypeCallUsage(masked, typeName);
+      const detectedUsage = csharpTypeCallUsage(masked, typeName);
+      const usage = detectedUsage && expectedExceptionTypes.has(typeName) ? "asserted" : detectedUsage;
       if (usage) {
         addEvidence(evidence, sourcePath, {
           testPath: testFile.path,
@@ -723,7 +729,8 @@ function collectRunnableTests(content, attributeDepth) {
     bodyStarts.add(bodyStart);
     tests.push({
       body: content.slice(bodyStart + 1, bodyEnd),
-      signature
+      signature,
+      expectedException: /\bExpectedException(?:Attribute)?\s*\(/.test(content.slice(attribute.index, bodyStart))
     });
   }
 
@@ -732,6 +739,46 @@ function collectRunnableTests(content, attributeDepth) {
 
 function collectRunnableTestBodies(content) {
   return collectRunnableTests(content).map((test) => test.body);
+}
+
+function collectExpectedExceptionAssertedTypes(content, sourceTypes) {
+  const assertedTypes = new Set();
+
+  for (const test of collectRunnableTests(content)) {
+    if (!test.expectedException) continue;
+    const eligibleCalls = [];
+
+    for (const [typeName] of sourceTypes) {
+      const escapedType = escapeRegExp(typeName);
+      const patterns = [
+        new RegExp(`\\b${escapedType}\\s*\\.\\s*[A-Za-z_][A-Za-z0-9_]*\\s*\\(`, "g"),
+        new RegExp(`\\bnew\\s+${escapedType}(?:\\s*<[^;{}()=]+>)?\\s*\\(`, "g")
+      ];
+
+      for (const pattern of patterns) {
+        for (const call of test.body.matchAll(pattern)) {
+          if (!isSoleDirectCallStatement(test.body, call.index)) continue;
+          eligibleCalls.push(typeName);
+        }
+      }
+    }
+
+    if (eligibleCalls.length === 1) assertedTypes.add(eligibleCalls[0]);
+  }
+
+  return assertedTypes;
+}
+
+function isSoleDirectCallStatement(body, callIndex) {
+  if (braceDepthAt(body, callIndex) !== 0) return false;
+  const statement = statementAt(body, callIndex);
+  if (body.slice(0, statement.start).trim() || body.slice(statement.end).trim()) return false;
+  const callOffset = callIndex - statement.start;
+  const prefix = statement.text.slice(0, callOffset);
+  if (!/^\s*(?:[A-Za-z_][A-Za-z0-9_]*\s*\.\s*)*$/.test(prefix)) return false;
+  const callOpening = body.indexOf("(", callIndex);
+  const callClosing = callOpening === -1 ? -1 : matchingParenthesisIndex(body, callOpening);
+  return callClosing !== -1 && /^\s*;\s*$/.test(body.slice(callClosing + 1, statement.end));
 }
 
 function matchingBraceIndex(content, openingIndex) {

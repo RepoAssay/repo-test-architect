@@ -406,6 +406,81 @@ describe("C# audit adapter", () => {
     assert.equal(auditCSharpRepo(mstest).profile.testCommand, "dotnet test Example.Tests.csproj");
   });
 
+  it("credits one sole direct MSTest ExpectedException call", (t) => {
+    const root = createRepo(t, {
+      "Example.Tests.csproj": projectFile("MSTest.TestFramework", "<IsTestProject>true</IsTestProject>"),
+      "CombinedThrower.cs": "public static class CombinedThrower { public static void Run() => throw new System.Exception(); }\n",
+      "SeparateThrower.cs": "public static class SeparateThrower { public static void Run() => throw new System.Exception(); }\n",
+      "NamespacedThrower.cs": "namespace Product.Types { public static class NamespacedThrower { public static void Run() => throw new System.Exception(); } }\n",
+      "ThrowingConstructor.cs": "public class ThrowingConstructor { public ThrowingConstructor() => throw new System.Exception(); }\n",
+      "OrdinaryThrower.cs": "public static class OrdinaryThrower { public static void Run() => throw new System.Exception(); }\n",
+      "Tests.cs": [
+        "public class Tests {",
+        "  [TestMethod, ExpectedException(typeof(System.Exception))] public void Combined() { CombinedThrower.Run(); }",
+        "  [TestMethod] [ExpectedException(typeof(System.Exception))] public void Separate() { SeparateThrower.Run(); }",
+        "  [DataTestMethod, ExpectedExceptionAttribute(typeof(System.Exception))] public void Namespaced() { Product.Types.NamespacedThrower.Run(); }",
+        "  [TestMethod, ExpectedException(typeof(System.Exception))] public void Constructor() { new ThrowingConstructor(); }",
+        "  [TestMethod] public void Ordinary() { OrdinaryThrower.Run(); }",
+        "}"
+      ].join("\n")
+    });
+
+    assert.deepEqual(
+      auditCSharpRepo(root).coveredButRisky.map((target) => [target.path, target.existingTestEvidence[0].usage]),
+      [
+        ["CombinedThrower.cs", "asserted"],
+        ["NamespacedThrower.cs", "asserted"],
+        ["OrdinaryThrower.cs", "called"],
+        ["SeparateThrower.cs", "asserted"],
+        ["ThrowingConstructor.cs", "asserted"]
+      ]
+    );
+  });
+
+  it("rejects ambiguous, wrapped, indirect, deferred, and non-MSTest ExpectedException flow", (t) => {
+    const mstest = createRepo(t, {
+      "Example.Tests.csproj": projectFile("MSTest.TestFramework", "<IsTestProject>true</IsTestProject>"),
+      "MultipleFirst.cs": "public static class MultipleFirst { public static void Run() { } }\n",
+      "MultipleSecond.cs": "public static class MultipleSecond { public static void Run() { } }\n",
+      "WrappedThrower.cs": "public static class WrappedThrower { public static int Run() => 1; }\n",
+      "PreparedThrower.cs": "public static class PreparedThrower { public static void Run() { } }\n",
+      "HelperOnlyThrower.cs": "public static class HelperOnlyThrower { public static void Run() { } }\n",
+      "LambdaOnlyThrower.cs": "public static class LambdaOnlyThrower { public static void Run() { } }\n",
+      "Tests.cs": [
+        "public class Tests {",
+        "  [TestMethod, ExpectedException(typeof(System.Exception))] public void Multiple() { MultipleFirst.Run(); MultipleSecond.Run(); }",
+        "  [TestMethod, ExpectedException(typeof(System.Exception))] public void Wrapped() { Consume(WrappedThrower.Run()); }",
+        "  [TestMethod, ExpectedException(typeof(System.Exception))] public void Prepared() { Prepare(); PreparedThrower.Run(); }",
+        "  [TestMethod, ExpectedException(typeof(System.Exception))] public void HelperOnly() { Helper(); }",
+        "  [TestMethod, ExpectedException(typeof(System.Exception))] public void Deferred() { System.Action action = () => LambdaOnlyThrower.Run(); action(); }",
+        "  private static void Consume(int value) { }",
+        "  private static void Prepare() { }",
+        "  private static void Helper() => HelperOnlyThrower.Run();",
+        "}"
+      ].join("\n")
+    });
+    const xunit = createRepo(t, {
+      "Example.Tests.csproj": projectFile("xunit"),
+      "CustomAttributeThrower.cs": "public static class CustomAttributeThrower { public static void Run() { } }\n",
+      "Tests.cs": "public class Tests { [Fact, ExpectedException(typeof(System.Exception))] public void Runs() { CustomAttributeThrower.Run(); } }\n"
+    });
+
+    assert.deepEqual(
+      auditCSharpRepo(mstest).coveredButRisky.map((target) => [target.path, target.existingTestEvidence[0].usage]),
+      [
+        ["MultipleFirst.cs", "called"],
+        ["MultipleSecond.cs", "called"],
+        ["PreparedThrower.cs", "called"],
+        ["WrappedThrower.cs", "called"]
+      ]
+    );
+    assert.deepEqual(auditCSharpRepo(mstest).untestedCandidates.map((target) => target.path), [
+      "HelperOnlyThrower.cs",
+      "LambdaOnlyThrower.cs"
+    ]);
+    assert.equal(auditCSharpRepo(xunit).coveredButRisky[0].existingTestEvidence[0].usage, "called");
+  });
+
   it("keeps self-closing test packages after package references with child metadata", (t) => {
     const root = createRepo(t, {
       "Example.Tests.csproj": [
