@@ -491,6 +491,35 @@ describe("C# audit adapter", () => {
     assert.deepEqual(auditCSharpRepo(root).coveredButRisky, []);
   });
 
+  it("does not credit source calls outside runnable attributed test bodies", (t) => {
+    const root = createRepo(t, {
+      "Example.Tests.csproj": projectFile("xunit"),
+      "HelperOnly.cs": "public static class HelperOnly { public static int Run() => 1; }\n",
+      "ConstructorOnly.cs": "public class ConstructorOnly { public int Value => 1; }\n",
+      "FieldOnly.cs": "public class FieldOnly { public int Value => 1; }\n",
+      "LocalFunctionOnly.cs": "public static class LocalFunctionOnly { public static int Run() => 1; }\n",
+      "LambdaOnly.cs": "public static class LambdaOnly { public static int Run() => 1; }\n",
+      "Tests.cs": [
+        "public class Tests {",
+        "  private readonly FieldOnly _field = new FieldOnly();",
+        "  public Tests() { _ = new ConstructorOnly(); }",
+        "  [Fact] public void UsesOnlyIndirectCalls() { Helper(); void Local() { LocalFunctionOnly.Run(); } System.Func<int> deferred = () => LambdaOnly.Run(); Assert.True(true); }",
+        "  private static int Helper() => HelperOnly.Run();",
+        "}"
+      ].join("\n")
+    });
+
+    const audit = auditCSharpRepo(root);
+    assert.deepEqual(audit.coveredButRisky, []);
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.path), [
+      "ConstructorOnly.cs",
+      "FieldOnly.cs",
+      "HelperOnly.cs",
+      "LambdaOnly.cs",
+      "LocalFunctionOnly.cs"
+    ]);
+  });
+
   it("tracks concrete local receiver calls and one-hop asserted results", (t) => {
     const root = createRepo(t, {
       "Example.Tests.csproj": projectFile("xunit"),
@@ -570,13 +599,13 @@ describe("C# audit adapter", () => {
 
     assert.deepEqual(
       auditCSharpRepo(root).coveredButRisky.map((target) => [target.path, target.existingTestEvidence[0].usage]),
-      [
-        ["ChangedFactory.cs", "called"],
-        ["IndirectFactory.cs", "called"],
-        ["LambdaFactory.cs", "called"],
-        ["LocalFunctionFactory.cs", "called"]
-      ]
+      [["ChangedFactory.cs", "called"]]
     );
+    assert.deepEqual(auditCSharpRepo(root).untestedCandidates.map((target) => target.path), [
+      "IndirectFactory.cs",
+      "LambdaFactory.cs",
+      "LocalFunctionFactory.cs"
+    ]);
   });
 
   it("rejects reassigned receivers and results plus interface, mutable-field, ref, and helper flow", (t) => {
@@ -611,8 +640,6 @@ describe("C# audit adapter", () => {
       auditCSharpRepo(root).coveredButRisky.map((target) => [target.path, target.existingTestEvidence[0].usage]),
       [
         ["ChangedResultParser.cs", "called"],
-        ["FieldParser.cs", "called"],
-        ["HelperParser.cs", "called"],
         ["InterfaceParser.cs", "called"],
         ["LambdaParser.cs", "called"],
         ["LocalHelperParser.cs", "called"],
@@ -620,6 +647,10 @@ describe("C# audit adapter", () => {
         ["RefParser.cs", "called"]
       ]
     );
+    assert.deepEqual(auditCSharpRepo(root).untestedCandidates.map((target) => target.path), [
+      "FieldParser.cs",
+      "HelperParser.cs"
+    ]);
   });
 
   it("tracks exact private readonly concrete field receivers", (t) => {

@@ -411,3 +411,11 @@ Decision: inside a runnable attributed test body, upgrade an already recognized 
 Rationale: pinned S7.Net assigns results from `DataItem.FromAddress(...)`, `TPKT.Read(...)`, and two `Conversion` calls before asserting their values. The rule preserves 35 untested, 13 covered, 1 deferred, and 19 relationships while moving usage from 10 asserted/9 called to 14 asserted/5 called. Five audits share digest `0d1c131f69be3229cb6f431c6905ee7ffc6e5ed56c94c0bd2f79d241cec3da80` with a 101 ms median.
 
 Revisit when: a pinned repository demonstrates that property chains, tuple/deconstruction results, helper returns, or deeper result flow can be proven without general data-flow inference.
+
+### 2026-07-30: require runnable-body ownership for basic C# calls
+
+Decision: emit basic direct `Type.Method(...)` and `new Type(...)` evidence only for top-level calls inside a runnable attributed test body. Do not treat calls in test-class constructors, field initializers, ordinary helpers, nested local functions, or deferred lambdas as direct test evidence. Preserve exact immutable field-receiver evidence only when the runnable body itself invokes that receiver.
+
+Rationale: the former file-wide scan made helper-owned calls look direct and could inherit helper-owned assertions. On pinned S7.Net, the tighter rule preserves 35 untested, 13 covered, 1 deferred, and 19 relationship slots while changing the honest evidence mix to 9 asserted direct, 7 called direct, and 3 naming. Five audits share digest `681b34f64d18bb4019550c871a3d43b4d573df826d4ef3275ea8cc6eb8e5c5ff` with a 103 ms median.
+
+Revisit when: helper declarations, exact call sites, parameters/results, and assertion ownership can be joined without file-wide or name-only reachability.

@@ -36,6 +36,12 @@ The same pin exposed four exact direct type calls whose stable local results are
 
 Candidate counts and the 19 relationship identities remain unchanged. Five follow-up audits produced one root-normalized digest, `0d1c131f69be3229cb6f431c6905ee7ffc6e5ed56c94c0bd2f79d241cec3da80`, with a 101 ms median from samples `139, 101, 98, 104, 99`. Usage changes from 10 asserted and 9 called relationships to 14 asserted and 5 called.
 
+### Runnable-test body ownership follow-up
+
+A subsequent trust-hardening pass confines basic `Type.Method(...)` and `new Type(...)` evidence to top-level calls in runnable attributed test bodies. Calls that occur only in a test-class constructor, field initializer, ordinary helper, nested local function, or deferred lambda no longer claim direct coverage. Exact immutable field receivers remain supported because the attributed test body itself must call them.
+
+S7.Net makes the distinction visible without changing any candidate count: helper-only `S7String`, `S7WString`, and `String` relationships fall back from direct evidence to their exact filename convention, while `DateTime` and `DateTimeLong` remain directly called but no longer inherit assertions owned by helper methods. The latest graph contains 9 asserted direct, 7 called direct, and 3 naming relationships. Five audits produced digest `681b34f64d18bb4019550c871a3d43b4d573df826d4ef3275ea8cc6eb8e5c5ff` with a 103 ms median from samples `145, 107, 100, 103, 99`.
+
 ## Native Validation
 
 The emitted command was executed unchanged apart from `--nologo`:
