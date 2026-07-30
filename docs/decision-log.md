@@ -363,3 +363,11 @@ Decision: inside one test class, bind a uniquely owned concrete source type thro
 Rationale: pinned Sharp Cast uses both supported initialization forms. The bounded rule moves `JsonToCSharpConverter` and `TypeScriptToCSharpConverter` from untested to covered, changing the audit from `7 / 4 / 1` candidates and five relationships to `5 / 6 / 1` and eight without absorbing UI or benchmark source. `TypeScriptToCSharpConverter` is asserted; the two JSON relationships remain called because their asserted output is carried through `out`. Five audits share digest `f3806a31ad40af325eaeb51710daa91bb9725e2d5a552959259a19dd373f2c07` with a 22.9 ms median, and the exact native command still passes 165/165 tests.
 
 Revisit when: bounded `out`-argument identity can prove the two reviewed JSON assertion flows without accepting ref/out mutation generally, or when inherited MSBuild/package metadata creates the larger practical gap.
+
+### 2026-07-30: credit one stable inline C# out result
+
+Decision: for an already-supported concrete local or exact immutable test-field receiver, recognize exactly one top-level `out var name` declared by its direct call and upgrade usage when that local remains stable until a direct `Assert.*` or `.Should(...)` statement. Keep predeclared, explicitly typed, multiple, nested helper-owned, mutated, `ref`/`out`-forwarded, local-function, and lambda assertion flows call-only.
+
+Rationale: pinned Sharp Cast repeatedly uses the exact inline declaration. The rule preserves `5 / 6 / 1` candidates and eight direct relationships while upgrading both `JsonToCSharpConverter` relationships and `CSharpToTypeScriptConverter`, changing usage from three asserted/five called to six asserted/two called. Five audits share digest `285810a7191b41e52b66cbbd7a68c44435424d5dc68e4227031e67265f1d743e` with a 28.3 ms median, and the exact native command still passes 165/165 tests.
+
+Revisit when: a pinned repository shows that explicitly typed or multi-output flow provides a larger practical gain than inherited build/package metadata, without requiring general alias analysis.

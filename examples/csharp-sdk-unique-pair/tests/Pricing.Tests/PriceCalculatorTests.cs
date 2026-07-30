@@ -9,6 +9,8 @@ public sealed class PriceCalculatorTests
     [Fact]
     public void CalculatesTheTotal()
     {
-        Assert.Equal(12m, calculator.Total(4m, 3));
+        calculator.TryTotal(4m, 3, out var total);
+
+        Assert.Equal(12m, total);
     }
 }
