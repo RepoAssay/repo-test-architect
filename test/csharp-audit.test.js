@@ -176,6 +176,71 @@ describe("C# audit adapter", () => {
     assert.ok(audit.profile.detectedConventions.includes("repository-owned Microsoft.Testing.Platform v2 runner"));
   });
 
+  it("audits repository-versioned MSTest.Sdk v4 MTP project ownership", (t) => {
+    const root = createRepo(t, {
+      "global.json": [
+        "{",
+        "  \"sdk\": { \"version\": \"10.0.302\" },",
+        "  \"msbuild-sdks\": { \"MSTest.Sdk\": \"4.3.3\" },",
+        "  \"test\": { \"runner\": \"Microsoft.Testing.Platform\" }",
+        "}"
+      ].join("\n"),
+      "src/Core/Core.csproj": productionProjectFile("net10.0"),
+      "src/Core/Core.cs": "public static class Core { public static int Run() => 1; }\n",
+      "tests/Core.Tests/Core.Tests.csproj": [
+        "<Project Sdk=\"MSTest.Sdk\"><PropertyGroup><TargetFramework>net10.0</TargetFramework></PropertyGroup><ItemGroup>",
+        "<ProjectReference Include=\"../../src/Core/Core.csproj\" />",
+        "</ItemGroup></Project>"
+      ].join(""),
+      "tests/Core.Tests/CoreTests.cs": "[TestClass] public class CoreTests { [TestMethod] public void Runs() { Assert.AreEqual(1, Core.Run()); } }\n"
+    });
+
+    const audit = auditCSharpRepo(root);
+    assert.equal(audit.profile.testCommand, "dotnet test tests/Core.Tests/Core.Tests.csproj");
+    assert.deepEqual(audit.profile.blockers, []);
+    assert.deepEqual(audit.profile.testFrameworks, ["mstest"]);
+    assert.ok(audit.profile.detectedConventions.includes("repository-owned MSTest.Sdk v4 MTP runner"));
+    assert.ok(audit.profile.setupSignals.includes("MSTest.Sdk@4.3.3"));
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["src/Core/Core.cs"]);
+  });
+
+  it("audits an inline-versioned MSTest.Sdk v4 project", (t) => {
+    const root = createRepo(t, {
+      "global.json": "{\"sdk\":{\"version\":\"10.0.302\"},\"test\":{\"runner\":\"Microsoft.Testing.Platform\"}}",
+      "Example.Tests.csproj": "<Project Sdk=\"MSTest.Sdk/4.1.0\"><PropertyGroup><TargetFramework>net10.0</TargetFramework></PropertyGroup></Project>",
+      "Source.cs": "public static class Source { public static int Run() => 1; }\n",
+      "SourceTests.cs": "[TestClass] public class SourceTests { [TestMethod] public void Runs() { Assert.AreEqual(1, Source.Run()); } }\n"
+    });
+
+    const audit = auditCSharpRepo(root);
+    assert.equal(audit.profile.testCommand, "dotnet test Example.Tests.csproj");
+    assert.deepEqual(audit.profile.blockers, []);
+    assert.deepEqual(audit.profile.testFrameworks, ["mstest"]);
+    assert.ok(audit.profile.setupSignals.includes("MSTest.Sdk@4.1.0"));
+  });
+
+  it("keeps incomplete and non-native MSTest.Sdk ownership blocked", (t) => {
+    const cases = [
+      ["missing SDK version", "MSTest.Sdk", "{\"sdk\":{\"version\":\"10.0.302\"},\"test\":{\"runner\":\"Microsoft.Testing.Platform\"}}", ""],
+      ["MSTest v3", "MSTest.Sdk/3.11.0", "{\"sdk\":{\"version\":\"10.0.302\"},\"test\":{\"runner\":\"Microsoft.Testing.Platform\"}}", ""],
+      ["VSTest opt-in", "MSTest.Sdk/4.3.3", "{\"sdk\":{\"version\":\"10.0.302\"},\"test\":{\"runner\":\"Microsoft.Testing.Platform\"}}", "<UseVSTest>true</UseVSTest>"],
+      ["missing runner", "MSTest.Sdk/4.3.3", "{\"sdk\":{\"version\":\"10.0.302\"}}", ""],
+      ["helper library", "MSTest.Sdk/4.3.3", "{\"sdk\":{\"version\":\"10.0.302\"},\"test\":{\"runner\":\"Microsoft.Testing.Platform\"}}", "<IsTestApplication>false</IsTestApplication>"]
+    ];
+
+    for (const [label, sdk, globalJson, metadata] of cases) {
+      const root = createRepo(t, {
+        "global.json": globalJson,
+        "Example.Tests.csproj": `<Project Sdk="${sdk}"><PropertyGroup><TargetFramework>net10.0</TargetFramework>${metadata}</PropertyGroup></Project>`,
+        "Source.cs": "public static class Source { public static int Run() => 1; }\n",
+        "SourceTests.cs": "[TestClass] public class SourceTests { [TestMethod] public void Runs() { Assert.AreEqual(1, Source.Run()); } }\n"
+      });
+      const audit = auditCSharpRepo(root);
+      assert.equal(audit.profile.testCommand, undefined, label);
+      assert.ok(audit.profile.blockers.some((blocker) => blocker.startsWith("Native MSTest.Sdk requires")), label);
+    }
+  });
+
   it("keeps incomplete Microsoft.Testing.Platform ownership blocked", (t) => {
     const cases = [
       ["missing global.json", undefined, "2.2.3"],

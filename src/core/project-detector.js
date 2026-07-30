@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { analyzeCargoWorkspace } from "../adapters/rust/cargo-workspace.js";
 import { analyzeDirectoryBuildProps, findNearestDirectoryBuildProps } from "../adapters/csharp/directory-build-props.js";
+import { analyzeRepositoryGlobalJson } from "../adapters/csharp/global-json.js";
 import { analyzeGradleSettings } from "./gradle-settings.js";
 import { listAdapters } from "./adapter-registry.js";
 
@@ -221,6 +222,7 @@ export function detectProjects(repoRoot, options = {}) {
 }
 
 function collapseLiteralCSharpProjectPair(repoRoot, markerGroups) {
+  const globalJson = analyzeRepositoryGlobalJson(repoRoot);
   const candidates = [...markerGroups.values()].flatMap((group) => {
     const projectMarkers = group.markerFiles.filter((markerFile) => markerFile.endsWith(".csproj"));
     return projectMarkers.length === 1 && group.markerFiles.length === 1
@@ -234,8 +236,8 @@ function collapseLiteralCSharpProjectPair(repoRoot, markerGroups) {
     content: fs.readFileSync(path.resolve(repoRoot, candidate.markerFile), "utf8"),
     inherited: readDetectorCSharpProps(repoRoot, candidate.markerFile)
   }));
-  const testProjects = projects.filter((project) => isDetectorCSharpTestProject(project.content, project.inherited));
-  const sourceProjects = projects.filter((project) => !isDetectorCSharpTestProject(project.content, project.inherited));
+  const testProjects = projects.filter((project) => isDetectorCSharpTestProject(project.content, project.inherited, globalJson));
+  const sourceProjects = projects.filter((project) => !isDetectorCSharpTestProject(project.content, project.inherited, globalJson));
   const literalPairs = testProjects.flatMap((testProject) => (
     sourceProjects
       .filter((sourceProject) => hasLiteralDetectorProjectReference(
@@ -273,13 +275,17 @@ function readDetectorCSharpProps(repoRoot, projectPath) {
   return analysis.blockers.length === 0 && !propsFile.pathBlockers ? analysis : undefined;
 }
 
-function isDetectorCSharpTestProject(content, inherited) {
+function isDetectorCSharpTestProject(content, inherited, globalJson) {
   const localTestMarker = content.match(/<IsTestProject>\s*([^<]+?)\s*<\/IsTestProject>/i)?.[1]?.trim().toLowerCase();
   const hasLocalTestSdk = /<PackageReference\b[^>]*\bInclude\s*=\s*["']Microsoft\.NET\.Test\.Sdk["']/i.test(content);
+  const projectSdk = content.match(/<Project\b[^>]*\bSdk\s*=\s*["']([^"']+)["']/i)?.[1];
+  const isMstestSdk = /^MSTest\.Sdk(?:\/[^/]+)?$/.test(projectSdk ?? "");
+  const isTestApplication = content.match(/<IsTestApplication>\s*([^<]+?)\s*<\/IsTestApplication>/i)?.[1]?.trim().toLowerCase();
   return localTestMarker === "true" ||
     (localTestMarker === undefined && inherited?.isTestProject === true) ||
     hasLocalTestSdk ||
-    inherited?.packageReferences.includes("microsoft.net.test.sdk");
+    inherited?.packageReferences.includes("microsoft.net.test.sdk") ||
+    (isMstestSdk && isTestApplication !== "false" && (projectSdk.includes("/") || globalJson.mstestSdkVersion !== undefined));
 }
 
 function hasLiteralDetectorProjectReference(testMarker, content, sourceMarker) {

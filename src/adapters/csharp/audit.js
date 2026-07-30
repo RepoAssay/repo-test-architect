@@ -10,7 +10,7 @@ import {
   analyzeDirectoryPackagesProps,
   findNearestDirectoryPackagesProps
 } from "./directory-packages-props.js";
-import { analyzeRepositoryGlobalJson } from "./global-json.js";
+import { analyzeRepositoryGlobalJson, isLiteralVersion } from "./global-json.js";
 
 const IGNORED_DIRECTORIES = new Set([
   ".git",
@@ -86,7 +86,7 @@ export function auditCSharpRepo(root, options = {}) {
         : undefined;
       return {
         ...file,
-        analysis: analyzeProject(file.content, inherited, propsFile?.path, centralPackages)
+        analysis: analyzeProject(file.content, inherited, propsFile?.path, centralPackages, globalJson)
       };
     });
   const layout = selectProjectLayout(projects);
@@ -200,7 +200,7 @@ function readRepoFiles(root) {
   return files.sort((left, right) => left.path.localeCompare(right.path));
 }
 
-function analyzeProject(content, inherited, inheritedPath, centralPackages) {
+function analyzeProject(content, inherited, inheritedPath, centralPackages, globalJson = { blockers: [] }) {
   const localFramework = analyzeTargetFrameworkDeclaration(content);
   const inheritedTargetFrameworks = inherited?.targetFrameworks ?? (inherited?.targetFramework ? [inherited.targetFramework] : []);
   const targetFrameworks = localFramework.hasDeclaration
@@ -220,11 +220,28 @@ function analyzeProject(content, inherited, inheritedPath, centralPackages) {
   const localPackageReferences = localPackageReferenceDetails.map((reference) => reference.name).filter(Boolean);
   const packageReferenceDetails = [...(inherited?.packageReferenceDetails ?? []), ...localPackageReferenceDetails];
   const packageReferences = [...(inherited?.packageReferences ?? []), ...localPackageReferences];
+  const sdk = content.match(/<Project\b[^>]*\bSdk\s*=\s*["']([^"']+)["']/i)?.[1];
+  const mstestSdkMatch = sdk?.match(/^MSTest\.Sdk(?:\/(.+))?$/);
+  const isMstestSdkProject = Boolean(mstestSdkMatch);
+  const inlineMstestSdkVersion = mstestSdkMatch?.[1];
+  const mstestSdkVersion = inlineMstestSdkVersion !== undefined
+    ? (isLiteralVersion(inlineMstestSdkVersion) ? inlineMstestSdkVersion : undefined)
+    : globalJson.mstestSdkVersion;
+  const mstestSdkMajor = mstestSdkVersion?.match(/^(\d+)\./)?.[1];
+  const useVstestAnalysis = analyzeLiteralBooleanProperty(content, "UseVSTest", "MSTest VSTest selection");
+  const testApplicationAnalysis = analyzeLiteralBooleanProperty(content, "IsTestApplication", "MSTest test-application selection");
+  const mstestSdkBlockers = isMstestSdkProject
+    ? [...useVstestAnalysis.blockers, ...testApplicationAnalysis.blockers]
+    : [];
+  if (isMstestSdkProject && inlineMstestSdkVersion === undefined) {
+    mstestSdkBlockers.push(...(globalJson.mstestSdkBlockers ?? []));
+  }
+  if (isMstestSdkProject && mstestSdkVersion === undefined) mstestSdkBlockers.push("missing or invalid MSTest.Sdk version");
+  const isMstestTestApplication = isMstestSdkProject && testApplicationAnalysis.value !== false;
   const testFrameworks = [];
   if (packageReferences.some((name) => ["xunit", "xunit.v3", "xunit.v3.mtp-v2"].includes(name))) testFrameworks.push("xunit");
   if (packageReferences.some((name) => name === "nunit")) testFrameworks.push("nunit");
-  if (packageReferences.some((name) => name === "mstest.testframework")) testFrameworks.push("mstest");
-  const sdk = content.match(/<Project\b[^>]*\bSdk\s*=\s*["']([^"']+)["']/i)?.[1];
+  if (packageReferences.some((name) => name === "mstest.testframework") || isMstestTestApplication) testFrameworks.push("mstest");
   const hasTestSdk = packageReferences.includes("microsoft.net.test.sdk");
   const hasMtpMsbuild = packageReferences.includes("microsoft.testing.platform.msbuild");
   const hasXunitMtpV2 = packageReferences.includes("xunit.v3.mtp-v2");
@@ -303,7 +320,7 @@ function analyzeProject(content, inherited, inheritedPath, centralPackages) {
 
   return {
     sdk,
-    sdkStyle: Boolean(sdk?.startsWith("Microsoft.NET.Sdk")),
+    sdkStyle: Boolean(sdk?.startsWith("Microsoft.NET.Sdk") || isMstestSdkProject),
     targetFramework,
     targetFrameworks,
     targetFrameworkProperty,
@@ -312,12 +329,17 @@ function analyzeProject(content, inherited, inheritedPath, centralPackages) {
     packageReferenceBlockers: localPackageAnalysis.blockers,
     hasTargetConditionedPackageReferences: localPackageAnalysis.hasTargetConditions,
     testFrameworks,
+    isMstestSdkProject,
+    hasMstestSdkV4: isMstestTestApplication && Number(mstestSdkMajor) >= 4,
+    mstestSdkVersion,
+    mstestSdkBlockers: [...new Set(mstestSdkBlockers)],
+    useVstest: useVstestAnalysis.value === true,
     hasTestSdk,
     hasMtpMsbuild,
     hasMtpV2Host: hasMtpMsbuild && Number(mtpMsbuildMajor) >= 2,
     hasXunitMtpV2,
     mtpMsbuildVersion,
-    isTestProject: (localIsTestProject === "true" || (localIsTestProject === undefined && inherited?.isTestProject === true)) || hasTestSdk || hasXunitMtpV2,
+    isTestProject: (localIsTestProject === "true" || (localIsTestProject === undefined && inherited?.isTestProject === true)) || hasTestSdk || hasXunitMtpV2 || isMstestTestApplication,
     projectReferences,
     hasProjectReferences: projectReferenceTags.length > 0,
     hasDynamicProjectReferences: projectReferences.length !== projectReferenceTags.length ||
@@ -445,6 +467,24 @@ function analyzeCentralPackageSetting(content) {
   };
 }
 
+function analyzeLiteralBooleanProperty(content, propertyName, label) {
+  const source = content.replace(/<!--[\s\S]*?-->/g, " ");
+  const expression = new RegExp(`<${propertyName}\\b([^>]*)>\\s*([^<]+?)\\s*</${propertyName}>`, "gi");
+  const matches = [...source.matchAll(expression)];
+  const blockers = [];
+  if (matches.length > 1) blockers.push(`repeated ${label}`);
+  if (matches.some((match) => /\bCondition\s*=/i.test(match[1]))) blockers.push(`conditional ${label}`);
+  const conditionalGroup = [...source.matchAll(/<PropertyGroup\b([^>]*)>([\s\S]*?)<\/PropertyGroup>/gi)]
+    .some((match) => /\bCondition\s*=/i.test(match[1]) && new RegExp(`<${propertyName}\\b`, "i").test(match[2]));
+  if (conditionalGroup) blockers.push(`conditional ${label}`);
+  if (matches.some((match) => !/^(?:true|false)$/i.test(match[2].trim()))) blockers.push(`non-literal ${label}`);
+  const rawValue = matches.length === 1 ? matches[0][2].trim().toLowerCase() : undefined;
+  return {
+    value: rawValue === "true" ? true : rawValue === "false" ? false : undefined,
+    blockers: [...new Set(blockers)]
+  };
+}
+
 function selectProjectLayout(projects) {
   if (projects.length === 0) {
     return { kind: "unsupported", blockers: ["No .csproj detected for the bounded C# SDK project adapter."] };
@@ -535,6 +575,9 @@ function buildProfile(root, projects, layout, sourceFiles, testFiles, globalJson
   if (centralPackageBlockers.length > 0) {
     blockers.push(`Directory.Packages.props requires unsupported central package evaluation: ${centralPackageBlockers.join(", ")}.`);
   }
+  if (analysis.mstestSdkBlockers.length > 0) {
+    blockers.push(`MSTest.Sdk requires bounded static metadata: ${analysis.mstestSdkBlockers.join(", ")}.`);
+  }
 
   if (layout.kind === "single") {
     if (!analysis.sdkStyle) blockers.push("Only static SDK-style Microsoft.NET.Sdk projects are supported in the first C# slice.");
@@ -565,8 +608,13 @@ function buildProfile(root, projects, layout, sourceFiles, testFiles, globalJson
     : globalJson.sdkMajor >= 10;
   const usesBoundedMtpV2 = analysis.hasXunitMtpV2 && analysis.hasMtpV2Host &&
     globalJson.runner === "Microsoft.Testing.Platform" && hasDotnet10RunnerContext && globalJson.blockers.length === 0;
-  if (analysis.isTestProject && !analysis.hasTestSdk && !usesBoundedMtpV2) {
-    if (analysis.hasXunitMtpV2 || analysis.hasMtpMsbuild || globalJson.runner === "Microsoft.Testing.Platform") {
+  const usesBoundedMstestSdkV4 = analysis.hasMstestSdkV4 && !analysis.useVstest &&
+    globalJson.runner === "Microsoft.Testing.Platform" && hasDotnet10RunnerContext && globalJson.blockers.length === 0;
+  if (analysis.isMstestSdkProject && !usesBoundedMstestSdkV4) {
+    blockers.push("Native MSTest.Sdk requires version 4.x or newer, repository-root global.json selecting Microsoft.Testing.Platform, a literal .NET 10+ SDK or exclusively net10.0+ test targets, and no UseVSTest opt-in.");
+    if (globalJson.blockers.length > 0) blockers.push(`global.json requires bounded static metadata: ${globalJson.blockers.join(", ")}.`);
+  } else if (analysis.isTestProject && !analysis.hasTestSdk && !usesBoundedMtpV2 && !usesBoundedMstestSdkV4) {
+    if (analysis.hasXunitMtpV2 || analysis.hasMtpMsbuild) {
       blockers.push("Native Microsoft.Testing.Platform v2 requires xunit.v3.mtp-v2, Microsoft.Testing.Platform.MSBuild 2.x or newer, and repository-root global.json selecting Microsoft.Testing.Platform with a literal .NET 10+ SDK or exclusively net10.0+ test targets.");
       if (globalJson.blockers.length > 0) blockers.push(`global.json requires bounded static metadata: ${globalJson.blockers.join(", ")}.`);
     } else blockers.push("Microsoft.NET.Test.Sdk is required for the bounded C# test command.");
@@ -588,6 +636,7 @@ function buildProfile(root, projects, layout, sourceFiles, testFiles, globalJson
   if (layout.unrelatedProjectCount > 0) detectedConventions.push("unique literal test edge among unrelated projects");
   if (analysis.isTestProject) detectedConventions.push(".NET test project");
   if (usesBoundedMtpV2) detectedConventions.push("repository-owned Microsoft.Testing.Platform v2 runner");
+  if (usesBoundedMstestSdkV4) detectedConventions.push("repository-owned MSTest.Sdk v4 MTP runner");
   if (layout.sourceProject?.analysis.inheritedMetadataPath || layout.testProject?.analysis.inheritedMetadataPath) {
     detectedConventions.push("inherited Directory.Build.props metadata");
   }
@@ -621,6 +670,7 @@ function buildProfile(root, projects, layout, sourceFiles, testFiles, globalJson
   if (usesBoundedMtpV2) {
     setupSignals.push(globalJson.path, `Microsoft.Testing.Platform.MSBuild@${analysis.mtpMsbuildVersion}`);
   }
+  if (usesBoundedMstestSdkV4) setupSignals.push(globalJson.path, `MSTest.Sdk@${analysis.mstestSdkVersion}`);
   const testCommand = project && blockers.length === 0 ? `dotnet test ${project.path}` : undefined;
 
   return {

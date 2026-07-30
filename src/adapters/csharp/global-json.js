@@ -23,18 +23,28 @@ export function analyzeRepositoryGlobalJson(repoRoot) {
     return { present: true, path: fileName, blockers: ["global.json root is not an object"] };
   }
   const blockers = [];
+  const mstestSdkBlockers = [];
   const test = value.test;
   const sdk = value.sdk;
+  const msbuildSdks = value["msbuild-sdks"];
   if (test !== undefined && !isObject(test)) blockers.push("global.json test metadata is not an object");
   if (sdk !== undefined && !isObject(sdk)) blockers.push("global.json SDK metadata is not an object");
+  if (msbuildSdks !== undefined && !isObject(msbuildSdks)) mstestSdkBlockers.push("global.json MSBuild SDK metadata is not an object");
   const runner = isObject(test) && typeof test.runner === "string" ? test.runner : undefined;
   const sdkVersion = isObject(sdk) && typeof sdk.version === "string" ? sdk.version : undefined;
   const sdkMajor = sdkVersion?.match(/^(\d+)\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/)?.[1];
+  const rawMstestSdkVersion = isObject(msbuildSdks) ? msbuildSdks["MSTest.Sdk"] : undefined;
+  const mstestSdkVersion = typeof rawMstestSdkVersion === "string" && isLiteralVersion(rawMstestSdkVersion)
+    ? rawMstestSdkVersion
+    : undefined;
   if (isObject(test) && test.runner !== undefined && typeof test.runner !== "string") {
     blockers.push("global.json test runner is not a string");
   }
   if (isObject(sdk) && sdk.version !== undefined && !sdkMajor) {
     blockers.push("global.json SDK version is not a literal version");
+  }
+  if (rawMstestSdkVersion !== undefined && mstestSdkVersion === undefined) {
+    mstestSdkBlockers.push("global.json MSTest.Sdk version is not a literal version");
   }
 
   return {
@@ -43,8 +53,14 @@ export function analyzeRepositoryGlobalJson(repoRoot) {
     runner,
     sdkVersion,
     sdkMajor: sdkMajor === undefined ? undefined : Number(sdkMajor),
+    mstestSdkVersion,
+    mstestSdkBlockers,
     blockers
   };
+}
+
+export function isLiteralVersion(value) {
+  return /^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/.test(value);
 }
 
 function isObject(value) {
