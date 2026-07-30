@@ -62,7 +62,8 @@ export const adapters = [
     emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"],
     audit(repoRoot, options = {}) {
       return auditCSharpRepo(repoRoot, {
-        changedPaths: options.changedPaths
+        changedPaths: options.changedPaths,
+        repositoryRoot: options.repositoryRoot
       });
     }
   },

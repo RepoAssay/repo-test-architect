@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { analyzeCargoWorkspace } from "../adapters/rust/cargo-workspace.js";
+import { analyzeDirectoryBuildProps, findNearestDirectoryBuildProps } from "../adapters/csharp/directory-build-props.js";
 import { analyzeGradleSettings } from "./gradle-settings.js";
 import { listAdapters } from "./adapter-registry.js";
 
@@ -230,10 +231,11 @@ function collapseLiteralCSharpProjectPair(repoRoot, markerGroups) {
 
   const projects = candidates.map((candidate) => ({
     ...candidate,
-    content: fs.readFileSync(path.resolve(repoRoot, candidate.markerFile), "utf8")
+    content: fs.readFileSync(path.resolve(repoRoot, candidate.markerFile), "utf8"),
+    inherited: readDetectorCSharpProps(repoRoot, candidate.markerFile)
   }));
-  const testProjects = projects.filter((project) => isDetectorCSharpTestProject(project.content));
-  const sourceProjects = projects.filter((project) => !isDetectorCSharpTestProject(project.content));
+  const testProjects = projects.filter((project) => isDetectorCSharpTestProject(project.content, project.inherited));
+  const sourceProjects = projects.filter((project) => !isDetectorCSharpTestProject(project.content, project.inherited));
   const literalPairs = testProjects.flatMap((testProject) => (
     sourceProjects
       .filter((sourceProject) => hasLiteralDetectorProjectReference(
@@ -264,9 +266,20 @@ function collapseLiteralCSharpProjectPair(repoRoot, markerGroups) {
   return collapsed;
 }
 
-function isDetectorCSharpTestProject(content) {
-  return /<IsTestProject>\s*true\s*<\/IsTestProject>/i.test(content) ||
-    /<PackageReference\b[^>]*\bInclude\s*=\s*["']Microsoft\.NET\.Test\.Sdk["']/i.test(content);
+function readDetectorCSharpProps(repoRoot, projectPath) {
+  const propsFile = findNearestDirectoryBuildProps(repoRoot, projectPath);
+  if (!propsFile) return undefined;
+  const analysis = analyzeDirectoryBuildProps(propsFile.content);
+  return analysis.blockers.length === 0 && !propsFile.pathBlockers ? analysis : undefined;
+}
+
+function isDetectorCSharpTestProject(content, inherited) {
+  const localTestMarker = content.match(/<IsTestProject>\s*([^<]+?)\s*<\/IsTestProject>/i)?.[1]?.trim().toLowerCase();
+  const hasLocalTestSdk = /<PackageReference\b[^>]*\bInclude\s*=\s*["']Microsoft\.NET\.Test\.Sdk["']/i.test(content);
+  return localTestMarker === "true" ||
+    (localTestMarker === undefined && inherited?.isTestProject === true) ||
+    hasLocalTestSdk ||
+    inherited?.packageReferences.includes("microsoft.net.test.sdk");
 }
 
 function hasLiteralDetectorProjectReference(testMarker, content, sourceMarker) {

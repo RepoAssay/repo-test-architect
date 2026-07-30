@@ -371,3 +371,11 @@ Decision: for an already-supported concrete local or exact immutable test-field 
 Rationale: pinned Sharp Cast repeatedly uses the exact inline declaration. The rule preserves `5 / 6 / 1` candidates and eight direct relationships while upgrading both `JsonToCSharpConverter` relationships and `CSharpToTypeScriptConverter`, changing usage from three asserted/five called to six asserted/two called. Five audits share digest `285810a7191b41e52b66cbbd7a68c44435424d5dc68e4227031e67265f1d743e` with a 28.3 ms median, and the exact native command still passes 165/165 tests.
 
 Revisit when: a pinned repository shows that explicitly typed or multi-output flow provides a larger practical gain than inherited build/package metadata, without requiring general alias analysis.
+
+### 2026-07-30: admit bounded nearest-file C# build props
+
+Decision: for each selected SDK-style project, read only the nearest exact-cased, non-symbolic, repository-local `Directory.Build.props`. Admit literal unconditional `<TargetFramework>`, `<IsTestProject>`, and supported test-package `Include` declarations, with project-local property precedence. Block imports, conditions around relevant metadata, property-expanded values, multiple frameworks, inherited project or compile items, and symbolic paths instead of evaluating MSBuild.
+
+Rationale: pinned `kthompson/glob` at `719a8593b7c7c085c832e5580f753355ce7ded85` has five projects and one exact library/test edge whose `net8.0` framework comes from root props. The props file also contains a conditional Nerdbank.GitVersioning package, proving unrelated metadata must not invalidate the static framework. Detection preserves the Blazor app and benchmark separately; the selected audit has no blockers, reports `19 / 8 / 1` candidates with ten evidence links, and stays digest-stable across five runs at a 22.5 ms median. After full Git history was restored, all 179 tests passed under the local .NET 10 runtime's explicit major-version roll-forward.
+
+Revisit when: central package management, a chained props hierarchy, or another evaluated MSBuild feature can be bounded without imports, arbitrary property execution, or solution ownership.

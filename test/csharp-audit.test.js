@@ -58,6 +58,65 @@ describe("C# audit adapter", () => {
     assert.deepEqual(audit.skipped.map((target) => target.path), ["src/CheckoutRules/CheckoutRequest.cs"]);
   });
 
+  it("inherits literal unconditional metadata from the nearest Directory.Build.props", (t) => {
+    const root = createRepo(t, {
+      "Directory.Build.props": "<Project><PropertyGroup><TargetFramework>net10.0</TargetFramework></PropertyGroup></Project>",
+      "src/Core/Core.csproj": "<Project Sdk=\"Microsoft.NET.Sdk\" />",
+      "src/Core/Core.cs": "public static class Core { public static int Run() => 1; }\n",
+      "tests/Directory.Build.props": [
+        "<Project>",
+        "<PropertyGroup><TargetFramework>net10.0</TargetFramework><IsTestProject>true</IsTestProject></PropertyGroup>",
+        "<ItemGroup><PackageReference Include=\"Microsoft.NET.Test.Sdk\" /><PackageReference Include=\"xunit\" /></ItemGroup>",
+        "</Project>"
+      ].join(""),
+      "tests/Core.Tests/Core.Tests.csproj": "<Project Sdk=\"Microsoft.NET.Sdk\"><ItemGroup><ProjectReference Include=\"../../src/Core/Core.csproj\" /></ItemGroup></Project>",
+      "tests/Core.Tests/CoreTests.cs": "public class CoreTests { [Fact] public void Runs() { Assert.Equal(1, Core.Run()); } }\n"
+    });
+
+    const audit = auditCSharpRepo(root);
+    assert.equal(audit.profile.testCommand, "dotnet test tests/Core.Tests/Core.Tests.csproj");
+    assert.deepEqual(audit.profile.blockers, []);
+    assert.deepEqual(audit.profile.testFrameworks, ["xunit"]);
+    assert.ok(audit.profile.detectedConventions.includes("inherited Directory.Build.props metadata"));
+    assert.ok(audit.profile.setupSignals.includes("Directory.Build.props"));
+    assert.ok(audit.profile.setupSignals.includes("tests/Directory.Build.props"));
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["src/Core/Core.cs"]);
+  });
+
+  it("keeps project-local target framework precedence over inherited metadata", (t) => {
+    const root = createRepo(t, {
+      "Directory.Build.props": "<Project><PropertyGroup><TargetFramework>net9.0</TargetFramework></PropertyGroup></Project>",
+      "src/Core/Core.csproj": productionProjectFile("net10.0"),
+      "src/Core/Core.cs": "public class Core { public int Run() => 1; }\n",
+      "tests/Core.Tests/Core.Tests.csproj": testProjectFile("../../src/Core/Core.csproj", ""),
+      "tests/Core.Tests/CoreTests.cs": "public class CoreTests { [Fact] public void Runs() { Assert.Equal(1, new Core().Run()); } }\n"
+    });
+
+    const blockers = auditCSharpRepo(root).profile.blockers;
+    assert.ok(blockers.includes("The production and test projects must use the same static TargetFramework in this slice."));
+  });
+
+  it("blocks Directory.Build.props shapes that require MSBuild evaluation", (t) => {
+    const cases = [
+      ["imports", "<Project><Import Project=\"shared.props\" /><PropertyGroup><TargetFramework>net10.0</TargetFramework></PropertyGroup></Project>"],
+      ["conditional metadata", "<Project><PropertyGroup Condition=\"'$(Mode)' == 'test'\"><TargetFramework>net10.0</TargetFramework></PropertyGroup></Project>"],
+      ["conditional metadata", "<Project><Choose><When Condition=\"'$(Mode)' == 'test'\"><PropertyGroup><TargetFramework>net10.0</TargetFramework></PropertyGroup></When></Choose></Project>"],
+      ["property-expanded metadata", "<Project><PropertyGroup><TargetFramework>$(Framework)</TargetFramework></PropertyGroup></Project>"],
+      ["custom compile items", "<Project><ItemGroup><Compile Remove=\"Generated.cs\" /></ItemGroup></Project>"]
+    ];
+
+    for (const [expected, props] of cases) {
+      const root = createRepo(t, {
+        "Directory.Build.props": props,
+        "Example.Tests.csproj": projectFile("xunit"),
+        "Tests.cs": "public class Tests { [Fact] public void Runs() { Assert.True(true); } }\n"
+      });
+      const audit = auditCSharpRepo(root);
+      assert.equal(audit.profile.testCommand, undefined);
+      assert.ok(audit.profile.blockers.some((blocker) => blocker.includes(expected)), expected);
+    }
+  });
+
   it("detects bounded NUnit and MSTest attributed tests", (t) => {
     const nunit = createRepo(t, {
       "Example.Tests.csproj": projectFile("NUnit", "<IsTestProject>true</IsTestProject>"),
@@ -581,8 +640,9 @@ function productionProjectFile(targetFramework = "net10.0") {
   return `<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><TargetFramework>${targetFramework}</TargetFramework></PropertyGroup></Project>`;
 }
 
-function testProjectFile(reference) {
-  return `<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><TargetFramework>net10.0</TargetFramework><IsTestProject>true</IsTestProject></PropertyGroup><ItemGroup><PackageReference Include="Microsoft.NET.Test.Sdk" /><PackageReference Include="xunit" /><ProjectReference Include="${reference}" /></ItemGroup></Project>`;
+function testProjectFile(reference, targetFramework = "net10.0") {
+  const target = targetFramework ? `<TargetFramework>${targetFramework}</TargetFramework>` : "";
+  return `<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup>${target}<IsTestProject>true</IsTestProject></PropertyGroup><ItemGroup><PackageReference Include="Microsoft.NET.Test.Sdk" /><PackageReference Include="xunit" /><ProjectReference Include="${reference}" /></ItemGroup></Project>`;
 }
 
 function createRepo(t, files) {

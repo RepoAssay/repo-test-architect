@@ -8,7 +8,8 @@ The C# adapter is experimental. Its bounded slices prove that one conventional S
 | --- | --- | --- |
 | Project shape | Exactly one root SDK-style test `.csproj`, or one unique literal production/test edge using `Microsoft.NET.Sdk` or a direct derivative such as the Web SDK; unrelated projects remain separate | Two valid test edges, overlapping aggregate roots, and non-SDK projects are not merged into one owner |
 | Project-pair edge | The selected test project has exactly one literal repository-contained `ProjectReference` resolving to the selected production project; the production project has no project edges | Property-expanded, wildcard, absolute, escaping, missing, additional, reverse, ambiguous, and transitive edges block command selection |
-| Target framework | One static `<TargetFramework>` per project; a pair uses the same literal value | `<TargetFrameworks>`, repeated, property-expanded, or mismatched pair values block command selection |
+| Inherited metadata | The nearest exact-cased, non-symbolic, repository-local `Directory.Build.props` may supply literal unconditional `<TargetFramework>`, `<IsTestProject>`, and supported test-package `Include` declarations; project-local values retain precedence | Imports, conditional relevant groups/items, property expansion, inherited project/compile items, and symbolic props paths block command selection |
+| Target framework | One static local or inherited `<TargetFramework>` per project; a pair uses the same literal value | `<TargetFrameworks>`, repeated, property-expanded, or mismatched pair values block command selection |
 | Source ownership | Default SDK compile ownership below the selected production project directory; collocated single-project source remains owned below the audit root | Test-project helpers are not candidates; `bin`, `obj`, dependencies, fixtures, and custom `Compile` graphs are excluded |
 | Test project | `Microsoft.NET.Test.Sdk` or static `<IsTestProject>true</IsTestProject>` plus a supported framework package | The exact test SDK remains required for the bounded native command |
 | Frameworks | xUnit `[Fact]`/`[Theory]`, NUnit `[Test]`/`[TestCase]`/`[TestCaseSource]`, and MSTest `[TestMethod]`/`[DataTestMethod]` | Package and runnable attributed-test evidence must agree |
@@ -35,7 +36,7 @@ The ordinary adapter audit does not execute `dotnet`, MSBuild, NuGet restore, so
 dotnet test tests/CheckoutRules.Tests/CheckoutRules.Tests.csproj
 ```
 
-`examples/csharp-sdk-unique-pair` adds unrelated Worker and benchmark projects around one Pricing/Pricing.Tests edge. Detection collapses only the exact pair, direct audit excludes unrelated source, and the fixture locks the command plus an asserted inline `out var` result from a `private readonly` target-typed field through golden and model-consistency artifacts. It passes:
+`examples/csharp-sdk-unique-pair` adds unrelated Worker and benchmark projects around one Pricing/Pricing.Tests edge. Its root `Directory.Build.props` supplies the shared static target framework. Detection collapses only the exact pair, direct audit excludes unrelated source, and the fixture locks the inherited setup signal, command, and asserted inline `out var` result from a `private readonly` target-typed field through golden and model-consistency artifacts. It passes:
 
 ```sh
 dotnet test tests/Pricing.Tests/Pricing.Tests.csproj
@@ -51,17 +52,19 @@ The receiver/result follow-up preserves all four candidate classifications and a
 
 The second pinned probe audits [`jjosh102/sharp-cast`](https://github.com/jjosh102/sharp-cast) at `57cd4f345af3d98698f9227b6b4de610c131686c`. Its four-project repository contains one unique xUnit-to-library edge plus unrelated Blazor and benchmark projects. The adapter selects the exact pair, emits a command that passes 165/165 upstream tests, and excludes every unrelated source file. Its field-receiver follow-up moves `JsonToCSharpConverter` and `TypeScriptToCSharpConverter` into covered evidence, changing the result from `7 / 4 / 1` with five relationships to `5 / 6 / 1` with eight. The inline-out follow-up preserves those counts while upgrading both JSON relationships and `CSharpToTypeScriptConverter` from called to asserted, producing six asserted and two called relationships. Five audits are digest-stable with a 28.3 ms median. See the [C# Sharp Cast Live Validation Report](csharp-sharp-cast-validation-report.md).
 
+The third pinned probe audits [`kthompson/glob`](https://github.com/kthompson/glob) at `719a8593b7c7c085c832e5580f753355ce7ded85`. The selected library/test pair inherits `net8.0` from the root props file while an unrelated conditional build-tool package remains outside the admitted metadata. Detection keeps the Blazor app and benchmark separate, the exact test command has no blockers, and five audits are digest-stable with a 22.5 ms median. The local net8 test host passed all 179 tests through .NET 10's major-version roll-forward after full Git history was restored. See the [C# Glob Live Validation Report](csharp-glob-validation-report.md).
+
 ## Explicit Exclusions
 
 The first slice does not claim:
 
 - `.sln` or `.slnx` ownership
 - more than one selectable production/test project edge, transitive project edges, multiple references, or solution-wide ownership
-- `Directory.Build.props`, `Directory.Build.targets`, imported SDKs, conditional properties, or evaluated MSBuild graphs
+- `Directory.Build.targets`, imported SDKs, imported or chained props, conditional relevant metadata, property-expanded inherited metadata, or evaluated MSBuild graphs
 - custom, removed, or explicitly included `Compile` items
 - multi-targeted projects
 - central package management, custom test adapters, Microsoft.Testing.Platform-only layouts, or framework versions inferred through imported properties
 - namespace, alias, partial-type joining, generic-type, overload, target-typed construction outside the exact supported field shape, receiver/result reassignment, mutable/static/interface/property/inherited/helper field identity, helper-return, predeclared/explicitly typed/multiple/nested `out` declarations, `ref`/`out` forwarding, nested local-function, deferred-lambda, mock, reflection, source-generator, or dependency-graph resolution
 - cross-project evidence outside the one verified production/test edge, or any transitive evidence
 
-Literal pair selection now covers a unique test edge amid unrelated projects without claiming solution ownership, and Sharp Cast proves exact test-class field receivers initialized through target-typed `new()` plus one stable inline `out var` result. Inherited build/package metadata is now the clearest ownership pressure; explicitly typed or multi-output flow remains evidence pressure only when another pinned repository justifies it.
+Literal pair selection now covers a unique test edge amid unrelated projects without claiming solution ownership, Sharp Cast proves exact test-class field receivers initialized through target-typed `new()` plus one stable inline `out var` result, and Glob proves bounded nearest-file inherited metadata. Central package versions, broader MSBuild evaluation, and explicitly typed or multi-output flow remain pressure only when another pinned repository justifies them.

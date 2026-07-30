@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { analyzeDirectoryBuildProps, findNearestDirectoryBuildProps } from "./directory-build-props.js";
 
 const IGNORED_DIRECTORIES = new Set([
   ".git",
@@ -15,10 +16,24 @@ const IGNORED_DIRECTORIES = new Set([
 ]);
 
 export function auditCSharpRepo(root, options = {}) {
+  const requestedRepositoryRoot = path.resolve(options.repositoryRoot ?? root);
+  const auditRoot = path.resolve(root);
+  const rootFromRepository = path.relative(requestedRepositoryRoot, auditRoot);
+  const metadataRoot = rootFromRepository === "" || (!rootFromRepository.startsWith("..") && !path.isAbsolute(rootFromRepository))
+    ? requestedRepositoryRoot
+    : auditRoot;
   const files = readRepoFiles(root);
   const projects = files
     .filter((file) => file.path.endsWith(".csproj"))
-    .map((file) => ({ ...file, analysis: analyzeProject(file.content) }));
+    .map((file) => {
+      const repositoryProjectPath = normalizePath(path.relative(metadataRoot, path.resolve(auditRoot, file.path)));
+      const propsFile = findNearestDirectoryBuildProps(metadataRoot, repositoryProjectPath);
+      const propsAnalysis = propsFile ? analyzeDirectoryBuildProps(propsFile.content) : undefined;
+      const inherited = propsAnalysis
+        ? { ...propsAnalysis, blockers: [...(propsFile.pathBlockers ?? []), ...propsAnalysis.blockers] }
+        : undefined;
+      return { ...file, analysis: analyzeProject(file.content, inherited, propsFile?.path) };
+    });
   const layout = selectProjectLayout(projects);
   const testFrameworks = layout.testProject?.analysis.testFrameworks ?? [];
   const testFiles = files.filter((file) => (
@@ -128,19 +143,36 @@ function readRepoFiles(root) {
   return files.sort((left, right) => left.path.localeCompare(right.path));
 }
 
-function analyzeProject(content) {
-  const packageReferences = [...content.matchAll(/<PackageReference\b[^>]*\bInclude\s*=\s*["']([^"']+)["'][^>]*>/gi)]
+function analyzeProject(content, inherited, inheritedPath) {
+  const localPackageReferences = [...content.matchAll(/<PackageReference\b[^>]*\bInclude\s*=\s*["']([^"']+)["'][^>]*>/gi)]
     .map((match) => match[1].toLowerCase());
+  const packageReferences = [...(inherited?.packageReferences ?? []), ...localPackageReferences];
   const testFrameworks = [];
   if (packageReferences.some((name) => name === "xunit" || name === "xunit.v3")) testFrameworks.push("xunit");
   if (packageReferences.some((name) => name === "nunit")) testFrameworks.push("nunit");
   if (packageReferences.some((name) => name === "mstest.testframework")) testFrameworks.push("mstest");
   const targetFrameworkMatches = [...content.matchAll(/<TargetFramework>\s*([^<]+?)\s*<\/TargetFramework>/gi)];
-  const targetFramework = targetFrameworkMatches.length === 1 && !targetFrameworkMatches[0][1].includes("$")
-    ? targetFrameworkMatches[0][1]
+  const localTargetFramework = targetFrameworkMatches.length === 1 && !targetFrameworkMatches[0][1].includes("$")
+    ? targetFrameworkMatches[0][1].trim()
     : undefined;
+  const targetFramework = localTargetFramework ?? (targetFrameworkMatches.length === 0 ? inherited?.targetFramework : undefined);
   const sdk = content.match(/<Project\b[^>]*\bSdk\s*=\s*["']([^"']+)["']/i)?.[1];
   const hasTestSdk = packageReferences.includes("microsoft.net.test.sdk");
+  const localIsTestProjectMatches = [...content.matchAll(/<IsTestProject>\s*([^<]+?)\s*<\/IsTestProject>/gi)];
+  const localIsTestProject = localIsTestProjectMatches.length === 1
+    ? localIsTestProjectMatches[0][1].trim().toLowerCase()
+    : undefined;
+  const usesInheritedMetadata = Boolean(
+    (targetFrameworkMatches.length === 0 && inherited?.targetFramework) ||
+    (localIsTestProject === undefined && inherited?.isTestProject !== undefined) ||
+    inherited?.packageReferences.some((name) => [
+      "microsoft.net.test.sdk",
+      "xunit",
+      "xunit.v3",
+      "nunit",
+      "mstest.testframework"
+    ].includes(name))
+  );
   const projectReferenceTags = [...content.matchAll(/<ProjectReference\b[^>]*>/gi)].map((match) => match[0]);
   const projectReferences = projectReferenceTags
     .map((tag) => tag.match(/\bInclude\s*=\s*["']([^"']+)["']/i)?.[1])
@@ -152,14 +184,16 @@ function analyzeProject(content) {
     targetFramework,
     testFrameworks,
     hasTestSdk,
-    isTestProject: /<IsTestProject>\s*true\s*<\/IsTestProject>/i.test(content) || hasTestSdk,
+    isTestProject: (localIsTestProject === "true" || (localIsTestProject === undefined && inherited?.isTestProject === true)) || hasTestSdk,
     projectReferences,
     hasProjectReferences: projectReferenceTags.length > 0,
     hasDynamicProjectReferences: projectReferences.length !== projectReferenceTags.length ||
       projectReferences.some((reference) => /[$*?]/.test(reference)) ||
       projectReferenceTags.some((tag) => /\bCondition\s*=/i.test(tag)),
     hasDynamicCompileItems: /<EnableDefaultCompileItems>\s*false\s*<\/EnableDefaultCompileItems>/i.test(content) || /<Compile\b[^>]*(?:Include|Remove|Update)\s*=/i.test(content),
-    hasMultipleTargetFrameworks: /<TargetFrameworks>/i.test(content) || targetFrameworkMatches.length > 1
+    hasMultipleTargetFrameworks: /<TargetFrameworks>/i.test(content) || targetFrameworkMatches.length > 1,
+    inheritedMetadataPath: usesInheritedMetadata ? inheritedPath : undefined,
+    inheritedBlockers: inherited?.blockers ?? []
   };
 }
 
@@ -225,6 +259,14 @@ function buildProfile(root, projects, layout, sourceFiles, testFiles) {
   const project = layout.testProject;
   const analysis = project?.analysis ?? analyzeProject("");
 
+  const inheritedBlockers = [...new Set([
+    ...(layout.sourceProject?.analysis.inheritedBlockers ?? []),
+    ...(layout.testProject?.analysis.inheritedBlockers ?? [])
+  ])];
+  if (inheritedBlockers.length > 0) {
+    blockers.push(`Directory.Build.props requires unsupported MSBuild evaluation: ${inheritedBlockers.join(", ")}.`);
+  }
+
   if (layout.kind === "single") {
     if (!analysis.sdkStyle) blockers.push("Only static SDK-style Microsoft.NET.Sdk projects are supported in the first C# slice.");
     if (!analysis.targetFramework) blockers.push("A single static TargetFramework is required for bounded C# command selection.");
@@ -263,6 +305,9 @@ function buildProfile(root, projects, layout, sourceFiles, testFiles) {
   if (layout.kind === "pair") detectedConventions.push("literal production/test project pair");
   if (layout.unrelatedProjectCount > 0) detectedConventions.push("unique literal test edge among unrelated projects");
   if (analysis.isTestProject) detectedConventions.push(".NET test project");
+  if (layout.sourceProject?.analysis.inheritedMetadataPath || layout.testProject?.analysis.inheritedMetadataPath) {
+    detectedConventions.push("inherited Directory.Build.props metadata");
+  }
   if (testFiles.length > 0) detectedConventions.push("attributed C# tests");
   const existingTestLocations = [...new Set(testFiles.map((file) => (
     file.path.includes("/") ? `${path.posix.dirname(file.path)}/ attributed tests` : "project-root attributed tests"
@@ -272,6 +317,10 @@ function buildProfile(root, projects, layout, sourceFiles, testFiles) {
   if (project) setupSignals.push(project.path);
   if (analysis.sdk) setupSignals.push(analysis.sdk);
   if (analysis.targetFramework) setupSignals.push(analysis.targetFramework);
+  for (const inheritedPath of [...new Set([
+    layout.sourceProject?.analysis.inheritedMetadataPath,
+    layout.testProject?.analysis.inheritedMetadataPath
+  ].filter(Boolean))]) setupSignals.push(inheritedPath);
   const testCommand = project && blockers.length === 0 ? `dotnet test ${project.path}` : undefined;
 
   return {

@@ -34,6 +34,30 @@ describe("project auditor", () => {
     );
   });
 
+  it("passes repository-owned Directory.Build.props into a nested C# audit", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-project-csharp-inherited-props-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    const projectRoot = path.join(root, "tests", "Core.Tests");
+    fs.mkdirSync(projectRoot, { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "Directory.Build.props"),
+      "<Project><PropertyGroup><TargetFramework>net10.0</TargetFramework><IsTestProject>true</IsTestProject></PropertyGroup><ItemGroup><PackageReference Include=\"Microsoft.NET.Test.Sdk\" /><PackageReference Include=\"xunit\" /></ItemGroup></Project>\n"
+    );
+    fs.writeFileSync(path.join(projectRoot, "Core.Tests.csproj"), "<Project Sdk=\"Microsoft.NET.Sdk\" />\n");
+    fs.writeFileSync(
+      path.join(projectRoot, "CoreTests.cs"),
+      "public class CoreTests { [Fact] public void Runs() { Assert.True(true); } }\n"
+    );
+
+    const result = auditDetectedProjects(root);
+    const project = result.audits.find((entry) => entry.projectRoot === "tests/Core.Tests");
+
+    assert.ok(project);
+    assert.equal(project.audit.profile.testCommand, "dotnet test Core.Tests.csproj");
+    assert.deepEqual(project.audit.profile.blockers, []);
+    assert.ok(project.audit.profile.setupSignals.includes("Directory.Build.props"));
+  });
+
   it("audits Cargo workspace packages independently with exact package commands", () => {
     const result = auditDetectedProjects(path.resolve("examples/rust-cargo-workspace-basic"));
 
