@@ -451,3 +451,11 @@ Decision: when NUnit or MSTest is selected, treat top-level static `CollectionAs
 Rationale: pinned S7.Net uses MSTest `CollectionAssert.AreEqual(...)` around direct `ConnectionRequest` and `TsapPair` calls and around the bounded helper's sole `String.ToByteArray(...)` call. Exactly those three relationships move from called to asserted, retaining 35 untested, 13 covered, 1 deferred, and 19 relationships. Five audits share digest `fe016f99fc7ab972eb6048dcc9e7e7c0dabe190eed4ffb2a8f08964ecadbfc9e` with a 113 ms median.
 
 Revisit when: a pinned repository justifies namespace/import provenance for assertion owners, constraint-based NUnit assertion forms, or another framework-owned assertion family without broad name-only inference.
+
+### 2026-07-30: reject unqualified well-known System type collisions
+
+Decision: when a C# test file contains `using System;`, do not treat an unqualified call or construction of a well-known root `System` type name as evidence for a same-named source type. Preserve dotted source qualifications and exact aliases whose right-hand side matches the unique source namespace/type, and reject explicit `System.Type` qualifications across every existing evidence path.
+
+Rationale: pinned S7.Net's `DateTimeLongTests.cs` constructs `System.DateTime`, but name-only matching also attached that test file to `S7.Net.Types.DateTime`. The guard removes exactly that false called relationship while retaining the source class's real asserted tests and the explicit `Boolean = S7.Net.Types.Boolean` alias. Candidate counts remain 35 untested, 13 covered, and 1 deferred; relationships move from 19 to 18. Five audits share digest `616cefd4bb73e781157cc1182f0677153955b1fc720bdbf2c3bf529f0dd9c856` with a 141 ms median.
+
+Revisit when: parser-backed namespace/import resolution can replace the bounded root-type collision set and distinguish every qualified type without compiling the target repository.

@@ -23,9 +23,9 @@ Project detection selects `S7.Net/S7.Net.csproj` and `S7.Net.UnitTest/S7.Net.Uni
 | Untested candidates | 35 |
 | Covered but risky | 13 |
 | Deferred/skipped | 1 |
-| Evidence relationships | 19 |
+| Evidence relationships | 18 |
 | Asserted / called after direct-result follow-up | 14 / 5 |
-| Latest direct asserted / called / indirect asserted | 15 / 3 / 1 |
+| Latest direct asserted / called / indirect asserted | 15 / 2 / 1 |
 
 Five repeated audits produced one root-normalized SHA-256 digest, `4d873dc46f7baed53e0a8ba83816b6e3d109e4b85fa0d160a8425157c64879e1`, with an 88 ms median from samples `124, 88, 88, 89, 85`. The profile records `literal target-conditioned package references` alongside the existing literal project-pair and multi-target conventions.
 
@@ -66,6 +66,12 @@ Uncalled, public or instance, overloaded, multi-source, nested, lambda-owned, lo
 The selected NUnit or MSTest framework now admits top-level static `CollectionAssert.*` and `StringAssert.*` statements to the same bounded assertion-usage paths as `Assert.*`: inline direct calls, stable direct or receiver results, exact inline `out var` results, immutable test-field receivers, and the one-hop helper body. xUnit projects keep those owner spellings called rather than asserted, preventing a lookalike custom class from gaining framework credit there. Existing mutation, nesting, deferred-lambda, and deeper-flow rejections remain unchanged.
 
 On S7.Net, `ConnectionRequest` and `TsapPair` move from direct called to direct asserted usage inside visible `CollectionAssert.AreEqual(...)` statements, while `String` moves from indirect called to indirect asserted through its bounded helper. Counts remain 35 untested, 13 covered, 1 deferred, and 19 relationships, now split into 15 asserted direct, 3 called direct, and 1 asserted indirect. Five audits produced digest `fe016f99fc7ab972eb6048dcc9e7e7c0dabe190eed4ffb2a8f08964ecadbfc9e` with a 113 ms median from samples `162, 113, 112, 115, 111`.
+
+### Well-known System type-collision follow-up
+
+When a test file imports the root `System` namespace, unqualified references to a bounded set of well-known root types such as `DateTime`, `Guid`, and `String` no longer prove a same-named source type. A dotted source qualification remains eligible, as does an exact alias whose right-hand side matches the unique source namespace and type; an explicit `System.Type` qualification remains rejected. The guard applies consistently to direct calls, constructors, stable results, receivers, exception assertions, and one-hop helper evidence.
+
+S7.Net exposes the false positive in `DateTimeLongTests.cs`: its unqualified `new DateTime(...)` expressions are `System.DateTime`, not calls to `S7.Net.Types.DateTime`. Removing that one called relationship leaves every candidate classification and all other evidence unchanged. The exact `Boolean = S7.Net.Types.Boolean` alias remains directly asserted. Counts are 35 untested, 13 covered, 1 deferred, and 18 relationships, split into 15 asserted direct, 2 called direct, and 1 asserted indirect. Five audits produced digest `616cefd4bb73e781157cc1182f0677153955b1fc720bdbf2c3bf529f0dd9c856` with a 141 ms median from samples `191, 142, 137, 141, 134`.
 
 ## Native Validation
 

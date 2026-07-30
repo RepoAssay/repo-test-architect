@@ -10,7 +10,7 @@ The current implementation can:
 - audit supported, bounded Kotlin/JVM fixtures through the same shared artifact model
 - audit conventional Go modules and literal repository-contained `go.work` members through a supported bounded adapter
 - audit conventional Cargo packages and literal repository-contained workspace members through an experimental bounded Rust adapter
-- audit one conventional SDK-style C# test project or one unique literal production/test project edge, including literal multi-target and finite target-conditioned package shapes, bounded nearest-file build and central-package props, exact immutable test-field receivers, stable direct-call results, inline `out` results, framework exception and collection/string assertions, and one-hop test helpers, through an experimental bounded .NET adapter
+- audit one conventional SDK-style C# test project or one unique literal production/test project edge, including literal multi-target and finite target-conditioned package shapes, bounded nearest-file build and central-package props, exact immutable test-field receivers, stable direct-call results, inline `out` results, framework exception and collection/string assertions, one-hop test helpers, and guarded well-known `System` type collisions, through an experimental bounded .NET adapter
 - detect polyglot project roots and report unsupported ecosystems without hiding them
 - produce a complete repository analysis, findings, ranking, plan, execution hints, and verification commands in one audit pass
 - classify source files by likely test value and defer low-value direct tests
