@@ -43,6 +43,7 @@ export const requiredFiles = [
   "docs/csharp-tdd-validation-report.md",
   "docs/csharp-sharp-cast-validation-report.md",
   "docs/csharp-central-packages-validation-report.md",
+  "docs/csharp-multi-target-validation-report.md",
   "docs/rust-alpha-support.md",
   "docs/rust-ripgrep-validation-report.md",
   "examples/go-testing-basic/go.mod",

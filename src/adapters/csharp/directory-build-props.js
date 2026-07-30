@@ -35,6 +35,7 @@ export function findNearestMsbuildFile(repoRoot, projectPath, fileName, symbolic
 
 export function analyzeDirectoryBuildProps(content) {
   const source = content.replace(/<!--[\s\S]*?-->/g, " ");
+  const targetFrameworkAnalysis = analyzeTargetFrameworkDeclaration(source);
   const blockers = [];
   if (/<Import\b/i.test(source)) blockers.push("imports");
   if (/<Project\b[^>]*\bCondition\s*=/i.test(source)) blockers.push("conditional metadata");
@@ -46,8 +47,6 @@ export function analyzeDirectoryBuildProps(content) {
   if (relevantPropertyGroups.some((match) => /\bCondition\s*=/i.test(match[1]))) blockers.push("conditional metadata");
   if (relevantItemGroups.some((match) => /\bCondition\s*=/i.test(match[1]))) blockers.push("conditional metadata");
 
-  const targetFrameworkTags = [...source.matchAll(/<TargetFramework\b([^>]*)>\s*([^<]+?)\s*<\/TargetFramework>/gi)];
-  const targetFrameworksTags = [...source.matchAll(/<TargetFrameworks\b/gi)];
   const isTestProjectTags = [...source.matchAll(/<IsTestProject\b([^>]*)>\s*([^<]+?)\s*<\/IsTestProject>/gi)];
   const compileSettingTags = [...source.matchAll(/<EnableDefaultCompileItems\b([^>]*)>\s*([^<]+?)\s*<\/EnableDefaultCompileItems>/gi)];
   const centralPackageTags = [...source.matchAll(/<ManagePackageVersionsCentrally\b([^>]*)>\s*([^<]+?)\s*<\/ManagePackageVersionsCentrally>/gi)];
@@ -59,18 +58,17 @@ export function analyzeDirectoryBuildProps(content) {
     blockers.push("conditional metadata");
   }
 
-  if ([...targetFrameworkTags, ...isTestProjectTags, ...compileSettingTags, ...centralPackageTags].some((match) => /\bCondition\s*=/i.test(match[1]))) {
+  if ([...isTestProjectTags, ...compileSettingTags, ...centralPackageTags].some((match) => /\bCondition\s*=/i.test(match[1]))) {
     blockers.push("conditional metadata");
   }
   if ([...packageReferenceTags.filter((tag) => TEST_PACKAGE.test(tag)), ...projectReferenceTags, ...compileItemTags]
     .some((tag) => /\bCondition\s*=/i.test(tag))) {
     blockers.push("conditional metadata");
   }
-  if (targetFrameworksTags.length > 0 || targetFrameworkTags.length > 1) blockers.push("multiple target frameworks");
+  blockers.push(...targetFrameworkAnalysis.blockers);
   if (isTestProjectTags.length > 1) blockers.push("repeated test metadata");
   if (centralPackageTags.length > 1) blockers.push("repeated central package metadata");
-  if (targetFrameworkTags.some((match) => match[2].includes("$")) ||
-    isTestProjectTags.some((match) => match[2].includes("$")) ||
+  if (isTestProjectTags.some((match) => match[2].includes("$")) ||
     centralPackageTags.some((match) => match[2].includes("$"))) {
     blockers.push("property-expanded metadata");
   }
@@ -87,9 +85,6 @@ export function analyzeDirectoryBuildProps(content) {
   const hasConditionalPackageReferenceGroups = itemGroups.some((match) => (
     /\bCondition\s*=/i.test(match[1]) && /<PackageReference\b/i.test(match[2])
   ));
-  const targetFramework = targetFrameworkTags.length === 1 && !targetFrameworkTags[0][2].includes("$")
-    ? targetFrameworkTags[0][2].trim()
-    : undefined;
   const isTestProjectValue = isTestProjectTags.length === 1 && !isTestProjectTags[0][2].includes("$")
     ? isTestProjectTags[0][2].trim().toLowerCase()
     : undefined;
@@ -98,7 +93,9 @@ export function analyzeDirectoryBuildProps(content) {
     : undefined;
 
   return {
-    targetFramework,
+    targetFramework: targetFrameworkAnalysis.targetFramework,
+    targetFrameworks: targetFrameworkAnalysis.targetFrameworks,
+    targetFrameworkProperty: targetFrameworkAnalysis.property,
     isTestProject: isTestProjectValue === "true" ? true : isTestProjectValue === "false" ? false : undefined,
     managePackageVersionsCentrally: centralPackageValue === "true" ? true : centralPackageValue === "false" ? false : undefined,
     packageReferences: packageReferences.map((name) => name.toLowerCase()),
@@ -106,6 +103,51 @@ export function analyzeDirectoryBuildProps(content) {
     hasConditionalPackageReferenceGroups,
     blockers: [...new Set(blockers)]
   };
+}
+
+export function analyzeTargetFrameworkDeclaration(content) {
+  const source = content.replace(/<!--[\s\S]*?-->/g, " ");
+  const singular = [...source.matchAll(/<TargetFramework\b([^>]*)>\s*([^<]+?)\s*<\/TargetFramework>/gi)]
+    .map((match) => ({ property: "TargetFramework", attributes: match[1], value: match[2].trim() }));
+  const plural = [...source.matchAll(/<TargetFrameworks\b([^>]*)>\s*([^<]+?)\s*<\/TargetFrameworks>/gi)]
+    .map((match) => ({ property: "TargetFrameworks", attributes: match[1], value: match[2].trim() }));
+  const declarations = [...singular, ...plural];
+  const blockers = [];
+  if (declarations.length > 1) blockers.push("repeated target framework metadata");
+  if (declarations.some((declaration) => /\bCondition\s*=/i.test(declaration.attributes))) {
+    blockers.push("conditional metadata");
+  }
+  const conditionalGroup = [...source.matchAll(/<PropertyGroup\b([^>]*)>([\s\S]*?)<\/PropertyGroup>/gi)]
+    .some((match) => /\bCondition\s*=/i.test(match[1]) && /<TargetFrameworks?\b/i.test(match[2]));
+  if (conditionalGroup ||
+    (/<Project\b[^>]*\bCondition\s*=/i.test(source) && declarations.length > 0) ||
+    (/<(?:Choose|When|Otherwise)\b/i.test(source) && declarations.length > 0)) {
+    blockers.push("conditional metadata");
+  }
+  if (declarations.some((declaration) => declaration.value.includes("$"))) blockers.push("property-expanded metadata");
+
+  const declaration = declarations.length === 1 ? declarations[0] : undefined;
+  const targetFrameworks = declaration ? parseTargetFrameworks(declaration.value, declaration.property) : [];
+  if (declaration && targetFrameworks.length === 0 && !declaration.value.includes("$")) {
+    blockers.push("invalid target framework metadata");
+  }
+
+  return {
+    hasDeclaration: declarations.length > 0,
+    property: declaration?.property,
+    targetFramework: targetFrameworks.length === 1 ? targetFrameworks[0] : undefined,
+    targetFrameworks,
+    blockers: [...new Set(blockers)]
+  };
+}
+
+function parseTargetFrameworks(value, property) {
+  const values = value.split(";").map((target) => target.trim());
+  if (property === "TargetFramework" && values.length !== 1) return [];
+  if (property === "TargetFrameworks" && values.length < 2) return [];
+  if (values.some((target) => !/^[A-Za-z0-9][A-Za-z0-9._+-]*$/.test(target))) return [];
+  if (new Set(values.map((target) => target.toLowerCase())).size !== values.length) return [];
+  return values;
 }
 
 export function analyzePackageReferenceTag(tag) {

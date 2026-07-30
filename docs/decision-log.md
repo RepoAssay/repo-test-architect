@@ -387,3 +387,11 @@ Decision: for each selected SDK-style project, read only the nearest exact-cased
 Rationale: pinned `efcore/EFCore.CheckConstraints` at `20f0df70cbde15df054dd9f3633b3b974051dc54` is a two-project repository whose versionless references resolve through central metadata enabled in `Directory.Build.props`. Its central file combines literal versions with a same-file `$(EFCoreVersion)` alias. The selected audit emits the exact test-project command with no blockers, reports `10 / 3 / 0` candidates with three direct relationships, and stays digest-stable across five runs at a 12.5 ms median. The unchanged native command restored, built, and passed all 118 tests.
 
 Revisit when: a pinned repository demonstrates that conditional framework-specific versions, safe `VersionOverride`, or a chained central props hierarchy provides enough practical gain to justify a larger static evaluator.
+
+### 2026-07-30: admit literal C# multi-target ownership
+
+Decision: admit one literal unconditional local or nearest-props `TargetFrameworks` declaration containing at least two unique static target monikers. For a production/test pair, require every test target to occur literally in the production target list, case-insensitively. Emit the unchanged test-project `dotnet test` command; do not select one target or infer compatibility between different monikers.
+
+Rationale: pinned `matthewrosse/ErrorOrAspNetCoreExtensions` at `b4244dd08bf5f3dd7b9ce1bea71a5abceb5a94bf` targets `net8.0;net9.0;net10.0` in production and `net10.0` in its xUnit project. The rule composes with its central package metadata, removes the two former multi-target blockers, records both target lists, and emits an unchanged command that passes 49/49 tests. Five audits share digest `5fb277f14deec2bfdba0a679b22d8011b5142691601550b6b487b653dea16067` with a 2.4 ms median. The checked production/test fixture locks the same superset shape and passes 2/2 native tests. A compatibility-shaped `net462` versus `netstandard2.0` case remains blocked, as do conditions, property expansion, repeated declarations, and invalid or duplicate lists.
+
+Revisit when: a pinned repository demonstrates that exact target-framework compatibility mapping or bounded target-conditioned package references provide enough practical gain to justify additional static semantics.

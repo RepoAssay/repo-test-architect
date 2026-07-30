@@ -14,6 +14,7 @@
     "architectures": [
       "dotnet-sdk-project",
       "dotnet-project-pair",
+      "dotnet-multi-target-project",
       "dotnet-test-project",
       "library"
     ],
@@ -21,6 +22,7 @@
     "detectedConventions": [
       "SDK-style project",
       "literal production/test project pair",
+      "literal multi-target framework ownership",
       ".NET test project",
       "attributed C# tests"
     ],
@@ -31,6 +33,7 @@
       "src/CheckoutRules/CheckoutRules.csproj",
       "tests/CheckoutRules.Tests/CheckoutRules.Tests.csproj",
       "Microsoft.NET.Sdk",
+      "net8.0;net9.0;net10.0",
       "net10.0"
     ],
     "confidence": "high",
