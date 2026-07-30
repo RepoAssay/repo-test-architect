@@ -37,11 +37,13 @@ describe("package contents", () => {
     assert.ok(requiredFiles.includes("src/diagnostics/diagnostics.js"));
     assert.ok(requiredFiles.includes("src/adapters/go/audit.js"));
     assert.ok(requiredFiles.includes("src/adapters/csharp/audit.js"));
+    assert.ok(requiredFiles.includes("src/adapters/csharp/directory-packages-props.js"));
     assert.ok(requiredFiles.includes("src/adapters/rust/audit.js"));
     assert.ok(requiredFiles.includes("docs/go-alpha-support.md"));
     assert.ok(requiredFiles.includes("docs/csharp-alpha-support.md"));
     assert.ok(requiredFiles.includes("docs/csharp-tdd-validation-report.md"));
     assert.ok(requiredFiles.includes("docs/csharp-sharp-cast-validation-report.md"));
+    assert.ok(requiredFiles.includes("docs/csharp-central-packages-validation-report.md"));
     assert.ok(requiredFiles.includes("docs/rust-alpha-support.md"));
     assert.ok(requiredFiles.includes("examples/go-testing-basic/go.mod"));
     assert.ok(requiredFiles.includes("examples/csharp-sdk-xunit-basic/CheckoutRules.Tests.csproj"));
@@ -49,6 +51,7 @@ describe("package contents", () => {
     assert.ok(requiredFiles.includes("examples/csharp-sdk-project-pair/tests/CheckoutRules.Tests/CheckoutRules.Tests.csproj"));
     assert.ok(requiredFiles.includes("examples/csharp-sdk-project-pair/tests/CheckoutRules.Tests/CheckoutServiceTests.cs"));
     assert.ok(requiredFiles.includes("examples/csharp-sdk-unique-pair/Directory.Build.props"));
+    assert.ok(requiredFiles.includes("examples/csharp-sdk-unique-pair/Directory.Packages.props"));
     assert.ok(requiredFiles.includes("examples/csharp-sdk-unique-pair/src/Pricing/Pricing.csproj"));
     assert.ok(requiredFiles.includes("examples/csharp-sdk-unique-pair/tests/Pricing.Tests/Pricing.Tests.csproj"));
     assert.ok(requiredFiles.includes("examples/csharp-sdk-unique-pair/tests/Pricing.Tests/PriceCalculatorTests.cs"));

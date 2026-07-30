@@ -24,6 +24,8 @@ describe("project auditor", () => {
     assert.equal(selectedPair.adapterId, "csharp");
     assert.equal(selectedPair.audit.profile.testCommand, "dotnet test tests/Pricing.Tests/Pricing.Tests.csproj");
     assert.deepEqual(selectedPair.audit.profile.blockers, []);
+    assert.ok(selectedPair.audit.profile.detectedConventions.includes("bounded central package management"));
+    assert.ok(selectedPair.audit.profile.setupSignals.includes("Directory.Packages.props"));
     assert.deepEqual(selectedPair.audit.coveredButRisky.map((target) => target.path), ["src/Pricing/PriceCalculator.cs"]);
     assert.deepEqual(
       result.audits.filter((entry) => entry.projectId !== ".").map((entry) => [entry.projectId, entry.audit.profile.testCommand]),
@@ -34,14 +36,18 @@ describe("project auditor", () => {
     );
   });
 
-  it("passes repository-owned Directory.Build.props into a nested C# audit", (t) => {
+  it("passes repository-owned C# props into a nested audit", (t) => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-project-csharp-inherited-props-"));
     t.after(() => fs.rmSync(root, { recursive: true, force: true }));
     const projectRoot = path.join(root, "tests", "Core.Tests");
     fs.mkdirSync(projectRoot, { recursive: true });
     fs.writeFileSync(
       path.join(root, "Directory.Build.props"),
-      "<Project><PropertyGroup><TargetFramework>net10.0</TargetFramework><IsTestProject>true</IsTestProject></PropertyGroup><ItemGroup><PackageReference Include=\"Microsoft.NET.Test.Sdk\" /><PackageReference Include=\"xunit\" /></ItemGroup></Project>\n"
+      "<Project><PropertyGroup><TargetFramework>net10.0</TargetFramework><IsTestProject>true</IsTestProject><ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally></PropertyGroup><ItemGroup><PackageReference Include=\"Microsoft.NET.Test.Sdk\" /><PackageReference Include=\"xunit\" /></ItemGroup></Project>\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "Directory.Packages.props"),
+      "<Project><ItemGroup><PackageVersion Include=\"Microsoft.NET.Test.Sdk\" Version=\"18.8.1\" /><PackageVersion Include=\"xunit\" Version=\"2.9.3\" /></ItemGroup></Project>\n"
     );
     fs.writeFileSync(path.join(projectRoot, "Core.Tests.csproj"), "<Project Sdk=\"Microsoft.NET.Sdk\" />\n");
     fs.writeFileSync(
@@ -56,6 +62,7 @@ describe("project auditor", () => {
     assert.equal(project.audit.profile.testCommand, "dotnet test Core.Tests.csproj");
     assert.deepEqual(project.audit.profile.blockers, []);
     assert.ok(project.audit.profile.setupSignals.includes("Directory.Build.props"));
+    assert.ok(project.audit.profile.setupSignals.includes("Directory.Packages.props"));
   });
 
   it("audits Cargo workspace packages independently with exact package commands", () => {
