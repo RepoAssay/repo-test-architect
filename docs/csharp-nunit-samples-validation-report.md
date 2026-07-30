@@ -32,6 +32,12 @@ The framework-driven custom-attribute examples stay deliberately conservative. `
 
 Five repository-wide audits produced one repository-root-normalized SHA-256 digest, `16359a2a5850c42421f997ae7d89adc78b4f766f7cec77b4c42e1f4fc2fe0489`, with a 7.1 ms median from samples `30.0, 9.7, 7.1, 6.9, 6.7` ms.
 
+### NUnit Legacy assertion follow-up
+
+The follow-up recognizes `ClassicAssert.*` only when NUnit is selected and the test file imports `NUnit.Framework.Legacy`, aliases `ClassicAssert` exactly to that owner, or uses the fully qualified owner. It applies across direct calls, stable results, and the existing one-hop test helper. A local declaration or unique source type named `ClassicAssert`, missing legacy provenance, or an MSTest/xUnit lookalike remains called rather than asserted.
+
+The pin's `MoneyTest.cs` imports the exact legacy namespace and uses `ClassicAssert` alongside `Assert.That`. Its two source files were already directly asserted through the constraint form, so the follow-up preserves 1 untested, 3 covered, 1 deferred, and 3 repository evidence relationships instead of double-counting or changing candidate state. Five audits retain the same normalized digest, `16359a2a5850c42421f997ae7d89adc78b4f766f7cec77b4c42e1f4fc2fe0489`, with an 8.5 ms median from samples `32.9, 11.7, 8.5, 8.5, 8.0` ms.
+
 ## Native Validation
 
 Each emitted command was executed from its owning project directory with only `--nologo` added. The five `net10.0`-only projects passed completely, and the `net10.0` target of `AssertSyntax` also passed:
@@ -54,4 +60,4 @@ The timeout/retry sample reports three explicitly excluded demonstrations in its
 
 This probe validates the existing repository-aware routing boundary: six collocated independent C# test projects retain distinct owners and commands while sharing bounded central package metadata from the repository root. It also confirms current NUnit 5 package detection, NUnit attributed-test discovery, constraint assertions, literal multi-target ownership, and conservative framework-callback evidence on one current official sample repository.
 
-No C# ownership or evidence rule is widened from this run. A future slice may investigate framework-owned custom attributes or broader `ClassicAssert` pressure, but only with provenance that distinguishes framework invocation from a direct test-body call.
+The initial run did not widen C# ownership or evidence. Its follow-up admits only provenance-backed NUnit Legacy assertions and leaves the live graph unchanged. A future slice may investigate framework-owned custom attributes, but only with provenance that distinguishes framework invocation from a direct test-body call.

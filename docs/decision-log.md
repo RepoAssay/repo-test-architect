@@ -467,3 +467,11 @@ Decision: keep collocated independent SDK test projects as separate detected own
 Rationale: pinned official `nunit/nunit-csharp-samples` at `2058fb69939911d647b817e0d7a871ba9e4d34a6` contains six independent NUnit 5 test projects sharing one root `Directory.Packages.props`. Repository-wide auditing selects all six with no blockers or skipped projects, emits six project-local commands, and remains digest-stable across five runs at a 7.1 ms median. All 238 .NET 10 tests pass; the sole additional `net48` leg requires Mono on macOS. Framework-driven custom attributes remain untested or naming-only rather than gaining invented direct evidence.
 
 Revisit when: an exact aggregate project, build file, or statically complete solution owner can prove one repository-level command without erasing project-local ownership or portability detail.
+
+### 2026-07-30: recognize provenance-backed NUnit ClassicAssert
+
+Decision: when NUnit is selected, treat `ClassicAssert.*` as assertion usage only if the test file has an exact `NUnit.Framework.Legacy` namespace import without a same-named source type, aliases `ClassicAssert` exactly to `NUnit.Framework.Legacy.ClassicAssert`, or uses that fully qualified owner. Apply it to the existing direct-call, stable-result, receiver, inline-`out`, immutable-field, and one-hop-helper paths. Reject local/source `ClassicAssert` collisions and non-NUnit lookalikes.
+
+Rationale: pinned official NUnit samples use `using NUnit.Framework.Legacy;` and `ClassicAssert` throughout `MoneyTest.cs`. The exact owner proof distinguishes NUnit's compatibility API from a same-named helper without broad namespace inference. `Money.cs` and `MoneyBag.cs` were already asserted through `Assert.That`, so five follow-up audits intentionally retain the prior repository digest with an 8.5 ms median. Dedicated positive and near-miss fixtures prove direct, stable-result, helper, alias, qualification, local/source collisions, and wrong-framework behavior.
+
+Revisit when: another pinned NUnit repository justifies static imports, non-default owner aliases, or additional legacy assertion owners without treating arbitrary assertion-shaped methods as framework proof.

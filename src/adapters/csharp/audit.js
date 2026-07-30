@@ -54,6 +54,7 @@ const SYSTEM_ROOT_TYPE_NAMES = new Set([
   "Uri",
   "Version"
 ]);
+const NUNIT_CLASSIC_ASSERTIONS = "nunit-classic-assertions";
 
 export function auditCSharpRepo(root, options = {}) {
   const requestedRepositoryRoot = path.resolve(options.repositoryRoot ?? root);
@@ -660,6 +661,7 @@ function collectTestEvidence(sourceFiles, testFiles, { testFrameworks = [] } = {
 
   for (const testFile of testFiles) {
     const masked = maskCSharpCommentsAndStrings(testFile.content);
+    const assertionFrameworks = selectAssertionFrameworks(masked, testFrameworks, sourceTypes);
     const typeReferenceContext = {
       importsSystemNamespace: /^\s*using\s+System\s*;/m.test(masked),
       explicitSourceAliases: collectExplicitSourceTypeAliases(masked, sourceTypeAliasPatterns)
@@ -670,18 +672,18 @@ function collectTestEvidence(sourceFiles, testFiles, { testFrameworks = [] } = {
     const exceptionAssertionTypes = collectExceptionAssertionAssertedTypes(
       masked,
       sourceTypes,
-      testFrameworks,
+      assertionFrameworks,
       typeReferenceContext
     );
     const helperEvidence = collectOneHopTestHelperEvidence(
       masked,
       sourceTypes,
-      testFrameworks,
+      assertionFrameworks,
       typeReferenceContext
     );
     for (const [typeName, sourcePath] of sourceTypes) {
       if (declaresType(masked, typeName)) continue;
-      const detectedUsage = csharpTypeCallUsage(masked, typeName, testFrameworks, typeReferenceContext);
+      const detectedUsage = csharpTypeCallUsage(masked, typeName, assertionFrameworks, typeReferenceContext);
       const usage = expectedExceptionTypes.has(typeName) || exceptionAssertionTypes.has(typeName)
         ? "asserted"
         : detectedUsage;
@@ -717,6 +719,18 @@ function collectTestEvidence(sourceFiles, testFiles, { testFrameworks = [] } = {
     values.sort((left, right) => left.testPath.localeCompare(right.testPath) || left.kind.localeCompare(right.kind));
   }
   return evidence;
+}
+
+function selectAssertionFrameworks(content, testFrameworks, sourceTypes) {
+  if (!testFrameworks.includes("nunit")) return testFrameworks;
+
+  const importsLegacyNamespace = /^\s*(?:global\s+)?using\s+NUnit\s*\.\s*Framework\s*\.\s*Legacy\s*;/m.test(content);
+  const aliasesClassicAssert = /^\s*(?:global\s+)?using\s+ClassicAssert\s*=\s*(?:global\s*::\s*)?NUnit\s*\.\s*Framework\s*\.\s*Legacy\s*\.\s*ClassicAssert\s*;/m.test(content);
+  const shadowsClassicAssert = /\b(?:class|record(?:\s+(?:class|struct))?|struct)\s+ClassicAssert\b/.test(content);
+  const unambiguousLegacyImport = importsLegacyNamespace && !sourceTypes.has("ClassicAssert");
+  if ((!unambiguousLegacyImport && !aliasesClassicAssert) || shadowsClassicAssert) return testFrameworks;
+
+  return [...testFrameworks, NUNIT_CLASSIC_ASSERTIONS];
 }
 
 function collectUniqueSourceTypes(sourceFiles) {
@@ -1326,7 +1340,13 @@ function isLocalResultAsserted(content, resultName, testFrameworks) {
   const stableContent = mutation === -1 ? content : content.slice(0, mutation);
   const escaped = escapeRegExp(resultName);
   const resultPattern = new RegExp(`\\b${escaped}\\b`);
-  const assertionPatterns = [/\b(?:Assert|CollectionAssert|StringAssert)\s*\./g, /\.Should\s*\(/g];
+  const staticAssertionOwners = testFrameworks.includes(NUNIT_CLASSIC_ASSERTIONS)
+    ? /\b(?:Assert|ClassicAssert|CollectionAssert|StringAssert)\s*\./g
+    : /\b(?:Assert|CollectionAssert|StringAssert)\s*\./g;
+  const assertionPatterns = [staticAssertionOwners, /\.Should\s*\(/g];
+  if (testFrameworks.includes("nunit")) {
+    assertionPatterns.push(/(?:global\s*::\s*)?NUnit\s*\.\s*Framework\s*\.\s*Legacy\s*\.\s*ClassicAssert\s*\./g);
+  }
   for (const assertionPattern of assertionPatterns) {
     for (const assertion of stableContent.matchAll(assertionPattern)) {
       if (braceDepthAt(stableContent, assertion.index) !== 0) continue;
@@ -1350,10 +1370,21 @@ function identifierMutationIndex(content, identifier) {
 
 function isAssertionStatement(statement, testFrameworks = []) {
   const supportsSpecializedAssertions = testFrameworks.includes("nunit") || testFrameworks.includes("mstest");
-  const assertionPattern = supportsSpecializedAssertions
-    ? /\b(?:Assert|CollectionAssert|StringAssert)\s*\.|\.Should\s*\(/
-    : /\bAssert\s*\.|\.Should\s*\(/;
-  const assertionIndex = statement.search(assertionPattern);
+  const supportsNunitClassicAssertions = testFrameworks.includes(NUNIT_CLASSIC_ASSERTIONS);
+  const staticAssertionPattern = supportsNunitClassicAssertions
+    ? /\b(?:Assert|ClassicAssert|CollectionAssert|StringAssert)\s*\.|\.Should\s*\(/
+    : supportsSpecializedAssertions
+      ? /\b(?:Assert|CollectionAssert|StringAssert)\s*\.|\.Should\s*\(/
+      : /\bAssert\s*\.|\.Should\s*\(/;
+  const staticAssertionIndex = statement.search(staticAssertionPattern);
+  const qualifiedClassicAssertionIndex = testFrameworks.includes("nunit")
+    ? statement.search(/(?:global\s*::\s*)?NUnit\s*\.\s*Framework\s*\.\s*Legacy\s*\.\s*ClassicAssert\s*\./)
+    : -1;
+  const assertionIndex = staticAssertionIndex === -1
+    ? qualifiedClassicAssertionIndex
+    : qualifiedClassicAssertionIndex === -1
+      ? staticAssertionIndex
+      : Math.min(staticAssertionIndex, qualifiedClassicAssertionIndex);
   return assertionIndex !== -1 && !statement.includes("=>");
 }
 
