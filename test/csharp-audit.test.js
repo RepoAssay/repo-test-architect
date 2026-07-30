@@ -119,6 +119,93 @@ describe("C# audit adapter", () => {
     assert.ok(audit.profile.setupSignals.includes("net9.0;net10.0"));
   });
 
+  it("audits a repository-owned xUnit Microsoft.Testing.Platform v2 project pair", (t) => {
+    const root = createRepo(t, {
+      "global.json": [
+        "{",
+        "  // The repository owns both the SDK and test runner.",
+        "  \"sdk\": { \"version\": \"10.0.300\" },",
+        "  \"test\": { \"runner\": \"Microsoft.Testing.Platform\" }",
+        "}"
+      ].join("\n"),
+      "Directory.Packages.props": [
+        "<Project><PropertyGroup><ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally></PropertyGroup><ItemGroup>",
+        "<PackageVersion Include=\"xunit.v3.mtp-v2\" Version=\"3.2.2\" />",
+        "<PackageVersion Include=\"Microsoft.Testing.Platform.MSBuild\" Version=\"2.2.3\" />",
+        "</ItemGroup></Project>"
+      ].join(""),
+      "src/Core/Core.csproj": productionProjectFile("net10.0"),
+      "src/Core/Core.cs": "public static class Core { public static int Run() => 1; }\n",
+      "tests/Core.Tests/Core.Tests.csproj": [
+        "<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><TargetFramework>net10.0</TargetFramework>",
+        "<OutputType>Exe</OutputType></PropertyGroup><ItemGroup>",
+        "<PackageReference Include=\"xunit.v3.mtp-v2\" />",
+        "<PackageReference Include=\"Microsoft.Testing.Platform.MSBuild\" />",
+        "<ProjectReference Include=\"../../src/Core/Core.csproj\" />",
+        "</ItemGroup></Project>"
+      ].join(""),
+      "tests/Core.Tests/CoreTests.cs": "public class CoreTests { [Fact] public void Runs() { Assert.Equal(1, Core.Run()); } }\n"
+    });
+
+    const audit = auditCSharpRepo(root);
+    assert.equal(audit.profile.testCommand, "dotnet test tests/Core.Tests/Core.Tests.csproj");
+    assert.deepEqual(audit.profile.blockers, []);
+    assert.deepEqual(audit.profile.testFrameworks, ["xunit"]);
+    assert.ok(audit.profile.detectedConventions.includes("repository-owned Microsoft.Testing.Platform v2 runner"));
+    assert.ok(audit.profile.setupSignals.includes("global.json"));
+    assert.ok(audit.profile.setupSignals.includes("Microsoft.Testing.Platform.MSBuild@2.2.3"));
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["src/Core/Core.cs"]);
+  });
+
+  it("uses exclusive net10 targets as the bounded MTP runner context when global.json does not pin an SDK", (t) => {
+    const root = createRepo(t, {
+      "global.json": "{\"test\":{\"runner\":\"Microsoft.Testing.Platform\"}}",
+      "Example.Tests.csproj": [
+        "<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><TargetFramework>net10.0</TargetFramework><OutputType>Exe</OutputType></PropertyGroup><ItemGroup>",
+        "<PackageReference Include=\"xunit.v3.mtp-v2\" Version=\"3.2.2\" />",
+        "<PackageReference Include=\"Microsoft.Testing.Platform.MSBuild\" Version=\"2.2.1\" />",
+        "</ItemGroup></Project>"
+      ].join(""),
+      "Source.cs": "public static class Source { public static int Run() => 1; }\n",
+      "SourceTests.cs": "public class SourceTests { [Fact] public void Runs() { Assert.Equal(1, Source.Run()); } }\n"
+    });
+
+    const audit = auditCSharpRepo(root);
+    assert.equal(audit.profile.testCommand, "dotnet test Example.Tests.csproj");
+    assert.deepEqual(audit.profile.blockers, []);
+    assert.ok(audit.profile.detectedConventions.includes("repository-owned Microsoft.Testing.Platform v2 runner"));
+  });
+
+  it("keeps incomplete Microsoft.Testing.Platform ownership blocked", (t) => {
+    const cases = [
+      ["missing global.json", undefined, "2.2.3"],
+      ["VSTest runner", "{\"sdk\":{\"version\":\"10.0.300\"},\"test\":{\"runner\":\"VSTest\"}}", "2.2.3"],
+      ["pre-.NET 10 SDK", "{\"sdk\":{\"version\":\"9.0.300\"},\"test\":{\"runner\":\"Microsoft.Testing.Platform\"}}", "2.2.3"],
+      ["MTP v1 host", "{\"sdk\":{\"version\":\"10.0.300\"},\"test\":{\"runner\":\"Microsoft.Testing.Platform\"}}", "1.9.1"],
+      ["malformed global.json", "{\"test\":", "2.2.3"]
+    ];
+
+    for (const [label, globalJson, hostVersion] of cases) {
+      const files = {
+        "Example.Tests.csproj": [
+          "<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><TargetFramework>net10.0</TargetFramework><OutputType>Exe</OutputType></PropertyGroup><ItemGroup>",
+          `<PackageReference Include="xunit.v3.mtp-v2" Version="3.2.2" />`,
+          `<PackageReference Include="Microsoft.Testing.Platform.MSBuild" Version="${hostVersion}" />`,
+          "</ItemGroup></Project>"
+        ].join(""),
+        "Source.cs": "public static class Source { public static int Run() => 1; }\n",
+        "SourceTests.cs": "public class SourceTests { [Fact] public void Runs() { Assert.Equal(1, Source.Run()); } }\n"
+      };
+      if (globalJson !== undefined) files["global.json"] = globalJson;
+      const audit = auditCSharpRepo(createRepo(t, files));
+      assert.equal(audit.profile.testCommand, undefined, label);
+      assert.ok(audit.profile.blockers.some((blocker) => blocker.startsWith("Native Microsoft.Testing.Platform v2 requires")), label);
+      if (label === "malformed global.json") {
+        assert.ok(audit.profile.blockers.includes("global.json requires bounded static metadata: malformed global.json."));
+      }
+    }
+  });
+
   it("audits a production target superset and a single-target test project", (t) => {
     const root = createRepo(t, {
       "src/Core/Core.csproj": "<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks></PropertyGroup></Project>",
