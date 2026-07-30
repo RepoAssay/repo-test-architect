@@ -674,6 +674,79 @@ describe("C# audit adapter", () => {
     ]);
   });
 
+  it("tracks one same-class private static test-helper hop as indirect evidence", (t) => {
+    const root = createRepo(t, {
+      "Example.Tests.csproj": projectFile("xunit"),
+      "AssertedHelperTarget.cs": "public static class AssertedHelperTarget { public static int Run() => 1; }\n",
+      "ResultHelperTarget.cs": "public static class ResultHelperTarget { public static int Run() => 1; }\n",
+      "CalledHelperTarget.cs": "public static class CalledHelperTarget { public static void Run() { } }\n",
+      "DirectWinsTarget.cs": "public static class DirectWinsTarget { public static void Run() { } }\n",
+      "Tests.cs": [
+        "public class Tests {",
+        "  [Fact] public void AssertedHelper() { VerifyAsserted(); }",
+        "  [Fact] public void ResultHelper() { VerifyResult(); }",
+        "  [Fact] public void CalledHelper() { CallOnly(); }",
+        "  [Fact] public void DirectWins() { VerifyDirectWins(); DirectWinsTarget.Run(); }",
+        "  private static void VerifyAsserted() { Assert.Equal(1, AssertedHelperTarget.Run()); }",
+        "  private static void VerifyResult() { var result = ResultHelperTarget.Run(); Assert.Equal(1, result); }",
+        "  private static void CallOnly() { CalledHelperTarget.Run(); }",
+        "  private static void VerifyDirectWins() { DirectWinsTarget.Run(); }",
+        "}"
+      ].join("\n")
+    });
+
+    assert.deepEqual(
+      auditCSharpRepo(root).coveredButRisky.map((target) => [target.path, target.existingTestEvidence[0]]),
+      [
+        ["AssertedHelperTarget.cs", { testPath: "Tests.cs", kind: "csharp-test-helper", strength: "indirect", viaUsage: "asserted" }],
+        ["CalledHelperTarget.cs", { testPath: "Tests.cs", kind: "csharp-test-helper", strength: "indirect", viaUsage: "called" }],
+        ["DirectWinsTarget.cs", { testPath: "Tests.cs", kind: "csharp-symbol-reference", strength: "direct", usage: "called" }],
+        ["ResultHelperTarget.cs", { testPath: "Tests.cs", kind: "csharp-test-helper", strength: "indirect", viaUsage: "asserted" }]
+      ]
+    );
+  });
+
+  it("rejects uncalled, non-private, overloaded, ambiguous, nested, lambda, and shadowed test helpers", (t) => {
+    const root = createRepo(t, {
+      "Example.Tests.csproj": projectFile("xunit"),
+      "UncalledTarget.cs": "public static class UncalledTarget { public static void Run() { } }\n",
+      "PublicTarget.cs": "public static class PublicTarget { public static void Run() { } }\n",
+      "OverloadedFirst.cs": "public static class OverloadedFirst { public static void Run() { } }\n",
+      "OverloadedSecond.cs": "public static class OverloadedSecond { public static void Run() { } }\n",
+      "AmbiguousFirst.cs": "public static class AmbiguousFirst { public static void Run() { } }\n",
+      "AmbiguousSecond.cs": "public static class AmbiguousSecond { public static void Run() { } }\n",
+      "NestedTarget.cs": "public static class NestedTarget { public static void Run() { } }\n",
+      "LambdaTarget.cs": "public static class LambdaTarget { public static void Run() { } }\n",
+      "ShadowedTarget.cs": "public static class ShadowedTarget { public static void Run() { } }\n",
+      "Tests.cs": [
+        "public class Tests {",
+        "  [Fact] public void Runs() { PublicHelper(); Overloaded(); Ambiguous(); Nested(); System.Action action = () => LambdaOnly(); action(); void Shadowed() { } Shadowed(); }",
+        "  private static void Uncalled() { UncalledTarget.Run(); }",
+        "  public static void PublicHelper() { PublicTarget.Run(); }",
+        "  private static void Overloaded() { OverloadedFirst.Run(); }",
+        "  private static void Overloaded(int value) { OverloadedSecond.Run(); }",
+        "  private static void Ambiguous() { AmbiguousFirst.Run(); AmbiguousSecond.Run(); }",
+        "  private static void Nested() { if (true) { NestedTarget.Run(); } }",
+        "  private static void LambdaOnly() { LambdaTarget.Run(); }",
+        "  private static void Shadowed() { ShadowedTarget.Run(); }",
+        "}"
+      ].join("\n")
+    });
+
+    assert.deepEqual(auditCSharpRepo(root).coveredButRisky, []);
+    assert.deepEqual(auditCSharpRepo(root).untestedCandidates.map((target) => target.path), [
+      "AmbiguousFirst.cs",
+      "AmbiguousSecond.cs",
+      "LambdaTarget.cs",
+      "NestedTarget.cs",
+      "OverloadedFirst.cs",
+      "OverloadedSecond.cs",
+      "PublicTarget.cs",
+      "ShadowedTarget.cs",
+      "UncalledTarget.cs"
+    ]);
+  });
+
   it("tracks concrete local receiver calls and one-hop asserted results", (t) => {
     const root = createRepo(t, {
       "Example.Tests.csproj": projectFile("xunit"),

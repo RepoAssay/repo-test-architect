@@ -25,7 +25,7 @@ Project detection selects `S7.Net/S7.Net.csproj` and `S7.Net.UnitTest/S7.Net.Uni
 | Deferred/skipped | 1 |
 | Evidence relationships | 19 |
 | Asserted / called after direct-result follow-up | 14 / 5 |
-| Latest direct asserted / called / naming | 13 / 5 / 1 |
+| Latest direct asserted / called / indirect called | 13 / 5 / 1 |
 
 Five repeated audits produced one root-normalized SHA-256 digest, `4d873dc46f7baed53e0a8ba83816b6e3d109e4b85fa0d160a8425157c64879e1`, with an 88 ms median from samples `124, 88, 88, 89, 85`. The profile records `literal target-conditioned package references` alongside the existing literal project-pair and multi-target conventions.
 
@@ -54,6 +54,12 @@ This moves only the `DateTime` and `DateTimeLong` relationships from called to a
 The next bounded rule recognizes exact single-expression lambdas owned by the selected framework's exception assertion methods: xUnit `Throws*`, NUnit `Throws*`/`Catch*`, and MSTest `ThrowsException*`/`ThrowsExactly*`. The assertion statement and lambda remain top-level, the lambda contains exactly one direct source `Type.Method(...)` or `new Type(...)` call, and optional async/await plus a trailing framework message are admitted. Block lambdas, wrapped or multiple source calls, captured assertion results, nested assertions, custom helpers, and wrong-framework method names remain excluded.
 
 S7.Net upgrades only `S7String` and `S7WString` from filename conventions to direct asserted relationships. Plain `String` remains naming-only because its exception checks call test helpers instead of the source inside the framework lambda. Counts remain 35 untested, 13 covered, 1 deferred, and 19 relationships, now split into 13 asserted direct, 5 called direct, and 1 naming. Five audits produced digest `bb035df93e749bfec265b13e1801e25ab4946a50a0cb36e6a853640926f7791d` with a 106 ms median from samples `151, 104, 106, 109, 103`.
+
+### One-hop test-helper follow-up
+
+The remaining `String` relationship is exercised through a same-class `private static` test helper. The bounded helper rule requires a unique non-generic block-bodied helper, one direct top-level helper call from a runnable test, and exactly one top-level source type call in the helper. It emits a distinct `csharp-test-helper` relationship with indirect strength and `viaUsage`, allowing downstream reports to distinguish helper reachability from a direct test-body call. Direct evidence from the same test file wins rather than creating a duplicate relationship.
+
+Uncalled, public or instance, overloaded, multi-source, nested, lambda-owned, locally shadowed, cross-class/file, chained, receiver, and helper-return shapes remain excluded. `String` moves from naming to indirect called evidence because its helper assertion uses `CollectionAssert`, which is not yet part of the bounded assertion vocabulary. Counts remain 35 untested, 13 covered, 1 deferred, and 19 relationships, split into 13 asserted direct, 5 called direct, and 1 called indirect. Five audits produced digest `7eb1d36f04368c7ca4dc845cde920870a809a2294cba81ae3fb14af192a5cf0e` with a 115 ms median from samples `159, 114, 115, 119, 112`.
 
 ## Native Validation
 
