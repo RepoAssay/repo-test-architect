@@ -50,6 +50,7 @@ Acceptance:
 - demo commands stay covered by `npm run demo:check`
 - docs explain that generation is deferred
 - README points to the demo path, product positioning, and release gate
+- before the next public-alpha announcement, record a concise captioned audit of a pinned public repository that shows project detection, the exact verification command, one high-value untested target, one proven existing-test relationship, and a conservative exclusion; attach it to the LinkedIn post with the install command and repository link
 - package and MCP Registry identities stay locked by the distribution checks
 
 ### Output Format Roadmap
