@@ -675,26 +675,28 @@ function declaresType(content, typeName) {
 
 function csharpTypeCallUsage(content, typeName) {
   const escaped = escapeRegExp(typeName);
+  const testBodies = collectRunnableTestBodies(content);
   const patterns = [
     new RegExp(`\\b${escaped}\\s*\\.\\s*[A-Za-z_][A-Za-z0-9_]*\\s*\\(`, "g"),
     new RegExp(`\\bnew\\s+${escaped}(?:\\s*<[^;{}()]+>)?\\s*\\(`, "g")
   ];
   let usage;
-  for (const pattern of patterns) {
-    for (const match of content.matchAll(pattern)) {
-      const statementStart = Math.max(content.lastIndexOf(";", match.index - 1), content.lastIndexOf("{", match.index - 1)) + 1;
-      const statementEndMatch = content.slice(match.index).search(/[;}]/);
-      const statementEnd = statementEndMatch === -1 ? content.length : match.index + statementEndMatch + 1;
-      const statement = content.slice(statementStart, statementEnd);
-      const current = /\bAssert\s*\.|\.Should\s*\(/.test(statement) ? "asserted" : "called";
-      if (current === "asserted") return current;
-      usage = current;
+  for (const body of testBodies) {
+    for (const pattern of patterns) {
+      for (const match of body.matchAll(pattern)) {
+        if (braceDepthAt(body, match.index) !== 0) continue;
+        const statement = statementAt(body, match.index);
+        if (statement.text.slice(0, match.index - statement.start).includes("=>")) continue;
+        const current = isAssertionStatement(statement.text) ? "asserted" : "called";
+        if (current === "asserted") return current;
+        usage = current;
+      }
     }
   }
   const fieldUsage = csharpReadonlyFieldReceiverUsage(content, typeName);
   if (fieldUsage === "asserted") return fieldUsage;
   if (fieldUsage === "called") usage = fieldUsage;
-  for (const body of collectRunnableTestBodies(content)) {
+  for (const body of testBodies) {
     const directResultUsage = csharpDirectTypeResultUsage(body, typeName);
     if (directResultUsage === "asserted") return directResultUsage;
     const receiverUsage = csharpLocalReceiverUsage(body, typeName);
