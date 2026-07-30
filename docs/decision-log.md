@@ -459,3 +459,11 @@ Decision: when a C# test file contains `using System;`, do not treat an unqualif
 Rationale: pinned S7.Net's `DateTimeLongTests.cs` constructs `System.DateTime`, but name-only matching also attached that test file to `S7.Net.Types.DateTime`. The guard removes exactly that false called relationship while retaining the source class's real asserted tests and the explicit `Boolean = S7.Net.Types.Boolean` alias. Candidate counts remain 35 untested, 13 covered, and 1 deferred; relationships move from 19 to 18. Five audits share digest `616cefd4bb73e781157cc1182f0677153955b1fc720bdbf2c3bf529f0dd9c856` with a 141 ms median.
 
 Revisit when: parser-backed namespace/import resolution can replace the bounded root-type collision set and distinguish every qualified type without compiling the target repository.
+
+### 2026-07-30: preserve independent C# owners in repository-wide audits
+
+Decision: keep collocated independent SDK test projects as separate detected owners with one exact command each, while passing the repository root into every project audit so bounded shared central package metadata remains available. Do not merge those projects through proximity, shared package props, or solution files.
+
+Rationale: pinned official `nunit/nunit-csharp-samples` at `2058fb69939911d647b817e0d7a871ba9e4d34a6` contains six independent NUnit 5 test projects sharing one root `Directory.Packages.props`. Repository-wide auditing selects all six with no blockers or skipped projects, emits six project-local commands, and remains digest-stable across five runs at a 7.1 ms median. All 238 .NET 10 tests pass; the sole additional `net48` leg requires Mono on macOS. Framework-driven custom attributes remain untested or naming-only rather than gaining invented direct evidence.
+
+Revisit when: an exact aggregate project, build file, or statically complete solution owner can prove one repository-level command without erasing project-local ownership or portability detail.
