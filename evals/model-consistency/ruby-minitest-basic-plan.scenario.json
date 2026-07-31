@@ -1,0 +1,61 @@
+{
+  "schemaVersion": "model-consistency-scenario/v1",
+  "id": "ruby-minitest-basic-plan",
+  "description": "Different model profiles should preserve the bounded Bundler command, naming-only Ruby evidence, and candidate actions.",
+  "sourceArtifact": {
+    "path": "evals/expected/ruby-minitest-basic.audit.json",
+    "schemaVersion": "audit/v1"
+  },
+  "toolCall": {
+    "toolName": "generate_test_plan",
+    "arguments": {}
+  },
+  "lockedFields": [
+    {
+      "path": "summary.verificationCommand",
+      "expected": "bundle exec rake test",
+      "reason": "The conventional default Rake::TestTask should retain its exact Bundler command."
+    },
+    {
+      "path": "summary.addTestCount",
+      "expected": 1,
+      "reason": "The untested service should remain the one add-test item."
+    },
+    {
+      "path": "summary.extendTestCount",
+      "expected": 1,
+      "reason": "The uniquely named parser test should remain one conservative extend-test item."
+    },
+    {
+      "path": "items[0].id",
+      "expected": "extend-test:lib/ruby_minitest_basic/parser.rb",
+      "reason": "The high-risk parser should retain stable first priority."
+    },
+    {
+      "path": "items[0].existingTestEvidence[0].kind",
+      "expected": "filename-convention",
+      "reason": "The first slice must not silently upgrade Ruby naming evidence to direct provenance."
+    },
+    {
+      "path": "items[0].existingTestEvidence[0].strength",
+      "expected": "naming",
+      "reason": "A basename match remains naming-only until direct Ruby evidence is implemented."
+    },
+    {
+      "path": "items[1].id",
+      "expected": "add-test:lib/ruby_minitest_basic/service.rb",
+      "reason": "The untested service should retain its stable add-test item."
+    }
+  ],
+  "allowedVariations": [
+    "summary wording",
+    "Ruby explanation wording",
+    "optional detail depth"
+  ],
+  "unexpectedVariations": [
+    "missing bundle exec rake test verification command",
+    "naming evidence upgraded to direct evidence",
+    "ambiguous source basenames credited",
+    "different plan action counts"
+  ]
+}

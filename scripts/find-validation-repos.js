@@ -284,6 +284,17 @@ export const validationProfiles = {
       { signal: "coverage-config", file: ".coveragerc", pattern: /^\s*\[(?:run|report)\]/m },
       { signal: "root-python-tests", entryPattern: /^(?:test|tests)$/ }
     ]
+  },
+  ruby: {
+    description: "Conventional Bundler-managed Ruby libraries with Minitest or RSpec tests",
+    repositoryQuery: '"ruby gem"',
+    language: "Ruby",
+    searches: [
+      { signal: "ruby-bundler", file: "Gemfile", pattern: /\bsource\s+["']https?:\/\// },
+      { signal: "ruby-gemspec", entryPattern: /\.gemspec$/ },
+      { signal: "root-ruby-source", entryPattern: /^lib$/ },
+      { signal: "root-ruby-tests", entryPattern: /^(?:test|spec)$/ }
+    ]
   }
 };
 
@@ -291,6 +302,7 @@ const lockfileNames = new Set([
   "Package.resolved",
   "bun.lock",
   "bun.lockb",
+  "Gemfile.lock",
   "gradle.lockfile",
   "package-lock.json",
   "poetry.lock",

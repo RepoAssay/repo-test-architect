@@ -40,6 +40,12 @@ describe("adapter coverage regression gate", () => {
         thresholds: { lines: 95, branches: 88, functions: 97 }
       },
       {
+        adapterId: "ruby",
+        sourcePath: "src/adapters/ruby/audit.js",
+        testPath: "test/ruby-audit.test.js",
+        thresholds: { lines: 90, branches: 80, functions: 90 }
+      },
+      {
         adapterId: "kotlin",
         sourcePath: "src/adapters/kotlin/audit.js",
         testPath: "test/kotlin-audit.test.js",

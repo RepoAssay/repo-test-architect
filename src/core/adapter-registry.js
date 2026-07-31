@@ -4,6 +4,7 @@ import { auditGoRepo } from "../adapters/go/audit.js";
 import { auditKotlinRepo } from "../adapters/kotlin/audit.js";
 import { auditPythonRepo } from "../adapters/python/audit.js";
 import { auditRustRepo } from "../adapters/rust/audit.js";
+import { auditRubyRepo } from "../adapters/ruby/audit.js";
 import { auditSwiftRepo } from "../adapters/swift/audit.js";
 
 /**
@@ -121,6 +122,20 @@ export const adapters = [
     emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"],
     audit(repoRoot, options = {}) {
       return auditRustRepo(repoRoot, {
+        changedPaths: options.changedPaths
+      });
+    }
+  },
+  {
+    id: "ruby",
+    ecosystems: ["ruby"],
+    languages: ["ruby"],
+    maturity: "experimental",
+    supportedTestFrameworks: ["minitest", "rspec"],
+    supportedProjectTypes: ["ruby-bundler"],
+    emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"],
+    audit(repoRoot, options = {}) {
+      return auditRubyRepo(repoRoot, {
         changedPaths: options.changedPaths
       });
     }

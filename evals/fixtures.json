@@ -67,6 +67,11 @@
     "path": "examples/rust-cargo-basic"
   },
   {
+    "name": "ruby-minitest-basic",
+    "adapter": "ruby",
+    "path": "examples/ruby-minitest-basic"
+  },
+  {
     "name": "rust-cargo-workspace-checkout",
     "adapter": "rust",
     "path": "examples/rust-cargo-workspace-basic/services/checkout"

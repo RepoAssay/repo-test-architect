@@ -120,6 +120,7 @@ describe("model consistency runner", () => {
         ["python-pytest-service-plan", []],
         ["python-uv-pytest-plan", []],
         ["react-testing-library-plan", []],
+        ["ruby-minitest-basic-plan", []],
         ["rust-cargo-basic-plan", []],
         ["rust-cargo-custom-targets-plan", []],
         ["rust-cargo-workspace-checkout-plan", []],
@@ -143,10 +144,10 @@ describe("model consistency runner", () => {
     assert.equal(summary.schemaVersion, "model-consistency-summary/v1");
     assert.equal(summary.profileName, "deterministic-baseline");
     assert.deepEqual(summary.summary, {
-      scenarioCount: 60,
-      passedScenarioCount: 60,
+      scenarioCount: 61,
+      passedScenarioCount: 61,
       failedScenarioCount: 0,
-      checkedFieldCount: 530,
+      checkedFieldCount: 537,
       failureCount: 0
     });
     assert.equal(summary.scenarios[22].scenarioId, "node-ava-basic-plan");
@@ -164,8 +165,8 @@ describe("model consistency runner", () => {
     assert.equal(comparison.baselineProfile, "deterministic-baseline");
     assert.equal(comparison.candidateProfile, "local-small");
     assert.deepEqual(comparison.summary, {
-      scenarioCount: 60,
-      alignedScenarioCount: 60,
+      scenarioCount: 61,
+      alignedScenarioCount: 61,
       driftedScenarioCount: 0,
       missingScenarioCount: 0,
       unexpectedScenarioCount: 0,
@@ -208,12 +209,12 @@ describe("model consistency runner", () => {
     const comparison = compareModelConsistencySummaries(baseline, candidate);
 
     assert.deepEqual(comparison.summary, {
-      scenarioCount: 61,
-      alignedScenarioCount: 58,
+      scenarioCount: 62,
+      alignedScenarioCount: 59,
       driftedScenarioCount: 1,
       missingScenarioCount: 1,
       unexpectedScenarioCount: 1,
-      checkedFieldDelta: -375,
+      checkedFieldDelta: -382,
       failureDelta: 3
     });
     assert.deepEqual(
@@ -270,6 +271,7 @@ describe("model consistency runner", () => {
         ["python-pytest-service-plan", "aligned"],
         ["python-uv-pytest-plan", "aligned"],
         ["react-testing-library-plan", "aligned"],
+        ["ruby-minitest-basic-plan", "aligned"],
         ["rust-cargo-basic-plan", "aligned"],
         ["rust-cargo-custom-targets-plan", "aligned"],
         ["rust-cargo-workspace-checkout-plan", "aligned"],

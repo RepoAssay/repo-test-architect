@@ -128,6 +128,7 @@ describe("CLI", () => {
     assert.match(output, /frameworks ava, bun-test, cypress, jest, mocha, node-test, playwright, react-testing-library, supertest, vitest/);
     assert.match(output, /go: supported; ecosystems go; languages go/);
     assert.match(output, /kotlin: supported; ecosystems jvm; languages kotlin, java/);
+    assert.match(output, /ruby: experimental; ecosystems ruby; languages ruby/);
     assert.match(output, /swift: supported; ecosystems apple, bazel, swift; languages objective-c, swift/);
   });
 
@@ -749,6 +750,19 @@ describe("CLI", () => {
     assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["src/parser.rs", "src/validator.rs"]);
   });
 
+  it("audits the experimental Ruby fixture through the CLI", () => {
+    const output = execFileSync(
+      process.execPath,
+      [cliPath, "audit", "examples/ruby-minitest-basic", "--adapter=ruby", "--format=json"],
+      { encoding: "utf8" }
+    );
+    const audit = JSON.parse(output);
+
+    assert.equal(audit.profile.testCommand, "bundle exec rake test");
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.path), ["lib/ruby_minitest_basic/service.rb"]);
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["lib/ruby_minitest_basic/parser.rb"]);
+  });
+
   it("audits the supported C# project-pair fixture through the CLI", () => {
     const output = execFileSync(
       process.execPath,
@@ -850,11 +864,11 @@ describe("CLI", () => {
   it("reports available adapters when an explicit adapter is unsupported", () => {
     assert.throws(
       () =>
-        execFileSync(process.execPath, [cliPath, "audit", fixturePath, "--adapter", "ruby"], {
+        execFileSync(process.execPath, [cliPath, "audit", fixturePath, "--adapter", "php"], {
           encoding: "utf8",
           stdio: "pipe"
         }),
-      /Unsupported adapter: ruby\. Available adapters: javascript, csharp, go, kotlin, python, rust, swift\./
+      /Unsupported adapter: php\. Available adapters: javascript, csharp, go, kotlin, python, rust, ruby, swift\./
     );
   });
 
