@@ -2,6 +2,14 @@
 
 This log records project-level decisions that shape architecture, scope, and public positioning.
 
+## Ruby RSpec Configuration Is One Owned Load Edge
+
+Decision: accept a safe literal `--require NAME` or `--require=NAME` only from the root `.rspec` when it resolves uniquely to one repository-owned root or `spec/` Ruby helper. Seed that helper at depth one in the existing three-edge graph and report `.rspec` as setup; do not execute options or follow dynamic helper loads.
+
+Rationale: pinned Faraday configures `spec_helper` once in `.rspec`, and that helper literally requires the library entrypoint. Ignoring the runner-owned edge left 22 naming-only links despite 639 passing RSpec examples. The bounded edge preserves the unchanged 8/22 candidate split while producing 32 exact and 13 naming relationships, including only five usage upgrades already proven by runnable-body rules. Interpolated, escaping, nested, ambiguous, or dynamic configuration remains uncredited.
+
+Revisit when: multiple public RSpec repositories require another literal option form, an alternate helper load path, or a different finite depth without admitting ambient or executable configuration.
+
 ## Ruby Usage Requires Owned Singleton Declarations And Runnable Assertions
 
 Decision: upgrade an existing `ruby-constant-reference` only when a conventional runnable Minitest method or RSpec example contains an exact constant-qualified call to a method declared directly by that uniquely reachable constant. Admit `def self.name`, a direct `class << self` method, and `.new` only when the class directly declares `initialize`. Mark the relationship `asserted` only for a same-line selected Minitest assertion or RSpec `expect`, or one unique unreassigned local result consumed by one of those assertions; otherwise mark it `called`.

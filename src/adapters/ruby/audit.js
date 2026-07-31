@@ -159,6 +159,7 @@ function readRepoFiles(root) {
 function shouldRead(currentPath) {
   const normalized = normalizePath(currentPath);
   return normalized.endsWith(RUBY_SOURCE_EXTENSION) ||
+    normalized === ".rspec" ||
     normalized === "Gemfile" ||
     normalized === "Gemfile.lock" ||
     normalized === "Rakefile" ||
@@ -168,6 +169,7 @@ function shouldRead(currentPath) {
 function buildProfile(root, files, sourceFiles, runnableTests) {
   const gemfile = files.find((file) => file.path === "Gemfile");
   const lockfile = files.find((file) => file.path === "Gemfile.lock");
+  const rspecOptions = files.find((file) => file.path === ".rspec");
   const rakefile = files.find((file) => file.path === "Rakefile");
   const gemspecs = files.filter((file) => !file.path.includes("/") && file.path.endsWith(".gemspec"));
   const conventionalTestTask = detectConventionalTestTask(rakefile?.content ?? "");
@@ -204,6 +206,7 @@ function buildProfile(root, files, sourceFiles, runnableTests) {
   const setupSignals = [];
   if (gemfile) setupSignals.push("Gemfile");
   if (lockfile) setupSignals.push("Gemfile.lock");
+  if (rspecOptions) setupSignals.push(".rspec");
   if (gemspecs.length === 1) setupSignals.push(gemspecs[0].path);
   if (rakefile) setupSignals.push("Rakefile");
   const testCommand = blockers.length === 0
@@ -287,6 +290,10 @@ function collectRubyTestEvidence(files, sourceFiles, runnableTests) {
       .filter((file) => file.path.endsWith(RUBY_SOURCE_EXTENSION))
       .map((file) => [normalizePath(file.path), file])
   );
+  const configuredRSpecHelpers = collectConfiguredRSpecHelpers(
+    files.find((file) => file.path === ".rspec")?.content ?? "",
+    rubyFilesByPath
+  );
   const declarationsBySourcePath = new Map(
     sourceFiles.map((file) => [normalizePath(file.path), collectRubySourceDeclarations(file.content)])
   );
@@ -303,7 +310,12 @@ function collectRubyTestEvidence(files, sourceFiles, runnableTests) {
 
   const evidenceByPath = new Map();
   for (const testFile of runnableTests) {
-    const reachableSources = collectReachableRubySources(testFile, rubyFilesByPath, hasBundledLibraryLoadPath);
+    const reachableSources = collectReachableRubySources(
+      testFile,
+      rubyFilesByPath,
+      hasBundledLibraryLoadPath,
+      testFile.framework === "rspec" ? configuredRSpecHelpers : []
+    );
     const reachableOwnersByConstant = new Map();
     for (const sourcePath of reachableSources.keys()) {
       for (const constant of constantsBySourcePath.get(sourcePath) ?? []) {
@@ -356,10 +368,31 @@ function collectRubyTestEvidence(files, sourceFiles, runnableTests) {
   return evidenceByPath;
 }
 
-function collectReachableRubySources(testFile, rubyFilesByPath, hasBundledLibraryLoadPath) {
+function collectConfiguredRSpecHelpers(content, rubyFilesByPath) {
+  const helpers = [];
+  for (const line of content.split(/\r?\n/)) {
+    const match = line.match(/^\s*--require(?:=|\s+)([A-Za-z0-9_-]+(?:\/[A-Za-z0-9_.-]+)*)\s*(?:#.*)?$/);
+    if (!match) continue;
+    if (match[1].split("/").some((segment) => segment === "." || segment === "..")) continue;
+    const request = withRubyExtension(match[1]);
+    const candidates = [...new Set([request, `spec/${request}`])]
+      .map(normalizePath)
+      .filter((candidate) => rubyFilesByPath.has(candidate));
+    if (candidates.length === 1) helpers.push(rubyFilesByPath.get(candidates[0]));
+  }
+  return helpers.sort((left, right) => left.path.localeCompare(right.path));
+}
+
+function collectReachableRubySources(testFile, rubyFilesByPath, hasBundledLibraryLoadPath, configuredHelpers = []) {
   const visitedDepth = new Map([[normalizePath(testFile.path), 0]]);
   const sourceDepth = new Map();
   const queue = [{ file: testFile, depth: 0 }];
+  for (const helper of configuredHelpers) {
+    const helperPath = normalizePath(helper.path);
+    if ((visitedDepth.get(helperPath) ?? Infinity) <= 1) continue;
+    visitedDepth.set(helperPath, 1);
+    queue.push({ file: helper, depth: 1 });
+  }
 
   while (queue.length > 0) {
     const current = queue.shift();
