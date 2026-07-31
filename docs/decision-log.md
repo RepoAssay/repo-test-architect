@@ -2,6 +2,14 @@
 
 This log records project-level decisions that shape architecture, scope, and public positioning.
 
+## Ruby Instance Usage Requires Direct Immutable Constructor Receivers
+
+Decision: allow an existing exact `ruby-constant-reference` to gain instance-method usage only when a runnable Minitest method or RSpec example binds one local directly from `Constant.new`, that reachable class directly declares `initialize` and the called instance method, the class does not directly override `.new`, and the receiver is neither reassigned nor block-shadowed. Preserve the existing inline or one-stable-result assertion rule. Do not infer identity through helpers, factories, wrapping/chaining, RSpec memoization, generated readers/delegators, inheritance, mixins, or dynamic dispatch.
+
+Rationale: the pinned rubyzip audit recovers a real `Zip::File#find_entry` assertion while downgrading two constructor-only claims whose asserted values came through generated `entries` and `size` readers. Its unchanged 19/23 candidate split and 80-link graph now separate into 15 asserted, 24 called, 38 reference-only, and 3 naming relationships. Faraday keeps its unchanged 8/22 split and 45-link graph while downgrading `Faraday::Connection` from asserted to called because `proxy` is generated rather than directly owned. Both exact pins pass their native suites, and five audits of each are digest-stable.
+
+Revisit when: a pinned repository justifies exact `described_class`, `let`, or `subject` identity, a direct helper/factory return, generated method ownership, or deeper receiver/result flow without executing Ruby.
+
 ## Ruby RSpec Configuration Is One Owned Load Edge
 
 Decision: accept a safe literal `--require NAME` or `--require=NAME` only from the root `.rspec` when it resolves uniquely to one repository-owned root or `spec/` Ruby helper. Seed that helper at depth one in the existing three-edge graph and report `.rspec` as setup; do not execute options or follow dynamic helper loads.

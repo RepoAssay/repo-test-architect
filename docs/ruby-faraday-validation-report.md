@@ -75,12 +75,29 @@ Five audits of the restored exact checkout produced one normalized digest:
 | Median | 24.587 ms |
 | Canonical SHA-256 | `8104c987971177b1aa8780f03217105b8de4b6247a5d8d70ef0b93b75075f62c` |
 
+## Direct Receiver Follow-Up
+
+The direct receiver follow-up admits only one local bound exactly once from an unchained `Constant.new` inside a runnable example, followed by a direct call to an instance method declared on that same class. A direct `.new` override, reassignment, block shadow, deferred execution, generated reader/delegator, helper/factory return, wrapping, dynamic dispatch, and RSpec `let`/`subject`/`described_class` identity remain excluded. Constructor assertions are also tightened: asserting `local.generated_reader` no longer turns the constructor itself into asserted usage.
+
+Faraday's candidate and relationship graph remains unchanged, but `lib/faraday/connection.rb` moves from asserted to called because the relevant assertion reads the generated `proxy` option rather than a directly declared `Faraday::Connection` instance method. No speculative service receiver is added. The unchanged native command again passed 639 examples with zero failures and 95.04% line coverage. Five restored-tree audits produced:
+
+| Measure | Receiver follow-up |
+| --- | --- |
+| Test command | `bundle exec rspec` |
+| Untested / covered / skipped | 8 / 22 / 3 |
+| Evidence relationships | 45 |
+| Evidence kinds | 32 exact, 13 naming |
+| Usage split | 3 asserted, 2 called, 27 reference-only, 13 naming |
+| Durations | 47.713 ms, 25.874 ms, 26.429 ms, 25.082 ms, 25.271 ms |
+| Median | 25.874 ms |
+| Canonical SHA-256 | `bd6799d7baf4b05e47bd275a9a0c138aa605ff3dd6685a15f040cc6eeaa70a0e` |
+
 ## Service-Boundary Finding
 
-Faraday confirms that the next useful uncertainty is receiver identity, not broader loading. Source such as request/response JSON middleware is heavily exercised natively, but many specs construct it through `let(:middleware) { described_class.new(...) }`, call it through a test helper such as `process`, and assert the returned state later. Other specs construct `conn` in `let` and call `conn.get` or `conn.post` from runnable examples or lazily evaluated helpers.
+Faraday confirms that the remaining receiver uncertainty is memoized and helper-mediated identity, not broader loading. Source such as request/response JSON middleware is heavily exercised natively, but many specs construct it through `let(:middleware) { described_class.new(...) }`, call it through a test helper such as `process`, and assert the returned state later. Other specs construct `conn` in `let` and call `conn.get` or `conn.post` from runnable examples or lazily evaluated helpers.
 
 Those shapes remain naming or reference-only. The adapter does not infer that `described_class` names a particular source owner, execute RSpec memoization, follow helper methods, credit shared examples, or treat instance calls as source-owned merely because a constant is visible elsewhere in the file. Faraday's 95.04% native line coverage therefore does not turn into a static claim the adapter cannot prove.
 
 ## Result
 
-The RSpec load boundary is now credible and regression-backed: one exact root option, one uniquely owned helper, the existing finite require budget, exact constant ownership, native verification, repeatable output, and conservative usage all agree on a real service library. Ruby remains experimental. A later receiver slice should start with direct, immutable constructor-to-local identity inside runnable examples before considering RSpec `let`, `subject`, `described_class`, shared examples, helper execution, or Rails ownership.
+The RSpec load and first direct receiver boundaries are now credible and regression-backed: one exact root option, one uniquely owned helper, the existing finite require budget, exact constant ownership, direct immutable constructor-local identity, native verification, repeatable output, and conservative usage all agree on a real service library. Ruby remains experimental. RSpec `let`, `subject`, `described_class`, shared examples, helper execution, generated methods, and Rails ownership remain explicit later decisions.

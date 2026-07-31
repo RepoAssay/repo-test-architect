@@ -340,7 +340,7 @@ function collectRubyTestEvidence(files, sourceFiles, runnableTests) {
           findRubyConstantUsage(
             runnableBodies,
             constant,
-            declarationsBySourcePath.get(sourcePath)?.get(constant) ?? new Set(),
+            declarationsBySourcePath.get(sourcePath)?.get(constant) ?? emptyRubyDeclarations(),
             testFile.framework
           )
         );
@@ -469,7 +469,8 @@ function collectRubySourceDeclarations(content) {
       const constant = constantMatch[3].startsWith("::") || !parentConstant
         ? declared
         : `${parentConstant}::${declared}`;
-      if (!declarations.has(constant)) declarations.set(constant, new Set());
+      if (!declarations.has(constant)) declarations.set(constant, emptyRubyDeclarations());
+      declarations.get(constant).declarationKinds.add(constantMatch[2]);
       stack.push({ indent, kind: "constant", constant, declarationKind: constantMatch[2] });
       continue;
     }
@@ -487,24 +488,47 @@ function collectRubySourceDeclarations(content) {
     const scope = stack.at(-1);
     const directScope = scope && indent === scope.indent + 2;
     if (directScope && scope.kind === "constant" && methodMatch[2]) {
-      declarations.get(scope.constant)?.add(methodMatch[3]);
+      const declaration = declarations.get(scope.constant);
+      declaration?.singletonMethods.add(methodMatch[3]);
+      if (methodMatch[3] === "new") declaration.hasDirectSingletonNew = true;
     } else if (directScope && scope.kind === "singleton" && !methodMatch[2]) {
-      declarations.get(scope.constant)?.add(methodMatch[3]);
+      const declaration = declarations.get(scope.constant);
+      declaration?.singletonMethods.add(methodMatch[3]);
+      if (methodMatch[3] === "new") declaration.hasDirectSingletonNew = true;
     } else if (
       directScope &&
       scope.kind === "constant" &&
       scope.declarationKind === "class" &&
       methodMatch[3] === "initialize"
     ) {
-      declarations.get(scope.constant)?.add("new");
+      const declaration = declarations.get(scope.constant);
+      declaration?.singletonMethods.add("new");
+      if (declaration) declaration.hasDirectInitializer = true;
+    } else if (directScope && scope.kind === "constant" && !methodMatch[2]) {
+      declarations.get(scope.constant)?.instanceMethods.add(methodMatch[3]);
     }
     stack.push({ indent, kind: "method" });
   }
   return new Map(
     [...declarations]
       .sort(([left], [right]) => left.localeCompare(right))
-      .map(([constant, methods]) => [constant, new Set([...methods].sort())])
+      .map(([constant, declaration]) => [constant, {
+        ...declaration,
+        declarationKinds: new Set([...declaration.declarationKinds].sort()),
+        singletonMethods: new Set([...declaration.singletonMethods].sort()),
+        instanceMethods: new Set([...declaration.instanceMethods].sort())
+      }])
   );
+}
+
+function emptyRubyDeclarations() {
+  return {
+    declarationKinds: new Set(),
+    singletonMethods: new Set(),
+    instanceMethods: new Set(),
+    hasDirectInitializer: false,
+    hasDirectSingletonNew: false
+  };
 }
 
 function collectRubyRunnableBodies(testFile, maskedContent) {
@@ -543,14 +567,14 @@ function findRubyIndentedEnd(lines, startIndex, indent) {
   return -1;
 }
 
-function findRubyConstantUsage(runnableBodies, constant, declaredMethods, framework) {
-  if (declaredMethods.size === 0) return undefined;
+function findRubyConstantUsage(runnableBodies, constant, declarations, framework) {
+  if (declarations.singletonMethods.size === 0 && declarations.instanceMethods.size === 0) return undefined;
   const escapedConstant = escapeRegex(constant);
   let usage;
   for (const body of runnableBodies) {
     const lines = body.split(/\r?\n/);
     const deferredLines = collectDeferredRubyLines(lines);
-    for (const method of declaredMethods) {
+    for (const method of declarations.singletonMethods) {
       const callPattern = new RegExp(
         `(?:^|[^A-Za-z0-9_:])(?:::)?${escapedConstant}\\s*\\.\\s*${escapeRegex(method)}(?![A-Za-z0-9_!?=])`
       );
@@ -562,11 +586,122 @@ function findRubyConstantUsage(runnableBodies, constant, declaredMethods, framew
         .filter(({ line, index }) => !deferredLines.has(index) && callPattern.test(line));
       if (callLines.length === 0) continue;
       usage = strongerRubyUsage(usage, "called");
+      if (method === "new") {
+        if (callLines.some(({ line }) => isUnchainedRubyCallOnAssertion(line, callPattern, framework))) {
+          return "asserted";
+        }
+        if (hasStableAssertedRubyConstructorResult(lines, directCallPattern, framework, deferredLines)) {
+          return "asserted";
+        }
+      } else {
+        if (callLines.some(({ line }) => isRubyAssertionLine(line, framework))) return "asserted";
+        if (hasStableAssertedRubyResult(lines, directCallPattern, framework, deferredLines)) return "asserted";
+      }
+    }
+    usage = strongerRubyUsage(
+      usage,
+      findRubyConstructedLocalUsage(lines, constant, declarations, framework, deferredLines)
+    );
+    if (usage === "asserted") return usage;
+  }
+  return usage;
+}
+
+function findRubyConstructedLocalUsage(lines, constant, declarations, framework, deferredLines) {
+  if (
+    !declarations.hasDirectInitializer ||
+    declarations.hasDirectSingletonNew ||
+    declarations.declarationKinds.size !== 1 ||
+    !declarations.declarationKinds.has("class") ||
+    declarations.instanceMethods.size === 0
+  ) {
+    return undefined;
+  }
+
+  const constructorPattern = new RegExp(
+    `^\\s*(?:::)?${escapeRegex(constant)}\\s*\\.\\s*new(?![A-Za-z0-9_!?=])`
+  );
+  let usage;
+  for (const binding of collectStableRubyConstructorBindings(lines, constructorPattern, deferredLines)) {
+    for (const method of declarations.instanceMethods) {
+      const receiver = escapeRegex(binding.local);
+      const escapedMethod = escapeRegex(method);
+      const callPattern = new RegExp(
+        `(?:^|[^A-Za-z0-9_])${receiver}\\s*\\.\\s*${escapedMethod}(?![A-Za-z0-9_!?=])`
+      );
+      const directCallPattern = new RegExp(
+        `^\\s*${receiver}\\s*\\.\\s*${escapedMethod}(?![A-Za-z0-9_!?=])`
+      );
+      const callLines = lines
+        .map((line, index) => ({ line, index }))
+        .filter(({ line, index }) => index > binding.index && !deferredLines.has(index) && callPattern.test(line));
+      if (callLines.length === 0) continue;
+      usage = strongerRubyUsage(usage, "called");
       if (callLines.some(({ line }) => isRubyAssertionLine(line, framework))) return "asserted";
-      if (hasStableAssertedRubyResult(lines, directCallPattern, framework)) return "asserted";
+      if (hasStableAssertedRubyResult(lines, directCallPattern, framework, deferredLines, binding.index)) {
+        return "asserted";
+      }
     }
   }
   return usage;
+}
+
+function collectStableRubyConstructorBindings(lines, constructorPattern, deferredLines) {
+  const bindings = [];
+  for (let index = 0; index < lines.length; index += 1) {
+    if (deferredLines.has(index)) continue;
+    const assignment = lines[index].match(/^\s*([a-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/);
+    if (!assignment || !isDirectRubyCallExpression(assignment[2], constructorPattern)) continue;
+    const local = assignment[1];
+    if (lines.filter((line) => rubyAssignmentTargets(line).includes(local)).length !== 1) continue;
+    if (hasRubyBlockParameter(lines, local)) continue;
+    bindings.push({ local, index });
+  }
+  return bindings;
+}
+
+function rubyAssignmentTargets(line) {
+  const assignment = line.match(
+    /^\s*\(?\s*([a-z_][A-Za-z0-9_]*(?:\s*,\s*[a-z_][A-Za-z0-9_]*)*)\s*\)?\s*(?:\|\|=|&&=|[+\-*/%]=|=(?!=|~|>))/
+  );
+  return assignment ? assignment[1].split(",").map((target) => target.trim()) : [];
+}
+
+function hasRubyBlockParameter(lines, local) {
+  const blockShadow = new RegExp(
+    `\\|[^|]*(?:^|[^A-Za-z0-9_])${escapeRegex(local)}(?![A-Za-z0-9_])[^|]*\\|`
+  );
+  return lines.some((line) => blockShadow.test(line));
+}
+
+function isUnchainedRubyCallOnAssertion(line, callPattern, framework) {
+  if (!isRubyAssertionLine(line, framework)) return false;
+  const match = line.match(callPattern);
+  if (!match) return false;
+  let remainder = line.slice((match.index ?? 0) + match[0].length).trimStart();
+  if (remainder.startsWith("(")) {
+    const close = findClosingRubyParenthesis(remainder);
+    if (close === -1) return false;
+    remainder = remainder.slice(close + 1).trimStart();
+  }
+  return !remainder.startsWith(".") && !remainder.startsWith("&.") && !remainder.startsWith("[");
+}
+
+function hasStableAssertedRubyConstructorResult(lines, constructorPattern, framework, deferredLines) {
+  for (const binding of collectStableRubyConstructorBindings(lines, constructorPattern, deferredLines)) {
+    const directReference = new RegExp(
+      `(?:^|[^A-Za-z0-9_])${escapeRegex(binding.local)}(?![A-Za-z0-9_]|\\s*(?:\\.|&\\.|\\[))`
+    );
+    if (lines.some((line, index) => (
+      index > binding.index &&
+      !deferredLines.has(index) &&
+      isRubyAssertionLine(line, framework) &&
+      directReference.test(line)
+    ))) {
+      return true;
+    }
+  }
+  return false;
 }
 
 function collectDeferredRubyLines(lines) {
@@ -589,15 +724,22 @@ function collectDeferredRubyLines(lines) {
   return deferred;
 }
 
-function hasStableAssertedRubyResult(lines, directCallPattern, framework) {
+function hasStableAssertedRubyResult(lines, directCallPattern, framework, deferredLines = new Set(), minimumIndex = -1) {
   for (let index = 0; index < lines.length; index += 1) {
+    if (index <= minimumIndex || deferredLines.has(index)) continue;
     const assignment = lines[index].match(/^\s*([a-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/);
     if (!assignment || !isDirectRubyCallExpression(assignment[2], directCallPattern)) continue;
     const local = assignment[1];
     const mutation = new RegExp(`^\\s*${escapeRegex(local)}\\s*(?:\\|\\|=|&&=|[+\\-*/%]=|=(?!=|~|>))`);
     if (lines.filter((line) => mutation.test(line)).length !== 1) continue;
+    if (hasRubyBlockParameter(lines, local)) continue;
     const reference = new RegExp(`(?:^|[^A-Za-z0-9_])${escapeRegex(local)}(?![A-Za-z0-9_])`);
-    if (lines.slice(index + 1).some((line) => isRubyAssertionLine(line, framework) && reference.test(line))) {
+    if (lines.some((line, current) => (
+      current > index &&
+      !deferredLines.has(current) &&
+      isRubyAssertionLine(line, framework) &&
+      reference.test(line)
+    ))) {
       return true;
     }
   }

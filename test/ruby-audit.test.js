@@ -261,6 +261,146 @@ describe("Ruby audit adapter", () => {
     }]);
   });
 
+  it("marks a stable result from an exact immutable constructor-local instance call", (t) => {
+    const root = createRubyRepo(t, {
+      Gemfile: 'gem "rspec"\n',
+      "lib/client.rb": [
+        "class Client",
+        "  def initialize(value)",
+        "    @value = value",
+        "  end",
+        "",
+        "  def fetch",
+        "    @value",
+        "  end",
+        "end",
+        ""
+      ].join("\n"),
+      "spec/client_behavior_spec.rb": [
+        'require_relative "../lib/client"',
+        "RSpec.describe Client do",
+        '  it "fetches" do',
+        "    client = Client.new(:ok)",
+        "    result = client.fetch",
+        "    expect(result).to eq(:ok)",
+        "  end",
+        "end",
+        ""
+      ].join("\n")
+    });
+
+    const audit = auditRubyRepo(root);
+
+    assert.deepEqual(audit.coveredButRisky[0].existingTestEvidence, [{
+      testPath: "spec/client_behavior_spec.rb",
+      kind: "ruby-constant-reference",
+      strength: "direct",
+      usage: "asserted"
+    }]);
+  });
+
+  it("keeps unstable, indirect, deferred, dynamic, and generated receiver calls at constructor-only usage", (t) => {
+    const root = createRubyRepo(t, {
+      Gemfile: 'gem "rspec"\n',
+      "lib/attribute_client.rb": "class AttributeClient\n  attr_reader :fetch\n  def initialize\n    @fetch = :ok\n  end\nend\n",
+      "lib/deferred_client.rb": "class DeferredClient\n  def initialize; end\n  def fetch\n    :ok\n  end\nend\n",
+      "lib/dynamic_client.rb": "class DynamicClient\n  def initialize; end\n  def fetch\n    :ok\n  end\nend\n",
+      "lib/factory_client.rb": "class FactoryClient\n  def self.build\n    new\n  end\n  def initialize; end\n  def fetch\n    :ok\n  end\nend\n",
+      "lib/helper_client.rb": "class HelperClient\n  def initialize; end\n  def fetch\n    :ok\n  end\nend\n",
+      "lib/overridden_client.rb": "class OverriddenClient\n  def self.new\n    Object.new\n  end\n  def initialize; end\n  def fetch\n    :ok\n  end\nend\n",
+      "lib/reassigned_client.rb": "class ReassignedClient\n  def initialize; end\n  def fetch\n    :ok\n  end\nend\n",
+      "lib/reassigned_result_client.rb": "class ReassignedResultClient\n  def initialize; end\n  def fetch\n    :ok\n  end\nend\n",
+      "lib/shadowed_client.rb": "class ShadowedClient\n  def initialize; end\n  def fetch\n    :ok\n  end\nend\n",
+      "lib/shadowed_result_client.rb": "class ShadowedResultClient\n  def initialize; end\n  def fetch\n    :ok\n  end\nend\n",
+      "lib/wrapped_client.rb": "class WrappedClient\n  def initialize; end\n  def fetch\n    :ok\n  end\nend\n",
+      "spec/receiver_boundaries_spec.rb": [
+        'require_relative "../lib/attribute_client"',
+        'require_relative "../lib/deferred_client"',
+        'require_relative "../lib/dynamic_client"',
+        'require_relative "../lib/factory_client"',
+        'require_relative "../lib/helper_client"',
+        'require_relative "../lib/overridden_client"',
+        'require_relative "../lib/reassigned_client"',
+        'require_relative "../lib/reassigned_result_client"',
+        'require_relative "../lib/shadowed_client"',
+        'require_relative "../lib/shadowed_result_client"',
+        'require_relative "../lib/wrapped_client"',
+        "RSpec.describe ReassignedClient do",
+        "  def helper_client",
+        "    HelperClient.new",
+        "  end",
+        "",
+        '  it "keeps receiver identity bounded" do',
+        "    attribute = AttributeClient.new",
+        "    expect(attribute.fetch).to eq(:ok)",
+        "",
+        "    deferred = DeferredClient.new",
+        "    callback = -> { deferred.fetch }",
+        "    expect(callback.call).to eq(:ok)",
+        "",
+        "    dynamic = DynamicClient.new",
+        "    dynamic_result = dynamic.public_send(:fetch)",
+        "    expect(dynamic_result).to eq(:ok)",
+        "",
+        "    factory = FactoryClient.build",
+        "    factory_result = factory.fetch",
+        "    expect(factory_result).to eq(:ok)",
+        "",
+        "    helper = helper_client",
+        "    helper_result = helper.fetch",
+        "    expect(helper_result).to eq(:ok)",
+        "",
+        "    overridden = OverriddenClient.new",
+        "    overridden_result = overridden.fetch",
+        "    expect(overridden_result).to eq(:ok)",
+        "",
+        "    reassigned = ReassignedClient.new",
+        "    reassigned = Object.new",
+        "    reassigned_result = reassigned.fetch",
+        "    expect(reassigned_result).to eq(:ok)",
+        "",
+        "    result_client = ReassignedResultClient.new",
+        "    unstable_result = result_client.fetch",
+        "    unstable_result = :changed",
+        "    expect(unstable_result).to eq(:changed)",
+        "",
+        "    shadowed = ShadowedClient.new",
+        "    [Object.new].each { |shadowed| shadowed_result = shadowed.fetch }",
+        "    expect(shadowed_result).to eq(:ok)",
+        "",
+        "    shadowed_result_client = ShadowedResultClient.new",
+        "    receiver_result = shadowed_result_client.fetch",
+        "    [Object.new].each { |receiver_result| expect(receiver_result).to eq(:ok) }",
+        "",
+        "    wrapped = normalize(WrappedClient.new)",
+        "    wrapped_result = wrapped.fetch",
+        "    expect(wrapped_result).to eq(:ok)",
+        "  end",
+        "end",
+        ""
+      ].join("\n")
+    });
+
+    const audit = auditRubyRepo(root);
+    const usage = Object.fromEntries(
+      audit.coveredButRisky.map((target) => [target.path, target.existingTestEvidence[0].usage ?? "reference-only"])
+    );
+
+    assert.deepEqual(usage, {
+      "lib/attribute_client.rb": "called",
+      "lib/deferred_client.rb": "called",
+      "lib/dynamic_client.rb": "called",
+      "lib/factory_client.rb": "called",
+      "lib/helper_client.rb": "reference-only",
+      "lib/overridden_client.rb": "called",
+      "lib/reassigned_client.rb": "called",
+      "lib/reassigned_result_client.rb": "called",
+      "lib/shadowed_client.rb": "called",
+      "lib/shadowed_result_client.rb": "called",
+      "lib/wrapped_client.rb": "called"
+    });
+  });
+
   it("follows one exact root RSpec configured helper before bounded source requires", (t) => {
     const root = createRubyRepo(t, {
       Gemfile: 'gem "rspec"\ngemspec\n',
