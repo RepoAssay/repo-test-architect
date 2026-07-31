@@ -491,3 +491,11 @@ Decision: add files from exactly one project-local, self-closing `Compile Includ
 Rationale: pinned usbipd-win links nine `Usbipd.Automation` sources into the selected production project through one exact sibling glob. Owning those files removes the audit's last blocker, emits `dotnet test UnitTests/UnitTests.csproj`, and exposes six covered, two untested, and one deferred linked files. The complete graph moves to 29 untested, 20 covered, 4 deferred, and 28 evidence relationships; five runs share digest `217512fa1b455feb2a9a464b706f3f06ef6ba2296e6c820c5f7aff89a2be1450` with a 200.4 ms median. The unchanged command reaches compilation locally but requires the repository's Windows/x64 host; its exact pinned upstream run passes all 3,037 tests.
 
 Revisit when: a pinned repository justifies multiple includes, explicit file lists, linked sources outside the audit root, or `Remove`/`Update` semantics without general MSBuild item evaluation.
+
+## Add The C# Promotion Performance Gate
+
+Decision: run a generated 400-source/200-test SDK project pair through the C# adapter in both alpha and release readiness, requiring exactly 200 covered candidates, 200 untested candidates, zero skipped candidates, and 200 direct evidence relationships under a broad 5-second ceiling.
+
+Rationale: the C# adapter now has extensive fixture and live-repository depth, but it lacked the synthetic semantic and timing guard carried by every supported adapter. The generated pair exercises project selection, source ownership, runnable xUnit discovery, direct asserted evidence, and candidate classification at useful scale. Its first local run completed in 880 ms without weakening the shared ceiling.
+
+Revisit when: normal CI variance approaches the ceiling or a representative large C# ownership shape exposes a more useful deterministic scale fixture.

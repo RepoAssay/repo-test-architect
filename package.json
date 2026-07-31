@@ -120,6 +120,7 @@
     "corpus:scorecard": "node ./scripts/render-validation-scorecard.js",
     "corpus:measure": "node ./scripts/measure-validation-corpus.js",
     "adapter:coverage:check": "node ./scripts/check-adapter-coverage.js",
+    "csharp:performance:check": "node ./scripts/check-csharp-performance.js",
     "go:performance:check": "node ./scripts/check-go-performance.js",
     "javascript:performance:check": "node ./scripts/check-javascript-performance.js",
     "python:performance:check": "node ./scripts/check-python-performance.js",

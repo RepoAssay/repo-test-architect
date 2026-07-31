@@ -1,6 +1,6 @@
 # C# Experimental Support
 
-The C# adapter is experimental. Its bounded slices prove that one conventional SDK-style test project or one unique literal production/test project edge, including that pair amid unrelated projects, can flow through project detection, audit, ranking, planning, explanations, findings, stats, CLI/MCP-shaped calls, golden snapshots, and model-consistency checks without a C#-specific report format.
+The C# adapter is experimental. Its bounded slices prove that one conventional SDK-style test project or one unique literal production/test project edge, including that pair amid unrelated projects, can flow through project detection, audit, ranking, planning, explanations, findings, stats, CLI/MCP-shaped calls, golden snapshots, model-consistency checks, and the generated semantic/performance gate without a C#-specific report format.
 
 ## Supported Boundary
 
@@ -22,6 +22,12 @@ The C# adapter is experimental. Its bounded slices prove that one conventional S
 | Naming evidence | A unique `Foo.cs` to `FooTest.cs`/`FooTests.cs`/`FooSpec.cs`/`FooSpecs.cs` fallback | Used only when the same test has no stronger direct evidence for that source file |
 
 The adapter classifies branching and fallible behavior, service and external boundaries, parsers, validators, calculators, formatters, mappers, repositories, controllers, and clients. Generated files, application startup wiring, data-only models, and interfaces are deferred with explicit reasons rather than promoted as direct test targets.
+
+## Promotion Readiness
+
+The generated 400-source/200-test SDK project-pair gate locks 200 covered candidates, 200 untested candidates, zero skipped candidates, and 200 direct evidence relationships under a broad 5-second cross-platform ceiling. Its first recorded local run completed in 880 ms. The gate runs in both alpha and release readiness and ships with the package verification scripts.
+
+C# now has the same synthetic semantic/performance protection as every supported adapter. Promotion still requires selecting three pinned live cases for the shared conventional-library/service, framework-heavy application, and difficult-ownership roles, rerunning their standardized stability/performance measurements, and recording every scorecard area as reviewed before changing registry maturity.
 
 ## Checked Fixtures
 

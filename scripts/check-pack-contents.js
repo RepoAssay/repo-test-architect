@@ -76,6 +76,7 @@ export const requiredFiles = [
   "evals/validation-corpus.json",
   "scripts/check-validation-corpus.js",
   "scripts/render-validation-scorecard.js",
+  "scripts/check-csharp-performance.js",
   "scripts/check-go-performance.js",
   "scripts/check-javascript-performance.js",
   "scripts/check-pack-contents.js",
