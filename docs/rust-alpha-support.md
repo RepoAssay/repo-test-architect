@@ -18,6 +18,7 @@ The Rust adapter is experimental. Its current bounded slices prove that conventi
 | Assertion usage | Direct calls inside `assert!`, `assert_eq!`, `assert_ne!`, and their `debug_assert` variants are `asserted`; other direct calls are `called` |
 | Candidate filtering | Repository-relative and absolute `changedPaths`, including Windows separators |
 | Native fixture gate | `cargo test`, `cargo check`, and `cargo fmt --check` |
+| Generated scale gate | 400 behavioral modules, 200 integration tests, exactly 200 covered and 200 untested candidates, 200 direct evidence relationships, and one skipped crate-root wiring file under 5 seconds |
 
 The adapter normalizes Cargo package names from hyphens to underscores for Rust import ownership. It masks comments, ordinary strings, raw strings, and simple character literals before recognizing tests, imports, calls, and assertion usage. An import alone never creates evidence.
 
@@ -58,6 +59,6 @@ These shapes remain visible through blockers or conservative missing evidence; t
 
 `examples/rust-cargo-custom-targets` adds a library root under `code/`, a binary root under `app/`, recursively declared file and directory modules, a static parent-relative path module, exact crate-relative unit and package-name integration evidence on a custom-root validator module, an asserted inherent `Calculator::total` call, untested module candidates, and a nearby unowned Rust file that must remain excluded.
 
-All three shapes are locked by Rust-specific unit tests, project detection/auditing coverage, audit and plan snapshots, and model-consistency scenarios. Promotion beyond experimental should still wait for live-repository validation, performance pressure, and a broader syntax/evidence boundary.
+All three shapes are locked by Rust-specific unit tests, project detection/auditing coverage, audit and plan snapshots, and model-consistency scenarios. A generated 400-source/200-test module graph now locks exact candidate, skipped-wiring, evidence, and timing behavior in every alpha and release check. Promotion beyond experimental should still wait for two additional representative live-repository roles and broader syntax/evidence pressure.
 
 The first pinned live probe, [`BurntSushi/ripgrep`](https://github.com/BurntSushi/ripgrep) at `f9c05a949d1a0dc8e16dee28ca9605d38611faeb`, preserves the root package, ten literal workspace members, and a separate fuzz workspace. It exposed and fixed exact command ownership for a macro-driven built-in test target, proved static ownership of the root `[[bin]]` path, and then resolved all 23 files in that binary's literal module graph. The full native workspace passed 1,220 listed tests, and three module-graph audits were digest-stable with a 385 ms median. See the [Rust ripgrep Live Validation Report](rust-ripgrep-validation-report.md).

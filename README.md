@@ -315,6 +315,7 @@ npm run csharp:performance:check
 npm run javascript:performance:check
 npm run python:performance:check
 npm run kotlin:performance:check
+npm run rust:performance:check
 npm run swift:performance:check
 npm run go:performance:check
 ```
@@ -325,7 +326,7 @@ The versioned `evals/validation-corpus.json` manifest records one conventional l
 
 `corpus:measure` verifies the checkout's exact pinned Git SHA, runs the selected adapter at least three times, rejects canonical audit drift, and reports the raw durations, median duration, evidence-link count, and normalized audit digest used to update the scorecard.
 
-Each adapter performance check separately runs a generated 400-source/200-test project, verifies its candidate and evidence counts, and enforces a broad cross-platform regression ceiling. These synthetic gates complement the recorded per-repository corpus distributions.
+Each adapter performance check separately runs a generated 400-source/200-test project, verifies its candidate and evidence counts, and enforces a broad cross-platform regression ceiling. The experimental Rust gate includes one additional skipped `src/lib.rs` module-wiring target required to declare the 400 behavioral modules. These synthetic gates complement the recorded per-repository corpus distributions.
 
 Use `alpha:check` for the adapter-support milestone. `release:check` additionally covers packaging and installed-binary readiness.
 

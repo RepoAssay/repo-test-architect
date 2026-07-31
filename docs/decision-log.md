@@ -507,3 +507,11 @@ Decision: promote the bounded C# adapter from experimental to supported alpha ma
 Rationale: TDD, usbipd-win, and Sharp Cast now fill the shared conventional-library/service, framework-heavy application, and difficult-ownership corpus roles. Their exact pinned checkouts are blocker-free and digest-stable across fresh five-run standardized measurements, and all 21 C# detection, ownership, command, evidence, ranking, stability, and performance areas pass review. The generated 400-source/200-test gate, shared conformance, implementation coverage, golden/model-consistency artifacts, package verification, and Linux, Windows, and macOS alpha gates supply the same promotion infrastructure as the existing supported adapters.
 
 Revisit when: a documented in-boundary repository produces false ownership, a guessed or missing verification command, direct-evidence inflation, or performance outside the recorded gates.
+
+### 2026-07-31: add the Rust module-graph performance gate
+
+Decision: run a generated Cargo library with 400 literal behavioral modules and 200 built-in integration tests through the Rust adapter in every alpha and release check. Require exactly 200 covered candidates, 200 untested candidates, 200 direct evidence relationships, and one skipped `src/lib.rs` module-wiring target under a broad 5-second ceiling.
+
+Rationale: Rust already had fixture, shared-conformance, golden, model-consistency, native Cargo, and pinned ripgrep evidence, but lacked the generated semantic and timing pressure carried by the supported adapters. The fixture exercises literal module traversal, exact package-name integration imports, runnable `#[test]` ownership, asserted function evidence, and candidate classification at useful scale. Its first local audit completed in 59 ms. Keeping the mandatory crate root as an exact skipped invariant avoids pretending its declarations are independently testable behavior.
+
+Revisit when: normal CI variance approaches the ceiling or a representative large Rust repository exposes a more useful deterministic module or evidence shape.
