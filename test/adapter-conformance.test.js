@@ -57,7 +57,7 @@ const cases = [
   {
     adapterId: "rust",
     fixturePath: "examples/rust-cargo-basic",
-    expectedMaturity: "experimental",
+    expectedMaturity: "supported",
     expectedProfile: {
       languages: ["rust"],
       testFrameworks: ["rust-test"],

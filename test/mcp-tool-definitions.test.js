@@ -91,7 +91,7 @@ describe("MCP tool definitions", () => {
     );
   });
 
-  it("calls the experimental Rust adapter through direct and project MCP tools", () => {
+  it("calls the supported Rust adapter through direct and project MCP tools", () => {
     const repoRoot = path.resolve("examples/rust-cargo-basic");
     const direct = callTool("audit_repo", { repoRoot, adapterId: "rust" });
     const projects = callTool("audit_projects", { repoRoot });

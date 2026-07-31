@@ -17,9 +17,9 @@ Current fifth-adapter spike:
 
 - supported bounded Go module, literal `go.work` member, and explicit static build-target support with standard-library tests; see [Go Alpha Support](go-alpha-support.md)
 
-Current sixth-adapter spike:
+Completed sixth-adapter spike:
 
-- experimental bounded Cargo package and literal workspace-member support with the built-in Rust test harness; see [Rust Experimental Support](rust-alpha-support.md)
+- supported bounded Cargo package and literal workspace-member support with the built-in Rust test harness; see [Rust Alpha Support](rust-alpha-support.md)
 
 Choose the ecosystem with the lowest local setup cost and the clearest fixture coverage. The spike should validate adapter shape, not solve every framework variant.
 

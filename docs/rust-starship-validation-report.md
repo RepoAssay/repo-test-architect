@@ -1,6 +1,6 @@
 # Rust Starship Live Validation Report
 
-This report records the second pinned public-repository audit for the experimental Rust adapter and its first framework-heavy application role. [`starship/starship`](https://github.com/starship/starship) was cloned and audited locally at [`7946f2d9fbb02a5be76856ed27ddb85da10af3da`](https://github.com/starship/starship/tree/7946f2d9fbb02a5be76856ed27ddb85da10af3da) on 2026-07-31.
+This report records the second pinned public-repository audit from Rust's pre-promotion hardening and its first framework-heavy application role. [`starship/starship`](https://github.com/starship/starship) was cloned and audited locally at [`7946f2d9fbb02a5be76856ed27ddb85da10af3da`](https://github.com/starship/starship/tree/7946f2d9fbb02a5be76856ed27ddb85da10af3da) on 2026-07-31.
 
 ## Repository Shape
 
@@ -88,10 +88,10 @@ The corrected median is 487 ms, comfortably inside the generated Rust gate's sep
 | Stability | pass | Five corrected audits share one canonical digest |
 | Performance | pass | 487 ms corrected median with unchanged production scope |
 
-This is a completed framework-heavy promotion role, but Rust remains experimental until the conventional-library/service role and final cross-role review are complete.
+This is the completed framework-heavy promotion role. Rust reached supported alpha after serde_json filled the conventional-library role and the final cross-role scorecard passed.
 
 ## Remaining Boundary
 
 Most Starship prompt modules are exercised through shared `ModuleRenderer` helpers and runtime name dispatch. The adapter intentionally leaves those files untested unless a runnable test body proves an already-supported direct source relationship. It does not infer production coverage through the test-support module, dynamic module lookup, macros, receiver identity, trait dispatch, or arbitrary helper call graphs.
 
-That conservative under-crediting is visible and preferable to the removed false production claim. A conventional Rust library/service is now the remaining live-corpus role before a promotion review.
+That conservative under-crediting is visible and preferable to the removed false production claim. serde_json subsequently filled the conventional Rust library role; dynamic prompt-module coverage remains outside the supported boundary after promotion.
