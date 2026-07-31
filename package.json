@@ -125,6 +125,7 @@
     "javascript:performance:check": "node ./scripts/check-javascript-performance.js",
     "python:performance:check": "node ./scripts/check-python-performance.js",
     "kotlin:performance:check": "node ./scripts/check-kotlin-performance.js",
+    "rust:performance:check": "node ./scripts/check-rust-performance.js",
     "swift:performance:check": "node ./scripts/check-swift-performance.js",
     "demo:check": "node ./scripts/check-demo-script.js",
     "test": "node ./scripts/run-tests.js",

@@ -109,6 +109,7 @@ describe("package manifest", () => {
     assert.equal(packageJson.scripts["javascript:performance:check"], "node ./scripts/check-javascript-performance.js");
     assert.equal(packageJson.scripts["python:performance:check"], "node ./scripts/check-python-performance.js");
     assert.equal(packageJson.scripts["kotlin:performance:check"], "node ./scripts/check-kotlin-performance.js");
+    assert.equal(packageJson.scripts["rust:performance:check"], "node ./scripts/check-rust-performance.js");
     assert.equal(packageJson.scripts["swift:performance:check"], "node ./scripts/check-swift-performance.js");
     assert.equal(packageJson.scripts["demo:check"], "node ./scripts/check-demo-script.js");
     assert.equal(packageJson.scripts["mcp:smoke"], "node ./scripts/check-mcp-stdio-smoke.js");
@@ -134,6 +135,7 @@ describe("package manifest", () => {
       "javascript:performance:check",
       "python:performance:check",
       "kotlin:performance:check",
+      "rust:performance:check",
       "swift:performance:check",
       "eval:check",
       "model-consistency:check",

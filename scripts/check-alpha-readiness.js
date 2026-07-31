@@ -12,6 +12,7 @@ export const alphaChecks = [
   "javascript:performance:check",
   "python:performance:check",
   "kotlin:performance:check",
+  "rust:performance:check",
   "swift:performance:check",
   "eval:check",
   "model-consistency:check",
