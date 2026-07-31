@@ -830,6 +830,58 @@ describe("C# audit adapter", () => {
     assert.ok(audit.profile.blockers.includes("No runnable attributed C# tests detected."));
   });
 
+  it("owns one literal repository-contained Compile include glob", (t) => {
+    const root = createRepo(t, {
+      "src/Core/Core.csproj": [
+        "<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><TargetFramework>net10.0</TargetFramework></PropertyGroup><ItemGroup>",
+        "<Compile Include=\"..\\..\\shared\\*.cs\" LinkBase=\"Shared\" />",
+        "</ItemGroup></Project>"
+      ].join(""),
+      "src/Core/Core.cs": "public static class Core { public static int Run() => 1; }\n",
+      "shared/SharedRule.cs": "public static class SharedRule { public static int Run() => 2; }\n",
+      "tests/Core.Tests/Core.Tests.csproj": testProjectFile("../../src/Core/Core.csproj", "net10.0"),
+      "tests/Core.Tests/CoreTests.cs": "public class CoreTests { [Fact] public void Runs() { Assert.Equal(2, SharedRule.Run()); } }\n"
+    });
+
+    const audit = auditCSharpRepo(root);
+    assert.equal(audit.profile.testCommand, "dotnet test tests/Core.Tests/Core.Tests.csproj");
+    assert.deepEqual(audit.profile.blockers, []);
+    assert.ok(audit.profile.detectedConventions.includes("literal repository-contained Compile includes"));
+    assert.ok(audit.profile.setupSignals.includes("Compile Include=../../shared/*.cs"));
+    assert.ok(audit.coveredButRisky.some((target) => target.path === "shared/SharedRule.cs"));
+  });
+
+  it("blocks Compile item shapes outside the literal contained glob", (t) => {
+    const cases = [
+      ["recursive glob", "<ItemGroup><Compile Include=\"../../shared/**/*.cs\" /></ItemGroup>"],
+      ["explicit file", "<ItemGroup><Compile Include=\"../../shared/SharedRule.cs\" /></ItemGroup>"],
+      ["property expansion", "<ItemGroup><Compile Include=\"$(Shared)/*.cs\" /></ItemGroup>"],
+      ["item condition", "<ItemGroup><Compile Include=\"../../shared/*.cs\" Condition=\"'$(Mode)' == 'test'\" /></ItemGroup>"],
+      ["group condition", "<ItemGroup Condition=\"'$(Mode)' == 'test'\"><Compile Include=\"../../shared/*.cs\" /></ItemGroup>"],
+      ["remove", "<ItemGroup><Compile Remove=\"Generated.cs\" /></ItemGroup>"],
+      ["update", "<ItemGroup><Compile Update=\"Generated.cs\" /></ItemGroup>"],
+      ["child metadata", "<ItemGroup><Compile Include=\"../../shared/*.cs\"><Link>Shared/%(Filename)%(Extension)</Link></Compile></ItemGroup>"],
+      ["multiple includes", "<ItemGroup><Compile Include=\"../../shared/*.cs\" /><Compile Include=\"../../other/*.cs\" /></ItemGroup>"],
+      ["escaping glob", "<ItemGroup><Compile Include=\"../../../outside/*.cs\" /></ItemGroup>"],
+      ["disabled defaults", "<PropertyGroup><EnableDefaultCompileItems>false</EnableDefaultCompileItems></PropertyGroup>"]
+    ];
+
+    for (const [label, compileMetadata] of cases) {
+      const root = createRepo(t, {
+        "src/Core/Core.csproj": `<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><TargetFramework>net10.0</TargetFramework></PropertyGroup>${compileMetadata}</Project>`,
+        "src/Core/Core.cs": "public static class Core { public static int Run() => 1; }\n",
+        "shared/SharedRule.cs": "public static class SharedRule { public static int Run() => 2; }\n",
+        "tests/Core.Tests/Core.Tests.csproj": testProjectFile("../../src/Core/Core.csproj", "net10.0"),
+        "tests/Core.Tests/CoreTests.cs": "public class CoreTests { [Fact] public void Runs() { Assert.Equal(1, Core.Run()); } }\n"
+      });
+      const audit = auditCSharpRepo(root);
+      assert.equal(audit.profile.testCommand, undefined, label);
+      assert.ok(audit.profile.blockers.includes("Custom MSBuild Compile item graphs are outside the bounded C# project-pair slice."), label);
+      assert.ok(![...audit.untestedCandidates, ...audit.coveredButRisky, ...audit.skipped]
+        .some((target) => target.path === "shared/SharedRule.cs"), label);
+    }
+  });
+
   it("blocks unsupported single-project MSBuild shapes", (t) => {
     const root = createRepo(t, {
       "Example.Tests.csproj": [

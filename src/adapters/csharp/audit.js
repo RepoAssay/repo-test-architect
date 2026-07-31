@@ -86,7 +86,10 @@ export function auditCSharpRepo(root, options = {}) {
         : undefined;
       return {
         ...file,
-        analysis: analyzeProject(file.content, inherited, propsFile?.path, centralPackages, globalJson)
+        analysis: analyzeProject(file.content, inherited, propsFile?.path, centralPackages, globalJson, {
+          auditRoot,
+          projectPath: file.path
+        })
       };
     });
   const layout = selectProjectLayout(projects);
@@ -200,7 +203,7 @@ function readRepoFiles(root) {
   return files.sort((left, right) => left.path.localeCompare(right.path));
 }
 
-function analyzeProject(content, inherited, inheritedPath, centralPackages, globalJson = { blockers: [] }) {
+function analyzeProject(content, inherited, inheritedPath, centralPackages, globalJson = { blockers: [] }, compileContext = {}) {
   const localFramework = analyzeTargetFrameworkDeclaration(content, inherited?.literalPropertyAliases);
   const inheritedTargetFrameworks = inherited?.targetFrameworks ?? (inherited?.targetFramework ? [inherited.targetFramework] : []);
   const targetFrameworks = localFramework.hasDeclaration
@@ -321,6 +324,7 @@ function analyzeProject(content, inherited, inheritedPath, centralPackages, glob
     centralPackagesEnabled === true ? centralPackages?.packageVersions.get("microsoft.testing.platform.msbuild") : undefined
   );
   const mtpMsbuildMajor = mtpMsbuildVersion?.match(/^(\d+)\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/)?.[1];
+  const compileItems = analyzeLiteralCompileItems(content, compileContext);
 
   return {
     sdk,
@@ -350,13 +354,120 @@ function analyzeProject(content, inherited, inheritedPath, centralPackages, glob
     hasDynamicProjectReferences: projectReferences.length !== projectReferenceTags.length ||
       projectReferences.some((reference) => /[$*?]/.test(reference)) ||
       projectReferenceTags.some((tag) => /\bCondition\s*=/i.test(tag)),
-    hasDynamicCompileItems: /<EnableDefaultCompileItems>\s*false\s*<\/EnableDefaultCompileItems>/i.test(content) || /<Compile\b[^>]*(?:Include|Remove|Update)\s*=/i.test(content),
+    hasDynamicCompileItems: compileItems.blockers.length > 0,
+    compileIncludePaths: compileItems.paths,
+    compileIncludeSignals: compileItems.signals,
     inheritedMetadataPath: usesInheritedMetadata ? inheritedPath : undefined,
     inheritedBlockers: inherited?.blockers ?? [],
     centralPackagesEnabled: centralPackagesEnabled === true,
     centralPackagesPath: centralPackagesEnabled === true ? centralPackages?.path : undefined,
     centralPackageBlockers: [...new Set(centralPackageBlockers)]
   };
+}
+
+function analyzeLiteralCompileItems(content, { auditRoot, projectPath } = {}) {
+  const source = content.replace(/<!--[\s\S]*?-->/g, " ");
+  const blockers = [];
+  const scopedRanges = ["Target", "Choose"].flatMap((elementName) => (
+    [...source.matchAll(new RegExp(`<${elementName}\\b[^>]*>[\\s\\S]*?<\\/${elementName}>`, "gi"))]
+      .map((match) => [match.index, match.index + match[0].length])
+  ));
+  const propertyGroups = [...source.matchAll(/<PropertyGroup\b([^>]*)>([\s\S]*?)<\/PropertyGroup>/gi)].map((match) => ({
+    attributes: match[1],
+    start: match.index,
+    end: match.index + match[0].length
+  }));
+  const defaultCompileTags = [...source.matchAll(/<EnableDefaultCompileItems\b([^>]*)>\s*([^<]+?)\s*<\/EnableDefaultCompileItems>/gi)];
+  if (defaultCompileTags.length > 0) {
+    const group = defaultCompileTags.length === 1
+      ? propertyGroups.find((candidate) => defaultCompileTags[0].index > candidate.start && defaultCompileTags[0].index < candidate.end)
+      : undefined;
+    if (defaultCompileTags.length !== 1 ||
+      !group ||
+      /\bCondition\s*=/i.test(group.attributes) ||
+      scopedRanges.some(([start, end]) => defaultCompileTags[0].index >= start && defaultCompileTags[0].index < end) ||
+      /\bCondition\s*=/i.test(defaultCompileTags[0][1]) ||
+      defaultCompileTags[0][2].trim().toLowerCase() !== "true") {
+      blockers.push("custom default compile selection");
+    }
+  }
+
+  const itemGroups = [...source.matchAll(/<ItemGroup\b([^>]*)>([\s\S]*?)<\/ItemGroup>/gi)].map((match) => ({
+    attributes: match[1],
+    start: match.index,
+    end: match.index + match[0].length
+  }));
+  const compileTags = [...source.matchAll(/<Compile\b[^>]*(?:\/\s*>|>(?:(?!<Compile\b)[\s\S])*?<\/Compile\s*>)/gi)];
+  if (/<Compile\b/i.test(source) && compileTags.length === 0) blockers.push("malformed Compile items");
+  if (compileTags.length > 1) blockers.push("multiple Compile include items");
+  const paths = [];
+  const signals = [];
+
+  for (const match of compileTags) {
+    const tag = match[0];
+    const group = itemGroups.find((candidate) => match.index > candidate.start && match.index < candidate.end);
+    const includeMatches = [...tag.matchAll(/\bInclude\s*=\s*(["'])([^"']+)\1/gi)];
+    if (!group || !/\/\s*>$/.test(tag) || includeMatches.length !== 1 ||
+      /\b(?:Remove|Update|Exclude|Condition)\s*=/i.test(tag) ||
+      /\bCondition\s*=/i.test(group.attributes) ||
+      scopedRanges.some(([start, end]) => match.index >= start && match.index < end)) {
+      blockers.push("non-literal Compile items");
+      continue;
+    }
+    const rawInclude = normalizePath(includeMatches[0][2].trim());
+    if (!isBoundedCompileGlob(rawInclude) || !auditRoot || !projectPath) {
+      blockers.push("non-literal Compile items");
+      continue;
+    }
+    const includeDirectory = rawInclude.slice(0, -"*.cs".length).replace(/\/$/, "");
+    const absoluteDirectory = path.resolve(auditRoot, path.dirname(projectPath), includeDirectory || ".");
+    if (!isRepositoryContainedDirectory(auditRoot, absoluteDirectory)) {
+      blockers.push("escaping or missing Compile include directories");
+      continue;
+    }
+    const matchedPaths = fs.readdirSync(absoluteDirectory, { withFileTypes: true })
+      .filter((entry) => entry.isFile() && !entry.isSymbolicLink() && entry.name.endsWith(".cs"))
+      .map((entry) => normalizePath(path.relative(auditRoot, path.join(absoluteDirectory, entry.name))))
+      .sort();
+    if (matchedPaths.length === 0) {
+      blockers.push("empty Compile include globs");
+      continue;
+    }
+    paths.push(...matchedPaths);
+    signals.push(`Compile Include=${rawInclude}`);
+  }
+
+  const uniqueBlockers = [...new Set(blockers)];
+  return {
+    paths: uniqueBlockers.length === 0 ? [...new Set(paths)].sort() : [],
+    signals: uniqueBlockers.length === 0 ? [...new Set(signals)].sort() : [],
+    blockers: uniqueBlockers
+  };
+}
+
+function isBoundedCompileGlob(value) {
+  if (path.posix.isAbsolute(value) || /^[A-Za-z]:\//.test(value) || /[$%@?]/.test(value) || value.includes("**")) return false;
+  const segments = value.split("/");
+  return segments.at(-1) === "*.cs" && segments.slice(0, -1).every((segment) => (
+    segment === ".." || segment === "." || /^[A-Za-z0-9_. -]+$/.test(segment)
+  ));
+}
+
+function isRepositoryContainedDirectory(auditRoot, directory) {
+  if (!fs.existsSync(directory) || !fs.lstatSync(directory).isDirectory()) return false;
+  const lexicalRoot = path.resolve(auditRoot);
+  const lexicalDirectory = path.resolve(directory);
+  const lexicalRelative = path.relative(lexicalRoot, lexicalDirectory);
+  if (lexicalRelative.startsWith("..") || path.isAbsolute(lexicalRelative)) return false;
+  let current = lexicalRoot;
+  for (const segment of lexicalRelative.split(path.sep).filter(Boolean)) {
+    current = path.join(current, segment);
+    if (fs.lstatSync(current).isSymbolicLink()) return false;
+  }
+  const realRoot = fs.realpathSync(auditRoot);
+  const realDirectory = fs.realpathSync(directory);
+  const relative = path.relative(realRoot, realDirectory);
+  return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
 }
 
 function analyzeLocalPackageReferences(content, targetFrameworks) {
@@ -648,6 +759,10 @@ function buildProfile(root, projects, layout, sourceFiles, testFiles, globalJson
   if (layout.sourceProject?.analysis.targetFrameworkAlias || layout.testProject?.analysis.targetFrameworkAlias) {
     detectedConventions.push("bounded root target-framework property alias");
   }
+  if ((layout.sourceProject?.analysis.compileIncludePaths.length ?? 0) > 0 ||
+    (layout.testProject?.analysis.compileIncludePaths.length ?? 0) > 0) {
+    detectedConventions.push("literal repository-contained Compile includes");
+  }
   if (layout.sourceProject?.analysis.centralPackagesEnabled || layout.testProject?.analysis.centralPackagesEnabled) {
     detectedConventions.push("bounded central package management");
   }
@@ -683,6 +798,10 @@ function buildProfile(root, projects, layout, sourceFiles, testFiles, globalJson
     layout.sourceProject?.analysis.centralPackagesPath,
     layout.testProject?.analysis.centralPackagesPath
   ].filter(Boolean))]) setupSignals.push(centralPackagesPath);
+  for (const compileSignal of [...new Set([
+    ...(layout.sourceProject?.analysis.compileIncludeSignals ?? []),
+    ...(layout.testProject?.analysis.compileIncludeSignals ?? [])
+  ])]) setupSignals.push(compileSignal);
   if (usesBoundedMtpV2) {
     setupSignals.push(globalJson.path, `Microsoft.Testing.Platform.MSBuild@${analysis.mtpMsbuildVersion}`);
   }
@@ -714,9 +833,11 @@ function referencesProjectLiterally(testProject, sourceProject) {
 }
 
 function isOwnedByProject(filePath, project, excludedProjects = []) {
-  if (!project || !isPathWithinProject(filePath, project.path)) return false;
+  if (!project) return false;
+  const isExplicitlyIncluded = project.analysis.compileIncludePaths.includes(filePath);
+  if (!isExplicitlyIncluded && !isPathWithinProject(filePath, project.path)) return false;
   return excludedProjects.filter(Boolean).every((excluded) => (
-    !isProjectNestedWithin(excluded.path, project.path) || !isPathWithinProject(filePath, excluded.path)
+    !isProjectNestedWithin(excluded.path, project.path) || !isPathWithinProject(filePath, excluded.path) || isExplicitlyIncluded
   ));
 }
 

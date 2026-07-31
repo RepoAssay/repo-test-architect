@@ -42,6 +42,20 @@ Custom MSBuild Compile item graphs are outside the bounded C# project-pair slice
 
 Five current audits produced the same root-normalized SHA-256 digest, `1183ee92d1a8edd8d3ec3b0edb5019bf46aaf590552e9769809cafbe05eb21b4`, with a 179.5 ms median from samples `269.6, 181.1, 179.5, 173.1, 170.8` ms.
 
+## Literal Compile Include Follow-up
+
+`Usbipd.csproj` has one self-closing `<Compile Include="../Usbipd.Automation/*.cs" LinkBase="Usbipd.Automation" />` item. The bounded follow-up admits exactly one direct `*.cs` glob when its directory resolves to a real, repository-contained directory and its matches are regular non-symbolic files. It rejects conditions, multiple items, recursive or property-expanded globs, explicit files, child metadata, `Remove`/`Update`, disabled defaults, and empty or escaping paths.
+
+The root audit now owns all nine linked Automation sources and records `literal repository-contained Compile includes` plus `Compile Include=../Usbipd.Automation/*.cs`. Six linked files have direct test evidence, two are untested, and `IsExternalInit.cs` is deferred. The complete result is:
+
+| Command | Blockers | Untested | Covered | Deferred | Evidence |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `dotnet test UnitTests/UnitTests.csproj` | 0 | 29 | 20 | 4 | 28 |
+
+Five audits share root-normalized digest `217512fa1b455feb2a9a464b706f3f06ef6ba2296e6c820c5f7aff89a2be1450`, with a 200.4 ms median from samples `290.6, 203.7, 200.4, 192.4, 194.2` ms.
+
+The unchanged command restores and reaches compilation locally, then fails on Apple Silicon because Microsoft.Windows.CsWin32 reports `PInvoke005` for AnyCPU and cannot generate the Windows SetupAPI surface. The exact pinned commit's upstream `windows-latest` workflow builds with `Platform=x64` and passes all 3,037 tests. This is a host/platform distinction rather than an ownership blocker, so the adapter retains its minimal project command.
+
 ## Complementary Static Command Probe
 
 [`afscrome/mtp-playground`](https://github.com/afscrome/mtp-playground) at [`d68ef5abcc82786abe19d3a7e2f5c04f6443da23`](https://github.com/afscrome/mtp-playground/commit/d68ef5abcc82786abe19d3a7e2f5c04f6443da23) supplies the smaller positive command shape. Its `mstestdemo` project uses `MSTest.Sdk/4.0.2`, inherits a literal `net10.0` target, and shares the root MTP runner selection. The audit emits `dotnet test mstestdemo.csproj` with no blockers, detects MSTest, and records one deferred candidate. Five audits share digest `16ded6d90d8eb7cfc54d81b1a2a20266a05c94fe334e8c907308056d1977988b`.
@@ -61,4 +75,4 @@ The static repository audit recognizes the MSTest.Sdk runner but withholds its o
 
 ## Supported Conclusion
 
-The combined slices admit exact MSTest.Sdk v4 test applications when the SDK version, Microsoft.Testing.Platform runner, and .NET 10+ context are all static and repository-owned, including one exact target-framework property hop into the nearest bounded props file. They reject missing or pre-v4 versions, `UseVSTest`, helper libraries, inferred runner ownership, and broader dynamic MSBuild metadata. usbipd-win is now an auditable pair with a proven target; custom compile ownership is its sole remaining command blocker.
+The combined slices admit exact MSTest.Sdk v4 test applications when the SDK version, Microsoft.Testing.Platform runner, and .NET 10+ context are all static and repository-owned, including one exact target-framework property hop and one contained direct compile glob. They reject missing or pre-v4 versions, `UseVSTest`, helper libraries, inferred runner ownership, and broader dynamic MSBuild metadata. usbipd-win is now a zero-blocker, high-confidence audit with an exact project command and complete ownership of its directly linked C# sources.
