@@ -35,7 +35,8 @@ export function findNearestMsbuildFile(repoRoot, projectPath, fileName, symbolic
 
 export function analyzeDirectoryBuildProps(content) {
   const source = content.replace(/<!--[\s\S]*?-->/g, " ");
-  const targetFrameworkAnalysis = analyzeTargetFrameworkDeclaration(source);
+  const literalPropertyAliases = analyzeLiteralPropertyAliases(source);
+  const targetFrameworkAnalysis = analyzeTargetFrameworkDeclaration(source, literalPropertyAliases);
   const blockers = [];
   if (/<Import\b/i.test(source)) blockers.push("imports");
   if (/<Project\b[^>]*\bCondition\s*=/i.test(source)) blockers.push("conditional metadata");
@@ -96,6 +97,8 @@ export function analyzeDirectoryBuildProps(content) {
     targetFramework: targetFrameworkAnalysis.targetFramework,
     targetFrameworks: targetFrameworkAnalysis.targetFrameworks,
     targetFrameworkProperty: targetFrameworkAnalysis.property,
+    targetFrameworkAlias: targetFrameworkAnalysis.resolvedPropertyAlias,
+    literalPropertyAliases,
     isTestProject: isTestProjectValue === "true" ? true : isTestProjectValue === "false" ? false : undefined,
     managePackageVersionsCentrally: centralPackageValue === "true" ? true : centralPackageValue === "false" ? false : undefined,
     packageReferences: packageReferences.map((name) => name.toLowerCase()),
@@ -105,7 +108,7 @@ export function analyzeDirectoryBuildProps(content) {
   };
 }
 
-export function analyzeTargetFrameworkDeclaration(content) {
+export function analyzeTargetFrameworkDeclaration(content, literalPropertyAliases = new Map()) {
   const source = content.replace(/<!--[\s\S]*?-->/g, " ");
   const singular = [...source.matchAll(/<TargetFramework\b([^>]*)>\s*([^<]+?)\s*<\/TargetFramework>/gi)]
     .map((match) => ({ property: "TargetFramework", attributes: match[1], value: match[2].trim() }));
@@ -124,21 +127,76 @@ export function analyzeTargetFrameworkDeclaration(content) {
     (/<(?:Choose|When|Otherwise)\b/i.test(source) && declarations.length > 0)) {
     blockers.push("conditional metadata");
   }
-  if (declarations.some((declaration) => declaration.value.includes("$"))) blockers.push("property-expanded metadata");
-
   const declaration = declarations.length === 1 ? declarations[0] : undefined;
-  const targetFrameworks = declaration ? parseTargetFrameworks(declaration.value, declaration.property) : [];
-  if (declaration && targetFrameworks.length === 0 && !declaration.value.includes("$")) {
+  const propertyReference = declaration?.value.match(/^\$\(([A-Za-z_][A-Za-z0-9_.-]*)\)$/);
+  const resolvedPropertyAlias = propertyReference && literalPropertyAliases.has(propertyReference[1].toLowerCase())
+    ? propertyReference[1]
+    : undefined;
+  const value = resolvedPropertyAlias
+    ? literalPropertyAliases.get(resolvedPropertyAlias.toLowerCase())
+    : declaration?.value;
+  if (declarations.some((current) => current.value.includes("$") && current !== declaration) ||
+    (declaration?.value.includes("$") && resolvedPropertyAlias === undefined)) {
+    blockers.push("property-expanded metadata");
+  }
+
+  const targetFrameworks = declaration ? parseTargetFrameworks(value, declaration.property) : [];
+  if (declaration && targetFrameworks.length === 0 && !value.includes("$")) {
     blockers.push("invalid target framework metadata");
   }
 
   return {
     hasDeclaration: declarations.length > 0,
     property: declaration?.property,
+    resolvedPropertyAlias,
     targetFramework: targetFrameworks.length === 1 ? targetFrameworks[0] : undefined,
     targetFrameworks,
     blockers: [...new Set(blockers)]
   };
+}
+
+export function analyzeLiteralPropertyAliases(content) {
+  const source = content.replace(/<!--[\s\S]*?-->/g, " ");
+  const excludedRanges = ["Target", "Choose"].flatMap((elementName) => (
+    [...source.matchAll(new RegExp(`<${elementName}\\b[^>]*>[\\s\\S]*?<\\/${elementName}>`, "gi"))]
+      .map((match) => [match.index, match.index + match[0].length])
+  ));
+  const occurrences = new Map();
+  const propertyGroups = [...source.matchAll(/<PropertyGroup\b([^>]*)>([\s\S]*?)<\/PropertyGroup>/gi)];
+
+  for (const group of propertyGroups) {
+    const groupIsConditional = /\bCondition\s*=/i.test(group[1]) ||
+      excludedRanges.some(([start, end]) => group.index >= start && group.index < end);
+    const declarations = [...group[2].matchAll(/<([A-Za-z_][A-Za-z0-9_.-]*)\b([^>]*)>\s*([^<]+?)\s*<\/\1>/gi)];
+    for (const declaration of declarations) {
+      if (!isTopLevelPropertyDeclaration(group[2], declaration.index)) continue;
+      const name = declaration[1];
+      const key = name.toLowerCase();
+      const current = occurrences.get(key) ?? [];
+      current.push({
+        name,
+        value: declaration[3].trim(),
+        eligible: !groupIsConditional && !/\bCondition\s*=/i.test(declaration[2]) &&
+          !/[$%@]/.test(declaration[3])
+      });
+      occurrences.set(key, current);
+    }
+  }
+
+  const aliases = new Map();
+  for (const [key, declarations] of occurrences) {
+    if (declarations.length === 1 && declarations[0].eligible) aliases.set(key, declarations[0].value);
+  }
+  return aliases;
+}
+
+function isTopLevelPropertyDeclaration(content, index) {
+  let depth = 0;
+  for (const match of content.slice(0, index).matchAll(/<\/?[A-Za-z_][A-Za-z0-9_.-]*\b[^>]*>/g)) {
+    if (/^<\//.test(match[0])) depth -= 1;
+    else if (!/\/\s*>$/.test(match[0])) depth += 1;
+  }
+  return depth === 0;
 }
 
 function parseTargetFrameworks(value, property) {
