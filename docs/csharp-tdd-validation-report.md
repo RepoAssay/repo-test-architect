@@ -1,6 +1,6 @@
 # C# TDD Live Validation Report
 
-This report records the first pinned public-repository audit for the experimental C# adapter. [`aelassas/tdd`](https://github.com/aelassas/tdd) was cloned and audited locally at [`aa81c10a1f251ed7f4c7fa3a64a79780a9f3f4fe`](https://github.com/aelassas/tdd/tree/aa81c10a1f251ed7f4c7fa3a64a79780a9f3f4fe) on 2026-07-28.
+This report records the first pinned public-repository audit for the C# adapter. [`aelassas/tdd`](https://github.com/aelassas/tdd) was cloned and audited locally at [`aa81c10a1f251ed7f4c7fa3a64a79780a9f3f4fe`](https://github.com/aelassas/tdd/tree/aa81c10a1f251ed7f4c7fa3a64a79780a9f3f4fe) on 2026-07-28 and remeasured for supported promotion on 2026-07-31.
 
 ## Repository Shape
 
@@ -25,10 +25,10 @@ The audit completes with high confidence and no blockers.
 | --- | ---: |
 | Detected/audited projects | 1 |
 | Production source types | 6 |
-| Untested candidates | 0 |
-| Covered-but-risky candidates | 4 |
+| Untested candidates | 1 |
+| Covered-but-risky candidates | 3 |
 | Deferred contracts | 2 |
-| Direct evidence relationships | 5 |
+| Direct evidence relationships | 4 |
 
 The four behavioral classes remain visible for review instead of disappearing behind a binary covered/uncovered label:
 
@@ -37,11 +37,11 @@ The four behavioral classes remain visible for review instead of disappearing be
 | `Translator.cs` | high-risk utility | covered but risky | Branching translation and reverse-lookup behavior has two direct test relationships. |
 | `TranslatorLoader.cs` | high-risk external boundary | covered but risky | File-system access is correctly recommended for integration-level review. |
 | `TranslatorParser.cs` | high-risk parser | covered but risky | Branching and malformed-input behavior remains an explicit edge-case surface. |
-| `TranslatorException.cs` | medium-risk utility | covered but risky | Direct construction is observed without claiming every throw path is asserted. |
+| `TranslatorException.cs` | medium-risk utility | untested | Its construction occurs in ordinary test setup rather than a runnable attributed test body, so the hardened evidence boundary withholds direct credit. |
 
 `ITranslatorLoader.cs` and `ITranslatorParser.cs` are deferred as contracts. Test helpers remain outside the production candidate set.
 
-The initial five direct links consisted of one `asserted` constructor use and four `called` uses. The tests store constructed instances in locals before invoking most methods, making this repository the pressure case for the bounded receiver/result follow-up below.
+The initial five direct links consisted of one `asserted` constructor use and four `called` uses. The tests store constructed instances in locals before invoking most methods, making this repository the pressure case for the bounded receiver/result follow-up below. Later runnable-body hardening correctly removed the setup-owned `TranslatorException` link while retaining four asserted behavioral relationships.
 
 ## Follow-Up Receiver And Result Flow
 
@@ -49,10 +49,14 @@ The adapter now follows a concrete local only when a runnable attributed test bo
 
 The flow stops at receiver or result reassignment, `ref`/`out`, interface-typed locals, fields, properties, helper returns, nested local functions, and deferred lambdas. Candidate ownership, project ownership, and evidence strength do not widen.
 
-On the pinned repository, all four candidate classifications and all five evidence relationships remain unchanged. Usage improves from one asserted/four called to four asserted/one called:
+At that follow-up stage, all four candidate classifications and all five evidence relationships remained unchanged. Usage improved from one asserted/four called to four asserted/one called:
 
 - `Translator`, `TranslatorLoader`, and `TranslatorParser` gain assertion proof from exact local receivers and results
-- `TranslatorException` remains `called` because the observed construction is not itself assertion-result flow
+- `TranslatorException` remained `called` until the later runnable-body ownership rule removed setup-owned direct evidence
+
+## Supported-Promotion Revalidation
+
+The promotion review reran the exact pinned checkout after all later C# ownership and evidence hardening. `Translator`, `TranslatorLoader`, and `TranslatorParser` retain four direct asserted relationships; `TranslatorException` is now honestly untested because its only observed construction is outside a runnable attributed test body. Both interfaces remain deferred contracts. The project pair, command, confidence, blockers, and native findings are unchanged.
 
 ## Native Validation
 
@@ -76,20 +80,20 @@ This is target-repository portability behavior, not an adapter command defect: t
 
 ## Stability And Performance
 
-Five direct C# audits after the receiver/result follow-up produced the same root-normalized SHA-256 digest, `fc70124699126c6a859273829d860b5ff2bde3e9a3a37ec8272b1dc1e23c041f`. The changed digest is expected from the three reviewed usage upgrades; candidate and relationship counts remain stable.
+Five standardized promotion audits produced the same root-normalized SHA-256 digest, `64eab326e2109523472a8b390eca5b589518a2b2b07da4d52ef457b80ecca254`.
 
 | Run | Duration |
 | --- | ---: |
-| 1 | 72.0 ms |
-| 2 | 73.0 ms |
-| 3 | 72.1 ms |
-| 4 | 70.7 ms |
-| 5 | 70.5 ms |
+| 1 | 25 ms |
+| 2 | 5 ms |
+| 3 | 4 ms |
+| 4 | 3 ms |
+| 5 | 3 ms |
 
-The median was 72.0 ms for one collapsed production/test project pair.
+The median was 4 ms for one collapsed production/test project pair.
 
 ## Remaining Boundary
 
 The live probe validates the current literal pair boundary without requiring solution evaluation. It does not justify `.sln` ownership, inherited MSBuild properties, central package management, multi-targeting, transitive project graphs, or Microsoft.Testing.Platform-only layouts.
 
-Concrete local receiver and one-result assertion flow are now covered. Field/property ownership, interface dispatch, target-typed construction, receiver or result reassignment, helpers, nested local functions, deferred lambdas, and deeper data flow remain outside the evidence boundary. Another live probe should determine whether one of those patterns or inherited build/package metadata is the more valuable next slice.
+Concrete local receiver and one-result assertion flow are covered. Exact immutable field receivers, inline `out var` results, and one bounded same-class helper hop are supported by later probes; mutable/property/interface identity, receiver or result reassignment, cross-file helper flow, nested local functions, deferred lambdas, and deeper data flow remain outside the evidence boundary.

@@ -29,7 +29,7 @@ Run the deterministic alpha gate with:
 npm run alpha:check
 ```
 
-This verifies the test suite, adapter implementation coverage, pinned adapter-corpus contract, generated performance/evidence regression for all five supported adapters, golden audit artifacts, model-consistency locks, public demo path, and local MCP transport. Package publishing checks remain part of `release:check`, not the alpha gate.
+This verifies the test suite, adapter implementation coverage, pinned adapter-corpus contract, generated performance/evidence regression for all six supported adapters, golden audit artifacts, model-consistency locks, public demo path, and local MCP transport. Package publishing checks remain part of `release:check`, not the alpha gate.
 
 ### Current Readiness Verdict
 

@@ -451,7 +451,7 @@ describe("project detector", () => {
     );
     assert.deepEqual(detection.projects[0].adapterMatches, [{
       adapterId: "csharp",
-      maturity: "experimental",
+      maturity: "supported",
       matchedEcosystems: ["dotnet"],
       matchedLanguages: ["csharp"]
     }]);

@@ -492,10 +492,18 @@ Rationale: pinned usbipd-win links nine `Usbipd.Automation` sources into the sel
 
 Revisit when: a pinned repository justifies multiple includes, explicit file lists, linked sources outside the audit root, or `Remove`/`Update` semantics without general MSBuild item evaluation.
 
-## Add The C# Promotion Performance Gate
+### 2026-07-31: add the C# promotion performance gate
 
 Decision: run a generated 400-source/200-test SDK project pair through the C# adapter in both alpha and release readiness, requiring exactly 200 covered candidates, 200 untested candidates, zero skipped candidates, and 200 direct evidence relationships under a broad 5-second ceiling.
 
 Rationale: the C# adapter now has extensive fixture and live-repository depth, but it lacked the synthetic semantic and timing guard carried by every supported adapter. The generated pair exercises project selection, source ownership, runnable xUnit discovery, direct asserted evidence, and candidate classification at useful scale. Its first local run completed in 880 ms without weakening the shared ceiling.
 
 Revisit when: normal CI variance approaches the ceiling or a representative large C# ownership shape exposes a more useful deterministic scale fixture.
+
+### 2026-07-31: promote bounded C# to supported alpha
+
+Decision: promote the bounded C# adapter from experimental to supported alpha maturity without widening its documented MSBuild, project-graph, command, or evidence boundary.
+
+Rationale: TDD, usbipd-win, and Sharp Cast now fill the shared conventional-library/service, framework-heavy application, and difficult-ownership corpus roles. Their exact pinned checkouts are blocker-free and digest-stable across fresh five-run standardized measurements, and all 21 C# detection, ownership, command, evidence, ranking, stability, and performance areas pass review. The generated 400-source/200-test gate, shared conformance, implementation coverage, golden/model-consistency artifacts, package verification, and Linux, Windows, and macOS alpha gates supply the same promotion infrastructure as the existing supported adapters.
+
+Revisit when: a documented in-boundary repository produces false ownership, a guessed or missing verification command, direct-evidence inflation, or performance outside the recorded gates.

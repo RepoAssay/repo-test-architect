@@ -5,7 +5,7 @@ const cases = [
   {
     adapterId: "csharp",
     fixturePath: "examples/csharp-sdk-xunit-basic",
-    expectedMaturity: "experimental",
+    expectedMaturity: "supported",
     expectedProfile: {
       languages: ["csharp"],
       testFrameworks: ["xunit"],

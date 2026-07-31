@@ -1,6 +1,6 @@
-# C# Experimental Support
+# C# Alpha Support
 
-The C# adapter is experimental. Its bounded slices prove that one conventional SDK-style test project or one unique literal production/test project edge, including that pair amid unrelated projects, can flow through project detection, audit, ranking, planning, explanations, findings, stats, CLI/MCP-shaped calls, golden snapshots, model-consistency checks, and the generated semantic/performance gate without a C#-specific report format.
+The C# adapter is supported at bounded public-alpha maturity. Its slices prove that one conventional SDK-style test project or one unique literal production/test project edge, including that pair amid unrelated projects, can flow through project detection, audit, ranking, planning, explanations, findings, stats, CLI/MCP-shaped calls, golden snapshots, model-consistency checks, and the generated semantic/performance gate without a C#-specific report format.
 
 ## Supported Boundary
 
@@ -23,11 +23,18 @@ The C# adapter is experimental. Its bounded slices prove that one conventional S
 
 The adapter classifies branching and fallible behavior, service and external boundaries, parsers, validators, calculators, formatters, mappers, repositories, controllers, and clients. Generated files, application startup wiring, data-only models, and interfaces are deferred with explicit reasons rather than promoted as direct test targets.
 
-## Promotion Readiness
+## Promotion Result
 
 The generated 400-source/200-test SDK project-pair gate locks 200 covered candidates, 200 untested candidates, zero skipped candidates, and 200 direct evidence relationships under a broad 5-second cross-platform ceiling. Its first recorded local run completed in 880 ms. The gate runs in both alpha and release readiness and ships with the package verification scripts.
 
-C# now has the same synthetic semantic/performance protection as every supported adapter. Promotion still requires selecting three pinned live cases for the shared conventional-library/service, framework-heavy application, and difficult-ownership roles, rerunning their standardized stability/performance measurements, and recording every scorecard area as reviewed before changing registry maturity.
+C# is promoted from `experimental` to `supported` because all four promotion gates are complete:
+
+1. TDD, usbipd-win, and Sharp Cast fill the conventional-library/service, framework-heavy application, and difficult-ownership roles with exact full-SHA pins.
+2. All 21 C# validation-corpus areas pass reviewed detection, ownership, command, evidence, ranking, stability, and performance checks.
+3. Fresh five-run standardized measurements are digest-stable and blocker-free, with medians of 4 ms, 196 ms, and 37 ms respectively.
+4. The generated project pair, shared conformance, implementation coverage, golden/model-consistency artifacts, package checks, and cross-platform alpha gates remain green.
+
+Supported maturity remains bounded to this matrix. The adapter does not evaluate arbitrary MSBuild graphs, infer solution ownership, or turn an ambiguous project graph into a guessed verification command.
 
 ## Checked Fixtures
 
@@ -53,13 +60,13 @@ dotnet test tests/Pricing.Tests/Pricing.Tests.csproj
 
 ## Live Validation
 
-The first pinned live probe audits [`aelassas/tdd`](https://github.com/aelassas/tdd) at `aa81c10a1f251ed7f4c7fa3a64a79780a9f3f4fe`. Project detection collapses its literal `net8.0` production/test pair to one supported root, selects the exact test-project command, and reports four covered-but-risky behavioral classes plus two deferred interfaces with no blockers. Five repeated audits are digest-stable with a 70.4 ms median.
+The first pinned live probe audits [`aelassas/tdd`](https://github.com/aelassas/tdd) at `aa81c10a1f251ed7f4c7fa3a64a79780a9f3f4fe`. Project detection collapses its literal `net8.0` production/test pair to one supported root, selects the exact test-project command, and reports one untested behavioral class, three covered classes, two deferred interfaces, and four direct asserted relationships with no blockers. Five standardized promotion audits are digest-stable with a 4 ms median.
 
 Native validation builds cleanly and executes all 26 tests. Twenty-two pass on Darwin; four file-loader tests fail because their fixture paths use Windows backslashes and the upstream workflow runs on `windows-latest`. The static audit had already classified that loader as a high-risk external boundary and recommended integration-level review. See the [C# TDD Live Validation Report](csharp-tdd-validation-report.md).
 
-The receiver/result follow-up preserves all four candidate classifications and all five direct relationships while upgrading usage from one asserted/four called to four asserted/one called. `Translator`, `TranslatorLoader`, and `TranslatorParser` gain assertion proof; `TranslatorException` remains conservatively called. Five follow-up audits are digest-stable with a 72.0 ms median.
+The receiver/result follow-up originally upgraded usage without widening ownership. Later runnable-body hardening removed the setup-owned `TranslatorException` relationship, while `Translator`, `TranslatorLoader`, and `TranslatorParser` retain four asserted links. The promotion review confirms that this is the more honest current baseline.
 
-The second pinned probe audits [`jjosh102/sharp-cast`](https://github.com/jjosh102/sharp-cast) at `57cd4f345af3d98698f9227b6b4de610c131686c`. Its four-project repository contains one unique xUnit-to-library edge plus unrelated Blazor and benchmark projects. The adapter selects the exact pair, emits a command that passes 165/165 upstream tests, and excludes every unrelated source file. Its field-receiver follow-up moves `JsonToCSharpConverter` and `TypeScriptToCSharpConverter` into covered evidence, changing the result from `7 / 4 / 1` with five relationships to `5 / 6 / 1` with eight. The inline-out follow-up preserves those counts while upgrading both JSON relationships and `CSharpToTypeScriptConverter` from called to asserted, producing six asserted and two called relationships. Five audits are digest-stable with a 28.3 ms median. See the [C# Sharp Cast Live Validation Report](csharp-sharp-cast-validation-report.md).
+The second pinned probe audits [`jjosh102/sharp-cast`](https://github.com/jjosh102/sharp-cast) at `57cd4f345af3d98698f9227b6b4de610c131686c`. Its four-project repository contains one unique xUnit-to-library edge plus unrelated Blazor and benchmark projects. The adapter selects the exact pair, emits a command that passes 165/165 upstream tests, and excludes every unrelated source file. Its field-receiver follow-up moves `JsonToCSharpConverter` and `TypeScriptToCSharpConverter` into covered evidence, changing the result from `7 / 4 / 1` with five relationships to `5 / 6 / 1` with eight. The inline-out follow-up preserves those counts while upgrading both JSON relationships and `CSharpToTypeScriptConverter` from called to asserted, producing six asserted and two called relationships. Five standardized promotion audits are digest-stable with a 37 ms median. See the [C# Sharp Cast Live Validation Report](csharp-sharp-cast-validation-report.md).
 
 The third pinned probe audits [`kthompson/glob`](https://github.com/kthompson/glob) at `719a8593b7c7c085c832e5580f753355ce7ded85`. The selected library/test pair inherits `net8.0` from the root props file while an unrelated conditional build-tool package remains outside the admitted metadata. Detection keeps the Blazor app and benchmark separate, the exact test command has no blockers, and five audits are digest-stable with a 22.5 ms median. The local net8 test host passed all 179 tests through .NET 10's major-version roll-forward after full Git history was restored. See the [C# Glob Live Validation Report](csharp-glob-validation-report.md).
 
