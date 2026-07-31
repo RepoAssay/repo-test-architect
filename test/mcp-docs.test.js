@@ -17,6 +17,7 @@ describe("MCP docs", () => {
     }
 
     assert.ok(docs.includes("current supported adapters are `csharp`, `javascript`, `go`, `kotlin`, `python`, `rust`, and `swift`"));
+    assert.ok(docs.includes("`ruby` is available experimentally"));
     assert.ok(docs.includes("@./examples/mcp/kotlin-audit.args.json"));
     assert.ok(docs.includes('`changedPaths: [""]` on `audit_repo` returns `kind: "invalid-arguments"`'));
     assert.ok(docs.includes('`argument: "changedPaths"`'));

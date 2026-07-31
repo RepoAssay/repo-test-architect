@@ -1,0 +1,64 @@
+{
+  "schemaVersion": "plan/v1",
+  "summary": {
+    "confidence": "high",
+    "verificationCommand": "bundle exec rake test",
+    "blockerCount": 0,
+    "addTestCount": 1,
+    "extendTestCount": 1,
+    "deferredCount": 0
+  },
+  "blockers": [],
+  "items": [
+    {
+      "id": "extend-test:lib/ruby_minitest_basic/parser.rb",
+      "action": "extend-test",
+      "targetId": "lib/ruby_minitest_basic/parser.rb",
+      "target": "parser",
+      "path": "lib/ruby_minitest_basic/parser.rb",
+      "testLevel": "unit",
+      "priority": 5,
+      "riskReductionScore": 8,
+      "maintenanceCost": 3,
+      "rationale": [
+        "Branching Ruby behavior",
+        "Failure or edge-case behavior",
+        "Existing Ruby test naming evidence detected; review behavioral coverage"
+      ],
+      "sourceSignals": [
+        "pure-logic",
+        "branching-logic",
+        "edge-case-surface",
+        "matching-test"
+      ],
+      "existingTestPaths": [
+        "test/parser_test.rb"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "test/parser_test.rb",
+          "kind": "filename-convention",
+          "strength": "naming"
+        }
+      ]
+    },
+    {
+      "id": "add-test:lib/ruby_minitest_basic/service.rb",
+      "action": "add-test",
+      "targetId": "lib/ruby_minitest_basic/service.rb",
+      "target": "service",
+      "path": "lib/ruby_minitest_basic/service.rb",
+      "testLevel": "unit",
+      "priority": 4,
+      "riskReductionScore": 6,
+      "maintenanceCost": 2,
+      "rationale": [
+        "Deterministic Ruby behavior"
+      ],
+      "sourceSignals": [
+        "service-boundary"
+      ],
+      "existingTestPaths": []
+    }
+  ]
+}

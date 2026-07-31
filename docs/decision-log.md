@@ -2,6 +2,14 @@
 
 This log records project-level decisions that shape architecture, scope, and public positioning.
 
+## Ruby Begins As An Experimental Conventional-Bundler Adapter
+
+Decision: register Ruby experimentally with one root `Gemfile`, `lib/` source ownership, bounded Minitest/RSpec discovery and commands, and naming-only evidence before attempting Rails or parser-complete Ruby semantics.
+
+Rationale: Ruby's dynamic constant lookup and metaprogramming make broad static evidence easy to overstate. The first exact-pin rubyzip audit proves useful detection, command selection, native verification, candidate classification, and conservative basename attribution while keeping direct calls, ambiguous basenames, custom tasks, alternate test naming, and Rails explicit. Live pressure added only exact `Minitest::TestTask.create` and root-gemspec runner declarations.
+
+Revisit when: direct `require` and constant evidence is regression-backed across representative public gems, or three pinned Ruby roles pass the shared promotion scorecard.
+
 ## Audit Graph First
 
 Decision: build a deterministic audit graph before asking a model to explain, prioritize, or generate.

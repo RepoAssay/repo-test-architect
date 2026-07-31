@@ -61,6 +61,15 @@ describe("adapter registry", () => {
         emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"]
       },
       {
+        id: "ruby",
+        ecosystems: ["ruby"],
+        languages: ["ruby"],
+        maturity: "experimental",
+        supportedTestFrameworks: ["minitest", "rspec"],
+        supportedProjectTypes: ["ruby-bundler"],
+        emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"]
+      },
+      {
         id: "swift",
         ecosystems: ["apple", "bazel", "swift"],
         languages: ["objective-c", "swift"],
@@ -131,6 +140,15 @@ describe("adapter registry", () => {
         emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"]
       },
       {
+        id: "ruby",
+        ecosystems: ["ruby"],
+        languages: ["ruby"],
+        maturity: "experimental",
+        supportedTestFrameworks: ["minitest", "rspec"],
+        supportedProjectTypes: ["ruby-bundler"],
+        emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"]
+      },
+      {
         id: "swift",
           ecosystems: ["apple", "bazel", "swift"],
           languages: ["objective-c", "swift"],
@@ -187,8 +205,8 @@ describe("adapter registry", () => {
 
   it("rejects unsupported adapters", () => {
     assert.throws(
-      () => getAdapter("ruby"),
-      /Unsupported adapter: ruby\. Available adapters: javascript, csharp, go, kotlin, python, rust, swift\./
+      () => getAdapter("php"),
+      /Unsupported adapter: php\. Available adapters: javascript, csharp, go, kotlin, python, rust, ruby, swift\./
     );
   });
 
@@ -231,6 +249,14 @@ describe("adapter registry", () => {
 
     assert.equal(audit.schemaVersion, "audit/v1");
     assert.deepEqual(audit.profile.testFrameworks, ["rust-test"]);
+  });
+
+  it("audits through the Ruby adapter", () => {
+    const adapter = getAdapter("ruby");
+    const audit = adapter.audit(path.resolve("examples/ruby-minitest-basic"));
+
+    assert.equal(audit.schemaVersion, "audit/v1");
+    assert.deepEqual(audit.profile.testFrameworks, ["minitest"]);
   });
 
   it("audits through the Python adapter", () => {

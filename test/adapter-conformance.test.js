@@ -66,6 +66,17 @@ const cases = [
     }
   },
   {
+    adapterId: "ruby",
+    fixturePath: "examples/ruby-minitest-basic",
+    expectedMaturity: "experimental",
+    expectedProfile: {
+      languages: ["ruby"],
+      testFrameworks: ["minitest"],
+      testCommand: "bundle exec rake test",
+      confidence: "high"
+    }
+  },
+  {
     adapterId: "swift",
     fixturePath: "examples/swift-spm-xctest",
     expectedProfile: {

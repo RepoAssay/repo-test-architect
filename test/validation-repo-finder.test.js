@@ -194,6 +194,20 @@ describe("validation repository finder", () => {
     });
   });
 
+  it("defines a conventional Bundler-managed Ruby library profile", () => {
+    assert.equal(validationProfiles.ruby.language, "Ruby");
+    assert.deepEqual(detectManifestSignals(validationProfiles.ruby.searches, {
+      Gemfile: 'source "https://rubygems.org"\ngemspec\n'
+    }, [
+      { name: "checkout.gemspec", type: "file" },
+      { name: "lib", type: "dir" },
+      { name: "test", type: "dir" }
+    ]), {
+      signals: ["ruby-bundler", "ruby-gemspec", "root-ruby-source", "root-ruby-tests"],
+      matchedPaths: ["Gemfile", "checkout.gemspec", "lib", "test"]
+    });
+  });
+
   it("defines JVM validation profiles for Gradle, Maven JUnit, Kotest, Spock, and TestNG projects", () => {
     assert.deepEqual(
       ["gradle", "gradle-junit", "gradle-kmp-jvm", "gradle-kotest", "gradle-spock", "gradle-testng", "maven", "maven-junit", "maven-testng"].map((profile) => validationProfiles[profile].language),
@@ -262,10 +276,11 @@ describe("validation repository finder", () => {
       { name: ".github", type: "dir" },
       { name: "pnpm-lock.yaml", type: "file" },
       { name: "Package.resolved", type: "file" },
+      { name: "Gemfile.lock", type: "file" },
       { name: "uv.lock", type: "file" }
     ], [{ name: "test.yml", type: "file" }]), {
       hasCi: true,
-      lockfiles: ["Package.resolved", "pnpm-lock.yaml", "uv.lock"]
+      lockfiles: ["Gemfile.lock", "Package.resolved", "pnpm-lock.yaml", "uv.lock"]
     });
   });
 

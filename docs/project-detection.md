@@ -18,18 +18,18 @@ npm run detect-rules:json
 | `package.json` | `javascript` | `javascript`, `typescript` | Supported by `javascript` |
 | `pyproject.toml` | `python` | `python` | Supported by `python` |
 | `requirements.txt` | `python` | `python` | Supported by `python` |
-| `Gemfile` | `ruby` | `ruby` | Detected, unsupported |
+| `Gemfile` | `ruby` | `ruby` | Experimental bounded `ruby` adapter |
 | `composer.json` | `php` | `php` | Detected, unsupported |
 | `mix.exs` | `elixir` | `elixir` | Detected, unsupported |
-| `go.mod` | `go` | `go` | Experimental bounded `go` adapter |
-| `Cargo.toml` | `rust` | `rust` | Experimental Cargo package/workspace-member adapter |
+| `go.mod` | `go` | `go` | Supported by bounded `go` |
+| `Cargo.toml` | `rust` | `rust` | Supported by bounded `rust` |
 | `Package.swift` | `swift` | `swift` | Supported by `swift` |
 | `MODULE.bazel` | `bazel` | `swift` | Supported by `swift` when Swift rules and sources are present |
 | `WORKSPACE` | `bazel` | `swift` | Supported by `swift` when Swift rules and sources are present |
 | `WORKSPACE.bazel` | `bazel` | `swift` | Supported by `swift` when Swift rules and sources are present |
 | `*.xcodeproj` | `apple` | `swift`, `objective-c` | Supported by `swift` |
 | `*.xcworkspace` | `apple` | `swift`, `objective-c` | Supported by `swift` |
-| `*.csproj` | `dotnet` | `csharp` | Experimental bounded `csharp` adapter |
+| `*.csproj` | `dotnet` | `csharp` | Supported by bounded `csharp` |
 | `pom.xml` | `jvm` | `java`, `kotlin` | Supported by bounded `kotlin` |
 | `build.gradle` | `jvm` | `kotlin`, `java` | Supported by bounded `kotlin` |
 | `build.gradle.kts` | `jvm` | `kotlin`, `java` | Supported by bounded `kotlin` |

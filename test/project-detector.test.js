@@ -742,7 +742,7 @@ describe("project detector", () => {
           root: "services/jobs",
           ecosystems: ["ruby"],
           languages: ["ruby"],
-          supported: false
+          supported: true
         }
       ]
     );

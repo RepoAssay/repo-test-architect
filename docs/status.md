@@ -2,7 +2,7 @@
 
 ## Current State
 
-Repo Test Architect currently has supported deterministic JavaScript/TypeScript, Python, Swift, bounded Kotlin/JVM, bounded Go, bounded C#, and bounded Rust audit pipelines. Go support includes conventional modules, literal repository-contained `go.work` ownership, and explicit static build-target selection. C# support covers one conventional SDK-style test project or one unique literal production/test edge, including exact literal multi-target membership, finite project-local target-conditioned package predicates, and a selected pair amid unrelated projects. Rust support covers conventional Cargo packages and literal workspace members with built-in tests, exact commands, literal module ownership, and bounded direct evidence.
+Repo Test Architect currently has supported deterministic JavaScript/TypeScript, Python, Swift, bounded Kotlin/JVM, bounded Go, bounded C#, and bounded Rust audit pipelines, plus an experimental Ruby foundation. Go support includes conventional modules, literal repository-contained `go.work` ownership, and explicit static build-target selection. C# support covers one conventional SDK-style test project or one unique literal production/test edge, including exact literal multi-target membership, finite project-local target-conditioned package predicates, and a selected pair amid unrelated projects. Rust support covers conventional Cargo packages and literal workspace members with built-in tests, exact commands, literal module ownership, and bounded direct evidence. Ruby currently covers one conventional Bundler project with `lib/`, Minitest/RSpec discovery, bounded commands, and naming-level evidence.
 
 Implemented:
 
@@ -71,7 +71,7 @@ Implemented:
 - shared project-audits validation for saved artifact reuse across CLI and MCP-style flows
 - file-backed MCP invoke arguments for local calls that reuse saved artifacts
 - checked-in MCP args fixture for project-audits derived local examples
-- unsupported Ruby, PHP, Elixir, and .NET project reporting with ecosystem and language labels
+- unsupported PHP and Elixir project reporting with ecosystem and language labels
 - documented project detection marker rules
 - CLI output for project detection marker rules
 - fixture-based regression coverage
@@ -104,6 +104,7 @@ Implemented:
 - exact-pin validation-corpus measurement command with repeated canonical audit digests, raw and median durations, and evidence-link counts
 - Node 20-compatible instrumented line, branch, and function coverage floors for every registered adapter implementation
 - deterministic generated 400-source/200-test performance and evidence-count gates for all seven supported adapters
+- experimental Ruby registry/detection, conventional Bundler/Minitest/RSpec ownership, native fixture verification, shared downstream conformance, and a generated 400-source/200-test performance/evidence gate
 - alpha-readiness checklist for the test architecture audit milestone before native generation
 - deterministic `npm run alpha:check` gate for tests, adapter implementation coverage, adapter corpus validation, all-adapter performance/evidence regression, golden audits, model consistency, demo behavior, and local MCP transport without npm packaging requirements
 - real-repo audit reports for owned JavaScript/TypeScript and Swift repositories, including Collectors Grimoire and `cg-*` sibling packages
@@ -116,7 +117,7 @@ Implemented:
 - bounded Go assertion-usage and parser-scope pressure across TOML, Chi, River, Zap, and Resty, including exact standard-library failure conditions, exact Testify imports, one-hop result bindings, call-site shadow checks, and a measured River parser baseline
 - parser-owned Go receiver and callable-body pressure across the same five exact pins, including declaration-to-call receiver identity, exact assertion occurrences, multi-callable function/method body ownership, removal of file-wide indirect leakage, five reviewed candidate transitions, and refreshed corpus digests
 - statically typed Go test-helper receiver pressure across the same exact pins, retaining four canonical graphs while adding five reviewed direct Resty client relationships without upgrading custom helper assertions
-- authenticated public-repository discovery and ranking profiles for React, JavaScript/TypeScript workspaces, conventional Go modules, Go HTTP services, Go workspaces, SwiftPM, SwiftUI/Xcode, Vapor, Swift Bazel, Swift macros/plugins, CocoaPods-era Apple projects, Gradle JVM, and Maven JVM validation targets
+- authenticated public-repository discovery and ranking profiles for React, JavaScript/TypeScript workspaces, conventional Go modules, Go HTTP services, Go workspaces, SwiftPM, SwiftUI/Xcode, Vapor, Swift Bazel, Swift macros/plugins, CocoaPods-era Apple projects, Gradle JVM, Maven JVM, Python, and conventional Bundler-managed Ruby validation targets
 - product positioning note for audit-first differentiation, initial audience, business paths, proof points, and anti-positioning
 - near-term roadmap for public demo polish, second adapter proof, placement analysis, MCP transport, and generation readiness gates
 - adapter reuse roadmap defining shared audit semantics, adapter-owned proof, and compiler/parser-backed ecosystem analysis

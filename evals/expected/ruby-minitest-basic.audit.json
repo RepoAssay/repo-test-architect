@@ -1,0 +1,172 @@
+{
+  "schemaVersion": "audit/v1",
+  "profile": {
+    "root": "<fixture>",
+    "languages": [
+      "ruby"
+    ],
+    "packageManagers": [
+      "bundler"
+    ],
+    "testFrameworks": [
+      "minitest"
+    ],
+    "architectures": [
+      "ruby-gem"
+    ],
+    "testCommand": "bundle exec rake test",
+    "detectedConventions": [
+      "lib/ source layout",
+      "*_test.rb naming",
+      "Rake::TestTask test command"
+    ],
+    "existingTestLocations": [
+      "test/ Minitest files"
+    ],
+    "setupSignals": [
+      "Gemfile",
+      "Gemfile.lock",
+      "ruby_minitest_basic.gemspec",
+      "Rakefile"
+    ],
+    "confidence": "high",
+    "blockers": []
+  },
+  "untestedCandidates": [
+    {
+      "id": "lib/ruby_minitest_basic/service.rb",
+      "name": "service",
+      "path": "lib/ruby_minitest_basic/service.rb",
+      "kind": "service",
+      "signals": [
+        "service-boundary"
+      ],
+      "risk": "medium",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 6,
+      "maintenanceCost": 2,
+      "reasons": [
+        "Deterministic Ruby behavior"
+      ],
+      "existingTestPaths": []
+    }
+  ],
+  "coveredButRisky": [
+    {
+      "id": "lib/ruby_minitest_basic/parser.rb",
+      "name": "parser",
+      "path": "lib/ruby_minitest_basic/parser.rb",
+      "kind": "parser",
+      "signals": [
+        "pure-logic",
+        "branching-logic",
+        "edge-case-surface",
+        "matching-test"
+      ],
+      "risk": "high",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 8,
+      "maintenanceCost": 3,
+      "reasons": [
+        "Branching Ruby behavior",
+        "Failure or edge-case behavior",
+        "Existing Ruby test naming evidence detected; review behavioral coverage"
+      ],
+      "existingTestPaths": [
+        "test/parser_test.rb"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "test/parser_test.rb",
+          "kind": "filename-convention",
+          "strength": "naming"
+        }
+      ]
+    }
+  ],
+  "recommended": [
+    {
+      "id": "lib/ruby_minitest_basic/parser.rb",
+      "name": "parser",
+      "path": "lib/ruby_minitest_basic/parser.rb",
+      "kind": "parser",
+      "signals": [
+        "pure-logic",
+        "branching-logic",
+        "edge-case-surface",
+        "matching-test"
+      ],
+      "risk": "high",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 8,
+      "maintenanceCost": 3,
+      "reasons": [
+        "Branching Ruby behavior",
+        "Failure or edge-case behavior",
+        "Existing Ruby test naming evidence detected; review behavioral coverage"
+      ],
+      "existingTestPaths": [
+        "test/parser_test.rb"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "test/parser_test.rb",
+          "kind": "filename-convention",
+          "strength": "naming"
+        }
+      ]
+    },
+    {
+      "id": "lib/ruby_minitest_basic/service.rb",
+      "name": "service",
+      "path": "lib/ruby_minitest_basic/service.rb",
+      "kind": "service",
+      "signals": [
+        "service-boundary"
+      ],
+      "risk": "medium",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 6,
+      "maintenanceCost": 2,
+      "reasons": [
+        "Deterministic Ruby behavior"
+      ],
+      "existingTestPaths": []
+    }
+  ],
+  "skipped": [
+    {
+      "id": "lib/ruby_minitest_basic.rb",
+      "name": "ruby_minitest_basic",
+      "path": "lib/ruby_minitest_basic.rb",
+      "kind": "module-wiring",
+      "signals": [
+        "low-runtime-behavior"
+      ],
+      "riskReductionScore": 1,
+      "maintenanceCost": 2,
+      "reason": "Ruby requires and module wiring are better covered through consuming behavior.",
+      "preferredCoveragePath": "consuming module tests"
+    },
+    {
+      "id": "lib/ruby_minitest_basic/value.rb",
+      "name": "value",
+      "path": "lib/ruby_minitest_basic/value.rb",
+      "kind": "data-model",
+      "signals": [
+        "low-runtime-behavior"
+      ],
+      "riskReductionScore": 1,
+      "maintenanceCost": 3,
+      "reason": "Ruby declarations without methods are better covered through consuming behavior.",
+      "preferredCoveragePath": "consuming behavior tests"
+    }
+  ],
+  "risks": [
+    "parser has branching ruby behavior, failure or edge-case behavior and has only naming-level Ruby test evidence."
+  ]
+}
