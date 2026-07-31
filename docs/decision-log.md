@@ -475,3 +475,11 @@ Decision: when NUnit is selected, treat `ClassicAssert.*` as assertion usage onl
 Rationale: pinned official NUnit samples use `using NUnit.Framework.Legacy;` and `ClassicAssert` throughout `MoneyTest.cs`. The exact owner proof distinguishes NUnit's compatibility API from a same-named helper without broad namespace inference. `Money.cs` and `MoneyBag.cs` were already asserted through `Assert.That`, so five follow-up audits intentionally retain the prior repository digest with an 8.5 ms median. Dedicated positive and near-miss fixtures prove direct, stable-result, helper, alias, qualification, local/source collisions, and wrong-framework behavior.
 
 Revisit when: another pinned NUnit repository justifies static imports, non-default owner aliases, or additional legacy assertion owners without treating arbitrary assertion-shaped methods as framework proof.
+
+### 2026-07-31: admit one root C# target-framework property alias
+
+Decision: resolve an exact project-local `TargetFramework` or `TargetFrameworks` value of `$(PropertyName)` only when the nearest repository-owned `Directory.Build.props` declares that property exactly once, unconditionally, at top level, with a literal value that already satisfies the bounded target grammar. Reject local-only, missing, repeated, conditional, chained, nested, target-owned, item-expanded, or mixed-expression values.
+
+Rationale: pinned `dorssel/usbipd-win` at `15e5f85663482d0698f080eeb41950ca839e8893` declares `MainTargetFramework=net10.0` once at the root and uses the exact alias in both its selected `Usbipd` and `UnitTests` projects. Resolving that one hop removes the framework-evaluation and missing-static-target blockers while preserving 27 untested, 14 covered, 3 deferred, and 15 evidence relationships. Five audits share digest `1183ee92d1a8edd8d3ec3b0edb5019bf46aaf590552e9769809cafbe05eb21b4` with a 179.5 ms median. The custom `Compile` graph remains the only command blocker.
+
+Revisit when: a pinned repository proves a safe need for project-local aliases, chained props, conditional values, or other MSBuild evaluation without invoking the build engine.

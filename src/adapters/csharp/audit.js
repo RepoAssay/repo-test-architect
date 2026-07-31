@@ -201,7 +201,7 @@ function readRepoFiles(root) {
 }
 
 function analyzeProject(content, inherited, inheritedPath, centralPackages, globalJson = { blockers: [] }) {
-  const localFramework = analyzeTargetFrameworkDeclaration(content);
+  const localFramework = analyzeTargetFrameworkDeclaration(content, inherited?.literalPropertyAliases);
   const inheritedTargetFrameworks = inherited?.targetFrameworks ?? (inherited?.targetFramework ? [inherited.targetFramework] : []);
   const targetFrameworks = localFramework.hasDeclaration
     ? localFramework.targetFrameworks
@@ -209,6 +209,9 @@ function analyzeProject(content, inherited, inheritedPath, centralPackages, glob
   const targetFrameworkProperty = localFramework.hasDeclaration
     ? localFramework.property
     : inherited?.targetFrameworkProperty;
+  const targetFrameworkAlias = localFramework.hasDeclaration
+    ? localFramework.resolvedPropertyAlias
+    : inherited?.targetFrameworkAlias;
   const targetFramework = targetFrameworks.length === 1 ? targetFrameworks[0] : undefined;
   const targetFrameworkBlockers = [...localFramework.blockers];
   if (localFramework.property && inherited?.targetFrameworkProperty &&
@@ -251,6 +254,7 @@ function analyzeProject(content, inherited, inheritedPath, centralPackages, glob
     : undefined;
   const usesInheritedMetadata = Boolean(
     (!localFramework.hasDeclaration && inheritedTargetFrameworks.length > 0) ||
+    localFramework.resolvedPropertyAlias ||
     (localIsTestProject === undefined && inherited?.isTestProject !== undefined) ||
     inherited?.packageReferences.some((name) => [
       "microsoft.net.test.sdk",
@@ -324,6 +328,7 @@ function analyzeProject(content, inherited, inheritedPath, centralPackages, glob
     targetFramework,
     targetFrameworks,
     targetFrameworkProperty,
+    targetFrameworkAlias,
     isMultiTargeted: targetFrameworkProperty === "TargetFrameworks" && targetFrameworks.length > 1,
     targetFrameworkBlockers: [...new Set(targetFrameworkBlockers)],
     packageReferenceBlockers: localPackageAnalysis.blockers,
@@ -640,6 +645,9 @@ function buildProfile(root, projects, layout, sourceFiles, testFiles, globalJson
   if (layout.sourceProject?.analysis.inheritedMetadataPath || layout.testProject?.analysis.inheritedMetadataPath) {
     detectedConventions.push("inherited Directory.Build.props metadata");
   }
+  if (layout.sourceProject?.analysis.targetFrameworkAlias || layout.testProject?.analysis.targetFrameworkAlias) {
+    detectedConventions.push("bounded root target-framework property alias");
+  }
   if (layout.sourceProject?.analysis.centralPackagesEnabled || layout.testProject?.analysis.centralPackagesEnabled) {
     detectedConventions.push("bounded central package management");
   }
@@ -663,6 +671,14 @@ function buildProfile(root, projects, layout, sourceFiles, testFiles, globalJson
     layout.sourceProject?.analysis.inheritedMetadataPath,
     layout.testProject?.analysis.inheritedMetadataPath
   ].filter(Boolean))]) setupSignals.push(inheritedPath);
+  for (const aliasSignal of [...new Set([
+    layout.sourceProject?.analysis,
+    layout.testProject?.analysis
+  ].map((current) => (
+    current?.targetFrameworkAlias && current.targetFrameworks.length > 0
+      ? `${current.targetFrameworkAlias}=${current.targetFrameworks.join(";")}`
+      : undefined
+  )).filter(Boolean))]) setupSignals.push(aliasSignal);
   for (const centralPackagesPath of [...new Set([
     layout.sourceProject?.analysis.centralPackagesPath,
     layout.testProject?.analysis.centralPackagesPath

@@ -302,6 +302,78 @@ describe("C# audit adapter", () => {
     assert.ok(audit.profile.setupSignals.includes("Directory.Build.props"));
   });
 
+  it("resolves one exact target-framework property alias from Directory.Build.props", (t) => {
+    const root = createRepo(t, {
+      "global.json": [
+        "{",
+        "  \"sdk\": { \"version\": \"10.0.302\" },",
+        "  \"msbuild-sdks\": { \"MSTest.Sdk\": \"4.3.3\" },",
+        "  \"test\": { \"runner\": \"Microsoft.Testing.Platform\" }",
+        "}"
+      ].join("\n"),
+      "Directory.Build.props": "<Project><PropertyGroup><MainTargetFramework>net10.0</MainTargetFramework></PropertyGroup></Project>",
+      "src/Core/Core.csproj": "<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><TargetFramework>$(MainTargetFramework)</TargetFramework></PropertyGroup></Project>",
+      "src/Core/Core.cs": "public static class Core { public static int Run() => 1; }\n",
+      "tests/Core.Tests/Core.Tests.csproj": [
+        "<Project Sdk=\"MSTest.Sdk\"><PropertyGroup><TargetFramework>$(MainTargetFramework)</TargetFramework></PropertyGroup><ItemGroup>",
+        "<ProjectReference Include=\"../../src/Core/Core.csproj\" />",
+        "</ItemGroup></Project>"
+      ].join(""),
+      "tests/Core.Tests/CoreTests.cs": "[TestClass] public class CoreTests { [TestMethod] public void Runs() { Assert.AreEqual(1, Core.Run()); } }\n"
+    });
+
+    const audit = auditCSharpRepo(root);
+    assert.equal(audit.profile.testCommand, "dotnet test tests/Core.Tests/Core.Tests.csproj");
+    assert.deepEqual(audit.profile.blockers, []);
+    assert.ok(audit.profile.detectedConventions.includes("bounded root target-framework property alias"));
+    assert.ok(audit.profile.detectedConventions.includes("inherited Directory.Build.props metadata"));
+    assert.ok(audit.profile.setupSignals.includes("MainTargetFramework=net10.0"));
+    assert.equal(audit.profile.setupSignals.filter((signal) => signal === "MainTargetFramework=net10.0").length, 1);
+  });
+
+  it("resolves one exact multi-target property alias from Directory.Build.props", (t) => {
+    const root = createRepo(t, {
+      "Directory.Build.props": "<Project><PropertyGroup><SupportedTargets>net9.0;net10.0</SupportedTargets></PropertyGroup></Project>",
+      "Example.Tests.csproj": "<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><TargetFrameworks>$(SupportedTargets)</TargetFrameworks><IsTestProject>true</IsTestProject></PropertyGroup><ItemGroup><PackageReference Include=\"Microsoft.NET.Test.Sdk\" /><PackageReference Include=\"xunit\" /></ItemGroup></Project>",
+      "Tests.cs": "public class Tests { [Fact] public void Runs() { Assert.True(true); } }\n"
+    });
+
+    const audit = auditCSharpRepo(root);
+    assert.equal(audit.profile.testCommand, "dotnet test Example.Tests.csproj");
+    assert.deepEqual(audit.profile.blockers, []);
+    assert.ok(audit.profile.architectures.includes("dotnet-multi-target-project"));
+    assert.ok(audit.profile.setupSignals.includes("SupportedTargets=net9.0;net10.0"));
+  });
+
+  it("keeps non-literal and non-root target-framework aliases blocked", (t) => {
+    const cases = [
+      ["conditional group", "<Project><PropertyGroup Condition=\"'$(Mode)' == 'test'\"><MainTargetFramework>net10.0</MainTargetFramework></PropertyGroup></Project>"],
+      ["conditional property", "<Project><PropertyGroup><MainTargetFramework Condition=\"'$(Mode)' == 'test'\">net10.0</MainTargetFramework></PropertyGroup></Project>"],
+      ["chained property", "<Project><PropertyGroup><MainTargetFramework>$(Framework)</MainTargetFramework></PropertyGroup></Project>"],
+      ["repeated property", "<Project><PropertyGroup><MainTargetFramework>net9.0</MainTargetFramework><MainTargetFramework>net10.0</MainTargetFramework></PropertyGroup></Project>"],
+      ["nested property", "<Project><PropertyGroup><Container><MainTargetFramework>net10.0</MainTargetFramework></Container></PropertyGroup></Project>"],
+      ["target-owned property", "<Project><Target Name=\"SetFramework\"><PropertyGroup><MainTargetFramework>net10.0</MainTargetFramework></PropertyGroup></Target></Project>"]
+    ];
+
+    for (const [label, props] of cases) {
+      const root = createRepo(t, {
+        "Directory.Build.props": props,
+        "Example.Tests.csproj": "<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><TargetFramework>$(MainTargetFramework)</TargetFramework><IsTestProject>true</IsTestProject></PropertyGroup><ItemGroup><PackageReference Include=\"Microsoft.NET.Test.Sdk\" /><PackageReference Include=\"xunit\" /></ItemGroup></Project>",
+        "Tests.cs": "public class Tests { [Fact] public void Runs() { Assert.True(true); } }\n"
+      });
+      const audit = auditCSharpRepo(root);
+      assert.equal(audit.profile.testCommand, undefined, label);
+      assert.ok(audit.profile.blockers.some((blocker) => blocker.includes("property-expanded metadata")), label);
+    }
+
+    const localOnly = createRepo(t, {
+      "Example.Tests.csproj": "<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><MainTargetFramework>net10.0</MainTargetFramework><TargetFramework>$(MainTargetFramework)</TargetFramework><IsTestProject>true</IsTestProject></PropertyGroup><ItemGroup><PackageReference Include=\"Microsoft.NET.Test.Sdk\" /><PackageReference Include=\"xunit\" /></ItemGroup></Project>",
+      "Tests.cs": "public class Tests { [Fact] public void Runs() { Assert.True(true); } }\n"
+    });
+    assert.equal(auditCSharpRepo(localOnly).profile.testCommand, undefined);
+    assert.ok(auditCSharpRepo(localOnly).profile.blockers.some((blocker) => blocker.includes("property-expanded metadata")));
+  });
+
   it("blocks multi-target metadata that requires MSBuild evaluation", (t) => {
     const cases = [
       "<TargetFrameworks>$(TargetFrameworkList)</TargetFrameworks>",
