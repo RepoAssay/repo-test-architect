@@ -483,3 +483,11 @@ Decision: resolve an exact project-local `TargetFramework` or `TargetFrameworks`
 Rationale: pinned `dorssel/usbipd-win` at `15e5f85663482d0698f080eeb41950ca839e8893` declares `MainTargetFramework=net10.0` once at the root and uses the exact alias in both its selected `Usbipd` and `UnitTests` projects. Resolving that one hop removes the framework-evaluation and missing-static-target blockers while preserving 27 untested, 14 covered, 3 deferred, and 15 evidence relationships. Five audits share digest `1183ee92d1a8edd8d3ec3b0edb5019bf46aaf590552e9769809cafbe05eb21b4` with a 179.5 ms median. The custom `Compile` graph remains the only command blocker.
 
 Revisit when: a pinned repository proves a safe need for project-local aliases, chained props, conditional values, or other MSBuild evaluation without invoking the build engine.
+
+### 2026-07-31: admit one contained C# compile include glob
+
+Decision: add files from exactly one project-local, self-closing `Compile Include="relative/path/*.cs"` item when the direct directory resolves inside the audit root and every matched source is a regular non-symbolic file. Preserve default SDK ownership and reject multiple items, conditions, recursive/property/item expansion, explicit files, child metadata, `Remove`/`Update`, disabled defaults, and missing, empty, symbolic, or escaping directories.
+
+Rationale: pinned usbipd-win links nine `Usbipd.Automation` sources into the selected production project through one exact sibling glob. Owning those files removes the audit's last blocker, emits `dotnet test UnitTests/UnitTests.csproj`, and exposes six covered, two untested, and one deferred linked files. The complete graph moves to 29 untested, 20 covered, 4 deferred, and 28 evidence relationships; five runs share digest `217512fa1b455feb2a9a464b706f3f06ef6ba2296e6c820c5f7aff89a2be1450` with a 200.4 ms median. The unchanged command reaches compilation locally but requires the repository's Windows/x64 host; its exact pinned upstream run passes all 3,037 tests.
+
+Revisit when: a pinned repository justifies multiple includes, explicit file lists, linked sources outside the audit root, or `Remove`/`Update` semantics without general MSBuild item evaluation.
