@@ -29,11 +29,11 @@ Run the deterministic alpha gate with:
 npm run alpha:check
 ```
 
-This verifies the test suite, adapter implementation coverage, pinned adapter-corpus contract, generated performance/evidence regression for all six supported adapters, golden audit artifacts, model-consistency locks, public demo path, and local MCP transport. Package publishing checks remain part of `release:check`, not the alpha gate.
+This verifies the test suite, adapter implementation coverage, pinned adapter-corpus contract, generated performance/evidence regression for all seven supported adapters, golden audit artifacts, model-consistency locks, public demo path, and local MCP transport. Package publishing checks remain part of `release:check`, not the alpha gate.
 
 ### Current Readiness Verdict
 
-The deterministic gate passes locally. Repo Test Architect's public-alpha claim is limited to the explicitly detected patterns in the [JavaScript/TypeScript Alpha Support](javascript-typescript-alpha-support.md), [Go Alpha Support](go-alpha-support.md), [Python Alpha Support](python-alpha-support.md), [Swift Alpha Support](swift-alpha-support.md), and [Kotlin/JVM Alpha Support](kotlin-jvm-alpha-support.md) matrices, subject to human review of the real-repository reports.
+The deterministic gate passes locally. Repo Test Architect's public-alpha claim is limited to the explicitly detected patterns in the [JavaScript/TypeScript Alpha Support](javascript-typescript-alpha-support.md), [C# Alpha Support](csharp-alpha-support.md), [Go Alpha Support](go-alpha-support.md), [Kotlin/JVM Alpha Support](kotlin-jvm-alpha-support.md), [Python Alpha Support](python-alpha-support.md), [Rust Alpha Support](rust-alpha-support.md), and [Swift Alpha Support](swift-alpha-support.md) matrices, subject to human review of the real-repository reports.
 
 This verdict does not mean:
 
@@ -67,7 +67,7 @@ The protected `master` branch requires the stable Linux `pr-gate`. Normal alpha 
 
 ### Common Stack Depth
 
-- JavaScript/TypeScript, Python, Swift, and bounded Kotlin/JVM modules are supported proof points
+- JavaScript/TypeScript, Python, Swift, bounded Kotlin/JVM and Go modules, bounded C# SDK project pairs, and bounded Rust Cargo packages are supported proof points
 - supported adapter promises are bounded by checked-in alpha matrices rather than broad ecosystem claims
 - Kotlin/JVM support is bounded to conventional Gradle/Maven module roots, settings-owned Gradle aggregates, complete recursively literal Maven reactors with standard JVM source sets, and single-module or settings-owned all-KMP graphs with one literal JVM target per source module; explicitly exported conventional module-dependency chains, direct source-set-visible KMP project dependencies and cycle-safe literal `api(project(...))` exports, JUnit/`kotlin.test`, Gradle/JUnit Platform Kotest common specs, conventional Gradle/Spock features, and method-level TestNG with direct conventional execution are supported; computed/incomplete reactors, inherited/dynamic or non-exported dependencies, custom/composite or mixed KMP graphs, Android, broader multiplatform shapes, and advanced Kotest/Spock/TestNG or other framework semantics remain excluded or blocked
 - Python support is bounded by the checked-in [Python Alpha Support](python-alpha-support.md), including explicit package-ownership and static-evidence exclusions
@@ -77,7 +77,7 @@ The protected `master` branch requires the stable Linux `pr-gate`. Normal alpha 
 
 ### Trust And Review UX
 
-- the completed [cross-adapter trust review](cross-adapter-trust-report.md) keeps direct audits and every project-aware downstream artifact aligned for JavaScript/TypeScript, Kotlin/JVM, Python, and Swift
+- shared adapter conformance keeps direct audits and every project-aware downstream artifact aligned for all seven supported adapters; the completed [cross-adapter trust review](cross-adapter-trust-report.md) records the original broader pipeline review
 - one command can produce a concise repo-level summary of top findings
 - each top finding links back to the source target, matching tests if any, rationale, and recommended test level
 - low-confidence or blocked projects are clearly separated from high-confidence recommendations

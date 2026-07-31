@@ -423,6 +423,92 @@ describe("Rust audit adapter", () => {
     assert.ok(!audit.recommended.some((target) => target.path.startsWith("src/test_support")));
   });
 
+  it("maps exact unconditional crate-root re-exports to one literal source module", (t) => {
+    const root = createRustRepo(t, {
+      "Cargo.toml": [
+        "[package]",
+        "name = \"root-reexports\"",
+        "version = \"0.1.0\"",
+        "",
+        "[lib]",
+        "path = \"code/root.rs\"",
+        ""
+      ].join("\n"),
+      "code/root.rs": [
+        "pub mod conditional;",
+        "pub mod formatter;",
+        "pub mod parser;",
+        "pub mod relative;",
+        "pub mod wildcard;",
+        "#[cfg(feature = \"extra\")]",
+        "pub use crate::conditional::conditional;",
+        "pub use crate::formatter::format as render;",
+        "#[doc(inline)]",
+        "pub use crate::parser::{parse, Parser};",
+        "pub use relative::relative_value;",
+        "pub use crate::wildcard::*;",
+        ""
+      ].join("\n"),
+      "code/conditional.rs": "pub fn conditional() -> usize { 1 }\n",
+      "code/formatter.rs": "pub fn format() -> usize { 2 }\n",
+      "code/parser.rs": [
+        "pub fn parse() -> usize { if true { 3 } else { 0 } }",
+        "pub struct Parser;",
+        "impl Parser { pub fn build() -> usize { 4 } }",
+        ""
+      ].join("\n"),
+      "code/relative.rs": "pub fn relative_value() -> usize { 5 }\n",
+      "code/wildcard.rs": "pub fn wildcard_value() -> usize { 6 }\n",
+      "src/main.rs": "mod parser;\n",
+      "src/parser.rs": "pub fn parse() -> usize { 7 }\n",
+      "tests/reexports.rs": [
+        "use root_reexports::{parse as parse_json, Parser as JsonParser, render};",
+        "use root_reexports::{relative_value, wildcard_value};",
+        "#[cfg(feature = \"extra\")]",
+        "use root_reexports::conditional;",
+        "#[test]",
+        "fn checks_exact_reexports() {",
+        "    assert_eq!(parse_json(), 3);",
+        "    assert_eq!(JsonParser::build(), 4);",
+        "    assert_eq!(render(), 2);",
+        "    relative_value();",
+        "    wildcard_value();",
+        "}",
+        "#[cfg(feature = \"extra\")]",
+        "#[test]",
+        "fn checks_conditional_reexport() { conditional(); }",
+        ""
+      ].join("\n")
+    });
+
+    const audit = auditRustRepo(root);
+
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path).sort(), [
+      "code/formatter.rs",
+      "code/parser.rs"
+    ]);
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.path).sort(), [
+      "code/conditional.rs",
+      "code/relative.rs",
+      "code/wildcard.rs",
+      "src/parser.rs"
+    ]);
+    assert.deepEqual(audit.coveredButRisky.flatMap((target) => target.existingTestEvidence), [
+      {
+        testPath: "tests/reexports.rs",
+        kind: "rust-symbol-reference",
+        strength: "direct",
+        usage: "asserted"
+      },
+      {
+        testPath: "tests/reexports.rs",
+        kind: "rust-symbol-reference",
+        strength: "direct",
+        usage: "asserted"
+      }
+    ]);
+  });
+
   it("maps exact crate-relative and parent-relative unit-test imports through the logical module graph", (t) => {
     const root = createRustRepo(t, {
       "Cargo.toml": [

@@ -550,6 +550,119 @@
       ]
     },
     {
+      "adapterId": "rust",
+      "cases": [
+        {
+          "id": "rust-serde-json",
+          "role": "conventional-library-or-service",
+          "repository": {
+            "url": "https://github.com/serde-rs/json",
+            "commit": "a3e9758ffc88247ab82182cb2505867768a702e3",
+            "projectRoot": "."
+          },
+          "supportBoundary": "Standalone parser library with a literal Cargo module graph, built-in integration tests, and exact unconditional crate-root re-export evidence.",
+          "reportPath": "docs/rust-serde-json-validation-report.md",
+          "scorecard": {
+            "detection": "pass",
+            "ownership": "pass",
+            "command": "pass",
+            "evidence": "pass",
+            "ranking": "pass",
+            "stability": "pass",
+            "performance": "pass"
+          },
+          "observed": {
+            "testCommand": "cargo test",
+            "untestedCandidates": 26,
+            "coveredButRisky": 3,
+            "skippedTargets": 8,
+            "auditDurationMs": 131,
+            "auditDurationSamplesMs": [
+              166,
+              133,
+              130,
+              131,
+              130
+            ],
+            "evidenceRelationshipCount": 4,
+            "canonicalAuditSha256": "23b8e4753067e977f149fb49ed2d31b51d58ee26493afeea8fc2fcd6e13786cc"
+          }
+        },
+        {
+          "id": "rust-starship",
+          "role": "framework-heavy-application",
+          "repository": {
+            "url": "https://github.com/starship/starship",
+            "commit": "7946f2d9fbb02a5be76856ed27ddb85da10af3da",
+            "projectRoot": "."
+          },
+          "supportBoundary": "Framework-heavy CLI application with a literal library/binary module graph and exact exclusion of external cfg(test)-only support modules.",
+          "reportPath": "docs/rust-starship-validation-report.md",
+          "scorecard": {
+            "detection": "pass",
+            "ownership": "pass",
+            "command": "pass",
+            "evidence": "pass",
+            "ranking": "pass",
+            "stability": "pass",
+            "performance": "pass"
+          },
+          "observed": {
+            "testCommand": "cargo test",
+            "untestedCandidates": 189,
+            "coveredButRisky": 50,
+            "skippedTargets": 5,
+            "auditDurationMs": 483,
+            "auditDurationSamplesMs": [
+              561,
+              494,
+              483,
+              483,
+              478
+            ],
+            "evidenceRelationshipCount": 50,
+            "canonicalAuditSha256": "89da7c8cabf2f0ee23866dcedced4dd506322e866f616956c2017b2c51dcc3f0"
+          }
+        },
+        {
+          "id": "rust-ripgrep",
+          "role": "difficult-ownership-graph",
+          "repository": {
+            "url": "https://github.com/BurntSushi/ripgrep",
+            "commit": "f9c05a949d1a0dc8e16dee28ca9605d38611faeb",
+            "projectRoot": "."
+          },
+          "supportBoundary": "Package-plus-workspace root with ten literal members, a separate fuzz workspace, an explicit built-in test target, and a custom binary module graph.",
+          "reportPath": "docs/rust-ripgrep-validation-report.md",
+          "scorecard": {
+            "detection": "pass",
+            "ownership": "pass",
+            "command": "pass",
+            "evidence": "pass",
+            "ranking": "pass",
+            "stability": "pass",
+            "performance": "pass"
+          },
+          "observed": {
+            "testCommand": "cargo test -p ripgrep",
+            "untestedCandidates": 20,
+            "coveredButRisky": 1,
+            "skippedTargets": 2,
+            "auditDurationMs": 107,
+            "auditDurationSamplesMs": [
+              139,
+              107,
+              106,
+              107,
+              109
+            ],
+            "evidenceRelationshipCount": 1,
+            "canonicalAuditSha256": "a956050d6fb6c5704193d873b51075f511c86ccc7cf7af945870c22c67a7fdc4"
+          }
+        }
+      ]
+    },
+    {
       "adapterId": "swift",
       "cases": [
         {

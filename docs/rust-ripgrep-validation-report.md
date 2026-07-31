@@ -1,6 +1,6 @@
 # Rust ripgrep Live Validation Report
 
-This report records the first pinned public-repository audit for the experimental Rust adapter. [`BurntSushi/ripgrep`](https://github.com/BurntSushi/ripgrep) was cloned and audited locally at [`f9c05a949d1a0dc8e16dee28ca9605d38611faeb`](https://github.com/BurntSushi/ripgrep/tree/f9c05a949d1a0dc8e16dee28ca9605d38611faeb) on 2026-07-27.
+This report records the first pinned public-repository audit from Rust's pre-promotion hardening. [`BurntSushi/ripgrep`](https://github.com/BurntSushi/ripgrep) was cloned and audited locally at [`f9c05a949d1a0dc8e16dee28ca9605d38611faeb`](https://github.com/BurntSushi/ripgrep/tree/f9c05a949d1a0dc8e16dee28ca9605d38611faeb) on 2026-07-27.
 
 ## Repository Shape
 
@@ -45,7 +45,7 @@ The root binary graph resolves all 23 `.rs` files under `crates/core`: the manif
 
 The adapter now retains each module's logical name from the literal declaration graph instead of reconstructing identity from its physical path. Runnable inline tests can therefore prove a uniquely declared top-level function through an exact `crate::` or parent-relative `super::` import, and package-name integration imports can resolve custom Cargo roots outside `src/`.
 
-The pinned ripgrep result remains unchanged at 50 untested, 25 covered, 12 deferred, and 25 direct relationships. Its relevant cross-module unit imports primarily bind types used through receiver methods, wildcard imports, or re-exports, which this function-only slice deliberately does not credit. The unchanged normalized digest proves the new logical index did not widen any existing ripgrep claim.
+The pinned ripgrep result remains unchanged at 50 untested, 25 covered, 12 deferred, and 25 direct relationships. Its relevant cross-module unit imports primarily bind types used through receiver methods, wildcard imports, or non-root/chained re-exports, which this function-only slice deliberately does not credit. The unchanged normalized digest proves the new logical index did not widen any existing ripgrep claim.
 
 ## Follow-Up Inherent Associated Call Slice
 

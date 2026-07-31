@@ -736,7 +736,7 @@ describe("CLI", () => {
     );
   });
 
-  it("audits the experimental Rust fixture through the CLI", () => {
+  it("audits the supported Rust fixture through the CLI", () => {
     const output = execFileSync(
       process.execPath,
       [cliPath, "audit", "examples/rust-cargo-basic", "--adapter=rust", "--format=json"],

@@ -55,7 +55,8 @@ export function auditRustRepo(root, options = {}) {
     sourceFiles,
     integrationTests,
     inlineTestFiles,
-    moduleGraph
+    moduleGraph,
+    collectCargoLibraryRootPaths(files, sourceTargets)
   );
   const untestedCandidates = [];
   const coveredButRisky = [];
@@ -251,6 +252,13 @@ function collectCargoCrateRootPaths(files, sourceTargets) {
   return [...roots].sort();
 }
 
+function collectCargoLibraryRootPaths(files, sourceTargets) {
+  const filePaths = new Set(files.map((file) => normalizePath(file.path)));
+  const roots = new Set(sourceTargets.libraryPaths);
+  if (!sourceTargets.libraryDeclared && filePaths.has("src/lib.rs")) roots.add("src/lib.rs");
+  return [...roots].filter((currentPath) => filePaths.has(currentPath)).sort();
+}
+
 function collectRustModuleGraph(files, crateRootPaths) {
   const filesByPath = new Map(files.map((file) => [normalizePath(file.path), file]));
   const roots = new Set(crateRootPaths.filter((currentPath) => filesByPath.has(currentPath)));
@@ -405,6 +413,7 @@ function collectCargoSourceTargets(manifestContent, files) {
   }
   return {
     complete,
+    libraryDeclared: libraryBody !== undefined,
     libraryPaths: [...new Set(libraryPaths)].sort(),
     binaryPaths: [...new Set(binaryPaths)].sort(),
     paths: [...new Set([...libraryPaths, ...binaryPaths])].sort()
@@ -483,11 +492,23 @@ function scoreProfileConfidence(manifest, hasPackage, hasRunnableTests, existing
   return "low";
 }
 
-function collectRustTestEvidence(crateImportName, sourceFiles, integrationTests, inlineTestFiles, moduleGraph) {
+function collectRustTestEvidence(
+  crateImportName,
+  sourceFiles,
+  integrationTests,
+  inlineTestFiles,
+  moduleGraph,
+  libraryRootPaths
+) {
   const evidenceBySourcePath = new Map();
   const sourceFilesByPath = new Map(sourceFiles.map((file) => [normalizePath(file.path), file]));
   const sourcePathsByModule = collectRustSourcePathsByModule(sourceFiles, moduleGraph);
   const moduleNamesBySourcePath = collectRustModuleNamesBySourcePath(sourceFiles, moduleGraph);
+  const rootReexports = collectRustRootReexports(
+    libraryRootPaths,
+    sourceFilesByPath,
+    moduleGraph
+  );
   const ownedCallablesBySourcePath = new Map();
   for (const sourceFile of inlineTestFiles) {
     const masked = maskRustCommentsAndStrings(sourceFile.content);
@@ -515,8 +536,10 @@ function collectRustTestEvidence(crateImportName, sourceFiles, integrationTests,
   for (const testFile of integrationTests) {
     const masked = maskRustCommentsAndStrings(testFile.content);
     const testBodies = rustRunnableTestRanges(masked).map((range) => masked.slice(range.start, range.end));
-    for (const currentImport of collectRustImports(masked, crateImportName)) {
-      const ownedPaths = sourcePathsByModule.get(currentImport.moduleName) ?? [];
+    for (const currentImport of collectRustImports(masked, crateImportName, rootReexports)) {
+      const ownedPaths = currentImport.sourcePath
+        ? [currentImport.sourcePath]
+        : sourcePathsByModule.get(currentImport.moduleName) ?? [];
       if (ownedPaths.length !== 1) continue;
       const targetFile = sourceFilesByPath.get(ownedPaths[0]);
       if (!targetFile) continue;
@@ -534,6 +557,64 @@ function collectRustTestEvidence(crateImportName, sourceFiles, integrationTests,
     }
   }
   return evidenceBySourcePath;
+}
+
+function collectRustRootReexports(libraryRootPaths, sourceFilesByPath, moduleGraph) {
+  const exportsByName = new Map();
+  for (const rootPath of libraryRootPaths) {
+    const file = sourceFilesByPath.get(normalizePath(rootPath));
+    if (!file) continue;
+    const sourcePathsByModule = new Map();
+    for (const module of moduleGraph.modules) {
+      if (module.rootPath !== rootPath || !module.moduleName) continue;
+      const paths = sourcePathsByModule.get(module.moduleName) ?? new Set();
+      paths.add(module.path);
+      sourcePathsByModule.set(module.moduleName, paths);
+    }
+    const masked = maskRustCommentsAndStrings(file.content);
+    const singlePattern = /\bpub\s+use\s+crate::([A-Za-z_][A-Za-z0-9_]*(?:::[A-Za-z_][A-Za-z0-9_]*)*)::([A-Za-z_][A-Za-z0-9_]*)(?:\s+as\s+([A-Za-z_][A-Za-z0-9_]*))?\s*;/g;
+    for (const match of rustMatchesAtDepth(masked, singlePattern, 0)) {
+      if (rustHasConditionalAttribute(masked, match.index)) continue;
+      addRustRootReexport(exportsByName, sourcePathsByModule, {
+        moduleName: match[1],
+        sourceName: match[2],
+        exportedName: match[3] ?? match[2]
+      });
+    }
+    const groupedPattern = /\bpub\s+use\s+crate::([A-Za-z_][A-Za-z0-9_]*(?:::[A-Za-z_][A-Za-z0-9_]*)*)::\{([^{};]+)\}\s*;/g;
+    for (const match of rustMatchesAtDepth(masked, groupedPattern, 0)) {
+      if (rustHasConditionalAttribute(masked, match.index)) continue;
+      for (const item of match[2].split(",")) {
+        const itemMatch = item.trim().match(/^([A-Za-z_][A-Za-z0-9_]*)(?:\s+as\s+([A-Za-z_][A-Za-z0-9_]*))?$/);
+        if (!itemMatch) continue;
+        addRustRootReexport(exportsByName, sourcePathsByModule, {
+          moduleName: match[1],
+          sourceName: itemMatch[1],
+          exportedName: itemMatch[2] ?? itemMatch[1]
+        });
+      }
+    }
+  }
+  return new Map([...exportsByName]
+    .filter(([, entries]) => entries.length === 1)
+    .map(([exportedName, entries]) => [exportedName, entries[0]]));
+}
+
+function rustHasConditionalAttribute(masked, declarationStart) {
+  const attributeStart = rustAttributePrefixStart(masked, declarationStart);
+  return /#\s*\[\s*cfg(?:_attr)?\b/.test(masked.slice(attributeStart, declarationStart));
+}
+
+function addRustRootReexport(exportsByName, sourcePathsByModule, current) {
+  const sourcePaths = sourcePathsByModule.get(current.moduleName) ?? new Set();
+  if (sourcePaths.size !== 1) return;
+  const entries = exportsByName.get(current.exportedName) ?? [];
+  entries.push({
+    moduleName: current.moduleName,
+    sourceName: current.sourceName,
+    sourcePath: [...sourcePaths][0]
+  });
+  exportsByName.set(current.exportedName, entries);
 }
 
 function collectRustSourcePathsByModule(sourceFiles, moduleGraph) {
@@ -781,7 +862,7 @@ function collectInlineRustUsage(masked) {
   return usage;
 }
 
-function collectRustImports(masked, crateImportName) {
+function collectRustImports(masked, crateImportName, rootReexports) {
   const imports = [];
   const crate = escapeRegExp(crateImportName);
   const singlePattern = new RegExp(`\\buse\\s+${crate}::([A-Za-z_][A-Za-z0-9_]*(?:::[A-Za-z_][A-Za-z0-9_]*)*)::([A-Za-z_][A-Za-z0-9_]*)(?:\\s+as\\s+([A-Za-z_][A-Za-z0-9_]*))?\\s*;`, "g");
@@ -795,7 +876,20 @@ function collectRustImports(masked, crateImportName) {
       if (itemMatch) imports.push({ moduleName: match[1], sourceName: itemMatch[1], binding: itemMatch[2] ?? itemMatch[1] });
     }
   }
-  return imports;
+  const rootSinglePattern = new RegExp(`\\buse\\s+${crate}::([A-Za-z_][A-Za-z0-9_]*)(?:\\s+as\\s+([A-Za-z_][A-Za-z0-9_]*))?\\s*;`, "g");
+  for (const match of masked.matchAll(rootSinglePattern)) {
+    const reexport = rootReexports.get(match[1]);
+    if (reexport) imports.push({ ...reexport, binding: match[2] ?? match[1] });
+  }
+  const rootGroupedPattern = new RegExp(`\\buse\\s+${crate}::\\{([^{};]+)\\}\\s*;`, "g");
+  for (const match of masked.matchAll(rootGroupedPattern)) {
+    for (const item of match[1].split(",")) {
+      const itemMatch = item.trim().match(/^([A-Za-z_][A-Za-z0-9_]*)(?:\s+as\s+([A-Za-z_][A-Za-z0-9_]*))?$/);
+      const reexport = itemMatch ? rootReexports.get(itemMatch[1]) : undefined;
+      if (itemMatch && reexport) imports.push({ ...reexport, binding: itemMatch[2] ?? itemMatch[1] });
+    }
+  }
+  return uniqueRustImportsByBinding(imports);
 }
 
 function rustBindingUsage(masked, binding) {
