@@ -136,12 +136,29 @@ The unchanged native command was rerun again after the usage change and passed 4
 | Median | 39 ms |
 | Canonical SHA-256 | `a60a990cb960a76704cbcd7d432d332f8eb26d7051f274fc27ca330fae627aa3` |
 
+## Direct Receiver Follow-Up
+
+The direct receiver follow-up allows one exact local assignment from `Constant.new` inside a runnable test, followed by a direct call to an instance method declared on that same class. The receiver must be assigned once, cannot be block-shadowed, and cannot come through a helper, factory, wrapper, chain, dynamic dispatch, or class with a direct `.new` override. Attribute readers, delegators, inherited/mixed-in/generated methods, and deferred execution remain excluded.
+
+This keeps rubyzip's candidate and relationship graph unchanged while improving the usage attribution in both directions. `test/encryption_test.rb` now proves an asserted direct call to `Zip::File#find_entry`. Conversely, `Zip::File#entries` and `Zip::PassThruCompressor#size` are generated delegators/readers, so their constructors no longer inherit asserted status merely because those receiver expressions occur inside later assertions. The unchanged native command again passed 412 runs and 2,820 assertions with zero failures or errors. Five audits produced:
+
+| Measure | Receiver follow-up |
+| --- | --- |
+| Test command | `bundle exec rake test` |
+| Untested / covered / skipped | 19 / 23 / 6 |
+| Evidence relationships | 80 |
+| Evidence kinds | 77 `ruby-constant-reference`, 3 `filename-convention` |
+| Usage split | 15 asserted, 24 called, 38 reference-only, 3 naming |
+| Durations | 60.276 ms, 45.778 ms, 45.054 ms, 45.413 ms, 47.504 ms |
+| Median | 45.778 ms |
+| Canonical SHA-256 | `573cf0cdfbebe1464efad56187b89e01c0f600f41c107e6371be4b2ae45726eb` |
+
 ## Remaining Uncertainty
 
 The live audit now gives us a credible command, ownership, direct/reference, and first usage boundary, but it also keeps the next work concrete:
 
 - exact reachable constants can now recover behavior-named tests and duplicate basenames, but only when one owner remains on that test's load graph
-- helper/setup behavior, mixins, inheritance, instance receiver calls, shared/custom assertions, multiline assertion flow, and deeper result flow are not followed
+- helper/setup behavior, memoized/factory/field/parameter receivers, mixins, inheritance, generated instance methods, shared/custom assertions, multiline assertion flow, and deeper result flow are not followed
 - direct singleton methods and constructors can now claim called/asserted usage, while `extend self`, attribute/delegator generation, and runtime dispatch remain reference-only
 - constant/reference evidence still cannot be equated with rubyzip's native line coverage; the adapter correctly reports only what it can statically attribute
 - `test_*.rb`, maxitest, Rails, custom tasks, and mixed runners remain outside the first boundary
@@ -150,4 +167,4 @@ These are explicit limitations rather than silent coverage claims. The follow-up
 
 ## Result
 
-The experimental Ruby foundation is plausible enough to audit a real conventional gem with exact load-aware constant and usage attribution: detection, `lib/` ownership, runner declaration, command selection, bounded require reachability, unique constant and singleton-method ownership, runnable assertion tracing, repeatability, performance, downstream artifact conformance, and native verification all pass at an exact public commit. Ruby is not promoted; it still needs broader RSpec evidence, more repository shapes, and the shared three-role corpus before supported maturity is considered.
+The experimental Ruby foundation is plausible enough to audit a real conventional gem with exact load-aware constant and usage attribution: detection, `lib/` ownership, runner declaration, command selection, bounded require reachability, unique constant, singleton-method, and direct constructor-local instance-method ownership, runnable assertion tracing, repeatability, performance, downstream artifact conformance, and native verification all pass at an exact public commit. Ruby is not promoted; it still needs broader RSpec evidence, more repository shapes, and the shared three-role corpus before supported maturity is considered.
