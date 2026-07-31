@@ -146,7 +146,7 @@ The live audit now gives us a credible command, ownership, direct/reference, and
 - constant/reference evidence still cannot be equated with rubyzip's native line coverage; the adapter correctly reports only what it can statically attribute
 - `test_*.rb`, maxitest, Rails, custom tasks, and mixed runners remain outside the first boundary
 
-These are explicit limitations rather than silent coverage claims. Faraday is now the stronger next live repository for RSpec, `expect` semantics, and service-boundary pressure before the rule expands further.
+These are explicit limitations rather than silent coverage claims. The follow-up [Faraday validation](ruby-faraday-validation-report.md) now locks root RSpec helper ownership and preserves service-receiver exclusions before the rule expands further.
 
 ## Result
 

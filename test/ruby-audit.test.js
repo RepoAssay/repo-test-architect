@@ -261,6 +261,57 @@ describe("Ruby audit adapter", () => {
     }]);
   });
 
+  it("follows one exact root RSpec configured helper before bounded source requires", (t) => {
+    const root = createRubyRepo(t, {
+      Gemfile: 'gem "rspec"\ngemspec\n',
+      ".rspec": "--require spec_helper\n--format documentation\n",
+      "archive.gemspec": "Gem::Specification.new {}\n",
+      "lib/archive.rb": 'require "archive/client"\n',
+      "lib/archive/client.rb": "module Archive\n  class Client\n    def self.fetch\n      :ok\n    end\n  end\nend\n",
+      "spec/spec_helper.rb": 'require "archive"\n',
+      "spec/archive_behavior_spec.rb": [
+        "RSpec.describe Archive::Client do",
+        '  it("fetches") { expect(Archive::Client.fetch).to eq(:ok) }',
+        "end",
+        ""
+      ].join("\n")
+    });
+
+    const audit = auditRubyRepo(root);
+
+    assert.deepEqual(audit.profile.setupSignals, ["Gemfile", ".rspec", "archive.gemspec"]);
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["lib/archive/client.rb"]);
+    assert.deepEqual(audit.coveredButRisky[0].existingTestEvidence, [{
+      testPath: "spec/archive_behavior_spec.rb",
+      kind: "ruby-constant-reference",
+      strength: "referenced",
+      usage: "asserted"
+    }]);
+  });
+
+  it("rejects dynamic, escaping, and non-root RSpec helper configuration", (t) => {
+    const root = createRubyRepo(t, {
+      Gemfile: 'gem "rspec"\ngemspec\n',
+      ".rspec": '--require "#{helper}"\n--require ../outside\n--require spec/../../helper\n',
+      "config/.rspec": "--require spec_helper\n",
+      "archive.gemspec": "Gem::Specification.new {}\n",
+      "helper.rb": 'require "client"\n',
+      "lib/client.rb": "class Client\n  def self.fetch\n    :ok\n  end\nend\n",
+      "spec/spec_helper.rb": 'require "client"\n',
+      "spec/behavior_spec.rb": [
+        "RSpec.describe Client do",
+        '  it("fetches") { expect(Client.fetch).to eq(:ok) }',
+        "end",
+        ""
+      ].join("\n")
+    });
+
+    const audit = auditRubyRepo(root);
+
+    assert.deepEqual(audit.coveredButRisky, []);
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.path), ["lib/client.rb"]);
+  });
+
   it("keeps helper-owned, undeclared, dynamic, and reassigned-result shapes below asserted usage", (t) => {
     const root = createRubyRepo(t, {
       Gemfile: 'gem "minitest"\n',
