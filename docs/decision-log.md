@@ -2,13 +2,21 @@
 
 This log records project-level decisions that shape architecture, scope, and public positioning.
 
+## Ruby Usage Requires Owned Singleton Declarations And Runnable Assertions
+
+Decision: upgrade an existing `ruby-constant-reference` only when a conventional runnable Minitest method or RSpec example contains an exact constant-qualified call to a method declared directly by that uniquely reachable constant. Admit `def self.name`, a direct `class << self` method, and `.new` only when the class directly declares `initialize`. Mark the relationship `asserted` only for a same-line selected Minitest assertion or RSpec `expect`, or one unique unreassigned local result consumed by one of those assertions; otherwise mark it `called`.
+
+Rationale: rubyzip contains exact constructor and class-method calls inside runnable test methods without requiring instance-receiver inference. At the pinned commit, the unchanged 19/23 candidate split and 80-link graph now separate into 16 asserted, 23 called, 38 reference-only, and 3 naming relationships. Setup/helper bodies, wrapped results, instance methods called on constants, `public_send`, custom assertion names, deferred lambdas, and reassigned results remain uncredited or reference-only.
+
+Revisit when: broader RSpec pressure or another pinned gem justifies instance receiver identity, helper calls, multiline assertion flow, `extend self`, delegated/generated methods, or deeper result flow without weakening runnable-body ownership.
+
 ## Ruby Constant Evidence Requires Exact Bounded Load Reachability
 
 Decision: emit `ruby-constant-reference` only when a runnable test visibly references one space-indented class/module constant with a unique owner among source files reached through at most three literal repository-owned `require` or `require_relative` edges. Bare requires resolve through `lib/` only when one root gemspec is statically included by the root Gemfile; relative requires resolve from their owning file. A direct source require is `direct`; helper or entrypoint reachability is `referenced`; no call/assertion usage is inferred.
 
 Rationale: the pinned rubyzip load path is explicit—tests require `test_helper`, the helper requires `zip`, and the entrypoint requires owned source files. Combining that finite graph with exact constant text recovers `lib/zip/file.rb` despite a duplicate basename while keeping the internal `lib/zip/filesystem/file.rb` uncredited because tests do not reference its owned constant. Five runs move the audit from 23/19 to 19/23 untested/covered with 80 relationships and one canonical digest; multiple reachable reopenings, computed loads, partial names, and a fourth edge remain rejected.
 
-Revisit when: Ruby usage/assertion evidence or a broader graph is justified by another pinned repository without weakening constant ownership.
+Revisit when: a broader require graph is justified by another pinned repository without weakening constant ownership.
 
 ## Ruby Begins As An Experimental Conventional-Bundler Adapter
 

@@ -111,18 +111,43 @@ The unchanged native command was rerun after the evidence change and again passe
 
 No previously covered target is lost. Four targets move from untested to covered evidence: `lib/zip/errors.rb`, `lib/zip/file.rb`, `lib/zip/inflater.rb`, and `lib/zip/ioextras.rb`. The internal `lib/zip/filesystem/file.rb` remains untested because its `Zip::FileSystem::File` constant is not visibly referenced by the runnable tests; receiver access through `zf.file` is intentionally outside this slice.
 
+## Method-Call And Assertion Usage Follow-Up
+
+The next slice preserves the exact require graph and unique constant owner, then asks whether a runnable test visibly invokes behavior owned by that source. Usage is admitted only when:
+
+- the call occurs inside a conventional `def test_*` Minitest body or RSpec `it`/`specify` body rather than setup or helper methods
+- `Constant.method` matches a directly two-space-indented `def self.method`, a method directly inside `class << self`, or `.new` backed by the class's direct `initialize`
+- dynamic dispatch, instance receivers, inherited/mixed-in/delegated methods, `extend self`, deferred lambdas, and custom assertion-shaped methods remain outside the rule
+- `asserted` means the exact call is on the same line as a selected built-in Minitest assertion or RSpec `expect`, or one unique unreassigned local result is later consumed there; other exact calls are `called`
+
+This boundary recovers common rubyzip shapes without inventing receiver flow. For example, `::Zip::Entry.new(...)` maps to `Zip::Entry#initialize`, `::Zip::File.count_entries(...)` maps to its exact singleton declaration, and stable locals such as a newly constructed entry can carry asserted usage only when that same local appears in a supported assertion. Calls through zip-file instance variables and helper-owned assertion methods remain reference-only.
+
+The unchanged native command was rerun again after the usage change and passed 412 runs and 2,820 assertions with zero failures or errors. The candidate and relationship graph does not change; only the evidence precision increases. Five static audits produced:
+
+| Measure | Usage follow-up |
+| --- | --- |
+| Test command | `bundle exec rake test` |
+| Untested candidates | 19 |
+| Covered-but-risky candidates | 23 |
+| Skipped targets | 6 |
+| Evidence relationships | 80 |
+| Usage split | 16 asserted, 23 called, 38 reference-only, 3 naming |
+| Durations | 62 ms, 39 ms, 39 ms, 38 ms, 37 ms |
+| Median | 39 ms |
+| Canonical SHA-256 | `a60a990cb960a76704cbcd7d432d332f8eb26d7051f274fc27ca330fae627aa3` |
+
 ## Remaining Uncertainty
 
-The live audit now gives us a credible command, ownership, and first direct/reference evidence boundary, but it also keeps the next work concrete:
+The live audit now gives us a credible command, ownership, direct/reference, and first usage boundary, but it also keeps the next work concrete:
 
 - exact reachable constants can now recover behavior-named tests and duplicate basenames, but only when one owner remains on that test's load graph
-- helper behavior, mixins, inheritance, receiver calls, shared assertions, result flow, and indirect source behavior are not followed
-- no evidence entry claims called/asserted usage yet, even when a constant is visibly constructed or used inside an assertion
+- helper/setup behavior, mixins, inheritance, instance receiver calls, shared/custom assertions, multiline assertion flow, and deeper result flow are not followed
+- direct singleton methods and constructors can now claim called/asserted usage, while `extend self`, attribute/delegator generation, and runtime dispatch remain reference-only
 - constant/reference evidence still cannot be equated with rubyzip's native line coverage; the adapter correctly reports only what it can statically attribute
 - `test_*.rb`, maxitest, Rails, custom tasks, and mixed runners remain outside the first boundary
 
-These are explicit limitations rather than silent coverage claims. The next Ruby evidence slice should add bounded method-call/assertion usage, while Faraday remains the stronger next live repository for RSpec and service-boundary pressure.
+These are explicit limitations rather than silent coverage claims. Faraday is now the stronger next live repository for RSpec, `expect` semantics, and service-boundary pressure before the rule expands further.
 
 ## Result
 
-The experimental Ruby foundation is plausible enough to audit a real conventional gem with exact load-aware constant attribution: detection, `lib/` ownership, runner declaration, command selection, bounded require reachability, unique constant ownership, repeatability, performance, downstream artifact conformance, and native verification all pass at an exact public commit. Ruby is not promoted; it still needs usage evidence, more repository shapes, and the shared three-role corpus before supported maturity is considered.
+The experimental Ruby foundation is plausible enough to audit a real conventional gem with exact load-aware constant and usage attribution: detection, `lib/` ownership, runner declaration, command selection, bounded require reachability, unique constant and singleton-method ownership, runnable assertion tracing, repeatability, performance, downstream artifact conformance, and native verification all pass at an exact public commit. Ruby is not promoted; it still needs broader RSpec evidence, more repository shapes, and the shared three-role corpus before supported maturity is considered.

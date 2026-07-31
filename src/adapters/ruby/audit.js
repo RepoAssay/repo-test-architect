@@ -3,6 +3,42 @@ import path from "node:path";
 
 const RUBY_SOURCE_EXTENSION = ".rb";
 const RUBY_REQUIRE_GRAPH_DEPTH = 3;
+const MINITEST_ASSERTION_METHODS = [
+  "assert",
+  "assert_empty",
+  "assert_equal",
+  "assert_in_delta",
+  "assert_in_epsilon",
+  "assert_includes",
+  "assert_instance_of",
+  "assert_kind_of",
+  "assert_match",
+  "assert_nil",
+  "assert_operator",
+  "assert_output",
+  "assert_path_exists",
+  "assert_predicate",
+  "assert_raises",
+  "assert_respond_to",
+  "assert_same",
+  "assert_silent",
+  "assert_throws",
+  "refute",
+  "refute_empty",
+  "refute_equal",
+  "refute_in_delta",
+  "refute_in_epsilon",
+  "refute_includes",
+  "refute_instance_of",
+  "refute_kind_of",
+  "refute_match",
+  "refute_nil",
+  "refute_operator",
+  "refute_path_exists",
+  "refute_predicate",
+  "refute_respond_to",
+  "refute_same"
+];
 const IGNORED_DIRECTORIES = new Set([
   ".bundle",
   ".git",
@@ -251,8 +287,11 @@ function collectRubyTestEvidence(files, sourceFiles, runnableTests) {
       .filter((file) => file.path.endsWith(RUBY_SOURCE_EXTENSION))
       .map((file) => [normalizePath(file.path), file])
   );
+  const declarationsBySourcePath = new Map(
+    sourceFiles.map((file) => [normalizePath(file.path), collectRubySourceDeclarations(file.content)])
+  );
   const constantsBySourcePath = new Map(
-    sourceFiles.map((file) => [normalizePath(file.path), collectRubyConstantDeclarations(file.content)])
+    [...declarationsBySourcePath].map(([sourcePath, declarations]) => [sourcePath, [...declarations.keys()]])
   );
   const sourcesByBasename = new Map();
   for (const sourceFile of sourceFiles) {
@@ -275,15 +314,31 @@ function collectRubyTestEvidence(files, sourceFiles, runnableTests) {
     }
 
     const maskedTest = maskRubyCommentsAndStrings(testFile.content);
+    const runnableBodies = collectRubyRunnableBodies(testFile, maskedTest);
     for (const [sourcePath, depth] of reachableSources) {
-      const hasUniqueReferencedConstant = (constantsBySourcePath.get(sourcePath) ?? []).some((constant) =>
-        reachableOwnersByConstant.get(constant)?.length === 1 && hasRubyConstantReference(maskedTest, constant)
-      );
+      let usage;
+      let hasUniqueReferencedConstant = false;
+      for (const constant of constantsBySourcePath.get(sourcePath) ?? []) {
+        if (reachableOwnersByConstant.get(constant)?.length !== 1 || !hasRubyConstantReference(maskedTest, constant)) {
+          continue;
+        }
+        hasUniqueReferencedConstant = true;
+        usage = strongerRubyUsage(
+          usage,
+          findRubyConstantUsage(
+            runnableBodies,
+            constant,
+            declarationsBySourcePath.get(sourcePath)?.get(constant) ?? new Set(),
+            testFile.framework
+          )
+        );
+      }
       if (!hasUniqueReferencedConstant) continue;
       addRubyEvidence(evidenceByPath, sourcePath, {
         testPath: testFile.path,
         kind: "ruby-constant-reference",
-        strength: depth === 1 ? "direct" : "referenced"
+        strength: depth === 1 ? "direct" : "referenced",
+        ...(usage ? { usage } : {})
       });
     }
 
@@ -360,27 +415,200 @@ function withRubyExtension(request) {
   return request.endsWith(RUBY_SOURCE_EXTENSION) ? request : `${request}${RUBY_SOURCE_EXTENSION}`;
 }
 
-function collectRubyConstantDeclarations(content) {
-  const declarations = new Set();
+function collectRubySourceDeclarations(content) {
+  const declarations = new Map();
   const stack = [];
   for (const line of maskRubyCommentsAndStrings(content).split(/\r?\n/)) {
-    const match = line.match(/^( *)(?:class|module)\s+((?:::)?[A-Z][A-Za-z0-9_]*(?:::[A-Z][A-Za-z0-9_]*)*)\b/);
-    if (!match) continue;
-    const indent = match[1].length;
+    const indentation = line.match(/^( *)\S/);
+    if (!indentation) continue;
+    const indent = indentation[1].length;
     while (stack.length > 0 && stack.at(-1).indent >= indent) stack.pop();
-    const declared = match[2].replace(/^::/, "");
-    const constant = match[2].startsWith("::") || stack.length === 0
-      ? declared
-      : `${stack.at(-1).constant}::${declared}`;
-    declarations.add(constant);
-    stack.push({ indent, constant });
+
+    const constantMatch = line.match(/^( *)(class|module)\s+((?:::)?[A-Z][A-Za-z0-9_]*(?:::[A-Z][A-Za-z0-9_]*)*)\b/);
+    if (constantMatch) {
+      const parent = stack.at(-1);
+      if (parent?.kind === "method") {
+        stack.push({ indent, kind: "method" });
+        continue;
+      }
+      const declared = constantMatch[3].replace(/^::/, "");
+      const parentConstant = parent?.constant;
+      const constant = constantMatch[3].startsWith("::") || !parentConstant
+        ? declared
+        : `${parentConstant}::${declared}`;
+      if (!declarations.has(constant)) declarations.set(constant, new Set());
+      stack.push({ indent, kind: "constant", constant, declarationKind: constantMatch[2] });
+      continue;
+    }
+
+    if (/^( *)class\s*<<\s*self\b/.test(line)) {
+      const parent = stack.at(-1);
+      stack.push(parent?.kind === "constant"
+        ? { indent, kind: "singleton", constant: parent.constant }
+        : { indent, kind: "method" });
+      continue;
+    }
+
+    const methodMatch = line.match(/^( *)def\s+(?:(self)\.)?([a-z_][A-Za-z0-9_]*[!?=]?)(?![A-Za-z0-9_!?=])/);
+    if (!methodMatch) continue;
+    const scope = stack.at(-1);
+    const directScope = scope && indent === scope.indent + 2;
+    if (directScope && scope.kind === "constant" && methodMatch[2]) {
+      declarations.get(scope.constant)?.add(methodMatch[3]);
+    } else if (directScope && scope.kind === "singleton" && !methodMatch[2]) {
+      declarations.get(scope.constant)?.add(methodMatch[3]);
+    } else if (
+      directScope &&
+      scope.kind === "constant" &&
+      scope.declarationKind === "class" &&
+      methodMatch[3] === "initialize"
+    ) {
+      declarations.get(scope.constant)?.add("new");
+    }
+    stack.push({ indent, kind: "method" });
   }
-  return [...declarations].sort();
+  return new Map(
+    [...declarations]
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([constant, methods]) => [constant, new Set([...methods].sort())])
+  );
+}
+
+function collectRubyRunnableBodies(testFile, maskedContent) {
+  const lines = maskedContent.split(/\r?\n/);
+  const bodies = [];
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
+    if (testFile.framework === "minitest") {
+      const match = line.match(/^( *)def\s+test_[A-Za-z0-9_!?]+\s*(?:\([^)]*\))?\s*$/);
+      if (!match) continue;
+      const close = findRubyIndentedEnd(lines, index, match[1].length);
+      if (close !== -1) bodies.push(lines.slice(index + 1, close).join("\n"));
+      continue;
+    }
+
+    const example = line.match(/^( *)\s*(?:it|specify)\b/);
+    if (!example) continue;
+    const openBrace = line.indexOf("{");
+    const closeBrace = line.lastIndexOf("}");
+    if (openBrace !== -1 && closeBrace > openBrace) {
+      bodies.push(line.slice(openBrace + 1, closeBrace));
+      continue;
+    }
+    if (!/\bdo\b/.test(line)) continue;
+    const close = findRubyIndentedEnd(lines, index, example[1].length);
+    if (close !== -1) bodies.push(lines.slice(index + 1, close).join("\n"));
+  }
+  return bodies;
+}
+
+function findRubyIndentedEnd(lines, startIndex, indent) {
+  const endPattern = new RegExp(`^ {${indent}}end\\b`);
+  for (let index = startIndex + 1; index < lines.length; index += 1) {
+    if (endPattern.test(lines[index])) return index;
+  }
+  return -1;
+}
+
+function findRubyConstantUsage(runnableBodies, constant, declaredMethods, framework) {
+  if (declaredMethods.size === 0) return undefined;
+  const escapedConstant = escapeRegex(constant);
+  let usage;
+  for (const body of runnableBodies) {
+    const lines = body.split(/\r?\n/);
+    const deferredLines = collectDeferredRubyLines(lines);
+    for (const method of declaredMethods) {
+      const callPattern = new RegExp(
+        `(?:^|[^A-Za-z0-9_:])(?:::)?${escapedConstant}\\s*\\.\\s*${escapeRegex(method)}(?![A-Za-z0-9_!?=])`
+      );
+      const directCallPattern = new RegExp(
+        `^\\s*(?:::)?${escapedConstant}\\s*\\.\\s*${escapeRegex(method)}(?![A-Za-z0-9_!?=])`
+      );
+      const callLines = lines
+        .map((line, index) => ({ line, index }))
+        .filter(({ line, index }) => !deferredLines.has(index) && callPattern.test(line));
+      if (callLines.length === 0) continue;
+      usage = strongerRubyUsage(usage, "called");
+      if (callLines.some(({ line }) => isRubyAssertionLine(line, framework))) return "asserted";
+      if (hasStableAssertedRubyResult(lines, directCallPattern, framework)) return "asserted";
+    }
+  }
+  return usage;
+}
+
+function collectDeferredRubyLines(lines) {
+  const deferred = new Set();
+  for (let index = 0; index < lines.length; index += 1) {
+    const match = lines[index].match(/^( *).*(?:\blambda\b|->)\s*(?:\([^)]*\)\s*)?(do\b|\{)/);
+    if (!match) continue;
+    deferred.add(index);
+    if (match[2] === "do") {
+      const close = findRubyIndentedEnd(lines, index, match[1].length);
+      for (let current = index + 1; current <= close; current += 1) deferred.add(current);
+    } else if (!lines[index].includes("}")) {
+      const closePattern = new RegExp(`^ {${match[1].length}}\\}`);
+      for (let current = index + 1; current < lines.length; current += 1) {
+        deferred.add(current);
+        if (closePattern.test(lines[current])) break;
+      }
+    }
+  }
+  return deferred;
+}
+
+function hasStableAssertedRubyResult(lines, directCallPattern, framework) {
+  for (let index = 0; index < lines.length; index += 1) {
+    const assignment = lines[index].match(/^\s*([a-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/);
+    if (!assignment || !isDirectRubyCallExpression(assignment[2], directCallPattern)) continue;
+    const local = assignment[1];
+    const mutation = new RegExp(`^\\s*${escapeRegex(local)}\\s*(?:\\|\\|=|&&=|[+\\-*/%]=|=(?!=|~|>))`);
+    if (lines.filter((line) => mutation.test(line)).length !== 1) continue;
+    const reference = new RegExp(`(?:^|[^A-Za-z0-9_])${escapeRegex(local)}(?![A-Za-z0-9_])`);
+    if (lines.slice(index + 1).some((line) => isRubyAssertionLine(line, framework) && reference.test(line))) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function isDirectRubyCallExpression(expression, directCallPattern) {
+  const match = expression.match(directCallPattern);
+  if (!match) return false;
+  const remainder = expression.slice(match[0].length).trim();
+  if (remainder === "") return true;
+  if (!remainder.startsWith("(")) return false;
+  const close = findClosingRubyParenthesis(remainder);
+  return close !== -1 && remainder.slice(close + 1).trim() === "";
+}
+
+function findClosingRubyParenthesis(expression) {
+  let depth = 0;
+  for (let index = 0; index < expression.length; index += 1) {
+    if (expression[index] === "(") depth += 1;
+    else if (expression[index] === ")") depth -= 1;
+    if (depth === 0) return index;
+  }
+  return -1;
+}
+
+function isRubyAssertionLine(line, framework) {
+  if (framework === "rspec") return /^\s*expect\s*(?:\(|\{)/.test(line);
+  const methods = MINITEST_ASSERTION_METHODS.map(escapeRegex).join("|");
+  return new RegExp(`^\\s*(?:${methods})\\s*(?:\\(|\\b)`).test(line);
+}
+
+function strongerRubyUsage(left, right) {
+  if (left === "asserted" || right === "asserted") return "asserted";
+  return left ?? right;
 }
 
 function hasRubyConstantReference(maskedContent, constant) {
-  const escaped = constant.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const escaped = escapeRegex(constant);
   return new RegExp(`(?:^|[^A-Za-z0-9_:])(?:::)?${escaped}(?![A-Za-z0-9_:])`, "m").test(maskedContent);
+}
+
+function escapeRegex(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function addRubyEvidence(evidenceByPath, sourcePath, evidence) {
@@ -391,12 +619,20 @@ function addRubyEvidence(evidenceByPath, sourcePath, evidence) {
 }
 
 function rubyEvidenceReason(evidence) {
+  if (evidence.some((item) => item.usage === "asserted")) {
+    return "Existing exact Ruby method-call and assertion evidence detected; review behavioral coverage";
+  }
+  if (evidence.some((item) => item.usage === "called")) {
+    return "Existing exact Ruby method-call evidence detected; review behavioral coverage";
+  }
   return evidence.some((item) => item.kind === "ruby-constant-reference")
     ? "Existing exact Ruby require and constant-reference evidence detected; review behavioral coverage"
     : "Existing Ruby test naming evidence detected; review behavioral coverage";
 }
 
 function rubyCoverageState(evidence) {
+  if (evidence.some((item) => item.usage === "asserted")) return "has exact Ruby method-call and assertion evidence";
+  if (evidence.some((item) => item.usage === "called")) return "has exact Ruby method-call evidence";
   if (evidence.some((item) => item.strength === "direct")) return "has direct Ruby require and constant-reference evidence";
   if (evidence.some((item) => item.strength === "referenced")) return "has bounded Ruby require-graph and constant-reference evidence";
   if (evidence.length > 0) return "has only naming-level Ruby test evidence";
