@@ -54,6 +54,8 @@ The root audit now owns all nine linked Automation sources and records `literal 
 
 Five audits share root-normalized digest `217512fa1b455feb2a9a464b706f3f06ef6ba2296e6c820c5f7aff89a2be1450`, with a 200.4 ms median from samples `290.6, 203.7, 200.4, 192.4, 194.2` ms.
 
+The standardized supported-promotion measurement retains the same digest and semantic counts across five runs, with samples `278, 200, 196, 189, 189` ms and a 196 ms median.
+
 The unchanged command restores and reaches compilation locally, then fails on Apple Silicon because Microsoft.Windows.CsWin32 reports `PInvoke005` for AnyCPU and cannot generate the Windows SetupAPI surface. The exact pinned commit's upstream `windows-latest` workflow builds with `Platform=x64` and passes all 3,037 tests. This is a host/platform distinction rather than an ownership blocker, so the adapter retains its minimal project command.
 
 ## Complementary Static Command Probe

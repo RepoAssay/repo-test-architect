@@ -109,6 +109,119 @@
       ]
     },
     {
+      "adapterId": "csharp",
+      "cases": [
+        {
+          "id": "csharp-tdd-translator",
+          "role": "conventional-library-or-service",
+          "repository": {
+            "url": "https://github.com/aelassas/tdd",
+            "commit": "aa81c10a1f251ed7f4c7fa3a64a79780a9f3f4fe",
+            "projectRoot": "."
+          },
+          "supportBoundary": "Conventional SDK library/test pair with xUnit, direct and receiver-result evidence, fallible parser and loader boundaries, and one upstream Windows-specific fixture-path constraint.",
+          "reportPath": "docs/csharp-tdd-validation-report.md",
+          "scorecard": {
+            "detection": "pass",
+            "ownership": "pass",
+            "command": "pass",
+            "evidence": "pass",
+            "ranking": "pass",
+            "stability": "pass",
+            "performance": "pass"
+          },
+          "observed": {
+            "testCommand": "dotnet test tests/Translator.UnitTests/Translator.UnitTests.csproj",
+            "untestedCandidates": 1,
+            "coveredButRisky": 3,
+            "skippedTargets": 2,
+            "auditDurationMs": 4,
+            "auditDurationSamplesMs": [
+              25,
+              5,
+              4,
+              3,
+              3
+            ],
+            "evidenceRelationshipCount": 4,
+            "canonicalAuditSha256": "64eab326e2109523472a8b390eca5b589518a2b2b07da4d52ef457b80ecca254"
+          }
+        },
+        {
+          "id": "csharp-usbipd-win",
+          "role": "framework-heavy-application",
+          "repository": {
+            "url": "https://github.com/dorssel/usbipd-win",
+            "commit": "15e5f85663482d0698f080eeb41950ca839e8893",
+            "projectRoot": "."
+          },
+          "supportBoundary": "Windows service and CLI repository using repository-owned MSTest.Sdk v4, Microsoft.Testing.Platform, one-hop target aliases, and one contained linked-source glob.",
+          "reportPath": "docs/csharp-mstest-sdk-validation-report.md",
+          "scorecard": {
+            "detection": "pass",
+            "ownership": "pass",
+            "command": "pass",
+            "evidence": "pass",
+            "ranking": "pass",
+            "stability": "pass",
+            "performance": "pass"
+          },
+          "observed": {
+            "testCommand": "dotnet test UnitTests/UnitTests.csproj",
+            "untestedCandidates": 29,
+            "coveredButRisky": 20,
+            "skippedTargets": 4,
+            "auditDurationMs": 196,
+            "auditDurationSamplesMs": [
+              278,
+              200,
+              196,
+              189,
+              189
+            ],
+            "evidenceRelationshipCount": 28,
+            "canonicalAuditSha256": "217512fa1b455feb2a9a464b706f3f06ef6ba2296e6c820c5f7aff89a2be1450"
+          }
+        },
+        {
+          "id": "csharp-sharp-cast",
+          "role": "difficult-ownership-graph",
+          "repository": {
+            "url": "https://github.com/jjosh102/sharp-cast",
+            "commit": "57cd4f345af3d98698f9227b6b4de610c131686c",
+            "projectRoot": "."
+          },
+          "supportBoundary": "Four-project repository with one unique xUnit-to-library edge, unrelated Blazor and benchmark owners, immutable field receivers, and bounded inline-out result evidence.",
+          "reportPath": "docs/csharp-sharp-cast-validation-report.md",
+          "scorecard": {
+            "detection": "pass",
+            "ownership": "pass",
+            "command": "pass",
+            "evidence": "pass",
+            "ranking": "pass",
+            "stability": "pass",
+            "performance": "pass"
+          },
+          "observed": {
+            "testCommand": "dotnet test tests/SharpCast.ModelConverter.Tests/SharpCast.ModelConverter.Tests.csproj",
+            "untestedCandidates": 5,
+            "coveredButRisky": 6,
+            "skippedTargets": 1,
+            "auditDurationMs": 37,
+            "auditDurationSamplesMs": [
+              75,
+              37,
+              38,
+              37,
+              35
+            ],
+            "evidenceRelationshipCount": 8,
+            "canonicalAuditSha256": "c654508a15d81e2d62324bc6494a8f1af9fb34519b8891bd516101025d05956b"
+          }
+        }
+      ]
+    },
+    {
       "adapterId": "go",
       "cases": [
         {

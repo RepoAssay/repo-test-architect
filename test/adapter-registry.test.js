@@ -19,7 +19,7 @@ describe("adapter registry", () => {
         id: "csharp",
         ecosystems: ["dotnet"],
         languages: ["csharp"],
-        maturity: "experimental",
+        maturity: "supported",
         supportedTestFrameworks: ["mstest", "nunit", "xunit"],
         supportedProjectTypes: ["dotnet-sdk-test-project", "dotnet-sdk-project-pair"],
         emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"]
@@ -89,7 +89,7 @@ describe("adapter registry", () => {
           id: "csharp",
           ecosystems: ["dotnet"],
           languages: ["csharp"],
-          maturity: "experimental",
+          maturity: "supported",
           supportedTestFrameworks: ["mstest", "nunit", "xunit"],
           supportedProjectTypes: ["dotnet-sdk-test-project", "dotnet-sdk-project-pair"],
           emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"]

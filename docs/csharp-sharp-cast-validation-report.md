@@ -1,6 +1,6 @@
 # C# Sharp Cast Live Validation Report
 
-This report records the second pinned public-repository audit for the experimental C# adapter plus its field-receiver and inline-out follow-ups. [`jjosh102/sharp-cast`](https://github.com/jjosh102/sharp-cast) was cloned and audited locally at [`57cd4f345af3d98698f9227b6b4de610c131686c`](https://github.com/jjosh102/sharp-cast/tree/57cd4f345af3d98698f9227b6b4de610c131686c) on 2026-07-28, then re-audited at the same pin on 2026-07-30.
+This report records the second pinned public-repository audit for the C# adapter plus its field-receiver and inline-out follow-ups. [`jjosh102/sharp-cast`](https://github.com/jjosh102/sharp-cast) was cloned and audited locally at [`57cd4f345af3d98698f9227b6b4de610c131686c`](https://github.com/jjosh102/sharp-cast/tree/57cd4f345af3d98698f9227b6b4de610c131686c) on 2026-07-28, re-audited at the same pin on 2026-07-30, and remeasured for supported promotion on 2026-07-31.
 
 ## Repository Shape
 
@@ -76,6 +76,8 @@ The initial five audits produced root-normalized digest `5c5363cde617af61d9f1475
 | 5 | 22.5 ms |
 
 The inline-out median was 28.3 ms. Every run retained 5 untested candidates, 6 covered candidates, 1 deferred contract, and 8 direct relationships split into 6 asserted and 2 called.
+
+The standardized promotion pass includes all later adapter hardening and retains those exact semantic counts. Five runs share digest `c654508a15d81e2d62324bc6494a8f1af9fb34519b8891bd516101025d05956b` with samples `75, 37, 38, 37, 35` ms and a 37 ms median.
 
 ## Remaining Boundary
 

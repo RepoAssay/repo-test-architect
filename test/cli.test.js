@@ -123,7 +123,7 @@ describe("CLI", () => {
     });
 
     assert.match(output, /^# Adapter Registry/);
-    assert.match(output, /csharp: experimental; ecosystems dotnet; languages csharp/);
+    assert.match(output, /csharp: supported; ecosystems dotnet; languages csharp/);
     assert.match(output, /javascript: supported; ecosystems javascript; languages javascript, typescript/);
     assert.match(output, /frameworks ava, bun-test, cypress, jest, mocha, node-test, playwright, react-testing-library, supertest, vitest/);
     assert.match(output, /go: supported; ecosystems go; languages go/);
@@ -140,7 +140,7 @@ describe("CLI", () => {
     assert.equal(registry.schemaVersion, "adapter-registry/v1");
     assert.equal(registry.adapters[0].id, "javascript");
     assert.equal(registry.adapters[0].maturity, "supported");
-    assert.equal(registry.adapters.find((adapter) => adapter.id === "csharp").maturity, "experimental");
+    assert.equal(registry.adapters.find((adapter) => adapter.id === "csharp").maturity, "supported");
     assert.equal(registry.adapters.find((adapter) => adapter.id === "go").maturity, "supported");
     assert.equal(registry.adapters.find((adapter) => adapter.id === "kotlin").maturity, "supported");
     assert.equal(registry.adapters.find((adapter) => adapter.id === "swift").maturity, "supported");
@@ -749,7 +749,7 @@ describe("CLI", () => {
     assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["src/parser.rs", "src/validator.rs"]);
   });
 
-  it("audits the experimental C# project-pair fixture through the CLI", () => {
+  it("audits the supported C# project-pair fixture through the CLI", () => {
     const output = execFileSync(
       process.execPath,
       [cliPath, "audit", "examples/csharp-sdk-project-pair", "--adapter=csharp", "--format=json"],

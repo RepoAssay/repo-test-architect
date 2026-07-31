@@ -18,10 +18,10 @@ describe("adapter validation corpus", () => {
 
     const result = validateValidationCorpus(corpus);
     assert.deepEqual(result.errors, []);
-    assert.equal(result.adapterCount, 5);
-    assert.equal(result.caseCount, 15);
+    assert.equal(result.adapterCount, 6);
+    assert.equal(result.caseCount, 18);
     assert.deepEqual(result.scorecardCounts, {
-      pass: 105,
+      pass: 126,
       fail: 0,
       pending: 0
     });
