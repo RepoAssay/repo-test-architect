@@ -311,6 +311,7 @@ Check that every supported adapter has a complete, pinned hardening corpus:
 npm run corpus:check
 npm run corpus:scorecard
 npm run corpus:measure -- --case python-asyncer --checkout /path/to/pinned/asyncer
+npm run csharp:performance:check
 npm run javascript:performance:check
 npm run python:performance:check
 npm run kotlin:performance:check

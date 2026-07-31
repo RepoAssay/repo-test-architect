@@ -73,6 +73,7 @@ describe("package contents", () => {
     assert.ok(requiredFiles.includes("evals/validation-corpus.json"));
     assert.ok(requiredFiles.includes("scripts/check-validation-corpus.js"));
     assert.ok(requiredFiles.includes("scripts/render-validation-scorecard.js"));
+    assert.ok(requiredFiles.includes("scripts/check-csharp-performance.js"));
     assert.ok(requiredFiles.includes("scripts/check-go-performance.js"));
     assert.ok(requiredFiles.includes("scripts/check-javascript-performance.js"));
     assert.ok(requiredFiles.includes("scripts/check-bin-entrypoints.js"));
