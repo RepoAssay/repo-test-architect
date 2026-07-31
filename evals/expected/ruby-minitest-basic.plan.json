@@ -23,7 +23,7 @@
       "rationale": [
         "Branching Ruby behavior",
         "Failure or edge-case behavior",
-        "Existing Ruby test naming evidence detected; review behavioral coverage"
+        "Existing exact Ruby require and constant-reference evidence detected; review behavioral coverage"
       ],
       "sourceSignals": [
         "pure-logic",
@@ -37,8 +37,8 @@
       "existingTestEvidence": [
         {
           "testPath": "test/parser_test.rb",
-          "kind": "filename-convention",
-          "strength": "naming"
+          "kind": "ruby-constant-reference",
+          "strength": "direct"
         }
       ]
     },

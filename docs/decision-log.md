@@ -2,6 +2,14 @@
 
 This log records project-level decisions that shape architecture, scope, and public positioning.
 
+## Ruby Constant Evidence Requires Exact Bounded Load Reachability
+
+Decision: emit `ruby-constant-reference` only when a runnable test visibly references one space-indented class/module constant with a unique owner among source files reached through at most three literal repository-owned `require` or `require_relative` edges. Bare requires resolve through `lib/` only when one root gemspec is statically included by the root Gemfile; relative requires resolve from their owning file. A direct source require is `direct`; helper or entrypoint reachability is `referenced`; no call/assertion usage is inferred.
+
+Rationale: the pinned rubyzip load path is explicit—tests require `test_helper`, the helper requires `zip`, and the entrypoint requires owned source files. Combining that finite graph with exact constant text recovers `lib/zip/file.rb` despite a duplicate basename while keeping the internal `lib/zip/filesystem/file.rb` uncredited because tests do not reference its owned constant. Five runs move the audit from 23/19 to 19/23 untested/covered with 80 relationships and one canonical digest; multiple reachable reopenings, computed loads, partial names, and a fourth edge remain rejected.
+
+Revisit when: Ruby usage/assertion evidence or a broader graph is justified by another pinned repository without weakening constant ownership.
+
 ## Ruby Begins As An Experimental Conventional-Bundler Adapter
 
 Decision: register Ruby experimentally with one root `Gemfile`, `lib/` source ownership, bounded Minitest/RSpec discovery and commands, and naming-only evidence before attempting Rails or parser-complete Ruby semantics.

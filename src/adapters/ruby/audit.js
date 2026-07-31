@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 const RUBY_SOURCE_EXTENSION = ".rb";
+const RUBY_REQUIRE_GRAPH_DEPTH = 3;
 const IGNORED_DIRECTORIES = new Set([
   ".bundle",
   ".git",
@@ -23,7 +24,7 @@ export function auditRubyRepo(root, options = {}) {
     .map((file) => ({ ...file, framework: detectRunnableTestFramework(file) }))
     .filter((file) => file.framework);
   const profile = buildProfile(root, files, sourceFiles, runnableTests);
-  const evidenceBySourcePath = collectRubyTestEvidence(sourceFiles, runnableTests);
+  const evidenceBySourcePath = collectRubyTestEvidence(files, sourceFiles, runnableTests);
   const changedPaths = options.changedPaths
     ? new Set(options.changedPaths.map((currentPath) => normalizeChangedPath(root, currentPath)))
     : undefined;
@@ -69,7 +70,7 @@ export function auditRubyRepo(root, options = {}) {
       riskReductionScore: classification.riskReductionScore,
       maintenanceCost: classification.maintenanceCost,
       reasons: existingTestPaths.length > 0
-        ? [...classification.reasons, "Existing Ruby test naming evidence detected; review behavioral coverage"]
+        ? [...classification.reasons, rubyEvidenceReason(existingTestEvidence)]
         : classification.reasons,
       existingTestPaths,
       ...(existingTestEvidence.length > 0 ? { existingTestEvidence } : {})
@@ -79,9 +80,7 @@ export function auditRubyRepo(root, options = {}) {
     else untestedCandidates.push(target);
 
     if (classification.risk === "high") {
-      const coverageState = existingTestPaths.length > 0
-        ? "has only naming-level Ruby test evidence"
-        : "has no matching Ruby test evidence";
+      const coverageState = rubyCoverageState(existingTestEvidence);
       risks.push(`${name} has ${classification.reasons.join(", ").toLowerCase()} and ${coverageState}.`);
     }
   }
@@ -241,7 +240,20 @@ function detectConventionalTestTask(content) {
   return undefined;
 }
 
-function collectRubyTestEvidence(sourceFiles, runnableTests) {
+function collectRubyTestEvidence(files, sourceFiles, runnableTests) {
+  const gemfile = files.find((file) => file.path === "Gemfile");
+  const rootGemspecs = files.filter((file) => !file.path.includes("/") && file.path.endsWith(".gemspec"));
+  const hasBundledLibraryLoadPath = rootGemspecs.length === 1 && /^\s*gemspec(?:\s|$)/m.test(
+    maskRubyCommentsAndStrings(gemfile?.content ?? "")
+  );
+  const rubyFilesByPath = new Map(
+    files
+      .filter((file) => file.path.endsWith(RUBY_SOURCE_EXTENSION))
+      .map((file) => [normalizePath(file.path), file])
+  );
+  const constantsBySourcePath = new Map(
+    sourceFiles.map((file) => [normalizePath(file.path), collectRubyConstantDeclarations(file.content)])
+  );
   const sourcesByBasename = new Map();
   for (const sourceFile of sourceFiles) {
     const basename = basenameWithoutExtension(sourceFile.path);
@@ -252,18 +264,143 @@ function collectRubyTestEvidence(sourceFiles, runnableTests) {
 
   const evidenceByPath = new Map();
   for (const testFile of runnableTests) {
+    const reachableSources = collectReachableRubySources(testFile, rubyFilesByPath, hasBundledLibraryLoadPath);
+    const reachableOwnersByConstant = new Map();
+    for (const sourcePath of reachableSources.keys()) {
+      for (const constant of constantsBySourcePath.get(sourcePath) ?? []) {
+        const owners = reachableOwnersByConstant.get(constant) ?? [];
+        owners.push(sourcePath);
+        reachableOwnersByConstant.set(constant, owners);
+      }
+    }
+
+    const maskedTest = maskRubyCommentsAndStrings(testFile.content);
+    for (const [sourcePath, depth] of reachableSources) {
+      const hasUniqueReferencedConstant = (constantsBySourcePath.get(sourcePath) ?? []).some((constant) =>
+        reachableOwnersByConstant.get(constant)?.length === 1 && hasRubyConstantReference(maskedTest, constant)
+      );
+      if (!hasUniqueReferencedConstant) continue;
+      addRubyEvidence(evidenceByPath, sourcePath, {
+        testPath: testFile.path,
+        kind: "ruby-constant-reference",
+        strength: depth === 1 ? "direct" : "referenced"
+      });
+    }
+
     const basename = basenameWithoutExtension(testFile.path).replace(/_(?:test|spec)$/, "");
     const sourcePaths = sourcesByBasename.get(basename) ?? [];
     if (sourcePaths.length !== 1) continue;
-    const evidence = evidenceByPath.get(sourcePaths[0]) ?? [];
-    evidence.push({
+    const existing = evidenceByPath.get(sourcePaths[0]) ?? [];
+    if (existing.some((evidence) => evidence.testPath === testFile.path)) continue;
+    addRubyEvidence(evidenceByPath, sourcePaths[0], {
       testPath: testFile.path,
       kind: "filename-convention",
       strength: "naming"
     });
-    evidenceByPath.set(sourcePaths[0], evidence);
   }
   return evidenceByPath;
+}
+
+function collectReachableRubySources(testFile, rubyFilesByPath, hasBundledLibraryLoadPath) {
+  const visitedDepth = new Map([[normalizePath(testFile.path), 0]]);
+  const sourceDepth = new Map();
+  const queue = [{ file: testFile, depth: 0 }];
+
+  while (queue.length > 0) {
+    const current = queue.shift();
+    if (current.depth >= RUBY_REQUIRE_GRAPH_DEPTH) continue;
+    for (const requirement of collectLiteralRubyRequires(current.file.content)) {
+      const requiredPath = resolveOwnedRubyRequire(
+        current.file.path,
+        requirement,
+        rubyFilesByPath,
+        hasBundledLibraryLoadPath
+      );
+      if (!requiredPath) continue;
+      const nextDepth = current.depth + 1;
+      if (isSourceFile(requiredPath)) {
+        sourceDepth.set(requiredPath, Math.min(sourceDepth.get(requiredPath) ?? Infinity, nextDepth));
+      }
+      if (nextDepth >= RUBY_REQUIRE_GRAPH_DEPTH) continue;
+      if ((visitedDepth.get(requiredPath) ?? Infinity) <= nextDepth) continue;
+      visitedDepth.set(requiredPath, nextDepth);
+      queue.push({ file: rubyFilesByPath.get(requiredPath), depth: nextDepth });
+    }
+  }
+
+  return new Map([...sourceDepth].sort(([left], [right]) => left.localeCompare(right)));
+}
+
+function collectLiteralRubyRequires(content) {
+  const requirements = [];
+  for (const line of content.split(/\r?\n/)) {
+    const match = line.match(/^\s*(require|require_relative)\s*(?:\(\s*)?(["'])([^"'\\]+)\2\s*\)?\s*(?:#.*)?$/);
+    if (!match || match[3].includes("#{")) continue;
+    requirements.push({ kind: match[1], request: match[3] });
+  }
+  return requirements;
+}
+
+function resolveOwnedRubyRequire(fromPath, requirement, rubyFilesByPath, hasBundledLibraryLoadPath) {
+  let candidate;
+  if (requirement.kind === "require") {
+    if (!hasBundledLibraryLoadPath) return undefined;
+    if (!/^[A-Za-z0-9_-]+(?:\/[A-Za-z0-9_.-]+)*$/.test(requirement.request)) return undefined;
+    candidate = `lib/${withRubyExtension(requirement.request)}`;
+  } else {
+    if (!/^[A-Za-z0-9_./-]+$/.test(requirement.request)) return undefined;
+    candidate = path.posix.normalize(path.posix.join(path.posix.dirname(normalizePath(fromPath)), withRubyExtension(requirement.request)));
+    if (candidate === ".." || candidate.startsWith("../") || path.posix.isAbsolute(candidate)) return undefined;
+  }
+  const normalized = normalizePath(candidate);
+  return rubyFilesByPath.has(normalized) ? normalized : undefined;
+}
+
+function withRubyExtension(request) {
+  return request.endsWith(RUBY_SOURCE_EXTENSION) ? request : `${request}${RUBY_SOURCE_EXTENSION}`;
+}
+
+function collectRubyConstantDeclarations(content) {
+  const declarations = new Set();
+  const stack = [];
+  for (const line of maskRubyCommentsAndStrings(content).split(/\r?\n/)) {
+    const match = line.match(/^( *)(?:class|module)\s+((?:::)?[A-Z][A-Za-z0-9_]*(?:::[A-Z][A-Za-z0-9_]*)*)\b/);
+    if (!match) continue;
+    const indent = match[1].length;
+    while (stack.length > 0 && stack.at(-1).indent >= indent) stack.pop();
+    const declared = match[2].replace(/^::/, "");
+    const constant = match[2].startsWith("::") || stack.length === 0
+      ? declared
+      : `${stack.at(-1).constant}::${declared}`;
+    declarations.add(constant);
+    stack.push({ indent, constant });
+  }
+  return [...declarations].sort();
+}
+
+function hasRubyConstantReference(maskedContent, constant) {
+  const escaped = constant.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(?:^|[^A-Za-z0-9_:])(?:::)?${escaped}(?![A-Za-z0-9_:])`, "m").test(maskedContent);
+}
+
+function addRubyEvidence(evidenceByPath, sourcePath, evidence) {
+  const current = evidenceByPath.get(sourcePath) ?? [];
+  current.push(evidence);
+  current.sort((left, right) => left.testPath.localeCompare(right.testPath) || left.strength.localeCompare(right.strength));
+  evidenceByPath.set(sourcePath, current);
+}
+
+function rubyEvidenceReason(evidence) {
+  return evidence.some((item) => item.kind === "ruby-constant-reference")
+    ? "Existing exact Ruby require and constant-reference evidence detected; review behavioral coverage"
+    : "Existing Ruby test naming evidence detected; review behavioral coverage";
+}
+
+function rubyCoverageState(evidence) {
+  if (evidence.some((item) => item.strength === "direct")) return "has direct Ruby require and constant-reference evidence";
+  if (evidence.some((item) => item.strength === "referenced")) return "has bounded Ruby require-graph and constant-reference evidence";
+  if (evidence.length > 0) return "has only naming-level Ruby test evidence";
+  return "has no matching Ruby test evidence";
 }
 
 function classifySourceFile(file) {

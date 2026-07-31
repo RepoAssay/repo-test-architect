@@ -1,7 +1,7 @@
 {
   "schemaVersion": "model-consistency-scenario/v1",
   "id": "ruby-minitest-basic-plan",
-  "description": "Different model profiles should preserve the bounded Bundler command, naming-only Ruby evidence, and candidate actions.",
+  "description": "Different model profiles should preserve the bounded Bundler command, direct Ruby constant evidence, and candidate actions.",
   "sourceArtifact": {
     "path": "evals/expected/ruby-minitest-basic.audit.json",
     "schemaVersion": "audit/v1"
@@ -33,13 +33,13 @@
     },
     {
       "path": "items[0].existingTestEvidence[0].kind",
-      "expected": "filename-convention",
-      "reason": "The first slice must not silently upgrade Ruby naming evidence to direct provenance."
+      "expected": "ruby-constant-reference",
+      "reason": "The fixture's exact source require and unique visible constant should retain Ruby-owned provenance."
     },
     {
       "path": "items[0].existingTestEvidence[0].strength",
-      "expected": "naming",
-      "reason": "A basename match remains naming-only until direct Ruby evidence is implemented."
+      "expected": "direct",
+      "reason": "One exact source require should retain direct strength without inventing call or assertion usage."
     },
     {
       "path": "items[1].id",
@@ -54,7 +54,8 @@
   ],
   "unexpectedVariations": [
     "missing bundle exec rake test verification command",
-    "naming evidence upgraded to direct evidence",
+    "direct constant evidence downgraded to naming evidence",
+    "call or assertion usage invented for a constant reference",
     "ambiguous source basenames credited",
     "different plan action counts"
   ]

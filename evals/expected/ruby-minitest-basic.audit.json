@@ -72,7 +72,7 @@
       "reasons": [
         "Branching Ruby behavior",
         "Failure or edge-case behavior",
-        "Existing Ruby test naming evidence detected; review behavioral coverage"
+        "Existing exact Ruby require and constant-reference evidence detected; review behavioral coverage"
       ],
       "existingTestPaths": [
         "test/parser_test.rb"
@@ -80,8 +80,8 @@
       "existingTestEvidence": [
         {
           "testPath": "test/parser_test.rb",
-          "kind": "filename-convention",
-          "strength": "naming"
+          "kind": "ruby-constant-reference",
+          "strength": "direct"
         }
       ]
     }
@@ -106,7 +106,7 @@
       "reasons": [
         "Branching Ruby behavior",
         "Failure or edge-case behavior",
-        "Existing Ruby test naming evidence detected; review behavioral coverage"
+        "Existing exact Ruby require and constant-reference evidence detected; review behavioral coverage"
       ],
       "existingTestPaths": [
         "test/parser_test.rb"
@@ -114,8 +114,8 @@
       "existingTestEvidence": [
         {
           "testPath": "test/parser_test.rb",
-          "kind": "filename-convention",
-          "strength": "naming"
+          "kind": "ruby-constant-reference",
+          "strength": "direct"
         }
       ]
     },
@@ -167,6 +167,6 @@
     }
   ],
   "risks": [
-    "parser has branching ruby behavior, failure or edge-case behavior and has only naming-level Ruby test evidence."
+    "parser has branching ruby behavior, failure or edge-case behavior and has direct Ruby require and constant-reference evidence."
   ]
 }

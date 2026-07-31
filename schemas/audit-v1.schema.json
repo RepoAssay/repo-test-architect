@@ -125,7 +125,8 @@
                   "jvm-symbol-reference",
                   "go-symbol-reference",
                   "go-source-dependency",
-                  "rust-symbol-reference"
+                  "rust-symbol-reference",
+                  "ruby-constant-reference"
                 ]
               },
               "strength": { "enum": ["naming", "direct", "referenced", "indirect"] },
