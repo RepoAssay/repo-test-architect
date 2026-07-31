@@ -12,12 +12,14 @@ The Ruby adapter is experimental. Its first bounded slice proves that one conven
 | Minitest discovery | Runnable `test/**/*_test.rb` files with a visible `Minitest::Test` subclass and `test_*` method |
 | RSpec discovery | Runnable `spec/**/*_spec.rb` files with a visible `RSpec.describe`/`describe` group and `it`/`specify` example |
 | Test command | `bundle exec rspec`, `bundle exec rake test` for a conventional default `Rake::TestTask` or `Minitest::TestTask`, or a bounded direct Minitest loader when no conventional Rake task exists |
-| Existing-test evidence | `ruby-constant-reference` for a unique visible space-indented class/module constant reached through at most three exact literal repository-owned require edges; bare requires use `lib/` only for one root gemspec statically included by Gemfile, relative requires resolve from their file, one direct source edge is `direct`, helper/entrypoint reachability is `referenced`, and a unique basename remains `naming` fallback |
+| Existing-test evidence | `ruby-constant-reference` for a unique visible space-indented class/module constant reached through at most three exact literal repository-owned require edges; bare requires use `lib/` only for one root gemspec statically included by Gemfile, relative requires resolve from their file, one direct source edge is `direct`, helper/entrypoint reachability is `referenced`, exact source-owned singleton/constructor calls in runnable bodies are `called`, selected Minitest/RSpec assertions are `asserted`, and a unique basename remains `naming` fallback |
 | Candidate filtering | Exact repository-relative, absolute, and Windows-separated `changedPaths` |
 | Native fixture gate | `bundle check` followed by `bundle exec rake test` |
 | Generated scale gate | 400 behavioral source files, 200 runnable Minitest files, exactly 200 covered and 200 untested candidates, and 200 naming relationships under 5 seconds |
 
-The adapter masks ordinary Ruby comments and quoted strings before recognizing runnable tests, Rake tasks, methods, constants, references, and behavior signals. Exact literal `require_relative` edges resolve from the owning file; bare `require` maps into `lib/` only when one root gemspec is statically included by the root Gemfile. Every edge must resolve to a repository-owned `.rb` file. A constant must have one owner among the source files reachable by that test; multiple reachable reopenings are withheld. Constant evidence proves load reachability and a visible reference, not a method call or assertion. A matching filename remains intentionally weaker `naming` evidence.
+The adapter masks ordinary Ruby comments and quoted strings before recognizing runnable tests, Rake tasks, methods, constants, references, and behavior signals. Exact literal `require_relative` edges resolve from the owning file; bare `require` maps into `lib/` only when one root gemspec is statically included by the root Gemfile. Every edge must resolve to a repository-owned `.rb` file. A constant must have one owner among the source files reachable by that test; multiple reachable reopenings are withheld.
+
+Usage is narrower than constant evidence. Only a conventional `def test_*` body or RSpec `it`/`specify` body can contribute it. An exact `Constant.method` call must match a directly declared `def self.method`, a method directly inside `class << self`, or `.new` backed by that class's direct `initialize`; all declarations use two-space lexical indentation. Such a call is `called`. It becomes `asserted` when the same line is a selected built-in Minitest assertion or RSpec `expect`, or when one unique unreassigned local receives the exact call and is later consumed by one of those assertions. A matching filename remains intentionally weaker `naming` evidence.
 
 ## Explicit Blockers And Exclusions
 
@@ -29,9 +31,9 @@ The first slice does not claim support for:
 - custom test roots, custom Rake task names, or computed runner commands
 - test-unit, Cucumber, Capybara, property testing, mutation testing, or other Ruby test frameworks
 - Bundler workspaces, path-gem graphs, engines, or umbrella repositories beyond separately detected literal `Gemfile` roots
-- method, receiver, result, helper-behavior, shared-example, factory, or assertion usage evidence
+- instance receivers, attributes/delegators, `extend self`, inherited/mixed-in/generated methods, helper/setup behavior, shared examples, factories, custom assertion methods, multiline assertion flow, or deeper result flow
 - computed/dynamic requires, graphs deeper than three edges, tab-indented or dynamic constant declarations, constant assignment/`Class.new`, ambiguous reachable reopenings, partial or unqualified nested constant references
-- metaprogrammed tests or behavior, dynamically defined methods, refinements, `autoload`, Zeitwerk inference, or runtime constant lookup
+- metaprogrammed tests or behavior, dynamically defined methods, deferred lambdas, `public_send`/`send`, refinements, `autoload`, Zeitwerk inference, or runtime constant lookup
 - heredoc, percent-literal, interpolation, or parser-complete Ruby semantics
 
 These shapes remain blocked or receive conservative missing evidence rather than inferred coverage.
@@ -45,6 +47,6 @@ npm run ruby:native:check
 npm run ruby:performance:check
 ```
 
-The next slices should add method-call/assertion usage only where it is statically exact, then broaden RSpec live pressure before considering Rails ownership.
+The next slice should broaden live RSpec pressure before considering instance receivers, deeper result flow, or Rails ownership.
 
-The first live probe, [`rubyzip/rubyzip`](https://github.com/rubyzip/rubyzip) at `4209b022069d4d5646753dd5799e8771e4699e5c`, passed 412 native Minitest runs and 2,820 assertions with no failures. Its foundation pass added exact `Minitest::TestTask.create` command ownership and root-gemspec runner declarations. The evidence follow-up adds bounded literal require/unique-constant attribution, moving the audit from 23/19 to 19/23 untested/covered while keeping deeper and ambiguous ownership uncredited. See the [rubyzip Live Validation Report](ruby-rubyzip-validation-report.md).
+The first live probe, [`rubyzip/rubyzip`](https://github.com/rubyzip/rubyzip) at `4209b022069d4d5646753dd5799e8771e4699e5c`, passed 412 native Minitest runs and 2,820 assertions with no failures. Its foundation pass added exact `Minitest::TestTask.create` command ownership and root-gemspec runner declarations. The first evidence follow-up moved the audit from 23/19 to 19/23 untested/covered through bounded require/constant attribution. The usage follow-up preserves that graph while separating 16 asserted, 23 called, 38 reference-only, and 3 naming relationships. See the [rubyzip Live Validation Report](ruby-rubyzip-validation-report.md).

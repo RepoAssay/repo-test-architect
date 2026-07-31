@@ -1,7 +1,7 @@
 {
   "schemaVersion": "model-consistency-scenario/v1",
   "id": "ruby-minitest-basic-plan",
-  "description": "Different model profiles should preserve the bounded Bundler command, direct Ruby constant evidence, and candidate actions.",
+  "description": "Different model profiles should preserve the bounded Bundler command, direct asserted Ruby evidence, and candidate actions.",
   "sourceArtifact": {
     "path": "evals/expected/ruby-minitest-basic.audit.json",
     "schemaVersion": "audit/v1"
@@ -39,7 +39,12 @@
     {
       "path": "items[0].existingTestEvidence[0].strength",
       "expected": "direct",
-      "reason": "One exact source require should retain direct strength without inventing call or assertion usage."
+      "reason": "One exact source require should retain direct relationship strength."
+    },
+    {
+      "path": "items[0].existingTestEvidence[0].usage",
+      "expected": "asserted",
+      "reason": "The exact Parser.parse call inside a Minitest assertion should retain asserted usage."
     },
     {
       "path": "items[1].id",
@@ -55,7 +60,7 @@
   "unexpectedVariations": [
     "missing bundle exec rake test verification command",
     "direct constant evidence downgraded to naming evidence",
-    "call or assertion usage invented for a constant reference",
+    "asserted Parser.parse usage downgraded or removed",
     "ambiguous source basenames credited",
     "different plan action counts"
   ]

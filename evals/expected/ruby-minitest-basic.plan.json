@@ -23,7 +23,7 @@
       "rationale": [
         "Branching Ruby behavior",
         "Failure or edge-case behavior",
-        "Existing exact Ruby require and constant-reference evidence detected; review behavioral coverage"
+        "Existing exact Ruby method-call and assertion evidence detected; review behavioral coverage"
       ],
       "sourceSignals": [
         "pure-logic",
@@ -38,7 +38,8 @@
         {
           "testPath": "test/parser_test.rb",
           "kind": "ruby-constant-reference",
-          "strength": "direct"
+          "strength": "direct",
+          "usage": "asserted"
         }
       ]
     },

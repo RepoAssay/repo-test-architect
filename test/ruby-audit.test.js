@@ -32,7 +32,8 @@ describe("Ruby audit adapter", () => {
     assert.deepEqual(audit.coveredButRisky[0].existingTestEvidence, [{
       testPath: "test/parser_test.rb",
       kind: "ruby-constant-reference",
-      strength: "direct"
+      strength: "direct",
+      usage: "asserted"
     }]);
     assert.deepEqual(audit.skipped.map((target) => target.path), [
       "lib/ruby_minitest_basic.rb",
@@ -96,7 +97,8 @@ describe("Ruby audit adapter", () => {
     assert.deepEqual(audit.coveredButRisky[0].existingTestEvidence, [{
       testPath: "test/archive_behavior_test.rb",
       kind: "ruby-constant-reference",
-      strength: "referenced"
+      strength: "referenced",
+      usage: "asserted"
     }]);
     assert.deepEqual(audit.untestedCandidates.map((target) => target.path), ["lib/archive/filesystem.rb"]);
   });
@@ -162,9 +164,201 @@ describe("Ruby audit adapter", () => {
     assert.deepEqual(audit.coveredButRisky[0].existingTestEvidence, [{
       testPath: "test/behavior_test.rb",
       kind: "ruby-constant-reference",
-      strength: "direct"
+      strength: "direct",
+      usage: "called"
     }]);
     assert.deepEqual(audit.untestedCandidates.map((target) => target.path), ["lib/deep.rb"]);
+  });
+
+  it("marks exact singleton calls and stable assertion results inside runnable Minitest bodies", (t) => {
+    const root = createRubyRepo(t, {
+      Gemfile: 'gem "minitest"\n',
+      "lib/client.rb": [
+        "class Client",
+        "  class << self",
+        "    def fetch",
+        "      :ok",
+        "    end",
+        "  end",
+        "end",
+        ""
+      ].join("\n"),
+      "lib/parser.rb": "class Parser\n  def self.parse(value)\n    value\n  end\nend\n",
+      "lib/record.rb": "class Record\n  def initialize(value)\n    @value = value\n  end\nend\n",
+      "test/usage_test.rb": [
+        'require_relative "../lib/client"',
+        'require_relative "../lib/parser"',
+        'require_relative "../lib/record"',
+        "class UsageTest < Minitest::Test",
+        "  def setup",
+        "    Parser.parse(:setup)",
+        "  end",
+        "",
+        "  def test_usage",
+        "    Client.fetch",
+        "    result = Parser.parse(:value)",
+        "    assert_equal :value, result",
+        "    refute_nil Record.new(:value)",
+        "  end",
+        "end",
+        ""
+      ].join("\n")
+    });
+
+    const audit = auditRubyRepo(root);
+    const evidence = Object.fromEntries(
+      audit.coveredButRisky.map((target) => [target.path, target.existingTestEvidence[0]])
+    );
+
+    assert.deepEqual(evidence, {
+      "lib/client.rb": {
+        testPath: "test/usage_test.rb",
+        kind: "ruby-constant-reference",
+        strength: "direct",
+        usage: "called"
+      },
+      "lib/parser.rb": {
+        testPath: "test/usage_test.rb",
+        kind: "ruby-constant-reference",
+        strength: "direct",
+        usage: "asserted"
+      },
+      "lib/record.rb": {
+        testPath: "test/usage_test.rb",
+        kind: "ruby-constant-reference",
+        strength: "direct",
+        usage: "asserted"
+      }
+    });
+  });
+
+  it("recognizes exact RSpec expect usage inside runnable examples", (t) => {
+    const root = createRubyRepo(t, {
+      Gemfile: 'gem "rspec"\n',
+      "lib/validator.rb": "class Validator\n  def self.valid?(value)\n    !value.nil?\n  end\nend\n",
+      "spec/validator_spec.rb": [
+        'require_relative "../lib/validator"',
+        "RSpec.describe Validator do",
+        "  before { Validator.valid?(:setup) }",
+        '  it("accepts values") { expect(Validator.valid?(:value)).to be(true) }',
+        "",
+        '  it "rejects nil" do',
+        "    result = Validator.valid?(nil)",
+        "    expect(result).to be(false)",
+        "  end",
+        "end",
+        ""
+      ].join("\n")
+    });
+
+    const audit = auditRubyRepo(root);
+
+    assert.deepEqual(audit.coveredButRisky[0].existingTestEvidence, [{
+      testPath: "spec/validator_spec.rb",
+      kind: "ruby-constant-reference",
+      strength: "direct",
+      usage: "asserted"
+    }]);
+  });
+
+  it("keeps helper-owned, undeclared, dynamic, and reassigned-result shapes below asserted usage", (t) => {
+    const root = createRubyRepo(t, {
+      Gemfile: 'gem "minitest"\n',
+      "lib/client.rb": "class Client\n  def fetch\n    :ok\n  end\nend\n",
+      "lib/deferred.rb": "class Deferred\n  def self.run\n    :ok\n  end\nend\n",
+      "lib/dispatcher.rb": "class Dispatcher\n  def self.call\n    :ok\n  end\nend\n",
+      "lib/factory.rb": "module Factory\n  def initialize\n    :ok\n  end\nend\n",
+      "lib/parser.rb": [
+        "class Parser",
+        "  def self.parse(value)",
+        "    value",
+        "  end",
+        "",
+        "  def instance_parse(value)",
+        "    value",
+        "  end",
+        "end",
+        ""
+      ].join("\n"),
+      "lib/worker.rb": "class Worker\n  def self.run\n    :ok\n  end\nend\n",
+      "lib/wrapped.rb": "class Wrapped\n  def self.call(value)\n    value\n  end\nend\n",
+      "test/parser_usage_test.rb": [
+        'require_relative "../lib/client"',
+        'require_relative "../lib/deferred"',
+        'require_relative "../lib/dispatcher"',
+        'require_relative "../lib/factory"',
+        'require_relative "../lib/parser"',
+        'require_relative "../lib/worker"',
+        'require_relative "../lib/wrapped"',
+        "class ParserUsageTest < Minitest::Test",
+        "  def helper",
+        "    Parser.parse(:helper)",
+        "    Worker.run",
+        "  end",
+        "",
+        "  def test_usage",
+        "    Client.fetch",
+        "    callback = -> { Deferred.run }",
+        "    Dispatcher.public_send(:call)",
+        "    Factory.new",
+        "    Parser.public_send(:parse, :dynamic)",
+        "    Parser.instance_parse(:wrong_owner)",
+        "    result = Parser.parse(:value)",
+        "    result = :changed",
+        "    assert_equal :changed, result",
+        "    verify(Parser.parse(:custom_assertion))",
+        "    wrapped = normalize(Wrapped.call(:value))",
+        "    assert_equal :value, wrapped",
+        "  end",
+        "end",
+        ""
+      ].join("\n")
+    });
+
+    const audit = auditRubyRepo(root);
+    const evidence = Object.fromEntries(
+      audit.coveredButRisky.map((target) => [target.path, target.existingTestEvidence[0]])
+    );
+
+    assert.deepEqual(evidence, {
+      "lib/client.rb": {
+        testPath: "test/parser_usage_test.rb",
+        kind: "ruby-constant-reference",
+        strength: "direct"
+      },
+      "lib/deferred.rb": {
+        testPath: "test/parser_usage_test.rb",
+        kind: "ruby-constant-reference",
+        strength: "direct"
+      },
+      "lib/dispatcher.rb": {
+        testPath: "test/parser_usage_test.rb",
+        kind: "ruby-constant-reference",
+        strength: "direct"
+      },
+      "lib/factory.rb": {
+        testPath: "test/parser_usage_test.rb",
+        kind: "ruby-constant-reference",
+        strength: "direct"
+      },
+      "lib/parser.rb": {
+        testPath: "test/parser_usage_test.rb",
+        kind: "ruby-constant-reference",
+        strength: "direct",
+        usage: "called"
+      },
+      "lib/worker.rb": {
+        testPath: "test/parser_usage_test.rb",
+        kind: "ruby-constant-reference",
+        strength: "direct"
+      },
+      "lib/wrapped.rb": {
+        testPath: "test/parser_usage_test.rb",
+        kind: "ruby-constant-reference",
+        strength: "direct",
+        usage: "called"
+      }
+    });
   });
 
   it("does not invent a lib load path for bare requires without a bundled root gemspec", (t) => {
