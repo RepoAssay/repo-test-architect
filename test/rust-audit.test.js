@@ -385,6 +385,44 @@ describe("Rust audit adapter", () => {
     ]) assert.ok(!ownedPaths.includes(unownedPath));
   });
 
+  it("excludes external module graphs reachable only through exact cfg(test)", (t) => {
+    const root = createRustRepo(t, {
+      "Cargo.toml": cargoPackage("test-only-modules"),
+      "src/lib.rs": [
+        "pub mod service;",
+        "#[cfg(test)]",
+        "mod test_support;",
+        "#[cfg(any(test, feature = \"fixtures\"))]",
+        "mod conditional_support;",
+        "#[cfg(not(test))]",
+        "mod runtime;",
+        "#[path = \"shared.rs\"]",
+        "mod production_shared;",
+        "#[cfg(test)]",
+        "#[path = \"shared.rs\"]",
+        "mod test_shared;",
+        ""
+      ].join("\n"),
+      "src/service.rs": rustSourceWithTest("serve"),
+      "src/test_support.rs": "mod nested;\npub fn fixture() -> usize { nested::value() }\n",
+      "src/test_support/nested.rs": "pub fn value() -> usize { 1 }\n",
+      "src/conditional_support.rs": "pub fn conditional() -> usize { 1 }\n",
+      "src/runtime.rs": "pub fn runtime() -> usize { 1 }\n",
+      "src/shared.rs": "pub fn shared() -> usize { 1 }\n"
+    });
+
+    const audit = auditRustRepo(root);
+
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["src/service.rs"]);
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.path), [
+      "src/conditional_support.rs",
+      "src/runtime.rs",
+      "src/shared.rs"
+    ]);
+    assert.deepEqual(audit.skipped.map((target) => target.path), ["src/lib.rs"]);
+    assert.ok(!audit.recommended.some((target) => target.path.startsWith("src/test_support")));
+  });
+
   it("maps exact crate-relative and parent-relative unit-test imports through the logical module graph", (t) => {
     const root = createRustRepo(t, {
       "Cargo.toml": [

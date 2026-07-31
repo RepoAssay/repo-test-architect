@@ -7,8 +7,8 @@ The Rust adapter is experimental. Its current bounded slices prove that conventi
 | Area | Supported boundary |
 | --- | --- |
 | Project ownership | One root `Cargo.toml` with a static `[package].name`, either standalone or an exact member of the nearest literal Cargo workspace |
-| Source ownership | Rust files under `src/`, existing repository-contained `.rs` files named by static `[lib].path` and `[[bin]].path`, and their recursively resolved literal modules; nested Cargo packages are separate detector roots |
-| Module graph | Top-level `mod name;` using the unique Rust `name.rs` or `name/mod.rs` layout, plus static package-contained `#[path = "..."]` and raw-string path attributes; crate roots, ordinary module files, and `mod.rs` use their native relative bases |
+| Source ownership | Rust files under `src/`, existing repository-contained `.rs` files named by static `[lib].path` and `[[bin]].path`, and their recursively resolved literal modules; files reachable only through exact `#[cfg(test)] mod ...;` edges are test support rather than production candidates; nested Cargo packages are separate detector roots |
+| Module graph | Top-level `mod name;` using the unique Rust `name.rs` or `name/mod.rs` layout, plus static package-contained `#[path = "..."]` and raw-string path attributes; crate roots, ordinary module files, and `mod.rs` use their native relative bases; exact test-only state propagates through literal descendants while an unguarded path to the same file wins |
 | Test harness | Built-in `#[test]` functions, or a static repository-contained `[[test]]` target using Cargo's built-in harness |
 | Inline tests | Runnable tests inside an inline `#[cfg(test)] mod ...` block |
 | Integration tests | Runnable `.rs` files under `tests/`; a static explicit target can establish the command without claiming macro-expanded symbol evidence |
@@ -34,6 +34,7 @@ The current slices do not claim support for:
 - disabled, feature-gated, missing, escaping, or dynamic explicit test targets
 - missing, escaping, repository-external, non-Rust, or non-static Cargo lib/bin target paths
 - ambiguous or missing module files, declarations inside inline modules or macro bodies, dynamic/unsupported path attributes, macro-generated modules, `include!`, and traversal into nested Cargo packages
+- test-only inference from broader `cfg` predicates, `cfg_attr`, feature/target predicates, or macro-generated declarations; only exact `#[cfg(test)]` module edges exclude production ownership
 - dynamic or inherited manifest ownership
 - module re-exports and wildcard imports
 - test-local `self::` ownership and `crate`, `self`, or `super` import traversal in integration evidence
@@ -59,6 +60,8 @@ These shapes remain visible through blockers or conservative missing evidence; t
 
 `examples/rust-cargo-custom-targets` adds a library root under `code/`, a binary root under `app/`, recursively declared file and directory modules, a static parent-relative path module, exact crate-relative unit and package-name integration evidence on a custom-root validator module, an asserted inherent `Calculator::total` call, untested module candidates, and a nearby unowned Rust file that must remain excluded.
 
-All three shapes are locked by Rust-specific unit tests, project detection/auditing coverage, audit and plan snapshots, and model-consistency scenarios. A generated 400-source/200-test module graph now locks exact candidate, skipped-wiring, evidence, and timing behavior in every alpha and release check. Promotion beyond experimental should still wait for two additional representative live-repository roles and broader syntax/evidence pressure.
+All three shapes are locked by Rust-specific unit tests, project detection/auditing coverage, audit and plan snapshots, and model-consistency scenarios. A generated 400-source/200-test module graph now locks exact candidate, skipped-wiring, evidence, and timing behavior in every alpha and release check. Promotion beyond experimental should still wait for one conventional-library/service live role and the final cross-role review.
 
 The first pinned live probe, [`BurntSushi/ripgrep`](https://github.com/BurntSushi/ripgrep) at `f9c05a949d1a0dc8e16dee28ca9605d38611faeb`, preserves the root package, ten literal workspace members, and a separate fuzz workspace. It exposed and fixed exact command ownership for a macro-driven built-in test target, proved static ownership of the root `[[bin]]` path, and then resolved all 23 files in that binary's literal module graph. The full native workspace passed 1,220 listed tests, and three module-graph audits were digest-stable with a 385 ms median. See the [Rust ripgrep Live Validation Report](rust-ripgrep-validation-report.md).
+
+The second pinned probe, [`starship/starship`](https://github.com/starship/starship) at `7946f2d9fbb02a5be76856ed27ddb85da10af3da`, fills the framework-heavy application role with a root library/binary package, 245 source files, 1,230 passing native tests, and stable 487 ms audits. It exposed a false production owner and 94 inflated relationships from `src/test/mod.rs`, which is declared only through exact `#[cfg(test)]`. The corrected audit preserves all 239 production candidates while removing that test-support graph. See the [Rust Starship Live Validation Report](rust-starship-validation-report.md).

@@ -24,8 +24,11 @@ export function auditRustRepo(root, options = {}) {
   const sourceTargets = collectCargoSourceTargets(manifest?.content ?? "", files);
   const crateRootPaths = collectCargoCrateRootPaths(files, sourceTargets);
   const moduleGraph = collectRustModuleGraph(files, crateRootPaths);
+  const testOnlySourcePaths = new Set(moduleGraph.testOnlyPaths);
   const sourcePaths = new Set([
-    ...files.filter((file) => isSourceFile(file.path)).map((file) => file.path),
+    ...files
+      .filter((file) => isSourceFile(file.path) && !testOnlySourcePaths.has(normalizePath(file.path)))
+      .map((file) => file.path),
     ...moduleGraph.paths
   ]);
   const sourceFiles = files.filter((file) => sourcePaths.has(file.path));
@@ -253,35 +256,47 @@ function collectRustModuleGraph(files, crateRootPaths) {
   const roots = new Set(crateRootPaths.filter((currentPath) => filesByPath.has(currentPath)));
   const owned = new Set(roots);
   const modulePaths = new Set();
+  const testOnlyPaths = new Set();
   const modules = [];
   const visited = new Set();
   const queue = [...roots].sort().map((rootPath) => ({
     path: rootPath,
     moduleName: "",
-    rootPath
+    rootPath,
+    testOnly: false
   }));
   for (let index = 0; index < queue.length; index += 1) {
     const current = queue[index];
     const sourcePath = current.path;
-    const visitKey = `${current.rootPath}\0${sourcePath}`;
+    const visitKey = `${current.rootPath}\0${sourcePath}\0${current.testOnly}`;
     if (visited.has(visitKey)) continue;
     visited.add(visitKey);
-    modules.push(current);
+    if (current.testOnly) testOnlyPaths.add(sourcePath);
+    else modules.push(current);
     const file = filesByPath.get(sourcePath);
     for (const child of collectRustModulePaths(file, roots.has(sourcePath), filesByPath)) {
-      owned.add(child.path);
-      modulePaths.add(child.path);
+      const testOnly = current.testOnly || child.testOnly;
+      if (testOnly) testOnlyPaths.add(child.path);
+      else {
+        owned.add(child.path);
+        modulePaths.add(child.path);
+      }
       queue.push({
         path: child.path,
         moduleName: current.moduleName ? `${current.moduleName}::${child.name}` : child.name,
-        rootPath: current.rootPath
+        rootPath: current.rootPath,
+        testOnly
       });
     }
   }
+  for (const currentPath of owned) testOnlyPaths.delete(currentPath);
   return {
     paths: [...owned].sort(),
     modulePaths: [...modulePaths].sort(),
-    modules: modules.sort((left, right) => left.path.localeCompare(right.path) || left.moduleName.localeCompare(right.moduleName))
+    testOnlyPaths: [...testOnlyPaths].sort(),
+    modules: modules
+      .sort((left, right) => left.path.localeCompare(right.path) || left.moduleName.localeCompare(right.moduleName))
+      .map(({ testOnly: _testOnly, ...current }) => current)
   };
 }
 
@@ -303,9 +318,10 @@ function collectRustModulePaths(file, isCrateRoot, filesByPath) {
       file.content.slice(attributeStart, match.index),
       masked.slice(attributeStart, match.index)
     );
+    const testOnly = rustHasExactCfgTestAttribute(masked.slice(attributeStart, match.index));
     if (attribute.declared) {
       const targetPath = normalizeRustModuleLink(file.path, attribute.value);
-      if (targetPath && filesByPath.has(targetPath)) modules.push({ name: match[1], path: targetPath });
+      if (targetPath && filesByPath.has(targetPath)) modules.push({ name: match[1], path: targetPath, testOnly });
       continue;
     }
     const base = rustModuleBasePath(file.path, isCrateRoot);
@@ -313,11 +329,15 @@ function collectRustModulePaths(file, isCrateRoot, filesByPath) {
       path.posix.join(base, `${match[1]}.rs`),
       path.posix.join(base, match[1], "mod.rs")
     ].filter((candidate) => filesByPath.has(candidate));
-    if (candidates.length === 1) modules.push({ name: match[1], path: candidates[0] });
+    if (candidates.length === 1) modules.push({ name: match[1], path: candidates[0], testOnly });
   }
   return modules.filter((current, index) => modules.findIndex((candidate) => (
     candidate.name === current.name && candidate.path === current.path
   )) === index).sort((left, right) => left.path.localeCompare(right.path) || left.name.localeCompare(right.name));
+}
+
+function rustHasExactCfgTestAttribute(maskedAttributes) {
+  return /#\s*\[\s*cfg\s*\(\s*test\s*\)\s*\]/.test(maskedAttributes);
 }
 
 function rustAttributePrefixStart(masked, declarationStart) {

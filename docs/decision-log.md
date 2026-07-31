@@ -515,3 +515,11 @@ Decision: run a generated Cargo library with 400 literal behavioral modules and 
 Rationale: Rust already had fixture, shared-conformance, golden, model-consistency, native Cargo, and pinned ripgrep evidence, but lacked the generated semantic and timing pressure carried by the supported adapters. The fixture exercises literal module traversal, exact package-name integration imports, runnable `#[test]` ownership, asserted function evidence, and candidate classification at useful scale. Its first local audit completed in 59 ms. Keeping the mandatory crate root as an exact skipped invariant avoids pretending its declarations are independently testable behavior.
 
 Revisit when: normal CI variance approaches the ceiling or a representative large Rust repository exposes a more useful deterministic module or evidence shape.
+
+### 2026-07-31: exclude exact Rust test-only module graphs from production
+
+Decision: when a literal Rust module declaration is guarded by exact `#[cfg(test)]`, exclude its resolved file and literal descendants from production candidate and evidence ownership unless the same physical file is also reached through an unguarded production module edge. Preserve broader `cfg` predicates, `cfg_attr`, feature/target conditions, and macro-generated declarations as conservative unknowns rather than test-only proof.
+
+Rationale: pinned `starship/starship` at `7946f2d9fbb02a5be76856ed27ddb85da10af3da` declares `src/test/mod.rs` only through `#[cfg(test)] mod test;`. The initial audit treated that shared test fixture/renderer module as covered production behavior and attached 94 relationships from application tests. Excluding the exact test-only graph changes 51 covered candidates to 50 and 144 evidence relationships to 50 while preserving all 189 untested candidates and five production deferrals. Five corrected audits share digest `89da7c8cabf2f0ee23866dcedced4dd506322e866f616956c2017b2c51dcc3f0` with a 487 ms median. The native suite passes 1,230 tests with 39 ignored when current terminal and Git prerequisites are present.
+
+Revisit when: a pinned repository proves a need to evaluate a broader static `cfg` predicate without excluding files that can enter a production build.
