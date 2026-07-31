@@ -31,8 +31,8 @@ describe("Ruby audit adapter", () => {
     ]);
     assert.deepEqual(audit.coveredButRisky[0].existingTestEvidence, [{
       testPath: "test/parser_test.rb",
-      kind: "filename-convention",
-      strength: "naming"
+      kind: "ruby-constant-reference",
+      strength: "direct"
     }]);
     assert.deepEqual(audit.skipped.map((target) => target.path), [
       "lib/ruby_minitest_basic.rb",
@@ -49,7 +49,7 @@ describe("Ruby audit adapter", () => {
       Gemfile: 'source "https://rubygems.org"\ngem "rspec"\n',
       "lib/order_validator.rb": "class OrderValidator\n  def valid?(order)\n    !order.nil?\n  end\nend\n",
       "spec/order_validator_spec.rb": [
-        'require "order_validator"',
+        'require_relative "../lib/order_validator"',
         "RSpec.describe OrderValidator do",
         '  it("accepts an order") { expect(subject.valid?(Object.new)).to be(true) }',
         "end",
@@ -64,6 +64,128 @@ describe("Ruby audit adapter", () => {
     assert.deepEqual(audit.profile.architectures, ["ruby-application"]);
     assert.equal(audit.profile.confidence, "high");
     assert.deepEqual(audit.coveredButRisky[0].existingTestPaths, ["spec/order_validator_spec.rb"]);
+    assert.deepEqual(audit.coveredButRisky[0].existingTestEvidence, [{
+      testPath: "spec/order_validator_spec.rb",
+      kind: "ruby-constant-reference",
+      strength: "direct"
+    }]);
+  });
+
+  it("follows three exact repository-owned require edges to a uniquely reachable constant", (t) => {
+    const root = createRubyRepo(t, {
+      Gemfile: 'gem "minitest"\ngemspec\n',
+      "archive.gemspec": "Gem::Specification.new {}\n",
+      "lib/archive.rb": 'require "archive/file"\n',
+      "lib/archive/file.rb": "module Archive\n  class File\n    def self.open\n      true\n    end\n  end\nend\n",
+      "lib/archive/filesystem.rb": "module Archive\n  class File\n    def mounted?\n      true\n    end\n  end\nend\n",
+      "test/test_helper.rb": 'require "archive"\n',
+      "test/archive_behavior_test.rb": [
+        'require_relative "test_helper"',
+        "class ArchiveBehaviorTest < Minitest::Test",
+        "  def test_open",
+        "    assert Archive::File.open",
+        "  end",
+        "end",
+        ""
+      ].join("\n")
+    });
+
+    const audit = auditRubyRepo(root);
+
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["lib/archive/file.rb"]);
+    assert.deepEqual(audit.coveredButRisky[0].existingTestEvidence, [{
+      testPath: "test/archive_behavior_test.rb",
+      kind: "ruby-constant-reference",
+      strength: "referenced"
+    }]);
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.path), ["lib/archive/filesystem.rb"]);
+  });
+
+  it("rejects constants with multiple reachable owners and non-literal or non-exact references", (t) => {
+    const root = createRubyRepo(t, {
+      Gemfile: 'gem "minitest"\ngemspec\n',
+      "archive.gemspec": "Gem::Specification.new {}\n",
+      "lib/archive.rb": 'require "archive/file"\nrequire "archive/file_extension"\n',
+      "lib/archive/file.rb": "module Archive\n  class File\n    def self.open\n      true\n    end\n  end\nend\n",
+      "lib/archive/file_extension.rb": "module Archive\n  class File\n    def self.extended\n      true\n    end\n  end\nend\n",
+      "lib/archive/parser.rb": "module Archive\n  class Parser\n    def self.parse\n      true\n    end\n  end\nend\n",
+      "test/behavior_test.rb": [
+        'require "archive"',
+        'require "#{component}"',
+        '# require "archive/parser"',
+        "class BehaviorTest < Minitest::Test",
+        "  def test_behavior",
+        '    text = "Archive::Parser"',
+        "    Archive::File.open",
+        "    Other::Archive::Parser",
+        "  end",
+        "end",
+        ""
+      ].join("\n")
+    });
+
+    const audit = auditRubyRepo(root);
+
+    assert.deepEqual(audit.coveredButRisky, []);
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.path), [
+      "lib/archive/file.rb",
+      "lib/archive/file_extension.rb",
+      "lib/archive/parser.rb"
+    ]);
+  });
+
+  it("accepts an exact relative source require but stops before a fourth require edge", (t) => {
+    const root = createRubyRepo(t, {
+      Gemfile: 'gem "minitest"\ngemspec\n',
+      "library.gemspec": "Gem::Specification.new {}\n",
+      "lib/direct.rb": "class Direct\n  def self.call\n    true\n  end\nend\n",
+      "lib/deep.rb": "class Deep\n  def self.call\n    true\n  end\nend\n",
+      "test/support/one.rb": 'require_relative "two"\n',
+      "test/support/two.rb": 'require_relative "three"\n',
+      "test/support/three.rb": 'require "deep"\n',
+      "test/behavior_test.rb": [
+        'require_relative "../lib/direct"',
+        'require_relative "support/one"',
+        "class BehaviorTest < Minitest::Test",
+        "  def test_behavior",
+        "    Direct.call",
+        "    Deep.call",
+        "  end",
+        "end",
+        ""
+      ].join("\n")
+    });
+
+    const audit = auditRubyRepo(root);
+
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["lib/direct.rb"]);
+    assert.deepEqual(audit.coveredButRisky[0].existingTestEvidence, [{
+      testPath: "test/behavior_test.rb",
+      kind: "ruby-constant-reference",
+      strength: "direct"
+    }]);
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.path), ["lib/deep.rb"]);
+  });
+
+  it("does not invent a lib load path for bare requires without a bundled root gemspec", (t) => {
+    const root = createRubyRepo(t, {
+      Gemfile: 'gem "minitest"\n',
+      "lib/parser.rb": "class Parser\n  def self.parse\n    true\n  end\nend\n",
+      "test/behavior_test.rb": [
+        'require "parser"',
+        "class BehaviorTest < Minitest::Test",
+        "  def test_behavior",
+        "    Parser.parse",
+        "  end",
+        "end",
+        ""
+      ].join("\n")
+    });
+
+    const audit = auditRubyRepo(root);
+
+    assert.deepEqual(audit.coveredButRisky, []);
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.path), ["lib/parser.rb"]);
   });
 
   it("accepts a static test dependency from one root gemspec", (t) => {

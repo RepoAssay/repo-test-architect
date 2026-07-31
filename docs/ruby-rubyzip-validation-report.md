@@ -63,7 +63,7 @@ The adapter now recognizes only top-level visible `Minitest::TestTask.create` wi
 
 The live screen also confirmed that static runner dependencies must be accepted from one exact root gemspec, not only `Gemfile` or `Gemfile.lock`. The adapter now accepts a literal `add_development_dependency` or `add_dependency` for `minitest`, `rspec`, or `rspec-core` in that one owned gemspec.
 
-## Final Repeated Audit
+## Foundation Repeated Audit
 
 Five unchanged audits produced one canonical digest:
 
@@ -80,18 +80,49 @@ Five unchanged audits produced one canonical digest:
 
 The 19 relationships are deliberately naming-only. They connect one runnable test basename to one unique source basename and do not claim that a source constant or method was visibly called or asserted.
 
+## Require And Constant Evidence Follow-Up
+
+The next slice keeps the same repository and native command while replacing global basename inference where the checked-in load graph can prove more. A runnable test may contribute `ruby-constant-reference` only when:
+
+- literal `require_relative` edges resolve from their owning file, while bare `require` uses `lib/` only because Gemfile statically includes rubyzip's sole root gemspec; every edge resolves to a repository-owned `.rb` file
+- the source is reached within three edges from that runnable test
+- a space-indented class/module declaration gives the source an exact constant
+- that full constant is visibly referenced outside comments and strings
+- the constant has exactly one owner among source files reachable by that test
+
+A direct test-to-source edge is `direct`; a helper or entrypoint path is `referenced`. The rule does not infer a method call or assertion from the constant reference.
+
+rubyzip's conventional path is a useful pressure case: `test/file_test.rb` requires `test_helper`, the helper requires `zip`, and `lib/zip.rb` requires `zip/file`. `Zip::File` is visibly referenced in the test and has one reachable owner on that path, so `lib/zip/file.rb` gains exact referenced evidence despite its globally duplicated `file.rb` basename. Filesystem tests load an additional class reopening, so those ambiguous paths do not claim the same ownership.
+
+The unchanged native command was rerun after the evidence change and again passed 412 runs and 2,820 assertions with zero failures or errors. Five static audits produced:
+
+| Measure | Evidence follow-up |
+| --- | --- |
+| Test command | `bundle exec rake test` |
+| Untested candidates | 19 |
+| Covered-but-risky candidates | 23 |
+| Skipped targets | 6 |
+| Evidence relationships | 80 |
+| Evidence kinds | 77 `ruby-constant-reference`, 3 `filename-convention` |
+| Evidence strengths | 2 direct, 75 referenced, 3 naming |
+| Durations | 41 ms, 25 ms, 24 ms, 23 ms, 24 ms |
+| Median | 24 ms |
+| Canonical SHA-256 | `61cd271fb3bb95602dfb0451d1532f7dbeabb46b22f0781b0e529847343ed03b` |
+
+No previously covered target is lost. Four targets move from untested to covered evidence: `lib/zip/errors.rb`, `lib/zip/file.rb`, `lib/zip/inflater.rb`, and `lib/zip/ioextras.rb`. The internal `lib/zip/filesystem/file.rb` remains untested because its `Zip::FileSystem::File` constant is not visibly referenced by the runnable tests; receiver access through `zf.file` is intentionally outside this slice.
+
 ## Remaining Uncertainty
 
-The live audit gives us a credible first command and ownership boundary, but it also makes the next work concrete:
+The live audit now gives us a credible command, ownership, and first direct/reference evidence boundary, but it also keeps the next work concrete:
 
-- same-named files such as `lib/zip/file.rb` and `lib/zip/filesystem/file.rb` remain untested because global basename evidence is ambiguous even when the test directory could potentially qualify ownership
-- tests whose names describe behavior rather than one source file do not create evidence
-- helpers, mixins, inheritance, receiver calls, shared assertions, and indirect behavior are not followed
-- naming evidence cannot be compared directly with rubyzip's native line coverage; the adapter correctly reports only what it can statically attribute
+- exact reachable constants can now recover behavior-named tests and duplicate basenames, but only when one owner remains on that test's load graph
+- helper behavior, mixins, inheritance, receiver calls, shared assertions, result flow, and indirect source behavior are not followed
+- no evidence entry claims called/asserted usage yet, even when a constant is visibly constructed or used inside an assertion
+- constant/reference evidence still cannot be equated with rubyzip's native line coverage; the adapter correctly reports only what it can statically attribute
 - `test_*.rb`, maxitest, Rails, custom tasks, and mixed runners remain outside the first boundary
 
-These are explicit limitations rather than silent coverage claims. The next Ruby slice should use this pin to add directory-qualified or exact `require`/constant evidence before broadening framework ownership.
+These are explicit limitations rather than silent coverage claims. The next Ruby evidence slice should add bounded method-call/assertion usage, while Faraday remains the stronger next live repository for RSpec and service-boundary pressure.
 
 ## Result
 
-The experimental Ruby foundation is plausible enough to audit a real conventional gem: detection, `lib/` ownership, runner declaration, command selection, repeatability, performance, downstream artifact conformance, and native verification all pass at an exact public commit. Ruby is not promoted; it still needs deeper evidence, more repository shapes, and the shared three-role corpus before supported maturity is considered.
+The experimental Ruby foundation is plausible enough to audit a real conventional gem with exact load-aware constant attribution: detection, `lib/` ownership, runner declaration, command selection, bounded require reachability, unique constant ownership, repeatability, performance, downstream artifact conformance, and native verification all pass at an exact public commit. Ruby is not promoted; it still needs usage evidence, more repository shapes, and the shared three-role corpus before supported maturity is considered.

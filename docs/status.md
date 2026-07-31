@@ -2,7 +2,7 @@
 
 ## Current State
 
-Repo Test Architect currently has supported deterministic JavaScript/TypeScript, Python, Swift, bounded Kotlin/JVM, bounded Go, bounded C#, and bounded Rust audit pipelines, plus an experimental Ruby foundation. Go support includes conventional modules, literal repository-contained `go.work` ownership, and explicit static build-target selection. C# support covers one conventional SDK-style test project or one unique literal production/test edge, including exact literal multi-target membership, finite project-local target-conditioned package predicates, and a selected pair amid unrelated projects. Rust support covers conventional Cargo packages and literal workspace members with built-in tests, exact commands, literal module ownership, and bounded direct evidence. Ruby currently covers one conventional Bundler project with `lib/`, Minitest/RSpec discovery, bounded commands, and naming-level evidence.
+Repo Test Architect currently has supported deterministic JavaScript/TypeScript, Python, Swift, bounded Kotlin/JVM, bounded Go, bounded C#, and bounded Rust audit pipelines, plus an experimental Ruby foundation. Go support includes conventional modules, literal repository-contained `go.work` ownership, and explicit static build-target selection. C# support covers one conventional SDK-style test project or one unique literal production/test edge, including exact literal multi-target membership, finite project-local target-conditioned package predicates, and a selected pair amid unrelated projects. Rust support covers conventional Cargo packages and literal workspace members with built-in tests, exact commands, literal module ownership, and bounded direct evidence. Ruby currently covers one conventional Bundler project with `lib/`, Minitest/RSpec discovery, bounded commands, and three-edge literal require/unique-constant evidence with naming fallback.
 
 Implemented:
 
@@ -105,6 +105,7 @@ Implemented:
 - Node 20-compatible instrumented line, branch, and function coverage floors for every registered adapter implementation
 - deterministic generated 400-source/200-test performance and evidence-count gates for all seven supported adapters
 - experimental Ruby registry/detection, conventional Bundler/Minitest/RSpec ownership, native fixture verification, shared downstream conformance, and a generated 400-source/200-test performance/evidence gate
+- bounded Ruby `ruby-constant-reference` evidence through exact literal repository-owned require graphs, with direct/referenced strength, reachable-owner ambiguity rejection, and pinned rubyzip pressure
 - alpha-readiness checklist for the test architecture audit milestone before native generation
 - deterministic `npm run alpha:check` gate for tests, adapter implementation coverage, adapter corpus validation, all-adapter performance/evidence regression, golden audits, model consistency, demo behavior, and local MCP transport without npm packaging requirements
 - real-repo audit reports for owned JavaScript/TypeScript and Swift repositories, including Collectors Grimoire and `cg-*` sibling packages
