@@ -98,6 +98,33 @@ Faraday confirms that the remaining receiver uncertainty is memoized and helper-
 
 Those shapes remained naming or reference-only in this pass. The adapter did not yet infer that `described_class` named a particular source owner, execute RSpec memoization, follow helper methods, credit shared examples, or treat instance calls as source-owned merely because a constant was visible elsewhere in the file. Faraday's 95.04% native line coverage therefore did not turn into a static claim the adapter could not prove.
 
+## Exact Memoized Receiver Follow-Up
+
+The memoized receiver follow-up admits only an exact one-line `let` or `subject` whose body is an unchained `Constant.new(...)` or group-owned `described_class.new(...)`. Named subjects expose the declared name and `subject`; unnamed subjects expose only `subject`. The definition and example must share normal containing RSpec groups, the nearest declaration of each receiver wins, and an unknown inner override blocks an outer exact identity. A `described_class` memo is also rejected when the consuming example has a nearer constant owner.
+
+Multiline bodies, `let!`/`subject!`, constructor blocks, chained results, aliases, shared examples, local reassignment, block shadowing, helper flow, implicit matcher syntax, and generated/inherited methods remain excluded. Existing direct declaration and assertion rules are unchanged.
+
+Three reviewed exact relationships improve without changing Faraday's candidates or 45-link graph:
+
+| Relationship | Before | After | Reviewed direct methods |
+| --- | --- | --- | --- |
+| `Connection` → `connection_spec.rb` | called | asserted | `close`, `options`, `build_url`, `build_request`, and `build_exclusive_url` |
+| `Error` → `error_spec.rb` | reference-only | asserted | `backtrace`, `inspect`, and response projection methods |
+| `Response` → `response_spec.rb` | reference-only | asserted | `status`, `body`, `headers`, `finished?`, `finish`, `success?`, and related direct methods |
+
+Factory Bot provides the conservative comparison: its 56 relationships remain unchanged because the remaining memoized calls use inherited/generated methods, constructor blocks, shared examples, or implicit `should`/`its` syntax. The adapter-selected native commands again passed 639 Faraday examples and 764 Factory Bot examples with zero failures.
+
+Five restored-tree audits of each pin produced one digest per repository:
+
+| Measure | Faraday | Factory Bot |
+| --- | --- | --- |
+| Untested / covered / skipped | 8 / 22 / 3 | 21 / 28 / 4 |
+| Evidence relationships | 45 | 56 |
+| Usage split | 6 asserted, 1 called, 25 reference-only, 13 naming | 21 asserted, 2 called, 20 reference-only, 13 naming |
+| Durations | 61.675, 53.832, 54.578, 52.747, 52.882 ms | 96.636, 65.555, 64.047, 63.299, 62.285 ms |
+| Median | 53.832 ms | 64.047 ms |
+| Canonical SHA-256 | `af4437cbee783ab4afc03bdb36d056d65d9f063fd75a88c53b2f3fd206b2a626` | `ad9e86af7304e245277c26647cf35ce170c7e274371f59875b810c26bfea61e3` |
+
 ## Result
 
-The RSpec load and first direct receiver boundaries were credible and regression-backed: one exact root option, one uniquely owned helper, the existing finite require budget, exact constant ownership, direct immutable constructor-local identity, native verification, repeatable output, and conservative usage all agreed on a real service library. Ruby remained experimental. The later [Factory Bot validation](ruby-factory-bot-validation-report.md) resolves only exact group-owned `described_class`; RSpec `let`/`subject`, shared examples, helper execution, generated methods, and Rails ownership remain explicit later decisions.
+The RSpec load, direct receiver, exact group-owned `described_class`, and one-line constructor-memo boundaries are regression-backed across Faraday and the later [Factory Bot validation](ruby-factory-bot-validation-report.md). Ruby remains experimental. Multiline/eager memoization, implicit matcher semantics, shared examples, helper execution, generated methods, broader project ownership, and Rails ownership remain explicit later decisions.

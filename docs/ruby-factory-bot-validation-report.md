@@ -88,6 +88,12 @@ Five audits of the restored exact checkout produced one canonical digest:
 | Median | 51.397 ms |
 | Canonical SHA-256 | `ad9e86af7304e245277c26647cf35ce170c7e274371f59875b810c26bfea61e3` |
 
+## Memoized Receiver Follow-Up
+
+The later one-line RSpec `let`/`subject` receiver slice leaves Factory Bot's candidate counts, all 56 relationships, usage split, and canonical digest unchanged. Its remaining direct constructor subjects either call inherited/generated methods, carry constructor blocks, feed shared examples, or use implicit `should`/`its` matchers, so the bounded rule correctly adds no usage. The adapter-selected `bundle exec rspec` command again passed 764 examples with zero failures and 98.51% line coverage. Five audits completed in 96.636, 65.555, 64.047, 63.299, and 62.285 ms (64.047 ms median) with the same digest shown above.
+
+The complementary Faraday pass improves three exact memo-owned relationships while Factory Bot remains the negative control; see the [Faraday Live Validation Report](ruby-faraday-validation-report.md).
+
 ## Result
 
-Factory Bot validates a useful RSpec identity rule without opening general memoized execution. The third exact pin now covers conventional Minitest, service-oriented RSpec configuration, and class-oriented RSpec `described_class` pressure. Ruby remains experimental: `let`/`subject` identity, shared examples, helper execution, Cucumber evidence, broader package ownership, Rails, and the formal three-role promotion corpus remain later decisions.
+Factory Bot validates useful RSpec identity rules without opening general memoized execution. The third exact pin now covers conventional Minitest, service-oriented RSpec configuration, class-oriented `described_class`, and a conservative no-change comparison for one-line memo receivers. Ruby remains experimental: multiline/eager memos, implicit matcher semantics, shared examples, helper execution, Cucumber evidence, broader package ownership, Rails, and the formal three-role promotion corpus remain later decisions.

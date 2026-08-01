@@ -534,6 +534,15 @@ function emptyRubyDeclarations() {
 function collectRubyRunnableBodies(testFile, maskedContent) {
   const lines = maskedContent.split(/\r?\n/);
   const bodies = [];
+  const hasRSpecMemoizedDeclaration = testFile.framework === "rspec" && lines.some((line) => (
+    /^\s*(?:let|subject)!?\s*(?:\(|\{|do\b)/.test(line)
+  ));
+  const rspecGroups = hasRSpecMemoizedDeclaration ? collectRubyRSpecGroupRanges(lines) : [];
+  const sharedGroups = hasRSpecMemoizedDeclaration ? collectRubyRSpecSharedRanges(lines) : [];
+  const memoizedDeclarations = hasRSpecMemoizedDeclaration
+    ? collectRubyRSpecMemoizedDeclarations(lines, rspecGroups, sharedGroups)
+    : [];
+  const hasOwnedMemoizedDeclaration = memoizedDeclarations.some((declaration) => declaration.constant);
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index];
     if (testFile.framework === "minitest") {
@@ -547,19 +556,140 @@ function collectRubyRunnableBodies(testFile, maskedContent) {
     const example = line.match(/^( *)\s*(?:it|specify)\b/);
     if (!example) continue;
     const describedConstant = findRubyRSpecDescribedConstant(lines, index);
+    const memoizedReceivers = hasOwnedMemoizedDeclaration
+      ? collectRubyRSpecMemoizedReceivers(
+        index,
+        describedConstant,
+        rspecGroups,
+        sharedGroups,
+        memoizedDeclarations
+      )
+      : new Map();
     const openBrace = line.indexOf("{");
     const closeBrace = line.lastIndexOf("}");
     if (openBrace !== -1 && closeBrace > openBrace) {
-      bodies.push({ content: line.slice(openBrace + 1, closeBrace), describedConstant });
+      bodies.push({ content: line.slice(openBrace + 1, closeBrace), describedConstant, memoizedReceivers });
       continue;
     }
     if (!/\bdo\b/.test(line)) continue;
     const close = findRubyIndentedEnd(lines, index, example[1].length);
     if (close !== -1) {
-      bodies.push({ content: lines.slice(index + 1, close).join("\n"), describedConstant });
+      bodies.push({
+        content: lines.slice(index + 1, close).join("\n"),
+        describedConstant,
+        memoizedReceivers
+      });
     }
   }
   return bodies;
+}
+
+function collectRubyRSpecGroupRanges(lines) {
+  const groups = [];
+  for (let index = 0; index < lines.length; index += 1) {
+    const group = lines[index].match(
+      /^( *)\s*(?:RSpec\.)?(?:describe|context)\b.*\bdo\s*$/
+    );
+    if (!group) continue;
+    const close = findRubyIndentedEnd(lines, index, group[1].length);
+    if (close !== -1) groups.push({ start: index, close });
+  }
+  return groups;
+}
+
+function collectRubyRSpecSharedRanges(lines) {
+  const groups = [];
+  for (let index = 0; index < lines.length; index += 1) {
+    const shared = lines[index].match(
+      /^( *)\s*(?:RSpec\.)?shared_(?:examples|context)\b.*\bdo\b/
+    );
+    if (!shared) continue;
+    const close = findRubyIndentedEnd(lines, index, shared[1].length);
+    if (close !== -1) groups.push({ start: index, close });
+  }
+  return groups;
+}
+
+function collectRubyRSpecMemoizedDeclarations(lines, groups, sharedGroups) {
+  const declarations = [];
+  for (let index = 0; index < lines.length; index += 1) {
+    const declaration = lines[index].match(
+      /^\s*(let|subject)(!?)\s*(?:\(\s*:([a-z_][A-Za-z0-9_]*)\s*\))?\s*(?:\{|do\b)/
+    );
+    if (!declaration || (declaration[1] === "let" && !declaration[3])) continue;
+    if (sharedGroups.some((group) => rubyRangeContains(group, index))) continue;
+    const declarationGroups = groups.filter((group) => rubyRangeContains(group, index));
+    if (declarationGroups.length === 0) continue;
+
+    const exact = lines[index].match(
+      /^\s*(let|subject)\s*(?:\(\s*:([a-z_][A-Za-z0-9_]*)\s*\))?\s*\{\s*(.*)\s*\}\s*$/
+    );
+    const receivers = declaration[1] === "let"
+      ? [declaration[3]]
+      : [...new Set([declaration[3], "subject"].filter(Boolean))];
+    const constructor = exact?.[3]?.match(
+      /^\s*((?:::)?[A-Z][A-Za-z0-9_]*(?:::[A-Z][A-Za-z0-9_]*)*|described_class)\s*\.\s*new(?![A-Za-z0-9_!?=])/
+    );
+    let constant;
+    let usesDescribedClass = false;
+    if (constructor) {
+      const constructorPattern = new RegExp(
+        `^\\s*${escapeRegex(constructor[1])}\\s*\\.\\s*new(?![A-Za-z0-9_!?=])`
+      );
+      if (isDirectRubyCallExpression(exact[3], constructorPattern)) {
+        usesDescribedClass = constructor[1] === "described_class";
+        constant = usesDescribedClass
+          ? findRubyRSpecDescribedConstant(lines, index)
+          : constructor[1].replace(/^::/, "");
+      }
+    }
+    declarations.push({
+      constant,
+      depth: declarationGroups.length,
+      groups: declarationGroups,
+      index,
+      receivers,
+      usesDescribedClass
+    });
+  }
+  return declarations;
+}
+
+function collectRubyRSpecMemoizedReceivers(
+  exampleIndex,
+  describedConstant,
+  groups,
+  sharedGroups,
+  declarations
+) {
+  if (sharedGroups.some((group) => rubyRangeContains(group, exampleIndex))) return new Map();
+  const exampleGroups = groups.filter((group) => rubyRangeContains(group, exampleIndex));
+  const winners = new Map();
+  for (const declaration of declarations) {
+    if (declaration.groups.some((group) => !exampleGroups.includes(group))) continue;
+    for (const receiver of declaration.receivers) {
+      const current = winners.get(receiver);
+      if (!current || declaration.depth > current.depth || (
+        declaration.depth === current.depth && declaration.index > current.index
+      )) {
+        winners.set(receiver, declaration);
+      }
+    }
+  }
+
+  const receiversByConstant = new Map();
+  for (const [receiver, winner] of winners) {
+    if (!winner.constant || (winner.usesDescribedClass && winner.constant !== describedConstant)) continue;
+    const constant = winner.constant;
+    const receivers = receiversByConstant.get(constant) ?? new Set();
+    receivers.add(receiver);
+    receiversByConstant.set(constant, receivers);
+  }
+  return receiversByConstant;
+}
+
+function rubyRangeContains(range, index) {
+  return range.start < index && range.close > index;
 }
 
 function findRubyRSpecDescribedConstant(lines, exampleIndex) {
@@ -630,6 +760,16 @@ function findRubyConstantUsage(runnableBodies, constant, declarations, framework
       usage,
       findRubyConstructedLocalUsage(lines, receiverPattern, declarations, framework, deferredLines)
     );
+    usage = strongerRubyUsage(
+      usage,
+      findRubyMemoizedReceiverUsage(
+        lines,
+        body.memoizedReceivers?.get(constant) ?? new Set(),
+        declarations,
+        framework,
+        deferredLines
+      )
+    );
     if (usage === "asserted") return usage;
   }
   return usage;
@@ -667,6 +807,45 @@ function findRubyConstructedLocalUsage(lines, receiverPattern, declarations, fra
       usage = strongerRubyUsage(usage, "called");
       if (callLines.some(({ line }) => isRubyAssertionLine(line, framework))) return "asserted";
       if (hasStableAssertedRubyResult(lines, directCallPattern, framework, deferredLines, binding.index)) {
+        return "asserted";
+      }
+    }
+  }
+  return usage;
+}
+
+function findRubyMemoizedReceiverUsage(lines, receivers, declarations, framework, deferredLines) {
+  if (
+    receivers.size === 0 ||
+    !declarations.hasDirectInitializer ||
+    declarations.hasDirectSingletonNew ||
+    declarations.declarationKinds.size !== 1 ||
+    !declarations.declarationKinds.has("class") ||
+    declarations.instanceMethods.size === 0
+  ) {
+    return undefined;
+  }
+
+  let usage;
+  for (const memoizedReceiver of receivers) {
+    if (lines.some((line) => rubyAssignmentTargets(line).includes(memoizedReceiver))) continue;
+    if (hasRubyBlockParameter(lines, memoizedReceiver)) continue;
+    const receiver = escapeRegex(memoizedReceiver);
+    for (const method of declarations.instanceMethods) {
+      const escapedMethod = escapeRegex(method);
+      const callPattern = new RegExp(
+        `(?:^|[^A-Za-z0-9_])${receiver}\\s*\\.\\s*${escapedMethod}(?![A-Za-z0-9_!?=])`
+      );
+      const directCallPattern = new RegExp(
+        `^\\s*${receiver}\\s*\\.\\s*${escapedMethod}(?![A-Za-z0-9_!?=])`
+      );
+      const callLines = lines
+        .map((line, index) => ({ line, index }))
+        .filter(({ line, index }) => !deferredLines.has(index) && callPattern.test(line));
+      if (callLines.length === 0) continue;
+      usage = strongerRubyUsage(usage, "called");
+      if (callLines.some(({ line }) => isRubyAssertionLine(line, framework))) return "asserted";
+      if (hasStableAssertedRubyResult(lines, directCallPattern, framework, deferredLines)) {
         return "asserted";
       }
     }
