@@ -843,6 +843,91 @@ describe("Ruby audit adapter", () => {
     assert.equal(audit.profile.testCommand, "bundle exec rspec");
   });
 
+  it("owns a complete literal set of named root gemspecs", (t) => {
+    const root = createRubyRepo(t, {
+      Gemfile: [
+        'source "https://rubygems.org"',
+        'gemspec name: "catalog-core"',
+        "gemspec(name: 'catalog-tools')",
+        ""
+      ].join("\n"),
+      "catalog-core.gemspec": [
+        "Gem::Specification.new do |spec|",
+        '  spec.name = "catalog-core"',
+        '  spec.add_development_dependency "rspec"',
+        "end",
+        ""
+      ].join("\n"),
+      "catalog-tools.gemspec": "Gem::Specification.new 'catalog-tools', '1.0.0' do |spec|\nend\n",
+      "lib/catalog/core.rb": "module Catalog\n  class Core\n    def self.call\n      :core\n    end\n  end\nend\n",
+      "lib/catalog/tools.rb": "module Catalog\n  class Tools\n    def self.call\n      :tools\n    end\n  end\nend\n",
+      "spec/catalog_spec.rb": [
+        'require "catalog/core"',
+        'require "catalog/tools"',
+        "RSpec.describe Catalog do",
+        '  it("calls both selected gems") { expect([Catalog::Core.call, Catalog::Tools.call]).to eq([:core, :tools]) }',
+        "end",
+        ""
+      ].join("\n")
+    });
+
+    const audit = auditRubyRepo(root);
+
+    assert.deepEqual(audit.profile.blockers, []);
+    assert.deepEqual(audit.profile.architectures, ["ruby-gem"]);
+    assert.deepEqual(audit.profile.setupSignals, [
+      "Gemfile",
+      "catalog-core.gemspec",
+      "catalog-tools.gemspec"
+    ]);
+    assert.ok(audit.profile.detectedConventions.includes("complete named root gemspec ownership"));
+    assert.equal(audit.profile.testCommand, "bundle exec rspec");
+    assert.deepEqual(
+      audit.coveredButRisky.map((target) => [target.path, target.existingTestEvidence[0].usage]),
+      [
+        ["lib/catalog/core.rb", "asserted"],
+        ["lib/catalog/tools.rb", "asserted"]
+      ]
+    );
+  });
+
+  it("blocks incomplete, duplicate, dynamic, and non-name multi-gemspec ownership", (t) => {
+    const shapes = {
+      bare: { Gemfile: "gemspec\n" },
+      partial: { Gemfile: 'gemspec name: "catalog-core"\n' },
+      duplicate: { Gemfile: 'gemspec name: "catalog-core"\ngemspec name: "catalog-core"\n' },
+      unknown: { Gemfile: 'gemspec name: "catalog-core"\ngemspec name: "catalog-extra"\n' },
+      dynamic: { Gemfile: 'gemspec name: "catalog-core"\ngemspec name: ENV.fetch("TOOLS_GEM")\n' },
+      nested: { Gemfile: 'gemspec name: "catalog-core"\nif ENV["TOOLS"]\n  gemspec name: "catalog-tools"\nend\n' },
+      hash_rocket: { Gemfile: "gemspec :name => 'catalog-core'\ngemspec :name => 'catalog-tools'\n" },
+      dynamic_spec_name: {
+        Gemfile: 'gemspec name: "catalog-core"\ngemspec name: "catalog-tools"\n',
+        toolsGemspec: "Gem::Specification.new do |spec|\n  spec.name = ENV.fetch('TOOLS_GEM')\nend\n"
+      }
+    };
+
+    for (const [shape, fixture] of Object.entries(shapes)) {
+      const root = createRubyRepo(t, {
+        Gemfile: `${fixture.Gemfile}gem "rspec"\n`,
+        "catalog-core.gemspec": "Gem::Specification.new do |spec|\n  spec.name = 'catalog-core'\nend\n",
+        "catalog-tools.gemspec": fixture.toolsGemspec ?? "Gem::Specification.new 'catalog-tools', '1.0.0' do |spec|\nend\n",
+        "lib/catalog.rb": "module Catalog\n  def self.call\n    :ok\n  end\nend\n",
+        "spec/behavior_spec.rb": 'RSpec.describe Catalog do\n  it("calls") { expect(Catalog.call).to eq(:ok) }\nend\n'
+      });
+
+      const audit = auditRubyRepo(root);
+      assert.ok(
+        audit.profile.blockers.includes(
+          "Multiple root gemspecs require a complete set of exact top-level Gemfile name declarations."
+        ),
+        shape
+      );
+      assert.equal(audit.profile.testCommand, undefined, shape);
+      assert.deepEqual(audit.profile.architectures, ["ruby-application"], shape);
+      assert.deepEqual(audit.coveredButRisky, [], shape);
+    }
+  });
+
   it("uses the bounded direct Minitest command without a conventional Rake task", (t) => {
     const root = createRubyRepo(t, {
       Gemfile: 'gem "minitest"\n',
@@ -891,7 +976,7 @@ describe("Ruby audit adapter", () => {
     assert.equal(audit.profile.confidence, "medium");
     assert.deepEqual(audit.profile.testFrameworks, ["minitest", "rspec"]);
     assert.ok(audit.profile.blockers.includes("Mixed Minitest and RSpec execution is outside the first bounded Ruby command matrix."));
-    assert.ok(audit.profile.blockers.includes("Multiple root gemspecs require explicit Ruby package ownership."));
+    assert.ok(audit.profile.blockers.includes("Multiple root gemspecs require a complete set of exact top-level Gemfile name declarations."));
     assert.ok(audit.profile.blockers.includes("RSpec must be statically declared in Gemfile, Gemfile.lock, or the root gemspec before command ownership is complete."));
     assert.ok(audit.profile.blockers.includes("Rails application ownership is outside the first conventional Ruby adapter slice."));
   });
