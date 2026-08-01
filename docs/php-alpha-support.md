@@ -11,6 +11,7 @@ The PHP adapter begins as an experimental, deliberately bounded Composer/PHPUnit
 - runnable `*Test.php` classes that extend `TestCase` and contain a public `test*` method
 - exact Composer test scripts of `phpunit`, `vendor/bin/phpunit`, or `@php vendor/bin/phpunit`; otherwise the conventional `vendor/bin/phpunit` fallback
 - bounded root PHPUnit bootstrap inspection that withholds the fallback when a literal required environment read can terminate non-zero
+- bounded root Makefile inspection that withholds bare PHPUnit when the exact `test` target has literal prerequisite orchestration and an exact PHPUnit recipe
 - one-hop PHPUnit test ownership through one uniquely PSR-4-owned local base that directly extends `PHPUnit\Framework\TestCase`
 - direct imported PSR-4 class calls, exact same-line `expectException(Class::class)` evidence, and one nearby asserted local result from an owned static call
 - unique `Class.php` to `ClassTest.php` naming fallback
@@ -19,9 +20,9 @@ The PHP adapter begins as an experimental, deliberately bounded Composer/PHPUnit
 
 ## Explicit exclusions
 
-This slice does not evaluate Composer plugins or scripts, PSR-0, classmap or files autoloading, array-valued mappings, custom PHPUnit suite paths, PHPUnit attributes, Pest, Codeception, framework ownership, test-base inheritance beyond one unique local edge, trait dispatch, container resolution, dynamic class names, aliases beyond direct `use` imports, or multi-hop calls. Dynamic exception-class variables, data-provider flow, reassigned local results, arbitrary helper semantics, and result flow across method boundaries remain excluded. It does not choose bootstrap environment values or evaluate arbitrary bootstrap control flow. Unsupported or ambiguous metadata produces blockers instead of guessed ownership or commands.
+This slice does not evaluate Composer plugins or scripts, arbitrary Make syntax or recipes, PSR-0, classmap or files autoloading, array-valued mappings, custom PHPUnit suite paths, PHPUnit attributes, Pest, Codeception, framework ownership, test-base inheritance beyond one unique local edge, trait dispatch, container resolution, dynamic class names, aliases beyond direct `use` imports, or multi-hop calls. Dynamic exception-class variables, data-provider flow, reassigned local results, arbitrary helper semantics, and result flow across method boundaries remain excluded. It does not choose bootstrap environment values, emit a Make command, or evaluate arbitrary bootstrap control flow. Unsupported or ambiguous metadata produces blockers instead of guessed ownership or commands.
 
-The live validation against [`brick/math`](php-brick-math-validation-report.md) proved the bootstrap guard, one-hop local `AbstractTestCase`, exact exception expectations, and bounded asserted-result evidence. The audit now reports 7 untested candidates, 14 covered-but-risky candidates, and 34 relationships while continuing to withhold the unsafe default command. A service-shaped repository is the next useful pressure boundary.
+The live validation against [`brick/math`](php-brick-math-validation-report.md) proved the bootstrap guard, one-hop local `AbstractTestCase`, exact exception expectations, and bounded asserted-result evidence. The service-shaped [`guzzle/guzzle`](php-guzzle-validation-report.md) pass then proved that bare PHPUnit can omit statically declared Make prerequisites: its native `make test` passes 2,928 tests while the bare command produces 50 integration errors. The corrected audit withholds the unsafe command and reports 12 untested candidates, 39 covered-but-risky candidates, 17 skipped targets, and 112 evidence relationships.
 
 ## Verification
 

@@ -51,6 +51,7 @@ describe("package contents", () => {
     assert.ok(requiredFiles.includes("docs/ruby-alpha-support.md"));
     assert.ok(requiredFiles.includes("docs/php-alpha-support.md"));
     assert.ok(requiredFiles.includes("docs/php-brick-math-validation-report.md"));
+    assert.ok(requiredFiles.includes("docs/php-guzzle-validation-report.md"));
     assert.ok(requiredFiles.includes("docs/ruby-factory-bot-validation-report.md"));
     assert.ok(requiredFiles.includes("docs/ruby-helper-return-validation-report.md"));
     assert.ok(requiredFiles.includes("docs/ruby-rubyzip-validation-report.md"));

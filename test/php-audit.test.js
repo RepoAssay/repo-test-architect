@@ -35,6 +35,49 @@ describe("PHP adapter", () => {
     assert.deepEqual(audit.profile.blockers, []);
   });
 
+  it("withholds bare PHPUnit when the exact Make test target requires prerequisite orchestration", () => {
+    const root = createRepo({ script: undefined });
+    fs.writeFileSync(path.join(root, "Makefile"), `start-server:
+\tnode test-server.js &
+
+test: start-server
+\tvendor/bin/phpunit
+`);
+
+    const audit = auditPhpRepo(root);
+    assert.equal(audit.profile.testCommand, undefined);
+    assert.equal(audit.profile.confidence, "medium");
+    assert.ok(audit.profile.setupSignals.includes("Makefile"));
+    assert.deepEqual(audit.profile.blockers, [
+      "Root Makefile test target requires prerequisite orchestration (start-server); bare PHPUnit is not a safe default."
+    ]);
+  });
+
+  it("does not infer Make orchestration from an unrelated prerequisite target", () => {
+    const root = createRepo({ script: undefined });
+    fs.writeFileSync(path.join(root, "Makefile"), `start-server:
+\tnode test-server.js &
+
+test:
+\tvendor/bin/phpunit
+`);
+
+    const audit = auditPhpRepo(root);
+    assert.equal(audit.profile.testCommand, "vendor/bin/phpunit");
+    assert.deepEqual(audit.profile.blockers, []);
+  });
+
+  it("keeps an exact Composer command independent from Make prerequisites", () => {
+    const root = createRepo({ script: "phpunit" });
+    fs.writeFileSync(path.join(root, "Makefile"), `test: start-server
+\tvendor/bin/phpunit
+`);
+
+    const audit = auditPhpRepo(root);
+    assert.equal(audit.profile.testCommand, "composer test");
+    assert.deepEqual(audit.profile.blockers, []);
+  });
+
   it("recognizes a test through one uniquely owned local PHPUnit base", () => {
     const root = createRepo();
     fs.writeFileSync(
