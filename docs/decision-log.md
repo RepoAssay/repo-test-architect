@@ -2,6 +2,14 @@
 
 This log records project-level decisions that shape architecture, scope, and public positioning.
 
+# Elixir Starts Experimental At A Conventional Mix/ExUnit Boundary
+
+Decision: register `elixir` as experimental for one conventional Mix application with one literal app, matching MixProject and path-owned `lib/` modules; recognize conventional runnable ExUnit modules and direct exact module calls; emit `mix test` only when the complete foundation is proven.
+
+Rationale: this establishes the full shared adapter contract and a native executable fixture without claiming Mix evaluation or dynamic Elixir semantics. The generated 400-source/200-test audit records exactly 200 covered and 200 untested targets with 200 direct relationships inside the five-second cross-platform ceiling. Umbrellas, Phoenix/Ecto, doctests, custom paths, macros, protocols, helper reachability, and dynamic project metadata remain explicit exclusions until live repositories justify bounded support.
+
+Revisit when: the first blind public-repository audits expose a conventional ownership, ExUnit discovery, evidence, or command shape that can be added without general Mix evaluation.
+
 # PHP Source-Owned Test Bases And Same-Namespace References Stay Exact
 
 Decision: allow one conventional PHPUnit test to inherit through one uniquely PSR-4-owned repository base below either the literal source or test mappings when that base directly resolves to `PHPUnit\Framework\TestCase`. Resolve an unqualified class reference to one unique owned source in the runnable test's exact namespace only when no direct import shadows that short name.

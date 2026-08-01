@@ -71,7 +71,8 @@ Implemented:
 - shared project-audits validation for saved artifact reuse across CLI and MCP-style flows
 - file-backed MCP invoke arguments for local calls that reuse saved artifacts
 - checked-in MCP args fixture for project-audits derived local examples
-- supported bounded PHP auditing, including exact one-hop source/test-owned PHPUnit bases and import-shadow-safe same-namespace evidence, plus unsupported Elixir project reporting with ecosystem and language labels
+- supported bounded PHP auditing, including exact one-hop source/test-owned PHPUnit bases and import-shadow-safe same-namespace evidence
+- experimental bounded Elixir auditing for one conventional Mix/ExUnit application, literal app and path ownership, direct module-call evidence, conservative filename evidence, and safe `mix test` selection
 - documented project detection marker rules
 - CLI output for project detection marker rules
 - fixture-based regression coverage

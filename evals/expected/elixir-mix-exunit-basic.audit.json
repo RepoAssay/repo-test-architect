@@ -1,0 +1,150 @@
+{
+  "schemaVersion": "audit/v1",
+  "profile": {
+    "root": "<fixture>",
+    "languages": [
+      "elixir"
+    ],
+    "packageManagers": [
+      "mix"
+    ],
+    "testFrameworks": [
+      "exunit"
+    ],
+    "architectures": [
+      "mix-app"
+    ],
+    "testCommand": "mix test",
+    "detectedConventions": [
+      "literal Mix app ownership",
+      "*_test.exs ExUnit modules",
+      "root ExUnit.start() helper"
+    ],
+    "existingTestLocations": [
+      "test/ ExUnit files"
+    ],
+    "setupSignals": [
+      "mix.exs",
+      "test/test_helper.exs"
+    ],
+    "confidence": "high",
+    "blockers": []
+  },
+  "untestedCandidates": [
+    {
+      "id": "lib/sample/notifier.ex",
+      "name": "Sample.Notifier",
+      "path": "lib/sample/notifier.ex",
+      "kind": "module",
+      "signals": [
+        "runtime-behavior"
+      ],
+      "risk": "medium",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 6,
+      "maintenanceCost": 3,
+      "reasons": [
+        "Owned runtime behavior"
+      ],
+      "existingTestPaths": []
+    }
+  ],
+  "coveredButRisky": [
+    {
+      "id": "lib/sample/parser.ex",
+      "name": "Sample.Parser",
+      "path": "lib/sample/parser.ex",
+      "kind": "module",
+      "signals": [
+        "runtime-behavior",
+        "matching-test"
+      ],
+      "risk": "medium",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 6,
+      "maintenanceCost": 3,
+      "reasons": [
+        "Owned runtime behavior",
+        "A runnable ExUnit test directly references this owned module."
+      ],
+      "existingTestPaths": [
+        "test/sample/parser_test.exs"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "test/sample/parser_test.exs",
+          "kind": "elixir-module-reference",
+          "strength": "direct",
+          "usage": "asserted"
+        }
+      ]
+    }
+  ],
+  "recommended": [
+    {
+      "id": "lib/sample/notifier.ex",
+      "name": "Sample.Notifier",
+      "path": "lib/sample/notifier.ex",
+      "kind": "module",
+      "signals": [
+        "runtime-behavior"
+      ],
+      "risk": "medium",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 6,
+      "maintenanceCost": 3,
+      "reasons": [
+        "Owned runtime behavior"
+      ],
+      "existingTestPaths": []
+    },
+    {
+      "id": "lib/sample/parser.ex",
+      "name": "Sample.Parser",
+      "path": "lib/sample/parser.ex",
+      "kind": "module",
+      "signals": [
+        "runtime-behavior",
+        "matching-test"
+      ],
+      "risk": "medium",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 6,
+      "maintenanceCost": 3,
+      "reasons": [
+        "Owned runtime behavior",
+        "A runnable ExUnit test directly references this owned module."
+      ],
+      "existingTestPaths": [
+        "test/sample/parser_test.exs"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "test/sample/parser_test.exs",
+          "kind": "elixir-module-reference",
+          "strength": "direct",
+          "usage": "asserted"
+        }
+      ]
+    }
+  ],
+  "skipped": [
+    {
+      "id": "lib/sample/defaults.ex",
+      "name": "Sample.Defaults",
+      "path": "lib/sample/defaults.ex",
+      "kind": "data-model",
+      "signals": [
+        "low-runtime-behavior"
+      ],
+      "riskReductionScore": 1,
+      "maintenanceCost": 1,
+      "reason": "No owned runtime functions were detected in this module."
+    }
+  ],
+  "risks": []
+}

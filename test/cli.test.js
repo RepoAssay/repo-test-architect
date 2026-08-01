@@ -124,6 +124,7 @@ describe("CLI", () => {
 
     assert.match(output, /^# Adapter Registry/);
     assert.match(output, /csharp: supported; ecosystems dotnet; languages csharp/);
+    assert.match(output, /elixir: experimental; ecosystems elixir; languages elixir/);
     assert.match(output, /javascript: supported; ecosystems javascript; languages javascript, typescript/);
     assert.match(output, /frameworks ava, bun-test, cypress, jest, mocha, node-test, playwright, react-testing-library, supertest, vitest/);
     assert.match(output, /go: supported; ecosystems go; languages go/);
@@ -142,6 +143,7 @@ describe("CLI", () => {
     assert.equal(registry.adapters[0].id, "javascript");
     assert.equal(registry.adapters[0].maturity, "supported");
     assert.equal(registry.adapters.find((adapter) => adapter.id === "csharp").maturity, "supported");
+    assert.equal(registry.adapters.find((adapter) => adapter.id === "elixir").maturity, "experimental");
     assert.equal(registry.adapters.find((adapter) => adapter.id === "go").maturity, "supported");
     assert.equal(registry.adapters.find((adapter) => adapter.id === "kotlin").maturity, "supported");
     assert.equal(registry.adapters.find((adapter) => adapter.id === "swift").maturity, "supported");
@@ -874,15 +876,15 @@ describe("CLI", () => {
     );
   });
 
-  it("reports available adapters when an explicit adapter is unsupported", () => {
-    assert.throws(
-      () =>
-        execFileSync(process.execPath, [cliPath, "audit", fixturePath, "--adapter", "elixir"], {
-          encoding: "utf8",
-          stdio: "pipe"
-        }),
-      /Unsupported adapter: elixir\. Available adapters: javascript, csharp, go, kotlin, php, python, rust, ruby, swift\./
+  it("audits through an explicitly selected experimental adapter", () => {
+    const output = execFileSync(
+      process.execPath,
+      [cliPath, "audit", path.resolve("examples/elixir-mix-exunit-basic"), "--adapter", "elixir", "--format=json"],
+      { encoding: "utf8" }
     );
+    const audit = JSON.parse(output);
+    assert.deepEqual(audit.profile.testFrameworks, ["exunit"]);
+    assert.equal(audit.profile.testCommand, "mix test");
   });
 
   it("supports changed-only audit mode", () => {

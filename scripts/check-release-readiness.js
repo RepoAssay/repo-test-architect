@@ -9,6 +9,7 @@ export const releaseChecks = [
   "adapter:coverage:check",
   "corpus:check",
   "csharp:performance:check",
+  "elixir:performance:check",
   "go:performance:check",
   "javascript:performance:check",
   "python:performance:check",

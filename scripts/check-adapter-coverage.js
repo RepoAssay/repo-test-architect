@@ -17,6 +17,12 @@ export const adapterCoverageCases = [
     thresholds: { lines: 94, branches: 87, functions: 95 }
   },
   {
+    adapterId: "elixir",
+    sourcePath: "src/adapters/elixir/audit.js",
+    testPath: "test/elixir-audit.test.js",
+    thresholds: { lines: 90, branches: 80, functions: 90 }
+  },
+  {
     adapterId: "go",
     sourcePath: "src/adapters/go/audit.js",
     testPath: "test/go-audit.test.js",

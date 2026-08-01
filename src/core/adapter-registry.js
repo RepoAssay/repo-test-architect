@@ -1,5 +1,6 @@
 import { auditJavaScriptRepo } from "../adapters/javascript/audit.js";
 import { auditCSharpRepo } from "../adapters/csharp/audit.js";
+import { auditElixirRepo } from "../adapters/elixir/audit.js";
 import { auditGoRepo } from "../adapters/go/audit.js";
 import { auditKotlinRepo } from "../adapters/kotlin/audit.js";
 import { auditPhpRepo } from "../adapters/php/audit.js";
@@ -66,6 +67,20 @@ export const adapters = [
       return auditCSharpRepo(repoRoot, {
         changedPaths: options.changedPaths,
         repositoryRoot: options.repositoryRoot
+      });
+    }
+  },
+  {
+    id: "elixir",
+    ecosystems: ["elixir"],
+    languages: ["elixir"],
+    maturity: "experimental",
+    supportedTestFrameworks: ["exunit"],
+    supportedProjectTypes: ["mix-app"],
+    emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"],
+    audit(repoRoot, options = {}) {
+      return auditElixirRepo(repoRoot, {
+        changedPaths: options.changedPaths
       });
     }
   },

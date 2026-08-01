@@ -25,6 +25,15 @@ describe("adapter registry", () => {
         emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"]
       },
       {
+        id: "elixir",
+        ecosystems: ["elixir"],
+        languages: ["elixir"],
+        maturity: "experimental",
+        supportedTestFrameworks: ["exunit"],
+        supportedProjectTypes: ["mix-app"],
+        emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"]
+      },
+      {
         id: "go",
         ecosystems: ["go"],
         languages: ["go"],
@@ -110,6 +119,15 @@ describe("adapter registry", () => {
           maturity: "supported",
           supportedTestFrameworks: ["mstest", "nunit", "xunit"],
           supportedProjectTypes: ["dotnet-sdk-test-project", "dotnet-sdk-project-pair"],
+          emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"]
+        },
+        {
+          id: "elixir",
+          ecosystems: ["elixir"],
+          languages: ["elixir"],
+          maturity: "experimental",
+          supportedTestFrameworks: ["exunit"],
+          supportedProjectTypes: ["mix-app"],
           emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"]
         },
         {
@@ -221,11 +239,20 @@ describe("adapter registry", () => {
     assert.deepEqual(audit.profile.testFrameworks, ["vitest"]);
   });
 
-  it("rejects unsupported adapters", () => {
+  it("rejects unknown adapters", () => {
     assert.throws(
-      () => getAdapter("elixir"),
-      /Unsupported adapter: elixir\. Available adapters: javascript, csharp, go, kotlin, php, python, rust, ruby, swift\./
+      () => getAdapter("unknown"),
+      /Unsupported adapter: unknown\. Available adapters: javascript, csharp, elixir, go, kotlin, php, python, rust, ruby, swift\./
     );
+  });
+
+  it("audits through the experimental Elixir adapter", () => {
+    const adapter = getAdapter("elixir");
+    const audit = adapter.audit(path.resolve("examples/elixir-mix-exunit-basic"));
+
+    assert.equal(adapter.maturity, "experimental");
+    assert.equal(audit.schemaVersion, "audit/v1");
+    assert.deepEqual(audit.profile.testFrameworks, ["exunit"]);
   });
 
   it("audits through the Kotlin adapter", () => {

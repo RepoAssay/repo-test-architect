@@ -1,0 +1,62 @@
+{
+  "schemaVersion": "plan/v1",
+  "summary": {
+    "confidence": "high",
+    "verificationCommand": "mix test",
+    "blockerCount": 0,
+    "addTestCount": 1,
+    "extendTestCount": 1,
+    "deferredCount": 0
+  },
+  "blockers": [],
+  "items": [
+    {
+      "id": "add-test:lib/sample/notifier.ex",
+      "action": "add-test",
+      "targetId": "lib/sample/notifier.ex",
+      "target": "Sample.Notifier",
+      "path": "lib/sample/notifier.ex",
+      "testLevel": "unit",
+      "priority": 3,
+      "riskReductionScore": 6,
+      "maintenanceCost": 3,
+      "rationale": [
+        "Owned runtime behavior"
+      ],
+      "sourceSignals": [
+        "runtime-behavior"
+      ],
+      "existingTestPaths": []
+    },
+    {
+      "id": "extend-test:lib/sample/parser.ex",
+      "action": "extend-test",
+      "targetId": "lib/sample/parser.ex",
+      "target": "Sample.Parser",
+      "path": "lib/sample/parser.ex",
+      "testLevel": "unit",
+      "priority": 3,
+      "riskReductionScore": 6,
+      "maintenanceCost": 3,
+      "rationale": [
+        "Owned runtime behavior",
+        "A runnable ExUnit test directly references this owned module."
+      ],
+      "sourceSignals": [
+        "runtime-behavior",
+        "matching-test"
+      ],
+      "existingTestPaths": [
+        "test/sample/parser_test.exs"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "test/sample/parser_test.exs",
+          "kind": "elixir-module-reference",
+          "strength": "direct",
+          "usage": "asserted"
+        }
+      ]
+    }
+  ]
+}

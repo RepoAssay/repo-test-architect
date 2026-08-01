@@ -13,10 +13,10 @@ describe("model consistency stats script", () => {
 
     assert.equal(stats.schemaVersion, "model-consistency-stats/v1");
     assert.equal(stats.source.profileName, "deterministic-baseline");
-    assert.equal(stats.counts.scenarioCount, 62);
-    assert.equal(stats.counts.checkedFieldCount, 546);
+    assert.equal(stats.counts.scenarioCount, 63);
+    assert.equal(stats.counts.checkedFieldCount, 554);
     assert.equal(stats.counts.failureCount, 0);
-    assert.equal(stats.distributions.scenariosByStatus.passed, 62);
+    assert.equal(stats.distributions.scenariosByStatus.passed, 63);
     assert.equal(stats.distributions.scenariosByTool.get_plan_execution_hints, 4);
     assert.equal(stats.distributions.scenariosByTool.collect_project_findings, 3);
     assert.equal(stats.distributions.scenariosByTool.collect_project_stats, 1);

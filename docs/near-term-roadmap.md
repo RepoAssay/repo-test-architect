@@ -2,7 +2,7 @@
 
 This roadmap tracks the next practical milestones before Repo Test Architect should claim broader adapter support or native test generation.
 
-The first public alpha is shipped. Eight supported adapters have completed the measurable [Adapter Hardening Plan](adapter-hardening-plan.md), most recently bounded C#, Rust, and Ruby. See [Alpha Readiness](alpha-readiness.md) for the standing product acceptance gates and the [Release Lifecycle](release-lifecycle.md) for the flexible alpha, beta, release-candidate, and `1.0` planning windows.
+The first public alpha is shipped. Nine supported adapters have completed the measurable [Adapter Hardening Plan](adapter-hardening-plan.md), and the Elixir adapter has started at experimental foundation maturity. See [Alpha Readiness](alpha-readiness.md) for the standing product acceptance gates and the [Release Lifecycle](release-lifecycle.md) for the flexible alpha, beta, release-candidate, and `1.0` planning windows.
 
 ## Current Baseline
 
@@ -14,6 +14,7 @@ The useful baseline is:
 - supported Swift, Python, and bounded Kotlin/JVM adapters
 - supported bounded Go module adapter with literal repository-contained `go.work` ownership and explicit static build-target selection
 - supported bounded Rust adapter for conventional Cargo packages, literal repository-contained workspace members, and built-in tests
+- experimental bounded Elixir adapter for one conventional Mix/ExUnit application
 - polyglot project detection with unsupported-project reporting
 - project-level ranking, planning, provider-neutral execution hints, placement, stats, and local MCP tool calls
 - disabled-by-default local MCP diagnostics, safe internal-error report IDs, runtime checks, and inspectable sanitized bundles
@@ -99,7 +100,7 @@ The supported bounded Rust adapter covers conventional Cargo packages, literal r
 
 The C#/.NET adapter is now supported at bounded alpha maturity for one static SDK-style test project or one unique literal production/test edge. Nine pinned live probes cover deterministic ownership amid unrelated projects, inherited and central metadata, literal multi-target and target-conditioned packages, xUnit/NUnit/MSTest, native Microsoft.Testing.Platform hosts, exact assertion/evidence pressure, one-hop target aliases, and linked compile ownership. TDD, usbipd-win, and Sharp Cast fill the three shared validation-corpus roles with all 21 C# areas passing, and the generated 400-source/200-test semantic/performance gate runs cross-platform. Solution ownership, broader evaluated MSBuild ownership, framework compatibility inference, transitive project edges, deeper helper/result flow, conditional/overridden central versions, and broader test-platform variants remain outside the supported boundary; see [C# Alpha Support](csharp-alpha-support.md).
 
-Ruby has reached supported parity at its bounded Bundler/Minitest/RSpec boundary. rubyzip, Faraday, and Diplomat fill the conventional-library, framework-heavy, and difficult-ownership corpus roles with all 21 Ruby scorecard areas passing. Their clean five-run audits are digest-stable at 19/23/6 with 80 relationships, 8/22/3 with 45 relationships, and 8/21/3 with 26 relationships respectively; the selected native suites pass 412 Minitest runs, 639 Faraday examples, and 281 Diplomat examples. Factory Bot, Dinie, CGRateS, and the shared-example pass remain additional pressure controls. A blind post-promotion Licensed audit correctly blocks its 631 Minitest spec examples and setup-partitioned command graph rather than emitting unsupported evidence or a failing default command; those two capabilities remain a joint future Ruby slice. PHP has reached supported parity at its bounded Composer/PSR-4/PHPUnit boundary. brick/math, Guzzle, and Ramsey UUID fill the conventional-library, framework-heavy, and difficult-ownership corpus roles with all 21 PHP scorecard areas passing. Their clean five-run audits are digest-stable at 7/14/1 with 34 relationships, 12/39/17 with 112 relationships, and 29/54/31 with 168 relationships respectively. Command review preserves intentional withholding for brick/math's required calculator environment and Guzzle's Make-owned service orchestration, while Ramsey UUID selects its proven `composer test` graph. Elixir remains next, while representative public repositories and concrete requests can still reorder demand.
+Ruby and PHP have reached supported parity at their bounded matrices. Elixir now has an experimental foundation for one conventional Mix application: literal app/path ownership, conventional ExUnit discovery, direct module-call evidence, safe `mix test` selection, a native fixture, shared conformance, implementation coverage, golden artifacts, packaging, and generated 400-source/200-test pressure. The next Elixir slice should be a blind live audit of a conventional public library, with any correction kept evidence-driven and regression-backed.
 
 ### Post-Elixir adapter portfolio review
 

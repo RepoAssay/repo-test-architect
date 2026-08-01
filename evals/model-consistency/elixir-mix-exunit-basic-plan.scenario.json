@@ -1,0 +1,66 @@
+{
+  "schemaVersion": "model-consistency-scenario/v1",
+  "id": "elixir-mix-exunit-basic-plan",
+  "description": "Different model profiles should preserve the bounded Mix command, direct asserted Elixir evidence, and candidate actions.",
+  "sourceArtifact": {
+    "path": "evals/expected/elixir-mix-exunit-basic.audit.json",
+    "schemaVersion": "audit/v1"
+  },
+  "toolCall": {
+    "toolName": "generate_test_plan",
+    "arguments": {}
+  },
+  "lockedFields": [
+    {
+      "path": "summary.verificationCommand",
+      "expected": "mix test",
+      "reason": "The proven conventional Mix project must retain its verification command."
+    },
+    {
+      "path": "summary.addTestCount",
+      "expected": 1,
+      "reason": "The untested notifier must remain the one add-test item."
+    },
+    {
+      "path": "summary.extendTestCount",
+      "expected": 1,
+      "reason": "The directly covered parser must remain one extend-test item."
+    },
+    {
+      "path": "items[0].id",
+      "expected": "add-test:lib/sample/notifier.ex",
+      "reason": "The untested notifier must retain its stable add-test item."
+    },
+    {
+      "path": "items[1].id",
+      "expected": "extend-test:lib/sample/parser.ex",
+      "reason": "The covered parser must retain its stable extend-test item."
+    },
+    {
+      "path": "items[1].existingTestEvidence[0].kind",
+      "expected": "elixir-module-reference",
+      "reason": "The exact alias call must retain Elixir-owned provenance."
+    },
+    {
+      "path": "items[1].existingTestEvidence[0].strength",
+      "expected": "direct",
+      "reason": "The aliased module call must retain direct relationship strength."
+    },
+    {
+      "path": "items[1].existingTestEvidence[0].usage",
+      "expected": "asserted",
+      "reason": "The Parser call inside ExUnit assert must retain asserted usage."
+    }
+  ],
+  "allowedVariations": [
+    "summary wording",
+    "Elixir explanation wording",
+    "optional detail depth"
+  ],
+  "unexpectedVariations": [
+    "missing mix test verification command",
+    "direct Elixir module evidence downgraded to naming evidence",
+    "asserted Parser usage downgraded or removed",
+    "different plan action counts"
+  ]
+}
