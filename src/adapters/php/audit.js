@@ -15,8 +15,11 @@ export function auditPhpRepo(root, options = {}) {
   const testFiles = files.filter((file) => ownership.testRoots.some((testRoot) => isUnderRoot(file.path, testRoot)));
   const runnableTests = collectRunnablePhpUnitTests(testFiles, ownership.testMappings);
   const bootstrap = analyzePhpUnitBootstrap(files);
-  const blockers = buildBlockers({ composerFile, metadata, ownership, sourceFiles, runnableTests, bootstrap });
-  const profile = buildProfile(absoluteRoot, files, composerFile, metadata.value, ownership, runnableTests, bootstrap, blockers);
+  const makeWorkflow = metadata.value?.scripts?.test === undefined
+    ? analyzeMakeTestWorkflow(files)
+    : { blockers: [] };
+  const blockers = buildBlockers({ composerFile, metadata, ownership, sourceFiles, runnableTests, bootstrap, makeWorkflow });
+  const profile = buildProfile(absoluteRoot, files, composerFile, metadata.value, ownership, runnableTests, bootstrap, makeWorkflow, blockers);
   const evidenceBySource = collectEvidence(sourceFiles, runnableTests, ownership);
   const changedPaths = options.changedPaths
     ? new Set(options.changedPaths.map((currentPath) => normalizeChangedPath(absoluteRoot, currentPath)))
@@ -92,7 +95,7 @@ function readRepoFiles(root) {
       const absolute = path.join(current, entry.name);
       const relative = normalizePath(path.relative(root, absolute));
       if (entry.isDirectory()) visit(absolute);
-      else if (relative.endsWith(".php") || relative === "composer.json" || relative === "composer.lock" || relative === "phpunit.xml" || relative === "phpunit.xml.dist") {
+      else if (relative.endsWith(".php") || relative === "composer.json" || relative === "composer.lock" || relative === "phpunit.xml" || relative === "phpunit.xml.dist" || relative === "Makefile") {
         files.push({ path: relative, content: fs.readFileSync(absolute, "utf8") });
       }
     }
@@ -148,7 +151,7 @@ function analyzePsr4Map(root, value) {
   return { valid: valid && mappings.length === Object.keys(value).length, roots: mappings.map((mapping) => mapping.root), mappings };
 }
 
-function buildBlockers({ composerFile, metadata, ownership, sourceFiles, runnableTests, bootstrap }) {
+function buildBlockers({ composerFile, metadata, ownership, sourceFiles, runnableTests, bootstrap, makeWorkflow }) {
   const blockers = [];
   if (!composerFile) blockers.push("No root composer.json detected for the bounded PHP Composer adapter.");
   if (metadata.error) blockers.push(metadata.error);
@@ -166,10 +169,11 @@ function buildBlockers({ composerFile, metadata, ownership, sourceFiles, runnabl
     blockers.push("The Composer test script must be exactly phpunit, vendor/bin/phpunit, or @php vendor/bin/phpunit in this slice.");
   }
   blockers.push(...bootstrap.blockers);
+  blockers.push(...makeWorkflow.blockers);
   return blockers;
 }
 
-function buildProfile(root, files, composerFile, composer, ownership, runnableTests, bootstrap, blockers) {
+function buildProfile(root, files, composerFile, composer, ownership, runnableTests, bootstrap, makeWorkflow, blockers) {
   const testCommand = blockers.length === 0
     ? (composer?.scripts?.test === undefined ? "vendor/bin/phpunit" : "composer test")
     : undefined;
@@ -191,10 +195,46 @@ function buildProfile(root, files, composerFile, composer, ownership, runnableTe
       ...(files.some((file) => file.path === "composer.lock") ? ["composer.lock"] : []),
       ...(files.some((file) => file.path === "phpunit.xml.dist") ? ["phpunit.xml.dist"] : []),
       ...(files.some((file) => file.path === "phpunit.xml") ? ["phpunit.xml"] : []),
-      ...(bootstrap.path ? [bootstrap.path] : [])
+      ...(bootstrap.path ? [bootstrap.path] : []),
+      ...(makeWorkflow.path ? [makeWorkflow.path] : [])
     ],
     confidence: blockers.length === 0 ? "high" : metadataIsMalformed(composerFile, composer) || blockers.length > 2 ? "low" : "medium",
     blockers
+  };
+}
+
+function analyzeMakeTestWorkflow(files) {
+  const makefile = files.find((file) => file.path === "Makefile");
+  if (!makefile) return { blockers: [] };
+  const lines = makefile.content.split(/\r?\n/);
+  const targetIndexes = lines
+    .map((line, index) => /^test\s*:[^=]*$/.test(line) ? index : -1)
+    .filter((index) => index !== -1);
+  if (targetIndexes.length !== 1) return { blockers: [] };
+  const [targetIndex] = targetIndexes;
+  const target = /^test\s*:\s*(.*)$/.exec(lines[targetIndex]);
+  const prerequisiteText = target?.[1]?.trim();
+  if (!prerequisiteText || prerequisiteText.includes("|") || prerequisiteText.includes("\\")) return { blockers: [] };
+  const prerequisites = prerequisiteText.split(/\s+/);
+  if (prerequisites.some((name) => !/^[A-Za-z0-9_.-]+$/.test(name))) return { blockers: [] };
+
+  const recipe = [];
+  for (let index = targetIndex + 1; index < lines.length; index += 1) {
+    const line = lines[index];
+    if (/^\t/.test(line)) {
+      recipe.push(line.slice(1).trim());
+      continue;
+    }
+    if (/^\s*$/.test(line) || /^\s*#/.test(line)) continue;
+    break;
+  }
+  if (!recipe.some((line) => line === "vendor/bin/phpunit" || line === "./vendor/bin/phpunit")) {
+    return { blockers: [] };
+  }
+  const names = [...new Set(prerequisites)].sort();
+  return {
+    path: "Makefile",
+    blockers: [`Root Makefile test target requires prerequisite orchestration (${names.join(", ")}); bare PHPUnit is not a safe default.`]
   };
 }
 

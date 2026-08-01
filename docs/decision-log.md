@@ -667,3 +667,11 @@ Decision: emit direct asserted evidence when a runnable PHPUnit file passes an i
 Rationale: brick/math directly expects seven owned exception classes across 21 test-file relationships that the adapter previously ignored because `Class::class` was not treated as runtime usage. The exact form moves the pinned audit from 14 untested, 7 covered, and 13 relationships to 7 untested, 14 covered, and 34 relationships. Same-line string masking prevents expectation-shaped text from becoming evidence; dynamic `NoInverseException` data-provider flow remains excluded.
 
 Revisit when: a pinned repository proves a bounded data-provider or helper-return edge that can preserve unique class and variable ownership without general PHP evaluation.
+
+### 2026-08-01: block bare PHPUnit behind exact Make prerequisites
+
+Decision: when an exact root `Makefile` has a literal `test` target with simple literal prerequisites and its recipe contains exactly `vendor/bin/phpunit` or `./vendor/bin/phpunit`, withhold the bare PHPUnit fallback, retain `Makefile` as a setup signal, and name the prerequisites in a blocker. Do not evaluate broader Make syntax or emit `make test` as a portable command.
+
+Rationale: pinned `guzzle/guzzle` at `9b200fc5805036b331d6031199880dadecae0275` initially received a high-confidence bare PHPUnit command. That command runs 2,928 tests but produces 50 integration connection errors because it omits the HTTP server owned by the Make `start-server` prerequisite. The unchanged native `make test` passes 2,928 tests and 8,445 assertions. The corrected medium-confidence audit withholds execution, preserves 12 untested, 39 covered, 17 skipped, and 112 relationships, and shares canonical digest `811dc21693ec59668391c4590d446ec7ebf13fd4dd08193b4d181c3813abfae1` across five runs.
+
+Revisit when: a pinned repository proves a portable command can be selected from bounded orchestration metadata, or another exact prerequisite form prevents a false runnable default without requiring Make evaluation.
