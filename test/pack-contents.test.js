@@ -48,6 +48,7 @@ describe("package contents", () => {
     assert.ok(requiredFiles.includes("docs/csharp-multi-target-validation-report.md"));
     assert.ok(requiredFiles.includes("docs/rust-alpha-support.md"));
     assert.ok(requiredFiles.includes("docs/ruby-alpha-support.md"));
+    assert.ok(requiredFiles.includes("docs/ruby-factory-bot-validation-report.md"));
     assert.ok(requiredFiles.includes("docs/ruby-rubyzip-validation-report.md"));
     assert.ok(requiredFiles.includes("examples/go-testing-basic/go.mod"));
     assert.ok(requiredFiles.includes("examples/csharp-sdk-xunit-basic/CheckoutRules.Tests.csproj"));

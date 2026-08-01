@@ -48,6 +48,7 @@ export const requiredFiles = [
   "docs/rust-alpha-support.md",
   "docs/rust-ripgrep-validation-report.md",
   "docs/ruby-alpha-support.md",
+  "docs/ruby-factory-bot-validation-report.md",
   "docs/ruby-faraday-validation-report.md",
   "docs/ruby-rubyzip-validation-report.md",
   "examples/go-testing-basic/go.mod",
