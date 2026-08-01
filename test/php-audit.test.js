@@ -35,6 +35,86 @@ describe("PHP adapter", () => {
     assert.deepEqual(audit.profile.blockers, []);
   });
 
+  it("recognizes a test through one uniquely owned local PHPUnit base", () => {
+    const root = createRepo();
+    fs.writeFileSync(
+      path.join(root, "tests", "AbstractTestCase.php"),
+      "<?php\nnamespace Example\\Tests;\nuse PHPUnit\\Framework\\TestCase;\nabstract class AbstractTestCase extends TestCase {}\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "tests", "ParserTest.php"),
+      "<?php\nnamespace Example\\Tests;\nuse Example\\Parser;\nfinal class ParserTest extends AbstractTestCase { public function testParse(): void { self::assertSame('x', Parser::parse(' x ')); } }\n"
+    );
+    fs.mkdirSync(path.join(root, "tests", "Internal"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "tests", "Internal", "ParserTest.php"),
+      "<?php\nnamespace Example\\Tests\\Internal;\nuse Example\\Parser;\nuse Example\\Tests\\AbstractTestCase;\nfinal class ParserTest extends AbstractTestCase { public function testParseAgain(): void { self::assertSame('y', Parser::parse(' y ')); } }\n"
+    );
+
+    const audit = auditPhpRepo(root);
+    assert.deepEqual(audit.profile.blockers, []);
+    assert.equal(audit.profile.testCommand, "composer test");
+    assert.deepEqual(audit.coveredButRisky[0].existingTestEvidence, [
+      {
+        testPath: "tests/Internal/ParserTest.php",
+        kind: "php-symbol-reference",
+        strength: "direct",
+        usage: "asserted"
+      },
+      {
+        testPath: "tests/ParserTest.php",
+        kind: "php-symbol-reference",
+        strength: "direct",
+        usage: "asserted"
+      }
+    ]);
+  });
+
+  it("does not follow more than one repository-owned test-base edge", () => {
+    const root = createRepo();
+    fs.mkdirSync(path.join(root, "tests", "Support"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "tests", "Support", "PhpUnitTestCase.php"),
+      "<?php\nnamespace Example\\Tests\\Support;\nuse PHPUnit\\Framework\\TestCase;\nabstract class PhpUnitTestCase extends TestCase {}\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "tests", "Support", "AbstractTestCase.php"),
+      "<?php\nnamespace Example\\Tests\\Support;\nabstract class AbstractTestCase extends PhpUnitTestCase {}\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "tests", "ParserTest.php"),
+      "<?php\nnamespace Example\\Tests;\nuse Example\\Parser;\nuse Example\\Tests\\Support\\AbstractTestCase;\nfinal class ParserTest extends AbstractTestCase { public function testParse(): void { self::assertSame('x', Parser::parse(' x ')); } }\n"
+    );
+
+    const audit = auditPhpRepo(root);
+    assert.ok(audit.profile.blockers.some((blocker) => blocker.includes("No runnable conventional PHPUnit")));
+    assert.deepEqual(audit.coveredButRisky, []);
+  });
+
+  it("withholds one-hop test ownership when the local base class is ambiguous", () => {
+    const root = createRepo({
+      autoloadDev: {
+        "psr-4": {
+          "Example\\Tests\\": "tests/",
+          "Example\\": "shadow/"
+        }
+      }
+    });
+    fs.mkdirSync(path.join(root, "tests", "Support"), { recursive: true });
+    fs.mkdirSync(path.join(root, "shadow", "Tests", "Support"), { recursive: true });
+    const localBase = "<?php\nnamespace Example\\Tests\\Support;\nuse PHPUnit\\Framework\\TestCase;\nabstract class AbstractTestCase extends TestCase {}\n";
+    fs.writeFileSync(path.join(root, "tests", "Support", "AbstractTestCase.php"), localBase);
+    fs.writeFileSync(path.join(root, "shadow", "Tests", "Support", "AbstractTestCase.php"), localBase);
+    fs.writeFileSync(
+      path.join(root, "tests", "ParserTest.php"),
+      "<?php\nnamespace Example\\Tests;\nuse Example\\Parser;\nuse Example\\Tests\\Support\\AbstractTestCase;\nfinal class ParserTest extends AbstractTestCase { public function testParse(): void { self::assertSame('x', Parser::parse(' x ')); } }\n"
+    );
+
+    const audit = auditPhpRepo(root);
+    assert.ok(audit.profile.blockers.some((blocker) => blocker.includes("No runnable conventional PHPUnit")));
+    assert.deepEqual(audit.coveredButRisky, []);
+  });
+
   it("withholds a default command when the PHPUnit bootstrap requires an environment choice", () => {
     const root = createRepo({ script: undefined });
     fs.writeFileSync(

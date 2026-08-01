@@ -651,3 +651,11 @@ Decision: when root `phpunit.xml` or `phpunit.xml.dist` names one repository-own
 Rationale: pinned `brick/math` at `b61d8e66c3ea05fa8784888575b719f48f76f515` looked like a conventional command-owned PHPUnit library, but bare `vendor/bin/phpunit` exits because `CALCULATOR` is required. `CALCULATOR=Native vendor/bin/phpunit` passes 22,160 tests and 89,659 assertions. The corrected audit withholds the command, excludes optional `BCMATH_DEFAULT_SCALE`, and is digest-stable across five clean runs.
 
 Revisit when: a pinned repository proves another statically bounded required-bootstrap shape or a portable default value can be selected from repository-owned metadata without evaluating PHP.
+
+### 2026-08-01: allow one unique local PHPUnit test-base edge
+
+Decision: treat a conventional `*Test.php` class with a public `test*` method as runnable when its declared parent resolves through a direct import or its namespace to exactly one PSR-4-owned repository test class, and that local class directly resolves to `PHPUnit\Framework\TestCase`. Stop after that single local edge.
+
+Rationale: five concrete brick/math test classes at the pinned live-validation commit extend its owned `AbstractTestCase`; four resolve in the same namespace and one imports it from a nested namespace. Recognizing this exact edge moves the audit from 2 covered sources and 2 relationships to 7 covered sources and 13 relationships without changing the required-`CALCULATOR` command blocker. Regression controls keep duplicate local FQNs and two-hop inheritance non-runnable.
+
+Revisit when: a pinned repository demonstrates that another statically unique inheritance form adds material evidence without requiring Composer evaluation or arbitrary PHP name resolution.

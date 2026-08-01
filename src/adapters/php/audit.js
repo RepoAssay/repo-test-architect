@@ -13,7 +13,7 @@ export function auditPhpRepo(root, options = {}) {
   const ownership = analyzeOwnership(absoluteRoot, metadata.value);
   const sourceFiles = files.filter((file) => ownership.sourceRoots.some((sourceRoot) => isUnderRoot(file.path, sourceRoot)));
   const testFiles = files.filter((file) => ownership.testRoots.some((testRoot) => isUnderRoot(file.path, testRoot)));
-  const runnableTests = testFiles.filter(isRunnablePhpUnitTest);
+  const runnableTests = collectRunnablePhpUnitTests(testFiles, ownership.testMappings);
   const bootstrap = analyzePhpUnitBootstrap(files);
   const blockers = buildBlockers({ composerFile, metadata, ownership, sourceFiles, runnableTests, bootstrap });
   const profile = buildProfile(absoluteRoot, files, composerFile, metadata.value, ownership, runnableTests, bootstrap, blockers);
@@ -120,6 +120,7 @@ function analyzeOwnership(root, composer) {
     sourceRoots: source.roots,
     testRoots: tests.roots,
     sourceMappings: source.mappings,
+    testMappings: tests.mappings,
     sourceValid: source.valid,
     testsValid: tests.valid
   };
@@ -316,11 +317,49 @@ function classifySourceFile(file) {
   };
 }
 
-function isRunnablePhpUnitTest(file) {
-  if (!file.path.endsWith("Test.php")) return false;
-  const masked = maskCommentsAndStrings(file.content);
-  return /\bclass\s+[A-Za-z_][A-Za-z0-9_]*\s+extends\s+(?:\\?PHPUnit\\Framework\\)?TestCase\b/.test(masked) &&
-    /\bpublic\s+function\s+test[A-Za-z0-9_]*\s*\(/.test(masked);
+function collectRunnablePhpUnitTests(testFiles, mappings) {
+  const testClasses = testFiles.map((file) => {
+    const masked = maskCommentsAndStrings(file.content);
+    const owned = ownedClass(file, mappings, masked);
+    const parentFqn = owned ? resolveDeclaredParentFqn(file.content, owned.shortName, masked) : undefined;
+    return { file, masked, owned, parentFqn };
+  });
+  const uniqueClasses = new Map();
+  for (const testClass of testClasses.filter((candidate) => candidate.owned && candidate.parentFqn)) {
+    uniqueClasses.set(testClass.owned.fqn, uniqueClasses.has(testClass.owned.fqn) ? undefined : testClass);
+  }
+
+  return testClasses.filter(({ file, masked, owned, parentFqn }) => {
+    if (!file.path.endsWith("Test.php") || !hasPublicTestMethod(masked)) return false;
+    if (directlyExtendsPhpUnitTestCase(masked)) return true;
+    if (!owned) return false;
+    const localBase = parentFqn ? uniqueClasses.get(parentFqn) : undefined;
+    return Boolean(localBase && localBase.parentFqn === "PHPUnit\\Framework\\TestCase");
+  }).map(({ file }) => file);
+}
+
+function hasPublicTestMethod(masked) {
+  return /\bpublic\s+function\s+test[A-Za-z0-9_]*\s*\(/.test(masked);
+}
+
+function directlyExtendsPhpUnitTestCase(masked) {
+  return /\bclass\s+[A-Za-z_][A-Za-z0-9_]*\s+extends\s+(?:\\?PHPUnit\\Framework\\)?TestCase\b/.test(masked);
+}
+
+function resolveDeclaredParentFqn(content, className, masked = maskCommentsAndStrings(content)) {
+  const declaration = new RegExp(
+    `\\b(?:abstract\\s+|final\\s+)?class\\s+${escapeRegExp(className)}\\s+extends\\s+(\\\\?[A-Za-z_][A-Za-z0-9_\\\\]*)\\b`
+  ).exec(masked);
+  if (!declaration) return undefined;
+  const reference = declaration[1];
+  if (reference.startsWith("\\")) return reference.slice(1);
+  if (reference.includes("\\")) return undefined;
+  const header = content.slice(0, declaration.index);
+  const maskedHeader = masked.slice(0, declaration.index);
+  const imported = collectUseImports(header).get(reference);
+  if (imported) return imported;
+  const namespace = /\bnamespace\s+([A-Za-z_\\][A-Za-z0-9_\\]*)\s*;/.exec(maskedHeader)?.[1];
+  return namespace ? `${namespace}\\${reference}` : reference;
 }
 
 function isSupportedComposerTestScript(script) {
@@ -345,9 +384,8 @@ function hasAssertedUsage(content, name) {
   return new RegExp(`(?:assert[A-Za-z_]*|expect)\\s*\\([^;]*\\b${escaped}::[A-Za-z_][A-Za-z0-9_]*\\s*\\(`, "s").test(maskComments(content));
 }
 
-function ownedClass(file, mappings) {
+function ownedClass(file, mappings, masked = maskCommentsAndStrings(file.content)) {
   const mapping = mappings.find((candidate) => isUnderRoot(file.path, candidate.root));
-  const masked = maskCommentsAndStrings(file.content);
   const className = /\b(?:class|interface|trait|enum)\s+([A-Za-z_][A-Za-z0-9_]*)\b/.exec(masked)?.[1];
   const namespace = /\bnamespace\s+([A-Za-z_\\][A-Za-z0-9_\\]*)\s*;/.exec(masked)?.[1];
   if (!mapping || !className || !namespace) return undefined;

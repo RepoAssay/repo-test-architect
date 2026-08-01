@@ -88,12 +88,36 @@ Five unchanged clean-checkout audits produced one canonical digest:
 
 The two relationships are direct asserted imports from the two test classes that directly extend PHPUnit `TestCase`. They remain deliberately sparse rather than being equated with brick/math's native coverage.
 
+## One-Hop Test-Base Follow-Up
+
+The next slice resolved the precise evidence gap exposed by the first pass. A conventional `*Test.php` class is now runnable when its declared parent resolves by direct import or its namespace to exactly one PSR-4-owned repository test class, and that local class directly resolves to `PHPUnit\Framework\TestCase`. The lookup stops after this single repository edge.
+
+This recognizes all five brick/math subclasses of `AbstractTestCase`: four in the base class's namespace and `tests/Internal/SafeTest.php` through an explicit import. Regression controls prove that a duplicated local base FQN and a second repository-owned inheritance edge remain non-runnable.
+
+Five unchanged audits after the follow-up produced one new canonical result:
+
+| Measure | Result |
+| --- | --- |
+| Test command | withheld |
+| Confidence | medium |
+| Untested candidates | 14 |
+| Covered-but-risky candidates | 7 |
+| Skipped targets | 1 |
+| Evidence relationships | 13 |
+| Durations | 33.826 ms, 19.895 ms, 17.192 ms, 17.198 ms, 17.612 ms |
+| Median | 17.612 ms |
+| Canonical SHA-256 | `328ef22668ea44f5e81e5e7f13b1c7080c3b5dad0808ba821b48593cace5954b` |
+
+The command blocker is unchanged. The adapter gains only test ownership and evidence from the one-hop classes; it still does not claim that the complete native suite can be represented by these static relationships.
+
+The unchanged native command was rerun after the adapter change and again passed all 22,160 tests and 89,659 assertions in 5:03.795 on PHP 8.5.9.
+
 ## Remaining Uncertainty
 
-The next concrete PHP evidence slice is now visible. Five large concrete test classes extend the repository-owned `AbstractTestCase`, which in turn directly extends PHPUnit `TestCase`. The first adapter slice recognizes only direct `TestCase` inheritance, so those tests do not yet contribute evidence. A bounded one-hop, uniquely owned local base-test edge is the natural follow-up, followed by careful handling of helper assertions and fluent instance calls.
+brick/math's base class provides domain-specific assertions, and many tests exercise production objects through fluent instance calls. The adapter recognizes the tests as runnable but does not yet carry evidence through those helper assertions or local result variables. That is the next concrete PHP evidence slice.
 
-Broader bootstrap evaluation, arbitrary environment expressions, choosing matrix values, shell portability, Composer script graphs, PHPUnit attributes, custom suites, framework ownership, dynamic dispatch, and deeper inheritance remain excluded.
+Broader bootstrap evaluation, arbitrary environment expressions, choosing matrix values, shell portability, Composer script graphs, PHPUnit attributes, custom suites, framework ownership, ambiguous or deeper inheritance, dynamic dispatch, helper result flow, and broader instance-call inference remain excluded.
 
 ## Result
 
-The first PHP live test prevented a false high-confidence command claim. Project detection, Composer and PSR-4 ownership, PHPUnit recognition, candidate classification, downstream artifacts, repeatability, performance, and native suite viability all hold at the exact pin; command ownership is now conservative when a checked-in bootstrap statically requires an explicit environment choice. brick/math remains the conventional-library pressure repository for the next one-hop test-inheritance slice.
+The first PHP live test prevented a false high-confidence command claim, and its follow-up safely recovered the five concrete tests hidden behind one local base class. Project detection, Composer and PSR-4 ownership, PHPUnit recognition, bounded test inheritance, candidate classification, downstream artifacts, repeatability, performance, and native suite viability all hold at the exact pin. brick/math remains the conventional-library pressure repository for helper-assertion and fluent instance-call evidence.
