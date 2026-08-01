@@ -675,3 +675,11 @@ Decision: when an exact root `Makefile` has a literal `test` target with simple 
 Rationale: pinned `guzzle/guzzle` at `9b200fc5805036b331d6031199880dadecae0275` initially received a high-confidence bare PHPUnit command. That command runs 2,928 tests but produces 50 integration connection errors because it omits the HTTP server owned by the Make `start-server` prerequisite. The unchanged native `make test` passes 2,928 tests and 8,445 assertions. The corrected medium-confidence audit withholds execution, preserves 12 untested, 39 covered, 17 skipped, and 112 relationships, and shares canonical digest `811dc21693ec59668391c4590d446ec7ebf13fd4dd08193b4d181c3813abfae1` across five runs.
 
 Revisit when: a pinned repository proves a portable command can be selected from bounded orchestration metadata, or another exact prerequisite form prevents a false runnable default without requiring Make evaluation.
+
+### 2026-08-01: recognize bounded Composer quality-script graphs
+
+Decision: accept one root Composer `test` alias when its reachable graph contains only literal aliases, non-empty alias-only arrays, and shell-metacharacter-free terminal commands for PHPUnit, PHP Parallel Lint, PHP_CodeSniffer, PHPStan, or PHPBench. Require a PHPUnit terminal, reject missing aliases and cycles, and cap traversal at eight edges and 24 scripts. Continue supporting the three exact direct PHPUnit commands.
+
+Rationale: pinned `ramsey/uuid` at `da5b521600a707d2dd097598464bd3090de850f5` declares `test: @dev:test`, which expands through linting, benchmarks, static analysis, and PHPUnit. Its committed-lock `composer test` workflow passes 190-file syntax and style checks, 46 benchmark subjects, PHPStan over 188 files, and 2,022 tests with 88,398 assertions. Five corrected audits preserve 29 untested, 54 covered, 31 skipped, and 168 relationships at canonical digest `0f21c9269c520156a1673b76ac87f91f667ff1764e687cfee52fee7db534a5ee`. The independent `src/functions.php` class-ownership blocker still withholds execution.
+
+Revisit when: a pinned repository proves another finite quality-tool terminal or alias shape without requiring shell or Composer evaluation, or when the remaining Ramsey function-file ownership can be modeled independently.

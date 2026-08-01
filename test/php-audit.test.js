@@ -78,6 +78,41 @@ test:
     assert.deepEqual(audit.profile.blockers, []);
   });
 
+  it("selects a bounded literal Composer quality-script graph ending in PHPUnit", () => {
+    const root = createRepo({
+      scripts: {
+        test: "@dev:test",
+        "dev:test": ["@dev:lint", "@dev:analyze", "@dev:test:unit"],
+        "dev:lint": ["@dev:lint:syntax", "@dev:lint:style"],
+        "dev:lint:syntax": "parallel-lint --colors src/ tests/",
+        "dev:lint:style": "phpcs --colors",
+        "dev:analyze": "phpstan analyse --ansi",
+        "dev:test:unit": "phpunit --colors=always"
+      }
+    });
+
+    const audit = auditPhpRepo(root);
+    assert.equal(audit.profile.testCommand, "composer test");
+    assert.deepEqual(audit.profile.blockers, []);
+    assert.ok(audit.profile.detectedConventions.includes("bounded Composer quality-script graph"));
+  });
+
+  it("blocks unsafe, unresolved, cyclic, and PHPUnit-free Composer script graphs", () => {
+    const graphs = [
+      [],
+      { test: "@dev:test", "dev:test": ["@dev:test:unit", "rm -rf build"], "dev:test:unit": "phpunit" },
+      { test: "@dev:test", "dev:test": "@missing" },
+      { test: "@dev:test", "dev:test": "@dev:unit", "dev:unit": "@dev:test" },
+      { test: "@dev:test", "dev:test": ["@dev:lint"], "dev:lint": "phpcs --colors" }
+    ];
+
+    for (const scripts of graphs) {
+      const audit = auditPhpRepo(createRepo({ scripts }));
+      assert.equal(audit.profile.testCommand, undefined);
+      assert.ok(audit.profile.blockers.some((blocker) => blocker.includes("Composer test script")));
+    }
+  });
+
   it("recognizes a test through one uniquely owned local PHPUnit base", () => {
     const root = createRepo();
     fs.writeFileSync(
@@ -343,6 +378,9 @@ function createRepo(options = {}) {
     requireDev = { "phpunit/phpunit": "^12.0" }
   } = options;
   const script = Object.hasOwn(options, "script") ? options.script : "phpunit";
+  const scripts = Object.hasOwn(options, "scripts")
+    ? options.scripts
+    : (script === undefined ? undefined : { test: script });
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-php-"));
   fs.mkdirSync(path.join(root, "src"), { recursive: true });
   fs.mkdirSync(path.join(root, "tests"), { recursive: true });
@@ -351,7 +389,7 @@ function createRepo(options = {}) {
     "require-dev": requireDev,
     autoload,
     "autoload-dev": autoloadDev,
-    ...(script === undefined ? {} : { scripts: { test: script } })
+    ...(scripts === undefined ? {} : { scripts })
   };
   fs.writeFileSync(path.join(root, "composer.json"), `${JSON.stringify(composer, null, 2)}\n`);
   fs.writeFileSync(path.join(root, "src", "Parser.php"), "<?php\nnamespace Example;\nfinal class Parser { public static function parse(string $value): string { return trim($value); } }\n");

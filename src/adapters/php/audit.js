@@ -15,11 +15,12 @@ export function auditPhpRepo(root, options = {}) {
   const testFiles = files.filter((file) => ownership.testRoots.some((testRoot) => isUnderRoot(file.path, testRoot)));
   const runnableTests = collectRunnablePhpUnitTests(testFiles, ownership.testMappings);
   const bootstrap = analyzePhpUnitBootstrap(files);
-  const makeWorkflow = metadata.value?.scripts?.test === undefined
+  const composerTest = analyzeComposerTestScript(metadata.value?.scripts);
+  const makeWorkflow = composerTest.absent
     ? analyzeMakeTestWorkflow(files)
     : { blockers: [] };
-  const blockers = buildBlockers({ composerFile, metadata, ownership, sourceFiles, runnableTests, bootstrap, makeWorkflow });
-  const profile = buildProfile(absoluteRoot, files, composerFile, metadata.value, ownership, runnableTests, bootstrap, makeWorkflow, blockers);
+  const blockers = buildBlockers({ composerFile, metadata, ownership, sourceFiles, runnableTests, bootstrap, composerTest, makeWorkflow });
+  const profile = buildProfile(absoluteRoot, files, composerFile, metadata.value, ownership, runnableTests, bootstrap, composerTest, makeWorkflow, blockers);
   const evidenceBySource = collectEvidence(sourceFiles, runnableTests, ownership);
   const changedPaths = options.changedPaths
     ? new Set(options.changedPaths.map((currentPath) => normalizeChangedPath(absoluteRoot, currentPath)))
@@ -151,7 +152,7 @@ function analyzePsr4Map(root, value) {
   return { valid: valid && mappings.length === Object.keys(value).length, roots: mappings.map((mapping) => mapping.root), mappings };
 }
 
-function buildBlockers({ composerFile, metadata, ownership, sourceFiles, runnableTests, bootstrap, makeWorkflow }) {
+function buildBlockers({ composerFile, metadata, ownership, sourceFiles, runnableTests, bootstrap, composerTest, makeWorkflow }) {
   const blockers = [];
   if (!composerFile) blockers.push("No root composer.json detected for the bounded PHP Composer adapter.");
   if (metadata.error) blockers.push(metadata.error);
@@ -164,18 +165,17 @@ function buildBlockers({ composerFile, metadata, ownership, sourceFiles, runnabl
   if (sourceFiles.some((file) => !ownedClass(file, ownership.sourceMappings))) {
     blockers.push("Each owned source file must contain one declared PSR-4 class matching its literal namespace and path.");
   }
-  const script = metadata.value?.scripts?.test;
-  if (script !== undefined && !isSupportedComposerTestScript(script)) {
-    blockers.push("The Composer test script must be exactly phpunit, vendor/bin/phpunit, or @php vendor/bin/phpunit in this slice.");
+  if (!composerTest.supported) {
+    blockers.push("The Composer test script must be one exact PHPUnit command or a bounded literal quality-script alias graph ending in PHPUnit.");
   }
   blockers.push(...bootstrap.blockers);
   blockers.push(...makeWorkflow.blockers);
   return blockers;
 }
 
-function buildProfile(root, files, composerFile, composer, ownership, runnableTests, bootstrap, makeWorkflow, blockers) {
+function buildProfile(root, files, composerFile, composer, ownership, runnableTests, bootstrap, composerTest, makeWorkflow, blockers) {
   const testCommand = blockers.length === 0
-    ? (composer?.scripts?.test === undefined ? "vendor/bin/phpunit" : "composer test")
+    ? (composerTest.absent ? "vendor/bin/phpunit" : "composer test")
     : undefined;
   return {
     root,
@@ -187,7 +187,8 @@ function buildProfile(root, files, composerFile, composer, ownership, runnableTe
     detectedConventions: [
       ...(ownership.sourceValid ? ["literal PSR-4 source ownership"] : []),
       ...(ownership.testsValid ? ["literal PSR-4 test ownership"] : []),
-      ...(runnableTests.length > 0 ? ["*Test.php PHPUnit classes"] : [])
+      ...(runnableTests.length > 0 ? ["*Test.php PHPUnit classes"] : []),
+      ...(composerTest.graph ? ["bounded Composer quality-script graph"] : [])
     ],
     existingTestLocations: [...new Set(runnableTests.map((file) => `${firstDirectory(file.path)}/ PHPUnit files`))],
     setupSignals: [
@@ -201,6 +202,66 @@ function buildProfile(root, files, composerFile, composer, ownership, runnableTe
     confidence: blockers.length === 0 ? "high" : metadataIsMalformed(composerFile, composer) || blockers.length > 2 ? "low" : "medium",
     blockers
   };
+}
+
+function analyzeComposerTestScript(scripts) {
+  if (scripts !== undefined && (!scripts || typeof scripts !== "object" || Array.isArray(scripts))) {
+    return { absent: false, supported: false, graph: false };
+  }
+  const testScript = scripts?.test;
+  if (testScript === undefined) return { absent: true, supported: true, graph: false };
+  if (isSupportedComposerTestScript(testScript)) return { absent: false, supported: true, graph: false };
+  const rootAlias = exactComposerAlias(testScript);
+  if (!rootAlias) return { absent: false, supported: false, graph: false };
+  const visited = new Set();
+
+  function resolve(name, ancestors, depth) {
+    if (depth > 8 || visited.size >= 24 || ancestors.has(name) || !Object.hasOwn(scripts, name)) {
+      return { valid: false, phpunit: false };
+    }
+    visited.add(name);
+    const value = scripts[name];
+    const nextAncestors = new Set(ancestors).add(name);
+    if (Array.isArray(value)) {
+      if (value.length === 0) return { valid: false, phpunit: false };
+      const results = value.map((entry) => {
+        const alias = exactComposerAlias(entry);
+        return alias ? resolve(alias, nextAncestors, depth + 1) : { valid: false, phpunit: false };
+      });
+      return {
+        valid: results.every((result) => result.valid),
+        phpunit: results.some((result) => result.phpunit)
+      };
+    }
+    const alias = exactComposerAlias(value);
+    if (alias) return resolve(alias, nextAncestors, depth + 1);
+    return classifyComposerQualityCommand(value);
+  }
+
+  const result = resolve(rootAlias, new Set(), 1);
+  return {
+    absent: false,
+    supported: result.valid && result.phpunit,
+    graph: result.valid && result.phpunit
+  };
+}
+
+function exactComposerAlias(value) {
+  if (typeof value !== "string") return undefined;
+  return /^@[A-Za-z0-9_.:-]+$/.test(value.trim()) ? value.trim().slice(1) : undefined;
+}
+
+function classifyComposerQualityCommand(value) {
+  if (typeof value !== "string") return { valid: false, phpunit: false };
+  const command = value.trim();
+  if (!command || /[\r\n;&|<>`$()]/.test(command)) return { valid: false, phpunit: false };
+  const argument = "(?:--?[A-Za-z0-9][A-Za-z0-9_.:-]*(?:=[A-Za-z0-9_./:-]+)?|[A-Za-z0-9_./:-]+)";
+  const phpunit = new RegExp(`^(?:phpunit|vendor/bin/phpunit|@php\\s+vendor/bin/phpunit)(?:\\s+${argument})*$`);
+  if (phpunit.test(command)) return { valid: true, phpunit: true };
+  const quality = new RegExp(`^(?:parallel-lint|phpcs|phpstan|phpbench)(?:\\s+${argument})*$`);
+  if (quality.test(command)) return { valid: true, phpunit: false };
+  const phpbench = new RegExp(`^@php\\s+-d\\s+'[A-Za-z0-9_.=-]+'\\s+vendor/bin/phpbench\\s+run(?:\\s+${argument})*$`);
+  return { valid: phpbench.test(command), phpunit: false };
 }
 
 function analyzeMakeTestWorkflow(files) {
