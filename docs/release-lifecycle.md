@@ -39,7 +39,7 @@ The npm `latest` tag always identifies the recommended default install. Prerelea
 
 Beta begins when:
 
-- all eight supported adapters meet the [Adapter Hardening Plan](adapter-hardening-plan.md) definition of done, including the cross-adapter trust review
+- all nine supported adapters meet the [Adapter Hardening Plan](adapter-hardening-plan.md) definition of done, including the cross-adapter trust review
 - there are no unresolved release-blocking false ownership, verification-command, or high-confidence coverage claims inside a documented supported boundary
 - at least three external users have completed feedback loops across at least six real repositories, or the release owners record comparable public-alpha evidence in the decision log
 - the current alpha has completed a default 14-day period without a release-blocking correctness or security regression

@@ -163,8 +163,16 @@
       ],
       "properties": {
         "testCommand": {
-          "type": "string",
-          "minLength": 1
+          "description": "The reviewed verification command, or null when the adapter intentionally withholds execution.",
+          "oneOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "const": null
+            }
+          ]
         },
         "untestedCandidates": {
           "type": "integer",

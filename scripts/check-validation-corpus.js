@@ -117,8 +117,10 @@ export function validateValidationCorpus(corpus, options = {}) {
         if (status === "fail") errors.push(`${caseLabel} scorecard.${area} is failing`);
       }
 
-      if (typeof entry.observed?.testCommand !== "string" || entry.observed.testCommand.length === 0) {
-        errors.push(`${caseLabel} observed.testCommand must be a non-empty string`);
+      if (entry.observed?.testCommand !== null && (
+        typeof entry.observed?.testCommand !== "string" || entry.observed.testCommand.length === 0
+      )) {
+        errors.push(`${caseLabel} observed.testCommand must be a non-empty string or null when command execution is intentionally withheld`);
       }
       for (const field of ["untestedCandidates", "coveredButRisky", "skippedTargets"]) {
         if (!Number.isInteger(entry.observed?.[field]) || entry.observed[field] < 0) {

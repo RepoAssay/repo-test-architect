@@ -763,7 +763,7 @@ describe("CLI", () => {
     assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["lib/ruby_minitest_basic/parser.rb"]);
   });
 
-  it("audits the experimental PHP fixture through the CLI", () => {
+  it("audits the supported PHP fixture through the CLI", () => {
     const output = execFileSync(
       process.execPath,
       [cliPath, "audit", "examples/php-phpunit-basic", "--adapter=php", "--format=json"],

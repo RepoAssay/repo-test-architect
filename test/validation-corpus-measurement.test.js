@@ -49,6 +49,19 @@ describe("validation corpus measurement", () => {
     );
   });
 
+  it("records an intentionally withheld verification command as null", () => {
+    const audit = sampleAudit("/tmp/repo");
+    delete audit.profile.testCommand;
+
+    const summary = summarizeCorpusRuns([
+      { audit, durationMs: 10 },
+      { audit, durationMs: 11 },
+      { audit, durationMs: 12 }
+    ]);
+
+    assert.equal(summary.testCommand, null);
+  });
+
   it("uses the middle observed integer as the standardized duration", () => {
     assert.equal(medianInteger([90, 10, 30]), 30);
     assert.throws(() => medianInteger([1.5]), /integer array/);

@@ -87,7 +87,9 @@ The candidate and evidence counts are unchanged by the command correction. The s
 
 ## Remaining Uncertainty
 
-Arbitrary Make evaluation, selecting or translating repository orchestration commands, Composer script graphs, dependency-lock reconstruction, service readiness, port allocation, teardown guarantees after failures, PHPUnit attributes and custom suites, framework ownership, deeper inheritance, traits, dynamic calls, data-provider flow, and broader helper/result inference remain outside the experimental boundary.
+The supported-promotion measurement reran the exact checkout five times through `corpus:measure`. It retains the `12 / 39 / 17` candidate split, 112 relationships, intentional command withholding, and canonical digest `811dc21693ec59668391c4590d446ec7ebf13fd4dd08193b4d181c3813abfae1` with samples `150, 83, 84, 80, 78` ms and an 83 ms median.
+
+Arbitrary Make evaluation, selecting or translating repository orchestration commands, Composer script graphs, dependency-lock reconstruction, service readiness, port allocation, teardown guarantees after failures, PHPUnit attributes and custom suites, framework ownership, deeper inheritance, traits, dynamic calls, data-provider flow, and broader helper/result inference remain outside the supported boundary.
 
 The 12 untested candidates are mainly interfaces, traits, and low-level transport or environment helpers. Closing that gap would require a distinct evidence proof; the service-workflow finding does not justify broadening symbol inference.
 

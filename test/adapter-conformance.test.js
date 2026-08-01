@@ -47,7 +47,7 @@ const cases = [
   {
     adapterId: "php",
     fixturePath: "examples/php-phpunit-basic",
-    expectedMaturity: "experimental",
+    expectedMaturity: "supported",
     expectedProfile: {
       languages: ["php"],
       testFrameworks: ["phpunit"],

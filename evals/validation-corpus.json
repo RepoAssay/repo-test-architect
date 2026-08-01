@@ -443,6 +443,119 @@
       ]
     },
     {
+      "adapterId": "php",
+      "cases": [
+        {
+          "id": "php-brick-math",
+          "role": "conventional-library-or-service",
+          "repository": {
+            "url": "https://github.com/brick/math",
+            "commit": "b61d8e66c3ea05fa8784888575b719f48f76f515",
+            "projectRoot": "."
+          },
+          "supportBoundary": "Conventional Composer library whose PHPUnit bootstrap requires an explicit calculator environment, with one-hop local test-base ownership and bounded exception/result assertions.",
+          "reportPath": "docs/php-brick-math-validation-report.md",
+          "scorecard": {
+            "detection": "pass",
+            "ownership": "pass",
+            "command": "pass",
+            "evidence": "pass",
+            "ranking": "pass",
+            "stability": "pass",
+            "performance": "pass"
+          },
+          "observed": {
+            "testCommand": null,
+            "untestedCandidates": 7,
+            "coveredButRisky": 14,
+            "skippedTargets": 1,
+            "auditDurationMs": 32,
+            "auditDurationSamplesMs": [
+              73,
+              32,
+              29,
+              32,
+              30
+            ],
+            "evidenceRelationshipCount": 34,
+            "canonicalAuditSha256": "8e34141cb8ddbd4a8f6fd3858528b344adb8a39e17f13b65a36f620a6c6ed8ee"
+          }
+        },
+        {
+          "id": "php-guzzle",
+          "role": "framework-heavy-application",
+          "repository": {
+            "url": "https://github.com/guzzle/guzzle",
+            "commit": "9b200fc5805036b331d6031199880dadecae0275",
+            "projectRoot": "."
+          },
+          "supportBoundary": "Service-shaped Composer library whose root Make test target declares HTTP-service orchestration, with bare PHPUnit safely withheld and bounded direct class evidence retained.",
+          "reportPath": "docs/php-guzzle-validation-report.md",
+          "scorecard": {
+            "detection": "pass",
+            "ownership": "pass",
+            "command": "pass",
+            "evidence": "pass",
+            "ranking": "pass",
+            "stability": "pass",
+            "performance": "pass"
+          },
+          "observed": {
+            "testCommand": null,
+            "untestedCandidates": 12,
+            "coveredButRisky": 39,
+            "skippedTargets": 17,
+            "auditDurationMs": 83,
+            "auditDurationSamplesMs": [
+              150,
+              83,
+              84,
+              80,
+              78
+            ],
+            "evidenceRelationshipCount": 112,
+            "canonicalAuditSha256": "811dc21693ec59668391c4590d446ec7ebf13fd4dd08193b4d181c3813abfae1"
+          }
+        },
+        {
+          "id": "php-ramsey-uuid",
+          "role": "difficult-ownership-graph",
+          "repository": {
+            "url": "https://github.com/ramsey/uuid",
+            "commit": "da5b521600a707d2dd097598464bd3090de850f5",
+            "projectRoot": "."
+          },
+          "supportBoundary": "Composer library with a bounded quality-script alias graph and exact namespaced autoload.files function ownership while direct function-call evidence remains withheld.",
+          "reportPath": "docs/php-ramsey-uuid-validation-report.md",
+          "scorecard": {
+            "detection": "pass",
+            "ownership": "pass",
+            "command": "pass",
+            "evidence": "pass",
+            "ranking": "pass",
+            "stability": "pass",
+            "performance": "pass"
+          },
+          "observed": {
+            "testCommand": "composer test",
+            "untestedCandidates": 29,
+            "coveredButRisky": 54,
+            "skippedTargets": 31,
+            "auditDurationMs": 32,
+            "auditDurationSamplesMs": [
+              89,
+              35,
+              32,
+              30,
+              31
+            ],
+            "evidenceRelationshipCount": 168,
+            "canonicalAuditSha256": "ecd0a9600b242d728580780853c2b4e64897c5cbff9d0686cb51e3370faba2f3"
+          }
+        }
+      ]
+    },
+    {
       "adapterId": "python",
       "cases": [
         {

@@ -143,6 +143,8 @@ The unchanged Native calculator suite was rerun after this evidence change and a
 
 ## Remaining Uncertainty
 
+The supported-promotion measurement reran the exact checkout five times through `corpus:measure`. It retains the `7 / 14 / 1` candidate split, 34 relationships, and intentional command withholding with samples `73, 32, 29, 32, 30` ms, a 32 ms median, and canonical digest `8e34141cb8ddbd4a8f6fd3858528b344adb8a39e17f13b65a36f620a6c6ed8ee`.
+
 The remaining brick/math candidates are internal calculator implementations and helpers, dynamic data-provider exception evidence for `NoInverseException`, and `UnsupportedPlatformException`. Reaching them would require a different ownership proof rather than widening the two bounded assertion forms.
 
 Broader bootstrap evaluation, arbitrary environment expressions, choosing matrix values, shell portability, Composer script graphs, PHPUnit attributes, custom suites, framework ownership, ambiguous or deeper inheritance, dynamic data-provider flow, reassigned or cross-method results, and broader instance-call inference remain excluded. The next useful live pressure is a service-shaped repository such as Guzzle rather than another brick/math-specific expansion.

@@ -18,10 +18,10 @@ describe("adapter validation corpus", () => {
 
     const result = validateValidationCorpus(corpus);
     assert.deepEqual(result.errors, []);
-    assert.equal(result.adapterCount, 8);
-    assert.equal(result.caseCount, 24);
+    assert.equal(result.adapterCount, 9);
+    assert.equal(result.caseCount, 27);
     assert.deepEqual(result.scorecardCounts, {
-      pass: 168,
+      pass: 189,
       fail: 0,
       pending: 0
     });
@@ -51,6 +51,14 @@ describe("adapter validation corpus", () => {
         assert.deepEqual(Object.keys(entry.scorecard).sort(), [...scorecardAreas].sort());
       }
     }
+  });
+
+  it("accepts an explicitly withheld command after command review", () => {
+    const blocked = structuredClone(corpus);
+    blocked.adapters[0].cases[0].observed.testCommand = null;
+
+    assert.deepEqual(validateValidationCorpus(blocked).errors, []);
+    assertMatchesSchema(blocked, schema, "blocked-command validation corpus");
   });
 
   it("rejects incomplete pins and prematurely passing stability and performance records", () => {
