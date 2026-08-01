@@ -2,6 +2,14 @@
 
 This log records project-level decisions that shape architecture, scope, and public positioning.
 
+# Minitest Spec Discovery And Custom Suite Commands Stay Coupled
+
+Decision: keep Minitest's bare `describe`/`it` spec DSL and repository-specific setup-partitioned suite commands outside the Ruby supported boundary until both can be owned together. Do not remove the runnable-test blocker merely because a `test/**/*_test.rb` file contains spec-like syntax.
+
+Rationale: the first blind post-promotion audit pinned `licensee/licensed` at `2db4c2a2743e159e9bf1931c9c3b2df2de8ff4bf`. Its 51 test files contain 235 `describe` declarations and 631 `it` declarations but zero supported `test_*` methods. Five audits stay stable at 48 untested, zero covered, five skipped, zero relationships, and a 20 ms median. The default `bundle exec rake test` executes but fails because the repository's source suites require separate setup jobs; the custom `script/test core` command passes 330 runs and 1,063 assertions. Adding DSL discovery alone would turn an accurate blocker into false command confidence.
+
+Revisit when: exact helper-owned Minitest activation, bounded nested spec execution, assertion evidence, and one statically owned safe suite command can be proven together against Licensed plus a simpler positive control.
+
 # Ruby Promotes To Supported At Its Bounded Bundler Boundary
 
 Decision: promote Ruby from experimental to supported while retaining the exact Bundler/Minitest/RSpec ownership, command, evidence, and blocker boundaries in the Ruby support matrix.
