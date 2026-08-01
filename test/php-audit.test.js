@@ -340,6 +340,72 @@ if ($scale !== false) { configureScale($scale); }
     assert.deepEqual(audit.recommended.map((target) => target.path), ["src/Parser.php"]);
   });
 
+  it("owns one literal Composer-autoloaded namespaced function file", () => {
+    const root = createRepo({
+      autoload: {
+        "psr-4": { "Example\\": "src/" },
+        files: ["src/functions.php"]
+      }
+    });
+    fs.writeFileSync(
+      path.join(root, "src", "functions.php"),
+      "<?php\nnamespace Example;\nfunction parse_value(string $value): string { return Parser::parse($value); }\n"
+    );
+
+    const audit = auditPhpRepo(root);
+    assert.equal(audit.profile.testCommand, "composer test");
+    assert.deepEqual(audit.profile.blockers, []);
+    assert.ok(audit.profile.detectedConventions.includes("literal Composer autoload.files function ownership"));
+    assert.ok(audit.untestedCandidates.some((target) => target.path === "src/functions.php"));
+  });
+
+  it("rejects malformed and ambiguous Composer autoload.files ownership", () => {
+    const malformed = [
+      "src/functions.php",
+      [],
+      ["../functions.php"],
+      ["src/missing.php"],
+      ["src/functions.php", "src/functions.php"]
+    ];
+    for (const files of malformed) {
+      const audit = auditPhpRepo(createRepo({ autoload: { "psr-4": { "Example\\": "src/" }, files } }));
+      assert.equal(audit.profile.testCommand, undefined);
+      assert.ok(audit.profile.blockers.some((blocker) => blocker.includes("autoload.files")));
+    }
+
+    const wrongNamespace = createRepo({
+      autoload: { "psr-4": { "Example\\": "src/" }, files: ["src/functions.php"] }
+    });
+    fs.writeFileSync(path.join(wrongNamespace, "src", "functions.php"), "<?php\nnamespace Other;\nfunction parse_value(): string { return 'x'; }\n");
+    const wrongNamespaceAudit = auditPhpRepo(wrongNamespace);
+    assert.equal(wrongNamespaceAudit.profile.testCommand, undefined);
+    assert.ok(wrongNamespaceAudit.profile.blockers.some((blocker) => blocker.includes("declared PSR-4 class or namespaced autoload.files functions")));
+
+    const mixedDeclarations = createRepo({
+      autoload: { "psr-4": { "Example\\": "src/" }, files: ["src/functions.php"] }
+    });
+    fs.writeFileSync(path.join(mixedDeclarations, "src", "functions.php"), "<?php\nnamespace Example;\nfunction parse_value(): string { return 'x'; }\nclass Wrong {}\n");
+    const mixedAudit = auditPhpRepo(mixedDeclarations);
+    assert.equal(mixedAudit.profile.testCommand, undefined);
+    assert.ok(mixedAudit.profile.blockers.some((blocker) => blocker.includes("declared PSR-4 class or namespaced autoload.files functions")));
+
+    const unlisted = createRepo();
+    fs.writeFileSync(path.join(unlisted, "src", "functions.php"), "<?php\nnamespace Example;\nfunction parse_value(): string { return 'x'; }\n");
+    const unlistedAudit = auditPhpRepo(unlisted);
+    assert.equal(unlistedAudit.profile.testCommand, undefined);
+    assert.ok(unlistedAudit.profile.blockers.some((blocker) => blocker.includes("declared PSR-4 class or namespaced autoload.files functions")));
+
+    const nestedOwner = createRepo({
+      autoload: { "psr-4": { "Example\\": "src/" }, files: ["packages/nested/functions.php"] }
+    });
+    fs.mkdirSync(path.join(nestedOwner, "packages", "nested"), { recursive: true });
+    fs.writeFileSync(path.join(nestedOwner, "packages", "nested", "composer.json"), "{}\n");
+    fs.writeFileSync(path.join(nestedOwner, "packages", "nested", "functions.php"), "<?php\nnamespace Example;\nfunction nested_value(): string { return 'x'; }\n");
+    const nestedAudit = auditPhpRepo(nestedOwner);
+    assert.equal(nestedAudit.profile.testCommand, undefined);
+    assert.ok(nestedAudit.profile.blockers.some((blocker) => blocker.includes("autoload.files")));
+  });
+
   it("withholds evidence when the declared class does not match its PSR-4 path", () => {
     const root = createRepo();
     fs.writeFileSync(path.join(root, "src", "Parser.php"), "<?php\nnamespace Other;\nfinal class Parser { public static function parse(string $value): string { return trim($value); } }\n");
