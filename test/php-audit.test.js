@@ -148,6 +148,80 @@ test:
     ]);
   });
 
+  it("recognizes a test through one uniquely source-owned local PHPUnit base", () => {
+    const root = createRepo();
+    fs.mkdirSync(path.join(root, "src", "Test"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "src", "Test", "ProjectTestCase.php"),
+      "<?php\nnamespace Example\\Test;\nabstract class ProjectTestCase extends \\PHPUnit\\Framework\\TestCase { protected function expected(): string { return 'x'; } }\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "tests", "ParserTest.php"),
+      "<?php\nnamespace Example\\Tests;\nuse Example\\Parser;\nuse Example\\Test\\ProjectTestCase;\nfinal class ParserTest extends ProjectTestCase { public function testParse(): void { self::assertSame($this->expected(), Parser::parse(' x ')); } }\n"
+    );
+
+    const audit = auditPhpRepo(root);
+    const parser = audit.coveredButRisky.find((target) => target.path === "src/Parser.php");
+    assert.equal(audit.profile.testCommand, "composer test");
+    assert.deepEqual(parser?.existingTestEvidence, [{
+      testPath: "tests/ParserTest.php",
+      kind: "php-symbol-reference",
+      strength: "direct",
+      usage: "asserted"
+    }]);
+  });
+
+  it("withholds source-owned test-base resolution when its FQN is ambiguous", () => {
+    const root = createRepo({
+      autoloadDev: { "psr-4": { "Example\\": "tests/" } }
+    });
+    fs.mkdirSync(path.join(root, "src", "Support"), { recursive: true });
+    fs.mkdirSync(path.join(root, "tests", "Support"), { recursive: true });
+    const duplicateBase = "<?php\nnamespace Example\\Support;\nabstract class ProjectTestCase extends \\PHPUnit\\Framework\\TestCase {}\n";
+    fs.writeFileSync(path.join(root, "src", "Support", "ProjectTestCase.php"), duplicateBase);
+    fs.writeFileSync(path.join(root, "tests", "Support", "ProjectTestCase.php"), duplicateBase);
+    fs.writeFileSync(
+      path.join(root, "tests", "ParserTest.php"),
+      "<?php\nnamespace Example;\nuse Example\\Support\\ProjectTestCase;\nfinal class ParserTest extends ProjectTestCase { public function testParse(): void { self::assertSame('x', Parser::parse(' x ')); } }\n"
+    );
+
+    const audit = auditPhpRepo(root);
+    assert.equal(audit.profile.testCommand, undefined);
+    assert.ok(audit.profile.blockers.some((blocker) => blocker.includes("No runnable conventional PHPUnit")));
+    assert.deepEqual(audit.coveredButRisky, []);
+  });
+
+  it("resolves exact same-namespace source references unless an import alias shadows them", () => {
+    const sameNamespace = createRepo({
+      autoloadDev: { "psr-4": { "Example\\": "tests/" } }
+    });
+    fs.writeFileSync(
+      path.join(sameNamespace, "tests", "ParserTest.php"),
+      "<?php\nnamespace Example;\nuse PHPUnit\\Framework\\TestCase;\nfinal class ParserTest extends TestCase { public function testParse(): void { self::assertSame('x', Parser::parse(' x ')); } }\n"
+    );
+
+    const resolved = auditPhpRepo(sameNamespace).coveredButRisky.find((target) => target.path === "src/Parser.php");
+    assert.deepEqual(resolved?.existingTestEvidence, [{
+      testPath: "tests/ParserTest.php",
+      kind: "php-symbol-reference",
+      strength: "direct",
+      usage: "asserted"
+    }]);
+
+    const shadowed = createRepo({
+      autoloadDev: { "psr-4": { "Example\\": "tests/" } }
+    });
+    fs.writeFileSync(
+      path.join(shadowed, "tests", "DifferentTest.php"),
+      "<?php\nnamespace Example;\nuse External\\Parser;\nuse PHPUnit\\Framework\\TestCase;\nfinal class DifferentTest extends TestCase { public function testParse(): void { self::assertSame('x', Parser::parse(' x ')); } }\n"
+    );
+    fs.rmSync(path.join(shadowed, "tests", "ParserTest.php"));
+
+    const withheld = auditPhpRepo(shadowed);
+    assert.deepEqual(withheld.coveredButRisky, []);
+    assert.deepEqual(withheld.untestedCandidates.map((target) => target.path), ["src/Parser.php"]);
+  });
+
   it("records a direct PHPUnit exception expectation as asserted evidence", () => {
     const root = createRepo();
     fs.writeFileSync(

@@ -2,6 +2,16 @@
 
 This log records project-level decisions that shape architecture, scope, and public positioning.
 
+# PHP Source-Owned Test Bases And Same-Namespace References Stay Exact
+
+Decision: allow one conventional PHPUnit test to inherit through one uniquely PSR-4-owned repository base below either the literal source or test mappings when that base directly resolves to `PHPUnit\Framework\TestCase`. Resolve an unqualified class reference to one unique owned source in the runnable test's exact namespace only when no direct import shadows that short name.
+
+Rationale: the blind post-promotion audit pinned `Seldaek/monolog` at `57eb1028342134e701e77c617565d51b6e5a2a53`. Its 88 conventional tests inherit from source-owned `Monolog\Test\MonologTestCase`, and its mirrored namespaces use unqualified owned classes extensively. The installed-package baseline was stable at 104 untested, 4 covered, 13 skipped, and 4 relationships. The bounded correction is stable at 25 untested, 83 covered, 13 skipped, and 125 relationships across 81 test files. Five corrected process-level audits share digest `ad21f9a5825e5bd16a6ec6553f291ae5eca5a9418e1a92f3ef468ba91025b1f9`. Duplicate cross-root FQNs and explicit alias shadows remain negative controls.
+
+The exact `composer test` command executes but the pinned repository currently has two formatter errors and one `ErrorHandlerTest` failure locally, alongside environment-dependent skips; upstream CI for the same commit also fails. Audit confidence continues to describe static ownership and command proof, not a promise that an upstream test suite is green or locally provisioned.
+
+Revisit when: a pinned repository proves a deeper unique test-base chain, inheritance-as-evidence, or another PHP namespace form without requiring general Composer loading or arbitrary name resolution.
+
 # PHP Promotes To Supported At Its Bounded Composer Boundary
 
 Decision: promote PHP from experimental to supported while retaining the exact Composer/PSR-4/PHPUnit ownership, command, evidence, and blocker boundaries in the PHP support matrix. Extend `validation-corpus/v1` so `observed.testCommand` may be `null` when command review proves that execution must be withheld.

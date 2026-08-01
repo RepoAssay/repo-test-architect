@@ -16,7 +16,12 @@ export function auditPhpRepo(root, options = {}) {
     ownership.functionFiles.includes(file.path)
   );
   const testFiles = files.filter((file) => ownership.testRoots.some((testRoot) => isUnderRoot(file.path, testRoot)));
-  const runnableTests = collectRunnablePhpUnitTests(testFiles, ownership.testMappings);
+  const runnableTests = collectRunnablePhpUnitTests(
+    testFiles,
+    ownership.testMappings,
+    sourceFiles,
+    ownership.sourceMappings
+  );
   const bootstrap = analyzePhpUnitBootstrap(files);
   const composerTest = analyzeComposerTestScript(metadata.value?.scripts);
   const makeWorkflow = composerTest.absent
@@ -403,17 +408,28 @@ function collectEvidence(sourceFiles, testFiles, ownership) {
     const owned = ownedClass(file, ownership.sourceMappings);
     return owned ? [{ path: file.path, ...owned }] : [];
   });
+  const uniqueFqns = new Map();
   const uniqueShortNames = new Map();
   for (const source of ownedClasses) {
+    uniqueFqns.set(source.fqn, uniqueFqns.has(source.fqn) ? undefined : source);
     uniqueShortNames.set(source.shortName, uniqueShortNames.has(source.shortName) ? undefined : source);
   }
 
   for (const test of testFiles) {
     const imports = collectUseImports(test.content);
+    const references = new Map(imports);
+    const namespace = declaredNamespace(test.content);
+    if (namespace) {
+      for (const source of uniqueFqns.values()) {
+        if (source && source.fqn === `${namespace}\\${source.shortName}` && !references.has(source.shortName)) {
+          references.set(source.shortName, source.fqn);
+        }
+      }
+    }
     const exceptionExpectations = collectDirectExceptionExpectations(test.content);
     const assertedLocalResults = collectAssertedLocalResultClasses(test.content);
-    for (const [shortName, fqn] of imports) {
-      const source = ownedClasses.find((candidate) => candidate.fqn === fqn);
+    for (const [shortName, fqn] of references) {
+      const source = uniqueFqns.get(fqn);
       const exceptionExpectation = exceptionExpectations.has(shortName);
       if (!source || (!hasClassUsage(test.content, shortName) && !exceptionExpectation)) continue;
       addEvidence(evidence, source.path, {
@@ -472,16 +488,22 @@ function classifySourceFile(file) {
   };
 }
 
-function collectRunnablePhpUnitTests(testFiles, mappings) {
+function collectRunnablePhpUnitTests(testFiles, mappings, sourceFiles = [], sourceMappings = []) {
   const testClasses = testFiles.map((file) => {
     const masked = maskCommentsAndStrings(file.content);
     const owned = ownedClass(file, mappings, masked);
     const parentFqn = owned ? resolveDeclaredParentFqn(file.content, owned.shortName, masked) : undefined;
     return { file, masked, owned, parentFqn };
   });
+  const sourceClasses = sourceFiles.map((file) => {
+    const masked = maskCommentsAndStrings(file.content);
+    const owned = ownedClass(file, sourceMappings, masked);
+    const parentFqn = owned ? resolveDeclaredParentFqn(file.content, owned.shortName, masked) : undefined;
+    return { file, masked, owned, parentFqn };
+  });
   const uniqueClasses = new Map();
-  for (const testClass of testClasses.filter((candidate) => candidate.owned && candidate.parentFqn)) {
-    uniqueClasses.set(testClass.owned.fqn, uniqueClasses.has(testClass.owned.fqn) ? undefined : testClass);
+  for (const localClass of [...testClasses, ...sourceClasses].filter((candidate) => candidate.owned && candidate.parentFqn)) {
+    uniqueClasses.set(localClass.owned.fqn, uniqueClasses.has(localClass.owned.fqn) ? undefined : localClass);
   }
 
   return testClasses.filter(({ file, masked, owned, parentFqn }) => {
@@ -528,6 +550,10 @@ function collectUseImports(content) {
     imports.set(match[2] ?? fqn.split("\\").at(-1), fqn);
   }
   return imports;
+}
+
+function declaredNamespace(content) {
+  return /\bnamespace\s+([A-Za-z_\\][A-Za-z0-9_\\]*)\s*;/.exec(maskCommentsAndStrings(content))?.[1];
 }
 
 function hasClassUsage(content, name) {
