@@ -527,7 +527,9 @@ function withRubyExtension(request) {
 function collectRubySourceDeclarations(content) {
   const declarations = new Map();
   const stack = [];
-  for (const line of maskRubyCommentsAndStrings(content).split(/\r?\n/)) {
+  const lines = maskRubyCommentsAndStrings(content).split(/\r?\n/);
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
     const indentation = line.match(/^( *)\S/);
     if (!indentation) continue;
     const indent = indentation[1].length;
@@ -563,14 +565,17 @@ function collectRubySourceDeclarations(content) {
     if (!methodMatch) continue;
     const scope = stack.at(-1);
     const directScope = scope && indent === scope.indent + 2;
+    let directSingletonDeclaration;
     if (directScope && scope.kind === "constant" && methodMatch[2]) {
       const declaration = declarations.get(scope.constant);
       declaration?.singletonMethods.add(methodMatch[3]);
       if (methodMatch[3] === "new") declaration.hasDirectSingletonNew = true;
+      directSingletonDeclaration = declaration;
     } else if (directScope && scope.kind === "singleton" && !methodMatch[2]) {
       const declaration = declarations.get(scope.constant);
       declaration?.singletonMethods.add(methodMatch[3]);
       if (methodMatch[3] === "new") declaration.hasDirectSingletonNew = true;
+      directSingletonDeclaration = declaration;
     } else if (
       directScope &&
       scope.kind === "constant" &&
@@ -583,6 +588,16 @@ function collectRubySourceDeclarations(content) {
     } else if (directScope && scope.kind === "constant" && !methodMatch[2]) {
       declarations.get(scope.constant)?.instanceMethods.add(methodMatch[3]);
     }
+    if (directSingletonDeclaration && methodMatch[3] !== "new") {
+      const close = findRubyIndentedEnd(lines, index, indent);
+      const body = close === -1
+        ? ""
+        : lines.slice(index + 1, close).filter((bodyLine) => bodyLine.trim()).join("\n");
+      const constructorPattern = /^\s*(?:self\s*\.\s*)?new(?![A-Za-z0-9_!?=])/;
+      if (body && isDirectRubyCallExpression(body, constructorPattern)) {
+        directSingletonDeclaration.constructorFactoryMethods.add(methodMatch[3]);
+      }
+    }
     stack.push({ indent, kind: "method" });
   }
   return new Map(
@@ -592,7 +607,8 @@ function collectRubySourceDeclarations(content) {
         ...declaration,
         declarationKinds: new Set([...declaration.declarationKinds].sort()),
         singletonMethods: new Set([...declaration.singletonMethods].sort()),
-        instanceMethods: new Set([...declaration.instanceMethods].sort())
+        instanceMethods: new Set([...declaration.instanceMethods].sort()),
+        constructorFactoryMethods: new Set([...declaration.constructorFactoryMethods].sort())
       }])
   );
 }
@@ -602,6 +618,7 @@ function emptyRubyDeclarations() {
     declarationKinds: new Set(),
     singletonMethods: new Set(),
     instanceMethods: new Set(),
+    constructorFactoryMethods: new Set(),
     hasDirectInitializer: false,
     hasDirectSingletonNew: false
   };
@@ -613,12 +630,20 @@ function collectRubyRunnableBodies(testFile, maskedContent) {
   const hasRSpecMemoizedDeclaration = testFile.framework === "rspec" && lines.some((line) => (
     /^\s*(?:let|subject)!?\s*(?:\(|\{|do\b)/.test(line)
   ));
-  const rspecGroups = hasRSpecMemoizedDeclaration ? collectRubyRSpecGroupRanges(lines) : [];
-  const sharedGroups = hasRSpecMemoizedDeclaration ? collectRubyRSpecSharedRanges(lines) : [];
+  const hasRSpecHelperDeclaration = testFile.framework === "rspec" && lines.some((line) => (
+    /^\s*def\s+[a-z_][A-Za-z0-9_]*[!?]?\s*(?:\([^)]*\))?\s*$/.test(line)
+  ));
+  const hasRSpecOwnedDeclaration = hasRSpecMemoizedDeclaration || hasRSpecHelperDeclaration;
+  const rspecGroups = hasRSpecOwnedDeclaration ? collectRubyRSpecGroupRanges(lines) : [];
+  const sharedGroups = hasRSpecOwnedDeclaration ? collectRubyRSpecSharedRanges(lines) : [];
   const memoizedDeclarations = hasRSpecMemoizedDeclaration
     ? collectRubyRSpecMemoizedDeclarations(lines, rspecGroups, sharedGroups)
     : [];
   const hasOwnedMemoizedDeclaration = memoizedDeclarations.some((declaration) => declaration.constant);
+  const helperDeclarations = hasRSpecHelperDeclaration
+    ? collectRubyRSpecHelperDeclarations(lines, rspecGroups, sharedGroups)
+    : [];
+  const hasOwnedHelperDeclaration = helperDeclarations.some((declaration) => declaration.constant);
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index];
     if (testFile.framework === "minitest") {
@@ -641,10 +666,24 @@ function collectRubyRunnableBodies(testFile, maskedContent) {
         memoizedDeclarations
       )
       : new Map();
+    const helperReceivers = hasOwnedHelperDeclaration
+      ? collectRubyRSpecHelperReceivers(
+        index,
+        describedConstant,
+        rspecGroups,
+        sharedGroups,
+        helperDeclarations
+      )
+      : new Map();
     const openBrace = line.indexOf("{");
     const closeBrace = line.lastIndexOf("}");
     if (openBrace !== -1 && closeBrace > openBrace) {
-      bodies.push({ content: line.slice(openBrace + 1, closeBrace), describedConstant, memoizedReceivers });
+      bodies.push({
+        content: line.slice(openBrace + 1, closeBrace),
+        describedConstant,
+        memoizedReceivers,
+        helperReceivers
+      });
       continue;
     }
     if (!/\bdo\b/.test(line)) continue;
@@ -653,7 +692,8 @@ function collectRubyRunnableBodies(testFile, maskedContent) {
       bodies.push({
         content: lines.slice(index + 1, close).join("\n"),
         describedConstant,
-        memoizedReceivers
+        memoizedReceivers,
+        helperReceivers
       });
     }
   }
@@ -668,7 +708,7 @@ function collectRubyRSpecGroupRanges(lines) {
     );
     if (!group) continue;
     const close = findRubyIndentedEnd(lines, index, group[1].length);
-    if (close !== -1) groups.push({ start: index, close });
+    if (close !== -1) groups.push({ start: index, close, indent: group[1].length });
   }
   return groups;
 }
@@ -681,7 +721,7 @@ function collectRubyRSpecSharedRanges(lines) {
     );
     if (!shared) continue;
     const close = findRubyIndentedEnd(lines, index, shared[1].length);
-    if (close !== -1) groups.push({ start: index, close });
+    if (close !== -1) groups.push({ start: index, close, indent: shared[1].length });
   }
   return groups;
 }
@@ -764,6 +804,81 @@ function collectRubyRSpecMemoizedReceivers(
   return receiversByConstant;
 }
 
+function collectRubyRSpecHelperDeclarations(lines, groups, sharedGroups) {
+  const declarations = [];
+  for (let index = 0; index < lines.length; index += 1) {
+    const helper = lines[index].match(
+      /^( *)def\s+([a-z_][A-Za-z0-9_]*[!?]?)\s*(?:\([^)]*\))?\s*$/
+    );
+    if (!helper || sharedGroups.some((group) => rubyRangeContains(group, index))) continue;
+    const declarationGroups = groups.filter((group) => rubyRangeContains(group, index));
+    const nearestGroup = declarationGroups.at(-1);
+    if (!nearestGroup || helper[1].length !== nearestGroup.indent + 2) continue;
+    const close = findRubyIndentedEnd(lines, index, helper[1].length);
+    if (close === -1) continue;
+
+    const expression = lines
+      .slice(index + 1, close)
+      .filter((line) => line.trim())
+      .join("\n");
+    const constructor = expression.match(
+      /^\s*((?:::)?[A-Z][A-Za-z0-9_]*(?:::[A-Z][A-Za-z0-9_]*)*|described_class)\s*\.\s*new(?![A-Za-z0-9_!?=])/
+    );
+    let constant;
+    let usesDescribedClass = false;
+    if (constructor) {
+      const constructorPattern = new RegExp(
+        `^\\s*${escapeRegex(constructor[1])}\\s*\\.\\s*new(?![A-Za-z0-9_!?=])`
+      );
+      if (isDirectRubyCallExpression(expression, constructorPattern)) {
+        usesDescribedClass = constructor[1] === "described_class";
+        constant = usesDescribedClass
+          ? findRubyRSpecDescribedConstant(lines, index)
+          : constructor[1].replace(/^::/, "");
+      }
+    }
+    declarations.push({
+      constant,
+      depth: declarationGroups.length,
+      groups: declarationGroups,
+      index,
+      name: helper[2],
+      usesDescribedClass
+    });
+  }
+  return declarations;
+}
+
+function collectRubyRSpecHelperReceivers(
+  exampleIndex,
+  describedConstant,
+  groups,
+  sharedGroups,
+  declarations
+) {
+  if (sharedGroups.some((group) => rubyRangeContains(group, exampleIndex))) return new Map();
+  const exampleGroups = groups.filter((group) => rubyRangeContains(group, exampleIndex));
+  const winners = new Map();
+  for (const declaration of declarations) {
+    if (declaration.groups.some((group) => !exampleGroups.includes(group))) continue;
+    const current = winners.get(declaration.name);
+    if (!current || declaration.depth > current.depth || (
+      declaration.depth === current.depth && declaration.index > current.index
+    )) {
+      winners.set(declaration.name, declaration);
+    }
+  }
+
+  const receiversByConstant = new Map();
+  for (const [receiver, winner] of winners) {
+    if (!winner.constant || (winner.usesDescribedClass && winner.constant !== describedConstant)) continue;
+    const receivers = receiversByConstant.get(winner.constant) ?? new Set();
+    receivers.add(receiver);
+    receiversByConstant.set(winner.constant, receivers);
+  }
+  return receiversByConstant;
+}
+
 function rubyRangeContains(range, index) {
   return range.start < index && range.close > index;
 }
@@ -834,7 +949,14 @@ function findRubyConstantUsage(runnableBodies, constant, declarations, framework
     }
     usage = strongerRubyUsage(
       usage,
-      findRubyConstructedLocalUsage(lines, receiverPattern, declarations, framework, deferredLines)
+      findRubyConstructedLocalUsage(
+        lines,
+        receiverPattern,
+        body.helperReceivers?.get(constant) ?? new Set(),
+        declarations,
+        framework,
+        deferredLines
+      )
     );
     usage = strongerRubyUsage(
       usage,
@@ -851,7 +973,14 @@ function findRubyConstantUsage(runnableBodies, constant, declarations, framework
   return usage;
 }
 
-function findRubyConstructedLocalUsage(lines, receiverPattern, declarations, framework, deferredLines) {
+function findRubyConstructedLocalUsage(
+  lines,
+  receiverPattern,
+  helperReceivers,
+  declarations,
+  framework,
+  deferredLines
+) {
   if (
     !declarations.hasDirectInitializer ||
     declarations.hasDirectSingletonNew ||
@@ -862,8 +991,13 @@ function findRubyConstructedLocalUsage(lines, receiverPattern, declarations, fra
     return undefined;
   }
 
+  const constructorMethods = ["new", ...declarations.constructorFactoryMethods]
+    .map(escapeRegex)
+    .join("|");
+  const receiverConstructor = `${receiverPattern}\\s*\\.\\s*(?:${constructorMethods})`;
+  const helperConstructor = [...helperReceivers].map(escapeRegex).join("|");
   const constructorPattern = new RegExp(
-    `^\\s*${receiverPattern}\\s*\\.\\s*new(?![A-Za-z0-9_!?=])`
+    `^\\s*(?:${receiverConstructor}${helperConstructor ? `|(?:${helperConstructor})` : ""})(?![A-Za-z0-9_!?=])`
   );
   let usage;
   for (const binding of collectStableRubyConstructorBindings(lines, constructorPattern, deferredLines)) {

@@ -554,13 +554,217 @@ describe("Ruby audit adapter", () => {
     }]);
   });
 
+  it("tracks exact source-factory and same-group RSpec helper constructor receivers", (t) => {
+    const root = createRubyRepo(t, {
+      Gemfile: 'gem "rspec"\n',
+      "lib/factory_client.rb": [
+        "class FactoryClient",
+        "  def self.build(value)",
+        "    new(value)",
+        "  end",
+        "",
+        "  def initialize(value)",
+        "    @value = value",
+        "  end",
+        "",
+        "  def fetch",
+        "    @value",
+        "  end",
+        "end",
+        ""
+      ].join("\n"),
+      "lib/helper_client.rb": [
+        "class HelperClient",
+        "  def initialize(value)",
+        "    @value = value",
+        "  end",
+        "",
+        "  def fetch",
+        "    @value",
+        "  end",
+        "end",
+        ""
+      ].join("\n"),
+      "lib/named_helper_client.rb": [
+        "class NamedHelperClient",
+        "  def initialize(value)",
+        "    @value = value",
+        "  end",
+        "",
+        "  def fetch",
+        "    @value",
+        "  end",
+        "end",
+        ""
+      ].join("\n"),
+      "lib/scoped_factory_client.rb": [
+        "class ScopedFactoryClient",
+        "  class << self",
+        "    def build(value)",
+        "      self.new(value)",
+        "    end",
+        "  end",
+        "",
+        "  def initialize(value)",
+        "    @value = value",
+        "  end",
+        "",
+        "  def fetch",
+        "    @value",
+        "  end",
+        "end",
+        ""
+      ].join("\n"),
+      "spec/receiver_returns_spec.rb": [
+        'require_relative "../lib/factory_client"',
+        'require_relative "../lib/helper_client"',
+        'require_relative "../lib/named_helper_client"',
+        'require_relative "../lib/scoped_factory_client"',
+        "RSpec.describe FactoryClient do",
+        '  it "uses an exact source factory return" do',
+        "    client = described_class.build(:factory)",
+        "    result = client.fetch",
+        "    expect(result).to eq(:factory)",
+        "  end",
+        "end",
+        "",
+        "RSpec.describe NamedHelperClient do",
+        "  def build_named_client(value)",
+        "    NamedHelperClient.new(value)",
+        "  end",
+        "",
+        '  it "uses an exact named helper return" do',
+        "    client = build_named_client(:named)",
+        "    result = client.fetch",
+        "    expect(result).to eq(:named)",
+        "  end",
+        "end",
+        "",
+        "RSpec.describe ScopedFactoryClient do",
+        '  it "uses an exact singleton-scope factory return" do',
+        "    client = described_class.build(:scoped)",
+        "    result = client.fetch",
+        "    expect(result).to eq(:scoped)",
+        "  end",
+        "end",
+        "",
+        "RSpec.describe HelperClient do",
+        "  def build_client(value)",
+        "    described_class.new(value)",
+        "  end",
+        "",
+        '  context "with an inherited exact helper" do',
+        '    it "uses the helper return" do',
+        "      client = build_client(:helper)",
+        "      result = client.fetch",
+        "      expect(result).to eq(:helper)",
+        "    end",
+        "  end",
+        "end",
+        ""
+      ].join("\n")
+    });
+
+    const audit = auditRubyRepo(root);
+
+    assert.deepEqual(
+      audit.coveredButRisky.map((target) => [target.path, target.existingTestEvidence[0].usage]),
+      [
+        ["lib/factory_client.rb", "asserted"],
+        ["lib/helper_client.rb", "asserted"],
+        ["lib/named_helper_client.rb", "asserted"],
+        ["lib/scoped_factory_client.rb", "asserted"]
+      ]
+    );
+  });
+
+  it("rejects chained, multi-statement, overridden, and cross-owner receiver returns", (t) => {
+    const root = createRubyRepo(t, {
+      Gemfile: 'gem "rspec"\n',
+      "lib/chained_factory.rb": "class ChainedFactory\n  def self.build\n    new.tap {}\n  end\n  def initialize; end\n  def fetch\n    :chained\n  end\nend\n",
+      "lib/cross_owner.rb": "class CrossOwner\n  def initialize; end\n  def fetch\n    :cross\n  end\nend\n",
+      "lib/helper_override.rb": "class HelperOverride\n  def initialize; end\n  def fetch\n    :override\n  end\nend\n",
+      "lib/multi_statement_factory.rb": "class MultiStatementFactory\n  def self.build\n    client = new\n    client\n  end\n  def initialize; end\n  def fetch\n    :multiple\n  end\nend\n",
+      "lib/multi_statement_helper.rb": "class MultiStatementHelper\n  def initialize; end\n  def fetch\n    :multiple\n  end\nend\n",
+      "lib/nested_owner.rb": "class NestedOwner\n  def initialize; end\n  def fetch\n    :nested\n  end\nend\n",
+      "spec/rejected_receiver_returns_spec.rb": [
+        'require_relative "../lib/chained_factory"',
+        'require_relative "../lib/cross_owner"',
+        'require_relative "../lib/helper_override"',
+        'require_relative "../lib/multi_statement_factory"',
+        'require_relative "../lib/multi_statement_helper"',
+        'require_relative "../lib/nested_owner"',
+        "RSpec.describe ChainedFactory do",
+        '  it "rejects a chained factory return" do',
+        "    client = described_class.build",
+        "    result = client.fetch",
+        "    expect(result).to eq(:chained)",
+        "  end",
+        "end",
+        "",
+        "RSpec.describe MultiStatementFactory do",
+        '  it "rejects a multi-statement factory return" do',
+        "    client = described_class.build",
+        "    result = client.fetch",
+        "    expect(result).to eq(:multiple)",
+        "  end",
+        "end",
+        "",
+        "RSpec.describe MultiStatementHelper do",
+        "  def build_client",
+        "    client = described_class.new",
+        "    client",
+        "  end",
+        '  it("rejects helper setup") { client = build_client; expect(client.fetch).to eq(:multiple) }',
+        "end",
+        "",
+        "RSpec.describe HelperOverride do",
+        "  def build_client",
+        "    described_class.new",
+        "  end",
+        '  context "with an unknown override" do',
+        "    def build_client",
+        "      Object.new",
+        "    end",
+        '    it("rejects the outer identity") { client = build_client; expect(client.fetch).to eq(:override) }',
+        "  end",
+        "end",
+        "",
+        "RSpec.describe CrossOwner do",
+        "  def build_client",
+        "    described_class.new",
+        "  end",
+        "",
+        "  describe NestedOwner do",
+        '    it("rejects dynamic nested ownership") { client = build_client; expect(client.fetch).to eq(:nested) }',
+        "  end",
+        "end",
+        ""
+      ].join("\n")
+    });
+
+    const audit = auditRubyRepo(root);
+    const usage = Object.fromEntries(
+      audit.coveredButRisky.map((target) => [target.path, target.existingTestEvidence[0].usage ?? "reference-only"])
+    );
+
+    assert.deepEqual(usage, {
+      "lib/chained_factory.rb": "called",
+      "lib/cross_owner.rb": "reference-only",
+      "lib/helper_override.rb": "reference-only",
+      "lib/multi_statement_factory.rb": "called",
+      "lib/multi_statement_helper.rb": "reference-only",
+      "lib/nested_owner.rb": "reference-only"
+    });
+  });
+
   it("keeps unstable, indirect, deferred, dynamic, and generated receiver calls at constructor-only usage", (t) => {
     const root = createRubyRepo(t, {
       Gemfile: 'gem "rspec"\n',
       "lib/attribute_client.rb": "class AttributeClient\n  attr_reader :fetch\n  def initialize\n    @fetch = :ok\n  end\nend\n",
       "lib/deferred_client.rb": "class DeferredClient\n  def initialize; end\n  def fetch\n    :ok\n  end\nend\n",
       "lib/dynamic_client.rb": "class DynamicClient\n  def initialize; end\n  def fetch\n    :ok\n  end\nend\n",
-      "lib/factory_client.rb": "class FactoryClient\n  def self.build\n    new\n  end\n  def initialize; end\n  def fetch\n    :ok\n  end\nend\n",
+      "lib/factory_client.rb": "class FactoryClient\n  def self.build\n    new.fetch\n  end\n  def initialize; end\n  def fetch\n    :ok\n  end\nend\n",
       "lib/helper_client.rb": "class HelperClient\n  def initialize; end\n  def fetch\n    :ok\n  end\nend\n",
       "lib/overridden_client.rb": "class OverriddenClient\n  def self.new\n    Object.new\n  end\n  def initialize; end\n  def fetch\n    :ok\n  end\nend\n",
       "lib/reassigned_client.rb": "class ReassignedClient\n  def initialize; end\n  def fetch\n    :ok\n  end\nend\n",
@@ -582,7 +786,7 @@ describe("Ruby audit adapter", () => {
         'require_relative "../lib/wrapped_client"',
         "RSpec.describe ReassignedClient do",
         "  def helper_client",
-        "    HelperClient.new",
+        "    normalize(HelperClient.new)",
         "  end",
         "",
         '  it "keeps receiver identity bounded" do',

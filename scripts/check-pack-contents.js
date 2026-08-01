@@ -50,6 +50,7 @@ export const requiredFiles = [
   "docs/ruby-alpha-support.md",
   "docs/ruby-factory-bot-validation-report.md",
   "docs/ruby-faraday-validation-report.md",
+  "docs/ruby-helper-return-validation-report.md",
   "docs/ruby-rubyzip-validation-report.md",
   "examples/go-testing-basic/go.mod",
   "examples/csharp-sdk-xunit-basic/CheckoutRules.Tests.csproj",
