@@ -2,6 +2,14 @@
 
 This log records project-level decisions that shape architecture, scope, and public positioning.
 
+## Ruby Multi-Gemspec Ownership Requires A Complete Exact Named Set
+
+Decision: treat multiple root gemspecs as one conventional Bundler gem project only when the root `Gemfile` contains exactly one top-level literal `gemspec name: "NAME"` or `gemspec(name: "NAME")` declaration for every root gemspec and no other gemspec declaration. Each selected name must match one unique exact static gem name declared by `spec.name = "NAME"` or the first literal argument to `Gem::Specification.new`. Admit all root gemspecs as setup, test-dependency, command, and `lib/` load-path ownership together. Keep partial, duplicate, unknown, nested, computed, path-based, hash-rocket, extra-option, or dynamically named sets blocked.
+
+Rationale: pinned Diplomat contains `diplomat.gemspec` and `diplomatic_bag.gemspec`, selects both by exact name, and passes 281 RSpec examples. The rule removes its only blocker, changes confidence from medium to high, classifies it as a Ruby gem, and selects `bundle exec rspec` while preserving the 9 untested, 20 covered, 3 skipped, and 20 naming-only relationship graph. Five before and after audits are independently digest-stable. Database Cleaner deliberately selects only one of its two root gemspecs and therefore remains blocked until per-gem source ownership can be proven.
+
+Revisit when: a pinned repository justifies exact `development_group` or hash-rocket syntax, path-owned gemspecs, partial root selection with statically separable source ownership, or a broader Bundler aggregate without executing gemspec code.
+
 ## Ruby RSpec Memoized Receivers Require Exact One-Line Constructors
 
 Decision: inside a runnable RSpec `it` or `specify` body, allow a receiver declared by exact one-line `let(:name) { Constant.new(...) }`, `let(:name) { described_class.new(...) }`, named `subject(:name) { ... }`, or unnamed `subject { ... }` to gain the existing direct instance-method and assertion usage. The declaration and example must share a normal `describe` or `context` scope; the nearest declaration wins, including an unsupported inner declaration that blocks an outer exact binding. Named subjects expose both their declared helper and `subject`. Preserve direct `initialize` and instance-method ownership, `.new` override rejection, example-local reassignment or block-shadow rejection, and exact `described_class` group ownership. Do not credit eager, multiline, chained, block-bearing, aliased, computed, shared-example, or implicit-matcher forms.
@@ -44,7 +52,7 @@ Revisit when: broader RSpec pressure or another pinned gem justifies instance re
 
 ## Ruby Constant Evidence Requires Exact Bounded Load Reachability
 
-Decision: emit `ruby-constant-reference` only when a runnable test visibly references one space-indented class/module constant with a unique owner among source files reached through at most three literal repository-owned `require` or `require_relative` edges. Bare requires resolve through `lib/` only when one root gemspec is statically included by the root Gemfile; relative requires resolve from their owning file. A direct source require is `direct`; helper or entrypoint reachability is `referenced`; no call/assertion usage is inferred.
+Decision: emit `ruby-constant-reference` only when a runnable test visibly references one space-indented class/module constant with a unique owner among source files reached through at most three literal repository-owned `require` or `require_relative` edges. Bare requires resolve through `lib/` only when one root gemspec, or one complete exact named root-gemspec set, is statically included by the root Gemfile; relative requires resolve from their owning file. A direct source require is `direct`; helper or entrypoint reachability is `referenced`; no call/assertion usage is inferred.
 
 Rationale: the pinned rubyzip load path is explicit—tests require `test_helper`, the helper requires `zip`, and the entrypoint requires owned source files. Combining that finite graph with exact constant text recovers `lib/zip/file.rb` despite a duplicate basename while keeping the internal `lib/zip/filesystem/file.rb` uncredited because tests do not reference its owned constant. Five runs move the audit from 23/19 to 19/23 untested/covered with 80 relationships and one canonical digest; multiple reachable reopenings, computed loads, partial names, and a fourth edge remain rejected.
 

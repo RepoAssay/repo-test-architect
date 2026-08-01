@@ -172,6 +172,7 @@ function buildProfile(root, files, sourceFiles, runnableTests) {
   const rspecOptions = files.find((file) => file.path === ".rspec");
   const rakefile = files.find((file) => file.path === "Rakefile");
   const gemspecs = files.filter((file) => !file.path.includes("/") && file.path.endsWith(".gemspec"));
+  const rootGemspecOwnership = analyzeRootGemspecOwnership(gemfile?.content ?? "", gemspecs);
   const conventionalTestTask = detectConventionalTestTask(rakefile?.content ?? "");
   const frameworks = [...new Set(runnableTests.map((file) => file.framework))].sort();
   const declaredFrameworks = detectDeclaredFrameworks(
@@ -185,7 +186,9 @@ function buildProfile(root, files, sourceFiles, runnableTests) {
   if (sourceFiles.length === 0) blockers.push("No conventional Ruby source files detected under lib/.");
   if (runnableTests.length === 0) blockers.push("No runnable conventional Minitest or RSpec test detected.");
   if (frameworks.length > 1) blockers.push("Mixed Minitest and RSpec execution is outside the first bounded Ruby command matrix.");
-  if (gemspecs.length > 1) blockers.push("Multiple root gemspecs require explicit Ruby package ownership.");
+  if (gemspecs.length > 1 && !rootGemspecOwnership.complete) {
+    blockers.push("Multiple root gemspecs require a complete set of exact top-level Gemfile name declarations.");
+  }
   for (const framework of frameworks) {
     if (!declaredFrameworks.has(framework)) {
       blockers.push(`${frameworkName(framework)} must be statically declared in Gemfile, Gemfile.lock, or the root gemspec before command ownership is complete.`);
@@ -202,12 +205,17 @@ function buildProfile(root, files, sourceFiles, runnableTests) {
   if (sourceFiles.length > 0) detectedConventions.push("lib/ source layout");
   if (existingTestLocations.includes("test/ Minitest files")) detectedConventions.push("*_test.rb naming");
   if (existingTestLocations.includes("spec/ RSpec files")) detectedConventions.push("*_spec.rb naming");
+  if (gemspecs.length > 1 && rootGemspecOwnership.complete) {
+    detectedConventions.push("complete named root gemspec ownership");
+  }
   if (conventionalTestTask) detectedConventions.push(`${conventionalTestTask} test command`);
   const setupSignals = [];
   if (gemfile) setupSignals.push("Gemfile");
   if (lockfile) setupSignals.push("Gemfile.lock");
   if (rspecOptions) setupSignals.push(".rspec");
-  if (gemspecs.length === 1) setupSignals.push(gemspecs[0].path);
+  if (gemspecs.length === 1 || rootGemspecOwnership.complete) {
+    setupSignals.push(...gemspecs.map((gemspec) => gemspec.path));
+  }
   if (rakefile) setupSignals.push("Rakefile");
   const testCommand = blockers.length === 0
     ? selectTestCommand(frameworks[0], conventionalTestTask)
@@ -218,7 +226,9 @@ function buildProfile(root, files, sourceFiles, runnableTests) {
     languages: ["ruby"],
     packageManagers: gemfile ? ["bundler"] : [],
     testFrameworks: frameworks,
-    architectures: gemspecs.length === 1 ? ["ruby-gem"] : ["ruby-application"],
+    architectures: gemspecs.length === 1 || rootGemspecOwnership.complete
+      ? ["ruby-gem"]
+      : ["ruby-application"],
     ...(testCommand ? { testCommand } : {}),
     detectedConventions,
     existingTestLocations,
@@ -226,6 +236,61 @@ function buildProfile(root, files, sourceFiles, runnableTests) {
     confidence: scoreProfileConfidence(gemfile, sourceFiles, runnableTests, blockers),
     blockers
   };
+}
+
+function analyzeRootGemspecOwnership(gemfileContent, rootGemspecs) {
+  const hasGemspecDeclaration = /^\s*gemspec(?:\s|\()/m.test(
+    maskRubyCommentsAndStrings(gemfileContent)
+  );
+  if (rootGemspecs.length <= 1) {
+    return {
+      complete: rootGemspecs.length === 1,
+      hasBundledLibraryLoadPath: rootGemspecs.length === 1 && hasGemspecDeclaration
+    };
+  }
+
+  const declarationLines = gemfileContent
+    .split(/\r?\n/)
+    .filter((line) => /^\s*gemspec(?:\s|\()/.test(line));
+  const selectedNames = declarationLines
+    .map(matchExactRootGemspecNameDeclaration)
+    .filter(Boolean);
+  const rootNames = rootGemspecs.map((gemspec) => findExactRootGemspecName(gemspec.content));
+  const complete = declarationLines.length === rootGemspecs.length &&
+    selectedNames.length === declarationLines.length &&
+    rootNames.every(Boolean) &&
+    new Set(rootNames).size === rootNames.length &&
+    new Set(selectedNames).size === selectedNames.length &&
+    selectedNames.every((name) => rootNames.includes(name)) &&
+    rootNames.every((name) => selectedNames.includes(name));
+  return { complete, hasBundledLibraryLoadPath: complete };
+}
+
+function findExactRootGemspecName(content) {
+  const names = [];
+  for (const line of content.split(/\r?\n/)) {
+    const constructor = line.match(
+      /^\s*Gem::Specification\.new\s*(?:\(\s*)?(["'])([A-Za-z0-9_.-]+)\1(?:\s*,|\s*\))/
+    );
+    const assignment = line.match(
+      /^\s*[a-z_][A-Za-z0-9_]*\.name\s*=\s*(["'])([A-Za-z0-9_.-]+)\1\s*(?:#.*)?$/
+    );
+    if (constructor) names.push(constructor[2]);
+    if (assignment) names.push(assignment[2]);
+  }
+  const uniqueNames = [...new Set(names)];
+  return uniqueNames.length === 1 ? uniqueNames[0] : undefined;
+}
+
+function matchExactRootGemspecNameDeclaration(line) {
+  const direct = line.match(
+    /^gemspec\s+name:\s*(["'])([A-Za-z0-9_.-]+)\1\s*(?:#.*)?$/
+  );
+  if (direct) return direct[2];
+  const parenthesized = line.match(
+    /^gemspec\(\s*name:\s*(["'])([A-Za-z0-9_.-]+)\1\s*\)\s*(?:#.*)?$/
+  );
+  return parenthesized?.[2];
 }
 
 function detectDeclaredFrameworks(gemfileContent, lockfileContent, gemspecContents) {
@@ -282,9 +347,10 @@ function detectConventionalTestTask(content) {
 function collectRubyTestEvidence(files, sourceFiles, runnableTests) {
   const gemfile = files.find((file) => file.path === "Gemfile");
   const rootGemspecs = files.filter((file) => !file.path.includes("/") && file.path.endsWith(".gemspec"));
-  const hasBundledLibraryLoadPath = rootGemspecs.length === 1 && /^\s*gemspec(?:\s|$)/m.test(
-    maskRubyCommentsAndStrings(gemfile?.content ?? "")
-  );
+  const hasBundledLibraryLoadPath = analyzeRootGemspecOwnership(
+    gemfile?.content ?? "",
+    rootGemspecs
+  ).hasBundledLibraryLoadPath;
   const rubyFilesByPath = new Map(
     files
       .filter((file) => file.path.endsWith(RUBY_SOURCE_EXTENSION))
