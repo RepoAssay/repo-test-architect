@@ -111,7 +111,7 @@ describe("MCP tool definitions", () => {
     assert.deepEqual(projects.audits[0].audit, direct);
   });
 
-  it("calls the experimental PHP adapter through direct and project MCP tools", () => {
+  it("calls the supported PHP adapter through direct and project MCP tools", () => {
     const repoRoot = path.resolve("examples/php-phpunit-basic");
     const direct = callTool("audit_repo", { repoRoot, adapterId: "php" });
     const projects = callTool("audit_projects", { repoRoot });

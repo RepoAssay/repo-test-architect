@@ -62,7 +62,7 @@ export function summarizeCorpusRuns(runs) {
   const firstAudit = runs[0].audit;
   const auditDurationSamplesMs = runs.map(({ durationMs }) => Math.max(0, Math.round(durationMs)));
   return {
-    testCommand: firstAudit.profile.testCommand,
+    testCommand: firstAudit.profile.testCommand ?? null,
     untestedCandidates: firstAudit.untestedCandidates.length,
     coveredButRisky: firstAudit.coveredButRisky.length,
     skippedTargets: firstAudit.skipped.length,

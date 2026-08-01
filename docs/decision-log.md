@@ -2,6 +2,14 @@
 
 This log records project-level decisions that shape architecture, scope, and public positioning.
 
+# PHP Promotes To Supported At Its Bounded Composer Boundary
+
+Decision: promote PHP from experimental to supported while retaining the exact Composer/PSR-4/PHPUnit ownership, command, evidence, and blocker boundaries in the PHP support matrix. Extend `validation-corpus/v1` so `observed.testCommand` may be `null` when command review proves that execution must be withheld.
+
+Rationale: brick/math, Guzzle, and Ramsey UUID now fill the conventional-library/service, framework-heavy, and difficult-ownership corpus roles. Fresh five-run measurements are digest-stable at `7 / 14 / 1` with 34 relationships and a 32 ms median, `12 / 39 / 17` with 112 relationships and an 83 ms median, and `29 / 54 / 31` with 168 relationships and a 32 ms median. All 21 PHP detection, ownership, command, evidence, ranking, stability, and performance areas pass. The command score correctly represents two negative controls: brick/math withholds a bootstrap-dependent command and Guzzle withholds bare PHPUnit that omits service orchestration; Ramsey UUID selects its proven `composer test` graph. Their repository-native workflows pass, and the generated 400-source/200-test gate, native fixture, shared conformance, implementation coverage, golden/model-consistency artifacts, packaging, and cross-platform checks match the existing supported adapters.
+
+Revisit when: a supported-boundary repository produces a false ownership, command, or evidence claim, or when another bounded Composer, PHPUnit, Pest, or framework shape has exact live proof strong enough to widen the matrix.
+
 # Minitest Spec Discovery And Custom Suite Commands Stay Coupled
 
 Decision: keep Minitest's bare `describe`/`it` spec DSL and repository-specific setup-partitioned suite commands outside the Ruby supported boundary until both can be owned together. Do not remove the runnable-test blocker merely because a `test/**/*_test.rb` file contains spec-like syntax.

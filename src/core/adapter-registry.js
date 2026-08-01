@@ -102,7 +102,7 @@ export const adapters = [
     id: "php",
     ecosystems: ["php"],
     languages: ["php"],
-    maturity: "experimental",
+    maturity: "supported",
     supportedTestFrameworks: ["phpunit"],
     supportedProjectTypes: ["composer-psr4"],
     emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"],

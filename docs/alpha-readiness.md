@@ -29,11 +29,11 @@ Run the deterministic alpha gate with:
 npm run alpha:check
 ```
 
-This verifies the test suite, adapter implementation coverage, pinned adapter-corpus contract, generated performance/evidence regression for all eight supported adapters plus experimental PHP, golden audit artifacts, model-consistency locks, public demo path, and local MCP transport. Package publishing checks remain part of `release:check`, not the alpha gate.
+This verifies the test suite, adapter implementation coverage, pinned adapter-corpus contract, generated performance/evidence regression for all nine supported adapters, golden audit artifacts, model-consistency locks, public demo path, and local MCP transport. Package publishing checks remain part of `release:check`, not the alpha gate.
 
 ### Current Readiness Verdict
 
-The deterministic gate passes locally. Repo Test Architect's public-alpha claim is limited to the explicitly detected patterns in the [JavaScript/TypeScript Alpha Support](javascript-typescript-alpha-support.md), [C# Alpha Support](csharp-alpha-support.md), [Go Alpha Support](go-alpha-support.md), [Kotlin/JVM Alpha Support](kotlin-jvm-alpha-support.md), [Python Alpha Support](python-alpha-support.md), [Ruby Alpha Support](ruby-alpha-support.md), [Rust Alpha Support](rust-alpha-support.md), and [Swift Alpha Support](swift-alpha-support.md) matrices, subject to human review of the real-repository reports.
+The deterministic gate passes locally. Repo Test Architect's public-alpha claim is limited to the explicitly detected patterns in the [JavaScript/TypeScript Alpha Support](javascript-typescript-alpha-support.md), [C# Alpha Support](csharp-alpha-support.md), [Go Alpha Support](go-alpha-support.md), [Kotlin/JVM Alpha Support](kotlin-jvm-alpha-support.md), [PHP Alpha Support](php-alpha-support.md), [Python Alpha Support](python-alpha-support.md), [Ruby Alpha Support](ruby-alpha-support.md), [Rust Alpha Support](rust-alpha-support.md), and [Swift Alpha Support](swift-alpha-support.md) matrices, subject to human review of the real-repository reports.
 
 This verdict does not mean:
 
@@ -77,7 +77,7 @@ The protected `master` branch requires the stable Linux `pr-gate`. Normal alpha 
 
 ### Trust And Review UX
 
-- shared adapter conformance keeps direct audits and every project-aware downstream artifact aligned for all eight supported adapters; the completed [cross-adapter trust review](cross-adapter-trust-report.md) records the original broader pipeline review
+- shared adapter conformance keeps direct audits and every project-aware downstream artifact aligned for all nine supported adapters; the completed [cross-adapter trust review](cross-adapter-trust-report.md) records the original broader pipeline review
 - one command can produce a concise repo-level summary of top findings
 - each top finding links back to the source target, matching tests if any, rationale, and recommended test level
 - low-confidence or blocked projects are clearly separated from high-confidence recommendations

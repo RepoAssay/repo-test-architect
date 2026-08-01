@@ -104,6 +104,8 @@ The command selected by the final audit is the same committed-lock workflow alre
 
 ## Remaining Uncertainty
 
+The supported-promotion measurement reran the exact checkout five times through `corpus:measure`. It retains the `29 / 54 / 31` candidate split, 168 relationships, `composer test`, and canonical digest `ecd0a9600b242d728580780853c2b4e64897c5cbff9d0686cb51e3370faba2f3` with samples `89, 35, 32, 30, 31` ms and a 32 ms median.
+
 Composer event scripts, environment mutation, plugin behavior, shell evaluation, arbitrary executables, arguments containing shell metacharacters, aliases with forwarded arguments, platform portability beyond the selected command, and multiple command owners remain excluded.
 
 Direct function-call evidence remains unavailable, so Ramsey's eight namespaced UUID helper functions do not receive coverage credit from naming or class-call heuristics. General Composer file autoloading outside an owned PSR-4 source root, global-namespace functions, multi-namespace files, mixed declarations, generated file lists, and runtime inclusion semantics remain excluded.
