@@ -14,8 +14,9 @@ export function auditPhpRepo(root, options = {}) {
   const sourceFiles = files.filter((file) => ownership.sourceRoots.some((sourceRoot) => isUnderRoot(file.path, sourceRoot)));
   const testFiles = files.filter((file) => ownership.testRoots.some((testRoot) => isUnderRoot(file.path, testRoot)));
   const runnableTests = testFiles.filter(isRunnablePhpUnitTest);
-  const blockers = buildBlockers({ composerFile, metadata, ownership, sourceFiles, runnableTests });
-  const profile = buildProfile(absoluteRoot, files, composerFile, metadata.value, ownership, runnableTests, blockers);
+  const bootstrap = analyzePhpUnitBootstrap(files);
+  const blockers = buildBlockers({ composerFile, metadata, ownership, sourceFiles, runnableTests, bootstrap });
+  const profile = buildProfile(absoluteRoot, files, composerFile, metadata.value, ownership, runnableTests, bootstrap, blockers);
   const evidenceBySource = collectEvidence(sourceFiles, runnableTests, ownership);
   const changedPaths = options.changedPaths
     ? new Set(options.changedPaths.map((currentPath) => normalizeChangedPath(absoluteRoot, currentPath)))
@@ -146,7 +147,7 @@ function analyzePsr4Map(root, value) {
   return { valid: valid && mappings.length === Object.keys(value).length, roots: mappings.map((mapping) => mapping.root), mappings };
 }
 
-function buildBlockers({ composerFile, metadata, ownership, sourceFiles, runnableTests }) {
+function buildBlockers({ composerFile, metadata, ownership, sourceFiles, runnableTests, bootstrap }) {
   const blockers = [];
   if (!composerFile) blockers.push("No root composer.json detected for the bounded PHP Composer adapter.");
   if (metadata.error) blockers.push(metadata.error);
@@ -163,10 +164,11 @@ function buildBlockers({ composerFile, metadata, ownership, sourceFiles, runnabl
   if (script !== undefined && !isSupportedComposerTestScript(script)) {
     blockers.push("The Composer test script must be exactly phpunit, vendor/bin/phpunit, or @php vendor/bin/phpunit in this slice.");
   }
+  blockers.push(...bootstrap.blockers);
   return blockers;
 }
 
-function buildProfile(root, files, composerFile, composer, ownership, runnableTests, blockers) {
+function buildProfile(root, files, composerFile, composer, ownership, runnableTests, bootstrap, blockers) {
   const testCommand = blockers.length === 0
     ? (composer?.scripts?.test === undefined ? "vendor/bin/phpunit" : "composer test")
     : undefined;
@@ -187,11 +189,57 @@ function buildProfile(root, files, composerFile, composer, ownership, runnableTe
       ...(composerFile ? ["composer.json"] : []),
       ...(files.some((file) => file.path === "composer.lock") ? ["composer.lock"] : []),
       ...(files.some((file) => file.path === "phpunit.xml.dist") ? ["phpunit.xml.dist"] : []),
-      ...(files.some((file) => file.path === "phpunit.xml") ? ["phpunit.xml"] : [])
+      ...(files.some((file) => file.path === "phpunit.xml") ? ["phpunit.xml"] : []),
+      ...(bootstrap.path ? [bootstrap.path] : [])
     ],
     confidence: blockers.length === 0 ? "high" : metadataIsMalformed(composerFile, composer) || blockers.length > 2 ? "low" : "medium",
     blockers
   };
+}
+
+function analyzePhpUnitBootstrap(files) {
+  const config = files.find((file) => file.path === "phpunit.xml") ??
+    files.find((file) => file.path === "phpunit.xml.dist");
+  if (!config) return { blockers: [] };
+  const match = /<phpunit\b[^>]*\bbootstrap\s*=\s*(["'])([^"']+)\1/is.exec(config.content);
+  if (!match) return { blockers: [] };
+  const bootstrapPath = normalizePath(match[2]).replace(/^\.\//, "");
+  if (bootstrapPath === "vendor/autoload.php") return { blockers: [] };
+  const bootstrap = files.find((file) => file.path === bootstrapPath);
+  if (!bootstrap) return { blockers: [] };
+  const content = maskComments(bootstrap.content);
+  const required = detectRequiredBootstrapEnvironment(content);
+  return {
+    path: bootstrapPath,
+    blockers: required.length > 0
+      ? [`PHPUnit bootstrap ${bootstrapPath} requires explicit environment selection for ${required.join(", ")}; no default test command is safe.`]
+      : []
+  };
+}
+
+function detectRequiredBootstrapEnvironment(content) {
+  const required = [];
+  const failure = "\\b(?:exit|die)\\s*(?:\\(\\s*[1-9][0-9]*\\s*\\)|\\s+[1-9][0-9]*\\s*;)";
+  const literalGetenv = "getenv\\s*\\(\\s*[\"']([A-Za-z_][A-Za-z0-9_]*)[\"']\\s*\\)";
+  const switchPattern = new RegExp(
+    `\\bswitch\\s*\\(\\s*\\$[A-Za-z_][A-Za-z0-9_]*\\s*=\\s*${literalGetenv}\\s*\\)[\\s\\S]{0,4000}?\\bdefault\\s*:[\\s\\S]{0,2000}?${failure}`,
+    "g"
+  );
+  for (const match of content.matchAll(switchPattern)) required.push(match[1]);
+
+  const assignmentPattern = new RegExp(
+    `\\$([A-Za-z_][A-Za-z0-9_]*)\\s*=\\s*${literalGetenv}\\s*;`,
+    "g"
+  );
+  for (const match of content.matchAll(assignmentPattern)) {
+    const variable = escapeRegExp(match[1]);
+    const suffix = content.slice(match.index + match[0].length, match.index + match[0].length + 2000);
+    const missingBranch = new RegExp(
+      `\\bif\\s*\\([^)]*\\$${variable}\\s*={2,3}\\s*false[^)]*\\)\\s*\\{[\\s\\S]{0,1500}?${failure}`
+    );
+    if (missingBranch.test(suffix)) required.push(match[2]);
+  }
+  return [...new Set(required)].sort();
 }
 
 function metadataIsMalformed(composerFile, composer) {
