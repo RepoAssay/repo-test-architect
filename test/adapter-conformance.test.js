@@ -68,7 +68,7 @@ const cases = [
   {
     adapterId: "ruby",
     fixturePath: "examples/ruby-minitest-basic",
-    expectedMaturity: "experimental",
+    expectedMaturity: "supported",
     expectedProfile: {
       languages: ["ruby"],
       testFrameworks: ["minitest"],

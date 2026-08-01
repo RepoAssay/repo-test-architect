@@ -663,6 +663,119 @@
       ]
     },
     {
+      "adapterId": "ruby",
+      "cases": [
+        {
+          "id": "ruby-rubyzip",
+          "role": "conventional-library-or-service",
+          "repository": {
+            "url": "https://github.com/rubyzip/rubyzip",
+            "commit": "4209b022069d4d5646753dd5799e8771e4699e5c",
+            "projectRoot": "."
+          },
+          "supportBoundary": "Conventional Minitest gem with one root gemspec, a static default Rake test task, a bounded three-edge load graph, and direct receiver/assertion evidence.",
+          "reportPath": "docs/ruby-rubyzip-validation-report.md",
+          "scorecard": {
+            "detection": "pass",
+            "ownership": "pass",
+            "command": "pass",
+            "evidence": "pass",
+            "ranking": "pass",
+            "stability": "pass",
+            "performance": "pass"
+          },
+          "observed": {
+            "testCommand": "bundle exec rake test",
+            "untestedCandidates": 19,
+            "coveredButRisky": 23,
+            "skippedTargets": 6,
+            "auditDurationMs": 46,
+            "auditDurationSamplesMs": [
+              79,
+              47,
+              46,
+              45,
+              45
+            ],
+            "evidenceRelationshipCount": 80,
+            "canonicalAuditSha256": "573cf0cdfbebe1464efad56187b89e01c0f600f41c107e6371be4b2ae45726eb"
+          }
+        },
+        {
+          "id": "ruby-faraday",
+          "role": "framework-heavy-application",
+          "repository": {
+            "url": "https://github.com/lostisland/faraday",
+            "commit": "3725183bead9939d3575f2df8e16d8ca7acddf5e",
+            "projectRoot": "."
+          },
+          "supportBoundary": "Framework-heavy RSpec repository with root configuration ownership, constant-owned described_class, exact memo/helper/shared-example receivers, and conservative generated-method boundaries.",
+          "reportPath": "docs/ruby-faraday-validation-report.md",
+          "scorecard": {
+            "detection": "pass",
+            "ownership": "pass",
+            "command": "pass",
+            "evidence": "pass",
+            "ranking": "pass",
+            "stability": "pass",
+            "performance": "pass"
+          },
+          "observed": {
+            "testCommand": "bundle exec rspec",
+            "untestedCandidates": 8,
+            "coveredButRisky": 22,
+            "skippedTargets": 3,
+            "auditDurationMs": 59,
+            "auditDurationSamplesMs": [
+              89,
+              60,
+              59,
+              57,
+              56
+            ],
+            "evidenceRelationshipCount": 45,
+            "canonicalAuditSha256": "af4437cbee783ab4afc03bdb36d056d65d9f063fd75a88c53b2f3fd206b2a626"
+          }
+        },
+        {
+          "id": "ruby-diplomat",
+          "role": "difficult-ownership-graph",
+          "repository": {
+            "url": "https://github.com/WeAreFarmGeek/diplomat",
+            "commit": "313f94ff2582c7eb161e2aa775182db10ad14285",
+            "projectRoot": "."
+          },
+          "supportBoundary": "Two-gemspec Bundler root with complete exact named ownership, one shared lib directory, exact per-file spec_helper loading, and dynamic internal fan-out withheld.",
+          "reportPath": "docs/ruby-diplomat-validation-report.md",
+          "scorecard": {
+            "detection": "pass",
+            "ownership": "pass",
+            "command": "pass",
+            "evidence": "pass",
+            "ranking": "pass",
+            "stability": "pass",
+            "performance": "pass"
+          },
+          "observed": {
+            "testCommand": "bundle exec rspec",
+            "untestedCandidates": 8,
+            "coveredButRisky": 21,
+            "skippedTargets": 3,
+            "auditDurationMs": 56,
+            "auditDurationSamplesMs": [
+              76,
+              56,
+              56,
+              56,
+              55
+            ],
+            "evidenceRelationshipCount": 26,
+            "canonicalAuditSha256": "cf7e08a848e975045418b4b1fa233006863dd9125ff60e3a18dbfa11a8197ab2"
+          }
+        }
+      ]
+    },
+    {
       "adapterId": "swift",
       "cases": [
         {

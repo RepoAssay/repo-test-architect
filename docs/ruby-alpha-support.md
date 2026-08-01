@@ -1,10 +1,10 @@
 # Ruby Alpha Support
 
-The Ruby adapter is experimental. Its first bounded slice proves that one conventional Bundler project can flow through project detection, audit, ranking, planning, explanations, findings, placement, stats, CLI/MCP calls, golden artifacts, model consistency, implementation coverage, and generated performance checks without a Ruby-specific artifact format.
+The Ruby adapter is supported at the bounded Bundler/Minitest/RSpec boundary below. It flows through project detection, audit, ranking, planning, explanations, findings, placement, stats, CLI/MCP calls, golden artifacts, model consistency, implementation coverage, generated performance checks, and the shared three-role validation corpus without a Ruby-specific artifact format.
 
 ## Supported Baseline
 
-| Area | Experimental boundary |
+| Area | Supported boundary |
 | --- | --- |
 | Project ownership | One root `Gemfile`; nested directories with their own `Gemfile` are separate detected projects; multiple root gemspecs require a complete exact named set |
 | Source ownership | Repository-contained `.rb` files below `lib/`; symlinks and conventional build/output/vendor directories are excluded |
@@ -39,6 +39,18 @@ The first slice does not claim support for:
 - heredoc, percent-literal, interpolation, or parser-complete Ruby semantics
 
 These shapes remain blocked or receive conservative missing evidence rather than inferred coverage.
+
+## Promotion Result
+
+Ruby fills the shared promotion corpus with three exact public-repository pins:
+
+- rubyzip is the conventional-library/service role at `4209b022069d4d5646753dd5799e8771e4699e5c`
+- Faraday is the framework-heavy role at `3725183bead9939d3575f2df8e16d8ca7acddf5e`
+- Diplomat is the difficult-ownership role at `313f94ff2582c7eb161e2aa775182db10ad14285`
+
+All 21 Ruby detection, ownership, command, evidence, ranking, stability, and performance areas pass. Clean five-run measurements are canonical-digest stable: rubyzip reports 19 untested, 23 covered, 6 skipped, 80 relationships, and a 46 ms median; Faraday reports 8 untested, 22 covered, 3 skipped, 45 relationships, and a 59 ms median; Diplomat reports 8 untested, 21 covered, 3 skipped, 26 relationships, and a 56 ms median. Their selected native commands pass 412 Minitest runs with 2,820 assertions, 639 Faraday RSpec examples, and 281 Diplomat RSpec examples with no failures.
+
+The native fixture, shared conformance, implementation coverage, generated performance, golden/model-consistency, packaging, and cross-platform gates provide the same promotion infrastructure as the other supported adapters. Supported maturity remains limited to this matrix; Rails, arbitrary DSL evaluation, and the exclusions above are not implied.
 
 ## Checked-In Proof
 
