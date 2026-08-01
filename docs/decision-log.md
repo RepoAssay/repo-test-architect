@@ -2,6 +2,14 @@
 
 This log records project-level decisions that shape architecture, scope, and public positioning.
 
+# Ruby Helper And Factory Returns Require One Exact Constructor Expression
+
+Decision: retain receiver identity through one direct source singleton factory only when its entire body is `new(...)` or `self.new(...)`, and through one same-file RSpec group helper only when its entire body is `Constant.new(...)` or exact group-owned `described_class.new(...)`. Require the existing direct initializer, non-overridden `.new`, direct instance method, stable receiver local, and assertion boundaries. Reject shared, cross-file, Minitest, chained, wrapped, multi-statement, overridden, cross-owner, lexically unqualified, and deeper flow.
+
+Rationale: pinned `dinie-tech/sdk-ruby` at `11048303d772928775ca35e05465749dada24f78` uses exact same-group `described_class` constructor helpers for `HttpClient` and `TokenManager`. The rule preserves its 26 untested, 19 covered, 11 skipped, and 47 relationships while moving three reviewed links to asserted usage; 579 native RSpec examples pass. Five clean audits share digest `6d89b3608d2f4d8d330a61721082430e91a036ebf3d6fb10f8f001db70c744d6` with a 180.239 ms median. CGRateS passes 27 examples but remains audit-identical because its helpers use unqualified lexical constants, providing a useful negative control.
+
+Revisit when: a pinned repository justifies Minitest or cross-file helper ownership, unqualified lexical constant resolution, direct helper-call chaining, or another return shape without executing arbitrary Ruby.
+
 ## Ruby Per-File RSpec Helper Loading Requires The Exact Conventional Path
 
 Decision: in a runnable `spec/**/*_spec.rb` file, resolve an exact zero-indented literal `require "spec_helper"` or `require("spec_helper")` specifically to the repository-owned `spec/spec_helper.rb`. Give that helper priority over a same-named `lib/spec_helper.rb`, matching RSpec's project load-path order, and count it as the first edge in the existing three-edge graph. Keep nested, computed, interpolated, alternate-name, explicit `spec/`-path, missing-helper, and non-RSpec forms uncredited.
