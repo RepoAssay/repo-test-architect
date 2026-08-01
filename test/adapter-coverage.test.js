@@ -28,6 +28,12 @@ describe("adapter coverage regression gate", () => {
         thresholds: { lines: 95, branches: 90, functions: 95 }
       },
       {
+        adapterId: "php",
+        sourcePath: "src/adapters/php/audit.js",
+        testPath: "test/php-audit.test.js",
+        thresholds: { lines: 88, branches: 78, functions: 88 }
+      },
+      {
         adapterId: "python",
         sourcePath: "src/adapters/python/audit.js",
         testPath: "test/python-audit.test.js",

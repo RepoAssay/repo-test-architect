@@ -767,7 +767,7 @@ describe("project detector", () => {
           root: "services/cms",
           ecosystems: ["php"],
           languages: ["php"],
-          supported: false
+          supported: true
         }
       ]
     );

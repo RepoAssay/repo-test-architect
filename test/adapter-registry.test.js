@@ -43,6 +43,15 @@ describe("adapter registry", () => {
         emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"]
       },
       {
+        id: "php",
+        ecosystems: ["php"],
+        languages: ["php"],
+        maturity: "experimental",
+        supportedTestFrameworks: ["phpunit"],
+        supportedProjectTypes: ["composer-psr4"],
+        emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"]
+      },
+      {
         id: "python",
         ecosystems: ["python"],
         languages: ["python"],
@@ -121,6 +130,15 @@ describe("adapter registry", () => {
           supportedProjectTypes: ["gradle-jvm", "gradle-jvm-multimodule", "gradle-kmp-jvm", "maven-jvm", "maven-jvm-reactor"],
           emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"]
         },
+      {
+        id: "php",
+        ecosystems: ["php"],
+        languages: ["php"],
+        maturity: "experimental",
+        supportedTestFrameworks: ["phpunit"],
+        supportedProjectTypes: ["composer-psr4"],
+        emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"]
+      },
       {
         id: "python",
         ecosystems: ["python"],
@@ -205,8 +223,8 @@ describe("adapter registry", () => {
 
   it("rejects unsupported adapters", () => {
     assert.throws(
-      () => getAdapter("php"),
-      /Unsupported adapter: php\. Available adapters: javascript, csharp, go, kotlin, python, rust, ruby, swift\./
+      () => getAdapter("elixir"),
+      /Unsupported adapter: elixir\. Available adapters: javascript, csharp, go, kotlin, php, python, rust, ruby, swift\./
     );
   });
 

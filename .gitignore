@@ -1,5 +1,6 @@
 # Dependencies
 node_modules/
+vendor/
 
 # Build, coverage, and package outputs
 coverage/
@@ -7,6 +8,7 @@ dist/
 **/bin/
 **/obj/
 *.tgz
+.phpunit.result.cache
 
 # Local environment and logs
 .env

@@ -19,7 +19,7 @@ npm run detect-rules:json
 | `pyproject.toml` | `python` | `python` | Supported by `python` |
 | `requirements.txt` | `python` | `python` | Supported by `python` |
 | `Gemfile` | `ruby` | `ruby` | Supported bounded `ruby` adapter |
-| `composer.json` | `php` | `php` | Detected, unsupported |
+| `composer.json` | `php` | `php` | Experimental bounded PHP adapter |
 | `mix.exs` | `elixir` | `elixir` | Detected, unsupported |
 | `go.mod` | `go` | `go` | Supported by bounded `go` |
 | `Cargo.toml` | `rust` | `rust` | Supported by bounded `rust` |

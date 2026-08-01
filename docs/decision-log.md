@@ -635,3 +635,11 @@ Decision: promote Rust from `experimental` to `supported` for the documented Car
 Rationale: pinned `serde-rs/json` at `a3e9758ffc88247ab82182cb2505867768a702e3` exposed zero evidence despite exact root re-exports used directly by built-in integration tests. The bounded link changes 29 untested and zero covered candidates to 26 untested and three covered candidates, with four relationships to `src/de.rs`, `src/ser.rs`, and `src/value/mod.rs`. Its unchanged native command passes 235 tests with one nightly-only UI test ignored. Five standardized audits share digest `23b8e4753067e977f149fb49ed2d31b51d58ee26493afeea8fc2fcd6e13786cc` with a 131 ms median. Together with Starship and ripgrep, Rust now fills all three corpus roles and passes all 21 reviewed scorecard areas; its generated semantic/performance gate, shared conformance, coverage, golden/model, native fixture, packaging, and cross-platform checks match the supported adapters.
 
 Revisit when: a pinned supported-boundary repository produces a false high-confidence ownership, command, or coverage claim, or when another bounded evidence shape can be added without implying general Rust type or macro evaluation.
+
+### 2026-08-01: start PHP with a literal Composer/PHPUnit boundary
+
+Decision: register PHP as experimental for one root Composer project with repository-contained string-valued PSR-4 source and test mappings, a literal PHPUnit dev dependency, conventional runnable test classes, exact bounded commands, direct imported class evidence, and conservative naming fallback. Add native, generated-scale, conformance, coverage, golden, model-consistency, and packaging proof in the foundation slice.
+
+Rationale: this establishes useful end-to-end PHP behavior without implying Composer evaluation, framework ownership, custom PHPUnit configuration, or dynamic PHP semantics. Ambiguous metadata remains a blocker. After PHP and Elixir reach meaningful comparison points, perform a portfolio-wide adapter analysis before choosing the next implementation direction.
+
+Revisit when: live repositories expose a narrowly provable Composer, PHPUnit, Pest, or framework convention that improves useful coverage without guessing ownership or commands.

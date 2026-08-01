@@ -1,0 +1,68 @@
+{
+  "schemaVersion": "plan/v1",
+  "summary": {
+    "confidence": "high",
+    "verificationCommand": "composer test",
+    "blockerCount": 0,
+    "addTestCount": 1,
+    "extendTestCount": 1,
+    "deferredCount": 0
+  },
+  "blockers": [],
+  "items": [
+    {
+      "id": "extend-test:src/Parser.php",
+      "action": "extend-test",
+      "targetId": "src/Parser.php",
+      "target": "Parser",
+      "path": "src/Parser.php",
+      "testLevel": "unit",
+      "priority": 5,
+      "riskReductionScore": 8,
+      "maintenanceCost": 3,
+      "rationale": [
+        "Owned runtime behavior",
+        "Branching or error behavior",
+        "A runnable PHPUnit test directly references this PSR-4-owned class."
+      ],
+      "sourceSignals": [
+        "runtime-behavior",
+        "branching-logic",
+        "edge-case-surface",
+        "matching-test"
+      ],
+      "existingTestPaths": [
+        "tests/ParserTest.php"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "tests/ParserTest.php",
+          "kind": "php-symbol-reference",
+          "strength": "direct",
+          "usage": "asserted"
+        }
+      ]
+    },
+    {
+      "id": "add-test:src/Service.php",
+      "action": "add-test",
+      "targetId": "src/Service.php",
+      "target": "Service",
+      "path": "src/Service.php",
+      "testLevel": "unit",
+      "priority": 5,
+      "riskReductionScore": 8,
+      "maintenanceCost": 3,
+      "rationale": [
+        "Owned runtime behavior",
+        "Branching or error behavior"
+      ],
+      "sourceSignals": [
+        "runtime-behavior",
+        "branching-logic",
+        "edge-case-surface"
+      ],
+      "existingTestPaths": []
+    }
+  ]
+}

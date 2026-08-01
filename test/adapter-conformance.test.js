@@ -45,6 +45,17 @@ const cases = [
     }
   },
   {
+    adapterId: "php",
+    fixturePath: "examples/php-phpunit-basic",
+    expectedMaturity: "experimental",
+    expectedProfile: {
+      languages: ["php"],
+      testFrameworks: ["phpunit"],
+      testCommand: "composer test",
+      confidence: "high"
+    }
+  },
+  {
     adapterId: "python",
     fixturePath: "examples/python-pytest-service",
     expectedProfile: {

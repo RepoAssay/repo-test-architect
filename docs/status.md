@@ -71,7 +71,7 @@ Implemented:
 - shared project-audits validation for saved artifact reuse across CLI and MCP-style flows
 - file-backed MCP invoke arguments for local calls that reuse saved artifacts
 - checked-in MCP args fixture for project-audits derived local examples
-- unsupported PHP and Elixir project reporting with ecosystem and language labels
+- experimental bounded PHP auditing plus unsupported Elixir project reporting with ecosystem and language labels
 - documented project detection marker rules
 - CLI output for project detection marker rules
 - fixture-based regression coverage
@@ -103,7 +103,7 @@ Implemented:
 - adapter-hardening plan that prioritizes shared conformance and deeper JavaScript/TypeScript, Python, Swift, and bounded Kotlin/JVM validation before adding ecosystems
 - exact-pin validation-corpus measurement command with repeated canonical audit digests, raw and median durations, and evidence-link counts
 - Node 20-compatible instrumented line, branch, and function coverage floors for every registered adapter implementation
-- deterministic generated 400-source/200-test performance and evidence-count gates for all eight supported adapters
+- deterministic generated 400-source/200-test performance and evidence-count gates for all eight supported adapters and experimental PHP
 - supported Ruby registry/detection, conventional Bundler/Minitest/RSpec ownership including complete exact named root-gemspec sets, native fixture verification, shared downstream conformance, a generated 400-source/200-test performance/evidence gate, and three pinned corpus roles with 21/21 reviewed areas passing
 - bounded Ruby `ruby-constant-reference` evidence through exact literal repository-owned load graphs, including uniquely owned root `.rspec` and exact per-file `spec_helper` edges, direct/referenced strength, reachable-owner ambiguity rejection, and pinned rubyzip/Faraday/Factory Bot/Diplomat pressure
 - runnable-body-owned Ruby singleton/constructor calls, nearest exact constant-owned RSpec `described_class`, and direct immutable constructor-local, exact one-line RSpec `let`/`subject`, exact source-factory, exact same-group RSpec helper-return instance calls, or exact same-file literal shared-example binding with selected Minitest/RSpec inline and one-stable-result assertion usage

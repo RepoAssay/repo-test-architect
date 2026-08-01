@@ -28,6 +28,8 @@
     "docs/",
     "evals/",
     "examples/",
+    "!examples/**/vendor/**",
+    "!examples/**/.phpunit.result.cache",
     "schemas/",
     "scripts/",
     "src/"
@@ -128,6 +130,8 @@
     "rust:performance:check": "node ./scripts/check-rust-performance.js",
     "ruby:performance:check": "node ./scripts/check-ruby-performance.js",
     "ruby:native:check": "node ./scripts/check-ruby-native-fixture.js",
+    "php:performance:check": "node ./scripts/check-php-performance.js",
+    "php:native:check": "node ./scripts/check-php-native-fixture.js",
     "swift:performance:check": "node ./scripts/check-swift-performance.js",
     "demo:check": "node ./scripts/check-demo-script.js",
     "test": "node ./scripts/run-tests.js",
