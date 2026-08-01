@@ -488,9 +488,9 @@ function collectReachableRubySources(testFile, rubyFilesByPath, hasBundledLibrar
 function collectLiteralRubyRequires(content) {
   const requirements = [];
   for (const line of content.split(/\r?\n/)) {
-    const match = line.match(/^\s*(require|require_relative)\s*(?:\(\s*)?(["'])([^"'\\]+)\2\s*\)?\s*(?:#.*)?$/);
-    if (!match || match[3].includes("#{")) continue;
-    requirements.push({ kind: match[1], request: match[3] });
+    const match = line.match(/^(\s*)(require|require_relative)\s*(?:\(\s*)?(["'])([^"'\\]+)\3\s*\)?\s*(?:#.*)?$/);
+    if (!match || match[4].includes("#{")) continue;
+    requirements.push({ kind: match[2], request: match[4], topLevel: match[1].length === 0 });
   }
   return requirements;
 }
@@ -498,6 +498,16 @@ function collectLiteralRubyRequires(content) {
 function resolveOwnedRubyRequire(fromPath, requirement, rubyFilesByPath, hasBundledLibraryLoadPath) {
   let candidate;
   if (requirement.kind === "require") {
+    const normalizedFromPath = normalizePath(fromPath);
+    if (
+      requirement.topLevel &&
+      requirement.request === "spec_helper" &&
+      normalizedFromPath.startsWith("spec/") &&
+      normalizedFromPath.endsWith("_spec.rb") &&
+      rubyFilesByPath.has("spec/spec_helper.rb")
+    ) {
+      return "spec/spec_helper.rb";
+    }
     if (!hasBundledLibraryLoadPath) return undefined;
     if (!/^[A-Za-z0-9_-]+(?:\/[A-Za-z0-9_.-]+)*$/.test(requirement.request)) return undefined;
     candidate = `lib/${withRubyExtension(requirement.request)}`;

@@ -707,6 +707,106 @@ describe("Ruby audit adapter", () => {
     assert.deepEqual(audit.untestedCandidates.map((target) => target.path), ["lib/client.rb"]);
   });
 
+  it("follows an exact conventional per-file RSpec spec helper before bounded source requires", (t) => {
+    const root = createRubyRepo(t, {
+      Gemfile: 'gem "rspec"\ngemspec\n',
+      "archive.gemspec": "Gem::Specification.new {}\n",
+      "lib/archive.rb": "class Archive\n  def self.fetch\n    :ok\n  end\nend\n",
+      "lib/spec_helper.rb": "class Archive\n  def self.fetch\n    :wrong\n  end\nend\n",
+      "spec/spec_helper.rb": 'require "archive"\n',
+      "spec/archive_behavior_spec.rb": [
+        'require "spec_helper"',
+        "RSpec.describe Archive do",
+        '  it("fetches") { expect(Archive.fetch).to eq(:ok) }',
+        "end",
+        ""
+      ].join("\n"),
+      "spec/parenthesized_behavior_spec.rb": [
+        "require('spec_helper')",
+        "RSpec.describe Archive do",
+        '  it("fetches") { expect(Archive.fetch).to eq(:ok) }',
+        "end",
+        ""
+      ].join("\n"),
+      "spec/unloaded_behavior_spec.rb": [
+        "RSpec.describe Archive do",
+        '  it("fetches") { expect(Archive.fetch).to eq(:ok) }',
+        "end",
+        ""
+      ].join("\n")
+    });
+
+    const audit = auditRubyRepo(root);
+    const archive = audit.coveredButRisky.find((target) => target.path === "lib/archive.rb");
+
+    assert.deepEqual(archive.existingTestEvidence, [
+      {
+        testPath: "spec/archive_behavior_spec.rb",
+        kind: "ruby-constant-reference",
+        strength: "referenced",
+        usage: "asserted"
+      },
+      {
+        testPath: "spec/parenthesized_behavior_spec.rb",
+        kind: "ruby-constant-reference",
+        strength: "referenced",
+        usage: "asserted"
+      }
+    ]);
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["lib/archive.rb"]);
+  });
+
+  it("rejects non-conventional per-file spec helper loads", (t) => {
+    const shapes = {
+      nested: "if ENV['HELPER']\n  require 'spec_helper'\nend\n",
+      dynamic: "require helper\n",
+      interpolated: 'require "#{helper}"\n',
+      alternate: "require 'support/spec_helper'\n",
+      explicit_spec_path: "require 'spec/spec_helper'\n",
+      missing: "require 'spec_helper'\n"
+    };
+
+    for (const [shape, helperLoad] of Object.entries(shapes)) {
+      const root = createRubyRepo(t, {
+        Gemfile: 'gem "rspec"\ngemspec\n',
+        "archive.gemspec": "Gem::Specification.new {}\n",
+        "lib/archive.rb": "class Archive\n  def self.fetch\n    :ok\n  end\nend\n",
+        ...(shape === "missing" ? {} : { "spec/spec_helper.rb": 'require "archive"\n' }),
+        "spec/support/spec_helper.rb": 'require "archive"\n',
+        "spec/archive_behavior_spec.rb": [
+          helperLoad.trimEnd(),
+          "RSpec.describe Archive do",
+          '  it("fetches") { expect(Archive.fetch).to eq(:ok) }',
+          "end",
+          ""
+        ].join("\n")
+      });
+
+      const audit = auditRubyRepo(root);
+      assert.deepEqual(audit.coveredButRisky, [], shape);
+      assert.deepEqual(audit.untestedCandidates.map((target) => target.path), ["lib/archive.rb"], shape);
+    }
+
+    const minitestRoot = createRubyRepo(t, {
+      Gemfile: 'gem "minitest"\n',
+      "lib/archive.rb": "class Archive\n  def self.fetch\n    :ok\n  end\nend\n",
+      "test/spec_helper.rb": 'require "archive"\n',
+      "test/behavior_test.rb": [
+        'require "spec_helper"',
+        "class ArchiveTest < Minitest::Test",
+        "  def test_fetch",
+        "    assert_equal :ok, Archive.fetch",
+        "  end",
+        "end",
+        ""
+      ].join("\n")
+    });
+
+    const minitestAudit = auditRubyRepo(minitestRoot);
+    assert.deepEqual(minitestAudit.coveredButRisky, []);
+    assert.deepEqual(minitestAudit.untestedCandidates.map((target) => target.path), ["lib/archive.rb"]);
+  });
+
   it("keeps helper-owned, undeclared, dynamic, and reassigned-result shapes below asserted usage", (t) => {
     const root = createRubyRepo(t, {
       Gemfile: 'gem "minitest"\n',
