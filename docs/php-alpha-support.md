@@ -10,13 +10,16 @@ The PHP adapter begins as an experimental, deliberately bounded Composer/PHPUnit
 - a literal `phpunit/phpunit` entry in `require-dev`
 - runnable `*Test.php` classes that extend `TestCase` and contain a public `test*` method
 - exact Composer test scripts of `phpunit`, `vendor/bin/phpunit`, or `@php vendor/bin/phpunit`; otherwise the conventional `vendor/bin/phpunit` fallback
+- bounded root PHPUnit bootstrap inspection that withholds the fallback when a literal required environment read can terminate non-zero
 - direct imported PSR-4 class calls, with bounded assertion usage, plus unique `Class.php` to `ClassTest.php` naming fallback
 - basic runtime, branching/error, boundary, and constants-only classification
 - repository-relative and absolute changed-path scoping
 
 ## Explicit exclusions
 
-This slice does not evaluate Composer plugins or scripts, PSR-0, classmap or files autoloading, array-valued mappings, custom PHPUnit suite paths, PHPUnit attributes, Pest, Codeception, framework ownership, inheritance or trait dispatch, container resolution, dynamic class names, aliases beyond direct `use` imports, or multi-hop calls. Unsupported or ambiguous metadata produces blockers instead of guessed ownership or commands.
+This slice does not evaluate Composer plugins or scripts, PSR-0, classmap or files autoloading, array-valued mappings, custom PHPUnit suite paths, PHPUnit attributes, Pest, Codeception, framework ownership, local test-base inheritance, trait dispatch, container resolution, dynamic class names, aliases beyond direct `use` imports, or multi-hop calls. It does not choose bootstrap environment values or evaluate arbitrary bootstrap control flow. Unsupported or ambiguous metadata produces blockers instead of guessed ownership or commands.
+
+The first live validation against [`brick/math`](php-brick-math-validation-report.md) proved that an otherwise conventional PHPUnit command can require an explicit bootstrap environment choice. The adapter now withholds that unsafe default; one-hop repository-owned PHPUnit base classes remain the next evidence slice.
 
 ## Verification
 

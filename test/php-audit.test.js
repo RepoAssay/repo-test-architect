@@ -35,6 +35,44 @@ describe("PHP adapter", () => {
     assert.deepEqual(audit.profile.blockers, []);
   });
 
+  it("withholds a default command when the PHPUnit bootstrap requires an environment choice", () => {
+    const root = createRepo({ script: undefined });
+    fs.writeFileSync(
+      path.join(root, "phpunit.xml"),
+      '<?xml version="1.0"?><phpunit bootstrap="phpunit.php"><testsuites><testsuite name="unit"><directory>tests</directory></testsuite></testsuites></phpunit>\n'
+    );
+    fs.writeFileSync(
+      path.join(root, "phpunit.php"),
+      "<?php\n$calculator = getenv('CALCULATOR');\nif ($calculator === false) { exit(1); }\n$scale = getenv('OPTIONAL_SCALE');\nif ($scale !== false) { configure($scale); }\n"
+    );
+
+    const audit = auditPhpRepo(root);
+    assert.equal(audit.profile.testCommand, undefined);
+    assert.equal(audit.profile.confidence, "medium");
+    assert.ok(audit.profile.setupSignals.includes("phpunit.php"));
+    assert.ok(audit.profile.blockers.includes(
+      "PHPUnit bootstrap phpunit.php requires explicit environment selection for CALCULATOR; no default test command is safe."
+    ));
+  });
+
+  it("recognizes a literal bootstrap switch default without treating optional environment reads as required", () => {
+    const root = createRepo({ script: undefined });
+    fs.writeFileSync(path.join(root, "phpunit.xml"), '<phpunit bootstrap="phpunit.php"/>\n');
+    fs.writeFileSync(path.join(root, "phpunit.php"), `<?php
+switch ($calculator = getenv('CALCULATOR')) {
+    case 'Native': configureNative(); break;
+    default: exit(1);
+}
+$scale = getenv('OPTIONAL_SCALE');
+if ($scale !== false) { configureScale($scale); }
+`);
+
+    const audit = auditPhpRepo(root);
+    assert.deepEqual(audit.profile.blockers, [
+      "PHPUnit bootstrap phpunit.php requires explicit environment selection for CALCULATOR; no default test command is safe."
+    ]);
+  });
+
   it("blocks unsupported metadata instead of guessing ownership or commands", () => {
     const root = createRepo({
       autoload: { "psr-0": { "Example\\": "lib/" } },

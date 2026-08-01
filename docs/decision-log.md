@@ -643,3 +643,11 @@ Decision: register PHP as experimental for one root Composer project with reposi
 Rationale: this establishes useful end-to-end PHP behavior without implying Composer evaluation, framework ownership, custom PHPUnit configuration, or dynamic PHP semantics. Ambiguous metadata remains a blocker. After PHP and Elixir reach meaningful comparison points, perform a portfolio-wide adapter analysis before choosing the next implementation direction.
 
 Revisit when: live repositories expose a narrowly provable Composer, PHPUnit, Pest, or framework convention that improves useful coverage without guessing ownership or commands.
+
+### 2026-08-01: block PHP defaults behind required PHPUnit bootstrap environments
+
+Decision: when root `phpunit.xml` or `phpunit.xml.dist` names one repository-owned PHP bootstrap, withhold the default PHPUnit command if a literal environment read enters either a direct false branch or switch default that terminates non-zero. Report the exact variable names and bootstrap path, but do not choose values or emit platform-specific environment syntax.
+
+Rationale: pinned `brick/math` at `b61d8e66c3ea05fa8784888575b719f48f76f515` looked like a conventional command-owned PHPUnit library, but bare `vendor/bin/phpunit` exits because `CALCULATOR` is required. `CALCULATOR=Native vendor/bin/phpunit` passes 22,160 tests and 89,659 assertions. The corrected audit withholds the command, excludes optional `BCMATH_DEFAULT_SCALE`, and is digest-stable across five clean runs.
+
+Revisit when: a pinned repository proves another statically bounded required-bootstrap shape or a portable default value can be selected from repository-owned metadata without evaluating PHP.

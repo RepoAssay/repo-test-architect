@@ -50,6 +50,7 @@ export const requiredFiles = [
   "docs/rust-ripgrep-validation-report.md",
   "docs/ruby-alpha-support.md",
   "docs/php-alpha-support.md",
+  "docs/php-brick-math-validation-report.md",
   "docs/ruby-factory-bot-validation-report.md",
   "docs/ruby-faraday-validation-report.md",
   "docs/ruby-helper-return-validation-report.md",
