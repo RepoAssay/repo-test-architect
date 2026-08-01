@@ -2,6 +2,14 @@
 
 This log records project-level decisions that shape architecture, scope, and public positioning.
 
+## Ruby Per-File RSpec Helper Loading Requires The Exact Conventional Path
+
+Decision: in a runnable `spec/**/*_spec.rb` file, resolve an exact zero-indented literal `require "spec_helper"` or `require("spec_helper")` specifically to the repository-owned `spec/spec_helper.rb`. Give that helper priority over a same-named `lib/spec_helper.rb`, matching RSpec's project load-path order, and count it as the first edge in the existing three-edge graph. Keep nested, computed, interpolated, alternate-name, explicit `spec/`-path, missing-helper, and non-RSpec forms uncredited.
+
+Rationale: RSpec adds its conventional `spec/` default path to `$LOAD_PATH`, and 23 runnable files in pinned Diplomat explicitly load `spec_helper`; the root `.rspec` does not. The helper's exact `require "diplomat"` makes `lib/diplomat.rb` reachable without proving its dynamic `require_libs` fan-out. Diplomat moves from 9/20/3 to 8/21/3 with six exact referenced relationships plus the existing 20 naming links: one exact relationship is asserted, one called, and four reference-only. Its 281 native examples pass, five audits share one digest, and rubyzip, Faraday, and Factory Bot retain their prior counts.
+
+Revisit when: another pinned repository justifies a different RSpec default path, another finite conventional helper name, syntactic nesting analysis, or exact static expansion of a helper-owned source fan-out.
+
 ## Ruby Multi-Gemspec Ownership Requires A Complete Exact Named Set
 
 Decision: treat multiple root gemspecs as one conventional Bundler gem project only when the root `Gemfile` contains exactly one top-level literal `gemspec name: "NAME"` or `gemspec(name: "NAME")` declaration for every root gemspec and no other gemspec declaration. Each selected name must match one unique exact static gem name declared by `spec.name = "NAME"` or the first literal argument to `Gem::Specification.new`. Admit all root gemspecs as setup, test-dependency, command, and `lib/` load-path ownership together. Keep partial, duplicate, unknown, nested, computed, path-based, hash-rocket, extra-option, or dynamically named sets blocked.
