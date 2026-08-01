@@ -261,6 +261,137 @@ describe("Ruby audit adapter", () => {
     }]);
   });
 
+  it("resolves described_class from the nearest exact constant-owned RSpec group", (t) => {
+    const root = createRubyRepo(t, {
+      Gemfile: 'gem "rspec"\n',
+      "lib/catalog/finder.rb": "module Catalog\n  class Finder\n    def self.lookup\n      :found\n    end\n  end\nend\n",
+      "lib/catalog/widget.rb": "module Catalog\n  class Widget\n    def initialize(value)\n      @value = value\n    end\n    def render\n      @value\n    end\n  end\nend\n",
+      "spec/catalog_behavior_spec.rb": [
+        'require_relative "../lib/catalog/finder"',
+        'require_relative "../lib/catalog/widget"',
+        "RSpec.describe ::Catalog::Finder do",
+        '  it("finds") { expect(described_class.lookup).to eq(:found) }',
+        "",
+        "  describe Catalog::Widget do",
+        '    describe "#render" do',
+        '      it "renders" do',
+        "        widget = described_class.new(:rendered)",
+        "        result = widget.render",
+        "        expect(result).to eq(:rendered)",
+        "      end",
+        "    end",
+        "  end",
+        "end",
+        ""
+      ].join("\n")
+    });
+
+    const audit = auditRubyRepo(root);
+
+    assert.deepEqual(
+      audit.coveredButRisky.map((target) => [target.path, target.existingTestEvidence[0].usage]),
+      [
+        ["lib/catalog/finder.rb", "asserted"],
+        ["lib/catalog/widget.rb", "asserted"]
+      ]
+    );
+  });
+
+  it("rejects ambiguous and helper-mediated RSpec described_class identity", (t) => {
+    const root = createRubyRepo(t, {
+      Gemfile: 'gem "rspec"\n',
+      "lib/aliased.rb": "class Aliased\n  def self.run\n    :ok\n  end\nend\n",
+      "lib/derived.rb": "class Derived\n  def self.run\n    :ok\n  end\nend\n",
+      "lib/dynamic_group.rb": "class DynamicGroup\n  def self.run\n    :ok\n  end\nend\n",
+      "lib/hooked.rb": "class Hooked\n  def self.run\n    :ok\n  end\nend\n",
+      "lib/memoized.rb": "class Memoized\n  def initialize; end\n  def run\n    :ok\n  end\nend\n",
+      "lib/outer.rb": "class Outer\n  def self.run\n    :outer\n  end\nend\n",
+      "lib/parenthesized.rb": "class Parenthesized\n  def self.run\n    :ok\n  end\nend\n",
+      "lib/shared.rb": "class Shared\n  def self.run\n    :ok\n  end\nend\n",
+      "lib/string_group.rb": "class StringGroup\n  def self.run\n    :ok\n  end\nend\n",
+      "spec/described_class_boundaries_spec.rb": [
+        'require_relative "../lib/aliased"',
+        'require_relative "../lib/derived"',
+        'require_relative "../lib/dynamic_group"',
+        'require_relative "../lib/hooked"',
+        'require_relative "../lib/memoized"',
+        'require_relative "../lib/outer"',
+        'require_relative "../lib/parenthesized"',
+        'require_relative "../lib/shared"',
+        'require_relative "../lib/string_group"',
+        "target_class = DynamicGroup",
+        "SHARED_CLASS = Shared",
+        "",
+        'RSpec.shared_examples "shared behavior" do',
+        '  it("runs") { expect(described_class.run).to eq(:ok) }',
+        "end",
+        "",
+        'RSpec.describe "StringGroup" do',
+        "  before { StringGroup }",
+        '  it("does not bind a label") { expect(described_class.run).to eq(:ok) }',
+        "end",
+        "",
+        "RSpec.describe target_class do",
+        '  it("does not bind a variable") { expect(described_class.run).to eq(:ok) }',
+        "end",
+        "",
+        "RSpec.describe Derived.name do",
+        '  it("does not bind a derived value") { expect(described_class.run).to eq(:ok) }',
+        "end",
+        "",
+        "RSpec.describe(Parenthesized) do",
+        '  it("does not bind a parenthesized expression") { expect(described_class.run).to eq(:ok) }',
+        "end",
+        "",
+        "RSpec.describe Aliased do",
+        '  it "does not follow aliases" do',
+        "    klass = described_class",
+        "    expect(klass.run).to eq(:ok)",
+        "  end",
+        "end",
+        "",
+        "RSpec.describe Hooked do",
+        "  before { described_class.run }",
+        '  it("ignores hooks") { expect(true).to be(true) }',
+        "end",
+        "",
+        "RSpec.describe Memoized do",
+        "  let(:instance) { described_class.new }",
+        '  it("does not execute let") { expect(instance.run).to eq(:ok) }',
+        "end",
+        "",
+        "RSpec.describe Outer do",
+        '  shared_examples "nested shared behavior" do',
+        '    it("does not bind at definition time") { expect(described_class.run).to eq(:outer) }',
+        "  end",
+        '  it_behaves_like "nested shared behavior"',
+        '  it_behaves_like "shared behavior"',
+        "  describe Memoized do",
+        '    it("uses the nearest owner") { expect(described_class.new).to be_a(Memoized) }',
+        "  end",
+        "end",
+        ""
+      ].join("\n")
+    });
+
+    const audit = auditRubyRepo(root);
+    const usage = Object.fromEntries(
+      audit.coveredButRisky.map((target) => [target.path, target.existingTestEvidence[0].usage ?? "reference-only"])
+    );
+
+    assert.deepEqual(usage, {
+      "lib/aliased.rb": "reference-only",
+      "lib/derived.rb": "reference-only",
+      "lib/dynamic_group.rb": "reference-only",
+      "lib/hooked.rb": "reference-only",
+      "lib/memoized.rb": "asserted",
+      "lib/outer.rb": "reference-only",
+      "lib/parenthesized.rb": "reference-only",
+      "lib/shared.rb": "reference-only",
+      "lib/string_group.rb": "reference-only"
+    });
+  });
+
   it("marks a stable result from an exact immutable constructor-local instance call", (t) => {
     const root = createRubyRepo(t, {
       Gemfile: 'gem "rspec"\n',

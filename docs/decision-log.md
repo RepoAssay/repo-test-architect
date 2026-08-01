@@ -2,13 +2,21 @@
 
 This log records project-level decisions that shape architecture, scope, and public positioning.
 
+## Ruby RSpec `described_class` Requires An Exact Group Owner
+
+Decision: inside a runnable RSpec `it` or `specify` body, allow `described_class` to stand in for the nearest enclosing static constant-first `describe` owner. A nested string-labelled `describe` or `context` inherits that owner and a nearer exact constant group replaces it. Apply the existing source-method, immutable constructor-local, and assertion rules unchanged. Do not resolve string, variable, derived, parenthesized, multiline, or otherwise dynamic group expressions, and do not credit hooks, `let`/`subject`, aliases, helpers, or shared examples.
+
+Rationale: the exact Factory Bot pin contains widespread class-oriented specs whose source identity is explicit in the group declaration. The bounded rule leaves its 21/28 candidate split and 56-link graph unchanged while upgrading four reviewed relationships: two from called to asserted and two from reference-only to asserted. The resulting split is 21 asserted, 2 called, 20 exact reference-only, and 13 naming; 764 adapter-selected RSpec examples and the broader upstream RSpec/Cucumber task pass, and five audits are digest-stable.
+
+Revisit when: another exact pin justifies bounded `let`/`subject` identity, shared-example binding, metadata-bearing or multiline group syntax, or helper-mediated identity without executing RSpec.
+
 ## Ruby Instance Usage Requires Direct Immutable Constructor Receivers
 
-Decision: allow an existing exact `ruby-constant-reference` to gain instance-method usage only when a runnable Minitest method or RSpec example binds one local directly from `Constant.new`, that reachable class directly declares `initialize` and the called instance method, the class does not directly override `.new`, and the receiver is neither reassigned nor block-shadowed. Preserve the existing inline or one-stable-result assertion rule. Do not infer identity through helpers, factories, wrapping/chaining, RSpec memoization, generated readers/delegators, inheritance, mixins, or dynamic dispatch.
+Decision: allow an existing exact `ruby-constant-reference` to gain instance-method usage only when a runnable Minitest method or RSpec example binds one local directly from `Constant.new` or an exact group-owned `described_class.new`, that reachable class directly declares `initialize` and the called instance method, the class does not directly override `.new`, and the receiver is neither reassigned nor block-shadowed. Preserve the existing inline or one-stable-result assertion rule. Do not infer identity through helpers, factories, wrapping/chaining, RSpec `let`/`subject` memoization, generated readers/delegators, inheritance, mixins, or dynamic dispatch.
 
 Rationale: the pinned rubyzip audit recovers a real `Zip::File#find_entry` assertion while downgrading two constructor-only claims whose asserted values came through generated `entries` and `size` readers. Its unchanged 19/23 candidate split and 80-link graph now separate into 15 asserted, 24 called, 38 reference-only, and 3 naming relationships. Faraday keeps its unchanged 8/22 split and 45-link graph while downgrading `Faraday::Connection` from asserted to called because `proxy` is generated rather than directly owned. Both exact pins pass their native suites, and five audits of each are digest-stable.
 
-Revisit when: a pinned repository justifies exact `described_class`, `let`, or `subject` identity, a direct helper/factory return, generated method ownership, or deeper receiver/result flow without executing Ruby.
+Revisit when: a pinned repository justifies exact `let` or `subject` identity, a direct helper/factory return, generated method ownership, or deeper receiver/result flow without executing Ruby.
 
 ## Ruby RSpec Configuration Is One Owned Load Edge
 

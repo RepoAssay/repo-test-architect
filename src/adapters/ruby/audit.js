@@ -540,23 +540,48 @@ function collectRubyRunnableBodies(testFile, maskedContent) {
       const match = line.match(/^( *)def\s+test_[A-Za-z0-9_!?]+\s*(?:\([^)]*\))?\s*$/);
       if (!match) continue;
       const close = findRubyIndentedEnd(lines, index, match[1].length);
-      if (close !== -1) bodies.push(lines.slice(index + 1, close).join("\n"));
+      if (close !== -1) bodies.push({ content: lines.slice(index + 1, close).join("\n") });
       continue;
     }
 
     const example = line.match(/^( *)\s*(?:it|specify)\b/);
     if (!example) continue;
+    const describedConstant = findRubyRSpecDescribedConstant(lines, index);
     const openBrace = line.indexOf("{");
     const closeBrace = line.lastIndexOf("}");
     if (openBrace !== -1 && closeBrace > openBrace) {
-      bodies.push(line.slice(openBrace + 1, closeBrace));
+      bodies.push({ content: line.slice(openBrace + 1, closeBrace), describedConstant });
       continue;
     }
     if (!/\bdo\b/.test(line)) continue;
     const close = findRubyIndentedEnd(lines, index, example[1].length);
-    if (close !== -1) bodies.push(lines.slice(index + 1, close).join("\n"));
+    if (close !== -1) {
+      bodies.push({ content: lines.slice(index + 1, close).join("\n"), describedConstant });
+    }
   }
   return bodies;
+}
+
+function findRubyRSpecDescribedConstant(lines, exampleIndex) {
+  for (let index = 0; index < exampleIndex; index += 1) {
+    const shared = lines[index].match(
+      /^( *)\s*(?:RSpec\.)?shared_(?:examples|context)\b.*\bdo\b/
+    );
+    if (!shared) continue;
+    const close = findRubyIndentedEnd(lines, index, shared[1].length);
+    if (close > exampleIndex) return undefined;
+  }
+
+  let describedConstant;
+  for (let index = 0; index < exampleIndex; index += 1) {
+    const group = lines[index].match(
+      /^( *)\s*(?:RSpec\.)?describe\s+(?:::)?([A-Z][A-Za-z0-9_]*(?:::[A-Z][A-Za-z0-9_]*)*)(?:\s*,[^\n]*)?\s+do\s*$/
+    );
+    if (!group) continue;
+    const close = findRubyIndentedEnd(lines, index, group[1].length);
+    if (close > exampleIndex) describedConstant = group[2];
+  }
+  return describedConstant;
 }
 
 function findRubyIndentedEnd(lines, startIndex, indent) {
@@ -572,14 +597,17 @@ function findRubyConstantUsage(runnableBodies, constant, declarations, framework
   const escapedConstant = escapeRegex(constant);
   let usage;
   for (const body of runnableBodies) {
-    const lines = body.split(/\r?\n/);
+    const lines = body.content.split(/\r?\n/);
     const deferredLines = collectDeferredRubyLines(lines);
+    const receiverPattern = framework === "rspec" && body.describedConstant === constant
+      ? `(?:(?:::)?${escapedConstant}|described_class)`
+      : `(?:::)?${escapedConstant}`;
     for (const method of declarations.singletonMethods) {
       const callPattern = new RegExp(
-        `(?:^|[^A-Za-z0-9_:])(?:::)?${escapedConstant}\\s*\\.\\s*${escapeRegex(method)}(?![A-Za-z0-9_!?=])`
+        `(?:^|[^A-Za-z0-9_:])${receiverPattern}\\s*\\.\\s*${escapeRegex(method)}(?![A-Za-z0-9_!?=])`
       );
       const directCallPattern = new RegExp(
-        `^\\s*(?:::)?${escapedConstant}\\s*\\.\\s*${escapeRegex(method)}(?![A-Za-z0-9_!?=])`
+        `^\\s*${receiverPattern}\\s*\\.\\s*${escapeRegex(method)}(?![A-Za-z0-9_!?=])`
       );
       const callLines = lines
         .map((line, index) => ({ line, index }))
@@ -600,14 +628,14 @@ function findRubyConstantUsage(runnableBodies, constant, declarations, framework
     }
     usage = strongerRubyUsage(
       usage,
-      findRubyConstructedLocalUsage(lines, constant, declarations, framework, deferredLines)
+      findRubyConstructedLocalUsage(lines, receiverPattern, declarations, framework, deferredLines)
     );
     if (usage === "asserted") return usage;
   }
   return usage;
 }
 
-function findRubyConstructedLocalUsage(lines, constant, declarations, framework, deferredLines) {
+function findRubyConstructedLocalUsage(lines, receiverPattern, declarations, framework, deferredLines) {
   if (
     !declarations.hasDirectInitializer ||
     declarations.hasDirectSingletonNew ||
@@ -619,7 +647,7 @@ function findRubyConstructedLocalUsage(lines, constant, declarations, framework,
   }
 
   const constructorPattern = new RegExp(
-    `^\\s*(?:::)?${escapeRegex(constant)}\\s*\\.\\s*new(?![A-Za-z0-9_!?=])`
+    `^\\s*${receiverPattern}\\s*\\.\\s*new(?![A-Za-z0-9_!?=])`
   );
   let usage;
   for (const binding of collectStableRubyConstructorBindings(lines, constructorPattern, deferredLines)) {
