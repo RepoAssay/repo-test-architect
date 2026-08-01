@@ -2,13 +2,21 @@
 
 This log records project-level decisions that shape architecture, scope, and public positioning.
 
+## Ruby RSpec Memoized Receivers Require Exact One-Line Constructors
+
+Decision: inside a runnable RSpec `it` or `specify` body, allow a receiver declared by exact one-line `let(:name) { Constant.new(...) }`, `let(:name) { described_class.new(...) }`, named `subject(:name) { ... }`, or unnamed `subject { ... }` to gain the existing direct instance-method and assertion usage. The declaration and example must share a normal `describe` or `context` scope; the nearest declaration wins, including an unsupported inner declaration that blocks an outer exact binding. Named subjects expose both their declared helper and `subject`. Preserve direct `initialize` and instance-method ownership, `.new` override rejection, example-local reassignment or block-shadow rejection, and exact `described_class` group ownership. Do not credit eager, multiline, chained, block-bearing, aliased, computed, shared-example, or implicit-matcher forms.
+
+Rationale: the exact Faraday pin retains its 8/22 candidate split and 45-link graph while upgrading three reviewed relationships: `Faraday::Connection` from called to asserted and `Faraday::Error` plus `Faraday::Response` from reference-only to asserted. The resulting split is 6 asserted, 1 called, 25 exact reference-only, and 13 naming relationships. Factory Bot remains unchanged at 21 asserted, 2 called, 20 exact reference-only, and 13 naming relationships because its remaining memoized shapes cross generated or inherited methods, constructor blocks, shared examples, or implicit matchers. Both native RSpec suites pass, and five audits of each exact pin are digest-stable.
+
+Revisit when: another exact pin justifies multiline or eager memo declarations, implicit matchers, shared-example parameter binding, helper/factory returns, or generated and inherited method ownership without executing RSpec.
+
 ## Ruby RSpec `described_class` Requires An Exact Group Owner
 
-Decision: inside a runnable RSpec `it` or `specify` body, allow `described_class` to stand in for the nearest enclosing static constant-first `describe` owner. A nested string-labelled `describe` or `context` inherits that owner and a nearer exact constant group replaces it. Apply the existing source-method, immutable constructor-local, and assertion rules unchanged. Do not resolve string, variable, derived, parenthesized, multiline, or otherwise dynamic group expressions, and do not credit hooks, `let`/`subject`, aliases, helpers, or shared examples.
+Decision: inside a runnable RSpec `it` or `specify` body, allow `described_class` to stand in for the nearest enclosing static constant-first `describe` owner. A nested string-labelled `describe` or `context` inherits that owner and a nearer exact constant group replaces it. Apply the existing source-method, immutable constructor-local, and assertion rules unchanged. Do not resolve string, variable, derived, parenthesized, multiline, or otherwise dynamic group expressions, and do not derive group identity through hooks, aliases, helpers, or shared examples.
 
 Rationale: the exact Factory Bot pin contains widespread class-oriented specs whose source identity is explicit in the group declaration. The bounded rule leaves its 21/28 candidate split and 56-link graph unchanged while upgrading four reviewed relationships: two from called to asserted and two from reference-only to asserted. The resulting split is 21 asserted, 2 called, 20 exact reference-only, and 13 naming; 764 adapter-selected RSpec examples and the broader upstream RSpec/Cucumber task pass, and five audits are digest-stable.
 
-Revisit when: another exact pin justifies bounded `let`/`subject` identity, shared-example binding, metadata-bearing or multiline group syntax, or helper-mediated identity without executing RSpec.
+Revisit when: another exact pin justifies shared-example binding, metadata-bearing or multiline group syntax, or helper-mediated identity without executing RSpec.
 
 ## Ruby Instance Usage Requires Direct Immutable Constructor Receivers
 

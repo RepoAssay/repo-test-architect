@@ -392,6 +392,130 @@ describe("Ruby audit adapter", () => {
     });
   });
 
+  it("tracks exact one-line RSpec let and subject constructor receivers", (t) => {
+    const root = createRubyRepo(t, {
+      Gemfile: 'gem "rspec"\n',
+      "lib/catalog/client.rb": "module Catalog\n  class Client\n    def initialize(prefix)\n      @prefix = prefix\n    end\n    def fetch\n      @prefix\n    end\n  end\nend\n",
+      "lib/catalog/registry.rb": "module Catalog\n  class Registry\n    def initialize; end\n    def get\n      :registered\n    end\n  end\nend\n",
+      "lib/catalog/widget.rb": "module Catalog\n  class Widget\n    def initialize; end\n    def render\n      :rendered\n    end\n  end\nend\n",
+      "spec/catalog_memoized_spec.rb": [
+        'require_relative "../lib/catalog/client"',
+        'require_relative "../lib/catalog/registry"',
+        'require_relative "../lib/catalog/widget"',
+        "RSpec.describe Catalog::Client do",
+        "  let(:client) { described_class.new(:cached) }",
+        "  subject(:registry) { Catalog::Registry.new }",
+        "",
+        '  context "with direct memoized receivers" do',
+        '    it("calls the let receiver") { expect(client.fetch).to eq(:cached) }',
+        '    it "asserts a stable named subject result" do',
+        "      result = registry.get",
+        "      expect(result).to eq(:registered)",
+        "    end",
+        "  end",
+        "end",
+        "",
+        "RSpec.describe Catalog::Widget do",
+        "  subject { described_class.new }",
+        '  it("calls the unnamed subject") { expect(subject.render).to eq(:rendered) }',
+        "end",
+        ""
+      ].join("\n")
+    });
+
+    const audit = auditRubyRepo(root);
+
+    assert.deepEqual(
+      audit.coveredButRisky.map((target) => [target.path, target.existingTestEvidence[0].usage]),
+      [
+        ["lib/catalog/client.rb", "asserted"],
+        ["lib/catalog/registry.rb", "asserted"],
+        ["lib/catalog/widget.rb", "asserted"]
+      ]
+    );
+  });
+
+  it("rejects overridden, shadowed, chained, multiline, and cross-owner RSpec memos", (t) => {
+    const root = createRubyRepo(t, {
+      Gemfile: 'gem "rspec"\n',
+      "lib/cross_owner.rb": "class CrossOwner\n  def initialize; end\n  def run\n    :cross\n  end\nend\n",
+      "lib/dynamic_memo.rb": "class DynamicMemo\n  def initialize; end\n  def run\n    :dynamic\n  end\nend\n",
+      "lib/outer_memo.rb": "class OuterMemo\n  def initialize; end\n  def run\n    :outer\n  end\nend\n",
+      "lib/rejected_memo.rb": "class RejectedMemo\n  def initialize; end\n  def run\n    :rejected\n  end\nend\n",
+      "spec/memoized_boundaries_spec.rb": [
+        'require_relative "../lib/cross_owner"',
+        'require_relative "../lib/dynamic_memo"',
+        'require_relative "../lib/outer_memo"',
+        'require_relative "../lib/rejected_memo"',
+        "target_class = DynamicMemo",
+        "",
+        "RSpec.describe target_class do",
+        "  let(:dynamic) { described_class.new }",
+        '  it("does not resolve a dynamic owner") { expect(dynamic.run).to eq(:dynamic) }',
+        "end",
+        "",
+        "RSpec.describe RejectedMemo do",
+        "  let(:aliased) { described_class }",
+        "  let(:chained) { described_class.new.run }",
+        "  let(:blocked) { described_class.new {} }",
+        "  let!(:eager) { described_class.new }",
+        "  let(:multiline) do",
+        "    described_class.new",
+        "  end",
+        '  it("rejects a non-constructor alias") { expect(aliased.run).to eq(:rejected) }',
+        '  it("rejects a chained constructor") { expect(chained.run).to eq(:rejected) }',
+        '  it("rejects a constructor block") { expect(blocked.run).to eq(:rejected) }',
+        '  it("rejects eager memoization") { expect(eager.run).to eq(:rejected) }',
+        '  it("rejects a multiline memo") { expect(multiline.run).to eq(:rejected) }',
+        "end",
+        "",
+        "RSpec.describe OuterMemo do",
+        "  let(:service) { described_class.new }",
+        "  let(:shadowed) { described_class.new }",
+        "  let(:eager_shadowed) { described_class.new }",
+        "  subject { described_class.new }",
+        '  context "with an override" do',
+        '    let(:service) { double("service", run: :override) }',
+        '    it("uses the nearer unknown binding") { expect(service.run).to eq(:override) }',
+        "  end",
+        '  context "with eager overrides" do',
+        '    let!(:eager_shadowed) { double("service", run: :override) }',
+        '    subject! { double("subject", run: :override) }',
+        '    it("does not inherit through let bang") { expect(eager_shadowed.run).to eq(:override) }',
+        '    it("does not inherit through subject bang") { expect(subject.run).to eq(:override) }',
+        "  end",
+        '  it "rejects a local shadow" do',
+        '    shadowed = double("shadowed", run: :local)',
+        "    expect(shadowed.run).to eq(:local)",
+        "  end",
+        "",
+        "  describe CrossOwner do",
+        '    it("does not inherit outer described_class identity") { expect(service.run).to eq(:cross) }',
+        "  end",
+        "",
+        '  shared_examples "memoized shared behavior" do',
+        "    let(:shared_service) { described_class.new }",
+        '    it("does not bind shared examples") { expect(shared_service.run).to eq(:outer) }',
+        "  end",
+        '  it_behaves_like "memoized shared behavior"',
+        "end",
+        ""
+      ].join("\n")
+    });
+
+    const audit = auditRubyRepo(root);
+    const usage = Object.fromEntries(
+      audit.coveredButRisky.map((target) => [target.path, target.existingTestEvidence[0].usage ?? "reference-only"])
+    );
+
+    assert.deepEqual(usage, {
+      "lib/cross_owner.rb": "reference-only",
+      "lib/dynamic_memo.rb": "reference-only",
+      "lib/outer_memo.rb": "reference-only",
+      "lib/rejected_memo.rb": "reference-only"
+    });
+  });
+
   it("marks a stable result from an exact immutable constructor-local instance call", (t) => {
     const root = createRubyRepo(t, {
       Gemfile: 'gem "rspec"\n',
