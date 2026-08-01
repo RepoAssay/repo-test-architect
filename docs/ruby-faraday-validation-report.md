@@ -127,4 +127,4 @@ Five restored-tree audits of each pin produced one digest per repository:
 
 ## Result
 
-The RSpec load, direct receiver, exact group-owned `described_class`, and one-line constructor-memo boundaries are regression-backed across Faraday and the later [Factory Bot validation](ruby-factory-bot-validation-report.md). Ruby remains experimental. Multiline/eager memoization, implicit matcher semantics, shared examples, helper execution, generated methods, broader project ownership, and Rails ownership remain explicit later decisions.
+The RSpec load, direct receiver, exact group-owned `described_class`, one-line constructor-memo, and later same-file shared-example boundaries are regression-backed across Faraday, the [Factory Bot validation](ruby-factory-bot-validation-report.md), and the [shared-example pass](ruby-shared-example-validation-report.md). This pin now fills Ruby's framework-heavy promotion role. Multiline/eager memoization, implicit matcher semantics, cross-file or computed shared examples/helpers, generated methods, broader project ownership, and Rails ownership remain outside the supported boundary.

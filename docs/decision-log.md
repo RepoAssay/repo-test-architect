@@ -2,6 +2,14 @@
 
 This log records project-level decisions that shape architecture, scope, and public positioning.
 
+# Ruby Promotes To Supported At Its Bounded Bundler Boundary
+
+Decision: promote Ruby from experimental to supported while retaining the exact Bundler/Minitest/RSpec ownership, command, evidence, and blocker boundaries in the Ruby support matrix.
+
+Rationale: rubyzip, Faraday, and Diplomat now fill the conventional-library/service, framework-heavy, and difficult-ownership corpus roles. Their exact pinned checkouts are blocker-free and stable across fresh five-run standardized measurements, all 21 Ruby detection, ownership, command, evidence, ranking, stability, and performance areas pass review, and their selected native suites pass 412 Minitest runs, 639 Faraday RSpec examples, and 281 Diplomat RSpec examples. The generated 400-source/200-test gate, shared conformance, implementation coverage, golden/model-consistency artifacts, package verification, and cross-platform checks supply the same promotion infrastructure as the existing supported adapters.
+
+Revisit when: Rails, partial/path gemspec graphs, broader RSpec execution semantics, or another Ruby repository shape has exact live evidence strong enough to widen the supported matrix.
+
 # Ruby Shared Examples Require Exact Same-File Literal Inclusion
 
 Decision: treat an RSpec shared `it` or `specify` body as runnable only when an earlier same-file `shared_examples` or `shared_examples_for` declaration has one exact literal name, no parameters, and exactly one nearest visible declaration selected by a direct constant-owned literal `it_behaves_like` or `include_examples`. Bind the inclusion owner's `described_class` and reuse the existing direct call, stable local, and assertion rules. Dormant shared bodies contribute no usage. Reject cross-file, parameterized, dynamic, block-bearing, shared-context, duplicate-nearest, nested-chain, legacy-alias, shared-memo, and shared-helper forms.
@@ -88,7 +96,7 @@ Decision: register Ruby experimentally with one root `Gemfile`, `lib/` source ow
 
 Rationale: Ruby's dynamic constant lookup and metaprogramming make broad static evidence easy to overstate. The first exact-pin rubyzip audit proves useful detection, command selection, native verification, candidate classification, and conservative basename attribution while keeping direct calls, ambiguous basenames, custom tasks, alternate test naming, and Rails explicit. Live pressure added only exact `Minitest::TestTask.create` and root-gemspec runner declarations.
 
-Revisit when: direct `require` and constant evidence is regression-backed across representative public gems, or three pinned Ruby roles pass the shared promotion scorecard.
+Revisit when: a new repository shape justifies widening the now-supported bounded matrix without weakening exact load and constant ownership.
 
 ## Audit Graph First
 

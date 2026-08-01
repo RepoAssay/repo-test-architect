@@ -130,7 +130,7 @@ export const adapters = [
     id: "ruby",
     ecosystems: ["ruby"],
     languages: ["ruby"],
-    maturity: "experimental",
+    maturity: "supported",
     supportedTestFrameworks: ["minitest", "rspec"],
     supportedProjectTypes: ["ruby-bundler"],
     emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"],

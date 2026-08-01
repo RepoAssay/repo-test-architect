@@ -18,7 +18,7 @@ npm run detect-rules:json
 | `package.json` | `javascript` | `javascript`, `typescript` | Supported by `javascript` |
 | `pyproject.toml` | `python` | `python` | Supported by `python` |
 | `requirements.txt` | `python` | `python` | Supported by `python` |
-| `Gemfile` | `ruby` | `ruby` | Experimental bounded `ruby` adapter |
+| `Gemfile` | `ruby` | `ruby` | Supported bounded `ruby` adapter |
 | `composer.json` | `php` | `php` | Detected, unsupported |
 | `mix.exs` | `elixir` | `elixir` | Detected, unsupported |
 | `go.mod` | `go` | `go` | Supported by bounded `go` |
