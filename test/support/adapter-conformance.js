@@ -23,6 +23,7 @@ const portableEvidenceStrengths = {
   "csharp-symbol-reference": ["direct"],
   "csharp-test-helper": ["indirect"],
   "direct-relative-import": ["direct"],
+  "elixir-module-reference": ["direct"],
   "filename-convention": ["naming"],
   "go-source-dependency": ["indirect"],
   "go-symbol-reference": ["direct", "referenced"],

@@ -107,6 +107,8 @@ describe("package manifest", () => {
     assert.equal(packageJson.scripts["corpus:measure"], "node ./scripts/measure-validation-corpus.js");
     assert.equal(packageJson.scripts["adapter:coverage:check"], "node ./scripts/check-adapter-coverage.js");
     assert.equal(packageJson.scripts["csharp:performance:check"], "node ./scripts/check-csharp-performance.js");
+    assert.equal(packageJson.scripts["elixir:performance:check"], "node ./scripts/check-elixir-performance.js");
+    assert.equal(packageJson.scripts["elixir:native:check"], "node ./scripts/check-elixir-native-fixture.js");
     assert.equal(packageJson.scripts["go:performance:check"], "node ./scripts/check-go-performance.js");
     assert.equal(packageJson.scripts["javascript:performance:check"], "node ./scripts/check-javascript-performance.js");
     assert.equal(packageJson.scripts["python:performance:check"], "node ./scripts/check-python-performance.js");
@@ -137,6 +139,7 @@ describe("package manifest", () => {
       "adapter:coverage:check",
       "corpus:check",
       "csharp:performance:check",
+      "elixir:performance:check",
       "go:performance:check",
       "javascript:performance:check",
       "python:performance:check",
@@ -164,6 +167,7 @@ describe("package manifest", () => {
       "adapter:coverage:check",
       "corpus:check",
       "csharp:performance:check",
+      "elixir:performance:check",
       "go:performance:check",
       "javascript:performance:check",
       "python:performance:check",

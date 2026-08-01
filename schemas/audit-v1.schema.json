@@ -127,7 +127,8 @@
                   "go-source-dependency",
                   "rust-symbol-reference",
                   "ruby-constant-reference",
-                  "php-symbol-reference"
+                  "php-symbol-reference",
+                  "elixir-module-reference"
                 ]
               },
               "strength": { "enum": ["naming", "direct", "referenced", "indirect"] },

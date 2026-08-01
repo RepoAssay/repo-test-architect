@@ -35,6 +35,17 @@ const cases = [
     }
   },
   {
+    adapterId: "elixir",
+    fixturePath: "examples/elixir-mix-exunit-basic",
+    expectedMaturity: "experimental",
+    expectedProfile: {
+      languages: ["elixir"],
+      testFrameworks: ["exunit"],
+      testCommand: "mix test",
+      confidence: "high"
+    }
+  },
+  {
     adapterId: "kotlin",
     fixturePath: "examples/kotlin-junit-basic",
     expectedProfile: {

@@ -792,7 +792,7 @@ describe("project detector", () => {
           root: "services/notifications",
           ecosystems: ["elixir"],
           languages: ["elixir"],
-          supported: false
+          supported: true
         }
       ]
     );

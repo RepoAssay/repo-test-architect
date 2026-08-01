@@ -72,6 +72,7 @@ describe("model consistency runner", () => {
         ["csharp-sdk-project-pair-plan", []],
         ["csharp-sdk-unique-pair-plan", []],
         ["csharp-sdk-xunit-basic-plan", []],
+        ["elixir-mix-exunit-basic-plan", []],
         ["express-supertest-plan", []],
         ["go-build-target-basic-plan", []],
         ["go-testing-basic-plan", []],
@@ -145,14 +146,14 @@ describe("model consistency runner", () => {
     assert.equal(summary.schemaVersion, "model-consistency-summary/v1");
     assert.equal(summary.profileName, "deterministic-baseline");
     assert.deepEqual(summary.summary, {
-      scenarioCount: 62,
-      passedScenarioCount: 62,
+      scenarioCount: 63,
+      passedScenarioCount: 63,
       failedScenarioCount: 0,
-      checkedFieldCount: 546,
+      checkedFieldCount: 554,
       failureCount: 0
     });
-    assert.equal(summary.scenarios[22].scenarioId, "node-ava-basic-plan");
-    assert.equal(summary.scenarios[22].status, "passed");
+    assert.equal(summary.scenarios[23].scenarioId, "node-ava-basic-plan");
+    assert.equal(summary.scenarios[23].status, "passed");
     assert.ok(summary.allowedVariationThemes.includes("Additional non-locked metadata may be added."));
     assert.ok(summary.unexpectedVariationThemes.includes("Generating a direct DTO test recommendation."));
   });
@@ -166,8 +167,8 @@ describe("model consistency runner", () => {
     assert.equal(comparison.baselineProfile, "deterministic-baseline");
     assert.equal(comparison.candidateProfile, "local-small");
     assert.deepEqual(comparison.summary, {
-      scenarioCount: 62,
-      alignedScenarioCount: 62,
+      scenarioCount: 63,
+      alignedScenarioCount: 63,
       driftedScenarioCount: 0,
       missingScenarioCount: 0,
       unexpectedScenarioCount: 0,
@@ -210,12 +211,12 @@ describe("model consistency runner", () => {
     const comparison = compareModelConsistencySummaries(baseline, candidate);
 
     assert.deepEqual(comparison.summary, {
-      scenarioCount: 63,
-      alignedScenarioCount: 60,
+      scenarioCount: 64,
+      alignedScenarioCount: 61,
       driftedScenarioCount: 1,
       missingScenarioCount: 1,
       unexpectedScenarioCount: 1,
-      checkedFieldDelta: -391,
+      checkedFieldDelta: -399,
       failureDelta: 3
     });
     assert.deepEqual(
@@ -224,6 +225,7 @@ describe("model consistency runner", () => {
         ["csharp-sdk-project-pair-plan", "drifted"],
         ["csharp-sdk-unique-pair-plan", "aligned"],
         ["csharp-sdk-xunit-basic-plan", "missing"],
+        ["elixir-mix-exunit-basic-plan", "aligned"],
         ["express-supertest-plan", "aligned"],
         ["go-build-target-basic-plan", "aligned"],
         ["go-testing-basic-plan", "aligned"],

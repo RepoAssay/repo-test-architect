@@ -38,6 +38,7 @@ describe("package contents", () => {
     assert.ok(requiredFiles.includes("src/adapters/go/audit.js"));
     assert.ok(requiredFiles.includes("src/adapters/csharp/audit.js"));
     assert.ok(requiredFiles.includes("src/adapters/csharp/directory-packages-props.js"));
+    assert.ok(requiredFiles.includes("src/adapters/elixir/audit.js"));
     assert.ok(requiredFiles.includes("src/adapters/rust/audit.js"));
     assert.ok(requiredFiles.includes("src/adapters/ruby/audit.js"));
     assert.ok(requiredFiles.includes("src/adapters/php/audit.js"));
@@ -47,6 +48,7 @@ describe("package contents", () => {
     assert.ok(requiredFiles.includes("docs/csharp-sharp-cast-validation-report.md"));
     assert.ok(requiredFiles.includes("docs/csharp-central-packages-validation-report.md"));
     assert.ok(requiredFiles.includes("docs/csharp-multi-target-validation-report.md"));
+    assert.ok(requiredFiles.includes("docs/elixir-alpha-support.md"));
     assert.ok(requiredFiles.includes("docs/rust-alpha-support.md"));
     assert.ok(requiredFiles.includes("docs/ruby-alpha-support.md"));
     assert.ok(requiredFiles.includes("docs/php-alpha-support.md"));
@@ -78,6 +80,7 @@ describe("package contents", () => {
     assert.ok(requiredFiles.includes("examples/ruby-minitest-basic/Gemfile"));
     assert.ok(requiredFiles.includes("examples/ruby-minitest-basic/Gemfile.lock"));
     assert.ok(requiredFiles.includes("examples/php-phpunit-basic/composer.lock"));
+    assert.ok(requiredFiles.includes("examples/elixir-mix-exunit-basic/mix.exs"));
     assert.ok(requiredFiles.includes("schemas/diagnostic-event-v1.schema.json"));
     assert.ok(requiredFiles.includes("schemas/doctor-report-v1.schema.json"));
     assert.ok(requiredFiles.includes("schemas/diagnostic-bundle-v1.schema.json"));
@@ -87,6 +90,8 @@ describe("package contents", () => {
     assert.ok(requiredFiles.includes("scripts/check-validation-corpus.js"));
     assert.ok(requiredFiles.includes("scripts/render-validation-scorecard.js"));
     assert.ok(requiredFiles.includes("scripts/check-csharp-performance.js"));
+    assert.ok(requiredFiles.includes("scripts/check-elixir-performance.js"));
+    assert.ok(requiredFiles.includes("scripts/check-elixir-native-fixture.js"));
     assert.ok(requiredFiles.includes("scripts/check-go-performance.js"));
     assert.ok(requiredFiles.includes("scripts/check-javascript-performance.js"));
     assert.ok(requiredFiles.includes("scripts/check-ruby-performance.js"));

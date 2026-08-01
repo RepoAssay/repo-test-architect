@@ -20,7 +20,7 @@ npm run detect-rules:json
 | `requirements.txt` | `python` | `python` | Supported by `python` |
 | `Gemfile` | `ruby` | `ruby` | Supported bounded `ruby` adapter |
 | `composer.json` | `php` | `php` | Supported by bounded `php` |
-| `mix.exs` | `elixir` | `elixir` | Detected, unsupported |
+| `mix.exs` | `elixir` | `elixir` | Experimental bounded `elixir` adapter |
 | `go.mod` | `go` | `go` | Supported by bounded `go` |
 | `Cargo.toml` | `rust` | `rust` | Supported by bounded `rust` |
 | `Package.swift` | `swift` | `swift` | Supported by `swift` |
