@@ -297,7 +297,7 @@ describe("Ruby audit adapter", () => {
     );
   });
 
-  it("rejects ambiguous and helper-mediated RSpec described_class identity", (t) => {
+  it("rejects ambiguous RSpec described_class identity outside exact shared inclusion", (t) => {
     const root = createRubyRepo(t, {
       Gemfile: 'gem "rspec"\n',
       "lib/aliased.rb": "class Aliased\n  def self.run\n    :ok\n  end\nend\n",
@@ -385,11 +385,141 @@ describe("Ruby audit adapter", () => {
       "lib/dynamic_group.rb": "reference-only",
       "lib/hooked.rb": "reference-only",
       "lib/memoized.rb": "asserted",
-      "lib/outer.rb": "reference-only",
+      "lib/outer.rb": "asserted",
       "lib/parenthesized.rb": "reference-only",
       "lib/shared.rb": "reference-only",
       "lib/string_group.rb": "reference-only"
     });
+  });
+
+  it("binds exact same-file RSpec shared examples at literal inclusion sites", (t) => {
+    const root = createRubyRepo(t, {
+      Gemfile: 'gem "rspec"\n',
+      "lib/shared_client.rb": "class SharedClient\n  def self.fetch\n    :client\n  end\nend\n",
+      "lib/shared_service.rb": "class SharedService\n  def initialize; end\n  def fetch\n    :service\n  end\nend\n",
+      "spec/shared_behavior_spec.rb": [
+        'require_relative "../lib/shared_client"',
+        'require_relative "../lib/shared_service"',
+        "",
+        'RSpec.shared_examples "class behavior" do',
+        '  it("calls the bound class") { expect(described_class.fetch).to eq(:client) }',
+        "end",
+        "",
+        "RSpec.describe SharedClient do",
+        '  it_behaves_like "class behavior"',
+        "end",
+        "",
+        "RSpec.describe SharedService do",
+        "  shared_examples_for 'instance behavior' do",
+        '    it "calls an instance from the bound class" do',
+        "      service = described_class.new",
+        "      result = service.fetch",
+        "      expect(result).to eq(:service)",
+        "    end",
+        "  end",
+        "",
+        "  context 'with exact inclusion' do",
+        "    include_examples('instance behavior')",
+        "  end",
+        "end",
+        ""
+      ].join("\n")
+    });
+
+    const audit = auditRubyRepo(root);
+
+    assert.deepEqual(
+      audit.coveredButRisky.map((target) => [target.path, target.existingTestEvidence[0].usage]),
+      [
+        ["lib/shared_client.rb", "asserted"],
+        ["lib/shared_service.rb", "asserted"]
+      ]
+    );
+  });
+
+  it("rejects dormant, parameterized, dynamic, blocked, and ambiguous shared examples", (t) => {
+    const source = (name) => `class ${name}\n  def self.run\n    :ok\n  end\nend\n`;
+    const root = createRubyRepo(t, {
+      Gemfile: 'gem "rspec"\n',
+      "lib/blocked_shared.rb": source("BlockedShared"),
+      "lib/context_shared.rb": source("ContextShared"),
+      "lib/dormant_shared.rb": source("DormantShared"),
+      "lib/duplicate_shared.rb": source("DuplicateShared"),
+      "lib/dynamic_shared.rb": source("DynamicShared"),
+      "lib/parameterized_shared.rb": source("ParameterizedShared"),
+      "spec/shared_behavior_boundaries_spec.rb": [
+        'require_relative "../lib/blocked_shared"',
+        'require_relative "../lib/context_shared"',
+        'require_relative "../lib/dormant_shared"',
+        'require_relative "../lib/duplicate_shared"',
+        'require_relative "../lib/dynamic_shared"',
+        'require_relative "../lib/parameterized_shared"',
+        "",
+        'shared_examples "dormant behavior" do',
+        '  it("never runs") { expect(DormantShared.run).to eq(:ok) }',
+        "end",
+        "",
+        'shared_examples "parameterized behavior" do |klass|',
+        '  it("needs an argument") { expect(ParameterizedShared.run).to eq(:ok) }',
+        "end",
+        "",
+        'shared_examples "dynamic behavior" do',
+        '  it("needs a literal inclusion") { expect(DynamicShared.run).to eq(:ok) }',
+        "end",
+        "",
+        'shared_examples "blocked behavior" do',
+        '  it("needs an inclusion without a block") { expect(BlockedShared.run).to eq(:ok) }',
+        "end",
+        "",
+        'shared_context "context behavior" do',
+        '  it("is not a shared example") { expect(ContextShared.run).to eq(:ok) }',
+        "end",
+        "",
+        "RSpec.describe ParameterizedShared do",
+        '  it_behaves_like "parameterized behavior", described_class',
+        "end",
+        "",
+        "RSpec.describe DynamicShared do",
+        '  behavior_name = "dynamic behavior"',
+        "  it_behaves_like behavior_name",
+        "end",
+        "",
+        "RSpec.describe BlockedShared do",
+        '  include_examples "blocked behavior" do',
+        '    let(:value) { :ok }',
+        "  end",
+        "end",
+        "",
+        "RSpec.describe ContextShared do",
+        '  include_context "context behavior"',
+        "end",
+        "",
+        "RSpec.describe DuplicateShared do",
+        '  shared_examples "duplicate behavior" do',
+        '    it("has one candidate") { expect(DuplicateShared.run).to eq(:ok) }',
+        "  end",
+        '  shared_examples "duplicate behavior" do',
+        '    it("has another candidate") { expect(DuplicateShared.run).to eq(:ok) }',
+        "  end",
+        '  it_behaves_like "duplicate behavior"',
+        "end",
+        ""
+      ].join("\n")
+    });
+
+    const audit = auditRubyRepo(root);
+
+    assert.deepEqual(
+      audit.coveredButRisky.map((target) => [target.path, target.existingTestEvidence[0].usage ?? "reference-only"]),
+      [
+        ["lib/blocked_shared.rb", "reference-only"],
+        ["lib/context_shared.rb", "reference-only"],
+        ["lib/dormant_shared.rb", "reference-only"],
+        ["lib/duplicate_shared.rb", "reference-only"],
+        ["lib/dynamic_shared.rb", "reference-only"],
+        ["lib/parameterized_shared.rb", "reference-only"]
+      ]
+    );
   });
 
   it("tracks exact one-line RSpec let and subject constructor receivers", (t) => {

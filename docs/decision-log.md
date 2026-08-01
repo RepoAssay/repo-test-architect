@@ -2,6 +2,14 @@
 
 This log records project-level decisions that shape architecture, scope, and public positioning.
 
+# Ruby Shared Examples Require Exact Same-File Literal Inclusion
+
+Decision: treat an RSpec shared `it` or `specify` body as runnable only when an earlier same-file `shared_examples` or `shared_examples_for` declaration has one exact literal name, no parameters, and exactly one nearest visible declaration selected by a direct constant-owned literal `it_behaves_like` or `include_examples`. Bind the inclusion owner's `described_class` and reuse the existing direct call, stable local, and assertion rules. Dormant shared bodies contribute no usage. Reject cross-file, parameterized, dynamic, block-bearing, shared-context, duplicate-nearest, nested-chain, legacy-alias, shared-memo, and shared-helper forms.
+
+Rationale: pinned Faraday passes 639 examples with 95.04% line coverage while exercising exact same-file literal declarations and inclusions. Its existing 8/22/3 candidate split and 45 relationships remain stable at 6 asserted, 1 called, 25 exact reference-only, and 13 naming because the recovered bodies either reinforce an existing assertion or cross unsupported subject/memo/generated-reader flow. Factory Bot passes 764 examples with 98.51% line coverage and remains stable at 21/28/4 with 56 relationships because its prominent shared examples require parameters, inclusion blocks, a legacy alias, memos, or implicit matchers. Focused regressions prove both exact binding and removal of dormant-body false positives.
+
+Revisit when: a pinned repository justifies cross-file registry ownership, parameter binding, exact inclusion-block overrides, shared memo/helper execution, or a legacy inclusion alias without executing arbitrary RSpec DSL.
+
 # Ruby Helper And Factory Returns Require One Exact Constructor Expression
 
 Decision: retain receiver identity through one direct source singleton factory only when its entire body is `new(...)` or `self.new(...)`, and through one same-file RSpec group helper only when its entire body is `Constant.new(...)` or exact group-owned `described_class.new(...)`. Require the existing direct initializer, non-overridden `.new`, direct instance method, stable receiver local, and assertion boundaries. Reject shared, cross-file, Minitest, chained, wrapped, multi-statement, overridden, cross-owner, lexically unqualified, and deeper flow.
@@ -32,7 +40,7 @@ Decision: inside a runnable RSpec `it` or `specify` body, allow a receiver decla
 
 Rationale: the exact Faraday pin retains its 8/22 candidate split and 45-link graph while upgrading three reviewed relationships: `Faraday::Connection` from called to asserted and `Faraday::Error` plus `Faraday::Response` from reference-only to asserted. The resulting split is 6 asserted, 1 called, 25 exact reference-only, and 13 naming relationships. Factory Bot remains unchanged at 21 asserted, 2 called, 20 exact reference-only, and 13 naming relationships because its remaining memoized shapes cross generated or inherited methods, constructor blocks, shared examples, or implicit matchers. Both native RSpec suites pass, and five audits of each exact pin are digest-stable.
 
-Revisit when: another exact pin justifies multiline or eager memo declarations, implicit matchers, shared-example parameter binding, helper/factory returns, or generated and inherited method ownership without executing RSpec.
+Revisit when: another exact pin justifies multiline or eager memo declarations, implicit matchers, shared-example parameter binding, or generated and inherited method ownership without executing RSpec.
 
 ## Ruby RSpec `described_class` Requires An Exact Group Owner
 
@@ -40,7 +48,7 @@ Decision: inside a runnable RSpec `it` or `specify` body, allow `described_class
 
 Rationale: the exact Factory Bot pin contains widespread class-oriented specs whose source identity is explicit in the group declaration. The bounded rule leaves its 21/28 candidate split and 56-link graph unchanged while upgrading four reviewed relationships: two from called to asserted and two from reference-only to asserted. The resulting split is 21 asserted, 2 called, 20 exact reference-only, and 13 naming; 764 adapter-selected RSpec examples and the broader upstream RSpec/Cucumber task pass, and five audits are digest-stable.
 
-Revisit when: another exact pin justifies shared-example binding, metadata-bearing or multiline group syntax, or helper-mediated identity without executing RSpec.
+Revisit when: another exact pin justifies metadata-bearing or multiline group syntax, dynamic shared-example names, or deeper helper-mediated identity without executing RSpec.
 
 ## Ruby Instance Usage Requires Direct Immutable Constructor Receivers
 
