@@ -112,12 +112,41 @@ The command blocker is unchanged. The adapter gains only test ownership and evid
 
 The unchanged native command was rerun after the adapter change and again passed all 22,160 tests and 89,659 assertions in 5:03.795 on PHP 8.5.9.
 
+## Assertion-Evidence Follow-Up
+
+The next slice adds two bounded asserted-evidence forms:
+
+- an imported owned class passed literally to same-line PHPUnit `expectException(Class::class)`
+- one local variable assigned from an imported owned class's static call, then used unchanged in a nearby `assert*` helper or asserted fluent call before another method boundary
+
+The local-result edge stops at reassignment, a 1,500-character assignment statement, a 4,000-character search window, or the next method. Exception matching masks strings and comments one line at a time. A regression proves that expectation-shaped string content is not evidence.
+
+brick/math contains 21 direct expectation relationships across seven owned exception sources: `DivisionByZeroException`, `IntegerOverflowException`, `InvalidArgumentException`, `NegativeNumberException`, `NumberFormatException`, `RandomSourceException`, and `RoundingNecessaryException`. `NoInverseException` remains excluded because its class literal flows through a data provider and variable; `UnsupportedPlatformException` has no direct runnable-test expectation at the pin.
+
+Five unchanged audits after this follow-up produced one canonical result:
+
+| Measure | Result |
+| --- | --- |
+| Test command | withheld |
+| Confidence | medium |
+| Untested candidates | 7 |
+| Covered-but-risky candidates | 14 |
+| Skipped targets | 1 |
+| Evidence relationships | 34: 27 asserted, 7 called |
+| Durations | 44.665 ms, 28.310 ms, 27.297 ms, 27.064 ms, 30.279 ms |
+| Median | 28.310 ms |
+| Canonical SHA-256 | `7d727cc56a76e362e0571db263175395fcd0033564e7e9fde757c4eff2005756` |
+
+The required-`CALCULATOR` blocker remains the profile's only blocker. No command, environment value, dynamic exception ownership, or data-provider flow is inferred.
+
+The unchanged Native calculator suite was rerun after this evidence change and again passed all 22,160 tests and 89,659 assertions in 5:04.668 on PHP 8.5.9.
+
 ## Remaining Uncertainty
 
-brick/math's base class provides domain-specific assertions, and many tests exercise production objects through fluent instance calls. The adapter recognizes the tests as runnable but does not yet carry evidence through those helper assertions or local result variables. That is the next concrete PHP evidence slice.
+The remaining brick/math candidates are internal calculator implementations and helpers, dynamic data-provider exception evidence for `NoInverseException`, and `UnsupportedPlatformException`. Reaching them would require a different ownership proof rather than widening the two bounded assertion forms.
 
-Broader bootstrap evaluation, arbitrary environment expressions, choosing matrix values, shell portability, Composer script graphs, PHPUnit attributes, custom suites, framework ownership, ambiguous or deeper inheritance, dynamic dispatch, helper result flow, and broader instance-call inference remain excluded.
+Broader bootstrap evaluation, arbitrary environment expressions, choosing matrix values, shell portability, Composer script graphs, PHPUnit attributes, custom suites, framework ownership, ambiguous or deeper inheritance, dynamic data-provider flow, reassigned or cross-method results, and broader instance-call inference remain excluded. The next useful live pressure is a service-shaped repository such as Guzzle rather than another brick/math-specific expansion.
 
 ## Result
 
-The first PHP live test prevented a false high-confidence command claim, and its follow-up safely recovered the five concrete tests hidden behind one local base class. Project detection, Composer and PSR-4 ownership, PHPUnit recognition, bounded test inheritance, candidate classification, downstream artifacts, repeatability, performance, and native suite viability all hold at the exact pin. brick/math remains the conventional-library pressure repository for helper-assertion and fluent instance-call evidence.
+The first PHP live test prevented a false high-confidence command claim; its follow-ups safely recovered five concrete tests behind one local base and 21 exact exception-expectation relationships. Project detection, Composer and PSR-4 ownership, PHPUnit recognition, bounded test inheritance, assertion evidence, candidate classification, downstream artifacts, repeatability, performance, and native suite viability all hold at the exact pin. brick/math remains the conventional-library control while PHP moves to a service-shaped pressure repository.

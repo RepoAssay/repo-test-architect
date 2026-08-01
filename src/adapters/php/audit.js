@@ -260,14 +260,19 @@ function collectEvidence(sourceFiles, testFiles, ownership) {
 
   for (const test of testFiles) {
     const imports = collectUseImports(test.content);
+    const exceptionExpectations = collectDirectExceptionExpectations(test.content);
+    const assertedLocalResults = collectAssertedLocalResultClasses(test.content);
     for (const [shortName, fqn] of imports) {
       const source = ownedClasses.find((candidate) => candidate.fqn === fqn);
-      if (!source || !hasClassUsage(test.content, shortName)) continue;
+      const exceptionExpectation = exceptionExpectations.has(shortName);
+      if (!source || (!hasClassUsage(test.content, shortName) && !exceptionExpectation)) continue;
       addEvidence(evidence, source.path, {
         testPath: test.path,
-        kind: "php-symbol-reference",
+        kind: exceptionExpectation ? "php-exception-expectation" : "php-symbol-reference",
         strength: "direct",
-        usage: hasAssertedUsage(test.content, shortName) ? "asserted" : "called"
+        usage: exceptionExpectation || hasAssertedUsage(test.content, shortName) || assertedLocalResults.has(shortName)
+          ? "asserted"
+          : "called"
       });
     }
     const conventionalName = path.basename(test.path, "Test.php");
@@ -382,6 +387,34 @@ function hasClassUsage(content, name) {
 function hasAssertedUsage(content, name) {
   const escaped = escapeRegExp(name);
   return new RegExp(`(?:assert[A-Za-z_]*|expect)\\s*\\([^;]*\\b${escaped}::[A-Za-z_][A-Za-z0-9_]*\\s*\\(`, "s").test(maskComments(content));
+}
+
+function collectDirectExceptionExpectations(content) {
+  const names = new Set();
+  const expectation = /\bexpectException\s*\(\s*([A-Za-z_][A-Za-z0-9_]*)::class\s*\)/g;
+  for (const line of content.split("\n")) {
+    for (const match of maskCommentsAndStrings(line).matchAll(expectation)) names.add(match[1]);
+  }
+  return names;
+}
+
+function collectAssertedLocalResultClasses(content) {
+  const classes = new Set();
+  const masked = maskCommentsAndStrings(content);
+  const assignment = /\$([A-Za-z_][A-Za-z0-9_]*)\s*=\s*([A-Za-z_][A-Za-z0-9_]*)::[A-Za-z_][A-Za-z0-9_]*\s*\(/g;
+  for (const match of masked.matchAll(assignment)) {
+    const statementEnd = masked.indexOf(";", match.index + match[0].length);
+    if (statementEnd === -1 || statementEnd - match.index > 1500) continue;
+    let suffix = masked.slice(statementEnd + 1, statementEnd + 4001);
+    const methodBoundary = /\b(?:public|protected|private)\s+(?:static\s+)?function\b/.exec(suffix)?.index;
+    if (methodBoundary !== undefined) suffix = suffix.slice(0, methodBoundary);
+    const variable = escapeRegExp(match[1]);
+    const reassignment = new RegExp(`\\$${variable}\\s*=`).exec(suffix)?.index;
+    if (reassignment !== undefined) suffix = suffix.slice(0, reassignment);
+    const assertedUse = new RegExp(`\\bassert[A-Za-z_][A-Za-z0-9_]*\\s*\\([^;]{0,1500}\\$${variable}\\b`, "s");
+    if (assertedUse.test(suffix)) classes.add(match[2]);
+  }
+  return classes;
 }
 
 function ownedClass(file, mappings, masked = maskCommentsAndStrings(file.content)) {

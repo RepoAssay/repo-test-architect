@@ -70,6 +70,87 @@ describe("PHP adapter", () => {
     ]);
   });
 
+  it("records a direct PHPUnit exception expectation as asserted evidence", () => {
+    const root = createRepo();
+    fs.writeFileSync(
+      path.join(root, "src", "ParseException.php"),
+      "<?php\nnamespace Example;\nfinal class ParseException extends \\RuntimeException { public static function invalid(): self { return new self('invalid'); } }\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "tests", "ParserTest.php"),
+      "<?php\nnamespace Example\\Tests;\nuse Example\\ParseException;\nuse Example\\Parser;\nuse PHPUnit\\Framework\\TestCase;\nfinal class ParserTest extends TestCase { public function testParse(): void { $this->expectException(ParseException::class); Parser::parse(''); } }\n"
+    );
+
+    const audit = auditPhpRepo(root);
+    const exception = audit.coveredButRisky.find((target) => target.path === "src/ParseException.php");
+    assert.deepEqual(exception?.existingTestEvidence, [{
+      testPath: "tests/ParserTest.php",
+      kind: "php-exception-expectation",
+      strength: "direct",
+      usage: "asserted"
+    }]);
+  });
+
+  it("ignores exception-expectation syntax inside a string literal", () => {
+    const root = createRepo();
+    fs.writeFileSync(
+      path.join(root, "src", "ParseException.php"),
+      "<?php\nnamespace Example;\nfinal class ParseException extends \\RuntimeException { public static function invalid(): self { return new self('invalid'); } }\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "tests", "ParserTest.php"),
+      "<?php\nnamespace Example\\Tests;\nuse Example\\ParseException;\nuse PHPUnit\\Framework\\TestCase;\nfinal class ParserTest extends TestCase { public function testMessage(): void { self::assertSame('expectException(ParseException::class)', 'expectException(ParseException::class)'); } }\n"
+    );
+
+    const audit = auditPhpRepo(root);
+    assert.ok(audit.untestedCandidates.some((target) => target.path === "src/ParseException.php"));
+  });
+
+  it("carries asserted evidence through one nearby local factory result", () => {
+    const root = createRepo();
+    fs.writeFileSync(
+      path.join(root, "src", "Parser.php"),
+      "<?php\nnamespace Example;\nfinal class Parser { private function __construct(private string $value) {} public static function from(string $value): self { return new self(trim($value)); } public function value(): string { return $this->value; } }\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "tests", "ParserTest.php"),
+      "<?php\nnamespace Example\\Tests;\nuse Example\\Parser;\nuse PHPUnit\\Framework\\TestCase;\nfinal class ParserTest extends TestCase { public function testParse(): void { $result = Parser::from(' x '); self::assertParserValue('x', $result->value()); } private static function assertParserValue(string $expected, string $actual): void { self::assertSame($expected, $actual); } }\n"
+    );
+
+    const audit = auditPhpRepo(root);
+    assert.equal(audit.coveredButRisky[0].existingTestEvidence[0].usage, "asserted");
+  });
+
+  it("does not carry local-result evidence through reassignment", () => {
+    const root = createRepo();
+    fs.writeFileSync(
+      path.join(root, "src", "Parser.php"),
+      "<?php\nnamespace Example;\nfinal class Parser { private function __construct(private string $value) {} public static function from(string $value): self { return new self(trim($value)); } public function value(): string { return $this->value; } }\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "tests", "ParserTest.php"),
+      "<?php\nnamespace Example\\Tests;\nuse Example\\Parser;\nuse PHPUnit\\Framework\\TestCase;\nfinal class ParserTest extends TestCase { public function testParse(): void { $result = Parser::from(' x '); $result = replacement(); self::assertSame('x', $result->value()); } }\n"
+    );
+
+    const audit = auditPhpRepo(root);
+    assert.equal(audit.coveredButRisky[0].existingTestEvidence[0].usage, "called");
+  });
+
+  it("does not carry local-result evidence across a method boundary", () => {
+    const root = createRepo();
+    fs.writeFileSync(
+      path.join(root, "src", "Parser.php"),
+      "<?php\nnamespace Example;\nfinal class Parser { private function __construct(private string $value) {} public static function from(string $value): self { return new self(trim($value)); } public function value(): string { return $this->value; } }\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "tests", "ParserTest.php"),
+      "<?php\nnamespace Example\\Tests;\nuse Example\\Parser;\nuse PHPUnit\\Framework\\TestCase;\nfinal class ParserTest extends TestCase { private function prepare(): void { $result = Parser::from(' x '); } public function testParse(Parser $result): void { self::assertSame('x', $result->value()); } }\n"
+    );
+
+    const audit = auditPhpRepo(root);
+    assert.equal(audit.coveredButRisky[0].existingTestEvidence[0].usage, "called");
+  });
+
   it("does not follow more than one repository-owned test-base edge", () => {
     const root = createRepo();
     fs.mkdirSync(path.join(root, "tests", "Support"), { recursive: true });

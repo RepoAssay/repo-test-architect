@@ -659,3 +659,11 @@ Decision: treat a conventional `*Test.php` class with a public `test*` method as
 Rationale: five concrete brick/math test classes at the pinned live-validation commit extend its owned `AbstractTestCase`; four resolve in the same namespace and one imports it from a nested namespace. Recognizing this exact edge moves the audit from 2 covered sources and 2 relationships to 7 covered sources and 13 relationships without changing the required-`CALCULATOR` command blocker. Regression controls keep duplicate local FQNs and two-hop inheritance non-runnable.
 
 Revisit when: a pinned repository demonstrates that another statically unique inheritance form adds material evidence without requiring Composer evaluation or arbitrary PHP name resolution.
+
+### 2026-08-01: recognize exact PHP exception expectations and one asserted local result
+
+Decision: emit direct asserted evidence when a runnable PHPUnit file passes an imported owned class literal to a same-line `expectException()`. Also upgrade an owned static-call relationship to asserted when its result is assigned to one local variable and that unchanged variable appears in a nearby `assert*` call before another method boundary. Stop at reassignment and bounded statement/window limits.
+
+Rationale: brick/math directly expects seven owned exception classes across 21 test-file relationships that the adapter previously ignored because `Class::class` was not treated as runtime usage. The exact form moves the pinned audit from 14 untested, 7 covered, and 13 relationships to 7 untested, 14 covered, and 34 relationships. Same-line string masking prevents expectation-shaped text from becoming evidence; dynamic `NoInverseException` data-provider flow remains excluded.
+
+Revisit when: a pinned repository proves a bounded data-provider or helper-return edge that can preserve unique class and variable ownership without general PHP evaluation.
