@@ -12,15 +12,16 @@ The PHP adapter begins as an experimental, deliberately bounded Composer/PHPUnit
 - exact Composer test scripts of `phpunit`, `vendor/bin/phpunit`, or `@php vendor/bin/phpunit`; otherwise the conventional `vendor/bin/phpunit` fallback
 - bounded root PHPUnit bootstrap inspection that withholds the fallback when a literal required environment read can terminate non-zero
 - one-hop PHPUnit test ownership through one uniquely PSR-4-owned local base that directly extends `PHPUnit\Framework\TestCase`
-- direct imported PSR-4 class calls, with bounded assertion usage, plus unique `Class.php` to `ClassTest.php` naming fallback
+- direct imported PSR-4 class calls, exact same-line `expectException(Class::class)` evidence, and one nearby asserted local result from an owned static call
+- unique `Class.php` to `ClassTest.php` naming fallback
 - basic runtime, branching/error, boundary, and constants-only classification
 - repository-relative and absolute changed-path scoping
 
 ## Explicit exclusions
 
-This slice does not evaluate Composer plugins or scripts, PSR-0, classmap or files autoloading, array-valued mappings, custom PHPUnit suite paths, PHPUnit attributes, Pest, Codeception, framework ownership, test-base inheritance beyond one unique local edge, trait dispatch, container resolution, dynamic class names, aliases beyond direct `use` imports, or multi-hop calls. It does not choose bootstrap environment values or evaluate arbitrary bootstrap control flow. Unsupported or ambiguous metadata produces blockers instead of guessed ownership or commands.
+This slice does not evaluate Composer plugins or scripts, PSR-0, classmap or files autoloading, array-valued mappings, custom PHPUnit suite paths, PHPUnit attributes, Pest, Codeception, framework ownership, test-base inheritance beyond one unique local edge, trait dispatch, container resolution, dynamic class names, aliases beyond direct `use` imports, or multi-hop calls. Dynamic exception-class variables, data-provider flow, reassigned local results, arbitrary helper semantics, and result flow across method boundaries remain excluded. It does not choose bootstrap environment values or evaluate arbitrary bootstrap control flow. Unsupported or ambiguous metadata produces blockers instead of guessed ownership or commands.
 
-The first live validation against [`brick/math`](php-brick-math-validation-report.md) proved that an otherwise conventional PHPUnit command can require an explicit bootstrap environment choice. The adapter now withholds that unsafe default and recognizes all five concrete tests behind brick/math's one-hop local `AbstractTestCase`. Helper-mediated assertions and fluent instance-call evidence remain the next concrete gap.
+The live validation against [`brick/math`](php-brick-math-validation-report.md) proved the bootstrap guard, one-hop local `AbstractTestCase`, exact exception expectations, and bounded asserted-result evidence. The audit now reports 7 untested candidates, 14 covered-but-risky candidates, and 34 relationships while continuing to withhold the unsafe default command. A service-shaped repository is the next useful pressure boundary.
 
 ## Verification
 
