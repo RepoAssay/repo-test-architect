@@ -2,6 +2,7 @@ import { auditJavaScriptRepo } from "../adapters/javascript/audit.js";
 import { auditCSharpRepo } from "../adapters/csharp/audit.js";
 import { auditGoRepo } from "../adapters/go/audit.js";
 import { auditKotlinRepo } from "../adapters/kotlin/audit.js";
+import { auditPhpRepo } from "../adapters/php/audit.js";
 import { auditPythonRepo } from "../adapters/python/audit.js";
 import { auditRustRepo } from "../adapters/rust/audit.js";
 import { auditRubyRepo } from "../adapters/ruby/audit.js";
@@ -93,6 +94,20 @@ export const adapters = [
     emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"],
     audit(repoRoot, options = {}) {
       return auditKotlinRepo(repoRoot, {
+        changedPaths: options.changedPaths
+      });
+    }
+  },
+  {
+    id: "php",
+    ecosystems: ["php"],
+    languages: ["php"],
+    maturity: "experimental",
+    supportedTestFrameworks: ["phpunit"],
+    supportedProjectTypes: ["composer-psr4"],
+    emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"],
+    audit(repoRoot, options = {}) {
+      return auditPhpRepo(repoRoot, {
         changedPaths: options.changedPaths
       });
     }

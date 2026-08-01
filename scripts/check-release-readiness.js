@@ -15,6 +15,7 @@ export const releaseChecks = [
   "kotlin:performance:check",
   "rust:performance:check",
   "ruby:performance:check",
+  "php:performance:check",
   "swift:performance:check",
   "eval:check",
   "model-consistency:check",

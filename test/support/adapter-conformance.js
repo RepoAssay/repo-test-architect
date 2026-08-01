@@ -27,6 +27,7 @@ const portableEvidenceStrengths = {
   "go-source-dependency": ["indirect"],
   "go-symbol-reference": ["direct", "referenced"],
   "jvm-symbol-reference": ["direct", "referenced"],
+  "php-symbol-reference": ["direct", "referenced"],
   "package-entry-import": ["referenced"],
   "python-module-import": ["direct"],
   "python-package-reexport": ["referenced"],

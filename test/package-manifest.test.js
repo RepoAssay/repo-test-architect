@@ -83,6 +83,8 @@ describe("package manifest", () => {
       "docs/",
       "evals/",
       "examples/",
+      "!examples/**/vendor/**",
+      "!examples/**/.phpunit.result.cache",
       "schemas/",
       "scripts/",
       "src/",
@@ -112,6 +114,8 @@ describe("package manifest", () => {
     assert.equal(packageJson.scripts["rust:performance:check"], "node ./scripts/check-rust-performance.js");
     assert.equal(packageJson.scripts["ruby:performance:check"], "node ./scripts/check-ruby-performance.js");
     assert.equal(packageJson.scripts["ruby:native:check"], "node ./scripts/check-ruby-native-fixture.js");
+    assert.equal(packageJson.scripts["php:performance:check"], "node ./scripts/check-php-performance.js");
+    assert.equal(packageJson.scripts["php:native:check"], "node ./scripts/check-php-native-fixture.js");
     assert.equal(packageJson.scripts["swift:performance:check"], "node ./scripts/check-swift-performance.js");
     assert.equal(packageJson.scripts["demo:check"], "node ./scripts/check-demo-script.js");
     assert.equal(packageJson.scripts["mcp:smoke"], "node ./scripts/check-mcp-stdio-smoke.js");
@@ -139,6 +143,7 @@ describe("package manifest", () => {
       "kotlin:performance:check",
       "rust:performance:check",
       "ruby:performance:check",
+      "php:performance:check",
       "swift:performance:check",
       "eval:check",
       "model-consistency:check",
@@ -165,6 +170,7 @@ describe("package manifest", () => {
       "kotlin:performance:check",
       "rust:performance:check",
       "ruby:performance:check",
+      "php:performance:check",
       "swift:performance:check",
       "eval:check",
       "model-consistency:check",

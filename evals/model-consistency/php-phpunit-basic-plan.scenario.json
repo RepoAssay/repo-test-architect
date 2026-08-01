@@ -1,0 +1,67 @@
+{
+  "schemaVersion": "model-consistency-scenario/v1",
+  "id": "php-phpunit-basic-plan",
+  "description": "Different model profiles should preserve the bounded Composer command, direct asserted PHP evidence, and candidate actions.",
+  "sourceArtifact": {
+    "path": "evals/expected/php-phpunit-basic.audit.json",
+    "schemaVersion": "audit/v1"
+  },
+  "toolCall": {
+    "toolName": "generate_test_plan",
+    "arguments": {}
+  },
+  "lockedFields": [
+    {
+      "path": "summary.verificationCommand",
+      "expected": "composer test",
+      "reason": "The exact bounded Composer script must retain its verification command."
+    },
+    {
+      "path": "summary.addTestCount",
+      "expected": 1,
+      "reason": "The untested service must remain the one add-test item."
+    },
+    {
+      "path": "summary.extendTestCount",
+      "expected": 1,
+      "reason": "The directly covered parser must remain one extend-test item."
+    },
+    {
+      "path": "items[0].id",
+      "expected": "extend-test:src/Parser.php",
+      "reason": "The covered high-risk parser must retain stable first priority."
+    },
+    {
+      "path": "items[0].existingTestEvidence[0].kind",
+      "expected": "php-symbol-reference",
+      "reason": "The fixture's exact PSR-4 class import must retain PHP-owned provenance."
+    },
+    {
+      "path": "items[0].existingTestEvidence[0].strength",
+      "expected": "direct",
+      "reason": "The imported direct class call must retain direct relationship strength."
+    },
+    {
+      "path": "items[0].existingTestEvidence[0].usage",
+      "expected": "asserted",
+      "reason": "The Parser call inside PHPUnit assertSame must retain asserted usage."
+    },
+    {
+      "path": "items[1].id",
+      "expected": "add-test:src/Service.php",
+      "reason": "The untested service must retain its stable add-test item."
+    }
+  ],
+  "allowedVariations": [
+    "summary wording",
+    "PHP explanation wording",
+    "optional detail depth"
+  ],
+  "unexpectedVariations": [
+    "missing composer test verification command",
+    "direct PHP symbol evidence downgraded to naming evidence",
+    "asserted Parser usage downgraded or removed",
+    "ambiguous PSR-4 ownership credited",
+    "different plan action counts"
+  ]
+}

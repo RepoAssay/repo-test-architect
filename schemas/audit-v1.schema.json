@@ -126,7 +126,8 @@
                   "go-symbol-reference",
                   "go-source-dependency",
                   "rust-symbol-reference",
-                  "ruby-constant-reference"
+                  "ruby-constant-reference",
+                  "php-symbol-reference"
                 ]
               },
               "strength": { "enum": ["naming", "direct", "referenced", "indirect"] },

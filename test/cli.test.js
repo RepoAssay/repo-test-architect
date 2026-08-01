@@ -763,6 +763,19 @@ describe("CLI", () => {
     assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["lib/ruby_minitest_basic/parser.rb"]);
   });
 
+  it("audits the experimental PHP fixture through the CLI", () => {
+    const output = execFileSync(
+      process.execPath,
+      [cliPath, "audit", "examples/php-phpunit-basic", "--adapter=php", "--format=json"],
+      { encoding: "utf8" }
+    );
+    const audit = JSON.parse(output);
+
+    assert.equal(audit.profile.testCommand, "composer test");
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.path), ["src/Service.php"]);
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["src/Parser.php"]);
+  });
+
   it("audits the supported C# project-pair fixture through the CLI", () => {
     const output = execFileSync(
       process.execPath,
@@ -864,11 +877,11 @@ describe("CLI", () => {
   it("reports available adapters when an explicit adapter is unsupported", () => {
     assert.throws(
       () =>
-        execFileSync(process.execPath, [cliPath, "audit", fixturePath, "--adapter", "php"], {
+        execFileSync(process.execPath, [cliPath, "audit", fixturePath, "--adapter", "elixir"], {
           encoding: "utf8",
           stdio: "pipe"
         }),
-      /Unsupported adapter: php\. Available adapters: javascript, csharp, go, kotlin, python, rust, ruby, swift\./
+      /Unsupported adapter: elixir\. Available adapters: javascript, csharp, go, kotlin, php, python, rust, ruby, swift\./
     );
   });
 

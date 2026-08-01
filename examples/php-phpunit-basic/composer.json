@@ -1,0 +1,24 @@
+{
+  "name": "repoassay/php-phpunit-basic",
+  "description": "Bounded Composer and PHPUnit fixture for Repo Test Architect",
+  "type": "library",
+  "require": {
+    "php": ">=8.2"
+  },
+  "require-dev": {
+    "phpunit/phpunit": "^12.0"
+  },
+  "autoload": {
+    "psr-4": {
+      "RepoAssay\\PhpPhpunitBasic\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "RepoAssay\\PhpPhpunitBasic\\Tests\\": "tests/"
+    }
+  },
+  "scripts": {
+    "test": "phpunit"
+  }
+}

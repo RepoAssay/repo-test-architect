@@ -1,0 +1,166 @@
+{
+  "schemaVersion": "audit/v1",
+  "profile": {
+    "root": "<fixture>",
+    "languages": [
+      "php"
+    ],
+    "packageManagers": [
+      "composer"
+    ],
+    "testFrameworks": [
+      "phpunit"
+    ],
+    "architectures": [
+      "composer-psr4"
+    ],
+    "testCommand": "composer test",
+    "detectedConventions": [
+      "literal PSR-4 source ownership",
+      "literal PSR-4 test ownership",
+      "*Test.php PHPUnit classes"
+    ],
+    "existingTestLocations": [
+      "tests/ PHPUnit files"
+    ],
+    "setupSignals": [
+      "composer.json",
+      "composer.lock",
+      "phpunit.xml.dist"
+    ],
+    "confidence": "high",
+    "blockers": []
+  },
+  "untestedCandidates": [
+    {
+      "id": "src/Service.php",
+      "name": "Service",
+      "path": "src/Service.php",
+      "kind": "module",
+      "signals": [
+        "runtime-behavior",
+        "branching-logic",
+        "edge-case-surface"
+      ],
+      "risk": "high",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 8,
+      "maintenanceCost": 3,
+      "reasons": [
+        "Owned runtime behavior",
+        "Branching or error behavior"
+      ],
+      "existingTestPaths": []
+    }
+  ],
+  "coveredButRisky": [
+    {
+      "id": "src/Parser.php",
+      "name": "Parser",
+      "path": "src/Parser.php",
+      "kind": "module",
+      "signals": [
+        "runtime-behavior",
+        "branching-logic",
+        "edge-case-surface",
+        "matching-test"
+      ],
+      "risk": "high",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 8,
+      "maintenanceCost": 3,
+      "reasons": [
+        "Owned runtime behavior",
+        "Branching or error behavior",
+        "A runnable PHPUnit test directly references this PSR-4-owned class."
+      ],
+      "existingTestPaths": [
+        "tests/ParserTest.php"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "tests/ParserTest.php",
+          "kind": "php-symbol-reference",
+          "strength": "direct",
+          "usage": "asserted"
+        }
+      ]
+    }
+  ],
+  "recommended": [
+    {
+      "id": "src/Parser.php",
+      "name": "Parser",
+      "path": "src/Parser.php",
+      "kind": "module",
+      "signals": [
+        "runtime-behavior",
+        "branching-logic",
+        "edge-case-surface",
+        "matching-test"
+      ],
+      "risk": "high",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 8,
+      "maintenanceCost": 3,
+      "reasons": [
+        "Owned runtime behavior",
+        "Branching or error behavior",
+        "A runnable PHPUnit test directly references this PSR-4-owned class."
+      ],
+      "existingTestPaths": [
+        "tests/ParserTest.php"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "tests/ParserTest.php",
+          "kind": "php-symbol-reference",
+          "strength": "direct",
+          "usage": "asserted"
+        }
+      ]
+    },
+    {
+      "id": "src/Service.php",
+      "name": "Service",
+      "path": "src/Service.php",
+      "kind": "module",
+      "signals": [
+        "runtime-behavior",
+        "branching-logic",
+        "edge-case-surface"
+      ],
+      "risk": "high",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 8,
+      "maintenanceCost": 3,
+      "reasons": [
+        "Owned runtime behavior",
+        "Branching or error behavior"
+      ],
+      "existingTestPaths": []
+    }
+  ],
+  "skipped": [
+    {
+      "id": "src/Defaults.php",
+      "name": "Defaults",
+      "path": "src/Defaults.php",
+      "kind": "data-model",
+      "signals": [
+        "low-runtime-behavior"
+      ],
+      "riskReductionScore": 1,
+      "maintenanceCost": 1,
+      "reason": "No owned runtime methods were detected in this class."
+    }
+  ],
+  "risks": [
+    "Parser has owned runtime behavior, branching or error behavior and bounded PHPUnit evidence.",
+    "Service has owned runtime behavior, branching or error behavior and no bounded PHPUnit evidence."
+  ]
+}

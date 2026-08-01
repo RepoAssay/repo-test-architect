@@ -270,5 +270,10 @@
     "name": "csharp-sdk-unique-pair",
     "adapter": "csharp",
     "path": "examples/csharp-sdk-unique-pair"
+  },
+  {
+    "name": "php-phpunit-basic",
+    "adapter": "php",
+    "path": "examples/php-phpunit-basic"
   }
 ]

@@ -40,6 +40,7 @@ describe("package contents", () => {
     assert.ok(requiredFiles.includes("src/adapters/csharp/directory-packages-props.js"));
     assert.ok(requiredFiles.includes("src/adapters/rust/audit.js"));
     assert.ok(requiredFiles.includes("src/adapters/ruby/audit.js"));
+    assert.ok(requiredFiles.includes("src/adapters/php/audit.js"));
     assert.ok(requiredFiles.includes("docs/go-alpha-support.md"));
     assert.ok(requiredFiles.includes("docs/csharp-alpha-support.md"));
     assert.ok(requiredFiles.includes("docs/csharp-tdd-validation-report.md"));
@@ -48,6 +49,7 @@ describe("package contents", () => {
     assert.ok(requiredFiles.includes("docs/csharp-multi-target-validation-report.md"));
     assert.ok(requiredFiles.includes("docs/rust-alpha-support.md"));
     assert.ok(requiredFiles.includes("docs/ruby-alpha-support.md"));
+    assert.ok(requiredFiles.includes("docs/php-alpha-support.md"));
     assert.ok(requiredFiles.includes("docs/ruby-factory-bot-validation-report.md"));
     assert.ok(requiredFiles.includes("docs/ruby-helper-return-validation-report.md"));
     assert.ok(requiredFiles.includes("docs/ruby-rubyzip-validation-report.md"));
@@ -72,6 +74,7 @@ describe("package contents", () => {
     assert.ok(requiredFiles.includes("examples/rust-cargo-workspace-basic/services/checkout/Cargo.toml"));
     assert.ok(requiredFiles.includes("examples/ruby-minitest-basic/Gemfile"));
     assert.ok(requiredFiles.includes("examples/ruby-minitest-basic/Gemfile.lock"));
+    assert.ok(requiredFiles.includes("examples/php-phpunit-basic/composer.lock"));
     assert.ok(requiredFiles.includes("schemas/diagnostic-event-v1.schema.json"));
     assert.ok(requiredFiles.includes("schemas/doctor-report-v1.schema.json"));
     assert.ok(requiredFiles.includes("schemas/diagnostic-bundle-v1.schema.json"));
@@ -85,6 +88,8 @@ describe("package contents", () => {
     assert.ok(requiredFiles.includes("scripts/check-javascript-performance.js"));
     assert.ok(requiredFiles.includes("scripts/check-ruby-performance.js"));
     assert.ok(requiredFiles.includes("scripts/check-ruby-native-fixture.js"));
+    assert.ok(requiredFiles.includes("scripts/check-php-performance.js"));
+    assert.ok(requiredFiles.includes("scripts/check-php-native-fixture.js"));
     assert.ok(requiredFiles.includes("scripts/check-bin-entrypoints.js"));
     assert.ok(requiredFiles.includes("scripts/check-demo-script.js"));
     assert.ok(requiredFiles.includes("scripts/check-distribution-readiness.js"));
