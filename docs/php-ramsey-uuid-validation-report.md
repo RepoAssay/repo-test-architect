@@ -79,12 +79,35 @@ Five unchanged audits after the command change produced one canonical result:
 
 Candidate and evidence counts are unchanged. The slice removes only the unsupported-command blocker and records the proven command convention.
 
+## Autoloaded Function-File Follow-Up
+
+The remaining blocker was resolved without weakening ordinary PSR-4 class ownership. The adapter now accepts a non-empty, unique root `autoload.files` array when every entry is a literal repository-contained PHP file outside nested Composer roots. An accepted function file must live below one owned PSR-4 source root, declare exactly one namespace within that mapping, contain a named function, and contain no class, interface, trait, or enum declaration.
+
+Missing, duplicate, escaping, absolute, non-PHP, normalized-ambiguous, symlinked, nested-owner, wrong-namespace, mixed-declaration, and unlisted function files remain blocked. Literal function ownership does not add function-call evidence: `src/functions.php` remains an untested high-risk module until a separate exact function-reference proof exists.
+
+Five unchanged audits after the ownership change produced one new canonical result:
+
+| Measure | Result |
+| --- | --- |
+| Test command | `composer test` |
+| Confidence | high |
+| Blockers | none |
+| Untested candidates | 29 |
+| Covered-but-risky candidates | 54 |
+| Skipped targets | 31 |
+| Evidence relationships | 168: 10 asserted, 155 called, 3 naming |
+| Durations | 63.271 ms, 30.617 ms, 28.019 ms, 27.797 ms, 27.984 ms |
+| Median | 28.019 ms |
+| Canonical SHA-256 | `ecd0a9600b242d728580780853c2b4e64897c5cbff9d0686cb51e3370faba2f3` |
+
+The command selected by the final audit is the same committed-lock workflow already proven natively. Counts remain unchanged because `src/functions.php` was already visible below `src/`; the correction changes its ownership validity and the repository profile, not its evidence.
+
 ## Remaining Uncertainty
 
 Composer event scripts, environment mutation, plugin behavior, shell evaluation, arbitrary executables, arguments containing shell metacharacters, aliases with forwarded arguments, platform portability beyond the selected command, and multiple command owners remain excluded.
 
-Ramsey UUID's immediate remaining gap is literal Composer `autoload.files` ownership for `src/functions.php`. That file declares namespaced functions rather than one path-matching class, so the current all-source consistency guard blocks the otherwise proven command. Any follow-up must model function-file ownership explicitly rather than weakening class ownership for ordinary PSR-4 files.
+Direct function-call evidence remains unavailable, so Ramsey's eight namespaced UUID helper functions do not receive coverage credit from naming or class-call heuristics. General Composer file autoloading outside an owned PSR-4 source root, global-namespace functions, multi-namespace files, mixed declarations, generated file lists, and runtime inclusion semantics remain excluded.
 
 ## Result
 
-The Ramsey UUID pressure pass proves a useful repository-owned Composer command graph without treating arbitrary scripts as safe verification commands. Its full native workflow passes, the custom graph is deterministically recognized, and the remaining source blocker stays visible. This clean separation makes autoloaded function files the next bounded PHP slice.
+The Ramsey UUID pressure pass now proves both its repository-owned Composer command graph and its literal autoloaded function-file ownership. Its full native workflow passes, the final audit is blocker-free and high confidence, and conservative evidence counts remain stable. Together with brick/math and Guzzle, Ramsey supplies the difficult-ownership role needed for a formal PHP corpus and promotion review.

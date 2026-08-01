@@ -11,7 +11,10 @@ export function auditPhpRepo(root, options = {}) {
   const composerFile = files.find((file) => file.path === "composer.json");
   const metadata = parseComposer(composerFile?.content);
   const ownership = analyzeOwnership(absoluteRoot, metadata.value);
-  const sourceFiles = files.filter((file) => ownership.sourceRoots.some((sourceRoot) => isUnderRoot(file.path, sourceRoot)));
+  const sourceFiles = files.filter((file) =>
+    ownership.sourceRoots.some((sourceRoot) => isUnderRoot(file.path, sourceRoot)) ||
+    ownership.functionFiles.includes(file.path)
+  );
   const testFiles = files.filter((file) => ownership.testRoots.some((testRoot) => isUnderRoot(file.path, testRoot)));
   const runnableTests = collectRunnablePhpUnitTests(testFiles, ownership.testMappings);
   const bootstrap = analyzePhpUnitBootstrap(files);
@@ -120,14 +123,56 @@ function parseComposer(content) {
 function analyzeOwnership(root, composer) {
   const source = analyzePsr4Map(root, composer?.autoload?.["psr-4"]);
   const tests = analyzePsr4Map(root, composer?.["autoload-dev"]?.["psr-4"]);
+  const functions = analyzeAutoloadFiles(root, composer?.autoload?.files);
   return {
     sourceRoots: source.roots,
     testRoots: tests.roots,
     sourceMappings: source.mappings,
     testMappings: tests.mappings,
+    functionFiles: functions.paths,
     sourceValid: source.valid,
-    testsValid: tests.valid
+    testsValid: tests.valid,
+    functionFilesValid: functions.valid
   };
+}
+
+function analyzeAutoloadFiles(root, value) {
+  if (value === undefined) return { valid: true, paths: [] };
+  if (!Array.isArray(value) || value.length === 0) return { valid: false, paths: [] };
+  const paths = [];
+  for (const entry of value) {
+    if (typeof entry !== "string") return { valid: false, paths: [] };
+    const normalized = normalizePath(entry).replace(/^(?:\.\/)+/, "");
+    const canonical = path.posix.normalize(normalized);
+    if (
+      !normalized ||
+      canonical !== normalized ||
+      !normalized.endsWith(".php") ||
+      path.posix.isAbsolute(normalized) ||
+      /^[A-Za-z]:\//.test(normalized) ||
+      normalized.split("/").some((part) => part === "" || part === "." || part === "..")
+    ) {
+      return { valid: false, paths: [] };
+    }
+    const absolute = path.resolve(root, normalized);
+    const stat = fs.lstatSync(absolute, { throwIfNoEntry: false });
+    if (!isWithin(root, absolute) || !stat?.isFile() || stat.isSymbolicLink() || hasNestedComposerOwner(root, absolute)) {
+      return { valid: false, paths: [] };
+    }
+    paths.push(normalized);
+  }
+  return new Set(paths).size === paths.length
+    ? { valid: true, paths }
+    : { valid: false, paths: [] };
+}
+
+function hasNestedComposerOwner(root, file) {
+  let current = path.dirname(file);
+  while (current !== root && isWithin(root, current)) {
+    if (fs.existsSync(path.join(current, "composer.json"))) return true;
+    current = path.dirname(current);
+  }
+  return false;
 }
 
 function analyzePsr4Map(root, value) {
@@ -158,12 +203,15 @@ function buildBlockers({ composerFile, metadata, ownership, sourceFiles, runnabl
   if (metadata.error) blockers.push(metadata.error);
   if (!metadata.error && !ownership.sourceValid) blockers.push("A complete literal string-valued autoload.psr-4 map is required for source ownership.");
   if (!metadata.error && !ownership.testsValid) blockers.push("A complete literal string-valued autoload-dev.psr-4 map is required for test ownership.");
+  if (!metadata.error && !ownership.functionFilesValid) {
+    blockers.push("autoload.files must contain unique literal repository-contained PHP file paths outside nested Composer roots.");
+  }
   if (!metadata.error && !Object.hasOwn(metadata.value?.["require-dev"] ?? {}, "phpunit/phpunit")) {
     blockers.push("phpunit/phpunit must be statically declared in require-dev.");
   }
   if (runnableTests.length === 0) blockers.push("No runnable conventional PHPUnit *Test.php class was detected under the owned test roots.");
-  if (sourceFiles.some((file) => !ownedClass(file, ownership.sourceMappings))) {
-    blockers.push("Each owned source file must contain one declared PSR-4 class matching its literal namespace and path.");
+  if (sourceFiles.some((file) => !ownedClass(file, ownership.sourceMappings) && !ownedFunctionFile(file, ownership))) {
+    blockers.push("Each owned source file must contain one declared PSR-4 class or namespaced autoload.files functions matching its literal ownership.");
   }
   if (!composerTest.supported) {
     blockers.push("The Composer test script must be one exact PHPUnit command or a bounded literal quality-script alias graph ending in PHPUnit.");
@@ -187,6 +235,7 @@ function buildProfile(root, files, composerFile, composer, ownership, runnableTe
     detectedConventions: [
       ...(ownership.sourceValid ? ["literal PSR-4 source ownership"] : []),
       ...(ownership.testsValid ? ["literal PSR-4 test ownership"] : []),
+      ...(ownership.functionFiles.length > 0 ? ["literal Composer autoload.files function ownership"] : []),
       ...(runnableTests.length > 0 ? ["*Test.php PHPUnit classes"] : []),
       ...(composerTest.graph ? ["bounded Composer quality-script graph"] : [])
     ],
@@ -527,6 +576,16 @@ function ownedClass(file, mappings, masked = maskCommentsAndStrings(file.content
   const expectedFqn = `${mapping.namespace}${relative}`;
   const declaredFqn = `${namespace}\\${className}`;
   return expectedFqn === declaredFqn ? { fqn: declaredFqn, shortName: className } : undefined;
+}
+
+function ownedFunctionFile(file, ownership, masked = maskCommentsAndStrings(file.content)) {
+  if (!ownership.functionFiles.includes(file.path)) return undefined;
+  const mapping = ownership.sourceMappings.find((candidate) => isUnderRoot(file.path, candidate.root));
+  const namespaces = [...masked.matchAll(/\bnamespace\s+([A-Za-z_\\][A-Za-z0-9_\\]*)\s*;/g)].map((match) => match[1]);
+  const hasNamedFunction = /\bfunction\s+&?\s*[A-Za-z_][A-Za-z0-9_]*\s*\(/.test(masked);
+  const hasClassDeclaration = /\b(?:class|interface|trait|enum)\s+[A-Za-z_][A-Za-z0-9_]*\b/.test(masked);
+  if (!mapping || namespaces.length !== 1 || !hasNamedFunction || hasClassDeclaration) return undefined;
+  return `${namespaces[0]}\\`.startsWith(mapping.namespace) ? { namespace: namespaces[0] } : undefined;
 }
 
 function addEvidence(map, sourcePath, item) {

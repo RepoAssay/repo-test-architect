@@ -683,3 +683,11 @@ Decision: accept one root Composer `test` alias when its reachable graph contain
 Rationale: pinned `ramsey/uuid` at `da5b521600a707d2dd097598464bd3090de850f5` declares `test: @dev:test`, which expands through linting, benchmarks, static analysis, and PHPUnit. Its committed-lock `composer test` workflow passes 190-file syntax and style checks, 46 benchmark subjects, PHPStan over 188 files, and 2,022 tests with 88,398 assertions. Five corrected audits preserve 29 untested, 54 covered, 31 skipped, and 168 relationships at canonical digest `0f21c9269c520156a1673b76ac87f91f667ff1764e687cfee52fee7db534a5ee`. The independent `src/functions.php` class-ownership blocker still withholds execution.
 
 Revisit when: a pinned repository proves another finite quality-tool terminal or alias shape without requiring shell or Composer evaluation, or when the remaining Ramsey function-file ownership can be modeled independently.
+
+### 2026-08-01: own literal namespaced Composer function files
+
+Decision: treat a root Composer `autoload.files` entry as a production source only when the complete value is a non-empty unique array of literal repository-contained PHP files outside nested Composer roots. Require each accepted function file to live below an owned PSR-4 root, declare exactly one namespace within that mapping, contain a named function, and contain no class-like declaration. Do not infer function-call evidence.
+
+Rationale: pinned `ramsey/uuid` at `da5b521600a707d2dd097598464bd3090de850f5` explicitly autoloads `src/functions.php`, whose eight namespaced UUID helpers caused the final ownership blocker after its Composer graph was proven. The bounded ownership change makes the audit high-confidence and blocker-free with the proven `composer test` command while preserving 29 untested, 54 covered, 31 skipped, and 168 relationships. Five runs share canonical digest `ecd0a9600b242d728580780853c2b4e64897c5cbff9d0686cb51e3370faba2f3` with a 28.019 ms median.
+
+Revisit when: a pinned repository proves a safe need for global-namespace function files, autoloaded files outside PSR-4 roots, mixed declarations, or exact direct function-call evidence.
