@@ -392,7 +392,7 @@ function collectRubyTestEvidence(files, sourceFiles, runnableTests) {
     }
 
     const maskedTest = maskRubyCommentsAndStrings(testFile.content);
-    const runnableBodies = collectRubyRunnableBodies(testFile, maskedTest);
+    const runnableBodies = collectRubyRunnableBodies(testFile, maskedTest, testFile.content);
     for (const [sourcePath, depth] of reachableSources) {
       let usage;
       let hasUniqueReferencedConstant = false;
@@ -624,18 +624,28 @@ function emptyRubyDeclarations() {
   };
 }
 
-function collectRubyRunnableBodies(testFile, maskedContent) {
+function collectRubyRunnableBodies(testFile, maskedContent, rawContent) {
   const lines = maskedContent.split(/\r?\n/);
+  const rawLines = rawContent.split(/\r?\n/);
   const bodies = [];
+  if (testFile.framework === "minitest") {
+    for (let index = 0; index < lines.length; index += 1) {
+      const match = lines[index].match(/^( *)def\s+test_[A-Za-z0-9_!?]+\s*(?:\([^)]*\))?\s*$/);
+      if (!match) continue;
+      const close = findRubyIndentedEnd(lines, index, match[1].length);
+      if (close !== -1) bodies.push({ content: lines.slice(index + 1, close).join("\n") });
+    }
+    return bodies;
+  }
+
   const hasRSpecMemoizedDeclaration = testFile.framework === "rspec" && lines.some((line) => (
     /^\s*(?:let|subject)!?\s*(?:\(|\{|do\b)/.test(line)
   ));
   const hasRSpecHelperDeclaration = testFile.framework === "rspec" && lines.some((line) => (
     /^\s*def\s+[a-z_][A-Za-z0-9_]*[!?]?\s*(?:\([^)]*\))?\s*$/.test(line)
   ));
-  const hasRSpecOwnedDeclaration = hasRSpecMemoizedDeclaration || hasRSpecHelperDeclaration;
-  const rspecGroups = hasRSpecOwnedDeclaration ? collectRubyRSpecGroupRanges(lines) : [];
-  const sharedGroups = hasRSpecOwnedDeclaration ? collectRubyRSpecSharedRanges(lines) : [];
+  const sharedGroups = collectRubyRSpecSharedRanges(lines);
+  const rspecGroups = collectRubyRSpecGroupRanges(lines, sharedGroups);
   const memoizedDeclarations = hasRSpecMemoizedDeclaration
     ? collectRubyRSpecMemoizedDeclarations(lines, rspecGroups, sharedGroups)
     : [];
@@ -646,16 +656,8 @@ function collectRubyRunnableBodies(testFile, maskedContent) {
   const hasOwnedHelperDeclaration = helperDeclarations.some((declaration) => declaration.constant);
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index];
-    if (testFile.framework === "minitest") {
-      const match = line.match(/^( *)def\s+test_[A-Za-z0-9_!?]+\s*(?:\([^)]*\))?\s*$/);
-      if (!match) continue;
-      const close = findRubyIndentedEnd(lines, index, match[1].length);
-      if (close !== -1) bodies.push({ content: lines.slice(index + 1, close).join("\n") });
-      continue;
-    }
-
     const example = line.match(/^( *)\s*(?:it|specify)\b/);
-    if (!example) continue;
+    if (!example || sharedGroups.some((group) => rubyRangeContains(group, index))) continue;
     const describedConstant = findRubyRSpecDescribedConstant(lines, index);
     const memoizedReceivers = hasOwnedMemoizedDeclaration
       ? collectRubyRSpecMemoizedReceivers(
@@ -675,34 +677,67 @@ function collectRubyRunnableBodies(testFile, maskedContent) {
         helperDeclarations
       )
       : new Map();
-    const openBrace = line.indexOf("{");
-    const closeBrace = line.lastIndexOf("}");
-    if (openBrace !== -1 && closeBrace > openBrace) {
-      bodies.push({
-        content: line.slice(openBrace + 1, closeBrace),
-        describedConstant,
-        memoizedReceivers,
-        helperReceivers
+    const body = collectRubyRSpecExampleBody(lines, index, example[1].length, {
+      describedConstant,
+      memoizedReceivers,
+      helperReceivers
+    });
+    if (body) bodies.push(body);
+  }
+
+  const sharedExamples = collectRubyRSpecSharedExamples(rawLines, rspecGroups, sharedGroups);
+  for (const inclusion of collectRubyRSpecSharedExampleInclusions(
+    rawLines,
+    lines,
+    rspecGroups,
+    sharedGroups
+  )) {
+    const candidates = sharedExamples.filter((sharedExample) => (
+      sharedExample.name === inclusion.name &&
+      sharedExample.start < inclusion.index &&
+      sharedExample.groups.every((group) => inclusion.groups.includes(group))
+    ));
+    const depth = Math.max(...candidates.map((candidate) => candidate.depth), -1);
+    const winners = candidates.filter((candidate) => candidate.depth === depth);
+    if (winners.length !== 1) continue;
+    const selected = winners[0];
+    for (let index = selected.start + 1; index < selected.close; index += 1) {
+      if (sharedGroups.some((group) => (
+        group.start !== selected.start && rubyRangeContains(group, index)
+      ))) {
+        continue;
+      }
+      const example = lines[index].match(/^( *)\s*(?:it|specify)\b/);
+      if (!example) continue;
+      const body = collectRubyRSpecExampleBody(lines, index, example[1].length, {
+        describedConstant: inclusion.describedConstant,
+        memoizedReceivers: new Map(),
+        helperReceivers: new Map()
       });
-      continue;
-    }
-    if (!/\bdo\b/.test(line)) continue;
-    const close = findRubyIndentedEnd(lines, index, example[1].length);
-    if (close !== -1) {
-      bodies.push({
-        content: lines.slice(index + 1, close).join("\n"),
-        describedConstant,
-        memoizedReceivers,
-        helperReceivers
-      });
+      if (body) bodies.push(body);
     }
   }
   return bodies;
 }
 
-function collectRubyRSpecGroupRanges(lines) {
+function collectRubyRSpecExampleBody(lines, index, indent, metadata) {
+  const line = lines[index];
+  const openBrace = line.indexOf("{");
+  const closeBrace = line.lastIndexOf("}");
+  if (openBrace !== -1 && closeBrace > openBrace) {
+    return { content: line.slice(openBrace + 1, closeBrace), ...metadata };
+  }
+  if (!/\bdo\b/.test(line)) return undefined;
+  const close = findRubyIndentedEnd(lines, index, indent);
+  return close === -1
+    ? undefined
+    : { content: lines.slice(index + 1, close).join("\n"), ...metadata };
+}
+
+function collectRubyRSpecGroupRanges(lines, sharedGroups = []) {
   const groups = [];
   for (let index = 0; index < lines.length; index += 1) {
+    if (sharedGroups.some((group) => rubyRangeContains(group, index))) continue;
     const group = lines[index].match(
       /^( *)\s*(?:RSpec\.)?(?:describe|context)\b.*\bdo\s*$/
     );
@@ -717,13 +752,79 @@ function collectRubyRSpecSharedRanges(lines) {
   const groups = [];
   for (let index = 0; index < lines.length; index += 1) {
     const shared = lines[index].match(
-      /^( *)\s*(?:RSpec\.)?shared_(?:examples|context)\b.*\bdo\b/
+      /^( *)\s*(?:RSpec\.)?shared_(?:examples(?:_for)?|context)\b.*\bdo\b/
     );
     if (!shared) continue;
     const close = findRubyIndentedEnd(lines, index, shared[1].length);
     if (close !== -1) groups.push({ start: index, close, indent: shared[1].length });
   }
   return groups;
+}
+
+function collectRubyRSpecSharedExamples(rawLines, groups, sharedGroups) {
+  const sharedExamples = [];
+  for (const range of sharedGroups) {
+    const declaration = matchExactRubyRSpecSharedExample(rawLines[range.start]);
+    if (!declaration || declaration.indent !== range.indent) continue;
+    const containingGroups = groups.filter((group) => rubyRangeContains(group, range.start));
+    const nearestGroup = containingGroups.at(-1);
+    if (
+      (nearestGroup && declaration.indent !== nearestGroup.indent + 2) ||
+      (!nearestGroup && declaration.indent !== 0)
+    ) {
+      continue;
+    }
+    sharedExamples.push({
+      ...range,
+      name: declaration.name,
+      depth: containingGroups.length,
+      groups: containingGroups
+    });
+  }
+  return sharedExamples;
+}
+
+function collectRubyRSpecSharedExampleInclusions(rawLines, lines, groups, sharedGroups) {
+  const inclusions = [];
+  for (let index = 0; index < rawLines.length; index += 1) {
+    if (sharedGroups.some((group) => rubyRangeContains(group, index))) continue;
+    const inclusion = matchExactRubyRSpecSharedExampleInclusion(rawLines[index]);
+    if (!inclusion) continue;
+    const containingGroups = groups.filter((group) => rubyRangeContains(group, index));
+    const nearestGroup = containingGroups.at(-1);
+    if (!nearestGroup || inclusion.indent !== nearestGroup.indent + 2) continue;
+    const describedConstant = findRubyRSpecDescribedConstant(lines, index);
+    if (!describedConstant) continue;
+    inclusions.push({
+      ...inclusion,
+      index,
+      describedConstant,
+      groups: containingGroups
+    });
+  }
+  return inclusions;
+}
+
+function matchExactRubyRSpecSharedExample(line) {
+  const direct = line.match(
+    /^( *)(?:RSpec\.)?shared_(?:examples|examples_for)\s+(["'])([A-Za-z0-9][A-Za-z0-9 _./:!?-]*)\2\s+do\s*(?:#.*)?$/
+  );
+  const parenthesized = line.match(
+    /^( *)(?:RSpec\.)?shared_(?:examples|examples_for)\(\s*(["'])([A-Za-z0-9][A-Za-z0-9 _./:!?-]*)\2\s*\)\s+do\s*(?:#.*)?$/
+  );
+  const match = direct ?? parenthesized;
+  return match ? { indent: match[1].length, name: match[3] } : undefined;
+}
+
+function matchExactRubyRSpecSharedExampleInclusion(line) {
+  const direct = line.match(
+    /^( *)(?:it_behaves_like|include_examples)\s+(["'])([A-Za-z0-9][A-Za-z0-9 _./:!?-]*)\2\s*(?:#.*)?$/
+  );
+  const parenthesized = line.match(
+    /^( *)(?:it_behaves_like|include_examples)\(\s*(["'])([A-Za-z0-9][A-Za-z0-9 _./:!?-]*)\2\s*\)\s*(?:#.*)?$/
+  );
+  const match = direct ?? parenthesized;
+  return match ? { indent: match[1].length, name: match[3] } : undefined;
 }
 
 function collectRubyRSpecMemoizedDeclarations(lines, groups, sharedGroups) {
@@ -886,7 +987,7 @@ function rubyRangeContains(range, index) {
 function findRubyRSpecDescribedConstant(lines, exampleIndex) {
   for (let index = 0; index < exampleIndex; index += 1) {
     const shared = lines[index].match(
-      /^( *)\s*(?:RSpec\.)?shared_(?:examples|context)\b.*\bdo\b/
+      /^( *)\s*(?:RSpec\.)?shared_(?:examples(?:_for)?|context)\b.*\bdo\b/
     );
     if (!shared) continue;
     const close = findRubyIndentedEnd(lines, index, shared[1].length);
