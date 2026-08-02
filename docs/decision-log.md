@@ -2,6 +2,14 @@
 
 This log records project-level decisions that shape architecture, scope, and public positioning.
 
+# Elixir Promotes At Its Bounded Mix/ExUnit Matrix
+
+Decision: promote `elixir` from experimental to supported without adding ownership, command, evidence, or framework semantics. Keep future experimental cohorts valid only when they satisfy the existing complete three-role corpus contract.
+
+Rationale: exact Jason, Plug, and Absinthe pins fill the conventional-library, framework-heavy, and difficult-ownership roles. Five clean standardized audits per pin preserve their canonical digests, all 21 Elixir scorecard areas pass, and unchanged native commands pass 445, 688, and 1,501 checks respectively. Shared conformance, implementation coverage, the generated 400-source/200-test gate, native fixture, golden/model-consistency artifacts, packaging, alpha, and release checks provide the same promotion infrastructure as every other supported adapter. Promotion closes an administrative maturity gap; it does not imply Mix evaluation, framework reachability, general macro expansion, or any other excluded behavior.
+
+Revisit when: a supported-boundary repository produces a false ownership, command, or evidence claim, or a new Elixir shape has exact positive and negative live proof strong enough to widen the matrix.
+
 # Elixir Corpus Review Passes Without Semantic Widening
 
 Decision: mark detection, ownership, command, evidence, ranking, stability, and performance as passing for the exact Jason, Plug, and Absinthe corpus pins. Keep Elixir experimental until a separate PR changes the registry and public support claim.

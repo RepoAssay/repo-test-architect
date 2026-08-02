@@ -37,7 +37,7 @@ const cases = [
   {
     adapterId: "elixir",
     fixturePath: "examples/elixir-mix-exunit-basic",
-    expectedMaturity: "experimental",
+    expectedMaturity: "supported",
     expectedProfile: {
       languages: ["elixir"],
       testFrameworks: ["exunit"],
