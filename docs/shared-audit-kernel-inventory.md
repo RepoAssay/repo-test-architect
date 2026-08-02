@@ -41,9 +41,9 @@ The repeated reader skeleton hides important ownership differences. A shared tra
 
 Symbolic-link handling is also observable behavior. The first kernel implementation must reject symbolic-link entries for the PHP/Elixir pair exactly as their current readers do. Broader migrations require adapter-specific symlink regressions before using the same primitive.
 
-## Proposed First Primitive
+## Implemented First Primitive
 
-The next implementation slice may introduce a private core helper with this conceptual contract:
+The private core helper now has this contract:
 
 ```text
 readRepositoryTextFiles(root, {
@@ -54,9 +54,9 @@ readRepositoryTextFiles(root, {
 }) -> [{ path, content }]
 ```
 
-The helper owns only recursive directory iteration, portable relative paths, UTF-8 reads, symbolic-link rejection under the selected policy, and final lexicographic path ordering. The adapter owns every callback and policy value. It must not infer a project type from a filename.
+The helper owns only recursive directory iteration, portable relative paths, UTF-8 reads, symbolic-link rejection under the selected policy, and final lexicographic path ordering. PHP supplies its Composer nested-owner callback and PHP/Composer/PHPUnit/Make inclusion policy; Elixir separately supplies its Mix nested-owner callback and Mix/Elixir/ExUnit inclusion policy. The helper does not infer a project type from a filename.
 
-The same module may expose `normalizeRepositoryPath` and `normalizeChangedPath`. A normalized file index can be added only as a derived view over the unchanged ordered records; it must not change record order or make a previously ambiguous lookup unique.
+The same module exposes `normalizeRepositoryPath` and `normalizeChangedPath`, replacing the byte-identical local implementations in only those two adapters. A normalized file index remains deferred because neither migration needed one; any later index must be a derived view over the unchanged ordered records and must not change record order or make a previously ambiguous lookup unique.
 
 ## Explicitly Adapter-Owned
 
@@ -111,4 +111,4 @@ Every refactor or optimization slice must prove:
 - unchanged generated 400-source/200-test candidate and evidence counts
 - focused adapter tests, shared conformance, implementation coverage, package checks, cross-platform CI, alpha, and exact-commit release gates all pass
 
-The first extraction should migrate only PHP and Elixir. Wider adoption follows only after that pair proves the API without artifact drift. Swift and Python optimization follows phase evidence rather than being bundled into the traversal refactor.
+The first extraction is complete for PHP and Elixir only. Focused nested-project, ignored-directory, symbolic-link, changed-path, UTF-8, and deterministic-order regressions preserve the intended API boundary, while fixture, golden, corpus, generated-scale, conformance, packaging, cross-platform, alpha, and release gates enforce artifact stability. Wider adoption requires a separate adapter-specific proof slice. Swift and Python optimization follows phase evidence rather than being bundled into this traversal refactor.

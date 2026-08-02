@@ -1,5 +1,10 @@
 import fs from "node:fs";
 import path from "node:path";
+import {
+  normalizeChangedPath,
+  normalizeRepositoryPath as normalizePath,
+  readRepositoryTextFiles
+} from "../../core/repository-text-files.js";
 
 const IGNORED_DIRECTORIES = new Set([
   ".elixir_ls", ".git", ".idea", ".vscode", "_build", "coverage", "deps", "node_modules", "vendor"
@@ -87,21 +92,13 @@ export function auditElixirRepo(root, options = {}) {
 }
 
 function readRepoFiles(root) {
-  const files = [];
-  function visit(current) {
-    if (current !== root && fs.existsSync(path.join(current, "mix.exs"))) return;
-    for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
-      if (IGNORED_DIRECTORIES.has(entry.name) || entry.isSymbolicLink()) continue;
-      const absolute = path.join(current, entry.name);
-      const relative = normalizePath(path.relative(root, absolute));
-      if (entry.isDirectory()) visit(absolute);
-      else if (relative === "mix.exs" || relative.endsWith(".ex") || relative.endsWith(".exs")) {
-        files.push({ path: relative, content: fs.readFileSync(absolute, "utf8") });
-      }
-    }
-  }
-  visit(root);
-  return files.sort((left, right) => left.path.localeCompare(right.path));
+  return readRepositoryTextFiles(root, {
+    ignoredDirectoryNames: IGNORED_DIRECTORIES,
+    shouldPruneDirectory: ({ absolutePath }) => fs.existsSync(path.join(absolutePath, "mix.exs")),
+    shouldIncludeFile: ({ relativePath }) =>
+      relativePath === "mix.exs" || relativePath.endsWith(".ex") || relativePath.endsWith(".exs"),
+    symbolicLinks: "skip"
+  });
 }
 
 function analyzeMixProject(content) {
@@ -505,16 +502,6 @@ function maskCommentsAndStrings(content) {
   return maskComments(content).replace(/"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'/gs, (value) => " ".repeat(value.length));
 }
 
-function normalizeChangedPath(root, currentPath) {
-  const portable = normalizePath(currentPath);
-  if (path.isAbsolute(currentPath)) return normalizePath(path.relative(root, currentPath));
-  if (/^[A-Za-z]:\//.test(portable)) {
-    const portableRoot = normalizePath(root);
-    return portable.startsWith(`${portableRoot}/`) ? portable.slice(portableRoot.length + 1) : portable;
-  }
-  return portable.replace(/^\.\//, "");
-}
-
 function byRiskThenName(left, right) {
   const riskWeight = { high: 0, medium: 1, low: 2 };
   return (riskWeight[left.risk] ?? 3) - (riskWeight[right.risk] ?? 3) || left.name.localeCompare(right.name);
@@ -522,8 +509,4 @@ function byRiskThenName(left, right) {
 
 function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-function normalizePath(filePath) {
-  return filePath.replaceAll("\\", "/");
 }

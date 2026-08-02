@@ -394,8 +394,10 @@ npm run release:check
 src/
   core/
     audit-model.ts
+    audit-phase-timing.js
     plan-execution-hints.js
     plan-execution-hints.ts
+    repository-text-files.js
     report.js
     report.ts
   diagnostics/

@@ -2,6 +2,14 @@
 
 This log records project-level decisions that shape architecture, scope, and public positioning.
 
+# PHP And Elixir Prove The First Shared Traversal Boundary
+
+Decision: migrate only PHP and Elixir to a private shared module for portable repository paths, changed-path normalization, deterministic UTF-8 traversal, explicit symbolic-link skipping, and path ordering. Require each adapter to supply its own ignored names, nested-owner callback, and file inclusion policy. Defer a shared file index because neither migration needs one.
+
+Rationale: the two readers had identical traversal control flow and output records but different Composer/Mix ownership and file policies. Keeping those differences as callbacks removes duplicated mechanics without moving ecosystem proof into the kernel. Focused regressions lock nested roots, ignored/generated directories, symlinks, Windows-style changes, UTF-8 content, and ordering; profiled Swift/Python work remains independent.
+
+Revisit when: another adapter has matching traversal semantics plus its own symlink and nested-owner regressions, or a concrete migration demonstrates that a derived normalized file index reduces repeated work without changing ambiguity or record order.
+
 # Audit Phase Timings Stay Development-Only
 
 Decision: let direct Swift and Python audits emit five ordered phase events only when an internal callback is supplied. Collect five-run samples and medians through exact-pin corpus measurement, while keeping timings out of `audit/v1`, canonical digests, CLI/MCP audit output, and local MCP diagnostics.

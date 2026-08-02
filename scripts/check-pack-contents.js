@@ -34,6 +34,7 @@ export const requiredFiles = [
   "src/mcp/tool-definitions.js",
   "src/diagnostics/diagnostics.js",
   "src/core/audit-phase-timing.js",
+  "src/core/repository-text-files.js",
   "src/adapters/csharp/audit.js",
   "src/adapters/csharp/directory-packages-props.js",
   "src/adapters/elixir/audit.js",
