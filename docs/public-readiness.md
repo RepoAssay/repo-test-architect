@@ -5,7 +5,7 @@ This document records the public-repository launch and current package publicati
 ## Public Repository Ready
 
 - audit-first product thesis
-- deterministic JavaScript/TypeScript, Python, Swift, and bounded Kotlin/JVM adapter proof points
+- deterministic JavaScript/TypeScript, Python, Swift, Kotlin/JVM, Go, Rust, C#, Ruby, PHP, and Elixir adapter proof points
 - polyglot project detection with unsupported-project reporting
 - local CLI examples
 - local stdio MCP SDK server and dependency-free invoke harness
@@ -27,13 +27,13 @@ This document records the public-repository launch and current package publicati
 
 The current public-alpha distribution is complete:
 
-- [`repo-test-architect@0.2.0`](https://www.npmjs.com/package/repo-test-architect/v/0.2.0) is published with the `latest` tag
-- [`io.github.RepoAssay/repo-test-architect@0.2.0`](https://registry.modelcontextprotocol.io/?search=io.github.RepoAssay%2Frepo-test-architect) is active and latest in the official MCP Registry
-- the npm package was installed in a clean environment, where all four adapters loaded and the stdio MCP server initialized as `0.2.0`
+- [`repo-test-architect@0.3.0`](https://www.npmjs.com/package/repo-test-architect/v/0.3.0) is published with the `latest` tag
+- [`io.github.RepoAssay/repo-test-architect@0.3.0`](https://registry.modelcontextprotocol.io/?search=io.github.RepoAssay%2Frepo-test-architect) is active and latest in the official MCP Registry
+- the npm package was installed in a clean environment, where all ten adapters loaded and the stdio MCP server initialized as `0.3.0`
 - the release passed `npm run release:check`, `npm run distribution:check:publish`, the three-OS pull-request matrix, and the post-merge Linux release check
-- [GitHub release `v0.2.0`](https://github.com/RepoAssay/repo-test-architect/releases/tag/v0.2.0) points to the exact npm and Registry release commit
+- [GitHub release `v0.3.0`](https://github.com/RepoAssay/repo-test-architect/releases/tag/v0.3.0) points to the exact npm and Registry release commit
 
-This second public alpha adds the streamlined repository analysis entry point, deeper bounded evidence and ownership across all four adapters, exact-commit live-repository measurements, the human-readable validation scorecard, and complete cross-adapter downstream trust checks. It does not intentionally break the `0.1.x` CLI, MCP tool, or artifact contracts.
+This third public alpha adds bounded supported adapters for Go, Rust, C#, Ruby, PHP, and Elixir; expands exact-commit validation to 30 repositories and 210 reviewed scorecard areas; and reduces large-repository Swift and Python audit latency without changing canonical artifacts. It does not intentionally break the `0.2.x` CLI, MCP tool, or artifact contracts.
 
 The initial npm-only `0.1.0` package exposed a case-sensitivity mismatch in the Registry namespace. Patch `0.1.1` preserves GitHub's exact `RepoAssay` casing and is the first Registry-compatible release.
 

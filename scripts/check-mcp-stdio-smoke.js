@@ -30,7 +30,7 @@ try {
       protocolVersion: "2025-06-18",
       clientInfo: {
         name: "repo-test-architect-smoke",
-        version: "0.2.0"
+        version: "0.3.0"
       },
       capabilities: {}
     }
@@ -152,7 +152,7 @@ try {
 
   assert.equal(initialize.id, 1);
   assert.equal(initialize.result.serverInfo.name, "repo-test-architect");
-  assert.equal(initialize.result.serverInfo.version, "0.2.0");
+  assert.equal(initialize.result.serverInfo.version, "0.3.0");
   assert.deepEqual(initialize.result.capabilities.tools, {});
   assert.match(initialize.result.instructions, /Start with analyze_repository/i);
 

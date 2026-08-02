@@ -19,7 +19,7 @@ Remote hosting and an MCPB bundle are not part of the first release.
 - MCP Registry server: `io.github.RepoAssay/repo-test-architect`
 - GitHub repository: `https://github.com/repoassay/repo-test-architect`
 
-The GitHub repository is public. Version `0.2.0` is the current public alpha on npm and in the official MCP Registry under the locked identities above.
+The GitHub repository is public. Version `0.3.0` is the current public alpha on npm and in the official MCP Registry under the locked identities above.
 
 ## Repository Protection
 
