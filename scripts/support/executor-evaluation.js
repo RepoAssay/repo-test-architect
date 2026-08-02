@@ -261,14 +261,7 @@ async function evaluateProfile(options) {
 function evaluateFaultInjection(fixture, workingRoot, timeoutMs) {
   const injectionPath = path.join(workingRoot, fixture.faultInjection.path);
   const originalContent = fs.readFileSync(injectionPath, "utf8");
-  const occurrences = originalContent.split(fixture.faultInjection.find).length - 1;
-  if (occurrences !== 1) {
-    throw new Error(`Fault injection must match exactly once in ${fixture.faultInjection.path}, got ${occurrences}.`);
-  }
-  fs.writeFileSync(
-    injectionPath,
-    originalContent.replace(fixture.faultInjection.find, fixture.faultInjection.replacement)
-  );
+  fs.writeFileSync(injectionPath, createFaultInjectedContent(originalContent, fixture.faultInjection));
   try {
     const verification = runVerification(fixture.expectedVerificationCommand, workingRoot, timeoutMs);
     return {
@@ -279,6 +272,18 @@ function evaluateFaultInjection(fixture, workingRoot, timeoutMs) {
   } finally {
     fs.writeFileSync(injectionPath, originalContent);
   }
+}
+
+export function createFaultInjectedContent(originalContent, faultInjection) {
+  const normalizedContent = originalContent.replaceAll("\r\n", "\n");
+  const normalizedFind = faultInjection.find.replaceAll("\r\n", "\n");
+  const normalizedReplacement = faultInjection.replacement.replaceAll("\r\n", "\n");
+  const occurrences = normalizedContent.split(normalizedFind).length - 1;
+  if (occurrences !== 1) {
+    throw new Error(`Fault injection must match exactly once in ${faultInjection.path}, got ${occurrences}.`);
+  }
+  const injectedContent = normalizedContent.replace(normalizedFind, normalizedReplacement);
+  return originalContent.includes("\r\n") ? injectedContent.replaceAll("\n", "\r\n") : injectedContent;
 }
 
 function runVerification(command, cwd, timeoutMs) {

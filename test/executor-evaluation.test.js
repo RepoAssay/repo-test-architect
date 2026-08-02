@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { describe, it } from "node:test";
 import {
+  createFaultInjectedContent,
   inspectExecutorProposal,
   readExecutorEvaluationFixture,
   runExecutorEvaluation
@@ -98,6 +99,18 @@ describe("bounded executor evaluation", () => {
     } finally {
       fs.rmSync(temporaryRoot, { recursive: true, force: true });
     }
+  });
+
+  it("applies a canonical fault literal while preserving Windows newlines", () => {
+    const original = "export function allowed() {\r\n  return false;\r\n}\r\n";
+    const injected = createFaultInjectedContent(original, {
+      path: "src/policy.js",
+      find: "return false;\n}",
+      replacement: "return true;\n}"
+    });
+
+    assert.equal(injected, "export function allowed() {\r\n  return true;\r\n}\r\n");
+    assert.ok(!injected.replaceAll("\r\n", "").includes("\n"));
   });
 });
 
