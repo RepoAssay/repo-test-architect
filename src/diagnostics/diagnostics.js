@@ -8,7 +8,7 @@ export const DIAGNOSTIC_MODES = ["off", "stderr", "file"];
 export const DIAGNOSTICS_ENV = "REPO_TEST_ARCHITECT_DIAGNOSTICS";
 export const DIAGNOSTICS_FILE_ENV = "REPO_TEST_ARCHITECT_DIAGNOSTICS_FILE";
 
-const SERVER_VERSION = "0.2.0";
+const SERVER_VERSION = "0.3.0";
 const SAFE_LABEL = /^[a-z][a-z0-9_-]{0,63}$/;
 const SAFE_ERROR_KINDS = new Set([
   "internal-error",

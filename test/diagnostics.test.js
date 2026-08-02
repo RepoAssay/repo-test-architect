@@ -55,7 +55,7 @@ describe("local diagnostics", () => {
       timestamp: "2026-07-24T12:00:00.000Z",
       eventId: `event-${UUID_A}`,
       eventType: "mcp-tool-call",
-      serverVersion: "0.2.0",
+      serverVersion: "0.3.0",
       toolName: "audit_repo",
       status: "success",
       durationMs: 12
@@ -127,7 +127,7 @@ describe("local diagnostics", () => {
       timestamp: NOW.toISOString(),
       eventId: `event-${UUID_A}`,
       eventType: "mcp-tool-call",
-      serverVersion: "0.2.0",
+      serverVersion: "0.3.0",
       toolName: "audit_repo",
       status: "success",
       durationMs: 4,
