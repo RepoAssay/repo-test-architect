@@ -76,6 +76,8 @@ describe("project stats", () => {
     fs.mkdirSync(path.join(root, "packages", "core", "src"), { recursive: true });
     fs.mkdirSync(path.join(root, "fixtures", "dependency", "src"), { recursive: true });
     fs.mkdirSync(path.join(root, "testdata", "rust-fixture"), { recursive: true });
+    fs.mkdirSync(path.join(root, "deps", "elixir_dependency", "lib"), { recursive: true });
+    fs.mkdirSync(path.join(root, "_build", "test", "lib", "generated"), { recursive: true });
     fs.writeFileSync(path.join(root, "package.json"), "{}\n");
     fs.writeFileSync(path.join(root, "src", "root.ts"), "export const root = true;\n");
     fs.writeFileSync(path.join(root, "packages", "core", "package.json"), "{}\n");
@@ -83,6 +85,8 @@ describe("project stats", () => {
     fs.writeFileSync(path.join(root, "fixtures", "dependency", "package.json"), "{}\n");
     fs.writeFileSync(path.join(root, "fixtures", "dependency", "src", "fixture.ts"), "export const fixture = true;\n");
     fs.writeFileSync(path.join(root, "testdata", "rust-fixture", "fixture.rs"), "pub fn fixture() {}\n");
+    fs.writeFileSync(path.join(root, "deps", "elixir_dependency", "lib", "dependency.ts"), "export const dependency = true;\n");
+    fs.writeFileSync(path.join(root, "_build", "test", "lib", "generated", "generated.ts"), "export const generated = true;\n");
 
     const stats = collectProjectStats(auditDetectedProjects(root));
 

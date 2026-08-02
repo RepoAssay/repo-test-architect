@@ -5,6 +5,7 @@ import { validateProjectAudits } from "./project-audits-validation.js";
 
 const IGNORED_DIRECTORIES = new Set([
   ".build",
+  "_build",
   ".git",
   ".gradle",
   ".swiftpm",
@@ -14,6 +15,7 @@ const IGNORED_DIRECTORIES = new Set([
   "build",
   "coverage",
   "dist",
+  "deps",
   "fixtures",
   "node_modules",
   "obj",

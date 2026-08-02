@@ -14,8 +14,9 @@ export function auditElixirRepo(root, options = {}) {
   const testFiles = files.filter((file) => file.path.startsWith("test/") && file.path.endsWith("_test.exs"));
   const helper = analyzeTestHelper(files);
   const sourceModules = collectOwnedSourceModules(sourceFiles, project.appModule);
-  const runnableTests = collectRunnableTests(testFiles);
-  const blockers = buildBlockers({ mixFile, project, sourceFiles, sourceModules, runnableTests, helper });
+  const ambiguousSourceModules = duplicateModuleNames(sourceModules);
+  const runnableTests = collectRunnableTests(testFiles, project.appModule);
+  const blockers = buildBlockers({ mixFile, project, sourceFiles, sourceModules, ambiguousSourceModules, runnableTests, helper });
   const profile = buildProfile(absoluteRoot, mixFile, project, runnableTests, helper, blockers);
   const evidenceBySource = collectEvidence(sourceModules, runnableTests);
   const changedPaths = options.changedPaths
@@ -108,9 +109,9 @@ function analyzeMixProject(content) {
   const modules = [...masked.matchAll(/\bdefmodule\s+([A-Z][A-Za-z0-9_.]*)\s+do\b/g)].map((match) => match[1]);
   const app = /\bapp\s*:\s*:([a-z][a-z0-9_]*)\b/.exec(masked)?.[1];
   const appModule = app ? camelize(app) : undefined;
-  const expectedProjectModule = appModule ? `${appModule}.MixProject` : undefined;
+  const expectedProjectModules = appModule ? new Set([`${appModule}.MixProject`, `${appModule}.Mixfile`]) : new Set();
   const umbrella = /\bapps_path\s*:/.test(masked);
-  const valid = !umbrella && modules.length === 1 && modules[0] === expectedProjectModule && /\buse\s+Mix\.Project\b/.test(masked);
+  const valid = !umbrella && modules.length === 1 && expectedProjectModules.has(modules[0]) && /\buse\s+Mix\.Project\b/.test(masked);
   return { valid, app, appModule, umbrella, module: modules.length === 1 ? modules[0] : undefined };
 }
 
@@ -123,35 +124,44 @@ function analyzeTestHelper(files) {
 function collectOwnedSourceModules(files, appModule) {
   if (!appModule) return [];
   return files.flatMap((file) => {
-    const expected = moduleForSourcePath(file.path);
-    const modules = declaredModules(file.content);
-    return modules.length === 1 && modules[0] === expected && (expected === appModule || expected.startsWith(`${appModule}.`))
-      ? [{ path: file.path, fqn: expected }]
+    const expected = sourceModuleCandidates(file.path, appModule);
+    const matches = declaredOwnedModules(file.content).filter(
+      (module) => expected.includes(module) && (module === appModule || module.startsWith(`${appModule}.`))
+    );
+    return matches.length === 1
+      ? [{ path: file.path, fqn: matches[0] }]
       : [];
   });
 }
 
-function collectRunnableTests(files) {
+function collectRunnableTests(files, appModule) {
+  if (!appModule) return [];
   return files.flatMap((file) => {
     const modules = declaredModules(file.content);
-    const expected = moduleForTestPath(file.path);
+    const primaryModules = modules.filter(
+      (module) => module === `${appModule}Test` || (module.startsWith(`${appModule}.`) && module.endsWith("Test"))
+    );
     const masked = maskCommentsAndStrings(file.content);
     const commentsMasked = maskComments(file.content);
-    const runnable = modules.length === 1 && modules[0] === expected &&
-      /\buse\s+ExUnit\.Case(?:\s*,[^\n]+)?/.test(masked) &&
-      /\btest\s+"(?:\\.|[^"\\])*"\s+do\b/.test(commentsMasked);
-    return runnable ? [{ file, module: modules[0] }] : [];
+    const exUnitCases = [...masked.matchAll(/\buse\s+ExUnit\.Case(?:\s*,[^\n]+)?/g)];
+    const testBodies = collectTestBodies(file.content);
+    const runnable = primaryModules.length === 1 && modules[0] === primaryModules[0] && exUnitCases.length === 1 &&
+      /\btest\s+"(?:\\.|[^"\\])*"\s+do\b/.test(commentsMasked) && testBodies.length > 0;
+    return runnable ? [{ file, module: primaryModules[0], bodyContent: testBodies.join("\n") }] : [];
   });
 }
 
-function buildBlockers({ mixFile, project, sourceFiles, sourceModules, runnableTests, helper }) {
+function buildBlockers({ mixFile, project, sourceFiles, sourceModules, ambiguousSourceModules, runnableTests, helper }) {
   const blockers = [];
   if (!mixFile) blockers.push("No root mix.exs detected for the bounded Elixir Mix adapter.");
   if (mixFile && project.umbrella) blockers.push("Mix umbrella ownership is outside the initial Elixir adapter boundary.");
-  else if (mixFile && !project.valid) blockers.push("mix.exs must declare one literal app and matching MixProject module using Mix.Project.");
+  else if (mixFile && !project.valid) blockers.push("mix.exs must declare one literal app and matching MixProject or Mixfile module using Mix.Project.");
   if (sourceFiles.length === 0) blockers.push("No conventional lib/**/*.ex source files were detected.");
   if (sourceFiles.length > 0 && sourceModules.length !== sourceFiles.length) {
     blockers.push("Each owned source file must declare one module matching its conventional lib path and literal app namespace.");
+  }
+  if (ambiguousSourceModules.length > 0) {
+    blockers.push("Each owned Elixir module name must resolve to one conventional source file.");
   }
   if (!helper.present || !helper.started) blockers.push("test/test_helper.exs must contain a direct ExUnit.start() call.");
   if (runnableTests.length === 0) blockers.push("No runnable conventional ExUnit *_test.exs module was detected.");
@@ -168,6 +178,7 @@ function buildProfile(root, mixFile, project, runnableTests, helper, blockers) {
     ...(blockers.length === 0 ? { testCommand: "mix test" } : {}),
     detectedConventions: [
       ...(project.valid ? ["literal Mix app ownership"] : []),
+      ...(project.valid && project.module?.endsWith(".Mixfile") ? ["legacy Mixfile project module"] : []),
       ...(runnableTests.length > 0 ? ["*_test.exs ExUnit modules"] : []),
       ...(helper.started ? ["root ExUnit.start() helper"] : [])
     ],
@@ -183,22 +194,24 @@ function buildProfile(root, mixFile, project, runnableTests, helper, blockers) {
 
 function collectEvidence(sourceModules, runnableTests) {
   const evidence = new Map();
-  const byFqn = new Map(sourceModules.map((source) => [source.fqn, source]));
-  const byPath = new Map(sourceModules.map((source) => [source.path, source]));
+  const ambiguousNames = new Set(duplicateModuleNames(sourceModules));
+  const unambiguousSources = sourceModules.filter((source) => !ambiguousNames.has(source.fqn));
+  const byFqn = new Map(unambiguousSources.map((source) => [source.fqn, source]));
+  const byPath = new Map(unambiguousSources.map((source) => [source.path, source]));
   for (const test of runnableTests) {
     const aliases = collectAliases(test.file.content);
-    for (const source of sourceModules) {
+    for (const source of unambiguousSources) {
       const references = [source.fqn];
       for (const [shortName, fqn] of aliases) {
         if (fqn === source.fqn) references.push(shortName);
       }
-      const used = references.filter((reference) => hasRemoteCall(test.file.content, reference));
+      const used = references.filter((reference) => hasRemoteCall(test.bodyContent, reference));
       if (used.length === 0) continue;
       addEvidence(evidence, source.path, {
         testPath: test.file.path,
         kind: "elixir-module-reference",
         strength: "direct",
-        usage: used.some((reference) => hasAssertedRemoteCall(test.file.content, reference)) ? "asserted" : "called"
+        usage: used.some((reference) => hasAssertedRemoteCall(test.bodyContent, reference)) ? "asserted" : "called"
       });
     }
     const conventionalSourcePath = sourcePathForTestPath(test.file.path);
@@ -214,13 +227,30 @@ function collectEvidence(sourceModules, runnableTests) {
   return evidence;
 }
 
+function duplicateModuleNames(sourceModules) {
+  const counts = new Map();
+  for (const source of sourceModules) counts.set(source.fqn, (counts.get(source.fqn) ?? 0) + 1);
+  return [...counts].filter(([, count]) => count > 1).map(([fqn]) => fqn).sort();
+}
+
 function collectAliases(content) {
   const aliases = new Map();
   for (const match of maskComments(content).matchAll(/^\s*alias\s+([A-Z][A-Za-z0-9_.]*)(?:\s*,\s*as:\s*([A-Z][A-Za-z0-9_]*))?\s*$/gm)) {
     const shortName = match[2] ?? match[1].split(".").at(-1);
-    aliases.set(shortName, aliases.has(shortName) ? undefined : match[1]);
+    addAlias(aliases, shortName, match[1]);
+  }
+  for (const match of maskComments(content).matchAll(/^\s*alias\s+([A-Z][A-Za-z0-9_.]*)\.\{([^}\n]+)\}\s*$/gm)) {
+    const prefix = match[1];
+    for (const member of match[2].split(",").map((value) => value.trim())) {
+      if (!/^[A-Z][A-Za-z0-9_.]*$/.test(member)) continue;
+      addAlias(aliases, member.split(".").at(-1), `${prefix}.${member}`);
+    }
   }
   return new Map([...aliases].filter(([, fqn]) => fqn));
+}
+
+function addAlias(aliases, shortName, fqn) {
+  aliases.set(shortName, aliases.has(shortName) ? undefined : fqn);
 }
 
 function hasRemoteCall(content, reference) {
@@ -262,13 +292,47 @@ function declaredModules(content) {
   return [...maskCommentsAndStrings(content).matchAll(/\bdefmodule\s+([A-Z][A-Za-z0-9_.]*)\s+do\b/g)].map((match) => match[1]);
 }
 
-function moduleForSourcePath(filePath) {
-  return filePath.replace(/^lib\//, "").replace(/\.ex$/, "").split("/").map(camelize).join(".");
+function collectTestBodies(content) {
+  const commentsMasked = maskComments(content);
+  const syntaxMasked = maskCommentsAndStrings(content);
+  const bodies = [];
+  const headers = commentsMasked.matchAll(/\btest\s+"(?:\\.|[^"\\])*"\s+do\b/g);
+  for (const header of headers) {
+    const bodyStart = header.index + header[0].length;
+    const tokens = syntaxMasked.slice(bodyStart).matchAll(/\b(?:do|fn|end)\b/g);
+    let depth = 1;
+    for (const token of tokens) {
+      if (token[0] === "do") {
+        const suffix = syntaxMasked.slice(bodyStart + token.index + token[0].length);
+        if (/^\s*:/.test(suffix)) continue;
+        depth += 1;
+      } else if (token[0] === "fn") {
+        depth += 1;
+      } else {
+        depth -= 1;
+        if (depth === 0) {
+          bodies.push(content.slice(bodyStart, bodyStart + token.index));
+          break;
+        }
+      }
+    }
+  }
+  return bodies;
 }
 
-function moduleForTestPath(filePath) {
-  const relative = filePath.replace(/^test\//, "").replace(/_test\.exs$/, "");
-  return `${relative.split("/").map(camelize).join(".")}Test`;
+function declaredOwnedModules(content) {
+  return [...maskCommentsAndStrings(content).matchAll(/\bdef(?:module|protocol)\s+([A-Z][A-Za-z0-9_.]*)\s+do\b/g)].map((match) => match[1]);
+}
+
+function sourceModuleCandidates(filePath, appModule) {
+  const conventional = moduleForSourcePath(filePath);
+  return conventional === appModule || conventional.startsWith(`${appModule}.`)
+    ? [conventional]
+    : [conventional, `${appModule}.${conventional}`];
+}
+
+function moduleForSourcePath(filePath) {
+  return filePath.replace(/^lib\//, "").replace(/\.ex$/, "").split("/").map(camelize).join(".");
 }
 
 function sourcePathForTestPath(filePath) {
