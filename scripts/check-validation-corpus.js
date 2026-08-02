@@ -14,6 +14,7 @@ export const corpusRoles = [
 export const scorecardAreas = validationScorecardAreas;
 
 const scoreStatuses = new Set(["pass", "fail", "pending"]);
+const corpusMaturities = new Set(["supported", "experimental"]);
 
 if (isMainModule()) {
   const corpus = loadValidationCorpus();
@@ -26,7 +27,11 @@ if (isMainModule()) {
     const scores = Object.entries(result.scorecardCounts)
       .map(([status, count]) => `${count} ${status}`)
       .join(", ");
-    console.log(`Validation corpus check passed: ${result.adapterCount} adapters, ${result.caseCount} pinned cases, ${scores}.`);
+    console.log(
+      `Validation corpus check passed: ${result.adapterCount} adapters ` +
+      `(${result.supportedAdapterCount} supported, ${result.experimentalAdapterCount} experimental), ` +
+      `${result.caseCount} pinned cases, ${scores}.`
+    );
   }
 }
 
@@ -36,13 +41,16 @@ export function loadValidationCorpus(manifestPath = path.resolve("evals/validati
 
 export function validateValidationCorpus(corpus, options = {}) {
   const root = options.root ?? process.cwd();
-  const supportedAdapterIds = (options.adapters ?? listAdapters())
+  const registeredAdapters = options.adapters ?? listAdapters();
+  const registeredAdaptersById = new Map(registeredAdapters.map((adapter) => [adapter.id, adapter]));
+  const supportedAdapterIds = registeredAdapters
     .filter((adapter) => adapter.maturity === "supported")
     .map((adapter) => adapter.id)
     .sort();
   const errors = [];
   const adapters = Array.isArray(corpus?.adapters) ? corpus.adapters : [];
   const corpusAdapterIds = adapters.map((adapter) => adapter.adapterId).sort();
+  const corpusAdapterIdSet = new Set(corpusAdapterIds);
   const caseIds = new Set();
   const scorecardCounts = { pass: 0, fail: 0, pending: 0 };
 
@@ -50,8 +58,20 @@ export function validateValidationCorpus(corpus, options = {}) {
     errors.push("schemaVersion must be validation-corpus/v1");
   }
 
-  if (!sameValues(corpusAdapterIds, supportedAdapterIds)) {
-    errors.push(`corpus adapters must match supported adapters: ${supportedAdapterIds.join(", ")}`);
+  const missingSupportedAdapterIds = supportedAdapterIds.filter((adapterId) => !corpusAdapterIdSet.has(adapterId));
+  if (missingSupportedAdapterIds.length > 0) {
+    errors.push(`corpus is missing supported adapters: ${missingSupportedAdapterIds.join(", ")}`);
+  }
+  if (corpusAdapterIdSet.size !== corpusAdapterIds.length) {
+    errors.push("corpus adapterIds must be unique");
+  }
+  for (const adapterId of corpusAdapterIdSet) {
+    const registeredAdapter = registeredAdaptersById.get(adapterId);
+    if (!registeredAdapter) {
+      errors.push(`corpus adapter ${adapterId} is not registered`);
+    } else if (!corpusMaturities.has(registeredAdapter.maturity)) {
+      errors.push(`corpus adapter ${adapterId} must be supported or experimental`);
+    }
   }
 
   for (const adapter of adapters) {
@@ -175,6 +195,12 @@ export function validateValidationCorpus(corpus, options = {}) {
   return {
     errors,
     adapterCount: adapters.length,
+    supportedAdapterCount: adapters.filter(
+      (adapter) => registeredAdaptersById.get(adapter.adapterId)?.maturity === "supported"
+    ).length,
+    experimentalAdapterCount: adapters.filter(
+      (adapter) => registeredAdaptersById.get(adapter.adapterId)?.maturity === "experimental"
+    ).length,
     caseCount: caseIds.size,
     scorecardCounts
   };
@@ -217,10 +243,6 @@ function hasRepeatedDurationSamples(observed) {
 function medianInteger(values) {
   const sorted = [...values].sort((left, right) => left - right);
   return sorted[Math.floor(sorted.length / 2)];
-}
-
-function sameValues(left, right) {
-  return left.length === right.length && left.every((value, index) => value === right[index]);
 }
 
 function isPortableRelativePath(value) {
