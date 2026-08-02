@@ -628,6 +628,78 @@ def client():
     }]);
   });
 
+  it("reuses lexical test-support facts across fixture and framework-client evidence", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-python-parsed-facts-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "app", "routes"), { recursive: true });
+    fs.mkdirSync(path.join(root, "tests"), { recursive: true });
+    fs.writeFileSync(path.join(root, "requirements.txt"), "fastapi\npytest\n");
+    fs.writeFileSync(path.join(root, "app", "__init__.py"), "");
+    fs.writeFileSync(path.join(root, "app", "routes", "__init__.py"), "");
+    fs.writeFileSync(
+      path.join(root, "app", "main.py"),
+      "from fastapi import FastAPI\nfrom .routes.items import router\n\napp = FastAPI()\napp.include_router(router)\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "app", "routes", "items.py"),
+      "from fastapi import APIRouter\n\nrouter = APIRouter()\n\n@router.get('/items')\ndef list_items(limit=10):\n    if limit < 1:\n        return {'items': []}\n    return {'items': ['item']}\n"
+    );
+    fs.writeFileSync(path.join(root, "app", "service.py"), "def load_items():\n    return ['item']\n");
+    fs.writeFileSync(path.join(root, "app", "decoy.py"), "def decoy(value):\n    if value:\n        return 'untested'\n    return 'still untested'\n");
+    fs.writeFileSync(
+      path.join(root, "tests", "conftest.py"),
+      `import pytest
+from fastapi.testclient import TestClient
+from app.main import app
+from app.service import load_items
+
+IGNORED_EXAMPLE = """
+from app.decoy import decoy
+
+@pytest.fixture
+def phantom_client():
+    return TestClient(app)
+"""
+
+@pytest.fixture
+def client():
+    return TestClient(app)
+
+@pytest.fixture
+def items():
+    return load_items()
+`
+    );
+    fs.writeFileSync(
+      path.join(root, "tests", "test_cached_consumers.py"),
+      `def test_items(client, items):
+    response = client.get("/items")
+    assert response.status_code == 200
+    assert items == ["item"]
+`
+    );
+
+    const audit = auditPythonRepo(root);
+    const route = audit.coveredButRisky.find((target) => target.path === "app/routes/items.py");
+    const service = audit.coveredButRisky.find((target) => target.path === "app/service.py");
+
+    assert.ok(route, JSON.stringify(audit, null, 2));
+    assert.ok(service, JSON.stringify(audit, null, 2));
+    assert.deepEqual(route.existingTestEvidence, [{
+      testPath: "tests/test_cached_consumers.py",
+      kind: "python-test-client-route",
+      strength: "indirect",
+      viaUsage: "asserted"
+    }]);
+    assert.deepEqual(service.existingTestEvidence, [{
+      testPath: "tests/test_cached_consumers.py",
+      kind: "python-pytest-fixture",
+      strength: "indirect",
+      viaUsage: "asserted"
+    }]);
+    assert.ok(audit.untestedCandidates.some((target) => target.path === "app/decoy.py"));
+  });
+
   it("matches Django TestCase client requests through the configured root URLconf", (t) => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-python-django-client-"));
     t.after(() => fs.rmSync(root, { recursive: true, force: true }));

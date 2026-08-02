@@ -76,10 +76,10 @@ A shared function is justified by identical semantics, not by similar syntax or 
 
 The first optimization work should remain evidence-led. The two exact corpus outliers are:
 
-| Case | Exact pin | Three-run samples | Median | Evidence links | Canonical audit SHA-256 |
+| Case | Exact pin | Recorded samples | Median | Evidence links | Canonical audit SHA-256 |
 | --- | --- | --- | ---: | ---: | --- |
-| Swift Package Index Server | `26943bfd3e62f29348e6a06722ba5fcd9dc11d58` | 14,568 / 14,484 / 14,370 ms | 14,484 ms | 265 | `73578ce9b98f0e1f3d688c0159bc7969d235cb27f73a8bc2be0f4bdccb7b5db8` |
-| Django | `dca76b15c62a1118325b71678ce3235e2231198d` | 3,900 / 3,741 / 3,786 ms | 3,786 ms | 4,935 | `541ccfb9779cdd34a9d9d2c338d97117770160f2ff456646b6b625d5d496e222` |
+| Swift Package Index Server | `26943bfd3e62f29348e6a06722ba5fcd9dc11d58` | 814 / 751 / 722 / 720 / 725 ms | 725 ms | 265 | `73578ce9b98f0e1f3d688c0159bc7969d235cb27f73a8bc2be0f4bdccb7b5db8` |
+| Django | `dca76b15c62a1118325b71678ce3235e2231198d` | 2,348 / 2,145 / 2,117 / 2,118 / 2,129 ms | 2,129 ms | 4,935 | `541ccfb9779cdd34a9d9d2c338d97117770160f2ff456646b6b625d5d496e222` |
 
 Python's existing test/import/fixture indexes already reduced the Django audit from more than two minutes to the recorded median. That history is a reason to measure residual phases, not a reason to assume traversal is still the hotspot. Swift's much larger remaining median likewise does not prove which scan or join dominates.
 
@@ -100,7 +100,7 @@ npm run corpus:measure -- --case swift-package-index-server --checkout /path/to/
 
 `--profile-phases` defaults to five runs, requires at least five when `--runs` is explicit, verifies one callback for each ordered phase, preserves the canonical audit digest check, and reports per-phase samples plus medians. Ordinary audits do not construct timing events or attach timing data to their artifacts.
 
-The [August 2026 exact-pin phase profile](swift-python-phase-profile-2026-08.md) is complete. Swift's repeated test import scanning, masking, and symbol analysis has been replaced by adapter-local immutable test facts, reducing its exact-pin median from 14,443 ms to 725 ms and its evidence/classification phase from 14,187 ms to 407 ms without changing the canonical artifact. Django still spends 2,488 ms of its 3,823 ms median in test parsing/indexing and 858 ms in evidence/classification, with repeated masking, function parsing, and import binding across runnable-test, fixture, and framework-client consumers. Traversal accounts for only 17 ms and 154 ms respectively, so neither adapter should migrate traversal for performance reasons. The next slice is the Python parsed test/support-file cache.
+The [August 2026 exact-pin phase profile](swift-python-phase-profile-2026-08.md) and both bounded optimizations are complete. Swift's adapter-local immutable test facts reduce its exact-pin median from 14,443 ms to 725 ms and its evidence/classification phase from 14,187 ms to 407 ms. Python's immutable parsed test/support-file index reduces Django from 3,823 ms to 2,129 ms and its test-parsing phase from 2,488 ms to 844 ms. Both retain their exact canonical artifacts; traversal remains only 17 ms and 149 ms respectively, so neither adapter should migrate traversal for performance reasons. The next ranked portfolio step is the bounded non-shipping executor evaluation.
 
 ## Extraction Acceptance Gates
 
