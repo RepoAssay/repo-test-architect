@@ -50,6 +50,7 @@ export const requiredFiles = [
   "docs/elixir-alpha-support.md",
   "docs/elixir-jason-validation-report.md",
   "docs/elixir-plug-validation-report.md",
+  "docs/elixir-absinthe-validation-report.md",
   "docs/rust-alpha-support.md",
   "docs/rust-ripgrep-validation-report.md",
   "docs/ruby-alpha-support.md",
