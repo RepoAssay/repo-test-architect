@@ -89,6 +89,7 @@ describe("package contents", () => {
     assert.ok(requiredFiles.includes("schemas/diagnostic-event-v1.schema.json"));
     assert.ok(requiredFiles.includes("schemas/doctor-report-v1.schema.json"));
     assert.ok(requiredFiles.includes("schemas/diagnostic-bundle-v1.schema.json"));
+    assert.ok(requiredFiles.includes("src/core/audit-phase-timing.js"));
     assert.ok(requiredFiles.includes("schemas/validation-corpus-v1.schema.json"));
     assert.ok(requiredFiles.includes("schemas/validation-scorecard-v1.schema.json"));
     assert.ok(requiredFiles.includes("evals/validation-corpus.json"));

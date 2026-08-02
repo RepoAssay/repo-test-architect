@@ -5,6 +5,7 @@ import path from "node:path";
 import { performance } from "node:perf_hooks";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { AUDIT_PROFILE_PHASES } from "../src/core/audit-phase-timing.js";
 import { getAdapter } from "../src/core/adapter-registry.js";
 import { loadValidationCorpus } from "./check-validation-corpus.js";
 
@@ -19,12 +20,17 @@ if (isMainModule()) {
   }
 }
 
-export function measureValidationCorpusCase({ caseId, checkoutPath, runCount = 3 }) {
+export function measureValidationCorpusCase({ caseId, checkoutPath, runCount, profilePhases = false }) {
+  runCount ??= profilePhases ? 5 : 3;
   if (!caseId) throw new Error("Missing required --case.");
   if (!checkoutPath) throw new Error("Missing required --checkout.");
   if (!Number.isInteger(runCount) || runCount < 3) throw new Error("--runs must be an integer of at least 3.");
+  if (profilePhases && runCount < 5) throw new Error("Phase profiling requires at least five audit runs.");
 
   const corpusCase = findCorpusCase(caseId);
+  if (profilePhases && !["python", "swift"].includes(corpusCase.adapterId)) {
+    throw new Error("Phase profiling is currently available for the Python and Swift adapters.");
+  }
   const checkoutRoot = path.resolve(checkoutPath);
   verifyPinnedCheckout(checkoutRoot, corpusCase.entry.repository.commit);
   const projectRoot = path.resolve(checkoutRoot, corpusCase.entry.repository.projectRoot);
@@ -35,17 +41,59 @@ export function measureValidationCorpusCase({ caseId, checkoutPath, runCount = 3
   const adapter = getAdapter(corpusCase.adapterId);
   const runs = [];
   for (let index = 0; index < runCount; index += 1) {
+    const phaseDurationMs = {};
+    const auditOptions = {
+      ...(corpusCase.entry.auditOptions ?? {}),
+      ...(profilePhases ? {
+        onPhaseTiming(timing) {
+          if (timing.adapterId !== corpusCase.adapterId) {
+            throw new Error(`Expected ${corpusCase.adapterId} phase timing, got ${timing.adapterId}.`);
+          }
+          if (!AUDIT_PROFILE_PHASES.includes(timing.phase)) {
+            throw new Error(`Unexpected audit phase: ${timing.phase}.`);
+          }
+          if (Object.hasOwn(phaseDurationMs, timing.phase)) {
+            throw new Error(`Duplicate audit phase timing: ${timing.phase}.`);
+          }
+          phaseDurationMs[timing.phase] = Math.max(0, Math.round(timing.durationMs));
+        }
+      } : {})
+    };
     const started = performance.now();
-    const audit = adapter.audit(projectRoot, corpusCase.entry.auditOptions ?? {});
+    const audit = adapter.audit(projectRoot, auditOptions);
     const durationMs = Math.round(performance.now() - started);
-    runs.push({ audit, durationMs });
+    runs.push({ audit, durationMs, ...(profilePhases ? { phaseDurationMs } : {}) });
   }
 
   return {
     caseId,
     adapterId: corpusCase.adapterId,
     commit: corpusCase.entry.repository.commit,
-    ...summarizeCorpusRuns(runs)
+    ...summarizeCorpusRuns(runs),
+    ...(profilePhases ? { auditPhaseTimings: summarizeAuditPhaseRuns(runs) } : {})
+  };
+}
+
+export function summarizeAuditPhaseRuns(runs) {
+  if (!Array.isArray(runs) || runs.length < 5) {
+    throw new Error("Audit phase profiling requires at least five runs.");
+  }
+
+  const samplesMs = {};
+  const mediansMs = {};
+  for (const phase of AUDIT_PROFILE_PHASES) {
+    const samples = runs.map((run) => run.phaseDurationMs?.[phase]);
+    if (samples.some((sample) => !Number.isInteger(sample) || sample < 0)) {
+      throw new Error(`Missing or invalid audit phase timing: ${phase}.`);
+    }
+    samplesMs[phase] = samples;
+    mediansMs[phase] = medianInteger(samples);
+  }
+
+  return {
+    phases: [...AUDIT_PROFILE_PHASES],
+    samplesMs,
+    mediansMs
   };
 }
 
@@ -120,6 +168,7 @@ function parseArguments(args) {
     if (argument === "--case") options.caseId = args[++index];
     else if (argument === "--checkout") options.checkoutPath = args[++index];
     else if (argument === "--runs") options.runCount = Number(args[++index]);
+    else if (argument === "--profile-phases") options.profilePhases = true;
     else throw new Error(`Unknown argument: ${argument}`);
   }
   return options;

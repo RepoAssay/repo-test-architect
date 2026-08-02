@@ -3,8 +3,10 @@ import { describe, it } from "node:test";
 import {
   canonicalAuditDigest,
   medianInteger,
+  summarizeAuditPhaseRuns,
   summarizeCorpusRuns
 } from "../scripts/measure-validation-corpus.js";
+import { AUDIT_PROFILE_PHASES } from "../src/core/audit-phase-timing.js";
 
 describe("validation corpus measurement", () => {
   it("normalizes checkout roots and records a repeated semantic baseline", () => {
@@ -65,6 +67,28 @@ describe("validation corpus measurement", () => {
   it("uses the middle observed integer as the standardized duration", () => {
     assert.equal(medianInteger([90, 10, 30]), 30);
     assert.throws(() => medianInteger([1.5]), /integer array/);
+  });
+
+  it("summarizes five complete audit-phase samples in pipeline order", () => {
+    const runs = [1, 2, 3, 4, 5].map((sample) => ({
+      phaseDurationMs: Object.fromEntries(
+        AUDIT_PROFILE_PHASES.map((phase, index) => [phase, sample + index])
+      )
+    }));
+
+    const summary = summarizeAuditPhaseRuns(runs);
+    assert.deepEqual(summary.phases, AUDIT_PROFILE_PHASES);
+    assert.deepEqual(summary.samplesMs["traversal-and-text-read"], [1, 2, 3, 4, 5]);
+    assert.equal(summary.mediansMs["traversal-and-text-read"], 3);
+    assert.equal(summary.mediansMs["evidence-classification-and-artifact"], 7);
+  });
+
+  it("rejects incomplete or missing audit-phase samples", () => {
+    assert.throws(() => summarizeAuditPhaseRuns([]), /at least five runs/);
+    assert.throws(
+      () => summarizeAuditPhaseRuns(Array.from({ length: 5 }, () => ({ phaseDurationMs: {} }))),
+      /Missing or invalid audit phase timing/
+    );
   });
 });
 

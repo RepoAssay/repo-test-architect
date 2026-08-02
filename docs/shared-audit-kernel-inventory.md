@@ -83,7 +83,7 @@ The first optimization work should remain evidence-led. The two exact corpus out
 
 Python's existing test/import/fixture indexes already reduced the Django audit from more than two minutes to the recorded median. That history is a reason to measure residual phases, not a reason to assume traversal is still the hotspot. Swift's much larger remaining median likewise does not prove which scan or join dominates.
 
-The next instrumentation slice should record five-run development-only phase timings for:
+The development instrumentation slice now records five-run phase timings for:
 
 1. repository traversal and text reads
 2. project/build ownership parsing
@@ -91,7 +91,14 @@ The next instrumentation slice should record five-run development-only phase tim
 4. runnable-test parsing and test-index construction
 5. evidence joining and artifact assembly
 
-Timing data must stay outside `audit/v1`, canonical normalization, CLI/MCP output, and package-user diagnostics. Instrumentation should be an optional development callback or script-owned wrapper so production audits remain deterministic and allocation-neutral when profiling is disabled.
+Timing data stays outside `audit/v1`, canonical normalization, CLI/MCP output, and package-user diagnostics. Swift and Python accept an optional internal `onPhaseTiming` callback, which the adapter registry forwards only when a development caller supplies it. The exact-pin corpus measurement script owns sample collection:
+
+```powershell
+npm run corpus:measure -- --case python-django --checkout /path/to/pinned/django --profile-phases
+npm run corpus:measure -- --case swift-package-index-server --checkout /path/to/pinned/swift-package-index-server --profile-phases
+```
+
+`--profile-phases` defaults to five runs, requires at least five when `--runs` is explicit, verifies one callback for each ordered phase, preserves the canonical audit digest check, and reports per-phase samples plus medians. Ordinary audits do not construct timing events or attach timing data to their artifacts.
 
 ## Extraction Acceptance Gates
 

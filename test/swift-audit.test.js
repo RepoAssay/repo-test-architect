@@ -16,6 +16,25 @@ const vaporRoot = path.resolve("examples/vapor-service-tests");
 const vaporMongoRoot = path.resolve("examples/vapor-mongodb-boundaries");
 
 describe("Swift audit adapter", () => {
+  it("reports five development-only phases without changing the audit artifact", () => {
+    const timings = [];
+    const baseline = auditSwiftRepo(exampleRoot);
+    const profiled = auditSwiftRepo(exampleRoot, {
+      onPhaseTiming: (timing) => timings.push(timing)
+    });
+
+    assert.deepEqual(profiled, baseline);
+    assert.deepEqual(timings.map(({ adapterId, phase }) => `${adapterId}:${phase}`), [
+      "swift:traversal-and-text-read",
+      "swift:project-and-build-ownership",
+      "swift:source-discovery-and-index",
+      "swift:test-parsing-and-index",
+      "swift:evidence-classification-and-artifact"
+    ]);
+    assert.ok(timings.every(({ durationMs }) => Number.isFinite(durationMs) && durationMs >= 0));
+    assert.equal(Object.hasOwn(profiled, "auditPhaseTimings"), false);
+  });
+
   it("detects SwiftPM, XCTest, and static Swift conventions", () => {
     const audit = auditSwiftRepo(exampleRoot);
 

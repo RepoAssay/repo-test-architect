@@ -1,27 +1,43 @@
 import fs from "node:fs";
 import path from "node:path";
+import { finishAuditPhase, startAuditPhase } from "../../core/audit-phase-timing.js";
 
 const SOURCE_EXTENSIONS = [".swift", ".m", ".mm"];
 const GENERIC_SOURCE_BASENAMES = new Set(["common", "handler", "helpers", "main", "types", "utilities", "utility", "utils"]);
 
 export function auditSwiftRepo(root, options = {}) {
+  const onPhaseTiming = typeof options.onPhaseTiming === "function" ? options.onPhaseTiming : undefined;
+  let phaseStartedAt = startAuditPhase(onPhaseTiming);
   const files = readRepoFiles(root);
+  finishAuditPhase(onPhaseTiming, "swift", "traversal-and-text-read", phaseStartedAt);
+
+  phaseStartedAt = startAuditPhase(onPhaseTiming);
   const bazelGraph = parseBazelSwiftGraph(files);
   const swiftPmGraph = parseSwiftPmGraph(files);
   const sourceGraph = mergeSourceGraphs(bazelGraph, swiftPmGraph);
-  const sourceSymbols = collectUniqueSwiftSourceSymbols(files, sourceGraph);
   const profile = buildProfile(root, files, sourceGraph);
   const changedPaths = options.changedPaths ? new Set(options.changedPaths.map((currentPath) => normalizeChangedPath(root, currentPath))) : undefined;
+  finishAuditPhase(onPhaseTiming, "swift", "project-and-build-ownership", phaseStartedAt);
+
+  phaseStartedAt = startAuditPhase(onPhaseTiming);
+  const sourceSymbols = collectUniqueSwiftSourceSymbols(files, sourceGraph);
+  const sourceFiles = files.filter((candidate) => isSourceFile(candidate.path, sourceGraph) && isIncludedByChangedPaths(candidate.path, changedPaths));
+  finishAuditPhase(onPhaseTiming, "swift", "source-discovery-and-index", phaseStartedAt);
+
+  phaseStartedAt = startAuditPhase(onPhaseTiming);
   const testFiles = files
     .filter((file) => isTestFile(file.path, sourceGraph))
     .map((file) => ({ ...file, path: normalizePath(file.path) }))
     .sort((a, b) => a.path.localeCompare(b.path));
+  finishAuditPhase(onPhaseTiming, "swift", "test-parsing-and-index", phaseStartedAt);
+
+  phaseStartedAt = startAuditPhase(onPhaseTiming);
   const untestedCandidates = [];
   const coveredButRisky = [];
   const skipped = [];
   const risks = [];
 
-  for (const file of files.filter((candidate) => isSourceFile(candidate.path, sourceGraph) && isIncludedByChangedPaths(candidate.path, changedPaths))) {
+  for (const file of sourceFiles) {
     const name = basenameWithoutExtension(file.path);
     const classification = classifySourceFile(file, sourceGraph);
     const existingTestEvidence = findExistingTestEvidence(file.path, testFiles, sourceGraph, sourceSymbols);
@@ -78,7 +94,7 @@ export function auditSwiftRepo(root, options = {}) {
 
   const recommended = [...untestedCandidates, ...coveredButRisky].sort(byRiskThenName);
 
-  return {
+  const audit = {
     schemaVersion: "audit/v1",
     profile,
     untestedCandidates: untestedCandidates.sort(byRiskThenName),
@@ -87,6 +103,8 @@ export function auditSwiftRepo(root, options = {}) {
     skipped: skipped.sort((a, b) => a.name.localeCompare(b.name)),
     risks
   };
+  finishAuditPhase(onPhaseTiming, "swift", "evidence-classification-and-artifact", phaseStartedAt);
+  return audit;
 }
 
 function readRepoFiles(root) {

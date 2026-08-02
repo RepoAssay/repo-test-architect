@@ -99,6 +99,24 @@ describe("adapter registry", () => {
     ]);
   });
 
+  it("forwards development phase callbacks only to instrumented adapters", () => {
+    const cases = [
+      ["python", path.resolve("examples/python-pytest-service")],
+      ["swift", path.resolve("examples/swift-spm-xctest")]
+    ];
+
+    for (const [adapterId, root] of cases) {
+      const timings = [];
+      const audit = getAdapter(adapterId).audit(root, {
+        onPhaseTiming: (timing) => timings.push(timing)
+      });
+      assert.equal(audit.schemaVersion, "audit/v1");
+      assert.equal(timings.length, 5);
+      assert.ok(timings.every((timing) => timing.adapterId === adapterId));
+      assert.equal(Object.hasOwn(audit, "auditPhaseTimings"), false);
+    }
+  });
+
   it("returns the adapter registry artifact", () => {
     assert.deepEqual(getAdapterRegistry(), {
       schemaVersion: "adapter-registry/v1",
