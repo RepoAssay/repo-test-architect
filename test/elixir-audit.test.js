@@ -196,6 +196,118 @@ end
     assert.ok(pluralAudit.profile.blockers.some((blocker) => blocker.includes("matching its conventional lib path")));
   });
 
+  it("owns terminal acronym namespaces and repeated exact declarations without weakening collisions", () => {
+    const root = createRepo();
+    fs.mkdirSync(path.join(root, "lib", "sample", "schema"), { recursive: true });
+    fs.writeFileSync(path.join(root, "lib", "sample", "schema", "sdl_render.ex"), `defmodule Sample.Schema.SDL.Render do
+  def render(value), do: value
+end
+`);
+    fs.writeFileSync(path.join(root, "lib", "sample", "optional.ex"), `if Code.ensure_loaded?(Decimal) do
+  defmodule Sample.Optional do
+    def value, do: :loaded
+  end
+else
+  defmodule Sample.Optional do
+    def value, do: :missing
+  end
+end
+`);
+    const audit = auditElixirRepo(root);
+    assert.deepEqual(audit.profile.blockers, []);
+    assert.ok(audit.untestedCandidates.some((target) => target.name === "Sample.Schema.SDL.Render"));
+    assert.ok(audit.untestedCandidates.some((target) => target.name === "Sample.Optional"));
+    assert.ok(audit.profile.detectedConventions.includes("terminal acronym namespace ownership"));
+    assert.ok(audit.profile.detectedConventions.includes("repeated exact source declaration ownership"));
+
+    fs.appendFileSync(path.join(root, "lib", "sample", "schema", "sdl_render.ex"), `defmodule Sample.Schema.SdlRender do
+  def render(value), do: value
+end
+`);
+    const collision = auditElixirRepo(root);
+    assert.equal(collision.profile.testCommand, undefined);
+    assert.ok(collision.profile.blockers.some((blocker) => blocker.includes("matching its conventional lib path")));
+  });
+
+  it("owns conventional Mix task modules and their exact test modules", () => {
+    const root = createRepo();
+    fs.mkdirSync(path.join(root, "lib", "mix", "tasks"), { recursive: true });
+    fs.mkdirSync(path.join(root, "test", "mix", "tasks"), { recursive: true });
+    fs.writeFileSync(path.join(root, "lib", "mix", "tasks", "sample.sync.ex"), `defmodule Mix.Tasks.Sample.Sync do
+  use Mix.Task
+  def run(args), do: args
+end
+`);
+    fs.writeFileSync(path.join(root, "test", "mix", "tasks", "sample.sync_test.exs"), `defmodule Mix.Tasks.Sample.SyncTest do
+  use ExUnit.Case
+  alias Mix.Tasks.Sample.Sync, as: Task
+  test "runs" do
+    assert Task.run([]) == []
+  end
+end
+`);
+    const audit = auditElixirRepo(root);
+    const task = audit.coveredButRisky.find((target) => target.name === "Mix.Tasks.Sample.Sync");
+    assert.deepEqual(audit.profile.blockers, []);
+    assert.deepEqual(task.existingTestEvidence, [{
+      testPath: "test/mix/tasks/sample.sync_test.exs",
+      kind: "elixir-module-reference",
+      strength: "direct",
+      usage: "asserted"
+    }]);
+    assert.ok(audit.profile.detectedConventions.includes("Mix task source ownership"));
+  });
+
+  it("resolves literal local ExUnit wrapper chains from compiled test support only", () => {
+    const root = createRepo();
+    fs.writeFileSync(path.join(root, "mix.exs"), `defmodule Sample.MixProject do
+  use Mix.Project
+  def project, do: [app: :sample, elixirc_paths: elixirc_paths(Mix.env())]
+  defp elixirc_paths(:test), do: ["lib", "test/support"]
+  defp elixirc_paths(_), do: ["lib"]
+end
+`);
+    fs.mkdirSync(path.join(root, "test", "support"), { recursive: true });
+    fs.writeFileSync(path.join(root, "test", "support", "case.ex"), `defmodule Sample.Case do
+  defmacro __using__(opts) do
+    quote do
+      use ExUnit.Case, unquote(opts)
+    end
+  end
+end
+`);
+    fs.writeFileSync(path.join(root, "test", "support", "phase_case.ex"), `defmodule Sample.PhaseCase do
+  defmacro __using__(opts) do
+    quote do
+      use Sample.Case, unquote(opts)
+    end
+  end
+end
+`);
+    fs.writeFileSync(path.join(root, "test", "sample", "parser_test.exs"), `defmodule Sample.ParserTest do
+  use Sample.PhaseCase, async: true
+  alias Sample.Parser
+  test "normalizes" do
+    assert Parser.normalize(" x ") == "x"
+  end
+end
+`);
+    const audit = auditElixirRepo(root);
+    assert.deepEqual(audit.profile.blockers, []);
+    assert.ok(audit.profile.detectedConventions.includes("local ExUnit case wrappers"));
+    assert.deepEqual(audit.coveredButRisky[0].existingTestEvidence[0].usage, "asserted");
+
+    fs.writeFileSync(path.join(root, "mix.exs"), `defmodule Sample.MixProject do
+  use Mix.Project
+  def project, do: [app: :sample, elixirc_paths: elixirc_paths(Mix.env())]
+  defp elixirc_paths(:test), do: test_paths()
+end
+`);
+    const dynamic = auditElixirRepo(root);
+    assert.equal(dynamic.profile.testCommand, undefined);
+    assert.ok(dynamic.profile.blockers.some((blocker) => blocker.includes("No runnable conventional ExUnit")));
+  });
+
   it("recognizes one app-owned primary test module while ignoring nested fixture modules", () => {
     const root = createRepo();
     fs.writeFileSync(path.join(root, "test", "sample", "parser_test.exs"), `defmodule Sample.NormalizerTest do

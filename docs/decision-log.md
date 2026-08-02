@@ -2,6 +2,14 @@
 
 This log records project-level decisions that shape architecture, scope, and public positioning.
 
+# Elixir Resolves Literal Local ExUnit Wrappers And Conventional Mix Tasks
+
+Decision: recognize `test/support` only through a literal test-environment `elixirc_paths` declaration, then resolve exact app-owned `__using__/1` chains to one `use ExUnit.Case`. Own conventional `Mix.Tasks.*` source/test pairs, repeated conventional declarations only when every match has the same exact FQN, and one terminal all-uppercase acronym namespace whose concatenated terminal matches the snake-case path. Keep helper imports, framework execution, and general macro expansion outside direct evidence.
+
+Rationale: the blind difficult-ownership audit pinned `absinthe-graphql/absinthe` at `de0e411f3ca4f31ad8cf5e31921c735aa3b0f986`. It found 215 runtime candidates but only 5 covered targets and 6 relationships, and withheld the command because six exact source files were unresolved. The correction owns all 265 source files, resolves Absinthe's exact local ExUnit wrapper chains, returns high confidence with 135 untested and 80 covered candidates, records 121 relationships, emits `mix test`, and produces one canonical digest across five runs. Native `mix test` passes 1,501 tests with three excluded. The remaining candidates stay uncredited where coverage depends on imports, helpers, generated schemas, or macro-expanded runtime behavior.
+
+Revisit when: portfolio analysis identifies Elixir promotion as the next investment, or another pinned repository demonstrates a distinct bounded Mix/ExUnit rule without requiring general project evaluation.
+
 # Elixir Preserves Exact Acronyms And Static ExUnit Startup Without Framework Inference
 
 Decision: permit case-normalized exact source-path segments, one terminal singular protocol for an otherwise exact plural path, and direct `ExUnit.start(...)` with bounded static scalar keyword options. Retain exactly one app-owned primary declaration, collision blocking, and test-body-scoped direct evidence; do not infer Plug, behaviour, protocol-implementation, or OTP reachability.

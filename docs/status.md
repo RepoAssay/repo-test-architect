@@ -72,7 +72,7 @@ Implemented:
 - file-backed MCP invoke arguments for local calls that reuse saved artifacts
 - checked-in MCP args fixture for project-audits derived local examples
 - supported bounded PHP auditing, including exact one-hop source/test-owned PHPUnit bases and import-shadow-safe same-namespace evidence
-- experimental bounded Elixir auditing for one conventional Mix/ExUnit application, exact MixProject/Mixfile and conventional or app-prefixed module/protocol ownership with bounded acronym and terminal-plural preservation, app-owned runnable tests with static startup options, test-body-scoped direct module-call evidence, conservative filename evidence, safe `mix test` selection, and passing pinned Jason and Plug live audits
+- experimental bounded Elixir auditing for one conventional Mix/ExUnit application, exact MixProject/Mixfile, conventional/app-prefixed module/protocol, Mix task, bounded acronym/repeated-declaration, and literal local ExUnit-wrapper ownership, static startup options, test-body-scoped direct module-call evidence, conservative filename evidence, safe `mix test` selection, and passing pinned Jason, Plug, and Absinthe live audits
 - documented project detection marker rules
 - CLI output for project detection marker rules
 - fixture-based regression coverage
