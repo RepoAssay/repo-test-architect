@@ -122,7 +122,7 @@ Why second: it improves all ten adapters and controls the cost of future breadth
 
 Slices:
 
-1. Publish a duplication inventory that classifies traversal/path/index, balanced-region, lexical, build-ownership, and evidence code as shareable or adapter-owned.
+1. Complete: publish a [duplication inventory](shared-audit-kernel-inventory.md) that classifies traversal/path/index, balanced-region, lexical, build-ownership, and evidence code as shareable or adapter-owned. Portable paths and policy-driven deterministic text traversal are the first kernel boundary; PHP and Elixir are the first migration pair.
 2. Extract one behavior-identical portable traversal and normalized file-index primitive, migrate two low-risk adapters first, and prove byte-identical artifacts before wider adoption.
 3. Add five-run phase timing around traversal, project parsing, source indexing, test parsing, and evidence joining for development/performance scripts without changing public artifacts.
 4. Profile Swift Package Index Server and Django at their pins. Replace repeated scans with adapter-local indexes/caches where the profiles prove a hotspot.
@@ -182,11 +182,12 @@ The recommended concrete sequence is:
 2. Elixir standardized measurements and 21-area review — complete
 3. Elixir supported promotion — complete
 4. record the pinned live-audit video and prepare the next public-alpha announcement/request for adapters
-5. shared-kernel duplication inventory and phase instrumentation
-6. first byte-preserving traversal/index extraction
-7. Swift/Python large-repository latency slice based on profiles
-8. executor-evaluation contract and first fixture experiment
-9. demand review and a go/no-go decision for C++/CMake, Dart/Flutter, an existing-adapter expansion, or no new ecosystem yet
+5. shared-kernel duplication inventory — complete
+6. five-phase Swift/Python development instrumentation
+7. first byte-preserving PHP/Elixir traversal/path extraction
+8. Swift/Python large-repository latency slice based on profiles
+9. executor-evaluation contract and first fixture experiment
+10. demand review and a go/no-go decision for C++/CMake, Dart/Flutter, an existing-adapter expansion, or no new ecosystem yet
 
 This sequence deliberately separates promotion, communication, refactoring, performance, experimental execution, and ecosystem expansion so each can remain one reviewable PR slice with its own evidence.
 

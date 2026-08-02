@@ -106,6 +106,8 @@ Ruby, PHP, and Elixir have reached supported parity at their bounded matrices. E
 
 Complete: the [August 2026 Adapter Portfolio Analysis](adapter-portfolio-analysis-2026-08.md) compares all ten adapters against maturity, corpus/live proof, implementation and test size, coverage, synthetic and real-repository performance, maintenance risk, current request signals, and missing ecosystems. Elixir promotion is complete; the remaining ranked order is a small byte-preserving shared audit kernel plus Swift/Python latency profiling, a non-shipping executor evaluation, and any new ecosystem only after explicit demand collection. C++/CMake and Dart/Flutter are discovery candidates with very different reach/cost profiles; neither is authorized as the next adapter by popularity alone.
 
+The first shared-kernel planning slice is complete. The [Shared Audit Kernel Inventory](shared-audit-kernel-inventory.md) verifies five mechanics repeated across all ten adapter entrypoints, limits the initial kernel to portable paths and policy-driven deterministic text traversal, selects PHP and Elixir as the first migration pair, and keeps lexical, build, framework, command, classification, and evidence semantics adapter-owned. It also locks exact Swift Package Index Server and Django latency baselines and defines five development-only phases for the next profiling slice before any optimization is selected.
+
 Useful hardening targets:
 
 - Go parameter/field receiver identity, complex or chained helper-return flow, helper assertions, interface dispatch, and deeper dependency graphs remain excluded after parser-backed local, helper-result, and callable-body ownership

@@ -43,6 +43,7 @@ export const requiredFiles = [
   "src/adapters/php/audit.js",
   "docs/go-alpha-support.md",
   "docs/adapter-portfolio-analysis-2026-08.md",
+  "docs/shared-audit-kernel-inventory.md",
   "docs/csharp-alpha-support.md",
   "docs/csharp-tdd-validation-report.md",
   "docs/csharp-sharp-cast-validation-report.md",
