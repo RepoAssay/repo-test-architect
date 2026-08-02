@@ -5,18 +5,18 @@ The Elixir adapter is registered as experimental at a deliberately narrow Mix/Ex
 ## Supported foundation
 
 - one conventional root Mix application with `mix.exs`
-- one literal `app: :name` and the matching `Name.MixProject` module using `Mix.Project`
-- source ownership under `lib/**/*.ex`, with one module matching the conventional path and app namespace
-- runnable tests under `test/**/*_test.exs`, with one path-matching module, `use ExUnit.Case`, and a literal `test "..." do` block
+- one literal `app: :name` and the matching `Name.MixProject` or legacy `Name.Mixfile` module using `Mix.Project`
+- source ownership under `lib/**/*.ex`, with one exact conventional or app-prefixed flat-path primary module or protocol; related declarations may be adjacent, but duplicate primary FQNs are blockers
+- runnable tests under `test/**/*_test.exs`, with one first-declared app-owned `*Test` primary module, exactly one `use ExUnit.Case`, and a quoted `test "..." do` body; nested fixture modules are allowed
 - a root `test/test_helper.exs` containing a direct `ExUnit.start()` call
 - the repository-native `mix test` command only when every foundation ownership requirement is proven
-- direct fully qualified or unambiguous exact-alias module calls, classified as called or asserted evidence
+- direct fully qualified, unambiguous exact-alias, or exact grouped-alias module calls inside extracted test bodies, classified as called or asserted evidence
 - conservative path-matching filename evidence when direct usage is not proven
 - changed-path filtering, low-runtime module skipping, deterministic output, and generated 400-source/200-test pressure
 
 ## Explicit exclusions
 
-The foundation does not claim Mix umbrellas, Phoenix/Ecto ownership, doctests, custom compile/test paths, computed project metadata, dynamic module construction, macro expansion, protocols/behaviours, test templates, ExUnit setup/helper reachability, async-task result flow, or dependency-aware call resolution. Nested Mix roots are separate projects, and ambiguous metadata withholds `mix test`.
+The foundation does not claim Mix umbrellas, Phoenix/Ecto ownership, doctest or property-test evidence, custom compile/test paths, computed project metadata, dynamic module construction, macro expansion, protocol implementation or behaviour reachability, test templates, ExUnit setup/helper reachability, async-task result flow, or dependency-aware call resolution. Nested Mix roots are separate projects, installed `deps/` and `_build/` trees are ignored, and ambiguous metadata withholds `mix test`.
 
 ## Verification
 
@@ -29,4 +29,4 @@ The native check copies the fixture to a temporary directory before running Mix 
 
 ## Next slices
 
-The next useful work is live-repository pressure on conventional libraries, followed by evidence and command refinements driven by observed gaps. Umbrellas and framework-specific semantics remain separate decisions.
+The first live pass against [`michalmuskala/jason`](elixir-jason-validation-report.md) recovered its legacy Mixfile, flat app namespace, protocol, app-owned tests, grouped aliases, and test-body-scoped evidence while preserving explicit ambiguity controls. The next useful pressure case should be framework-heavy or difficult-ownership Elixir. Umbrellas and framework-specific semantics remain separate decisions.

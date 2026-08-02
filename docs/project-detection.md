@@ -41,6 +41,7 @@ npm run detect-rules:json
 The detector skips common dependency and build output directories:
 
 - `.build`
+- `_build`
 - `.git`
 - `.gradle`
 - `.swiftpm`
@@ -50,6 +51,7 @@ The detector skips common dependency and build output directories:
 - `build`
 - `coverage`
 - `dist`
+- `deps`
 - `fixtures`
 - `node_modules`
 - `obj`

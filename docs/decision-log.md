@@ -2,6 +2,14 @@
 
 This log records project-level decisions that shape architecture, scope, and public positioning.
 
+# Elixir's First Live Expansion Stays App-Owned And Test-Body-Scoped
+
+Decision: accept exact `App.MixProject` or legacy `App.Mixfile`, conventional or app-prefixed flat-path primary modules and protocols, app-owned primary `*Test` modules with nested fixtures, and exact grouped aliases. Attribute direct calls only inside extracted test bodies; block duplicate source FQNs and multiple primary test modules. Ignore `_build/` and `deps/` in shared detection and source statistics.
+
+Rationale: the blind audit pinned `michalmuskala/jason` at `4ede42858eb19f80ec9e863aab52df466eab8608`. The foundation returned 10 untested candidates, zero evidence, low confidence, and no command despite a native `mix test` run passing 410 tests, 26 doctests, and 9 properties. The bounded correction returns high confidence, 3 untested and 7 covered candidates, 10 relationships, no blockers, and one stable canonical digest across five runs. Scoping evidence to literal test bodies removed a false call originating in a nested protocol implementation, while explicit doctest, helper-flow, and protocol-implementation exclusions keep the remaining gaps honest.
+
+Revisit when: a distinct framework-heavy or difficult-ownership repository demonstrates another exact ownership, command, or evidence shape without requiring general Mix evaluation or framework inference.
+
 # Elixir Starts Experimental At A Conventional Mix/ExUnit Boundary
 
 Decision: register `elixir` as experimental for one conventional Mix application with one literal app, matching MixProject and path-owned `lib/` modules; recognize conventional runnable ExUnit modules and direct exact module calls; emit `mix test` only when the complete foundation is proven.

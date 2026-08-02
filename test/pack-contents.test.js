@@ -49,6 +49,7 @@ describe("package contents", () => {
     assert.ok(requiredFiles.includes("docs/csharp-central-packages-validation-report.md"));
     assert.ok(requiredFiles.includes("docs/csharp-multi-target-validation-report.md"));
     assert.ok(requiredFiles.includes("docs/elixir-alpha-support.md"));
+    assert.ok(requiredFiles.includes("docs/elixir-jason-validation-report.md"));
     assert.ok(requiredFiles.includes("docs/rust-alpha-support.md"));
     assert.ok(requiredFiles.includes("docs/ruby-alpha-support.md"));
     assert.ok(requiredFiles.includes("docs/php-alpha-support.md"));

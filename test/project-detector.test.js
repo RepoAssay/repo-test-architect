@@ -834,6 +834,18 @@ describe("project detector", () => {
     assert.deepEqual(detection.projects, []);
   });
 
+  it("ignores nested Mix dependency and build directories", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-mix-output-"));
+    fs.writeFileSync(path.join(root, "mix.exs"), "defmodule Root.MixProject do\nend\n");
+    for (const directory of ["deps/dependency", "_build/test/lib/generated"]) {
+      fs.mkdirSync(path.join(root, directory), { recursive: true });
+      fs.writeFileSync(path.join(root, directory, "mix.exs"), "defmodule Generated.MixProject do\nend\n");
+    }
+
+    const detection = detectProjects(root);
+    assert.deepEqual(detection.projects.map((project) => project.root), ["."]);
+  });
+
   it("ignores generated .NET output directories", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-dotnet-output-"));
     fs.mkdirSync(path.join(root, "obj", "Debug"), { recursive: true });
