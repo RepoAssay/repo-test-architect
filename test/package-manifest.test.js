@@ -102,6 +102,8 @@ describe("package manifest", () => {
     assert.ok(packageJson.scripts["model-consistency:compare"]);
     assert.ok(packageJson.scripts["model-consistency:compare:profiles"]);
     assert.ok(packageJson.scripts["model-consistency:stats"]);
+    assert.equal(packageJson.scripts["executor:eval:check"], "node ./scripts/check-executor-evaluation.js");
+    assert.equal(packageJson.scripts["executor:eval:json"], "node ./scripts/check-executor-evaluation.js --json");
     assert.equal(packageJson.scripts["corpus:check"], "node ./scripts/check-validation-corpus.js");
     assert.equal(packageJson.scripts["corpus:scorecard"], "node ./scripts/render-validation-scorecard.js");
     assert.equal(packageJson.scripts["corpus:measure"], "node ./scripts/measure-validation-corpus.js");
@@ -150,6 +152,7 @@ describe("package manifest", () => {
       "swift:performance:check",
       "eval:check",
       "model-consistency:check",
+      "executor:eval:check",
       "demo:check",
       "mcp:smoke",
     ]);
@@ -178,6 +181,7 @@ describe("package manifest", () => {
       "swift:performance:check",
       "eval:check",
       "model-consistency:check",
+      "executor:eval:check",
       "demo:check",
       "mcp:smoke",
       "smoke",

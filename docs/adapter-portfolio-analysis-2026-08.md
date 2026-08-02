@@ -13,7 +13,7 @@ The review ranked product investment order as:
 
 Adapter-specific framework expansion remains reactive: a demonstrated false high-confidence result, incorrect command, or strong user request can move a bounded slice earlier, but unsupported breadth alone does not.
 
-Progress since the review baseline: the three Elixir corpus roles passed all 21 standardized areas and Elixir is now supported without semantic widening. The shared-kernel extraction and measured Swift/Python latency work are also complete without canonical artifact drift. The next ranked item is the bounded non-shipping executor evaluation.
+Progress since the review baseline: the three Elixir corpus roles passed all 21 standardized areas and Elixir is now supported without semantic widening. The shared-kernel extraction and measured Swift/Python latency work are also complete without canonical artifact drift. The [bounded non-shipping executor evaluation](executor-evaluation.md) is complete: two replaceable profiles consume the same selected plan facts, one passes directly, one recovers from an assertion failure with exactly one repair, and both detect the controlled source fault. Product generation remains deferred.
 
 The separate release/communication track should record the already planned live-audit video after Elixir promotion and use the next public-alpha post to ask which missing ecosystems are blocking adoption. That produces better demand evidence than inferring an adapter order from overall package downloads or repository stars.
 
@@ -140,6 +140,8 @@ Acceptance:
 
 Why third: generation could add substantial user value, but shipping it before convention, repair, and safety evidence would undermine the audit's trust advantage.
 
+Status: complete for the bounded evaluation described below. The result is an alpha/release-gated development harness, not a product-generation feature.
+
 Scope:
 
 - consume one selected stable plan item; never re-audit or reinterpret ownership
@@ -154,6 +156,8 @@ Acceptance before any product enablement:
 - explicit convention adherence and unrelated-edit checks
 - recoverable failure/repair behavior
 - evidence that more than one replaceable executor profile can consume the same audit facts without changing them
+
+All four evaluation acceptance points are met by `executor-evaluation/v1` and its dependency-free `node:test` fixture. This does not satisfy the broader generation-readiness gate across adapters.
 
 ### 4. Collect Demand, Then Choose One Discovery Spike
 
@@ -190,7 +194,7 @@ The recommended concrete sequence is:
 8. Swift/Python exact-pin phase profile and bounded optimization decisions — complete
 9. Swift immutable test-fact index and exact-pin remeasurement — complete
 10. Python parsed test/support-file cache and exact-pin remeasurement — complete
-11. executor-evaluation contract and first fixture experiment
+11. executor-evaluation contract and first fixture experiment — complete
 12. demand review and a go/no-go decision for C++/CMake, Dart/Flutter, an existing-adapter expansion, or no new ecosystem yet
 
 This sequence deliberately separates promotion, communication, refactoring, performance, experimental execution, and ecosystem expansion so each can remain one reviewable PR slice with its own evidence.

@@ -19,6 +19,7 @@ export const alphaChecks = [
   "swift:performance:check",
   "eval:check",
   "model-consistency:check",
+  "executor:eval:check",
   "demo:check",
   "mcp:smoke"
 ];

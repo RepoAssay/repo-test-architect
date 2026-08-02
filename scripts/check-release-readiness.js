@@ -20,6 +20,7 @@ export const releaseChecks = [
   "swift:performance:check",
   "eval:check",
   "model-consistency:check",
+  "executor:eval:check",
   "demo:check",
   "mcp:smoke",
   "smoke",

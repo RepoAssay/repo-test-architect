@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://repoassay.dev/schemas/executor-evaluation-fixture-v1.schema.json",
+  "title": "Executor evaluation fixture v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "id",
+    "description",
+    "repositoryRoot",
+    "adapterId",
+    "planItemId",
+    "allowedTestPath",
+    "expectedVerificationCommand",
+    "maxRepairs",
+    "contextPaths",
+    "conventions",
+    "profiles",
+    "faultInjection"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "executor-evaluation-fixture/v1" },
+    "id": { "type": "string", "minLength": 1 },
+    "description": { "type": "string", "minLength": 1 },
+    "repositoryRoot": { "type": "string", "minLength": 1 },
+    "adapterId": { "type": "string", "minLength": 1 },
+    "planItemId": { "type": "string", "minLength": 1 },
+    "allowedTestPath": { "type": "string", "minLength": 1 },
+    "expectedVerificationCommand": { "type": "string", "minLength": 1 },
+    "maxRepairs": { "type": "integer", "minimum": 0, "maximum": 1 },
+    "contextPaths": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "conventions": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/convention" }
+    },
+    "profiles": {
+      "type": "array",
+      "minItems": 2,
+      "items": { "$ref": "#/$defs/profile" }
+    },
+    "faultInjection": { "$ref": "#/$defs/faultInjection" }
+  },
+  "$defs": {
+    "convention": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "target", "pattern"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "target": { "enum": ["path", "content"] },
+        "pattern": { "type": "string", "minLength": 1 }
+      }
+    },
+    "profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "module"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "module": { "type": "string", "minLength": 1 }
+      }
+    },
+    "faultInjection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "find", "replacement"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "find": { "type": "string", "minLength": 1 },
+        "replacement": { "type": "string" }
+      }
+    }
+  }
+}

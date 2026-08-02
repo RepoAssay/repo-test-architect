@@ -1,0 +1,153 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://repoassay.dev/schemas/executor-evaluation-v1.schema.json",
+  "title": "Executor evaluation v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "evaluationMode", "productGeneration", "fixture", "input", "summary", "profiles"],
+  "properties": {
+    "schemaVersion": { "const": "executor-evaluation/v1" },
+    "evaluationMode": { "const": "non-shipping" },
+    "productGeneration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schemaVersion", "status"],
+      "properties": {
+        "schemaVersion": { "const": "generation-deferred/v1" },
+        "status": { "const": "deferred" }
+      }
+    },
+    "fixture": { "$ref": "#/$defs/fixture" },
+    "input": { "$ref": "#/$defs/input" },
+    "summary": { "$ref": "#/$defs/summary" },
+    "profiles": {
+      "type": "array",
+      "minItems": 2,
+      "items": { "$ref": "#/$defs/profileResult" }
+    }
+  },
+  "$defs": {
+    "nonNegativeInteger": { "type": "integer", "minimum": 0 },
+    "nonEmptyString": { "type": "string", "minLength": 1 },
+    "stringArray": { "type": "array", "items": { "type": "string" } },
+    "fixture": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "adapterId", "repositoryRoot", "planItemId", "targetPath", "allowedTestPath", "verificationCommand", "maxRepairs"],
+      "properties": {
+        "id": { "$ref": "#/$defs/nonEmptyString" },
+        "adapterId": { "$ref": "#/$defs/nonEmptyString" },
+        "repositoryRoot": { "$ref": "#/$defs/nonEmptyString" },
+        "planItemId": { "$ref": "#/$defs/nonEmptyString" },
+        "targetPath": { "$ref": "#/$defs/nonEmptyString" },
+        "allowedTestPath": { "$ref": "#/$defs/nonEmptyString" },
+        "verificationCommand": { "$ref": "#/$defs/nonEmptyString" },
+        "maxRepairs": { "type": "integer", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["digest", "confidence", "sourceSignals", "executionHint"],
+      "properties": {
+        "digest": { "$ref": "#/$defs/nonEmptyString" },
+        "confidence": { "enum": ["low", "medium", "high"] },
+        "sourceSignals": { "$ref": "#/$defs/stringArray" },
+        "executionHint": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["complexity", "contextMode", "recommendedAgentRole"],
+          "properties": {
+            "complexity": { "$ref": "#/$defs/nonEmptyString" },
+            "contextMode": { "$ref": "#/$defs/nonEmptyString" },
+            "recommendedAgentRole": { "$ref": "#/$defs/nonEmptyString" }
+          }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["profileCount", "passedProfileCount", "failedProfileCount", "rejectedProfileCount", "totalAttemptCount", "totalRepairCount", "meaningfulFailureCount"],
+      "properties": {
+        "profileCount": { "$ref": "#/$defs/nonNegativeInteger" },
+        "passedProfileCount": { "$ref": "#/$defs/nonNegativeInteger" },
+        "failedProfileCount": { "$ref": "#/$defs/nonNegativeInteger" },
+        "rejectedProfileCount": { "$ref": "#/$defs/nonNegativeInteger" },
+        "totalAttemptCount": { "$ref": "#/$defs/nonNegativeInteger" },
+        "totalRepairCount": { "$ref": "#/$defs/nonNegativeInteger" },
+        "meaningfulFailureCount": { "$ref": "#/$defs/nonNegativeInteger" }
+      }
+    },
+    "profileResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "inputDigest", "status", "repairCount", "attempts", "faultInjection"],
+      "properties": {
+        "id": { "$ref": "#/$defs/nonEmptyString" },
+        "inputDigest": { "$ref": "#/$defs/nonEmptyString" },
+        "status": { "enum": ["passed", "failed", "rejected"] },
+        "repairCount": { "$ref": "#/$defs/nonNegativeInteger" },
+        "attempts": { "type": "array", "items": { "$ref": "#/$defs/attempt" } },
+        "faultInjection": { "$ref": "#/$defs/faultInjectionResult" }
+      }
+    },
+    "attempt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["attemptNumber", "repair", "proposalStatus", "conventionAdherence", "unrelatedEdits", "evidenceContradictions", "changedPaths"],
+      "properties": {
+        "attemptNumber": { "type": "integer", "minimum": 1, "maximum": 2 },
+        "repair": { "type": "boolean" },
+        "proposalStatus": { "enum": ["accepted", "rejected"] },
+        "conventionAdherence": { "$ref": "#/$defs/conventionAdherence" },
+        "unrelatedEdits": { "$ref": "#/$defs/stringArray" },
+        "evidenceContradictions": { "$ref": "#/$defs/stringArray" },
+        "changedPaths": { "$ref": "#/$defs/stringArray" },
+        "verification": { "$ref": "#/$defs/verification" }
+      }
+    },
+    "conventionAdherence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "checks"],
+      "properties": {
+        "status": { "enum": ["pass", "fail"] },
+        "checks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "status"],
+            "properties": {
+              "id": { "$ref": "#/$defs/nonEmptyString" },
+              "status": { "enum": ["pass", "fail"] }
+            }
+          }
+        }
+      }
+    },
+    "verification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["command", "status", "exitCode", "durationMs"],
+      "properties": {
+        "command": { "$ref": "#/$defs/nonEmptyString" },
+        "status": { "enum": ["passed", "failed"] },
+        "exitCode": { "type": "integer" },
+        "durationMs": { "$ref": "#/$defs/nonNegativeInteger" },
+        "failureKind": { "enum": ["assertion-failure", "compile-failure", "timeout", "verification-failure"] }
+      }
+    },
+    "faultInjectionResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status"],
+      "properties": {
+        "path": { "$ref": "#/$defs/nonEmptyString" },
+        "status": { "enum": ["detected", "missed", "not-run"] },
+        "verification": { "$ref": "#/$defs/verification" }
+      }
+    }
+  }
+}

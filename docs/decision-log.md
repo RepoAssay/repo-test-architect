@@ -2,6 +2,14 @@
 
 This log records project-level decisions that shape architecture, scope, and public positioning.
 
+# Executor Evaluation Does Not Enable Product Generation
+
+Decision: add one dependency-free, non-shipping JavaScript executor evaluation that consumes a selected stable plan item and its execution hint. Give two replaceable checked-in profiles the same frozen context; allow the evaluator to write exactly one intended test file in a temporary copy, run the exact adapter-owned command, permit at most one repair, and require a controlled source fault to produce a meaningful failure. Keep `generate_selected_test` returning `generation-deferred/v1`.
+
+Rationale: the direct profile passes immediately, while the repair profile produces a classified assertion failure and succeeds on its only repair. Both preserve the selected audit identity and source signals, follow six repository conventions, touch no unrelated path, and catch the controlled fault. The versioned fixture/result contracts and alpha/release gate make that evidence repeatable without treating trusted profile modules as an arbitrary-code sandbox or claiming cross-adapter generation readiness.
+
+Revisit when: adapter-specific generation policy and compile/assertion/skipped fixtures broaden the matrix, a real model profile can be evaluated without weakening the write boundary, or product enablement is proposed through the full generation-readiness gate.
+
 # Python Test/Support Facts Are Cached Without Caching Visibility Or Route Decisions
 
 Decision: derive one frozen adapter-local record per Python test/support file and store it in an immutable normalized-path index. Reuse masked content, the top-level function-block mask, parsed functions, and resolved imports across runnable-test, pytest-fixture, and framework-client consumers. Continue evaluating fixture visibility, source-layout ownership, Django URL ownership, client/route matches, and evidence strength in their existing consumers.
