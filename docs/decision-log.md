@@ -2,6 +2,14 @@
 
 This log records project-level decisions that shape architecture, scope, and public positioning.
 
+# Elixir Preserves Exact Acronyms And Static ExUnit Startup Without Framework Inference
+
+Decision: permit case-normalized exact source-path segments, one terminal singular protocol for an otherwise exact plural path, and direct `ExUnit.start(...)` with bounded static scalar keyword options. Retain exactly one app-owned primary declaration, collision blocking, and test-body-scoped direct evidence; do not infer Plug, behaviour, protocol-implementation, or OTP reachability.
+
+Rationale: the blind framework-heavy audit pinned `elixir-plug/plug` at `2463704245eccacb2c528d7651cf86120b9f0543`. It found 26 covered modules and 34 relationships but withheld the command because ten exact sources preserve acronyms or singular protocol ownership and the helper supplies a static receive timeout. The correction returns high confidence, 9 untested and 33 covered candidates, 44 relationships, no blockers, and one canonical digest across five runs. Native `mix test` passes 612 tests and 76 doctests, while the remaining compatibility, internal, parser, behaviour, and OTP modules stay uncredited without exact test-body calls.
+
+Revisit when: a difficult-ownership repository demonstrates a distinct static project or command graph, or a representative corpus justifies a separately bounded framework-evidence rule.
+
 # Elixir's First Live Expansion Stays App-Owned And Test-Body-Scoped
 
 Decision: accept exact `App.MixProject` or legacy `App.Mixfile`, conventional or app-prefixed flat-path primary modules and protocols, app-owned primary `*Test` modules with nested fixtures, and exact grouped aliases. Attribute direct calls only inside extracted test bodies; block duplicate source FQNs and multiple primary test modules. Ignore `_build/` and `deps/` in shared detection and source statistics.

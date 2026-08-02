@@ -17,7 +17,7 @@ export function auditElixirRepo(root, options = {}) {
   const ambiguousSourceModules = duplicateModuleNames(sourceModules);
   const runnableTests = collectRunnableTests(testFiles, project.appModule);
   const blockers = buildBlockers({ mixFile, project, sourceFiles, sourceModules, ambiguousSourceModules, runnableTests, helper });
-  const profile = buildProfile(absoluteRoot, mixFile, project, runnableTests, helper, blockers);
+  const profile = buildProfile(absoluteRoot, mixFile, project, sourceModules, runnableTests, helper, blockers);
   const evidenceBySource = collectEvidence(sourceModules, runnableTests);
   const changedPaths = options.changedPaths
     ? new Set(options.changedPaths.map((currentPath) => normalizeChangedPath(absoluteRoot, currentPath)))
@@ -117,21 +117,51 @@ function analyzeMixProject(content) {
 
 function analyzeTestHelper(files) {
   const file = files.find((candidate) => candidate.path === "test/test_helper.exs");
-  const started = Boolean(file && /\bExUnit\.start\s*\(\s*\)/.test(maskCommentsAndStrings(file.content)));
-  return { present: Boolean(file), started };
+  const startup = file ? staticExUnitStart(file.content) : undefined;
+  return { present: Boolean(file), started: Boolean(startup), literalOptions: startup?.literalOptions ?? false };
+}
+
+function staticExUnitStart(content) {
+  const literal = String.raw`(?:true|false|nil|-?\d+(?:\.\d+)?|:[a-z][A-Za-z0-9_]*[!?]?)`;
+  const option = String.raw`[a-z_][A-Za-z0-9_]*[!?]?\s*:\s*${literal}`;
+  const masked = maskCommentsAndStrings(content);
+  if ([...masked.matchAll(/\bExUnit\.start\s*\(/g)].length !== 1) return undefined;
+  const match = new RegExp(String.raw`^\s*ExUnit\.start\s*\(\s*(${option}(?:\s*,\s*${option})*)?\s*\)\s*$`, "m")
+    .exec(masked);
+  return match ? { literalOptions: Boolean(match[1]) } : undefined;
 }
 
 function collectOwnedSourceModules(files, appModule) {
   if (!appModule) return [];
   return files.flatMap((file) => {
     const expected = sourceModuleCandidates(file.path, appModule);
-    const matches = declaredOwnedModules(file.content).filter(
-      (module) => expected.includes(module) && (module === appModule || module.startsWith(`${appModule}.`))
-    );
+    const matches = declaredOwnedDefinitions(file.content).flatMap((definition) => {
+      const ownership = expected
+        .map((candidate) => conventionalModuleOwnership(candidate, definition.fqn, definition.kind))
+        .find(Boolean);
+      return ownership && (definition.fqn === appModule || definition.fqn.startsWith(`${appModule}.`))
+        ? [{ fqn: definition.fqn, ownership }]
+        : [];
+    });
     return matches.length === 1
-      ? [{ path: file.path, fqn: matches[0] }]
+      ? [{ path: file.path, ...matches[0] }]
       : [];
   });
+}
+
+function conventionalModuleOwnership(expected, declared, declarationKind) {
+  const expectedSegments = expected.split(".");
+  const declaredSegments = declared.split(".");
+  if (expectedSegments.length !== declaredSegments.length) return undefined;
+  const expectedPrefix = expectedSegments.slice(0, -1).join(".").toLowerCase();
+  const declaredPrefix = declaredSegments.slice(0, -1).join(".").toLowerCase();
+  if (expectedPrefix !== declaredPrefix) return undefined;
+  const expectedFinal = expectedSegments.at(-1).toLowerCase();
+  const declaredFinal = declaredSegments.at(-1).toLowerCase();
+  if (expectedFinal === declaredFinal) return expected === declared ? "exact" : "case-normalized";
+  return declarationKind === "protocol" && expectedFinal === `${declaredFinal}s`
+    ? "terminal-plural"
+    : undefined;
 }
 
 function collectRunnableTests(files, appModule) {
@@ -168,7 +198,7 @@ function buildBlockers({ mixFile, project, sourceFiles, sourceModules, ambiguous
   return blockers;
 }
 
-function buildProfile(root, mixFile, project, runnableTests, helper, blockers) {
+function buildProfile(root, mixFile, project, sourceModules, runnableTests, helper, blockers) {
   return {
     root,
     languages: ["elixir"],
@@ -179,8 +209,11 @@ function buildProfile(root, mixFile, project, runnableTests, helper, blockers) {
     detectedConventions: [
       ...(project.valid ? ["literal Mix app ownership"] : []),
       ...(project.valid && project.module?.endsWith(".Mixfile") ? ["legacy Mixfile project module"] : []),
+      ...(sourceModules.some((source) => source.ownership === "case-normalized") ? ["case-normalized source module ownership"] : []),
+      ...(sourceModules.some((source) => source.ownership === "terminal-plural") ? ["terminal plural source ownership"] : []),
       ...(runnableTests.length > 0 ? ["*_test.exs ExUnit modules"] : []),
-      ...(helper.started ? ["root ExUnit.start() helper"] : [])
+      ...(helper.started ? ["root ExUnit.start() helper"] : []),
+      ...(helper.literalOptions ? ["static ExUnit.start options"] : [])
     ],
     existingTestLocations: runnableTests.length > 0 ? ["test/ ExUnit files"] : [],
     setupSignals: [
@@ -320,8 +353,9 @@ function collectTestBodies(content) {
   return bodies;
 }
 
-function declaredOwnedModules(content) {
-  return [...maskCommentsAndStrings(content).matchAll(/\bdef(?:module|protocol)\s+([A-Z][A-Za-z0-9_.]*)\s+do\b/g)].map((match) => match[1]);
+function declaredOwnedDefinitions(content) {
+  return [...maskCommentsAndStrings(content).matchAll(/\bdef(module|protocol)\s+([A-Z][A-Za-z0-9_.]*)\s+do\b/g)]
+    .map((match) => ({ kind: match[1], fqn: match[2] }));
 }
 
 function sourceModuleCandidates(filePath, appModule) {
