@@ -6,6 +6,7 @@ Repo Test Architect currently has supported deterministic JavaScript/TypeScript,
 
 Implemented:
 
+- bounded non-shipping executor evaluation for one stable JavaScript plan item, with two replaceable profiles, frozen identical inputs, one evaluator-owned temporary-copy test write, exact native verification, at most one repair, convention/evidence/edit accounting, controlled meaningful-failure proof, versioned schemas, and alpha/release gating while `generate_selected_test` remains deferred
 - canonical `analyze` CLI and `analyze_repository` MCP entrypoints that audit detected projects once and return `repository-analysis/v1` with the summary, findings, ranking, plan, execution hints, stats, and verification commands
 - compact global and command-specific CLI help plus MCP initialization guidance that directs humans and connected models toward the appropriate general or focused workflow
 - JavaScript/TypeScript repository profiling
@@ -264,6 +265,8 @@ npm run model-consistency:json -- --profile local-small
 npm run model-consistency:compare:profiles
 npm run model-consistency:compare -- baseline-summary.json candidate-summary.json
 npm run model-consistency:stats
+npm run executor:eval:check
+npm run executor:eval:json
 npm run smoke
 npm run audit:prod
 npm run pack:dry-run

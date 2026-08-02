@@ -1,0 +1,63 @@
+{
+  "schemaVersion": "executor-evaluation-fixture/v1",
+  "id": "node-test-basic-access-policy",
+  "description": "Evaluate one stable JavaScript unit-test plan item through direct and one-repair executor profiles.",
+  "repositoryRoot": "evals/executor/fixtures/node-test-basic",
+  "adapterId": "javascript",
+  "planItemId": "add-test:src/access-policy.js",
+  "allowedTestPath": "src/access-policy.test.js",
+  "expectedVerificationCommand": "npm run test",
+  "maxRepairs": 1,
+  "contextPaths": [
+    "package.json",
+    "src/access-policy.js",
+    "test/smoke.test.js"
+  ],
+  "conventions": [
+    {
+      "id": "co-located-test-name",
+      "target": "path",
+      "pattern": "^src/access-policy\\.test\\.js$"
+    },
+    {
+      "id": "node-test-import",
+      "target": "content",
+      "pattern": "from\\s+[\"']node:test[\"']"
+    },
+    {
+      "id": "node-assert-import",
+      "target": "content",
+      "pattern": "from\\s+[\"']node:assert/strict[\"']"
+    },
+    {
+      "id": "relative-target-import",
+      "target": "content",
+      "pattern": "from\\s+[\"']\\./access-policy\\.js[\"']"
+    },
+    {
+      "id": "behavior-call",
+      "target": "content",
+      "pattern": "\\bcanDeleteDeck\\s*\\("
+    },
+    {
+      "id": "behavior-assertion",
+      "target": "content",
+      "pattern": "\\bassert\\.(?:equal|strictEqual)\\s*\\("
+    }
+  ],
+  "profiles": [
+    {
+      "id": "direct-node-test",
+      "module": "profiles/direct-node-test.js"
+    },
+    {
+      "id": "one-repair-node-test",
+      "module": "profiles/one-repair-node-test.js"
+    }
+  ],
+  "faultInjection": {
+    "path": "src/access-policy.js",
+    "find": "if (!user.token) {\n    return false;\n  }",
+    "replacement": "if (!user.token) {\n    return true;\n  }"
+  }
+}

@@ -44,6 +44,7 @@ describe("package contents", () => {
     assert.ok(requiredFiles.includes("src/adapters/php/audit.js"));
     assert.ok(requiredFiles.includes("docs/go-alpha-support.md"));
     assert.ok(requiredFiles.includes("docs/adapter-portfolio-analysis-2026-08.md"));
+    assert.ok(requiredFiles.includes("docs/executor-evaluation.md"));
     assert.ok(requiredFiles.includes("docs/shared-audit-kernel-inventory.md"));
     assert.ok(requiredFiles.includes("docs/csharp-alpha-support.md"));
     assert.ok(requiredFiles.includes("docs/csharp-tdd-validation-report.md"));
@@ -93,8 +94,14 @@ describe("package contents", () => {
     assert.ok(requiredFiles.includes("src/core/repository-text-files.js"));
     assert.ok(requiredFiles.includes("schemas/validation-corpus-v1.schema.json"));
     assert.ok(requiredFiles.includes("schemas/validation-scorecard-v1.schema.json"));
+    assert.ok(requiredFiles.includes("schemas/executor-evaluation-fixture-v1.schema.json"));
+    assert.ok(requiredFiles.includes("schemas/executor-evaluation-v1.schema.json"));
     assert.ok(requiredFiles.includes("evals/validation-corpus.json"));
+    assert.ok(requiredFiles.includes("evals/executor/node-test-basic.executor-eval.json"));
+    assert.ok(requiredFiles.includes("evals/executor/profiles/direct-node-test.js"));
+    assert.ok(requiredFiles.includes("evals/executor/profiles/one-repair-node-test.js"));
     assert.ok(requiredFiles.includes("scripts/check-validation-corpus.js"));
+    assert.ok(requiredFiles.includes("scripts/check-executor-evaluation.js"));
     assert.ok(requiredFiles.includes("scripts/render-validation-scorecard.js"));
     assert.ok(requiredFiles.includes("scripts/check-csharp-performance.js"));
     assert.ok(requiredFiles.includes("scripts/check-elixir-performance.js"));
@@ -112,6 +119,7 @@ describe("package contents", () => {
     assert.ok(requiredFiles.includes("scripts/check-mcp-stdio-smoke.js"));
     assert.ok(requiredFiles.includes("scripts/check-smoke.js"));
     assert.ok(requiredFiles.includes("scripts/check-release-readiness.js"));
+    assert.ok(requiredFiles.includes("scripts/support/executor-evaluation.js"));
     assert.ok(requiredFiles.includes("scripts/support/npm-runner.js"));
   });
 });

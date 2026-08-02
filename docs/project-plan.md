@@ -264,6 +264,8 @@ Current deterministic scenarios lock selected fields for single-project planning
 
 Test implementation should remain downstream from the audit graph. A future executor should consume a selected stable plan item rather than rediscovering the repository or changing the audit decision.
 
+The first [bounded executor evaluation](executor-evaluation.md) now exercises this boundary outside the product: two replaceable checked-in profiles consume the same frozen selected-item context, write only one allowed test through the evaluator in a temporary copy, run the exact adapter command, permit at most one repair, and must detect a controlled source fault. `generate_selected_test` remains deferred; broader adapter policies and failure fixtures are still required before enablement.
+
 Executor behavior should be split into reusable layers:
 
 - audit artifact: deterministic repository facts, provenance, confidence, risk, and target identity

@@ -770,6 +770,10 @@ npm run model-consistency:json
 npm run model-consistency:compare -- baseline-summary.json candidate-summary.json
 npm run model-consistency:stats
 npm run corpus:check
+npm run executor:eval:check
+npm run executor:eval:json
 ```
 
 Update snapshots only after intentional behavior changes.
+
+The non-shipping executor fixture uses `executor-evaluation-fixture/v1`, and its result uses `executor-evaluation/v1`. The result binds every profile to the same selected plan-item digest and records convention adherence, evidence contradictions, unrelated and changed paths, verification results, bounded repairs, and controlled fault detection. These are evaluation artifacts only; they are not returned by a product CLI or MCP generation path.
