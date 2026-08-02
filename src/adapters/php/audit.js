@@ -1,5 +1,10 @@
 import fs from "node:fs";
 import path from "node:path";
+import {
+  normalizeChangedPath,
+  normalizeRepositoryPath as normalizePath,
+  readRepositoryTextFiles
+} from "../../core/repository-text-files.js";
 
 const IGNORED_DIRECTORIES = new Set([
   ".git", ".idea", ".vscode", "build", "cache", "coverage", "dist", "node_modules", "vendor"
@@ -96,21 +101,18 @@ export function auditPhpRepo(root, options = {}) {
 }
 
 function readRepoFiles(root) {
-  const files = [];
-  function visit(current) {
-    if (current !== root && fs.existsSync(path.join(current, "composer.json"))) return;
-    for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
-      if (IGNORED_DIRECTORIES.has(entry.name) || entry.isSymbolicLink()) continue;
-      const absolute = path.join(current, entry.name);
-      const relative = normalizePath(path.relative(root, absolute));
-      if (entry.isDirectory()) visit(absolute);
-      else if (relative.endsWith(".php") || relative === "composer.json" || relative === "composer.lock" || relative === "phpunit.xml" || relative === "phpunit.xml.dist" || relative === "Makefile") {
-        files.push({ path: relative, content: fs.readFileSync(absolute, "utf8") });
-      }
-    }
-  }
-  visit(root);
-  return files.sort((left, right) => left.path.localeCompare(right.path));
+  return readRepositoryTextFiles(root, {
+    ignoredDirectoryNames: IGNORED_DIRECTORIES,
+    shouldPruneDirectory: ({ absolutePath }) => fs.existsSync(path.join(absolutePath, "composer.json")),
+    shouldIncludeFile: ({ relativePath }) =>
+      relativePath.endsWith(".php") ||
+      relativePath === "composer.json" ||
+      relativePath === "composer.lock" ||
+      relativePath === "phpunit.xml" ||
+      relativePath === "phpunit.xml.dist" ||
+      relativePath === "Makefile",
+    symbolicLinks: "skip"
+  });
 }
 
 function parseComposer(content) {
@@ -634,20 +636,6 @@ function isUnderRoot(filePath, root) {
 function normalizeDirectory(directory) {
   const normalized = normalizePath(directory).replace(/^\.\//, "").replace(/\/+$/, "");
   return normalized ? `${normalized}/` : "";
-}
-
-function normalizeChangedPath(root, currentPath) {
-  const portable = normalizePath(currentPath);
-  if (path.isAbsolute(currentPath)) return normalizePath(path.relative(root, currentPath));
-  if (/^[A-Za-z]:\//.test(portable)) {
-    const portableRoot = normalizePath(root);
-    return portable.startsWith(`${portableRoot}/`) ? portable.slice(portableRoot.length + 1) : portable;
-  }
-  return portable.replace(/^\.\//, "");
-}
-
-function normalizePath(value) {
-  return value.replaceAll("\\", "/");
 }
 
 function isWithin(root, candidate) {
