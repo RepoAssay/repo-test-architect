@@ -22,8 +22,9 @@ This review uses the repository state at master commit `b90a0552fa850a4a9f516dff
 - The registry contains ten adapters: nine supported and Elixir experimental.
 - Every supported adapter has three exact-commit corpus roles: conventional library/service, framework-heavy application, and difficult ownership graph.
 - The supported corpus has 27 cases and 189 reviewed scorecard results: 189 pass, zero fail, zero pending.
+- Jason, Plug, and Absinthe now form a complete experimental Elixir corpus cohort with 21 pending scorecard areas; their historical live observations are not treated as standardized measurements.
 - Every adapter has shared conformance, implementation coverage, golden/model-consistency behavior, packaging checks, and a generated 400-source/200-test semantic/performance gate.
-- The current suite has 1,345 tests across 103 suites.
+- At that review baseline, the suite had 1,345 tests across 103 suites.
 - The primary runtime `audit.js` implementations contain 15,156 lines and their primary audit tests contain 13,621 lines. These conservative counts exclude helper modules and the JavaScript TypeScript mirror; they are a maintenance signal, not a quality score.
 - The repository issue tracker currently has no adapter requests. Absence of requests is not evidence of absence of demand; it means there is no defensible issue-backed language ranking yet.
 
@@ -35,7 +36,7 @@ Corpus timings are stored exact-pin observations, while generated timings below 
 | --- | --- | ---: | --- | ---: | ---: | --- | ---: | ---: |
 | JavaScript/TypeScript | supported | 4 / 10 | 3 corpus | 2,321 / 1,935 | 57 | 95.26 / 89.65 / 96.95% | 233 ms | 400 ms |
 | C#/.NET | supported | 2 / 3 | 3 corpus | 1,795 / 1,675 | 62 | 98.33 / 91.13 / 95.15% | 864 ms | 196 ms |
-| Elixir | experimental | 1 / 1 | 3 live, not corpus | 529 / 500 | 26 | 98.68 / 89.52 / 98.80% | 129 ms | 899 ms |
+| Elixir | experimental | 1 / 1 | 3 corpus, pending | 529 / 500 | 26 | 98.68 / 89.52 / 98.80% | 129 ms | 899 ms |
 | Go | supported | 1 / 1 | 3 corpus | 1,892 / 1,345 | 42 | 96.56 / 90.47 / 99.49% | 279 ms | 1,031 ms |
 | Kotlin/JVM | supported | 5 / 5 | 3 corpus | 1,466 / 1,371 | 68 | 96.32 / 95.19 / 98.21% | 235 ms | 873 ms |
 | PHP | supported | 1 / 1 | 3 corpus | 669 / 538 | 27 | 98.21 / 88.19 / 97.67% | 48 ms | 83 ms |
@@ -52,7 +53,7 @@ The generated checks all preserve 200 covered, 200 untested, and 200 evidence re
 
 The nine supported adapters are equivalent at the shared promotion contract: each has 21 of 21 reviewed corpus areas passing. Their ecosystem boundaries differ substantially, so “supported” means the documented bounded matrix rather than equal language completeness.
 
-Elixir is the clear administrative outlier. Jason, Plug, and Absinthe already fill the same three distinct roles, their native suites pass, repeated audits are deterministic, and the generated/native/package gates are wired. The remaining promotion gap is to standardize those observations in `validation-corpus/v1`, review all 21 scorecard cells under the shared rubric, and then change the registry claim. More semantic expansion before that work would increase scope without improving the maturity signal.
+Elixir is the clear administrative outlier. Jason, Plug, and Absinthe fill the same three distinct roles, their native suites pass, repeated historical audits are deterministic, and the generated/native/package gates are wired. Their exact pins, boundaries, report links, and current semantic counts are now recorded in `validation-corpus/v1` with all 21 cells pending. The remaining promotion gap is to freshly measure those pins through the standard tool, review every cell under the shared rubric, and then change the registry claim. More semantic expansion before that work would increase scope without improving the maturity signal.
 
 ### Breadth And Precision Risk
 
@@ -102,7 +103,7 @@ Why first: it converts already completed work into a consistent public claim at 
 
 Slices:
 
-1. Add Jason, Plug, and Absinthe as the three exact Elixir corpus roles with full commit SHAs, support boundaries, and report links. Record their current observations as pending until freshly measured through the standard corpus tool.
+1. Complete: add Jason, Plug, and Absinthe as the three exact Elixir corpus roles with full commit SHAs, support boundaries, and report links. Their current semantic observations are recorded with all scorecard areas pending until freshly measured through the standard corpus tool.
 2. Clone each exact pin cleanly, run at least three standardized audits, record canonical digests, raw durations, medians, candidate/evidence counts, and reviewed command outcomes. Review all seven areas for all three cases.
 3. Only after 21 of 21 pass, change Elixir to supported in registry, README, status, scorecard, and support documentation. Re-run the exact release gate.
 
@@ -175,7 +176,7 @@ Existing exclusions are not a queue to implement in order. Rails, Pest, Phoenix/
 
 The recommended concrete sequence is:
 
-1. Elixir corpus manifest and pending measurements
+1. Elixir corpus manifest with pending measurements — complete
 2. Elixir standardized measurements and 21-area review
 3. Elixir supported promotion
 4. record the pinned live-audit video and prepare the next public-alpha announcement/request for adapters

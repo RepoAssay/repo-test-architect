@@ -18,12 +18,14 @@ describe("adapter validation corpus", () => {
 
     const result = validateValidationCorpus(corpus);
     assert.deepEqual(result.errors, []);
-    assert.equal(result.adapterCount, 9);
-    assert.equal(result.caseCount, 27);
+    assert.equal(result.adapterCount, 10);
+    assert.equal(result.supportedAdapterCount, 9);
+    assert.equal(result.experimentalAdapterCount, 1);
+    assert.equal(result.caseCount, 30);
     assert.deepEqual(result.scorecardCounts, {
       pass: 189,
       fail: 0,
-      pending: 0
+      pending: 21
     });
   });
 
@@ -44,13 +46,34 @@ describe("adapter validation corpus", () => {
     assert.ok(result.errors.some((error) => error.includes("unique non-empty strings")));
   });
 
-  it("contains every required role and scorecard area for every supported adapter", () => {
+  it("contains every required role and scorecard area for every corpus adapter", () => {
     for (const adapter of corpus.adapters) {
       assert.deepEqual(adapter.cases.map((entry) => entry.role).sort(), [...corpusRoles].sort());
       for (const entry of adapter.cases) {
         assert.deepEqual(Object.keys(entry.scorecard).sort(), [...scorecardAreas].sort());
       }
     }
+  });
+
+  it("requires every supported adapter and only accepts complete registered experimental cohorts", () => {
+    const missingSupported = structuredClone(corpus);
+    missingSupported.adapters = missingSupported.adapters.filter((adapter) => adapter.adapterId !== "csharp");
+    assert.ok(validateValidationCorpus(missingSupported).errors.some(
+      (error) => error.includes("missing supported adapters: csharp")
+    ));
+
+    const unregistered = structuredClone(corpus);
+    unregistered.adapters.find((adapter) => adapter.adapterId === "elixir").adapterId = "future";
+    assert.ok(validateValidationCorpus(unregistered).errors.some(
+      (error) => error.includes("future is not registered")
+    ));
+
+    const incompleteExperimental = structuredClone(corpus);
+    const elixir = incompleteExperimental.adapters.find((adapter) => adapter.adapterId === "elixir");
+    elixir.cases.pop();
+    const errors = validateValidationCorpus(incompleteExperimental).errors;
+    assert.ok(errors.some((error) => error.includes("elixir needs at least 3 corpus cases")));
+    assert.ok(errors.some((error) => error.includes("elixir is missing corpus role difficult-ownership-graph")));
   });
 
   it("accepts an explicitly withheld command after command review", () => {
