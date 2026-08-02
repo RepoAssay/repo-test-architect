@@ -2,6 +2,14 @@
 
 This log records project-level decisions that shape architecture, scope, and public positioning.
 
+# The First Shared Kernel Owns Mechanics, Not Ecosystem Proof
+
+Decision: limit the first shared audit kernel to portable repository paths and deterministic UTF-8 text-file traversal behind adapter-supplied ignore, prune, inclusion, and symbolic-link policies. Migrate PHP and Elixir first. Keep lexical masking, balanced parsing, build ownership, source/test discovery, command selection, classification, blockers, and evidence inference inside each adapter.
+
+Rationale: all ten primary adapter entrypoints independently implement repository reading, path normalization, changed-path normalization, risk ordering, and regex escaping. PHP and Elixir have the closest existing reader control flow and the same sorted record shape, while their nested Composer/Mix boundaries remain expressible as separate policies. Similar delimiter loops and evidence helpers do not share one semantic contract. The exact Swift Package Index Server and Django medians remain 14,484 ms and 3,786 ms, but those totals do not identify a hotspot; five development-only phase timings must precede optimization.
+
+Revisit when: the PHP/Elixir migration preserves every corpus digest and portable ownership regression, or phase evidence identifies another behavior-identical primitive or adapter-local repeated scan worth changing.
+
 # Elixir Promotes At Its Bounded Mix/ExUnit Matrix
 
 Decision: promote `elixir` from experimental to supported without adding ownership, command, evidence, or framework semantics. Keep future experimental cohorts valid only when they satisfy the existing complete three-role corpus contract.
