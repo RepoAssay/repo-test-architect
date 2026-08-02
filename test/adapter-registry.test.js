@@ -28,7 +28,7 @@ describe("adapter registry", () => {
         id: "elixir",
         ecosystems: ["elixir"],
         languages: ["elixir"],
-        maturity: "experimental",
+        maturity: "supported",
         supportedTestFrameworks: ["exunit"],
         supportedProjectTypes: ["mix-app"],
         emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"]
@@ -125,7 +125,7 @@ describe("adapter registry", () => {
           id: "elixir",
           ecosystems: ["elixir"],
           languages: ["elixir"],
-          maturity: "experimental",
+          maturity: "supported",
           supportedTestFrameworks: ["exunit"],
           supportedProjectTypes: ["mix-app"],
           emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"]
@@ -246,11 +246,11 @@ describe("adapter registry", () => {
     );
   });
 
-  it("audits through the experimental Elixir adapter", () => {
+  it("audits through the supported Elixir adapter", () => {
     const adapter = getAdapter("elixir");
     const audit = adapter.audit(path.resolve("examples/elixir-mix-exunit-basic"));
 
-    assert.equal(adapter.maturity, "experimental");
+    assert.equal(adapter.maturity, "supported");
     assert.equal(audit.schemaVersion, "audit/v1");
     assert.deepEqual(audit.profile.testFrameworks, ["exunit"]);
   });

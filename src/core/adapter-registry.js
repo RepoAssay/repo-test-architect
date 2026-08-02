@@ -74,7 +74,7 @@ export const adapters = [
     id: "elixir",
     ecosystems: ["elixir"],
     languages: ["elixir"],
-    maturity: "experimental",
+    maturity: "supported",
     supportedTestFrameworks: ["exunit"],
     supportedProjectTypes: ["mix-app"],
     emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"],

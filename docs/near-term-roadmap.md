@@ -2,7 +2,7 @@
 
 This roadmap tracks the next practical milestones before Repo Test Architect should claim broader adapter support or native test generation.
 
-The first public alpha is shipped. Nine supported adapters have completed the measurable [Adapter Hardening Plan](adapter-hardening-plan.md), and the Elixir adapter has started at experimental foundation maturity. See [Alpha Readiness](alpha-readiness.md) for the standing product acceptance gates and the [Release Lifecycle](release-lifecycle.md) for the flexible alpha, beta, release-candidate, and `1.0` planning windows.
+The first public alpha is shipped. Ten supported adapters have completed the measurable [Adapter Hardening Plan](adapter-hardening-plan.md), including Elixir at its bounded Mix/ExUnit matrix. See [Alpha Readiness](alpha-readiness.md) for the standing product acceptance gates and the [Release Lifecycle](release-lifecycle.md) for the flexible alpha, beta, release-candidate, and `1.0` planning windows.
 
 ## Current Baseline
 
@@ -14,7 +14,7 @@ The useful baseline is:
 - supported Swift, Python, and bounded Kotlin/JVM adapters
 - supported bounded Go module adapter with literal repository-contained `go.work` ownership and explicit static build-target selection
 - supported bounded Rust adapter for conventional Cargo packages, literal repository-contained workspace members, and built-in tests
-- experimental bounded Elixir adapter for one conventional Mix/ExUnit application
+- supported bounded Elixir adapter for one conventional Mix/ExUnit application
 - polyglot project detection with unsupported-project reporting
 - project-level ranking, planning, provider-neutral execution hints, placement, stats, and local MCP tool calls
 - disabled-by-default local MCP diagnostics, safe internal-error report IDs, runtime checks, and inspectable sanitized bundles
@@ -100,11 +100,11 @@ The supported bounded Rust adapter covers conventional Cargo packages, literal r
 
 The C#/.NET adapter is now supported at bounded alpha maturity for one static SDK-style test project or one unique literal production/test edge. Nine pinned live probes cover deterministic ownership amid unrelated projects, inherited and central metadata, literal multi-target and target-conditioned packages, xUnit/NUnit/MSTest, native Microsoft.Testing.Platform hosts, exact assertion/evidence pressure, one-hop target aliases, and linked compile ownership. TDD, usbipd-win, and Sharp Cast fill the three shared validation-corpus roles with all 21 C# areas passing, and the generated 400-source/200-test semantic/performance gate runs cross-platform. Solution ownership, broader evaluated MSBuild ownership, framework compatibility inference, transitive project edges, deeper helper/result flow, conditional/overridden central versions, and broader test-platform variants remain outside the supported boundary; see [C# Alpha Support](csharp-alpha-support.md).
 
-Ruby and PHP have reached supported parity at their bounded matrices. Elixir now has an experimental foundation plus conventional-library, framework-heavy, and difficult-ownership corpus roles against exact Jason, Plug, and Absinthe pins: exact MixProject/Mixfile ownership, conventional/app-prefixed modules and protocols, exact Mix tasks, bounded acronym, repeated-declaration, and literal local ExUnit-wrapper ownership, test-body-scoped direct evidence, safe `mix test` selection, a native fixture, shared conformance, implementation coverage, golden artifacts, packaging, and generated 400-source/200-test pressure. Fresh standardized measurements and native commands pass all 21 Elixir corpus areas without semantic widening; supported promotion and framework reachability remain separate decisions.
+Ruby, PHP, and Elixir have reached supported parity at their bounded matrices. Elixir's conventional-library, framework-heavy, and difficult-ownership corpus roles use exact Jason, Plug, and Absinthe pins: exact MixProject/Mixfile ownership, conventional/app-prefixed modules and protocols, exact Mix tasks, bounded acronym, repeated-declaration, and literal local ExUnit-wrapper ownership, test-body-scoped direct evidence, safe `mix test` selection, a native fixture, shared conformance, implementation coverage, golden artifacts, packaging, and generated 400-source/200-test pressure. Fresh standardized measurements and native commands pass all 21 Elixir corpus areas without semantic widening; framework reachability remains a separate decision.
 
 ### Post-Elixir adapter portfolio review
 
-Complete: the [August 2026 Adapter Portfolio Analysis](adapter-portfolio-analysis-2026-08.md) compares all ten adapters against maturity, corpus/live proof, implementation and test size, coverage, synthetic and real-repository performance, maintenance risk, current request signals, and missing ecosystems. The ranked order is Elixir promotion first, a small byte-preserving shared audit kernel plus Swift/Python latency profiling second, a non-shipping executor evaluation third, and any new ecosystem only after explicit demand collection. C++/CMake and Dart/Flutter are discovery candidates with very different reach/cost profiles; neither is authorized as the next adapter by popularity alone.
+Complete: the [August 2026 Adapter Portfolio Analysis](adapter-portfolio-analysis-2026-08.md) compares all ten adapters against maturity, corpus/live proof, implementation and test size, coverage, synthetic and real-repository performance, maintenance risk, current request signals, and missing ecosystems. Elixir promotion is complete; the remaining ranked order is a small byte-preserving shared audit kernel plus Swift/Python latency profiling, a non-shipping executor evaluation, and any new ecosystem only after explicit demand collection. C++/CMake and Dart/Flutter are discovery candidates with very different reach/cost profiles; neither is authorized as the next adapter by popularity alone.
 
 Useful hardening targets:
 

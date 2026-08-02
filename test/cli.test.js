@@ -124,7 +124,7 @@ describe("CLI", () => {
 
     assert.match(output, /^# Adapter Registry/);
     assert.match(output, /csharp: supported; ecosystems dotnet; languages csharp/);
-    assert.match(output, /elixir: experimental; ecosystems elixir; languages elixir/);
+    assert.match(output, /elixir: supported; ecosystems elixir; languages elixir/);
     assert.match(output, /javascript: supported; ecosystems javascript; languages javascript, typescript/);
     assert.match(output, /frameworks ava, bun-test, cypress, jest, mocha, node-test, playwright, react-testing-library, supertest, vitest/);
     assert.match(output, /go: supported; ecosystems go; languages go/);
@@ -143,7 +143,7 @@ describe("CLI", () => {
     assert.equal(registry.adapters[0].id, "javascript");
     assert.equal(registry.adapters[0].maturity, "supported");
     assert.equal(registry.adapters.find((adapter) => adapter.id === "csharp").maturity, "supported");
-    assert.equal(registry.adapters.find((adapter) => adapter.id === "elixir").maturity, "experimental");
+    assert.equal(registry.adapters.find((adapter) => adapter.id === "elixir").maturity, "supported");
     assert.equal(registry.adapters.find((adapter) => adapter.id === "go").maturity, "supported");
     assert.equal(registry.adapters.find((adapter) => adapter.id === "kotlin").maturity, "supported");
     assert.equal(registry.adapters.find((adapter) => adapter.id === "swift").maturity, "supported");
@@ -876,7 +876,7 @@ describe("CLI", () => {
     );
   });
 
-  it("audits through an explicitly selected experimental adapter", () => {
+  it("audits through an explicitly selected supported Elixir adapter", () => {
     const output = execFileSync(
       process.execPath,
       [cliPath, "audit", path.resolve("examples/elixir-mix-exunit-basic"), "--adapter", "elixir", "--format=json"],

@@ -275,7 +275,7 @@ describe("tool API", () => {
     );
   });
 
-  it("audits an explicitly selected experimental adapter", () => {
+  it("audits an explicitly selected supported Elixir adapter", () => {
     const audit = auditRepo(path.resolve("examples/elixir-mix-exunit-basic"), { adapterId: "elixir" });
     assert.deepEqual(audit.profile.testFrameworks, ["exunit"]);
     assert.equal(audit.profile.testCommand, "mix test");

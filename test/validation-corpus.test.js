@@ -7,6 +7,7 @@ import {
   scorecardAreas,
   validateValidationCorpus
 } from "../scripts/check-validation-corpus.js";
+import { listAdapters } from "../src/core/adapter-registry.js";
 import { assertMatchesSchema } from "./support/json-schema-validator.js";
 
 const corpus = loadValidationCorpus();
@@ -19,8 +20,8 @@ describe("adapter validation corpus", () => {
     const result = validateValidationCorpus(corpus);
     assert.deepEqual(result.errors, []);
     assert.equal(result.adapterCount, 10);
-    assert.equal(result.supportedAdapterCount, 9);
-    assert.equal(result.experimentalAdapterCount, 1);
+    assert.equal(result.supportedAdapterCount, 10);
+    assert.equal(result.experimentalAdapterCount, 0);
     assert.equal(result.caseCount, 30);
     assert.deepEqual(result.scorecardCounts, {
       pass: 210,
@@ -56,6 +57,9 @@ describe("adapter validation corpus", () => {
   });
 
   it("requires every supported adapter and only accepts complete registered experimental cohorts", () => {
+    const stagedRegistry = listAdapters().map((adapter) => (
+      adapter.id === "elixir" ? { ...adapter, maturity: "experimental" } : adapter
+    ));
     const stagedExperimental = structuredClone(corpus);
     const stagedElixir = stagedExperimental.adapters.find((adapter) => adapter.adapterId === "elixir");
     for (const entry of stagedElixir.cases) {
@@ -65,7 +69,10 @@ describe("adapter validation corpus", () => {
       delete entry.observed.evidenceRelationshipCount;
       delete entry.observed.canonicalAuditSha256;
     }
-    assert.deepEqual(validateValidationCorpus(stagedExperimental).errors, []);
+    const stagedResult = validateValidationCorpus(stagedExperimental, { adapters: stagedRegistry });
+    assert.deepEqual(stagedResult.errors, []);
+    assert.equal(stagedResult.supportedAdapterCount, 9);
+    assert.equal(stagedResult.experimentalAdapterCount, 1);
 
     const missingSupported = structuredClone(corpus);
     missingSupported.adapters = missingSupported.adapters.filter((adapter) => adapter.adapterId !== "csharp");
@@ -82,7 +89,7 @@ describe("adapter validation corpus", () => {
     const incompleteExperimental = structuredClone(corpus);
     const elixir = incompleteExperimental.adapters.find((adapter) => adapter.adapterId === "elixir");
     elixir.cases.pop();
-    const errors = validateValidationCorpus(incompleteExperimental).errors;
+    const errors = validateValidationCorpus(incompleteExperimental, { adapters: stagedRegistry }).errors;
     assert.ok(errors.some((error) => error.includes("elixir needs at least 3 corpus cases")));
     assert.ok(errors.some((error) => error.includes("elixir is missing corpus role difficult-ownership-graph")));
   });
