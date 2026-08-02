@@ -2,6 +2,14 @@
 
 This log records project-level decisions that shape architecture, scope, and public positioning.
 
+# Python Test/Support Facts Are Cached Without Caching Visibility Or Route Decisions
+
+Decision: derive one frozen adapter-local record per Python test/support file and store it in an immutable normalized-path index. Reuse masked content, the top-level function-block mask, parsed functions, and resolved imports across runnable-test, pytest-fixture, and framework-client consumers. Continue evaluating fixture visibility, source-layout ownership, Django URL ownership, client/route matches, and evidence strength in their existing consumers.
+
+Rationale: the exact Django profile attributed 2,488 ms of a 3,823 ms median to test parsing/indexing because unchanged support files were repeatedly masked and parsed. The index lowers the five-run median to 2,129 ms and the test-parsing phase to 844 ms while preserving canonical SHA `541ccfb9779cdd34a9d9d2c338d97117770160f2ff456646b6b625d5d496e222`, `104 / 400 / 197` target counts, and 4,935 relationships. Thirteen checked-in Python example audits remain byte-identical, and a focused mixed-consumer regression proves triple-quoted decoy imports remain inert.
+
+Revisit when: another Python lexical fact is proven immutable and repeatedly derived, the Django exact pin materially regresses, or a proposed cache entry depends on fixture visibility, runtime ownership, or source-specific route/evidence interpretation.
+
 # Swift Test Facts Are Cached Without Caching Evidence Decisions
 
 Decision: derive one frozen adapter-local record per Swift test containing normalized imports and declared ownership facts, masked content, distinct local top-symbol and receiver-symbol declarations, assertion bodies, and identifier positions. Continue evaluating source-owner eligibility, source-symbol uniqueness, member-call shape, and final evidence strength for each source/test pair.
@@ -16,7 +24,7 @@ Decision: optimize Swift before Python. Build immutable per-test Swift facts for
 
 Rationale: at the exact Swift Package Index Server pin, evidence/classification accounts for a 14,187 ms phase median within a 14,443 ms audit, and CPU samples are dominated by repeated test import scans, Swift masking, and symbol usage. At the exact Django pin, test parsing/indexing accounts for 2,488 ms within a 3,823 ms audit, with repeated Python masking, function parsing, and import binding spread across consumers. Traversal medians are only 17 ms and 154 ms. Both five-run profiles preserve the existing canonical audit SHA and artifact counts.
 
-Revisit when: the Swift index has exact-pin before/after measurements and byte-identical artifacts, then apply the same acceptance pattern to the separate Python cache without sharing language semantics.
+Revisit when: either completed adapter-local index regresses at its exact pin, or another adapter demonstrates the same repeated immutable-fact shape without requiring shared language semantics.
 
 # PHP And Elixir Prove The First Shared Traversal Boundary
 

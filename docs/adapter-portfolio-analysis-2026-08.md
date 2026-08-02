@@ -13,7 +13,7 @@ The review ranked product investment order as:
 
 Adapter-specific framework expansion remains reactive: a demonstrated false high-confidence result, incorrect command, or strong user request can move a bounded slice earlier, but unsupported breadth alone does not.
 
-Progress since the review baseline: the three Elixir corpus roles passed all 21 standardized areas and Elixir is now supported without semantic widening. The active order therefore starts with the shared-kernel and Swift/Python latency work at item 2.
+Progress since the review baseline: the three Elixir corpus roles passed all 21 standardized areas and Elixir is now supported without semantic widening. The shared-kernel extraction and measured Swift/Python latency work are also complete without canonical artifact drift. The next ranked item is the bounded non-shipping executor evaluation.
 
 The separate release/communication track should record the already planned live-audit video after Elixir promotion and use the next public-alpha post to ask which missing ecosystems are blocking adoption. That produces better demand evidence than inferring an adapter order from overall package downloads or repository stars.
 
@@ -42,7 +42,7 @@ Corpus timings are stored exact-pin observations, while generated timings below 
 | Go | supported | 1 / 1 | 3 corpus | 1,892 / 1,345 | 42 | 96.56 / 90.47 / 99.49% | 279 ms | 1,031 ms |
 | Kotlin/JVM | supported | 5 / 5 | 3 corpus | 1,466 / 1,371 | 68 | 96.32 / 95.19 / 98.21% | 235 ms | 873 ms |
 | PHP | supported | 1 / 1 | 3 corpus | 669 / 538 | 27 | 98.21 / 88.19 / 97.67% | 48 ms | 83 ms |
-| Python | supported | 4 / 5 | 3 corpus | 2,028 / 1,718 | 50 | 97.63 / 88.65 / 96.79% | 50 ms | 3,786 ms |
+| Python | supported | 4 / 5 | 3 corpus | 2,028 / 1,718 | 50 | 97.70 / 88.70 / 96.81% | 47 ms | 2,129 ms |
 | Ruby | supported | 1 / 2 | 3 corpus | 1,465 / 1,513 | 33 | 98.29 / 92.92 / 97.44% | 34 ms | 59 ms |
 | Rust | supported | 2 / 1 | 3 corpus | 1,189 / 773 | 19 | 99.33 / 91.31 / 100.00% | 61 ms | 483 ms |
 | Swift | supported | 4 / 9 | 3 corpus | 1,802 / 2,253 | 49 | 97.11 / 93.48 / 100.00% | 81 ms | 725 ms |
@@ -61,7 +61,7 @@ Elixir was the clear administrative outlier at the review baseline. Jason, Plug,
 
 - JavaScript/TypeScript has the broadest package/runner/module surface and the largest implementation. Its 53 adapter-touching commits reflect both age and the cost of ESM/CommonJS, workspace, alias, browser, and framework boundaries.
 - Swift spans SwiftPM, Xcode, Bazel, Vapor, nine test-framework signals, and the largest primary test file. Its 14.5-second real corpus case is the strongest current latency signal.
-- Python combines dynamic packaging, pytest configuration, fixture flow, nox/tox, and three web frameworks. Django's 3.8-second audit and 4,960 evidence links justify profiling before deeper framework expansion.
+- Python combines dynamic packaging, pytest configuration, fixture flow, nox/tox, and three web frameworks. Its immutable parsed test/support-file index reduces the exact Django audit from 3.8 seconds to 2.1 seconds while retaining 4,935 evidence links and the same canonical artifact.
 - Kotlin and C# carry the heaviest static build-graph ownership risks. Their blockers against arbitrary Gradle/Maven/MSBuild evaluation remain features of the trust model, not missing checkboxes to erase.
 - Go and Rust are deliberately type-inference-light. Their remaining receiver, trait, macro, feature, and build-target gaps should widen only through exact repository pressure.
 - Ruby and PHP are relatively compact at runtime but retain intentionally strong blockers around dynamic DSLs, Rails/Pest, setup orchestration, and deeper helper flow.
@@ -127,7 +127,7 @@ Slices:
 3. Complete: extract behavior-identical portable paths and policy-driven deterministic text traversal, migrate PHP and Elixir first, and preserve adapter-owned Composer/Mix pruning and file inclusion. A normalized file index remains deferred until a migration needs one.
 4. Complete: profile Swift Package Index Server and Django at their pins. The [exact-pin report](swift-python-phase-profile-2026-08.md) locates 98.2% of Swift's median in evidence/classification and 65.1% of Django's median in test parsing/indexing; traversal is negligible for both.
 5. Complete: build immutable adapter-local Swift test facts to stop repeated import scans, masking, assertion extraction, and symbol-reference setup across source/test pairs. The exact-pin median drops from 14,443 ms to 725 ms with the same canonical SHA and 265 relationships.
-6. Reuse adapter-local parsed Python test/support facts across runnable-test, fixture, import, and framework-client consumers.
+6. Complete: reuse immutable adapter-local parsed Python test/support facts across runnable-test, fixture, import, and framework-client consumers. The exact Django median drops from 3,823 ms to 2,129 ms and test parsing/indexing from 2,488 ms to 844 ms with the same canonical SHA and 4,935 relationships.
 
 Acceptance:
 
@@ -189,7 +189,7 @@ The recommended concrete sequence is:
 7. first byte-preserving PHP/Elixir traversal/path extraction — complete
 8. Swift/Python exact-pin phase profile and bounded optimization decisions — complete
 9. Swift immutable test-fact index and exact-pin remeasurement — complete
-10. Python parsed test/support-file cache and exact-pin remeasurement
+10. Python parsed test/support-file cache and exact-pin remeasurement — complete
 11. executor-evaluation contract and first fixture experiment
 12. demand review and a go/no-go decision for C++/CMake, Dart/Flutter, an existing-adapter expansion, or no new ecosystem yet
 

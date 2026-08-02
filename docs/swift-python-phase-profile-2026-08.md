@@ -6,7 +6,7 @@ Optimize Swift before Python, and keep both changes adapter-local.
 
 The exact Swift Package Index Server baseline spends 14,187 ms of its 14,443 ms audit median in evidence classification and artifact assembly. A one-run CPU profile attributes 46.41% of samples to repeatedly scanning test import lines, with another 17.22% in Swift comment/string masking and 13.07% in symbol-usage analysis. Immutable per-test facts now derive normalized imports, masked code, local declarations, assertion bodies, and reusable identifier indexes once while preserving the existing target-qualified ownership checks. The exact-pin median falls to 725 ms with an unchanged canonical artifact.
 
-The exact Django profile spends 2,488 ms of its 3,823 ms audit median in test parsing/indexing and 858 ms in evidence classification and artifact assembly. Its CPU profile is distributed across repeated Python masking, function parsing, import binding, fixture analysis, and framework-client analysis. The later Python slice should reuse one parsed test/support-file record across runnable-test, fixture, import, and framework-client consumers rather than introducing a shared parser or weakening discovery boundaries.
+The exact Django profile spends 2,488 ms of its 3,823 ms audit median in test parsing/indexing and 858 ms in evidence classification and artifact assembly. Its CPU profile is distributed across repeated Python masking, function parsing, import binding, fixture analysis, and framework-client analysis. An immutable parsed test/support-file index now reuses those lexical facts across runnable-test, fixture, import, and framework-client consumers without introducing a shared parser or weakening discovery boundaries. The exact-pin median falls to 2,129 ms with an unchanged canonical artifact.
 
 Traversal is not an optimization target at either pin: its median is 17 ms for Swift and 154 ms for Django.
 
@@ -103,14 +103,23 @@ The test phase initially parses runnable test records, then fixture and framewor
 
 ### Bounded Python optimization
 
-Create an adapter-local parsed-file cache keyed by normalized path and reuse it across runnable-test analysis, pytest fixture discovery, and framework-client evidence. Cache only content-derived lexical facts; keep pytest configuration, fixture visibility, source-layout ownership, Django URL ownership, and evidence strength decisions in their current consumers.
+Complete: an adapter-local immutable index keyed by normalized path stores each test/support file's masked content, function-block mask, parsed functions, and resolved import bindings. Runnable-test analysis, pytest fixture discovery, and framework-client evidence reuse those records. Pytest configuration, fixture visibility, source-layout ownership, Django URL ownership, client/route matching, and evidence strength decisions remain in their existing consumers.
+
+| Measurement | Before | After | Change |
+| --- | ---: | ---: | ---: |
+| Exact-pin audit median | 3,823 ms | 2,129 ms | 44.3% lower |
+| Test parsing/index median | 2,488 ms | 844 ms | 66.1% lower |
+| Evidence/classification median | 858 ms | 843 ms | 1.7% lower |
+| Generated 400-source/200-test audit | 50 ms | 47 ms | stable small-fixture noise |
+
+The exact-pin after samples are 2,348 / 2,145 / 2,117 / 2,118 / 2,129 ms. They retain 104 untested, 400 covered-but-risky, 197 skipped, 4,935 evidence relationships, and canonical SHA-256 `541ccfb9779cdd34a9d9d2c338d97117770160f2ff456646b6b625d5d496e222`. All 13 checked-in Python example audits remain byte-identical to the pre-cache adapter. A focused regression drives one `conftest.py` through both fixture-source and framework-client consumers while proving a triple-quoted decoy import cannot create evidence.
 
 Acceptance adds to the standing gates:
 
 - canonical exact-pin SHA remains `541ccfb9779cdd34a9d9d2c338d97117770160f2ff456646b6b625d5d496e222`
 - candidate, skipped, and 4,935 evidence-relationship counts remain unchanged
 - pytest/unittest, fixture visibility, duplicate-root, and Django client-route negatives remain byte-identical
-- same-machine five-run median improves materially and does not regress by more than 10%
+- same-machine five-run median improves materially and does not regress by more than 10% — met at 44.3% lower
 
 ## Architectural Consequence
 

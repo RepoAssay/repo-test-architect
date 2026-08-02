@@ -40,16 +40,20 @@ export function auditPythonRepo(root, options = {}) {
   finishAuditPhase(onPhaseTiming, "python", "source-discovery-and-index", phaseStartedAt);
 
   phaseStartedAt = startAuditPhase(onPhaseTiming);
-  const testFiles = files
+  const parsedTestSupportFileFactsByPath = buildPythonParsedFileFactIndex(files, sourceLayout, pytestDiscovery);
+  const parsedTestSupportFiles = Object.values(parsedTestSupportFileFactsByPath);
+  const testFiles = parsedTestSupportFiles
     .filter((file) => isTestFile(file.path, pytestDiscovery))
-    .map((file) => ({
-      path: normalizePath(file.path),
-      content: file.content,
-      analysis: analyzePythonTestFile(file.content, file.path, sourceLayout)
-    }))
     .sort((left, right) => left.path.localeCompare(right.path));
-  const pytestFixtures = collectPytestFixtures(files, sourceLayout, pytestDiscovery);
-  const frameworkClientEvidence = collectPythonFrameworkClientEvidence(files, sourceFiles, testFiles, sourceLayout, pytestDiscovery);
+  const pytestFixtures = collectPytestFixtures(files, parsedTestSupportFiles, sourceLayout, pytestDiscovery);
+  const frameworkClientEvidence = collectPythonFrameworkClientEvidence(
+    files,
+    sourceFiles,
+    testFiles,
+    parsedTestSupportFiles,
+    sourceLayout,
+    pytestDiscovery
+  );
   finishAuditPhase(onPhaseTiming, "python", "test-parsing-and-index", phaseStartedAt);
 
   phaseStartedAt = startAuditPhase(onPhaseTiming);
@@ -880,11 +884,35 @@ function isTestFile(currentPath, pytestDiscovery = EMPTY_PYTEST_DISCOVERY) {
   return fileName === "tests.py" || (isInTestsDirectory(normalized) && (fileName.startsWith("test_") || fileName.endsWith("_test.py")));
 }
 
-function analyzePythonTestFile(content, filePath, sourceLayout) {
-  return {
-    functions: parsePythonFunctions(content),
-    imports: collectResolvedPythonModuleImportBindings(content, filePath, sourceLayout)
-  };
+function buildPythonParsedFileFacts(file, sourceLayout) {
+  const normalizedPath = normalizePath(file.path);
+  const maskedContent = maskPythonCommentsAndStrings(file.content);
+  const functions = Object.freeze(parsePythonFunctions(file.content, maskedContent).map((pythonFunction) => Object.freeze({
+    ...pythonFunction,
+    parameters: Object.freeze(pythonFunction.parameters),
+    decorators: Object.freeze(pythonFunction.decorators)
+  })));
+  const imports = Object.freeze(resolvePythonModuleImportBindings(
+    collectPythonModuleImportBindings(file.content, maskedContent),
+    normalizedPath,
+    sourceLayout
+  ).map((currentImport) => Object.freeze(currentImport)));
+  return Object.freeze({
+    path: normalizedPath,
+    content: file.content,
+    maskedContent,
+    maskedFunctionBlocks: maskPythonFunctionBlocks(file.content, maskedContent),
+    analysis: Object.freeze({ functions, imports })
+  });
+}
+
+function buildPythonParsedFileFactIndex(files, sourceLayout, pytestDiscovery) {
+  const factsByPath = Object.create(null);
+  for (const file of files.filter((candidate) => isPythonTestSupportFile(candidate.path, pytestDiscovery))) {
+    const facts = buildPythonParsedFileFacts(file, sourceLayout);
+    factsByPath[facts.path] = facts;
+  }
+  return Object.freeze(factsByPath);
 }
 
 function collectPythonTestEvidence(sourceFiles, testFiles, sourceLayout, sourceBasenameCounts, packageReexports, pytestFixtures, frameworkClientEvidence) {
@@ -1075,7 +1103,7 @@ function isPytestFixtureDecorator(decorator) {
   return /^@(?:pytest\.)?fixture(?:\s*\(|\b)/.test(decorator);
 }
 
-function collectPytestFixtures(files, sourceLayout, pytestDiscovery) {
+function collectPytestFixtures(files, parsedTestSupportFiles, sourceLayout, pytestDiscovery) {
   const sourceFiles = files.filter((file) => isSourceFile(file.path, sourceLayout, pytestDiscovery));
   const moduleToSourcePaths = new Map();
   for (const sourceFile of sourceFiles) {
@@ -1085,11 +1113,10 @@ function collectPytestFixtures(files, sourceLayout, pytestDiscovery) {
     }
   }
 
-  const definitions = files
-    .filter((file) => isPythonTestSupportFile(file.path, pytestDiscovery))
+  const definitions = parsedTestSupportFiles
     .flatMap((file) => {
-      const imports = collectResolvedPythonModuleImportBindings(file.content, file.path, sourceLayout);
-      return parsePythonFunctions(file.content)
+      const imports = file.analysis.imports;
+      return file.analysis.functions
         .filter((pythonFunction) => pythonFunction.decorators.some(isPytestFixtureDecorator))
         .map((pythonFunction) => {
           const sourcePaths = new Set();
@@ -1135,10 +1162,9 @@ function isPythonTestSupportFile(currentPath, pytestDiscovery = EMPTY_PYTEST_DIS
     (isTestFile(normalized, pytestDiscovery) || (isInTestsDirectory(normalized) && fileNameOf(normalized) === "conftest.py") || configuredConftest);
 }
 
-function collectPythonModuleImportBindings(content) {
+function collectPythonModuleImportBindings(content, maskedContent = maskPythonCommentsAndStrings(content)) {
   const imports = [];
-  const masked = maskPythonCommentsAndStrings(content);
-  for (const match of masked.matchAll(/^\s*from\s+(\.*)([A-Za-z_][A-Za-z0-9_.]*)?\s+import\s+(\([^)]*\)|[^\n]+)/gm)) {
+  for (const match of maskedContent.matchAll(/^\s*from\s+(\.*)([A-Za-z_][A-Za-z0-9_.]*)?\s+import\s+(\([^)]*\)|[^\n]+)/gm)) {
     if (!match[1] && !match[2]) continue;
     for (const binding of parsePythonImportBindings(match[3])) {
       imports.push({
@@ -1150,7 +1176,7 @@ function collectPythonModuleImportBindings(content) {
       });
     }
   }
-  for (const match of masked.matchAll(/^\s*import\s+([^\n]+)/gm)) {
+  for (const match of maskedContent.matchAll(/^\s*import\s+([^\n]+)/gm)) {
     for (const currentImport of match[1].split(",").map((item) => item.trim())) {
       const parsed = currentImport.match(/^([A-Za-z_][A-Za-z0-9_.]*)(?:\s+as\s+([A-Za-z_][A-Za-z0-9_]*))?/);
       if (parsed) imports.push({ moduleName: parsed[1], reference: parsed[2] ?? parsed[1], kind: "module" });
@@ -1160,7 +1186,15 @@ function collectPythonModuleImportBindings(content) {
 }
 
 function collectResolvedPythonModuleImportBindings(content, filePath, sourceLayout, bindAbsoluteOwner = false) {
-  const imports = collectPythonModuleImportBindings(content);
+  return resolvePythonModuleImportBindings(
+    collectPythonModuleImportBindings(content),
+    filePath,
+    sourceLayout,
+    bindAbsoluteOwner
+  );
+}
+
+function resolvePythonModuleImportBindings(imports, filePath, sourceLayout, bindAbsoluteOwner = false) {
   const owner = pythonSourceLayoutOwner(filePath, sourceLayout);
   if (!owner) return imports.filter((currentImport) => !currentImport.relativeLevel);
   const packageModule = pythonContainingPackageModule(filePath, owner);
@@ -1219,7 +1253,14 @@ function collectPythonSourceDependencies(sourceFiles, moduleToSourcePaths, sourc
   return dependenciesBySourcePath;
 }
 
-function collectPythonFrameworkClientEvidence(files, sourceFiles, testFiles, sourceLayout, pytestDiscovery) {
+function collectPythonFrameworkClientEvidence(
+  files,
+  sourceFiles,
+  testFiles,
+  parsedTestSupportFiles,
+  sourceLayout,
+  pytestDiscovery
+) {
   const runtimeFiles = files
     .filter((file) => normalizePath(file.path).endsWith(".py"))
     .filter((file) => !isPythonTestSupportFile(file.path, pytestDiscovery))
@@ -1262,9 +1303,8 @@ function collectPythonFrameworkClientEvidence(files, sourceFiles, testFiles, sou
     sourceLayout
   );
   const fixtureClients = collectPythonFrameworkClientFixtures(
-    files,
+    parsedTestSupportFiles,
     sourceLayout,
-    pytestDiscovery,
     moduleToRuntimePaths,
     routesByBootPath,
     djangoRoutes
@@ -1274,14 +1314,15 @@ function collectPythonFrameworkClientEvidence(files, sourceFiles, testFiles, sou
   for (const testFile of testFiles) {
     const imports = testFile.analysis.imports;
     const moduleClients = collectPythonClientBindings(
-      maskPythonFunctionBlocks(testFile.content),
+      testFile.maskedFunctionBlocks,
       imports,
       moduleToRuntimePaths,
       routesByBootPath,
       djangoRoutes,
-      sourceLayout
+      sourceLayout,
+      testFile.maskedFunctionBlocks
     );
-    const hasImplicitDjangoClient = hasDjangoTestCaseClient(testFile.content, imports) && djangoRoutes.length > 0;
+    const hasImplicitDjangoClient = hasDjangoTestCaseClient(testFile.content, imports, testFile.maskedContent) && djangoRoutes.length > 0;
     for (const testFunction of testFile.analysis.functions.filter((pythonFunction) => pythonFunction.name.startsWith("test_"))) {
       const clients = new Map(moduleClients);
       for (const [clientName, routes] of collectPythonClientBindings(
@@ -1290,7 +1331,8 @@ function collectPythonFrameworkClientEvidence(files, sourceFiles, testFiles, sou
         moduleToRuntimePaths,
         routesByBootPath,
         djangoRoutes,
-        sourceLayout
+        sourceLayout,
+        testFunction.body
       )) {
         clients.set(clientName, routes);
       }
@@ -1302,7 +1344,7 @@ function collectPythonFrameworkClientEvidence(files, sourceFiles, testFiles, sou
       if (hasImplicitDjangoClient) clients.set("self.client", djangoRoutes);
 
       for (const [clientName, routes] of clients) {
-        for (const request of collectStaticPythonClientRequests(testFunction.rawBody, clientName)) {
+        for (const request of collectStaticPythonClientRequests(testFunction.rawBody, clientName, testFunction.body)) {
           const matchingSourcePaths = new Set(
             routes
               .filter((route) => route.method === "*" || route.method === request.method)
@@ -1439,17 +1481,16 @@ function collectConfiguredDjangoRoutes(runtimeFiles, runtimeByPath, moduleToRunt
 }
 
 function collectPythonFrameworkClientFixtures(
-  files,
+  parsedTestSupportFiles,
   sourceLayout,
-  pytestDiscovery,
   moduleToRuntimePaths,
   routesByBootPath,
   djangoRoutes
 ) {
   const fixturesByName = new Map();
-  for (const file of files.filter((candidate) => isPythonTestSupportFile(candidate.path, pytestDiscovery))) {
-    const imports = collectResolvedPythonModuleImportBindings(file.content, file.path, sourceLayout);
-    for (const pythonFunction of parsePythonFunctions(file.content).filter((candidate) =>
+  for (const file of parsedTestSupportFiles) {
+    const imports = file.analysis.imports;
+    for (const pythonFunction of file.analysis.functions.filter((candidate) =>
       candidate.decorators.some(isPytestFixtureDecorator)
     )) {
       const bindings = collectPythonClientBindings(
@@ -1458,7 +1499,8 @@ function collectPythonFrameworkClientFixtures(
         moduleToRuntimePaths,
         routesByBootPath,
         djangoRoutes,
-        sourceLayout
+        sourceLayout,
+        pythonFunction.body
       );
       const routes = [];
       for (const [clientName, clientRoutes] of bindings) {
@@ -1472,7 +1514,8 @@ function collectPythonFrameworkClientFixtures(
         moduleToRuntimePaths,
         routesByBootPath,
         djangoRoutes,
-        sourceLayout
+        sourceLayout,
+        pythonFunction.body
       ));
       const uniqueRoutes = deduplicatePythonRoutes(routes);
       if (uniqueRoutes.length === 0) continue;
@@ -1490,17 +1533,17 @@ function collectPythonClientBindings(
   moduleToRuntimePaths,
   routesByBootPath,
   djangoRoutes,
-  sourceLayout
+  sourceLayout,
+  maskedContent = maskPythonCommentsAndStrings(content)
 ) {
   const clients = new Map();
-  const masked = maskPythonCommentsAndStrings(content);
   const testClientReferences = importedPythonReferences(imports, ["fastapi.testclient", "starlette.testclient"], "TestClient");
   for (const constructor of testClientReferences) {
     const pattern = new RegExp(
       `(?:\\b([A-Za-z_][A-Za-z0-9_]*)\\s*=\\s*|\\bwith\\s+)${escapeRegex(constructor)}\\s*\\(\\s*([A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*)?)[^\\n)]*\\)(?:\\s+as\\s+([A-Za-z_][A-Za-z0-9_]*))?`,
       "g"
     );
-    for (const match of masked.matchAll(pattern)) {
+    for (const match of maskedContent.matchAll(pattern)) {
       const clientName = match[1] ?? match[3];
       if (!clientName) continue;
       const routes = routesForImportedPythonBoot(match[2], imports, moduleToRuntimePaths, routesByBootPath, sourceLayout);
@@ -1509,14 +1552,14 @@ function collectPythonClientBindings(
   }
 
   const flaskPattern = /\b([A-Za-z_][A-Za-z0-9_]*)\s*=\s*([A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)?)(?:\s*\([^)\n]*\))?\s*\.\s*test_client\s*\(\s*\)/g;
-  for (const match of masked.matchAll(flaskPattern)) {
+  for (const match of maskedContent.matchAll(flaskPattern)) {
     const routes = routesForImportedPythonBoot(match[2], imports, moduleToRuntimePaths, routesByBootPath, sourceLayout);
     if (routes.length > 0) clients.set(match[1], routes);
   }
 
   for (const constructor of importedPythonReferences(imports, ["django.test"], "Client")) {
     const pattern = new RegExp(`\\b([A-Za-z_][A-Za-z0-9_]*)\\s*=\\s*${escapeRegex(constructor)}\\s*\\(\\s*\\)`, "g");
-    for (const match of masked.matchAll(pattern)) {
+    for (const match of maskedContent.matchAll(pattern)) {
       if (djangoRoutes.length > 0) clients.set(match[1], djangoRoutes);
     }
   }
@@ -1529,10 +1572,11 @@ function collectDirectReturnedPythonClientRoutes(
   moduleToRuntimePaths,
   routesByBootPath,
   djangoRoutes,
-  sourceLayout
+  sourceLayout,
+  maskedContent = maskPythonCommentsAndStrings(content)
 ) {
   const routes = [];
-  const masked = maskPythonCommentsAndStrings(content);
+  const masked = maskedContent;
   for (const constructor of importedPythonReferences(imports, ["fastapi.testclient", "starlette.testclient"], "TestClient")) {
     const pattern = new RegExp(
       `\\b(?:return|yield)\\s+${escapeRegex(constructor)}\\s*\\(\\s*([A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*)?)`,
@@ -1587,27 +1631,25 @@ function resolvePythonImportedRuntimePaths(expression, imports, moduleToRuntimeP
   return [...paths].sort();
 }
 
-function hasDjangoTestCaseClient(content, imports) {
+function hasDjangoTestCaseClient(content, imports, maskedContent = maskPythonCommentsAndStrings(content)) {
   const testCaseReferences = imports
     .filter((currentImport) => currentImport.moduleName === "django.test" && currentImport.kind === "from")
     .filter((currentImport) => ["TestCase", "TransactionTestCase", "SimpleTestCase", "LiveServerTestCase"].includes(currentImport.imported))
     .map((currentImport) => currentImport.reference);
-  const masked = maskPythonCommentsAndStrings(content);
   return testCaseReferences.some((reference) =>
-    new RegExp(`\\bclass\\s+[A-Za-z_][A-Za-z0-9_]*\\s*\\([^)]*\\b${escapeRegex(reference)}\\b[^)]*\\)\\s*:`).test(masked)
+    new RegExp(`\\bclass\\s+[A-Za-z_][A-Za-z0-9_]*\\s*\\([^)]*\\b${escapeRegex(reference)}\\b[^)]*\\)\\s*:`).test(maskedContent)
   );
 }
 
-function collectStaticPythonClientRequests(content, clientReference) {
+function collectStaticPythonClientRequests(content, clientReference, maskedContent = maskPythonCommentsAndStrings(content)) {
   const requests = [];
-  const masked = maskPythonCommentsAndStrings(content);
   const pattern = new RegExp(
     `(?:\\b([A-Za-z_][A-Za-z0-9_]*)\\s*=\\s*)?${escapeRegex(clientReference)}\\s*\\.\\s*(get|post|put|patch|delete|options|head)\\s*\\(\\s*(["'])(\\/[^"'\\\\\\r\\n]*)\\3`,
     "gi"
   );
   for (const match of content.matchAll(pattern)) {
     const clientOffset = match[0].indexOf(clientReference);
-    if (!pythonMatchStartsInCode(masked, match.index + clientOffset, clientReference)) continue;
+    if (!pythonMatchStartsInCode(maskedContent, match.index + clientOffset, clientReference)) continue;
     const routePath = normalizePythonRoutePath(match[4].split(/[?#]/, 1)[0]);
     if (!routePath) continue;
     const lineStart = content.lastIndexOf("\n", match.index) + 1;
@@ -1616,7 +1658,7 @@ function collectStaticPythonClientRequests(content, clientReference) {
     const responseName = match[1];
     const asserted =
       /^\s*assert\b/.test(line) ||
-      (responseName && pythonReferenceIsAsserted(masked, responseName));
+      (responseName && pythonReferenceIsAsserted(maskedContent, responseName));
     requests.push({
       method: match[2].toUpperCase(),
       routePath,
@@ -1692,9 +1734,9 @@ function pythonMatchStartsInCode(maskedContent, index, expected) {
   return maskedContent.slice(index, index + expected.length) === expected;
 }
 
-function maskPythonFunctionBlocks(content) {
+function maskPythonFunctionBlocks(content, maskedContent = maskPythonCommentsAndStrings(content)) {
   const lines = content.split("\n");
-  const maskedLines = maskPythonCommentsAndStrings(content).split("\n");
+  const maskedLines = maskedContent.split("\n");
   for (let index = 0; index < maskedLines.length; index += 1) {
     const match = maskedLines[index].match(/^(\s*)(?:async\s+)?def\s+[A-Za-z_][A-Za-z0-9_]*\s*\(/);
     if (!match) continue;
@@ -1745,9 +1787,9 @@ function maskPythonTypeCheckingBlocks(content) {
   return lines.join("\n");
 }
 
-function parsePythonFunctions(content) {
+function parsePythonFunctions(content, maskedContent = maskPythonCommentsAndStrings(content)) {
   const rawLines = content.split(/\r?\n/);
-  const maskedLines = maskPythonCommentsAndStrings(content).split(/\r?\n/);
+  const maskedLines = maskedContent.split(/\r?\n/);
   const functions = [];
 
   for (let index = 0; index < maskedLines.length; index += 1) {
