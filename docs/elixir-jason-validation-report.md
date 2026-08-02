@@ -56,6 +56,24 @@ Direct evidence covers `Jason`, `Jason.Encoder`, `Jason.Fragment`, and `Jason.Or
 
 The repository-wide analysis reports the root project at high confidence with `mix test`. It keeps `bench/` visible as a separate low-confidence Mix project with no `lib/`, ExUnit startup, tests, or command. This is honest auxiliary-project reporting rather than a reason to absorb the benchmark into the root audit.
 
+## Standardized Corpus Review — 2026-08-02
+
+A fresh detached checkout at the exact pin was measured five times through `npm run corpus:measure` before dependency installation:
+
+| Measure | Standardized result |
+| --- | --- |
+| Test command | `mix test` |
+| Untested / covered / skipped | 3 / 7 / 0 |
+| Evidence relationships | 10 |
+| Duration samples | 24, 10, 10, 9, 9 ms |
+| Median | 10 ms |
+| Canonical SHA-256 | `af674155185c92357ff28534a4bc75dc234e8c66e64c518c4ed6af35418796f2` |
+| Scorecard | 7 of 7 areas pass |
+
+Detection retained the root project plus the separate `bench/` Mix project. Ownership, evidence usage, and ranking retained the reviewed 3/7 split, seven direct relationships, three naming relationships, six asserted uses, and one called use. The top recommendations continue to put branching runtime modules ahead of the lower-risk surfaces without presenting naming evidence as behavioral coverage.
+
+`MIX_ENV=test mix deps.get --check-locked` left tracked files clean and repeated the already documented Decimal advisory. The unchanged adapter-selected `mix test` then passed 445 checks. A three-run audit after dependency compilation retained the same semantic counts and canonical digest, confirming that `deps/` and `_build/` remain outside ownership. Stability, performance, and the native command are therefore freshly reviewed rather than inherited from the earlier live pass.
+
 ## Native Command Review
 
 Hex 2.5.1 was installed locally so the untouched checkout could resolve its declared dependencies. The adapter-selected command was then run unchanged:

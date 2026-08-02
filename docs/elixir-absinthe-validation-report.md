@@ -60,6 +60,24 @@ The larger duration reflects analyzing the newly recognized test bodies rather t
 
 The two Mix tasks receive exact evidence from their owned tests. Calls recovered through the local wrappers remain subject to the existing test-body rule: direct fully qualified or unambiguous alias calls are credited, while wrapper-provided imports and macro-generated calls are not. The remaining 135 candidates therefore describe the bounded static model, not a claim that Absinthe's native suite omits them.
 
+## Standardized Corpus Review — 2026-08-02
+
+A fresh detached checkout at the exact pin was measured five times through `npm run corpus:measure` before dependency installation:
+
+| Measure | Standardized result |
+| --- | --- |
+| Test command | `mix test` |
+| Untested / covered / skipped | 135 / 80 / 50 |
+| Evidence relationships | 121 |
+| Duration samples | 909, 865, 850, 858, 875 ms |
+| Median | 865 ms |
+| Canonical SHA-256 | `9a6e7a37316f871c54ce3973867f912aab2d04e3337b7c3955f5d0b584d20284` |
+| Scorecard | 7 of 7 areas pass |
+
+Detection retained one root Mix project. Ownership, evidence usage, and ranking retained the reviewed 135/80/50 split, 59 direct relationships, 62 naming relationships, 38 asserted uses, and 21 called uses. High-risk GraphQL/runtime modules remain visible near the top while generated data models and unproven macro reachability stay deferred or uncredited.
+
+`MIX_ENV=test mix deps.get --check-locked` left tracked files clean. The unchanged adapter-selected `mix test` then passed 1,501 tests with three excluded; the expected logged batching failure-path exception did not fail the suite. A three-run audit after dependency compilation retained the same semantic counts and canonical digest. Stability, performance, and the native command are therefore freshly reviewed rather than inherited from the earlier live pass.
+
 ## Native Command Review
 
 The pinned checkout resolved its declared lockfile dependencies with:
