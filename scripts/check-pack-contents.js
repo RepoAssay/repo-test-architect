@@ -49,6 +49,7 @@ export const requiredFiles = [
   "docs/csharp-multi-target-validation-report.md",
   "docs/elixir-alpha-support.md",
   "docs/elixir-jason-validation-report.md",
+  "docs/elixir-plug-validation-report.md",
   "docs/rust-alpha-support.md",
   "docs/rust-ripgrep-validation-report.md",
   "docs/ruby-alpha-support.md",

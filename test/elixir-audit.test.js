@@ -69,6 +69,30 @@ describe("Elixir adapter", () => {
     assert.equal(audit.profile.testCommand, "mix test");
   });
 
+  it("accepts a direct ExUnit.start call with static literal options", () => {
+    const root = createRepo();
+    fs.writeFileSync(path.join(root, "test", "test_helper.exs"), "ExUnit.start(assert_receive_timeout: 200, capture_log: true)\n");
+    const staticAudit = auditElixirRepo(root);
+    assert.equal(staticAudit.profile.testCommand, "mix test");
+    assert.ok(staticAudit.profile.detectedConventions.includes("static ExUnit.start options"));
+
+    fs.writeFileSync(path.join(root, "test", "test_helper.exs"), "ExUnit.start(assert_receive_timeout: timeout())\n");
+    const audit = auditElixirRepo(root);
+    assert.equal(audit.profile.testCommand, undefined);
+    assert.ok(audit.profile.blockers.some((blocker) => blocker.includes("ExUnit.start")));
+
+    fs.writeFileSync(path.join(root, "test", "test_helper.exs"), `"""
+ExUnit.start(assert_receive_timeout: 200)
+"""
+`);
+    assert.equal(auditElixirRepo(root).profile.testCommand, undefined);
+
+    fs.writeFileSync(path.join(root, "test", "test_helper.exs"), `ExUnit.start(assert_receive_timeout: 200)
+ExUnit.start(assert_receive_timeout: timeout())
+`);
+    assert.equal(auditElixirRepo(root).profile.testCommand, undefined);
+  });
+
   it("owns one exact app-prefixed primary module in a flat source file", () => {
     const root = createRepo();
     fs.writeFileSync(path.join(root, "lib", "parser.ex"), `defmodule Sample.ParseError do
@@ -107,6 +131,69 @@ end
     const audit = auditElixirRepo(root);
     assert.deepEqual(audit.profile.blockers, []);
     assert.ok(audit.untestedCandidates.some((target) => target.name === "Sample.Encoder"));
+  });
+
+  it("preserves acronym casing in conventional module ownership", () => {
+    const root = createRepo();
+    fs.writeFileSync(path.join(root, "lib", "sample", "json.ex"), "defmodule Sample.JSON do\n  def decode(x), do: x\nend\n");
+    fs.writeFileSync(path.join(root, "test", "sample", "json_test.exs"), `defmodule Sample.JSONTest do
+  use ExUnit.Case
+  alias Sample.JSON
+  test "decodes" do
+    assert JSON.decode("x") == "x"
+  end
+end
+`);
+    const audit = auditElixirRepo(root);
+    assert.deepEqual(audit.profile.blockers, []);
+    assert.ok(audit.coveredButRisky.some((target) => target.name === "Sample.JSON"));
+    assert.ok(audit.profile.detectedConventions.includes("case-normalized source module ownership"));
+  });
+
+  it("owns one exact terminal singular protocol from a plural source path", () => {
+    const root = createRepo();
+    fs.writeFileSync(path.join(root, "lib", "sample", "exceptions.ex"), `defprotocol Sample.Exception do
+  def status(value)
+end
+
+defmodule Sample.BadRequestError do
+  defexception [:message]
+end
+`);
+    fs.writeFileSync(path.join(root, "test", "sample", "exceptions_test.exs"), `defmodule Sample.ExceptionTest do
+  use ExUnit.Case
+  test "keeps protocol ownership exact" do
+    assert Sample.Exception.status(:value) == 400
+  end
+end
+`);
+    const audit = auditElixirRepo(root);
+    assert.deepEqual(audit.profile.blockers, []);
+    assert.ok(audit.coveredButRisky.some((target) => target.name === "Sample.Exception"));
+    assert.ok(audit.profile.detectedConventions.includes("terminal plural source ownership"));
+  });
+
+  it("blocks acronym and terminal plural ownership collisions", () => {
+    const acronymRoot = createRepo();
+    fs.writeFileSync(path.join(acronymRoot, "lib", "sample", "json.ex"), `defmodule Sample.JSON do
+end
+defmodule Sample.Json do
+end
+`);
+    const acronymAudit = auditElixirRepo(acronymRoot);
+    assert.equal(acronymAudit.profile.testCommand, undefined);
+    assert.ok(acronymAudit.profile.blockers.some((blocker) => blocker.includes("matching its conventional lib path")));
+
+    const pluralRoot = createRepo();
+    fs.writeFileSync(path.join(pluralRoot, "lib", "sample", "exceptions.ex"), `defprotocol Sample.Exception do
+  def status(value)
+end
+defmodule Sample.Exceptions do
+end
+`);
+    const pluralAudit = auditElixirRepo(pluralRoot);
+    assert.equal(pluralAudit.profile.testCommand, undefined);
+    assert.ok(pluralAudit.profile.blockers.some((blocker) => blocker.includes("matching its conventional lib path")));
   });
 
   it("recognizes one app-owned primary test module while ignoring nested fixture modules", () => {
