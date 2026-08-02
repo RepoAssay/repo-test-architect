@@ -4,7 +4,7 @@
 
 Optimize Swift before Python, and keep both changes adapter-local.
 
-The exact Swift Package Index Server profile spends 14,187 ms of its 14,443 ms audit median in evidence classification and artifact assembly. A one-run CPU profile attributes 46.41% of samples to repeatedly scanning test import lines, with another 17.22% in Swift comment/string masking and 13.07% in symbol-usage analysis. The next Swift slice should build immutable per-test facts once—normalized imports, masked code, assertion bodies, and reusable symbol-reference indexes—and preserve the existing target-qualified ownership checks while joining each source against that index.
+The exact Swift Package Index Server baseline spends 14,187 ms of its 14,443 ms audit median in evidence classification and artifact assembly. A one-run CPU profile attributes 46.41% of samples to repeatedly scanning test import lines, with another 17.22% in Swift comment/string masking and 13.07% in symbol-usage analysis. Immutable per-test facts now derive normalized imports, masked code, local declarations, assertion bodies, and reusable identifier indexes once while preserving the existing target-qualified ownership checks. The exact-pin median falls to 725 ms with an unchanged canonical artifact.
 
 The exact Django profile spends 2,488 ms of its 3,823 ms audit median in test parsing/indexing and 858 ms in evidence classification and artifact assembly. Its CPU profile is distributed across repeated Python masking, function parsing, import binding, fixture analysis, and framework-client analysis. The later Python slice should reuse one parsed test/support-file record across runnable-test, fixture, import, and framework-client consumers rather than introducing a shared parser or weakening discovery boundaries.
 
@@ -52,14 +52,23 @@ These figures are directional CPU samples rather than portable benchmarks. They 
 
 ### Bounded Swift optimization
 
-Build adapter-local immutable test records once before the evidence phase. Cache only facts already derived from each test's unchanged content, and continue consulting the existing `sourceGraph` for source/test owner eligibility. The slice must retain source-specific uniqueness rules and must not turn a textual occurrence into evidence merely because it was indexed.
+Complete: adapter-local immutable test records are built once before the evidence phase. The cache contains only facts already derived from each test's unchanged content and path; the existing `sourceGraph` still owns source/test eligibility, and source-specific symbol uniqueness remains outside the cache. A regression distinguishes an extension of an imported source type from an actual test-local declaration because the former remains valid top-level symbol evidence while still blocking unsafe extension-member receiver inference.
+
+| Measurement | Before | After | Change |
+| --- | ---: | ---: | ---: |
+| Exact-pin audit median | 14,443 ms | 725 ms | 95.0% lower |
+| Test parsing/index median | 1 ms | 62 ms | expected cache-construction shift |
+| Evidence/classification median | 14,187 ms | 407 ms | 97.1% lower |
+| Generated 400-source/200-test audit | 439 ms | 81 ms | 81.5% lower |
+
+The exact-pin after samples are 814 / 751 / 722 / 720 / 725 ms. They retain 86 untested, 96 covered-but-risky, 168 skipped, 265 evidence relationships, and canonical SHA-256 `73578ce9b98f0e1f3d688c0159bc7969d235cb27f73a8bc2be0f4bdccb7b5db8`.
 
 Acceptance adds to the standing gates:
 
 - canonical exact-pin SHA remains `73578ce9b98f0e1f3d688c0159bc7969d235cb27f73a8bc2be0f4bdccb7b5db8`
 - candidate, skipped, and 265 evidence-relationship counts remain unchanged
 - focused positive and negative symbol/owner tests remain byte-identical
-- same-machine five-run median improves materially and does not regress by more than 10%
+- same-machine five-run median improves materially and does not regress by more than 10% — met at 95.0% lower
 
 ## Django
 

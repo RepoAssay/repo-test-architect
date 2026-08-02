@@ -2,6 +2,14 @@
 
 This log records project-level decisions that shape architecture, scope, and public positioning.
 
+# Swift Test Facts Are Cached Without Caching Evidence Decisions
+
+Decision: derive one frozen adapter-local record per Swift test containing normalized imports and declared ownership facts, masked content, distinct local top-symbol and receiver-symbol declarations, assertion bodies, and identifier positions. Continue evaluating source-owner eligibility, source-symbol uniqueness, member-call shape, and final evidence strength for each source/test pair.
+
+Rationale: the exact-pin profile attributed 14,187 ms to evidence/classification because immutable test text was repeatedly scanned for every source. The cache lowers the Swift Package Index Server five-run median from 14,443 ms to 725 ms and the evidence phase to 407 ms while preserving canonical SHA `73578ce9b98f0e1f3d688c0159bc7969d235cb27f73a8bc2be0f4bdccb7b5db8`, `86 / 96 / 168` target counts, and 265 relationships. A live comparison caught and fixed the important distinction between extending an imported source type and declaring a test-local shadow before the baseline was accepted.
+
+Revisit when: another Swift fact is proven immutable and repeatedly derived, the exact pin materially regresses, or a source/test ownership rule would tempt the cache to make a source-specific evidence decision.
+
 # Exact-Pin Profiles Select Adapter-Local Test Fact Reuse
 
 Decision: optimize Swift before Python. Build immutable per-test Swift facts for import ownership, masked code, assertion regions, and reusable symbol-search inputs, then handle Python separately with parsed test/support-file reuse across runnable tests, fixtures, imports, and framework-client analysis. Do not treat shared traversal or a universal parser as a latency optimization for either adapter.
