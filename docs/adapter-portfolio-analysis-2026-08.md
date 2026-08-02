@@ -125,7 +125,9 @@ Slices:
 1. Complete: publish a [duplication inventory](shared-audit-kernel-inventory.md) that classifies traversal/path/index, balanced-region, lexical, build-ownership, and evidence code as shareable or adapter-owned. Portable paths and policy-driven deterministic text traversal are the first kernel boundary; PHP and Elixir are the first migration pair.
 2. Complete: add five-run phase timing around traversal, project parsing, source indexing, test parsing, and evidence joining for exact-pin development measurements without changing public artifacts or diagnostics.
 3. Complete: extract behavior-identical portable paths and policy-driven deterministic text traversal, migrate PHP and Elixir first, and preserve adapter-owned Composer/Mix pruning and file inclusion. A normalized file index remains deferred until a migration needs one.
-4. Profile Swift Package Index Server and Django at their pins. Replace repeated scans with adapter-local indexes/caches where the profiles prove a hotspot.
+4. Complete: profile Swift Package Index Server and Django at their pins. The [exact-pin report](swift-python-phase-profile-2026-08.md) locates 98.2% of Swift's median in evidence/classification and 65.1% of Django's median in test parsing/indexing; traversal is negligible for both.
+5. Build immutable adapter-local Swift test facts to stop repeated import scans, masking, assertion extraction, and symbol-reference setup across source/test pairs.
+6. Reuse adapter-local parsed Python test/support facts across runnable-test, fixture, import, and framework-client consumers.
 
 Acceptance:
 
@@ -185,9 +187,11 @@ The recommended concrete sequence is:
 5. shared-kernel duplication inventory — complete
 6. five-phase Swift/Python development instrumentation — complete
 7. first byte-preserving PHP/Elixir traversal/path extraction — complete
-8. Swift/Python large-repository latency slice based on profiles
-9. executor-evaluation contract and first fixture experiment
-10. demand review and a go/no-go decision for C++/CMake, Dart/Flutter, an existing-adapter expansion, or no new ecosystem yet
+8. Swift/Python exact-pin phase profile and bounded optimization decisions — complete
+9. Swift immutable test-fact index and exact-pin remeasurement
+10. Python parsed test/support-file cache and exact-pin remeasurement
+11. executor-evaluation contract and first fixture experiment
+12. demand review and a go/no-go decision for C++/CMake, Dart/Flutter, an existing-adapter expansion, or no new ecosystem yet
 
 This sequence deliberately separates promotion, communication, refactoring, performance, experimental execution, and ecosystem expansion so each can remain one reviewable PR slice with its own evidence.
 
