@@ -2,6 +2,14 @@
 
 This log records project-level decisions that shape architecture, scope, and public positioning.
 
+# Portfolio Review Prioritizes Elixir Promotion And Shared Trust Over Immediate Breadth
+
+Decision: promote Elixir through the existing three-role/21-area corpus gate before semantic expansion; then extract only behavior-identical shared audit primitives and profile the largest Swift/Python pins. Evaluate one bounded executor loop without enabling product generation. Do not select an eleventh adapter until explicit user/request evidence exists; retain C++/CMake and Dart/Flutter as discovery candidates rather than a committed order.
+
+Rationale: nine supported adapters already hold 189 of 189 reviewed corpus passes, while Elixir has equivalent Jason, Plug, and Absinthe live roles but no standardized corpus entry. The ten primary runtime implementations and audit tests total 28,777 lines before helper modules and the JavaScript TypeScript mirror, and exact corpus observations expose interactive latency pressure at 14.5 seconds for Swift and 3.8 seconds for Python. The issue tracker currently contains no adapter requests, so popularity alone cannot establish product demand. The staged plan closes the only maturity inconsistency, reduces portfolio-wide maintenance/performance risk, preserves the audit-first trust boundary around generation, and collects better demand before accepting permanent ecosystem cost.
+
+Revisit when: a false high-confidence result, security/release regression, repeated adapter requests, large-repository performance regression, or executor evaluation changes the relative risk and leverage.
+
 # Elixir Resolves Literal Local ExUnit Wrappers And Conventional Mix Tasks
 
 Decision: recognize `test/support` only through a literal test-environment `elixirc_paths` declaration, then resolve exact app-owned `__using__/1` chains to one `use ExUnit.Case`. Own conventional `Mix.Tasks.*` source/test pairs, repeated conventional declarations only when every match has the same exact FQN, and one terminal all-uppercase acronym namespace whose concatenated terminal matches the snake-case path. Keep helper imports, framework execution, and general macro expansion outside direct evidence.

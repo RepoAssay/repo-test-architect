@@ -104,7 +104,7 @@ Ruby and PHP have reached supported parity at their bounded matrices. Elixir now
 
 ### Post-Elixir adapter portfolio review
 
-After the bounded Elixir adapter reaches its intended comparison point, pause new-adapter implementation for a repository-wide analysis. Compare every adapter against the shared contract, corpus coverage, live-repository evidence, precision gaps, maintenance cost, ecosystem demand, and missing cross-adapter capabilities. Produce a ranked plan that decides whether the next investment should be promotion/hardening, shared parser and evidence infrastructure, framework expansion, another language adapter, or the first carefully bounded generation/execution slice. The analysis must use measured evidence and explicit tradeoffs rather than continuing the provisional language list by inertia.
+Complete: the [August 2026 Adapter Portfolio Analysis](adapter-portfolio-analysis-2026-08.md) compares all ten adapters against maturity, corpus/live proof, implementation and test size, coverage, synthetic and real-repository performance, maintenance risk, current request signals, and missing ecosystems. The ranked order is Elixir promotion first, a small byte-preserving shared audit kernel plus Swift/Python latency profiling second, a non-shipping executor evaluation third, and any new ecosystem only after explicit demand collection. C++/CMake and Dart/Flutter are discovery candidates with very different reach/cost profiles; neither is authorized as the next adapter by popularity alone.
 
 Useful hardening targets:
 

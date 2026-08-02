@@ -123,6 +123,7 @@ Implemented:
 - authenticated public-repository discovery and ranking profiles for React, JavaScript/TypeScript workspaces, conventional Go modules, Go HTTP services, Go workspaces, SwiftPM, SwiftUI/Xcode, Vapor, Swift Bazel, Swift macros/plugins, CocoaPods-era Apple projects, Gradle JVM, Maven JVM, Python, and conventional Bundler-managed Ruby validation targets
 - product positioning note for audit-first differentiation, initial audience, business paths, proof points, and anti-positioning
 - near-term roadmap for public demo polish, second adapter proof, placement analysis, MCP transport, and generation readiness gates
+- measured August 2026 adapter portfolio analysis covering all ten adapters, 27 supported corpus roles, maintenance/latency evidence, Elixir promotion, shared-kernel work, executor evaluation, and demand-gated ecosystem expansion
 - adapter reuse roadmap defining shared audit semantics, adapter-owned proof, and compiler/parser-backed ecosystem analysis
 - demo script for showing audit quality, polyglot detection, MCP tools, and verification without implying native generation is ready
 - demo command checker that runs the deterministic public demo path without nesting the full release suite

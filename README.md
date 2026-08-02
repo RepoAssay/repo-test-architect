@@ -474,6 +474,7 @@ Important runtime surfaces:
 - [Product positioning](docs/product-positioning.md)
 - [Near-term roadmap](docs/near-term-roadmap.md)
 - [Adapter hardening plan](docs/adapter-hardening-plan.md)
+- [August 2026 adapter portfolio analysis](docs/adapter-portfolio-analysis-2026-08.md)
 - [Demo script](docs/demo-script.md)
 - [Decision log](docs/decision-log.md)
 - [Second adapter spike](docs/second-adapter-spike.md)
