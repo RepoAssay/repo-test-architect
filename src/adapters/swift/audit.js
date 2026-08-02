@@ -27,7 +27,7 @@ export function auditSwiftRepo(root, options = {}) {
   phaseStartedAt = startAuditPhase(onPhaseTiming);
   const testFiles = files
     .filter((file) => isTestFile(file.path, sourceGraph))
-    .map((file) => ({ ...file, path: normalizePath(file.path) }))
+    .map((file) => buildSwiftTestFacts(file, sourceGraph))
     .sort((a, b) => a.path.localeCompare(b.path));
   finishAuditPhase(onPhaseTiming, "swift", "test-parsing-and-index", phaseStartedAt);
 
@@ -624,9 +624,8 @@ function findExistingTestEvidence(sourcePath, testFiles, sourceGraph, sourceSymb
   const symbols = sourceSymbols.get(normalizePath(sourcePath)) ?? new Map();
 
   return testFiles.flatMap((testFile) => {
-    const testBase = basenameWithoutExtension(testFile.path).replace(/(?:Tests?|Spec)$/, "");
     if (!testMatchesSourceOwner(testFile, sourceOwner, sourceGraph)) return [];
-    const symbolUsage = findSwiftSymbolUsage(testFile.content, symbols);
+    const symbolUsage = findSwiftSymbolUsage(testFile, symbols);
     if (symbolUsage) {
       return [{
         testPath: testFile.path,
@@ -635,28 +634,48 @@ function findExistingTestEvidence(sourcePath, testFiles, sourceGraph, sourceSymb
         ...(symbolUsage !== "referenced" ? { usage: symbolUsage } : {})
       }];
     }
-    if (testBase !== sourceBase) return [];
-    if (GENERIC_SOURCE_BASENAMES.has(sourceBase.toLowerCase()) && !testExplicitlyMatchesSourceOwner(testFile, sourceOwner, sourceGraph)) return [];
+    if (testFile.testBase !== sourceBase) return [];
+    if (GENERIC_SOURCE_BASENAMES.has(sourceBase.toLowerCase()) && !testExplicitlyMatchesSourceOwner(testFile, sourceOwner)) return [];
     return [{ testPath: testFile.path, kind: "filename-convention", strength: "naming" }];
+  });
+}
+
+function buildSwiftTestFacts(file, sourceGraph) {
+  const currentPath = normalizePath(file.path);
+  const maskedContent = maskSwiftCommentsAndStrings(file.content).replace(/^\s*(?:@testable\s+)?import\s+.*$/gm, "");
+  const localDeclarations = collectSwiftLocalDeclarations(maskedContent);
+  const assertionBodies = swiftAssertionBodies(maskedContent).map((content) => Object.freeze({
+    content,
+    identifierIndexes: indexSwiftIdentifiers(content)
+  }));
+
+  return Object.freeze({
+    path: currentPath,
+    testBase: basenameWithoutExtension(currentPath).replace(/(?:Tests?|Spec)$/, ""),
+    importedModules: Object.freeze(collectImportedModules(file.content).map(normalizeModuleName)),
+    declaredDependencies: Object.freeze([...(sourceGraph.testDependencies.get(currentPath) ?? [])].map(normalizeModuleName)),
+    testOwner: normalizeOptionalModuleName(inferTestOwner(currentPath)),
+    maskedContent,
+    localSymbols: Object.freeze(localDeclarations.symbols),
+    localReceiverSymbols: Object.freeze(localDeclarations.receiverSymbols),
+    identifierIndexes: indexSwiftIdentifiers(maskedContent),
+    assertionBodies: Object.freeze(assertionBodies)
   });
 }
 
 function testMatchesSourceOwner(testFile, sourceOwner, sourceGraph) {
   if (!sourceOwner) return true;
-  if (testExplicitlyMatchesSourceOwner(testFile, sourceOwner, sourceGraph)) return true;
+  if (testExplicitlyMatchesSourceOwner(testFile, sourceOwner)) return true;
   if (sourceGraph.testDependencies.has(testFile.path)) return false;
   return inferTestOwner(testFile.path) ? false : true;
 }
 
-function testExplicitlyMatchesSourceOwner(testFile, sourceOwner, sourceGraph) {
+function testExplicitlyMatchesSourceOwner(testFile, sourceOwner) {
   if (!sourceOwner) return false;
   const normalizedSourceOwner = normalizeModuleName(sourceOwner);
-  const importedModules = collectImportedModules(testFile.content).map(normalizeModuleName);
-  if (importedModules.includes(normalizedSourceOwner)) return true;
-  const declaredDependencies = [...(sourceGraph.testDependencies.get(testFile.path) ?? [])].map(normalizeModuleName);
-  if (declaredDependencies.includes(normalizedSourceOwner)) return true;
-  const testOwner = inferTestOwner(testFile.path);
-  return testOwner ? normalizeModuleName(testOwner) === normalizedSourceOwner : false;
+  if (testFile.importedModules.includes(normalizedSourceOwner)) return true;
+  if (testFile.declaredDependencies.includes(normalizedSourceOwner)) return true;
+  return testFile.testOwner === normalizedSourceOwner;
 }
 
 function inferSourceOwner(currentPath) {
@@ -674,6 +693,10 @@ function inferTestOwner(currentPath) {
 
 function collectImportedModules(content) {
   return [...content.matchAll(/^\s*(?:@testable\s+)?import\s+([A-Za-z_][A-Za-z0-9_]*)\b/gm)].map((match) => match[1]);
+}
+
+function normalizeOptionalModuleName(moduleName) {
+  return moduleName ? normalizeModuleName(moduleName) : undefined;
 }
 
 function collectUniqueSwiftSourceSymbols(files, sourceGraph) {
@@ -795,41 +818,45 @@ function findClosingSwiftBrace(content, openBrace) {
   return -1;
 }
 
-function findSwiftSymbolUsage(content, symbols) {
+function findSwiftSymbolUsage(testFile, symbols) {
   if (symbols.size === 0) return undefined;
-  const masked = maskSwiftCommentsAndStrings(content).replace(/^\s*(?:@testable\s+)?import\s+.*$/gm, "");
 
   for (const [, descriptor] of [...symbols].sort(([left], [right]) => left.localeCompare(right))) {
     if (descriptor.kind === "extension-func") {
-      const extensionUsage = findSwiftExtensionMemberUsage(masked, descriptor);
+      const extensionUsage = findSwiftExtensionMemberUsage(testFile, descriptor);
       if (extensionUsage) return extensionUsage;
       continue;
     }
     const { name: symbol, kind } = descriptor;
-    const escapedSymbol = escapeRegex(symbol);
-    const declaration = new RegExp(`\\b(?:struct|class|enum|actor|protocol|func|typealias|let|var|case)\\s+\`?${escapedSymbol}\\b\`?`);
-    if (declaration.test(masked)) continue;
-    if (!hasSwiftSymbolReference(masked, symbol, kind)) continue;
-    if (swiftAssertionBodies(masked).some((body) => hasSwiftSymbolReference(body, symbol, kind))) return "asserted";
-    if (hasSwiftSymbolCall(masked, symbol, kind)) return "called";
+    if (testFile.localSymbols.includes(symbol)) continue;
+    if (!hasSwiftSymbolReference(testFile.maskedContent, symbol, kind, testFile.identifierIndexes)) continue;
+    if (testFile.assertionBodies.some((body) =>
+      hasSwiftSymbolReference(body.content, symbol, kind, body.identifierIndexes)
+    )) return "asserted";
+    if (hasSwiftSymbolCall(testFile.maskedContent, symbol, kind, testFile.identifierIndexes)) return "called";
     return "referenced";
   }
 
   return undefined;
 }
 
-function findSwiftExtensionMemberUsage(content, descriptor) {
-  if (hasSwiftLocalDeclaration(content, descriptor.receiver)) return undefined;
+function findSwiftExtensionMemberUsage(testFile, descriptor) {
+  if (testFile.localReceiverSymbols.includes(descriptor.receiver)) return undefined;
   const hasCall = descriptor.isStatic
     ? (body) => hasSwiftStaticExtensionCall(body, descriptor)
     : (body) => hasSwiftDirectInstanceExtensionCall(body, descriptor);
-  if (swiftAssertionBodies(content).some(hasCall)) return "asserted";
-  return hasCall(content) ? "called" : undefined;
+  if (testFile.assertionBodies.some((body) => hasCall(body.content))) return "asserted";
+  return hasCall(testFile.maskedContent) ? "called" : undefined;
 }
 
-function hasSwiftLocalDeclaration(content, symbol) {
-  const escapedSymbol = escapeRegex(symbol);
-  return new RegExp(`\\b(?:struct|class|enum|actor|protocol|extension|func|typealias|let|var|case)\\s+\`?${escapedSymbol}\\b\`?`).test(content);
+function collectSwiftLocalDeclarations(content) {
+  const symbols = [];
+  const receiverSymbols = [];
+  for (const match of content.matchAll(/\b(struct|class|enum|actor|protocol|extension|func|typealias|let|var|case)\s+`?([A-Za-z_][A-Za-z0-9_]*)\b`?/g)) {
+    if (match[1] !== "extension") symbols.push(match[2]);
+    receiverSymbols.push(match[2]);
+  }
+  return { symbols, receiverSymbols };
 }
 
 function hasSwiftStaticExtensionCall(content, descriptor) {
@@ -865,24 +892,30 @@ function findClosingSwiftParenthesis(content, openParenthesis) {
   return -1;
 }
 
-function hasSwiftSymbolReference(content, symbol, kind) {
-  return swiftSymbolReferenceIndexes(content, symbol, kind).length > 0;
+function hasSwiftSymbolReference(content, symbol, kind, identifierIndexes) {
+  return swiftSymbolReferenceIndexes(content, symbol, kind, identifierIndexes).length > 0;
 }
 
-function hasSwiftSymbolCall(content, symbol, kind) {
-  return swiftSymbolReferenceIndexes(content, symbol, kind).some((index) =>
+function hasSwiftSymbolCall(content, symbol, kind, identifierIndexes) {
+  return swiftSymbolReferenceIndexes(content, symbol, kind, identifierIndexes).some((index) =>
     /^\s*(?:<[^>\n]+>\s*)?\(/.test(content.slice(index + symbol.length))
   );
 }
 
-function swiftSymbolReferenceIndexes(content, symbol, kind) {
-  const indexes = [];
-  const reference = new RegExp(`\\b${escapeRegex(symbol)}\\b`, "g");
-  let match;
-  while ((match = reference.exec(content)) !== null) {
-    if (kind !== "func" || !isSwiftMemberReference(content, match.index)) indexes.push(match.index);
+function swiftSymbolReferenceIndexes(content, symbol, kind, identifierIndexes) {
+  return (identifierIndexes[symbol] ?? []).filter((index) =>
+    kind !== "func" || !isSwiftMemberReference(content, index)
+  );
+}
+
+function indexSwiftIdentifiers(content) {
+  const indexes = Object.create(null);
+  for (const match of content.matchAll(/\b[A-Za-z_][A-Za-z0-9_]*\b/g)) {
+    indexes[match[0]] ??= [];
+    indexes[match[0]].push(match.index);
   }
-  return indexes;
+  for (const symbol of Object.keys(indexes)) Object.freeze(indexes[symbol]);
+  return Object.freeze(indexes);
 }
 
 function isSwiftMemberReference(content, index) {

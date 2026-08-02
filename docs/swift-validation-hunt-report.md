@@ -36,7 +36,7 @@ The SwiftUI/Xcode search surfaced maintained application candidates including Fi
 
 All five profiles are high confidence and report no blockers. These are adapter audits, not claims that the repositories' own test suites pass at the pinned commits.
 
-Standardized corpus measurements pass with stable normalized audit digests across three runs: ReerCodable has a 259 ms median and 80 evidence links, Swift Package Index Server has a 14,484 ms median and 265 links, and rules_swift has a 135 ms median and 6 links.
+Standardized corpus measurements pass with stable normalized audit digests: ReerCodable has a 259 ms median and 80 evidence links, Swift Package Index Server now has a 725 ms five-run median and 265 links after immutable test-fact indexing, and rules_swift has a 135 ms median and 6 links.
 
 ## Local No-Meaningful-Tests Cohort
 

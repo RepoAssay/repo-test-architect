@@ -1062,11 +1062,13 @@
             "untestedCandidates": 86,
             "coveredButRisky": 96,
             "skippedTargets": 168,
-            "auditDurationMs": 14484,
+            "auditDurationMs": 725,
             "auditDurationSamplesMs": [
-              14568,
-              14484,
-              14370
+              814,
+              751,
+              722,
+              720,
+              725
             ],
             "evidenceRelationshipCount": 265,
             "canonicalAuditSha256": "73578ce9b98f0e1f3d688c0159bc7969d235cb27f73a8bc2be0f4bdccb7b5db8"

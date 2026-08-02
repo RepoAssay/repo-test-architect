@@ -842,6 +842,60 @@ final class BehaviorTests: XCTestCase {
     ]);
   });
 
+  it("keeps a test extension of a source type distinct from a test-local shadow", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-swift-extension-shadow-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "Sources", "Core"), { recursive: true });
+    fs.mkdirSync(path.join(root, "Tests", "CoreTests"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "Package.swift"),
+      `// swift-tools-version: 6.0
+import PackageDescription
+let package = Package(targets: [
+    .target(name: "Core"),
+    .testTarget(name: "CoreTests", dependencies: ["Core"])
+])
+`
+    );
+    fs.writeFileSync(
+      path.join(root, "Sources", "Core", "Extended.swift"),
+      "public struct Extended { public init() {}; public func value(_ flag: Bool) -> Int { flag ? 1 : 0 } }\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "Sources", "Core", "Shadow.swift"),
+      "public struct Shadow { public init() {}; public func value(_ flag: Bool) -> Int { flag ? 1 : 0 } }\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "Tests", "CoreTests", "BehaviorTests.swift"),
+      `import Testing
+@testable import Core
+
+extension Extended {
+    static var fixture: Self { Extended() }
+}
+
+private struct Shadow {}
+
+@Test func usesExtendedFixture() {
+    #expect(Extended.fixture.value(true) == 1)
+}
+`
+    );
+
+    const audit = auditSwiftRepo(root);
+
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.name), ["Extended"]);
+    assert.deepEqual(audit.coveredButRisky[0].existingTestEvidence, [
+      {
+        testPath: "Tests/CoreTests/BehaviorTests.swift",
+        kind: "swift-symbol-reference",
+        strength: "referenced",
+        usage: "asserted"
+      }
+    ]);
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.name), ["Shadow"]);
+  });
+
   it("credits a unique static extension member through an explicit receiver", (t) => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-swift-extension-evidence-"));
     t.after(() => fs.rmSync(root, { recursive: true, force: true }));
