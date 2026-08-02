@@ -1,6 +1,6 @@
 # Adapter Hardening Plan
 
-This is the active plan after the first public alpha release. Repo Test Architect will strengthen its supported JavaScript/TypeScript, Python, Swift, and bounded Kotlin/JVM adapters before adding another ecosystem.
+This plan began after the first public alpha release with JavaScript/TypeScript, Python, Swift, and bounded Kotlin/JVM. Its quality contract now applies to all nine supported adapters, while Elixir is next in the promotion queue.
 
 The purpose is not to recognize every framework or build layout. It is to make supported claims more trustworthy, expose uncertainty earlier, and turn failures found in real repositories into permanent regression coverage.
 
@@ -133,7 +133,7 @@ Progress: source-file-unique instance functions declared in extensions now recei
 
 After each adapter has a refreshed corpus:
 
-- compare blocker, confidence, evidence, ranking, placement, and stats semantics across all four adapters
+- compare blocker, confidence, evidence, ranking, placement, and stats semantics across every supported adapter
 - add model-consistency locks for recommendations changed by hardening
 - pressure polyglot repositories where multiple supported adapters coexist
 - verify that one adapter cannot claim files owned by another project
@@ -176,9 +176,9 @@ The initial queue is:
 6. Re-run live-repository reports across all four adapters after Swift hardening and turn concrete drift into regression-backed fixes. Complete: all 12 exact-commit cases were measured again; nine remained semantically exact, Maven Surefire produced a regression-backed recursive-reactor fix, and two Swift changes were confirmed as intentional precision improvements before their baselines were refreshed.
 7. Improve the human-facing validation scorecard without collapsing review completeness into reviewed pass rate. Complete: `validation-scorecard/v1` derives exact numerators and denominators from the corpus, while the Markdown renderer shows explicit per-area states and treats a zero-review pass rate as unavailable. Richer HTML assay-seal presentation remains a later renderer over this contract.
 8. Run the broader cross-adapter trust pass, then cut the next public alpha only after the Swift, live-repository, scorecard, and exact-commit release gates pass. Complete for public alpha `0.2.0`: all four adapters share full downstream conformance and blocked-pipeline JSON invariants; project-summary ranking and absent-command serialization mismatches were fixed; and the aligned npm, MCP, runtime, test, and documentation versions passed the exact-commit release gate.
-9. Reconsider another adapter or native generation.
+9. Reconsider another adapter or native generation. Complete through the [August 2026 Adapter Portfolio Analysis](adapter-portfolio-analysis-2026-08.md): promote Elixir first, reduce shared maintenance and measured Swift/Python latency second, evaluate but do not ship one bounded executor loop third, and keep another ecosystem demand-gated. C++/CMake and Dart/Flutter remain discovery candidates rather than an inferred queue.
 
-Run `npm run corpus:check` to validate corpus completeness, pins, report links, and scorecard states. Use `npm run corpus:measure -- --case <case-id> --checkout <path>` against an exact pinned Git checkout to record at least three canonical audits, raw durations, their median, the evidence count, and normalized SHA-256 digest. All 21 current cases pass every scorecard area after standardized measurements. A case may preserve bounded adapter audit options, such as an explicit Go build target, in the manifest. New or repinned cases remain `pending` until their own measurements pass; historical timings alone never silently pass the gate.
+Run `npm run corpus:check` to validate corpus completeness, pins, report links, and scorecard states. Use `npm run corpus:measure -- --case <case-id> --checkout <path>` against an exact pinned Git checkout to record at least three canonical audits, raw durations, their median, the evidence count, and normalized SHA-256 digest. All 27 current cases pass every scorecard area after standardized measurements. A case may preserve bounded adapter audit options, such as an explicit Go build target, in the manifest. New or repinned cases remain `pending` until their own measurements pass; historical timings alone never silently pass the gate.
 
 User reports or a demonstrated false high-confidence claim can move a slice earlier. Within an adapter, correctness and false-confidence fixes take priority over recognizing another framework variant.
 
@@ -195,4 +195,4 @@ An adapter hardening pass is complete when:
 - `npm run alpha:check` and the relevant release checks pass
 - the remaining gaps are explicitly prioritized, deferred, or blocked rather than silently implied as supported
 
-Only after all four passes and the cross-adapter review should another language adapter or native generation become the default next milestone.
+Only after the supported-adapter passes and the cross-adapter review should another language adapter or native generation become the default next milestone. That review is now complete; its [ranked portfolio plan](adapter-portfolio-analysis-2026-08.md) keeps both choices staged behind Elixir promotion and shared trust work.

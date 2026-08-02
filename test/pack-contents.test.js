@@ -43,6 +43,7 @@ describe("package contents", () => {
     assert.ok(requiredFiles.includes("src/adapters/ruby/audit.js"));
     assert.ok(requiredFiles.includes("src/adapters/php/audit.js"));
     assert.ok(requiredFiles.includes("docs/go-alpha-support.md"));
+    assert.ok(requiredFiles.includes("docs/adapter-portfolio-analysis-2026-08.md"));
     assert.ok(requiredFiles.includes("docs/csharp-alpha-support.md"));
     assert.ok(requiredFiles.includes("docs/csharp-tdd-validation-report.md"));
     assert.ok(requiredFiles.includes("docs/csharp-sharp-cast-validation-report.md"));
