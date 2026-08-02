@@ -2,6 +2,14 @@
 
 This log records project-level decisions that shape architecture, scope, and public positioning.
 
+# Exact-Pin Profiles Select Adapter-Local Test Fact Reuse
+
+Decision: optimize Swift before Python. Build immutable per-test Swift facts for import ownership, masked code, assertion regions, and reusable symbol-search inputs, then handle Python separately with parsed test/support-file reuse across runnable tests, fixtures, imports, and framework-client analysis. Do not treat shared traversal or a universal parser as a latency optimization for either adapter.
+
+Rationale: at the exact Swift Package Index Server pin, evidence/classification accounts for a 14,187 ms phase median within a 14,443 ms audit, and CPU samples are dominated by repeated test import scans, Swift masking, and symbol usage. At the exact Django pin, test parsing/indexing accounts for 2,488 ms within a 3,823 ms audit, with repeated Python masking, function parsing, and import binding spread across consumers. Traversal medians are only 17 ms and 154 ms. Both five-run profiles preserve the existing canonical audit SHA and artifact counts.
+
+Revisit when: the Swift index has exact-pin before/after measurements and byte-identical artifacts, then apply the same acceptance pattern to the separate Python cache without sharing language semantics.
+
 # PHP And Elixir Prove The First Shared Traversal Boundary
 
 Decision: migrate only PHP and Elixir to a private shared module for portable repository paths, changed-path normalization, deterministic UTF-8 traversal, explicit symbolic-link skipping, and path ordering. Require each adapter to supply its own ignored names, nested-owner callback, and file inclusion policy. Defer a shared file index because neither migration needs one.

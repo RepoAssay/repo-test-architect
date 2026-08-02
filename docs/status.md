@@ -127,6 +127,7 @@ Implemented:
 - supported Elixir corpus cohort for exact Jason, Plug, and Absinthe pins, with 21 of 21 review areas passing after fresh standardized measurements and native verification
 - shared audit-kernel duplication inventory that selects portable path handling and policy-driven deterministic text traversal for a PHP/Elixir first migration, keeps language/build/evidence semantics adapter-owned, and defines exact-pinned five-phase Swift/Python latency instrumentation
 - development-only Swift/Python phase timing with five ordered callback events, exact-pin five-run corpus samples and medians, canonical digest verification, and no timing fields in `audit/v1`, CLI/MCP output, or local diagnostics
+- exact-pin Swift Package Index Server and Django phase/CPU profiling that rejects traversal as their latency target, selects adapter-local immutable Swift test facts first, and defers Python parsed test/support-file reuse to a separate bounded slice
 - private shared repository-text kernel used by PHP and Elixir for portable paths, changed paths, policy-driven UTF-8 traversal, symlink skipping, and deterministic ordering while Composer/Mix pruning and file inclusion remain adapter-owned
 - adapter reuse roadmap defining shared audit semantics, adapter-owned proof, and compiler/parser-backed ecosystem analysis
 - demo script for showing audit quality, polyglot detection, MCP tools, and verification without implying native generation is ready
