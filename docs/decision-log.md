@@ -2,6 +2,14 @@
 
 This log records project-level decisions that shape architecture, scope, and public positioning.
 
+# Audit Phase Timings Stay Development-Only
+
+Decision: let direct Swift and Python audits emit five ordered phase events only when an internal callback is supplied. Collect five-run samples and medians through exact-pin corpus measurement, while keeping timings out of `audit/v1`, canonical digests, CLI/MCP audit output, and local MCP diagnostics.
+
+Rationale: the 14,484 ms Swift Package Index Server median and 3,786 ms Django median establish latency pressure but cannot identify whether traversal, ownership parsing, source indexing, test parsing, or evidence assembly dominates. Callback-only instrumentation measures the production algorithm without adding public schema fields or ambient telemetry. Ordinary registry calls pass no callback, so disabled audits create no timing events; profiled corpus runs still prove one canonical digest across every sample.
+
+Revisit when: five-run profiles at both exact pins identify the first adapter-local repeated-scan hotspot, or another adapter becomes a measured latency outlier that justifies opting into the same internal hook.
+
 # The First Shared Kernel Owns Mechanics, Not Ecosystem Proof
 
 Decision: limit the first shared audit kernel to portable repository paths and deterministic UTF-8 text-file traversal behind adapter-supplied ignore, prune, inclusion, and symbolic-link policies. Migrate PHP and Elixir first. Keep lexical masking, balanced parsing, build ownership, source/test discovery, command selection, classification, blockers, and evidence inference inside each adapter.

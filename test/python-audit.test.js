@@ -15,6 +15,25 @@ const poetryRoot = path.resolve("examples/python-poetry-pytest");
 const noTestsRoot = path.resolve("examples/python-no-tests-yet");
 
 describe("Python audit adapter", () => {
+  it("reports five development-only phases without changing the audit artifact", () => {
+    const timings = [];
+    const baseline = auditPythonRepo(exampleRoot);
+    const profiled = auditPythonRepo(exampleRoot, {
+      onPhaseTiming: (timing) => timings.push(timing)
+    });
+
+    assert.deepEqual(profiled, baseline);
+    assert.deepEqual(timings.map(({ adapterId, phase }) => `${adapterId}:${phase}`), [
+      "python:traversal-and-text-read",
+      "python:project-and-build-ownership",
+      "python:source-discovery-and-index",
+      "python:test-parsing-and-index",
+      "python:evidence-classification-and-artifact"
+    ]);
+    assert.ok(timings.every(({ durationMs }) => Number.isFinite(durationMs) && durationMs >= 0));
+    assert.equal(Object.hasOwn(profiled, "auditPhaseTimings"), false);
+  });
+
   it("detects pyproject, pytest, FastAPI, and existing test conventions", () => {
     const audit = auditPythonRepo(exampleRoot);
 

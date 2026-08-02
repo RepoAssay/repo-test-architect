@@ -126,6 +126,7 @@ Implemented:
 - measured August 2026 adapter portfolio analysis covering all ten adapters, the pre-promotion 27 supported corpus roles, maintenance/latency evidence, Elixir promotion, shared-kernel work, executor evaluation, and demand-gated ecosystem expansion
 - supported Elixir corpus cohort for exact Jason, Plug, and Absinthe pins, with 21 of 21 review areas passing after fresh standardized measurements and native verification
 - shared audit-kernel duplication inventory that selects portable path handling and policy-driven deterministic text traversal for a PHP/Elixir first migration, keeps language/build/evidence semantics adapter-owned, and defines exact-pinned five-phase Swift/Python latency instrumentation
+- development-only Swift/Python phase timing with five ordered callback events, exact-pin five-run corpus samples and medians, canonical digest verification, and no timing fields in `audit/v1`, CLI/MCP output, or local diagnostics
 - adapter reuse roadmap defining shared audit semantics, adapter-owned proof, and compiler/parser-backed ecosystem analysis
 - demo script for showing audit quality, polyglot detection, MCP tools, and verification without implying native generation is ready
 - demo command checker that runs the deterministic public demo path without nesting the full release suite

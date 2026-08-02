@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { finishAuditPhase, startAuditPhase } from "../../core/audit-phase-timing.js";
 
 const SOURCE_EXTENSIONS = [".py"];
 const DEFAULT_PYTEST_PYTHON_FILES = ["test_*.py", "*_test.py"];
@@ -20,11 +21,25 @@ const IGNORED_TOP_LEVEL_PACKAGES = new Set([
 ]);
 
 export function auditPythonRepo(root, options = {}) {
+  const onPhaseTiming = typeof options.onPhaseTiming === "function" ? options.onPhaseTiming : undefined;
+  let phaseStartedAt = startAuditPhase(onPhaseTiming);
   const files = readRepoFiles(root);
+  finishAuditPhase(onPhaseTiming, "python", "traversal-and-text-read", phaseStartedAt);
+
+  phaseStartedAt = startAuditPhase(onPhaseTiming);
   const pytestDiscovery = detectPytestDiscovery(root, files, options.repositoryRoot);
   const profile = buildProfile(root, files, pytestDiscovery);
+  finishAuditPhase(onPhaseTiming, "python", "project-and-build-ownership", phaseStartedAt);
+
+  phaseStartedAt = startAuditPhase(onPhaseTiming);
   const sourceLayout = detectOwnedSourceLayout(files);
   const changedPaths = options.changedPaths ? new Set(options.changedPaths.map((currentPath) => normalizeChangedPath(root, currentPath))) : undefined;
+  const sourceFiles = files.filter((candidate) => isSourceFile(candidate.path, sourceLayout, pytestDiscovery));
+  const sourceBasenameCounts = countSourceBasenames(sourceFiles);
+  const packageReexports = collectPythonPackageReexports(files, sourceLayout, pytestDiscovery);
+  finishAuditPhase(onPhaseTiming, "python", "source-discovery-and-index", phaseStartedAt);
+
+  phaseStartedAt = startAuditPhase(onPhaseTiming);
   const testFiles = files
     .filter((file) => isTestFile(file.path, pytestDiscovery))
     .map((file) => ({
@@ -33,11 +48,11 @@ export function auditPythonRepo(root, options = {}) {
       analysis: analyzePythonTestFile(file.content, file.path, sourceLayout)
     }))
     .sort((left, right) => left.path.localeCompare(right.path));
-  const sourceFiles = files.filter((candidate) => isSourceFile(candidate.path, sourceLayout, pytestDiscovery));
-  const sourceBasenameCounts = countSourceBasenames(sourceFiles);
-  const packageReexports = collectPythonPackageReexports(files, sourceLayout, pytestDiscovery);
   const pytestFixtures = collectPytestFixtures(files, sourceLayout, pytestDiscovery);
   const frameworkClientEvidence = collectPythonFrameworkClientEvidence(files, sourceFiles, testFiles, sourceLayout, pytestDiscovery);
+  finishAuditPhase(onPhaseTiming, "python", "test-parsing-and-index", phaseStartedAt);
+
+  phaseStartedAt = startAuditPhase(onPhaseTiming);
   const testEvidenceBySourcePath = collectPythonTestEvidence(
     sourceFiles,
     testFiles,
@@ -109,7 +124,7 @@ export function auditPythonRepo(root, options = {}) {
 
   const recommended = [...untestedCandidates, ...coveredButRisky].sort(byRiskThenName);
 
-  return {
+  const audit = {
     schemaVersion: "audit/v1",
     profile,
     untestedCandidates: untestedCandidates.sort(byRiskThenName),
@@ -118,6 +133,8 @@ export function auditPythonRepo(root, options = {}) {
     skipped: skipped.sort((a, b) => a.name.localeCompare(b.name)),
     risks
   };
+  finishAuditPhase(onPhaseTiming, "python", "evidence-classification-and-artifact", phaseStartedAt);
+  return audit;
 }
 
 function isIncludedByChangedPaths(currentPath, changedPaths) {

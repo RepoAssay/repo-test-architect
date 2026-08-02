@@ -14,6 +14,7 @@ import { auditSwiftRepo } from "../adapters/swift/audit.js";
  * @property {string[]} [changedPaths]
  * @property {string} [repositoryRoot]
  * @property {{ goos: string, goarch: string, tags?: string[] }} [goTarget]
+ * @property {(timing: { adapterId: string, phase: string, durationMs: number }) => void} [onPhaseTiming]
  *
  * @typedef {object} RuntimeAdapter
  * @property {string} id
@@ -138,7 +139,8 @@ export const adapters = [
     audit(repoRoot, options = {}) {
       return auditPythonRepo(repoRoot, {
         changedPaths: options.changedPaths,
-        repositoryRoot: options.repositoryRoot
+        repositoryRoot: options.repositoryRoot,
+        onPhaseTiming: options.onPhaseTiming
       });
     }
   },
@@ -180,7 +182,8 @@ export const adapters = [
     emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"],
     audit(repoRoot, options = {}) {
       return auditSwiftRepo(repoRoot, {
-        changedPaths: options.changedPaths
+        changedPaths: options.changedPaths,
+        onPhaseTiming: options.onPhaseTiming
       });
     }
   }

@@ -316,6 +316,7 @@ Check that every supported adapter has a complete, pinned hardening corpus:
 npm run corpus:check
 npm run corpus:scorecard
 npm run corpus:measure -- --case python-asyncer --checkout /path/to/pinned/asyncer
+npm run corpus:measure -- --case python-django --checkout /path/to/pinned/django --profile-phases
 npm run csharp:performance:check
 npm run javascript:performance:check
 npm run python:performance:check
@@ -331,7 +332,7 @@ The versioned `evals/validation-corpus.json` manifest records one conventional l
 
 `corpus:scorecard` renders the review contract for humans. It reports review completeness separately from the pass rate among reviewed checks and keeps `PASS`, `FAIL`, and `PENDING` visible for every area. Use `npm run corpus:scorecard -- --format json` for the deterministic `validation-scorecard/v1` view. These are validation-review results, not a repository-quality rating.
 
-`corpus:measure` verifies the checkout's exact pinned Git SHA, runs the selected adapter at least three times, rejects canonical audit drift, and reports the raw durations, median duration, evidence-link count, and normalized audit digest used to update the scorecard.
+`corpus:measure` verifies the checkout's exact pinned Git SHA, runs the selected adapter at least three times, rejects canonical audit drift, and reports the raw durations, median duration, evidence-link count, and normalized audit digest used to update the scorecard. For the exact Python and Swift pins, `--profile-phases` defaults to five runs and additionally reports ordered samples and medians for traversal/text reading, project/build ownership, source discovery/indexing, test parsing/indexing, and evidence/classification/artifact assembly. These development timings are callback-only and never enter `audit/v1`, CLI/MCP audit output, or local MCP diagnostics.
 
 Each adapter performance check separately runs a generated 400-source/200-test project, verifies its candidate and evidence counts, and enforces a broad cross-platform regression ceiling. The Rust gate includes one additional skipped `src/lib.rs` module-wiring target required to declare the 400 behavioral modules. These synthetic gates complement the recorded per-repository corpus distributions.
 
