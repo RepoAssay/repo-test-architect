@@ -124,7 +124,7 @@ Implemented:
 - product positioning note for audit-first differentiation, initial audience, business paths, proof points, and anti-positioning
 - near-term roadmap for public demo polish, second adapter proof, placement analysis, MCP transport, and generation readiness gates
 - measured August 2026 adapter portfolio analysis covering all ten adapters, 27 supported corpus roles, maintenance/latency evidence, Elixir promotion, shared-kernel work, executor evaluation, and demand-gated ecosystem expansion
-- complete experimental Elixir corpus cohort for exact Jason, Plug, and Absinthe pins, with 21 visibly pending review areas and no premature supported claim
+- freshly measured experimental Elixir corpus cohort for exact Jason, Plug, and Absinthe pins, with 21 of 21 review areas passing and promotion still separate
 - adapter reuse roadmap defining shared audit semantics, adapter-owned proof, and compiler/parser-backed ecosystem analysis
 - demo script for showing audit quality, polyglot detection, MCP tools, and verification without implying native generation is ready
 - demo command checker that runs the deterministic public demo path without nesting the full release suite
@@ -286,7 +286,7 @@ Release promotion follows the flexible, evidence-based [Release Lifecycle](relea
 
 The active sequence is defined in the [Adapter Hardening Plan](adapter-hardening-plan.md):
 
-1. Shared validation-corpus manifest, scorecard schema, semantic checker, adapter-conformance helper, and per-adapter implementation coverage floors are complete. All 27 pins across nine supported adapters pass standardized stability and performance measurement; a complete registered experimental cohort may be staged without weakening that requirement. Elixir now contributes three exact pins and 21 pending areas. Corpus cases can preserve bounded adapter options such as an explicit Go target and represent reviewed safe command withholding with `testCommand: null`.
+1. Shared validation-corpus manifest, scorecard schema, semantic checker, adapter-conformance helper, and per-adapter implementation coverage floors are complete. All 30 current pins pass standardized stability and performance measurement, including the three-role experimental Elixir cohort. Corpus cases can preserve bounded adapter options such as an explicit Go target and represent reviewed safe command withholding with `testCommand: null`.
 2. JavaScript/TypeScript workspace command ownership, bounded runner-config/custom test-location discovery, module-boundary hardening, the generated large-suite regression gate, and conservative literal Playwright/Cypress request-to-route evidence are complete for the static patterns in the support matrix.
 3. Python literal multi-package/namespace ownership, bounded root and repository-owned ancestor pytest discovery, exact package-local relative imports, one-hop same-owner source dependencies, static framework test-client route evidence, and deterministic tox/nox ambiguity blockers are complete. Next Python pressure can target plugin-mutated discovery or dynamic runner orchestration.
 4. Kotlin/JVM competing root commands and incomplete Gradle aggregate or Maven reactor ownership now block selection; complete recursively literal Maven reactors are owned without partial guessing, and incomplete child builds remain separately detectable. Continue pressure on statically provable dependency and module syntax.

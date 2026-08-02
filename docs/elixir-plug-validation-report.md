@@ -57,6 +57,24 @@ Recovered evidence includes asserted calls to `Plug.CSRFProtection`, `Plug.Sessi
 
 The remaining nine candidates are `Plug.Adapters.Cowboy`, `Plug.Conn.Unfetched`, `Plug.Conn.Utils`, `Plug.MIME`, `Plug.Parsers.MULTIPART`, `Plug.Parsers.URLENCODED`, `Plug.Session.Store`, `Plug.Upload.Supervisor`, and `Plug.Application`. They are compatibility, internal, OTP, behaviour, or parser surfaces without an exact direct call in a recognized test body. The native suite may exercise several indirectly, but the adapter does not convert framework or callback reachability into direct evidence.
 
+## Standardized Corpus Review — 2026-08-02
+
+A fresh detached checkout at the exact pin was measured five times through `npm run corpus:measure` before dependency installation:
+
+| Measure | Standardized result |
+| --- | --- |
+| Test command | `mix test` |
+| Untested / covered / skipped | 9 / 33 / 0 |
+| Evidence relationships | 44 |
+| Duration samples | 202, 179, 181, 181, 178 ms |
+| Median | 181 ms |
+| Canonical SHA-256 | `8fe631906b7a71f6e560c098b37ab9da9091d5980a26772c6b9f5ff5a0fcfe03` |
+| Scorecard | 7 of 7 areas pass |
+
+Detection retained one root Mix project. Ownership, evidence usage, and ranking retained the reviewed 9/33 split, 30 direct relationships, 14 naming relationships, 14 asserted uses, and 16 called uses. High-risk runtime and security boundaries remain prioritized while framework, callback, and protocol reachability stay conservative.
+
+`MIX_ENV=test mix deps.get --check-locked` left tracked files clean. The unchanged adapter-selected `mix test` then passed 688 checks. A three-run audit after dependency compilation retained the same semantic counts and canonical digest, confirming that installed dependencies do not enter project or evidence ownership. Stability, performance, and the native command are therefore freshly reviewed rather than inherited from the earlier live pass.
+
 ## Native Command Review
 
 The pinned checkout resolved its lockfile with:

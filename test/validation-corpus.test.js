@@ -23,9 +23,9 @@ describe("adapter validation corpus", () => {
     assert.equal(result.experimentalAdapterCount, 1);
     assert.equal(result.caseCount, 30);
     assert.deepEqual(result.scorecardCounts, {
-      pass: 189,
+      pass: 210,
       fail: 0,
-      pending: 21
+      pending: 0
     });
   });
 
@@ -56,6 +56,17 @@ describe("adapter validation corpus", () => {
   });
 
   it("requires every supported adapter and only accepts complete registered experimental cohorts", () => {
+    const stagedExperimental = structuredClone(corpus);
+    const stagedElixir = stagedExperimental.adapters.find((adapter) => adapter.adapterId === "elixir");
+    for (const entry of stagedElixir.cases) {
+      for (const area of scorecardAreas) entry.scorecard[area] = "pending";
+      delete entry.observed.auditDurationMs;
+      delete entry.observed.auditDurationSamplesMs;
+      delete entry.observed.evidenceRelationshipCount;
+      delete entry.observed.canonicalAuditSha256;
+    }
+    assert.deepEqual(validateValidationCorpus(stagedExperimental).errors, []);
+
     const missingSupported = structuredClone(corpus);
     missingSupported.adapters = missingSupported.adapters.filter((adapter) => adapter.adapterId !== "csharp");
     assert.ok(validateValidationCorpus(missingSupported).errors.some(

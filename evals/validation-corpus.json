@@ -235,19 +235,29 @@
           "supportBoundary": "Conventional root Mix library with legacy Mixfile ownership, flat application namespaces, protocols, app-owned ExUnit tests, grouped aliases, and direct test-body evidence.",
           "reportPath": "docs/elixir-jason-validation-report.md",
           "scorecard": {
-            "detection": "pending",
-            "ownership": "pending",
-            "command": "pending",
-            "evidence": "pending",
-            "ranking": "pending",
-            "stability": "pending",
-            "performance": "pending"
+            "detection": "pass",
+            "ownership": "pass",
+            "command": "pass",
+            "evidence": "pass",
+            "ranking": "pass",
+            "stability": "pass",
+            "performance": "pass"
           },
           "observed": {
             "testCommand": "mix test",
             "untestedCandidates": 3,
             "coveredButRisky": 7,
-            "skippedTargets": 0
+            "skippedTargets": 0,
+            "auditDurationMs": 10,
+            "auditDurationSamplesMs": [
+              24,
+              10,
+              10,
+              9,
+              9
+            ],
+            "evidenceRelationshipCount": 10,
+            "canonicalAuditSha256": "af674155185c92357ff28534a4bc75dc234e8c66e64c518c4ed6af35418796f2"
           }
         },
         {
@@ -261,19 +271,29 @@
           "supportBoundary": "Framework-heavy root Mix library with case-normalized acronym modules, one terminal singular protocol, static ExUnit startup options, and direct evidence without inferred Plug reachability.",
           "reportPath": "docs/elixir-plug-validation-report.md",
           "scorecard": {
-            "detection": "pending",
-            "ownership": "pending",
-            "command": "pending",
-            "evidence": "pending",
-            "ranking": "pending",
-            "stability": "pending",
-            "performance": "pending"
+            "detection": "pass",
+            "ownership": "pass",
+            "command": "pass",
+            "evidence": "pass",
+            "ranking": "pass",
+            "stability": "pass",
+            "performance": "pass"
           },
           "observed": {
             "testCommand": "mix test",
             "untestedCandidates": 9,
             "coveredButRisky": 33,
-            "skippedTargets": 0
+            "skippedTargets": 0,
+            "auditDurationMs": 181,
+            "auditDurationSamplesMs": [
+              202,
+              179,
+              181,
+              181,
+              178
+            ],
+            "evidenceRelationshipCount": 44,
+            "canonicalAuditSha256": "8fe631906b7a71f6e560c098b37ab9da9091d5980a26772c6b9f5ff5a0fcfe03"
           }
         },
         {
@@ -287,19 +307,29 @@
           "supportBoundary": "Macro-heavy root Mix library with literal compiled-support wrapper chains, conventional Mix tasks, repeated exact declarations, terminal acronym namespaces, and framework reachability withheld.",
           "reportPath": "docs/elixir-absinthe-validation-report.md",
           "scorecard": {
-            "detection": "pending",
-            "ownership": "pending",
-            "command": "pending",
-            "evidence": "pending",
-            "ranking": "pending",
-            "stability": "pending",
-            "performance": "pending"
+            "detection": "pass",
+            "ownership": "pass",
+            "command": "pass",
+            "evidence": "pass",
+            "ranking": "pass",
+            "stability": "pass",
+            "performance": "pass"
           },
           "observed": {
             "testCommand": "mix test",
             "untestedCandidates": 135,
             "coveredButRisky": 80,
-            "skippedTargets": 50
+            "skippedTargets": 50,
+            "auditDurationMs": 865,
+            "auditDurationSamplesMs": [
+              909,
+              865,
+              850,
+              858,
+              875
+            ],
+            "evidenceRelationshipCount": 121,
+            "canonicalAuditSha256": "9a6e7a37316f871c54ce3973867f912aab2d04e3337b7c3955f5d0b584d20284"
           }
         }
       ]

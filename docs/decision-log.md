@@ -2,6 +2,14 @@
 
 This log records project-level decisions that shape architecture, scope, and public positioning.
 
+# Elixir Corpus Review Passes Without Semantic Widening
+
+Decision: mark detection, ownership, command, evidence, ranking, stability, and performance as passing for the exact Jason, Plug, and Absinthe corpus pins. Keep Elixir experimental until a separate PR changes the registry and public support claim.
+
+Rationale: five clean standardized audits per pin retained the reviewed semantic splits and the prior canonical digests: Jason `3 / 7 / 0`, 10 relationships, and a 10 ms median; Plug `9 / 33 / 0`, 44 relationships, and a 181 ms median; Absinthe `135 / 80 / 50`, 121 relationships, and an 865 ms median. The unchanged `mix test` command passed 445, 688, and 1,501 checks respectively, dependency installation left tracked files clean, and post-native audits retained every digest. All 210 corpus cells now pass without adding adapter behavior.
+
+Revisit when: a pin or supported boundary changes, a reviewed false-confidence result appears, or the separate Elixir promotion slice evaluates the registry and public documentation claim.
+
 # Experimental Corpus Cohorts Stay Pending Until Standardized Review
 
 Decision: every supported adapter remains mandatory in `validation-corpus/v1`; a registered experimental adapter may join only as a complete conventional, framework-heavy, and difficult-ownership cohort. Historical observations may seed required semantic counts and the reviewed command, but every scorecard area stays pending until the exact pin is freshly measured and reviewed through the standard process. Corpus presence does not change registry maturity.
