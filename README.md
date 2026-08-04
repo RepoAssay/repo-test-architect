@@ -1,4 +1,8 @@
-# Repo Test Architect
+<p align="center">
+  <img src="assets/brand/repoassay-avatar-512.png" alt="Repo Test Architect logo" width="180">
+</p>
+
+<h1 align="center">Repo Test Architect</h1>
 
 Audit-first test strategy tooling for codebases.
 
