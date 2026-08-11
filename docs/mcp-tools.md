@@ -36,7 +36,7 @@ Descriptor schema:
 
 ## Contract
 
-Each tool returns one of the stable artifacts documented in `docs/artifact-contract.md`.
+Each tool returns one of the stable artifacts documented in `docs/artifact-contract.md`. Descriptors expose the shipped artifact schema through the standard MCP `outputSchema` field. Successful calls return the same artifact in `structuredContent` and as serialized JSON text for clients that rely on the earlier response shape.
 
 Every descriptor also declares a human-readable `title` and explicit MCP safety hints. The current surface is read-only, non-destructive, repeatable for the same repository state and arguments, and closed-world: tools inspect local repository inputs and compute artifacts without contacting external services. These annotations are client-facing hints; deterministic local controls remain the security boundary.
 

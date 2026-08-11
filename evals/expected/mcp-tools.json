@@ -65,6 +65,219 @@
         }
       },
       "title": "Analyze Repository",
+      "outputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "repository-analysis-v1.schema.json",
+        "title": "Repository Analysis Artifact",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "schemaVersion",
+          "root",
+          "summary",
+          "verificationCommands",
+          "projectAudits",
+          "auditSummary",
+          "findings",
+          "candidateRanking",
+          "testPlan",
+          "executionHints",
+          "stats"
+        ],
+        "properties": {
+          "schemaVersion": {
+            "const": "repository-analysis/v1"
+          },
+          "root": {
+            "type": "string",
+            "minLength": 1
+          },
+          "summary": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "projectCount",
+              "auditedProjectCount",
+              "unsupportedProjectCount",
+              "auditCoverage",
+              "blockerCount",
+              "findingCount",
+              "candidateCount",
+              "planItemCount",
+              "verificationCommandCount"
+            ],
+            "properties": {
+              "projectCount": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "auditedProjectCount": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "unsupportedProjectCount": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "auditCoverage": {
+                "enum": [
+                  "complete",
+                  "partial",
+                  "none"
+                ]
+              },
+              "blockerCount": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "findingCount": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "candidateCount": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "planItemCount": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "verificationCommandCount": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          },
+          "verificationCommands": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "command",
+                "projectCount"
+              ],
+              "properties": {
+                "command": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "projectCount": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "projectAudits": {
+            "$ref": "#/$defs/projectAudits"
+          },
+          "auditSummary": {
+            "$ref": "#/$defs/auditSummary"
+          },
+          "findings": {
+            "$ref": "#/$defs/findings"
+          },
+          "candidateRanking": {
+            "$ref": "#/$defs/candidateRanking"
+          },
+          "testPlan": {
+            "$ref": "#/$defs/testPlan"
+          },
+          "executionHints": {
+            "$ref": "#/$defs/executionHints"
+          },
+          "stats": {
+            "$ref": "#/$defs/stats"
+          }
+        },
+        "$defs": {
+          "projectAudits": {
+            "type": "object",
+            "additionalProperties": true,
+            "required": [
+              "schemaVersion"
+            ],
+            "properties": {
+              "schemaVersion": {
+                "const": "project-audits/v1"
+              }
+            }
+          },
+          "auditSummary": {
+            "type": "object",
+            "additionalProperties": true,
+            "required": [
+              "schemaVersion"
+            ],
+            "properties": {
+              "schemaVersion": {
+                "const": "project-audit-summary/v1"
+              }
+            }
+          },
+          "findings": {
+            "type": "object",
+            "additionalProperties": true,
+            "required": [
+              "schemaVersion"
+            ],
+            "properties": {
+              "schemaVersion": {
+                "const": "project-findings/v1"
+              }
+            }
+          },
+          "candidateRanking": {
+            "type": "object",
+            "additionalProperties": true,
+            "required": [
+              "schemaVersion"
+            ],
+            "properties": {
+              "schemaVersion": {
+                "const": "project-candidate-ranking/v1"
+              }
+            }
+          },
+          "testPlan": {
+            "type": "object",
+            "additionalProperties": true,
+            "required": [
+              "schemaVersion"
+            ],
+            "properties": {
+              "schemaVersion": {
+                "const": "project-test-plan/v1"
+              }
+            }
+          },
+          "executionHints": {
+            "type": "object",
+            "additionalProperties": true,
+            "required": [
+              "schemaVersion"
+            ],
+            "properties": {
+              "schemaVersion": {
+                "const": "plan-execution-hints/v1"
+              }
+            }
+          },
+          "stats": {
+            "type": "object",
+            "additionalProperties": true,
+            "required": [
+              "schemaVersion"
+            ],
+            "properties": {
+              "schemaVersion": {
+                "const": "project-stats/v1"
+              }
+            }
+          }
+        }
+      },
       "annotations": {
         "readOnlyHint": true,
         "destructiveHint": false,
@@ -86,6 +299,89 @@
         "properties": {}
       },
       "title": "List Adapters",
+      "outputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "adapter-registry-v1.schema.json",
+        "title": "Adapter Registry Artifact",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "schemaVersion",
+          "adapters"
+        ],
+        "properties": {
+          "schemaVersion": {
+            "const": "adapter-registry/v1"
+          },
+          "adapters": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "id",
+                "ecosystems",
+                "languages",
+                "maturity",
+                "supportedTestFrameworks",
+                "supportedProjectTypes",
+                "emittedArtifacts"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "ecosystems": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "languages": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "maturity": {
+                  "enum": [
+                    "supported",
+                    "experimental",
+                    "planned"
+                  ]
+                },
+                "supportedTestFrameworks": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "supportedProjectTypes": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "emittedArtifacts": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
       "annotations": {
         "readOnlyHint": true,
         "destructiveHint": false,
@@ -107,6 +403,85 @@
         "properties": {}
       },
       "title": "List Project Detection Rules",
+      "outputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "project-detection-rules-v1.schema.json",
+        "title": "Project Detection Rules Artifact",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "schemaVersion",
+          "markers",
+          "ignoredDirectories"
+        ],
+        "properties": {
+          "schemaVersion": {
+            "const": "project-detection-rules/v1"
+          },
+          "markers": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "ecosystem",
+                "languages"
+              ],
+              "properties": {
+                "fileName": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "extension": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "directoryExtension": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "ecosystem": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "languages": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              },
+              "oneOf": [
+                {
+                  "required": [
+                    "fileName"
+                  ]
+                },
+                {
+                  "required": [
+                    "extension"
+                  ]
+                },
+                {
+                  "required": [
+                    "directoryExtension"
+                  ]
+                }
+              ]
+            }
+          },
+          "ignoredDirectories": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      },
       "annotations": {
         "readOnlyHint": true,
         "destructiveHint": false,
@@ -116,7 +491,7 @@
     },
     {
       "name": "detect_projects",
-      "description": "Detect project roots and matching adapters inside a repository.",
+      "description": "Discover project roots, support status, and matching adapters without auditing source targets. Use this when project boundaries are needed before a specialized workflow; use analyze_repository for a complete review. Reads local repository markers and returns project-detection/v1 without executing tests or writing files.",
       "outputArtifact": {
         "schemaVersion": "project-detection/v1",
         "schemaPath": "schemas/project-detection-v1.schema.json"
@@ -130,7 +505,7 @@
         "properties": {
           "repoRoot": {
             "type": "string",
-            "description": "Repository root path."
+            "description": "Readable repository directory whose project markers should be inspected."
           },
           "excludeProjectRoots": {
             "type": "array",
@@ -143,6 +518,160 @@
         }
       },
       "title": "Detect Projects",
+      "outputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "project-detection-v1.schema.json",
+        "title": "Project Detection Artifact",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "schemaVersion",
+          "root",
+          "projects",
+          "summary"
+        ],
+        "properties": {
+          "schemaVersion": {
+            "const": "project-detection/v1"
+          },
+          "root": {
+            "type": "string",
+            "minLength": 1
+          },
+          "projects": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "id",
+                "root",
+                "absoluteRoot",
+                "ecosystems",
+                "languages",
+                "markerFiles",
+                "adapterIds",
+                "adapterMatches",
+                "supported",
+                "supportStatusReason"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "root": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "absoluteRoot": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "ecosystems": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "languages": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "markerFiles": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "adapterIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "adapterMatches": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "adapterId",
+                      "maturity",
+                      "matchedEcosystems",
+                      "matchedLanguages"
+                    ],
+                    "properties": {
+                      "adapterId": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "maturity": {
+                        "enum": [
+                          "supported",
+                          "experimental",
+                          "planned"
+                        ]
+                      },
+                      "matchedEcosystems": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "matchedLanguages": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      }
+                    }
+                  }
+                },
+                "supported": {
+                  "type": "boolean"
+                },
+                "supportStatusReason": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
+          },
+          "summary": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "projectCount",
+              "supportedProjectCount",
+              "unsupportedProjectCount"
+            ],
+            "properties": {
+              "projectCount": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "supportedProjectCount": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "unsupportedProjectCount": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          }
+        }
+      },
       "annotations": {
         "readOnlyHint": true,
         "destructiveHint": false,
@@ -215,6 +744,199 @@
         }
       },
       "title": "Audit Projects",
+      "outputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "project-audits-v1.schema.json",
+        "title": "Project Audits Artifact",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "schemaVersion",
+          "root",
+          "summary",
+          "audits",
+          "skippedProjects"
+        ],
+        "properties": {
+          "schemaVersion": {
+            "const": "project-audits/v1"
+          },
+          "root": {
+            "type": "string",
+            "minLength": 1
+          },
+          "summary": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "projectCount",
+              "auditedProjectCount",
+              "skippedProjectCount"
+            ],
+            "properties": {
+              "projectCount": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "auditedProjectCount": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "skippedProjectCount": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          },
+          "audits": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "projectId",
+                "projectRoot",
+                "adapterId",
+                "audit"
+              ],
+              "properties": {
+                "projectId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "projectRoot": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "adapterId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "audit": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "required": [
+                    "schemaVersion",
+                    "profile",
+                    "untestedCandidates",
+                    "coveredButRisky",
+                    "skipped",
+                    "risks"
+                  ],
+                  "properties": {
+                    "schemaVersion": {
+                      "const": "audit/v1"
+                    },
+                    "profile": {
+                      "type": "object"
+                    },
+                    "untestedCandidates": {
+                      "type": "array"
+                    },
+                    "coveredButRisky": {
+                      "type": "array"
+                    },
+                    "skipped": {
+                      "type": "array"
+                    },
+                    "risks": {
+                      "type": "array"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "skippedProjects": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "projectId",
+                "projectRoot",
+                "reason",
+                "ecosystems",
+                "languages",
+                "adapterMatches",
+                "supportStatusReason"
+              ],
+              "properties": {
+                "projectId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "projectRoot": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "reason": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "ecosystems": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "languages": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "adapterMatches": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "adapterId",
+                      "maturity",
+                      "matchedEcosystems",
+                      "matchedLanguages"
+                    ],
+                    "properties": {
+                      "adapterId": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "maturity": {
+                        "enum": [
+                          "supported",
+                          "experimental",
+                          "planned"
+                        ]
+                      },
+                      "matchedEcosystems": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "matchedLanguages": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      }
+                    }
+                  }
+                },
+                "supportStatusReason": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
+          }
+        }
+      },
       "annotations": {
         "readOnlyHint": true,
         "destructiveHint": false,
@@ -243,6 +965,239 @@
         }
       },
       "title": "Summarize Project Audits",
+      "outputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "project-audit-summary-v1.schema.json",
+        "title": "Project Audit Summary Artifact",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "schemaVersion",
+          "root",
+          "summary",
+          "projects",
+          "unsupportedProjects"
+        ],
+        "properties": {
+          "schemaVersion": {
+            "const": "project-audit-summary/v1"
+          },
+          "root": {
+            "type": "string",
+            "minLength": 1
+          },
+          "summary": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "projectCount",
+              "auditedProjectCount",
+              "unsupportedProjectCount",
+              "auditCoverage",
+              "unsupportedReasons",
+              "untestedCandidateCount",
+              "coveredButRiskyCount",
+              "skippedTargetCount",
+              "riskCount"
+            ],
+            "properties": {
+              "projectCount": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "auditedProjectCount": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "unsupportedProjectCount": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "auditCoverage": {
+                "enum": [
+                  "complete",
+                  "partial",
+                  "none"
+                ]
+              },
+              "unsupportedReasons": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "uniqueItems": true
+              },
+              "untestedCandidateCount": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "coveredButRiskyCount": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "skippedTargetCount": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "riskCount": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          },
+          "projects": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "projectId",
+                "projectRoot",
+                "adapterId",
+                "confidence",
+                "untestedCandidateCount",
+                "coveredButRiskyCount",
+                "skippedTargetCount",
+                "riskCount",
+                "topCandidateIds"
+              ],
+              "properties": {
+                "projectId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "projectRoot": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "adapterId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "confidence": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "testCommand": {
+                  "type": "string"
+                },
+                "untestedCandidateCount": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "coveredButRiskyCount": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "skippedTargetCount": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "riskCount": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "topCandidateIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          },
+          "unsupportedProjects": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "projectId",
+                "projectRoot",
+                "reason",
+                "ecosystems",
+                "languages",
+                "adapterMatches",
+                "supportStatusReason"
+              ],
+              "properties": {
+                "projectId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "projectRoot": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "reason": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "ecosystems": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "languages": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "adapterMatches": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "adapterId",
+                      "maturity",
+                      "matchedEcosystems",
+                      "matchedLanguages"
+                    ],
+                    "properties": {
+                      "adapterId": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "maturity": {
+                        "enum": [
+                          "supported",
+                          "experimental",
+                          "planned"
+                        ]
+                      },
+                      "matchedEcosystems": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "matchedLanguages": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      }
+                    }
+                  }
+                },
+                "supportStatusReason": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
+          }
+        }
+      },
       "annotations": {
         "readOnlyHint": true,
         "destructiveHint": false,
@@ -271,6 +1226,307 @@
         }
       },
       "title": "Rank Project Test Candidates",
+      "outputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "project-candidate-ranking-v1.schema.json",
+        "title": "Project Candidate Ranking Artifact",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "schemaVersion",
+          "root",
+          "summary",
+          "unsupportedProjects",
+          "candidates"
+        ],
+        "properties": {
+          "schemaVersion": {
+            "const": "project-candidate-ranking/v1"
+          },
+          "root": {
+            "type": "string",
+            "minLength": 1
+          },
+          "summary": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "projectCount",
+              "auditedProjectCount",
+              "unsupportedProjectCount",
+              "auditCoverage",
+              "unsupportedReasons",
+              "candidateCount"
+            ],
+            "properties": {
+              "projectCount": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "auditedProjectCount": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "unsupportedProjectCount": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "auditCoverage": {
+                "enum": [
+                  "complete",
+                  "partial",
+                  "none"
+                ]
+              },
+              "unsupportedReasons": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "uniqueItems": true
+              },
+              "candidateCount": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          },
+          "unsupportedProjects": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "projectId",
+                "projectRoot",
+                "reason",
+                "ecosystems",
+                "languages",
+                "adapterMatches",
+                "supportStatusReason"
+              ],
+              "properties": {
+                "projectId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "projectRoot": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "reason": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "ecosystems": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "languages": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "adapterMatches": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "adapterId",
+                      "maturity",
+                      "matchedEcosystems",
+                      "matchedLanguages"
+                    ],
+                    "properties": {
+                      "adapterId": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "maturity": {
+                        "enum": [
+                          "supported",
+                          "experimental",
+                          "planned"
+                        ]
+                      },
+                      "matchedEcosystems": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "matchedLanguages": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      }
+                    }
+                  }
+                },
+                "supportStatusReason": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
+          },
+          "candidates": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "projectId",
+                "projectRoot",
+                "adapterId",
+                "projectTargetId",
+                "targetId",
+                "target",
+                "path",
+                "category",
+                "kind",
+                "testLevel",
+                "priority",
+                "riskReductionScore",
+                "maintenanceCost",
+                "signals",
+                "rationale",
+                "existingTestPaths"
+              ],
+              "properties": {
+                "projectId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "projectRoot": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "adapterId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "projectTargetId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "targetId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "target": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "path": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "category": {
+                  "enum": [
+                    "untested",
+                    "covered-but-risky"
+                  ]
+                },
+                "kind": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "testLevel": {
+                  "enum": [
+                    "unit",
+                    "integration",
+                    "component",
+                    "ui",
+                    "none"
+                  ]
+                },
+                "priority": {
+                  "type": "integer"
+                },
+                "riskReductionScore": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 10
+                },
+                "maintenanceCost": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 10
+                },
+                "signals": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "rationale": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "existingTestPaths": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "existingTestEvidence": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "testPath",
+                      "kind",
+                      "strength"
+                    ],
+                    "properties": {
+                      "testPath": {
+                        "type": "string"
+                      },
+                      "kind": {
+                        "type": "string"
+                      },
+                      "strength": {
+                        "enum": [
+                          "naming",
+                          "direct",
+                          "referenced",
+                          "indirect"
+                        ]
+                      },
+                      "usage": {
+                        "enum": [
+                          "called",
+                          "asserted"
+                        ]
+                      },
+                      "viaUsage": {
+                        "enum": [
+                          "called",
+                          "asserted"
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
       "annotations": {
         "readOnlyHint": true,
         "destructiveHint": false,
@@ -299,6 +1555,375 @@
         }
       },
       "title": "Generate Project Test Plan",
+      "outputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "project-test-plan-v1.schema.json",
+        "title": "Project Test Plan Artifact",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "schemaVersion",
+          "root",
+          "summary",
+          "unsupportedProjects",
+          "projectPlans",
+          "items"
+        ],
+        "properties": {
+          "schemaVersion": {
+            "const": "project-test-plan/v1"
+          },
+          "root": {
+            "type": "string",
+            "minLength": 1
+          },
+          "summary": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "projectCount",
+              "plannedProjectCount",
+              "unsupportedProjectCount",
+              "auditCoverage",
+              "unsupportedReasons",
+              "addTestCount",
+              "extendTestCount",
+              "deferredCount",
+              "itemCount"
+            ],
+            "properties": {
+              "projectCount": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "plannedProjectCount": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "unsupportedProjectCount": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "auditCoverage": {
+                "enum": [
+                  "complete",
+                  "partial",
+                  "none"
+                ]
+              },
+              "unsupportedReasons": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "uniqueItems": true
+              },
+              "addTestCount": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "extendTestCount": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "deferredCount": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "itemCount": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          },
+          "unsupportedProjects": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "projectId",
+                "projectRoot",
+                "reason",
+                "ecosystems",
+                "languages",
+                "adapterMatches",
+                "supportStatusReason"
+              ],
+              "properties": {
+                "projectId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "projectRoot": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "reason": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "ecosystems": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "languages": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "adapterMatches": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "adapterId",
+                      "maturity",
+                      "matchedEcosystems",
+                      "matchedLanguages"
+                    ],
+                    "properties": {
+                      "adapterId": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "maturity": {
+                        "enum": [
+                          "supported",
+                          "experimental",
+                          "planned"
+                        ]
+                      },
+                      "matchedEcosystems": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "matchedLanguages": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      }
+                    }
+                  }
+                },
+                "supportStatusReason": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
+          },
+          "projectPlans": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "projectId",
+                "projectRoot",
+                "adapterId",
+                "plan"
+              ],
+              "properties": {
+                "projectId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "projectRoot": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "adapterId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "plan": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "required": [
+                    "schemaVersion",
+                    "summary",
+                    "blockers",
+                    "items"
+                  ],
+                  "properties": {
+                    "schemaVersion": {
+                      "const": "plan/v1"
+                    },
+                    "summary": {
+                      "type": "object"
+                    },
+                    "blockers": {
+                      "type": "array"
+                    },
+                    "items": {
+                      "type": "array"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "projectId",
+                "projectRoot",
+                "adapterId",
+                "projectItemId",
+                "id",
+                "action",
+                "targetId",
+                "target",
+                "path",
+                "testLevel",
+                "priority",
+                "riskReductionScore",
+                "maintenanceCost",
+                "rationale",
+                "sourceSignals",
+                "existingTestPaths"
+              ],
+              "properties": {
+                "projectId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "projectRoot": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "adapterId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "projectItemId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "action": {
+                  "enum": [
+                    "add-test",
+                    "extend-test",
+                    "defer"
+                  ]
+                },
+                "targetId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "target": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "path": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "testLevel": {
+                  "enum": [
+                    "unit",
+                    "integration",
+                    "component",
+                    "ui",
+                    "none"
+                  ]
+                },
+                "priority": {
+                  "type": "integer"
+                },
+                "riskReductionScore": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 10
+                },
+                "maintenanceCost": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 10
+                },
+                "rationale": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "sourceSignals": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "existingTestPaths": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "existingTestEvidence": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "testPath",
+                      "kind",
+                      "strength"
+                    ],
+                    "properties": {
+                      "testPath": {
+                        "type": "string"
+                      },
+                      "kind": {
+                        "type": "string"
+                      },
+                      "strength": {
+                        "enum": [
+                          "naming",
+                          "direct",
+                          "referenced",
+                          "indirect"
+                        ]
+                      },
+                      "usage": {
+                        "enum": [
+                          "called",
+                          "asserted"
+                        ]
+                      },
+                      "viaUsage": {
+                        "enum": [
+                          "called",
+                          "asserted"
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
       "annotations": {
         "readOnlyHint": true,
         "destructiveHint": false,
@@ -327,6 +1952,301 @@
         }
       },
       "title": "Collect Project Findings",
+      "outputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "project-findings-v1.schema.json",
+        "title": "Project Findings Artifact",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "schemaVersion",
+          "root",
+          "summary",
+          "findings",
+          "unsupportedProjects"
+        ],
+        "properties": {
+          "schemaVersion": {
+            "const": "project-findings/v1"
+          },
+          "root": {
+            "type": "string",
+            "minLength": 1
+          },
+          "summary": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "projectCount",
+              "auditedProjectCount",
+              "unsupportedProjectCount",
+              "auditCoverage",
+              "unsupportedReasons",
+              "findingCount",
+              "displayedFindingCount",
+              "maxFindings",
+              "highSeverityCount",
+              "placementFindingCount",
+              "blockedProjectCount",
+              "categoryCounts"
+            ],
+            "properties": {
+              "projectCount": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "auditedProjectCount": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "unsupportedProjectCount": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "auditCoverage": {
+                "enum": [
+                  "complete",
+                  "partial",
+                  "none"
+                ]
+              },
+              "unsupportedReasons": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "uniqueItems": true
+              },
+              "findingCount": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "displayedFindingCount": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "maxFindings": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "highSeverityCount": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "placementFindingCount": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "blockedProjectCount": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "categoryCounts": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "missing-coverage",
+                  "weak-existing-coverage",
+                  "misplaced-coverage",
+                  "low-value-direct-test",
+                  "blocked-project"
+                ],
+                "properties": {
+                  "missing-coverage": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "weak-existing-coverage": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "misplaced-coverage": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "low-value-direct-test": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "blocked-project": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                }
+              }
+            }
+          },
+          "findings": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "id",
+                "category",
+                "severity",
+                "priority",
+                "projectId",
+                "projectRoot",
+                "title",
+                "rationale",
+                "evidence",
+                "existingTestPaths"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "category": {
+                  "enum": [
+                    "missing-coverage",
+                    "weak-existing-coverage",
+                    "misplaced-coverage",
+                    "low-value-direct-test",
+                    "blocked-project"
+                  ]
+                },
+                "severity": {
+                  "enum": [
+                    "high",
+                    "medium",
+                    "low"
+                  ]
+                },
+                "priority": {
+                  "type": "integer"
+                },
+                "projectId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "projectRoot": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "adapterId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "targetId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "target": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "path": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "kind": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "testLevel": {
+                  "enum": [
+                    "unit",
+                    "integration",
+                    "component",
+                    "ui",
+                    "none"
+                  ]
+                },
+                "title": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "testFile": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "currentOwner": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "suggestedOwner": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "action": {
+                  "enum": [
+                    "move",
+                    "split",
+                    "keep"
+                  ]
+                },
+                "rationale": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "evidence": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "existingTestPaths": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          },
+          "unsupportedProjects": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true,
+              "required": [
+                "projectId",
+                "projectRoot",
+                "reason",
+                "ecosystems",
+                "languages",
+                "adapterMatches",
+                "supportStatusReason"
+              ],
+              "properties": {
+                "projectId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "projectRoot": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "reason": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "ecosystems": {
+                  "type": "array"
+                },
+                "languages": {
+                  "type": "array"
+                },
+                "adapterMatches": {
+                  "type": "array"
+                },
+                "supportStatusReason": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
+          }
+        }
+      },
       "annotations": {
         "readOnlyHint": true,
         "destructiveHint": false,
@@ -336,7 +2256,7 @@
     },
     {
       "name": "analyze_project_test_placement",
-      "description": "Analyze project-aware test placement from a project-audits artifact.",
+      "description": "Derive advisory test-placement findings across an existing project-audits/v1 artifact while preserving project identity. Use this for multiple audited projects; use analyze_test_placement for one audit/v1 artifact. Does not rescan the repository, execute tests, or create, move, or modify files.",
       "outputArtifact": {
         "schemaVersion": "test-placement-findings/v1",
         "schemaPath": "schemas/test-placement-findings-v1.schema.json"
@@ -350,11 +2270,80 @@
         "properties": {
           "projectAudits": {
             "type": "object",
-            "description": "A project-audits/v1 artifact."
+            "description": "The project-audits/v1 object returned by audit_projects; pass the artifact itself, not a file path."
           }
         }
       },
       "title": "Analyze Project Test Placement",
+      "outputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "test-placement-findings-v1.schema.json",
+        "title": "Test Placement Findings Artifact",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "schemaVersion",
+          "findings"
+        ],
+        "properties": {
+          "schemaVersion": {
+            "const": "test-placement-findings/v1"
+          },
+          "findings": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "id",
+                "testFile",
+                "currentOwner",
+                "suggestedOwner",
+                "action",
+                "reason",
+                "evidence"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "testFile": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "currentOwner": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "suggestedOwner": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "action": {
+                  "enum": [
+                    "move",
+                    "split",
+                    "keep"
+                  ]
+                },
+                "reason": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "evidence": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
       "annotations": {
         "readOnlyHint": true,
         "destructiveHint": false,
@@ -364,7 +2353,7 @@
     },
     {
       "name": "collect_project_stats",
-      "description": "Collect local deterministic project audit stats for coverage, counts, risk and signal distributions, framework distribution, and adapter usage.",
+      "description": "Aggregate coverage, counts, risk and signal distributions, frameworks, and adapter usage from an existing project-audits/v1 artifact. Use this for separate reporting or comparisons; analyze_repository already includes the same stats. Returns project-stats/v1 without rescanning the repository, executing tests, or writing files.",
       "outputArtifact": {
         "schemaVersion": "project-stats/v1",
         "schemaPath": "schemas/project-stats-v1.schema.json"
@@ -378,11 +2367,228 @@
         "properties": {
           "projectAudits": {
             "type": "object",
-            "description": "A project-audits/v1 artifact."
+            "description": "The project-audits/v1 object returned by audit_projects; pass the artifact itself, not a file path."
           }
         }
       },
       "title": "Collect Project Stats",
+      "outputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "project-stats-v1.schema.json",
+        "title": "Project Stats Artifact",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "schemaVersion",
+          "root",
+          "summary",
+          "sourceFiles",
+          "counts",
+          "distributions",
+          "adapters"
+        ],
+        "properties": {
+          "schemaVersion": {
+            "const": "project-stats/v1"
+          },
+          "root": {
+            "type": "string",
+            "minLength": 1
+          },
+          "summary": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "projectCount",
+              "auditedProjectCount",
+              "unsupportedProjectCount",
+              "auditCoverage"
+            ],
+            "properties": {
+              "projectCount": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "auditedProjectCount": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "unsupportedProjectCount": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "auditCoverage": {
+                "enum": [
+                  "complete",
+                  "partial",
+                  "none"
+                ]
+              }
+            }
+          },
+          "counts": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "untestedCandidateCount",
+              "coveredButRiskyCount",
+              "skippedTargetCount",
+              "riskCount",
+              "blockerCount"
+            ],
+            "properties": {
+              "untestedCandidateCount": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "coveredButRiskyCount": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "skippedTargetCount": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "riskCount": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "blockerCount": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          },
+          "sourceFiles": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "total",
+              "audited",
+              "unsupported",
+              "byLanguage"
+            ],
+            "properties": {
+              "total": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "audited": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "unsupported": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "byLanguage": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "total",
+                    "audited",
+                    "unsupported"
+                  ],
+                  "properties": {
+                    "total": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "audited": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "unsupported": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "distributions": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "confidence",
+              "testFrameworks",
+              "testCommands",
+              "targetKinds",
+              "riskLevels",
+              "signals",
+              "evidenceStrengths",
+              "evidenceKinds",
+              "evidenceUsage",
+              "evidenceViaUsage"
+            ],
+            "properties": {
+              "confidence": {
+                "$ref": "#/$defs/countRecord"
+              },
+              "testFrameworks": {
+                "$ref": "#/$defs/countRecord"
+              },
+              "testCommands": {
+                "$ref": "#/$defs/countRecord"
+              },
+              "targetKinds": {
+                "$ref": "#/$defs/countRecord"
+              },
+              "riskLevels": {
+                "$ref": "#/$defs/countRecord"
+              },
+              "signals": {
+                "$ref": "#/$defs/countRecord"
+              },
+              "evidenceStrengths": {
+                "$ref": "#/$defs/countRecord"
+              },
+              "evidenceKinds": {
+                "$ref": "#/$defs/countRecord"
+              },
+              "evidenceUsage": {
+                "$ref": "#/$defs/countRecord"
+              },
+              "evidenceViaUsage": {
+                "$ref": "#/$defs/countRecord"
+              }
+            }
+          },
+          "adapters": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "adapterId",
+                "projectCount"
+              ],
+              "properties": {
+                "adapterId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "projectCount": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            }
+          }
+        },
+        "$defs": {
+          "countRecord": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        }
+      },
       "annotations": {
         "readOnlyHint": true,
         "destructiveHint": false,
@@ -451,6 +2657,333 @@
         }
       },
       "title": "Audit Repository",
+      "outputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "https://repo-test-architect.local/schemas/audit-v1.schema.json",
+        "title": "Repo Test Architect Audit",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "schemaVersion",
+          "profile",
+          "untestedCandidates",
+          "coveredButRisky",
+          "recommended",
+          "skipped",
+          "risks"
+        ],
+        "properties": {
+          "schemaVersion": {
+            "const": "audit/v1"
+          },
+          "profile": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "root",
+              "languages",
+              "packageManagers",
+              "testFrameworks",
+              "architectures",
+              "detectedConventions",
+              "existingTestLocations",
+              "setupSignals",
+              "confidence",
+              "blockers"
+            ],
+            "properties": {
+              "root": {
+                "type": "string"
+              },
+              "languages": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "packageManagers": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "testFrameworks": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "architectures": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "testCommand": {
+                "type": "string"
+              },
+              "detectedConventions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "existingTestLocations": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "setupSignals": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "confidence": {
+                "enum": [
+                  "low",
+                  "medium",
+                  "high"
+                ]
+              },
+              "blockers": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "untestedCandidates": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/auditTarget"
+            }
+          },
+          "coveredButRisky": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/auditTarget"
+            }
+          },
+          "recommended": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/auditTarget"
+            }
+          },
+          "skipped": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/skippedTarget"
+            }
+          },
+          "risks": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "$defs": {
+          "auditTarget": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "id",
+              "path",
+              "kind",
+              "signals",
+              "risk",
+              "testability",
+              "recommendedTestLevel",
+              "riskReductionScore",
+              "maintenanceCost",
+              "reasons",
+              "existingTestPaths"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              },
+              "path": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "signals": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "risk": {
+                "enum": [
+                  "low",
+                  "medium",
+                  "high"
+                ]
+              },
+              "testability": {
+                "enum": [
+                  "low",
+                  "medium",
+                  "high"
+                ]
+              },
+              "recommendedTestLevel": {
+                "enum": [
+                  "unit",
+                  "integration",
+                  "component",
+                  "ui",
+                  "none"
+                ]
+              },
+              "riskReductionScore": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10
+              },
+              "maintenanceCost": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10
+              },
+              "reasons": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "existingTestPaths": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "existingTestEvidence": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "testPath",
+                    "kind",
+                    "strength"
+                  ],
+                  "properties": {
+                    "testPath": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "enum": [
+                        "filename-convention",
+                        "direct-relative-import",
+                        "referenced-relative-reexport",
+                        "tsconfig-path-import",
+                        "package-entry-import",
+                        "bounded-dependency",
+                        "browser-route-match",
+                        "csharp-symbol-reference",
+                        "csharp-test-helper",
+                        "swift-symbol-reference",
+                        "python-module-import",
+                        "python-package-reexport",
+                        "python-pytest-fixture",
+                        "python-test-client-route",
+                        "jvm-symbol-reference",
+                        "go-symbol-reference",
+                        "go-source-dependency",
+                        "rust-symbol-reference",
+                        "ruby-constant-reference",
+                        "php-symbol-reference",
+                        "elixir-module-reference"
+                      ]
+                    },
+                    "strength": {
+                      "enum": [
+                        "naming",
+                        "direct",
+                        "referenced",
+                        "indirect"
+                      ]
+                    },
+                    "usage": {
+                      "enum": [
+                        "called",
+                        "asserted"
+                      ]
+                    },
+                    "viaUsage": {
+                      "enum": [
+                        "called",
+                        "asserted"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "skippedTarget": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "id",
+              "path",
+              "kind",
+              "signals",
+              "riskReductionScore",
+              "maintenanceCost",
+              "reason"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              },
+              "path": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "signals": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "riskReductionScore": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10
+              },
+              "maintenanceCost": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10
+              },
+              "reason": {
+                "type": "string"
+              },
+              "preferredCoveragePath": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
       "annotations": {
         "readOnlyHint": true,
         "destructiveHint": false,
@@ -479,6 +3012,333 @@
         }
       },
       "title": "Get Audit Graph",
+      "outputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "https://repo-test-architect.local/schemas/audit-v1.schema.json",
+        "title": "Repo Test Architect Audit",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "schemaVersion",
+          "profile",
+          "untestedCandidates",
+          "coveredButRisky",
+          "recommended",
+          "skipped",
+          "risks"
+        ],
+        "properties": {
+          "schemaVersion": {
+            "const": "audit/v1"
+          },
+          "profile": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "root",
+              "languages",
+              "packageManagers",
+              "testFrameworks",
+              "architectures",
+              "detectedConventions",
+              "existingTestLocations",
+              "setupSignals",
+              "confidence",
+              "blockers"
+            ],
+            "properties": {
+              "root": {
+                "type": "string"
+              },
+              "languages": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "packageManagers": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "testFrameworks": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "architectures": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "testCommand": {
+                "type": "string"
+              },
+              "detectedConventions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "existingTestLocations": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "setupSignals": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "confidence": {
+                "enum": [
+                  "low",
+                  "medium",
+                  "high"
+                ]
+              },
+              "blockers": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "untestedCandidates": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/auditTarget"
+            }
+          },
+          "coveredButRisky": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/auditTarget"
+            }
+          },
+          "recommended": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/auditTarget"
+            }
+          },
+          "skipped": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/skippedTarget"
+            }
+          },
+          "risks": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "$defs": {
+          "auditTarget": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "id",
+              "path",
+              "kind",
+              "signals",
+              "risk",
+              "testability",
+              "recommendedTestLevel",
+              "riskReductionScore",
+              "maintenanceCost",
+              "reasons",
+              "existingTestPaths"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              },
+              "path": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "signals": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "risk": {
+                "enum": [
+                  "low",
+                  "medium",
+                  "high"
+                ]
+              },
+              "testability": {
+                "enum": [
+                  "low",
+                  "medium",
+                  "high"
+                ]
+              },
+              "recommendedTestLevel": {
+                "enum": [
+                  "unit",
+                  "integration",
+                  "component",
+                  "ui",
+                  "none"
+                ]
+              },
+              "riskReductionScore": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10
+              },
+              "maintenanceCost": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10
+              },
+              "reasons": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "existingTestPaths": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "existingTestEvidence": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "testPath",
+                    "kind",
+                    "strength"
+                  ],
+                  "properties": {
+                    "testPath": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "enum": [
+                        "filename-convention",
+                        "direct-relative-import",
+                        "referenced-relative-reexport",
+                        "tsconfig-path-import",
+                        "package-entry-import",
+                        "bounded-dependency",
+                        "browser-route-match",
+                        "csharp-symbol-reference",
+                        "csharp-test-helper",
+                        "swift-symbol-reference",
+                        "python-module-import",
+                        "python-package-reexport",
+                        "python-pytest-fixture",
+                        "python-test-client-route",
+                        "jvm-symbol-reference",
+                        "go-symbol-reference",
+                        "go-source-dependency",
+                        "rust-symbol-reference",
+                        "ruby-constant-reference",
+                        "php-symbol-reference",
+                        "elixir-module-reference"
+                      ]
+                    },
+                    "strength": {
+                      "enum": [
+                        "naming",
+                        "direct",
+                        "referenced",
+                        "indirect"
+                      ]
+                    },
+                    "usage": {
+                      "enum": [
+                        "called",
+                        "asserted"
+                      ]
+                    },
+                    "viaUsage": {
+                      "enum": [
+                        "called",
+                        "asserted"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "skippedTarget": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "id",
+              "path",
+              "kind",
+              "signals",
+              "riskReductionScore",
+              "maintenanceCost",
+              "reason"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              },
+              "path": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "signals": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "riskReductionScore": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10
+              },
+              "maintenanceCost": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10
+              },
+              "reason": {
+                "type": "string"
+              },
+              "preferredCoveragePath": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
       "annotations": {
         "readOnlyHint": true,
         "destructiveHint": false,
@@ -488,7 +3348,7 @@
     },
     {
       "name": "generate_test_plan",
-      "description": "Generate a deterministic test plan from an audit graph.",
+      "description": "Create a deterministic plan/v1 from an existing single-project audit/v1 artifact. Use this after audit_repo, optionally selecting one exact plan item; use generate_project_test_plan for multiple audited projects. Does not rescan the repository, execute tests, or generate or write test code.",
       "outputArtifact": {
         "schemaVersion": "plan/v1",
         "schemaPath": "schemas/plan-v1.schema.json"
@@ -502,15 +3362,200 @@
         "properties": {
           "audit": {
             "type": "object",
-            "description": "An audit/v1 artifact."
+            "description": "The audit/v1 object returned by audit_repo or contained in projectAudits.audits[].audit; pass the artifact itself, not a file path."
           },
           "itemId": {
             "type": "string",
-            "description": "Optional stable plan item id to select."
+            "description": "Optional exact plan item id to return; omit it to return the complete deterministic plan."
           }
         }
       },
       "title": "Generate Test Plan",
+      "outputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "https://repo-test-architect.local/schemas/plan-v1.schema.json",
+        "title": "Repo Test Architect Test Plan",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "schemaVersion",
+          "summary",
+          "blockers",
+          "items"
+        ],
+        "properties": {
+          "schemaVersion": {
+            "const": "plan/v1"
+          },
+          "summary": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "confidence",
+              "blockerCount",
+              "addTestCount",
+              "extendTestCount",
+              "deferredCount"
+            ],
+            "properties": {
+              "confidence": {
+                "enum": [
+                  "low",
+                  "medium",
+                  "high"
+                ]
+              },
+              "verificationCommand": {
+                "type": "string"
+              },
+              "blockerCount": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "addTestCount": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "extendTestCount": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "deferredCount": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          },
+          "blockers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "id",
+                "action",
+                "targetId",
+                "target",
+                "path",
+                "testLevel",
+                "priority",
+                "riskReductionScore",
+                "maintenanceCost",
+                "rationale",
+                "sourceSignals",
+                "existingTestPaths"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "action": {
+                  "enum": [
+                    "add-test",
+                    "extend-test",
+                    "defer"
+                  ]
+                },
+                "targetId": {
+                  "type": "string"
+                },
+                "target": {
+                  "type": "string"
+                },
+                "path": {
+                  "type": "string"
+                },
+                "testLevel": {
+                  "enum": [
+                    "unit",
+                    "integration",
+                    "component",
+                    "ui",
+                    "none"
+                  ]
+                },
+                "priority": {
+                  "type": "integer"
+                },
+                "riskReductionScore": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 10
+                },
+                "maintenanceCost": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 10
+                },
+                "rationale": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "sourceSignals": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "existingTestPaths": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "existingTestEvidence": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "testPath",
+                      "kind",
+                      "strength"
+                    ],
+                    "properties": {
+                      "testPath": {
+                        "type": "string"
+                      },
+                      "kind": {
+                        "type": "string"
+                      },
+                      "strength": {
+                        "enum": [
+                          "naming",
+                          "direct",
+                          "referenced",
+                          "indirect"
+                        ]
+                      },
+                      "usage": {
+                        "enum": [
+                          "called",
+                          "asserted"
+                        ]
+                      },
+                      "viaUsage": {
+                        "enum": [
+                          "called",
+                          "asserted"
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
       "annotations": {
         "readOnlyHint": true,
         "destructiveHint": false,
@@ -543,6 +3588,200 @@
         }
       },
       "title": "Get Plan Execution Hints",
+      "outputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "https://repo-test-architect.local/schemas/plan-execution-hints-v1.schema.json",
+        "title": "Repo Test Architect Plan Execution Hints",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "schemaVersion",
+          "source",
+          "summary",
+          "items"
+        ],
+        "properties": {
+          "schemaVersion": {
+            "const": "plan-execution-hints/v1"
+          },
+          "source": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "schemaVersion",
+              "itemCount"
+            ],
+            "properties": {
+              "schemaVersion": {
+                "enum": [
+                  "plan/v1",
+                  "project-test-plan/v1"
+                ]
+              },
+              "itemCount": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "root": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "summary": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "itemCount",
+              "lowComplexityCount",
+              "mediumComplexityCount",
+              "highComplexityCount",
+              "parallelizableCount",
+              "repositoryReasoningCount"
+            ],
+            "properties": {
+              "itemCount": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "lowComplexityCount": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "mediumComplexityCount": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "highComplexityCount": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "parallelizableCount": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "repositoryReasoningCount": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "planItemId",
+                "action",
+                "target",
+                "path",
+                "complexity",
+                "contextScope",
+                "parallelizable",
+                "recommendedAgentRole",
+                "requiresRepositoryReasoning",
+                "reasons"
+              ],
+              "properties": {
+                "planItemId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "action": {
+                  "enum": [
+                    "add-test",
+                    "extend-test",
+                    "defer"
+                  ]
+                },
+                "target": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "path": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "projectId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "projectRoot": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "adapterId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "complexity": {
+                  "enum": [
+                    "low",
+                    "medium",
+                    "high"
+                  ]
+                },
+                "contextScope": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "mode",
+                    "paths",
+                    "includeBuildConfiguration",
+                    "includeRepositoryInstructions"
+                  ],
+                  "properties": {
+                    "mode": {
+                      "enum": [
+                        "target-only",
+                        "target-and-tests",
+                        "project-boundary"
+                      ]
+                    },
+                    "paths": {
+                      "type": "array",
+                      "minItems": 1,
+                      "uniqueItems": true,
+                      "items": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "includeBuildConfiguration": {
+                      "type": "boolean"
+                    },
+                    "includeRepositoryInstructions": {
+                      "const": true
+                    }
+                  }
+                },
+                "parallelizable": {
+                  "type": "boolean"
+                },
+                "recommendedAgentRole": {
+                  "enum": [
+                    "implementation",
+                    "repository-reasoning",
+                    "review"
+                  ]
+                },
+                "requiresRepositoryReasoning": {
+                  "type": "boolean"
+                },
+                "reasons": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
       "annotations": {
         "readOnlyHint": true,
         "destructiveHint": false,
@@ -552,7 +3791,7 @@
     },
     {
       "name": "explain_target",
-      "description": "Explain one audit target by stable target id.",
+      "description": "Explain the evidence, risk, testability, and recommendation for one target in an existing audit/v1 artifact. Use this after audit_repo or audit_projects when one target needs detail beyond the audit summary. Returns target-explanation/v1 without rescanning the repository, executing tests, or writing files.",
       "outputArtifact": {
         "schemaVersion": "target-explanation/v1",
         "schemaPath": "schemas/target-explanation-v1.schema.json"
@@ -567,15 +3806,160 @@
         "properties": {
           "audit": {
             "type": "object",
-            "description": "An audit/v1 artifact."
+            "description": "The audit/v1 object returned by audit_repo or contained in projectAudits.audits[].audit; pass the artifact itself, not a file path."
           },
           "targetId": {
             "type": "string",
-            "description": "Stable audit target id."
+            "description": "Exact stable id from an audit target in untestedCandidates, coveredButRisky, recommended, or skipped."
           }
         }
       },
       "title": "Explain Audit Target",
+      "outputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "https://repo-test-architect.local/schemas/target-explanation-v1.schema.json",
+        "title": "Repo Test Architect Target Explanation",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "schemaVersion",
+          "targetId",
+          "target",
+          "path",
+          "category",
+          "kind",
+          "recommendation",
+          "testLevel",
+          "risk",
+          "testability",
+          "riskReductionScore",
+          "maintenanceCost",
+          "signals",
+          "rationale",
+          "existingTestPaths"
+        ],
+        "properties": {
+          "schemaVersion": {
+            "const": "target-explanation/v1"
+          },
+          "targetId": {
+            "type": "string"
+          },
+          "target": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "category": {
+            "enum": [
+              "untestedCandidates",
+              "coveredButRisky",
+              "skipped"
+            ]
+          },
+          "kind": {
+            "type": "string"
+          },
+          "recommendation": {
+            "enum": [
+              "test",
+              "defer"
+            ]
+          },
+          "testLevel": {
+            "enum": [
+              "unit",
+              "integration",
+              "component",
+              "ui",
+              "none"
+            ]
+          },
+          "risk": {
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ]
+          },
+          "testability": {
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ]
+          },
+          "riskReductionScore": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10
+          },
+          "maintenanceCost": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10
+          },
+          "signals": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "rationale": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "existingTestPaths": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "existingTestEvidence": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "testPath",
+                "kind",
+                "strength"
+              ],
+              "properties": {
+                "testPath": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string"
+                },
+                "strength": {
+                  "enum": [
+                    "naming",
+                    "direct",
+                    "referenced",
+                    "indirect"
+                  ]
+                },
+                "usage": {
+                  "enum": [
+                    "called",
+                    "asserted"
+                  ]
+                },
+                "viaUsage": {
+                  "enum": [
+                    "called",
+                    "asserted"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
       "annotations": {
         "readOnlyHint": true,
         "destructiveHint": false,
@@ -604,6 +3988,180 @@
         }
       },
       "title": "Rank Test Candidates",
+      "outputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "https://repo-test-architect.local/schemas/candidate-ranking-v1.schema.json",
+        "title": "Repo Test Architect Candidate Ranking",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "schemaVersion",
+          "summary",
+          "blockers",
+          "candidates"
+        ],
+        "properties": {
+          "schemaVersion": {
+            "const": "candidate-ranking/v1"
+          },
+          "summary": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "confidence",
+              "candidateCount",
+              "blockerCount"
+            ],
+            "properties": {
+              "confidence": {
+                "enum": [
+                  "low",
+                  "medium",
+                  "high"
+                ]
+              },
+              "candidateCount": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "blockerCount": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "verificationCommand": {
+                "type": "string"
+              }
+            }
+          },
+          "blockers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "candidates": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "targetId",
+                "target",
+                "path",
+                "category",
+                "kind",
+                "testLevel",
+                "priority",
+                "riskReductionScore",
+                "maintenanceCost",
+                "signals",
+                "rationale",
+                "existingTestPaths"
+              ],
+              "properties": {
+                "targetId": {
+                  "type": "string"
+                },
+                "target": {
+                  "type": "string"
+                },
+                "path": {
+                  "type": "string"
+                },
+                "category": {
+                  "enum": [
+                    "untested",
+                    "covered-but-risky"
+                  ]
+                },
+                "kind": {
+                  "type": "string"
+                },
+                "testLevel": {
+                  "enum": [
+                    "unit",
+                    "integration",
+                    "component",
+                    "ui",
+                    "none"
+                  ]
+                },
+                "priority": {
+                  "type": "integer"
+                },
+                "riskReductionScore": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 10
+                },
+                "maintenanceCost": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 10
+                },
+                "signals": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "rationale": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "existingTestPaths": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "existingTestEvidence": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "testPath",
+                      "kind",
+                      "strength"
+                    ],
+                    "properties": {
+                      "testPath": {
+                        "type": "string"
+                      },
+                      "kind": {
+                        "type": "string"
+                      },
+                      "strength": {
+                        "enum": [
+                          "naming",
+                          "direct",
+                          "referenced",
+                          "indirect"
+                        ]
+                      },
+                      "usage": {
+                        "enum": [
+                          "called",
+                          "asserted"
+                        ]
+                      },
+                      "viaUsage": {
+                        "enum": [
+                          "called",
+                          "asserted"
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
       "annotations": {
         "readOnlyHint": true,
         "destructiveHint": false,
@@ -613,7 +4171,7 @@
     },
     {
       "name": "analyze_test_placement",
-      "description": "Analyze existing test placement from an audit graph and return advisory placement findings.",
+      "description": "Derive advisory test-placement findings from an existing single-project audit/v1 artifact. Use this for one audited project; use analyze_project_test_placement for a project-audits/v1 artifact. Does not rescan the repository, execute tests, or create, move, or modify files.",
       "outputArtifact": {
         "schemaVersion": "test-placement-findings/v1",
         "schemaPath": "schemas/test-placement-findings-v1.schema.json"
@@ -627,7 +4185,7 @@
         "properties": {
           "audit": {
             "type": "object",
-            "description": "An audit/v1 artifact."
+            "description": "The audit/v1 object returned by audit_repo or contained in projectAudits.audits[].audit; pass the artifact itself, not a file path."
           },
           "owner": {
             "type": "string",
@@ -636,6 +4194,75 @@
         }
       },
       "title": "Analyze Test Placement",
+      "outputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "test-placement-findings-v1.schema.json",
+        "title": "Test Placement Findings Artifact",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "schemaVersion",
+          "findings"
+        ],
+        "properties": {
+          "schemaVersion": {
+            "const": "test-placement-findings/v1"
+          },
+          "findings": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "id",
+                "testFile",
+                "currentOwner",
+                "suggestedOwner",
+                "action",
+                "reason",
+                "evidence"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "testFile": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "currentOwner": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "suggestedOwner": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "action": {
+                  "enum": [
+                    "move",
+                    "split",
+                    "keep"
+                  ]
+                },
+                "reason": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "evidence": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
       "annotations": {
         "readOnlyHint": true,
         "destructiveHint": false,
@@ -664,6 +4291,40 @@
         }
       },
       "title": "Generate Selected Test (Deferred)",
+      "outputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "https://repo-test-architect.local/schemas/generation-deferred-v1.schema.json",
+        "title": "Repo Test Architect Generation Deferred",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "schemaVersion",
+          "planItemId",
+          "status",
+          "reason",
+          "nextSteps"
+        ],
+        "properties": {
+          "schemaVersion": {
+            "const": "generation-deferred/v1"
+          },
+          "planItemId": {
+            "type": "string"
+          },
+          "status": {
+            "const": "deferred"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "nextSteps": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
       "annotations": {
         "readOnlyHint": true,
         "destructiveHint": false,

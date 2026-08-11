@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import {
   analyzeRepoProjectTestPlacement,
   analyzeRepoTestPlacement,
@@ -84,10 +85,10 @@ const toolDefinitions = [
   },
   {
     name: "detect_projects",
-    description: "Detect project roots and matching adapters inside a repository.",
+    description: "Discover project roots, support status, and matching adapters without auditing source targets. Use this when project boundaries are needed before a specialized workflow; use analyze_repository for a complete review. Reads local repository markers and returns project-detection/v1 without executing tests or writing files.",
     outputArtifact: artifact("project-detection/v1", "schemas/project-detection-v1.schema.json"),
     inputSchema: objectSchema({
-      repoRoot: { type: "string", description: "Repository root path." },
+      repoRoot: { type: "string", description: "Readable repository directory whose project markers should be inspected." },
       excludeProjectRoots: {
         type: "array",
         description: "Optional exact project roots or subtree patterns such as examples/** to exclude before returning detected projects.",
@@ -148,18 +149,18 @@ const toolDefinitions = [
   },
   {
     name: "analyze_project_test_placement",
-    description: "Analyze project-aware test placement from a project-audits artifact.",
+    description: "Derive advisory test-placement findings across an existing project-audits/v1 artifact while preserving project identity. Use this for multiple audited projects; use analyze_test_placement for one audit/v1 artifact. Does not rescan the repository, execute tests, or create, move, or modify files.",
     outputArtifact: artifact("test-placement-findings/v1", "schemas/test-placement-findings-v1.schema.json"),
     inputSchema: objectSchema({
-      projectAudits: { type: "object", description: "A project-audits/v1 artifact." }
+      projectAudits: { type: "object", description: "The project-audits/v1 object returned by audit_projects; pass the artifact itself, not a file path." }
     }, ["projectAudits"])
   },
   {
     name: "collect_project_stats",
-    description: "Collect local deterministic project audit stats for coverage, counts, risk and signal distributions, framework distribution, and adapter usage.",
+    description: "Aggregate coverage, counts, risk and signal distributions, frameworks, and adapter usage from an existing project-audits/v1 artifact. Use this for separate reporting or comparisons; analyze_repository already includes the same stats. Returns project-stats/v1 without rescanning the repository, executing tests, or writing files.",
     outputArtifact: artifact("project-stats/v1", "schemas/project-stats-v1.schema.json"),
     inputSchema: objectSchema({
-      projectAudits: { type: "object", description: "A project-audits/v1 artifact." }
+      projectAudits: { type: "object", description: "The project-audits/v1 object returned by audit_projects; pass the artifact itself, not a file path." }
     }, ["projectAudits"])
   },
   {
@@ -187,11 +188,11 @@ const toolDefinitions = [
   },
   {
     name: "generate_test_plan",
-    description: "Generate a deterministic test plan from an audit graph.",
+    description: "Create a deterministic plan/v1 from an existing single-project audit/v1 artifact. Use this after audit_repo, optionally selecting one exact plan item; use generate_project_test_plan for multiple audited projects. Does not rescan the repository, execute tests, or generate or write test code.",
     outputArtifact: artifact("plan/v1", "schemas/plan-v1.schema.json"),
     inputSchema: objectSchema({
-      audit: { type: "object", description: "An audit/v1 artifact." },
-      itemId: { type: "string", description: "Optional stable plan item id to select." }
+      audit: { type: "object", description: "The audit/v1 object returned by audit_repo or contained in projectAudits.audits[].audit; pass the artifact itself, not a file path." },
+      itemId: { type: "string", description: "Optional exact plan item id to return; omit it to return the complete deterministic plan." }
     }, ["audit"])
   },
   {
@@ -205,11 +206,11 @@ const toolDefinitions = [
   },
   {
     name: "explain_target",
-    description: "Explain one audit target by stable target id.",
+    description: "Explain the evidence, risk, testability, and recommendation for one target in an existing audit/v1 artifact. Use this after audit_repo or audit_projects when one target needs detail beyond the audit summary. Returns target-explanation/v1 without rescanning the repository, executing tests, or writing files.",
     outputArtifact: artifact("target-explanation/v1", "schemas/target-explanation-v1.schema.json"),
     inputSchema: objectSchema({
-      audit: { type: "object", description: "An audit/v1 artifact." },
-      targetId: { type: "string", description: "Stable audit target id." }
+      audit: { type: "object", description: "The audit/v1 object returned by audit_repo or contained in projectAudits.audits[].audit; pass the artifact itself, not a file path." },
+      targetId: { type: "string", description: "Exact stable id from an audit target in untestedCandidates, coveredButRisky, recommended, or skipped." }
     }, ["audit", "targetId"])
   },
   {
@@ -222,10 +223,10 @@ const toolDefinitions = [
   },
   {
     name: "analyze_test_placement",
-    description: "Analyze existing test placement from an audit graph and return advisory placement findings.",
+    description: "Derive advisory test-placement findings from an existing single-project audit/v1 artifact. Use this for one audited project; use analyze_project_test_placement for a project-audits/v1 artifact. Does not rescan the repository, execute tests, or create, move, or modify files.",
     outputArtifact: artifact("test-placement-findings/v1", "schemas/test-placement-findings-v1.schema.json"),
     inputSchema: objectSchema({
-      audit: { type: "object", description: "An audit/v1 artifact." },
+      audit: { type: "object", description: "The audit/v1 object returned by audit_repo or contained in projectAudits.audits[].audit; pass the artifact itself, not a file path." },
       owner: { type: "string", description: "Optional owner label for the audited project. Defaults to audit.profile.root." }
     }, ["audit"])
   },
@@ -242,6 +243,7 @@ const toolDefinitions = [
 export const mcpTools = toolDefinitions.map((tool) => ({
   ...tool,
   title: requireToolTitle(tool.name),
+  outputSchema: loadOutputSchema(tool.outputArtifact.schemaPath),
   annotations: { ...readOnlyAnnotations }
 }));
 
@@ -359,6 +361,11 @@ function artifact(schemaVersion, schemaPath) {
     schemaVersion,
     schemaPath
   };
+}
+
+function loadOutputSchema(schemaPath) {
+  const schemaUrl = new URL(`../../${schemaPath}`, import.meta.url);
+  return JSON.parse(fs.readFileSync(schemaUrl, "utf8"));
 }
 
 function requireToolTitle(name) {

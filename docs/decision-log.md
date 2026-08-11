@@ -2,6 +2,14 @@
 
 This log records project-level decisions that shape architecture, scope, and public positioning.
 
+# Prepare The First Beta Candidate Without Pre-Approving Publication
+
+Decision: prepare `1.0.0-beta.1` with aligned npm, runtime MCP, diagnostic, and Official MCP Registry manifest versions; freeze the existing CLI names, 19 MCP tool names, versioned artifact schemas, configuration behavior, and bounded adapter support promises for candidate review. Keep publication under the `beta` tag as a separate owner-approved action after the remaining promotion evidence and exact-commit checks are recorded.
+
+Rationale: the candidate adds protocol-standard MCP output schemas and structured content while preserving serialized JSON text, and it improves the weakest tool-routing contracts without changing deterministic audit behavior. The complete local suite passes 1,362 tests, but candidate preparation is not evidence that the external-feedback alternative, 14-day clean period, exact-commit three-operating-system matrix, registry validation, or irreversible publication steps have passed.
+
+Revisit when: a pre-publication contract change requires a new candidate, the remaining beta gates produce a go/no-go decision, or `1.0.0-beta.1` is approved for npm and matching MCP Registry publication.
+
 # Executor Evaluation Does Not Enable Product Generation
 
 Decision: add one dependency-free, non-shipping JavaScript executor evaluation that consumes a selected stable plan item and its execution hint. Give two replaceable checked-in profiles the same frozen context; allow the evaluator to write exactly one intended test file in a temporary copy, run the exact adapter-owned command, permit at most one repair, and require a controlled source fault to produce a meaningful failure. Keep `generate_selected_test` returning `generation-deferred/v1`.
