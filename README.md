@@ -30,7 +30,7 @@ The current implementation can:
 
 Native test generation is intentionally deferred. `generate_selected_test` returns a structured deferred artifact until adapter-specific generation policy and repair-loop fixtures exist.
 
-Repo Test Architect is an early public alpha. Treat its findings as evidence-backed review input rather than an automatic instruction to change a repository.
+Repo Test Architect `1.0.0-beta.1` is available as an opt-in public beta. The unqualified npm command remains on `0.3.0` while the beta is evaluated. Treat its findings as evidence-backed review input rather than an automatic instruction to change a repository. See the [beta release notes](https://github.com/RepoAssay/repo-test-architect/releases/tag/v1.0.0-beta.1).
 
 ## Install
 
@@ -41,6 +41,13 @@ Run the CLI without a global install:
 ```sh
 npx --yes repo-test-architect doctor
 npx --yes repo-test-architect analyze .
+```
+
+Try the public beta without changing the default npm channel:
+
+```sh
+npx --yes repo-test-architect@beta doctor
+npx --yes repo-test-architect@beta analyze .
 ```
 
 Or install the CLI and MCP server binaries:
@@ -61,6 +68,23 @@ Add the local stdio MCP server to an MCP-capable client:
       "args": [
         "--yes",
         "repo-test-architect",
+        "mcp"
+      ]
+    }
+  }
+}
+```
+
+To opt into the public beta, pin the npm `beta` channel in the MCP configuration:
+
+```json
+{
+  "mcpServers": {
+    "repo-test-architect": {
+      "command": "npx",
+      "args": [
+        "--yes",
+        "repo-test-architect@beta",
         "mcp"
       ]
     }
