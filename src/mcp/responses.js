@@ -5,11 +5,16 @@ export function toMcpToolResult(value) {
         type: "text",
         text: JSON.stringify(value, null, 2)
       }
-    ]
+    ],
+    structuredContent: value
   };
 }
 
 export function fromMcpToolResult(result) {
+  if (result?.structuredContent && typeof result.structuredContent === "object" && !Array.isArray(result.structuredContent)) {
+    return result.structuredContent;
+  }
+
   const text = result?.content?.[0]?.text;
 
   if (typeof text !== "string") {

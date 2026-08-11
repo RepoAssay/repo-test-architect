@@ -269,6 +269,7 @@ describe("schema files", () => {
     assert.ok(schema.required.includes("name"));
     assert.ok(schema.required.includes("inputSchema"));
     assert.ok(schema.required.includes("outputArtifact"));
+    assert.ok(schema.required.includes("outputSchema"));
     assert.equal(schema.properties.inputSchema.properties.type.const, "object");
   });
 

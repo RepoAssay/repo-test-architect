@@ -27,6 +27,7 @@ describe("MCP tool definitions", () => {
       assert.ok(Array.isArray(tool.inputSchema.required));
       assert.equal(typeof tool.outputArtifact.schemaVersion, "string");
       assert.equal(typeof tool.outputArtifact.schemaPath, "string");
+      assert.equal(tool.outputSchema.type, "object");
     }
   });
 
@@ -35,6 +36,7 @@ describe("MCP tool definitions", () => {
       const schema = JSON.parse(fs.readFileSync(tool.outputArtifact.schemaPath, "utf8"));
 
       assert.equal(schema.properties.schemaVersion.const, tool.outputArtifact.schemaVersion);
+      assert.deepEqual(tool.outputSchema, schema);
     }
   });
 

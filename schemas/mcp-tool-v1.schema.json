@@ -9,6 +9,7 @@
     "title",
     "description",
     "outputArtifact",
+    "outputSchema",
     "inputSchema",
     "annotations"
   ],
@@ -43,6 +44,9 @@
         "required": { "type": "array", "items": { "type": "string" } },
         "properties": { "type": "object" }
       }
+    },
+    "outputSchema": {
+      "type": "object"
     },
     "annotations": {
       "type": "object",
