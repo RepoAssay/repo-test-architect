@@ -1,6 +1,6 @@
 export const mcpServerInfo = Object.freeze({
   name: "repo-test-architect",
-  version: "1.0.0-beta.1"
+  version: "1.0.0-beta.2"
 });
 
 export const mcpServerInstructions = [

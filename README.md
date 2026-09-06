@@ -32,6 +32,8 @@ Native test generation is intentionally deferred. `generate_selected_test` retur
 
 Repo Test Architect `1.0.0-beta.1` is available as an opt-in public beta. The unqualified npm command remains on `0.3.0` while the beta is evaluated. Treat its findings as evidence-backed review input rather than an automatic instruction to change a repository. See the [beta release notes](https://github.com/RepoAssay/repo-test-architect/releases/tag/v1.0.0-beta.1).
 
+The repository is preparing `1.0.0-beta.2` with experimental Dart/Flutter support and adapter trust fixes. It is not published yet; see the [beta.2 release notes and validation plan](docs/release-notes-v1.0.0-beta.2.md). The `@beta` commands below continue to select the published version until that release is approved.
+
 ## Install
 
 Node.js 20 or newer is required.

@@ -1,8 +1,14 @@
 # Beta Contract Freeze
 
-Status: `1.0.0-beta.1` candidate prepared on 2026-08-11. Publication is not yet approved.
+Status: `1.0.0-beta.2` candidate prepared on 2026-09-06; publication is not yet approved. Beta.1 was published on August 11. The original freeze review remains the compatibility baseline below.
 
-This review records the public contract proposed for the first beta. Any change to a frozen surface before publication requires an explicit compatibility review and another exact-candidate verification run.
+Any change to a frozen surface requires an explicit compatibility review and another exact-candidate verification run.
+
+## Beta.2 Compatibility Review
+
+Beta.2 retains the CLI and MCP input surfaces, 19 tools, artifact schema versions, configuration contracts and ten bounded supported adapter promises. Experimental Dart/Flutter support is additive: clients must not assume a ten-entry registry. Trust fixes intentionally change affected source ownership, evidence, counts, blockers and verification-command availability without changing artifact schemas. See the [beta.2 notes](release-notes-v1.0.0-beta.2.md) for the user-visible changes and limitations.
+
+Publication remains gated on exact-commit release verification, aligned Registry metadata, channel confirmation and explicit approval. Active validation of the published package, external feedback and the clean observation period remain required for RC readiness; preparation does not waive them.
 
 ## Frozen Candidate Surface
 
@@ -19,7 +25,7 @@ This review records the public contract proposed for the first beta. Any change 
 
 The descriptions for `detect_projects`, `collect_project_stats`, `explain_target`, `generate_test_plan`, `analyze_test_placement`, and `analyze_project_test_placement` now state their intended routing, artifact provenance, outputs, and lack of execution or filesystem side effects.
 
-## Candidate Evidence
+## Historical Beta.1 Candidate Evidence
 
 - complete local suite: 1,362 tests across 105 suites, 0 failures
 - MCP stdio smoke check passed
@@ -28,7 +34,9 @@ The descriptions for `detect_projects`, `collect_project_stats`, `explain_target
 - npm pack dry run passed
 - exact output schemas and structured/text response compatibility have regression coverage
 
-## Publication Gates Still Open
+## Historical Gates At The Beta.1 Preparation Review
+
+The items below record the August 11 preparation snapshot, not current completion claims. Use the [release lifecycle](release-lifecycle.md) and beta.2 notes for the current candidate gates.
 
 - complete the `0.3.0` 14-day release-blocker-free observation period on or after 2026-08-16, or record equivalent evidence for an accelerated decision
 - record the external-feedback cohort or explicitly accept comparable public-alpha evidence in the decision log

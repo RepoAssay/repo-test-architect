@@ -2,6 +2,16 @@
 
 This log records project-level decisions that shape architecture, scope, and public positioning.
 
+# Prepare Beta.2 And An Evidence-Gated RC Review
+
+Decision (2026-09-06): prepare `1.0.0-beta.2` after merging experimental Dart/Flutter support, cross-adapter trust repairs, security dependency updates and the contributor documentation correction. Align npm, runtime MCP, diagnostics and Registry manifest versions. Publication remains a separate owner-approved action under `beta`; do not move `latest`, promote Dart, add another language, or enable native generation.
+
+Rationale: beta.1 was published on August 11, earlier than the old planning windows. The new capability and supported-boundary fixes need a fresh published beta for validation. The merged baseline passes local release checks and PR portability checks, and the repaired ownership cases preserve eighteen pinned audit digests. These facts justify another beta candidate, not a waiver of external feedback or exact-publication-commit verification.
+
+Plan: allow at least fourteen clean days of active beta.2 installation, upgrade, CLI/MCP and real-repository validation from its publication date, with an RC readiness review around September 20–22 if timing and evidence permit. September 22 reaches the default six weeks since beta.1. This updates the old November/December calendar targets without weakening promotion gates. Seek the external cohort or explicitly review comparable evidence; no such waiver is granted by this preparation. A blocker fix resets the clean window, and the formal RC requires at least seven clean days before a separate stable-release approval.
+
+Revisit when: the versioned candidate passes the manually dispatched three-OS release matrix, publication and Registry-channel choices are approved, beta feedback identifies a blocker, or the RC readiness review is due. If the candidate is squash-merged, its publication SHA must receive its own exact-commit checks.
+
 # Prepare The First Beta Candidate Without Pre-Approving Publication
 
 Decision: prepare `1.0.0-beta.1` with aligned npm, runtime MCP, diagnostic, and Official MCP Registry manifest versions; freeze the existing CLI names, 19 MCP tool names, versioned artifact schemas, configuration behavior, and bounded adapter support promises for candidate review. Keep publication under the `beta` tag as a separate owner-approved action after the remaining promotion evidence and exact-commit checks are recorded.
