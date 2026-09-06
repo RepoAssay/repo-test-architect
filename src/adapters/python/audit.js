@@ -152,17 +152,21 @@ function readRepoFiles(root) {
 
   function visit(current) {
     for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
-      if (ignored.has(entry.name)) continue;
+      if (ignored.has(entry.name) || entry.isSymbolicLink()) continue;
 
       const absolute = path.join(current, entry.name);
       const relative = path.relative(root, absolute).replaceAll(path.sep, "/");
 
       if (entry.isDirectory()) {
+        // Keep ownership aligned with the Python markers in project detection.
+        if (["pyproject.toml", "requirements.txt"].some(marker =>
+          fs.lstatSync(path.join(absolute, marker), { throwIfNoEntry: false })?.isFile()
+        )) continue;
         visit(absolute);
         continue;
       }
 
-      if (shouldRead(relative)) {
+      if (entry.isFile() && shouldRead(relative)) {
         files.push({
           path: relative,
           content: fs.readFileSync(absolute, "utf8")
@@ -208,7 +212,7 @@ function detectPytestDiscovery(root, files, repositoryRoot = root) {
   while (isPathInside(resolvedRepositoryRoot, currentDirectory)) {
     for (const [configName, sections] of candidates) {
       const absoluteConfigPath = path.join(currentDirectory, configName);
-      if (!fs.existsSync(absoluteConfigPath) || !fs.statSync(absoluteConfigPath).isFile()) continue;
+      if (!fs.lstatSync(absoluteConfigPath, { throwIfNoEntry: false })?.isFile()) continue;
       const content = fs.readFileSync(absoluteConfigPath, "utf8");
       if (!sections.some((section) => hasStaticConfigSection(content, section))) continue;
       return buildPytestDiscovery(root, absoluteConfigPath, content, sections, true);

@@ -487,9 +487,11 @@ function collectReachableRubySources(testFile, rubyFilesByPath, hasBundledLibrar
 
 function collectLiteralRubyRequires(content) {
   const requirements = [];
-  for (const line of content.split(/\r?\n/)) {
+  const codeLines = maskRubyCommentsAndStrings(content).split(/\r?\n/);
+  for (const [index, line] of content.split(/\r?\n/).entries()) {
     const match = line.match(/^(\s*)(require|require_relative)\s*(?:\(\s*)?(["'])([^"'\\]+)\3\s*\)?\s*(?:#.*)?$/);
     if (!match || match[4].includes("#{")) continue;
+    if (!codeLines[index].trimStart().startsWith(match[2])) continue;
     requirements.push({ kind: match[2], request: match[4], topLevel: match[1].length === 0 });
   }
   return requirements;
@@ -1376,11 +1378,35 @@ function classifySourceFile(file) {
 }
 
 function maskRubyCommentsAndStrings(content) {
-  const characters = [...content];
+  const characters = content.split("");
+  const heredocs = [];
+  const hide = (start, end) => {
+    for (let cursor = start; cursor < end; cursor++) {
+      if (content[cursor] !== "\n" && content[cursor] !== "\r") characters[cursor] = " ";
+    }
+  };
   let state = "code";
   let quote;
   for (let index = 0; index < characters.length; index += 1) {
     const current = characters[index];
+    if (current === "\n" && state !== "string" && heredocs.length) {
+      let cursor = index + 1;
+      for (const { label, indented } of heredocs) {
+        const start = cursor;
+        while (cursor < content.length) {
+          const newline = content.indexOf("\n", cursor);
+          const end = newline < 0 ? content.length : newline + 1;
+          const line = content.slice(cursor, newline < 0 ? content.length : newline).replace(/\r$/, "");
+          cursor = end;
+          if ((indented ? line.trimStart() : line) === label) break;
+        }
+        hide(start, cursor);
+      }
+      heredocs.length = 0;
+      state = "code";
+      index = cursor - 1;
+      continue;
+    }
     if (state === "comment") {
       if (current === "\n" || current === "\r") state = "code";
       else characters[index] = " ";
@@ -1401,7 +1427,21 @@ function maskRubyCommentsAndStrings(content) {
       }
       continue;
     }
-    if (current === "#") {
+    if ((index === 0 || content[index - 1] === "\n") && /^=begin(?:\s|$)/.test(content.slice(index))) {
+      const ending = /^=end(?:[ \t].*)?\r?$/gm;
+      ending.lastIndex = index + 6;
+      const end = ending.exec(content);
+      const stop = end ? end.index + end[0].length : content.length;
+      hide(index, stop);
+      index = stop - 1;
+    } else if (content.startsWith("<<", index)) {
+      const header = /^<<([-~]?)(?:'([A-Za-z_][\w]*)'|"([A-Za-z_][\w]*)"|`([A-Za-z_][\w]*)`|([A-Za-z_][\w]*))/.exec(content.slice(index));
+      if (header) {
+        heredocs.push({ label: header[2] ?? header[3] ?? header[4] ?? header[5], indented: Boolean(header[1]) });
+        hide(index, index + header[0].length);
+        index += header[0].length - 1;
+      }
+    } else if (current === "#") {
       characters[index] = " ";
       state = "comment";
     } else if (current === "'" || current === '"') {

@@ -4,6 +4,36 @@ import os from "node:os";
 import path from "node:path";
 import { describe, it } from "node:test";
 import { auditPythonRepo } from "../src/adapters/python/audit.js";
+import { copyTrustFixture } from "./support/non-code-evidence.js";
+import { testSymlinkOwnership, assertUniqueProjectOwnership } from "./support/ownership-evidence.js";
+
+testSymlinkOwnership("python-pytest-service", auditPythonRepo, "pyproject.toml");
+
+it("does not inherit pytest configuration through a symbolic link", { skip: process.platform === "win32" }, (t) => {
+  const repositoryRoot = copyTrustFixture(t, "python-pytest-service");
+  const external = copyTrustFixture(t, "python-pytest-service");
+  const root = path.join(repositoryRoot, "child");
+  fs.mkdirSync(root);
+  fs.cpSync(path.join(external, "app"), path.join(root, "app"), { recursive: true });
+  fs.writeFileSync(path.join(root, "pyproject.toml"), '[project]\nname = "child"\nversion = "1.0.0"\n');
+  fs.writeFileSync(path.join(external, "pytest.ini"), "[pytest]\ntestpaths = child/checks\npython_files = check_*.py\n");
+  fs.symlinkSync(path.join(external, "pytest.ini"), path.join(repositoryRoot, "pytest.ini"));
+  // Remove the fixture's real parent pytest configuration so only the link could supply it.
+  fs.unlinkSync(path.join(repositoryRoot, "pyproject.toml"));
+  const audit = auditPythonRepo(root, { repositoryRoot });
+  assert.ok(!audit.profile.setupSignals.includes("inherited pytest config"));
+  assert.ok(!audit.profile.existingTestLocations.includes("configured pytest location"));
+});
+for (const marker of ["pyproject.toml", "requirements.txt"]) {
+  it(`assigns nested Python ${marker} projects only to their own audit`, (t) => {
+    const root = copyTrustFixture(t, "python-pytest-service");
+    fs.mkdirSync(path.join(root, "app/child/app"), { recursive: true });
+    fs.writeFileSync(path.join(root, "app/child", marker), marker === "pyproject.toml" ? '[project]\nname = "nested"\nversion = "1.0.0"\n' : "pytest\n");
+    fs.writeFileSync(path.join(root, "app/child/app/foreign.py"), "def foreign(value):\n    if value < 0:\n        return 0\n    return value\n");
+    assert.ok(!auditPythonRepo(root).recommended.some(target => target.path.includes("child/")));
+    assertUniqueProjectOwnership(root, "app/child/app/foreign.py", "app/child", "app/foreign.py");
+  });
+}
 
 const exampleRoot = path.resolve("examples/python-pytest-service");
 const unittestRoot = path.resolve("examples/python-unittest-service");

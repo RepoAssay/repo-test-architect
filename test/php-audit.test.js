@@ -4,6 +4,97 @@ import os from "node:os";
 import path from "node:path";
 import { describe, it } from "node:test";
 import { auditPhpRepo } from "../src/adapters/php/audit.js";
+import { copyTrustFixture, assertNoSemanticEvidence, assertNoPlannedUsage } from "./support/non-code-evidence.js";
+
+it("resolves the PHPUnit base identity instead of accepting any TestCase short name", (t) => {
+  for (const replacement of ["use Acme\\Support\\TestCase;", "", "class TestCase {}"] ) {
+    const root = copyTrustFixture(t, "php-phpunit-basic");
+    const filename = path.join(root, "tests/ParserTest.php");
+    fs.writeFileSync(filename, fs.readFileSync(filename, "utf8").replace("use PHPUnit\\Framework\\TestCase;", replacement));
+    const audit = auditPhpRepo(root);
+    assert.equal(audit.profile.testCommand, undefined);
+    assertNoSemanticEvidence(audit);
+    assertNoPlannedUsage(root);
+  }
+});
+
+it("accepts imported aliases and fully qualified PHPUnit test bases", (t) => {
+  for (const [use, base] of [["use PHPUnit\\Framework\\TestCase as PhpUnitBase;", "PhpUnitBase"], ["", "\\PHPUnit\\Framework\\TestCase"]]) {
+    const root = copyTrustFixture(t, "php-phpunit-basic");
+    const filename = path.join(root, "tests/ParserTest.php");
+    fs.writeFileSync(filename, fs.readFileSync(filename, "utf8").replace("use PHPUnit\\Framework\\TestCase;", use).replace("extends TestCase", `extends ${base}`));
+    const audit = auditPhpRepo(root);
+    assert.ok(audit.profile.testCommand);
+    assert.ok(audit.coveredButRisky.some(target => target.existingTestEvidence.some(evidence => evidence.usage === "asserted")));
+  }
+});
+
+it("resolves PHPUnit and foreign bases in compact same-line import declarations", (t) => {
+  for (const base of ["PHPUnit\\Framework\\TestCase", "Acme\\Support\\TestCase"]) {
+    const root = copyTrustFixture(t, "php-phpunit-basic");
+    const filename = path.join(root, "tests/ParserTest.php");
+    fs.writeFileSync(filename, fs.readFileSync(filename, "utf8").replace("PHPUnit\\Framework\\TestCase", base).replaceAll("\n", " "));
+    const audit = auditPhpRepo(root);
+    assert.equal(Boolean(audit.profile.testCommand), base.startsWith("PHPUnit"));
+    if (base.startsWith("Acme")) assertNoSemanticEvidence(audit);
+  }
+});
+
+it("excludes PHP nowdocs and heredocs from test ownership and evidence", (t) => {
+  for (const [open, close] of [["<<<'DOC'", "DOC;"], ["<<<DOC", "DOC;"], ["<<<\"DOC\"", "  DOC;"], ["<<<'DOC'", ""]]) {
+    const root = copyTrustFixture(t, "php-phpunit-basic");
+    const filename = path.join(root, "tests/ParserTest.php");
+    fs.writeFileSync(filename, `<?php\n$doc = ${open}\n${fs.readFileSync(filename, "utf8")}\n${close}\n`);
+    const audit = auditPhpRepo(root);
+    assert.equal(audit.profile.testCommand, undefined);
+    assertNoSemanticEvidence(audit);
+    assertNoPlannedUsage(root);
+  }
+});
+
+it("does not upgrade PHP evidence using assertion text inside ordinary strings", (t) => {
+  const root = copyTrustFixture(t, "php-phpunit-basic");
+  fs.writeFileSync(path.join(root, "tests/ParserTest.php"), `<?php
+namespace RepoAssay\\PhpPhpunitBasic\\Tests;
+use PHPUnit\\Framework\\TestCase;
+use RepoAssay\\PhpPhpunitBasic\\Parser;
+final class ParserTest extends TestCase {
+    public function testDocumentation(): void {
+        $doc = "self::assertSame('hello', Parser::normalize(' hello '));";
+        self::assertTrue(true);
+    }
+}
+`);
+  assertNoSemanticEvidence(auditPhpRepo(root));
+  assertNoPlannedUsage(root);
+});
+
+it("keeps PHP heredoc contents opaque within a real test and resumes after the terminator", (t) => {
+  const root = copyTrustFixture(t, "php-phpunit-basic");
+  const filename = path.join(root, "tests/ParserTest.php");
+  const original = fs.readFileSync(filename, "utf8");
+  const statement = "self::assertSame('hello', Parser::normalize(' hello '));";
+  for (const opener of ["<<<'DOC'", "<<<DOC", "<<<\"DOC\""]) {
+    const doc = `$doc = ${opener}\n${statement}\n$this->expectException(Parser::class);\nDOC;`;
+    fs.writeFileSync(filename, original.replace(statement, doc + "\nself::assertTrue(true);"));
+    assertNoSemanticEvidence(auditPhpRepo(root));
+    assertNoPlannedUsage(root);
+    fs.writeFileSync(filename, original.replace(statement, doc + "\n" + statement));
+    assert.equal(auditPhpRepo(root).coveredButRisky[0].existingTestEvidence[0].usage, "asserted");
+  }
+});
+
+it("preserves PHP asserted results after URL and comment-marker literals", (t) => {
+  const root = copyTrustFixture(t, "php-phpunit-basic");
+  const filename = path.join(root, "tests/ParserTest.php");
+  const original = fs.readFileSync(filename, "utf8");
+  fs.writeFileSync(filename, original.replace("self::assertSame('hello', Parser::normalize(' hello '));", `
+        $url = "https://example.test/#fragment";
+        $comment = '/* not a comment */';
+        $result = Parser::normalize(' hello ');
+        self::assertSame('hello', $result);`));
+  assert.equal(auditPhpRepo(root).coveredButRisky[0].existingTestEvidence[0].usage, "asserted");
+});
 
 describe("PHP adapter", () => {
   it("audits the bounded Composer and PHPUnit fixture", () => {

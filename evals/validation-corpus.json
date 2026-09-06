@@ -607,7 +607,7 @@
             "projectRoot": "."
           },
           "supportBoundary": "Large Gradle/Java framework with bounded Spock features alongside explicit advanced Spock and TestNG blockers.",
-          "reportPath": "docs/kotlin-jvm-validation-hunt-report.md",
+          "reportPath": "docs/lexical-evidence-hardening-2026-09.md",
           "scorecard": {
             "detection": "pass",
             "ownership": "pass",
@@ -619,17 +619,19 @@
           },
           "observed": {
             "testCommand": "./gradlew test",
-            "untestedCandidates": 186,
-            "coveredButRisky": 164,
+            "untestedCandidates": 187,
+            "coveredButRisky": 163,
             "skippedTargets": 303,
-            "auditDurationMs": 873,
+            "auditDurationMs": 1519,
             "auditDurationSamplesMs": [
-              995,
-              870,
-              873
+              1619,
+              1524,
+              1509,
+              1519,
+              1512
             ],
-            "evidenceRelationshipCount": 701,
-            "canonicalAuditSha256": "b59f75df14066e2a85b6b40c5248fb38b79dd1e03183a00cc8e56bd900c42468"
+            "evidenceRelationshipCount": 687,
+            "canonicalAuditSha256": "53053cd8103b7ff7678102addfd9743f3f1ab16984128cdbb6640ddd1536be4b"
           }
         },
         {
@@ -641,7 +643,7 @@
             "projectRoot": "."
           },
           "supportBoundary": "Multi-level literal Maven reactor with dependency-qualified cross-module evidence and nested integration-test fixtures kept outside root ownership.",
-          "reportPath": "docs/kotlin-jvm-validation-hunt-report.md",
+          "reportPath": "docs/lexical-evidence-hardening-2026-09.md",
           "scorecard": {
             "detection": "pass",
             "ownership": "pass",
@@ -653,17 +655,19 @@
           },
           "observed": {
             "testCommand": "mvn test",
-            "untestedCandidates": 27,
-            "coveredButRisky": 139,
+            "untestedCandidates": 25,
+            "coveredButRisky": 141,
             "skippedTargets": 137,
-            "auditDurationMs": 556,
+            "auditDurationMs": 752,
             "auditDurationSamplesMs": [
-              666,
-              556,
-              551
+              834,
+              752,
+              750,
+              747,
+              759
             ],
-            "evidenceRelationshipCount": 356,
-            "canonicalAuditSha256": "c90f9bc99449f0f445ef11da29b48353b9ede6056b85d721f4aa2f65c1450127"
+            "evidenceRelationshipCount": 359,
+            "canonicalAuditSha256": "382aac35a309469eaaab9c786ab32938502262928363a5c6b96d238024388857"
           }
         }
       ]
@@ -716,7 +720,7 @@
             "projectRoot": "."
           },
           "supportBoundary": "Service-shaped Composer library whose root Make test target declares HTTP-service orchestration, with bare PHPUnit safely withheld and bounded direct class evidence retained.",
-          "reportPath": "docs/php-guzzle-validation-report.md",
+          "reportPath": "docs/lexical-evidence-hardening-2026-09.md",
           "scorecard": {
             "detection": "pass",
             "ownership": "pass",
@@ -731,16 +735,16 @@
             "untestedCandidates": 12,
             "coveredButRisky": 39,
             "skippedTargets": 17,
-            "auditDurationMs": 83,
+            "auditDurationMs": 85,
             "auditDurationSamplesMs": [
-              150,
-              83,
-              84,
-              80,
-              78
+              131,
+              92,
+              85,
+              82,
+              83
             ],
             "evidenceRelationshipCount": 112,
-            "canonicalAuditSha256": "811dc21693ec59668391c4590d446ec7ebf13fd4dd08193b4d181c3813abfae1"
+            "canonicalAuditSha256": "9fa91f7a22224fa178330cc5e49492a040b03fb4c2e21bbbfeb358996fd08fba"
           }
         },
         {

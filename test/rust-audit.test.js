@@ -4,6 +4,19 @@ import os from "node:os";
 import path from "node:path";
 import { describe, it } from "node:test";
 import { auditRustRepo } from "../src/adapters/rust/audit.js";
+import { copyTrustFixture } from "./support/non-code-evidence.js";
+import { assertUniqueProjectOwnership } from "./support/ownership-evidence.js";
+
+for (const nestedRoot of ["src", "src/child"]) {
+  it(`does not absorb the nested Cargo package at ${nestedRoot}`, (t) => {
+    const root = copyTrustFixture(t, "rust-cargo-basic");
+    fs.mkdirSync(path.join(root, nestedRoot, "src"), { recursive: true });
+    fs.writeFileSync(path.join(root, nestedRoot, "Cargo.toml"), '[package]\nname = "nested"\nversion = "0.1.0"\nedition = "2021"\n');
+    fs.writeFileSync(path.join(root, nestedRoot, "src/lib.rs"), "pub fn nested(value: i32) -> i32 { if value < 0 { 0 } else { value } }\n");
+    assert.ok(!auditRustRepo(root).recommended.some(target => target.path === `${nestedRoot}/src/lib.rs`));
+    assertUniqueProjectOwnership(root, `${nestedRoot}/src/lib.rs`, nestedRoot, "src/lib.rs");
+  });
+}
 
 describe("Rust audit adapter", () => {
   it("audits a bounded Cargo package with inline and integration test evidence", () => {

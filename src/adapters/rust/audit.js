@@ -140,7 +140,7 @@ function readRepoFiles(root) {
       const relative = normalizePath(path.relative(root, absolute));
       if (entry.isSymbolicLink()) continue;
       if (entry.isDirectory()) {
-        if (current !== root && fs.existsSync(path.join(absolute, "Cargo.toml"))) continue;
+        if (fs.lstatSync(path.join(absolute, "Cargo.toml"), { throwIfNoEntry: false })?.isFile()) continue;
         visit(absolute);
       } else if (relative.endsWith(".rs") || relative === "Cargo.toml") {
         files.push({ path: relative, content: fs.readFileSync(absolute, "utf8") });

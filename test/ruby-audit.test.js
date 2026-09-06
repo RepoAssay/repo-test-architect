@@ -4,6 +4,46 @@ import os from "node:os";
 import path from "node:path";
 import { describe, it } from "node:test";
 import { auditRubyRepo } from "../src/adapters/ruby/audit.js";
+import { copyTrustFixture, assertNoSemanticEvidence, assertNoPlannedUsage } from "./support/non-code-evidence.js";
+
+it("excludes Ruby block comments and heredocs from runnable tests and evidence", (t) => {
+  for (const wrap of [s => `=begin\n${s}\n=end\n`, s => `=begin notes\n${s}\n=end notes\n`,
+    s => `doc = <<~'DOC'\n${s}\nDOC\n`, s => `doc = <<-DOC\n${s}\n  DOC\n`,
+    s => `doc = <<"DOC"\n${s}\nDOC\n`, s => `doc = <<DOC\n${s}\nDOC\n`,
+    s => `=begin\n${s}`, s => `doc = <<'DOC'\n${s}`]) {
+    const root = copyTrustFixture(t, "ruby-minitest-basic");
+    const filename = path.join(root, "test/parser_test.rb");
+    fs.writeFileSync(filename, wrap(fs.readFileSync(filename, "utf8")));
+    const audit = auditRubyRepo(root);
+    assert.equal(audit.profile.testCommand, undefined);
+    assertNoSemanticEvidence(audit);
+    assertNoPlannedUsage(root);
+  }
+});
+
+it("preserves Ruby tests after queued heredocs and does not invent a commented Rake task", (t) => {
+  const root = copyTrustFixture(t, "ruby-minitest-basic");
+  const filename = path.join(root, "test/parser_test.rb");
+  fs.writeFileSync(filename, `docs = [<<'ONE', <<~TWO]\nnot code\nONE\n  not code either\n  TWO\n${fs.readFileSync(filename, "utf8")}`);
+  const rakefile = path.join(root, "Rakefile");
+  fs.writeFileSync(rakefile, `=begin\n${fs.readFileSync(rakefile, "utf8")}\n=end\n`);
+  const audit = auditRubyRepo(root);
+  assert.ok(audit.coveredButRisky.some(target => target.existingTestEvidence.some(e => e.usage === "asserted")));
+  assert.ok(!audit.profile.testCommand.includes("rake"));
+});
+
+it("does not follow a Ruby require embedded in a heredoc or block comment", (t) => {
+  for (const wrap of [s => `=begin\n${s}\n=end\n`, s => `doc = <<~'DOC'\n${s}\nDOC\n`]) {
+    const root = createRubyRepo(t, {
+      Gemfile: 'source "https://rubygems.org"\ngem "minitest"\n',
+      "lib/parser.rb": "class Parser\n  def self.parse(value)\n    value.strip\n  end\nend\n",
+      "test/parser_test.rb": wrap('require_relative "../lib/parser"') +
+        'require "minitest/autorun"\nclass ParserTest < Minitest::Test\n  def test_parse\n    assert_equal "x", Parser.parse(" x ")\n  end\nend\n'
+    });
+    assertNoSemanticEvidence(auditRubyRepo(root));
+    assertNoPlannedUsage(root);
+  }
+});
 
 describe("Ruby audit adapter", () => {
   it("audits the conventional Bundler and Minitest fixture", () => {
