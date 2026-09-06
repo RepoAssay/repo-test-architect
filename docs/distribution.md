@@ -19,7 +19,7 @@ Remote hosting and an MCPB bundle are not part of the first release.
 - MCP Registry server: `io.github.RepoAssay/repo-test-architect`
 - GitHub repository: `https://github.com/repoassay/repo-test-architect`
 
-The GitHub repository is public. Version `0.3.0` is the current public alpha on npm and in the official MCP Registry under the locked identities above.
+The GitHub repository is public. Version `0.3.0` remains the default public alpha under npm `latest`; `1.0.0-beta.2` is the opt-in npm `beta` and the latest Official MCP Registry metadata version. See the [publication ledger](distribution-metrics.md#beta2-publication--2026-09-06).
 
 ## Repository Protection
 
@@ -60,11 +60,22 @@ Local automation cannot perform account authentication or replace release-owner 
 1. Confirm the GitHub repository is public.
 2. Authenticate npm and re-check package-name availability.
 3. Verify the copyright owner in `LICENSE`.
-4. Approve and run `npm publish --access public`.
+4. Approve and run publication with the explicit stage tag (for a beta: `npm publish --access public --tag beta --ignore-scripts`). Never omit the prerelease tag and accidentally move `latest`.
 5. Authenticate `mcp-publisher` with the intended GitHub identity.
 6. Approve and publish to the official MCP Registry.
 
 The first npm and MCP Registry publication is complete. Until the deferred OIDC workflow below is implemented and proven, future npm and `mcp-publisher` authentication still require the release owner. Treat both publications as irreversible release events, and always run `npm run release:check` and `npm run distribution:check:publish` against the exact commit and version first.
+
+## Registry Login Troubleshooting
+
+The September 6 beta.2 publication reproduced two separate authentication failures with official `mcp-publisher` 1.8.1:
+
+- An expired Registry JWT returned 401 after waiting for CI. Authenticate immediately before publication; a successful earlier login does not guarantee the credential is still valid.
+- Browser GitHub OAuth returned 403 and granted only `io.github.m-stenbe/*`, despite GitHub confirming active RepoAssay owner (`admin`) membership and public membership visibility. Making membership public again was not the remedy.
+
+The successful workaround was the official publisher's `login github --token` route using the already authenticated GitHub CLI credential, which had `read:org` access. Credential retrieval and transfer stayed local/in memory; no credential value was printed, committed, or added to Actions secrets, and no new token or organization permission was created. Keep shell tracing disabled and avoid logging subprocess arguments or exceptions containing credentials. Use only the official publisher and intended Registry endpoint. Re-run publication immediately, then query the exact server name/version and verify its active status and matching npm metadata. See the [official CLI authentication reference](https://github.com/modelcontextprotocol/registry/blob/main/docs/reference/cli/commands.md).
+
+This is a diagnostic fallback for an existing authorized owner session, not a reason to create a broad personal access token or change membership visibility blindly. If that session lacks the necessary access, have an authorized organization owner authenticate. OIDC automation remains a separate decision below.
 
 ## Deferred OIDC Release Automation
 

@@ -9,11 +9,11 @@ Dates are planning targets, not promises. Readiness evidence controls promotion.
 | Stage | Version line and npm tag | Planning window | Default observation period |
 | --- | --- | --- | --- |
 | Public alpha | `0.x`, still published as `latest` until deliberate stable promotion | Public since July 24, 2026; `0.3.0` remains the default install | Historical alpha evidence remains part of promotion review |
-| Beta | `1.0.0-beta.N`, published under `beta` and optionally `next` | Beta.1 published August 11; beta.2 preparation approved September 6 | At least six weeks of beta use, including at least fourteen clean validation days after beta.2 publication |
+| Beta | `1.0.0-beta.N`, published under `beta` and optionally `next` | Beta.1 published August 11; beta.2 published September 6 | At least six weeks of beta use, including at least fourteen clean validation days after beta.2 publication |
 | Release candidate | `1.0.0-rc.N`, published under `rc` and `next` | Readiness review around September 20–22, subject to publication timing and all beta gates | At least seven clean days for the final candidate |
 | Stable | `1.0.0`, promoted to `latest` | After the final RC clean period and explicit approval; no committed date | No calendar deadline; every stable gate must pass |
 
-The September 6 [decision-log entry](decision-log.md#prepare-beta2-and-an-evidence-gated-rc-review) updates the earlier November/December planning targets, not the promotion gates. September 22 is six weeks after beta.1 publication. Start beta.2's clean period at publication, not at preparation or merge; later publication or a blocker fix moves the RC review later. Preparing beta.2 does not approve publishing it or waive external-feedback evidence.
+The September 6 [planning decision](decision-log.md#prepare-beta2-and-an-evidence-gated-rc-review) updates the earlier November/December targets, not the promotion gates. The subsequent [publication decision](decision-log.md#publish-beta2-without-promoting-the-default-channel) starts beta.2's clean period on September 6 at 10:20 UTC, making September 20 at 10:20 UTC the earliest fourteen-day point if no blocker intervenes. September 22 is six weeks after beta.1 publication. A blocker fix moves the review later; publication does not waive external-feedback evidence.
 
 The observation periods are defaults rather than contractual waiting periods. The release owners can shorten one when equivalent evidence already exists, but should document why the smaller window still gives enough confidence. A release-blocking correctness or security defect resets the clean period for the affected beta or release candidate.
 
