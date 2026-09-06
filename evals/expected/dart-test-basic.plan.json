@@ -1,0 +1,61 @@
+{
+  "schemaVersion": "plan/v1",
+  "summary": {
+    "confidence": "medium",
+    "verificationCommand": "dart test",
+    "blockerCount": 0,
+    "addTestCount": 1,
+    "extendTestCount": 1,
+    "deferredCount": 0
+  },
+  "blockers": [],
+  "items": [
+    {
+      "id": "extend-test:lib/price.dart",
+      "action": "extend-test",
+      "targetId": "lib/price.dart",
+      "target": "price",
+      "path": "lib/price.dart",
+      "testLevel": "unit",
+      "priority": 6,
+      "riskReductionScore": 8,
+      "maintenanceCost": 2,
+      "rationale": [
+        "Conditional or error-handling behavior merits focused tests.",
+        "A conventional test entrypoint imports this library; execution and assertions are not proven."
+      ],
+      "sourceSignals": [
+        "branching-logic",
+        "matching-test"
+      ],
+      "existingTestPaths": [
+        "test/price_test.dart"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "test/price_test.dart",
+          "kind": "package-entry-import",
+          "strength": "referenced"
+        }
+      ]
+    },
+    {
+      "id": "add-test:lib/shipping.dart",
+      "action": "add-test",
+      "targetId": "lib/shipping.dart",
+      "target": "shipping",
+      "path": "lib/shipping.dart",
+      "testLevel": "unit",
+      "priority": 6,
+      "riskReductionScore": 8,
+      "maintenanceCost": 2,
+      "rationale": [
+        "Conditional or error-handling behavior merits focused tests."
+      ],
+      "sourceSignals": [
+        "branching-logic"
+      ],
+      "existingTestPaths": []
+    }
+  ]
+}

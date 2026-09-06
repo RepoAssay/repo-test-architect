@@ -39,6 +39,7 @@ Runtime adapter registration lives in `src/core/adapter-registry.js`.
 
 Currently registered adapters are:
 
+- `dart` as an experimental adapter for conventional Dart and Flutter pubspec packages, static library-import evidence, and bounded native test commands; see [Dart and Flutter support](dart-support.md)
 - `csharp` as a supported bounded adapter for one static SDK-style .NET test project or one unique literal production/test project edge, including exact literal multi-target membership, finite project-local target-conditioned package predicates, a selected pair amid unrelated projects, bounded nearest-file `Directory.Build.props` metadata, and static `Directory.Packages.props` versions, using xUnit, NUnit, or MSTest and bounded by the [C# alpha support matrix](csharp-alpha-support.md)
 - `elixir` as a supported bounded adapter for one conventional Mix application with literal app/path ownership and conventional ExUnit tests, bounded by [Elixir alpha support](elixir-alpha-support.md)
 - `javascript` for the JavaScript ecosystem, covering JavaScript and TypeScript repositories

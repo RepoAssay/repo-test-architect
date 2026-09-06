@@ -19,12 +19,12 @@ describe("adapter validation corpus", () => {
 
     const result = validateValidationCorpus(corpus);
     assert.deepEqual(result.errors, []);
-    assert.equal(result.adapterCount, 10);
+    assert.equal(result.adapterCount, 11);
     assert.equal(result.supportedAdapterCount, 10);
-    assert.equal(result.experimentalAdapterCount, 0);
-    assert.equal(result.caseCount, 30);
+    assert.equal(result.experimentalAdapterCount, 1);
+    assert.equal(result.caseCount, 33);
     assert.deepEqual(result.scorecardCounts, {
-      pass: 210,
+      pass: 231,
       fail: 0,
       pending: 0
     });
@@ -72,7 +72,7 @@ describe("adapter validation corpus", () => {
     const stagedResult = validateValidationCorpus(stagedExperimental, { adapters: stagedRegistry });
     assert.deepEqual(stagedResult.errors, []);
     assert.equal(stagedResult.supportedAdapterCount, 9);
-    assert.equal(stagedResult.experimentalAdapterCount, 1);
+    assert.equal(stagedResult.experimentalAdapterCount, 2);
 
     const missingSupported = structuredClone(corpus);
     missingSupported.adapters = missingSupported.adapters.filter((adapter) => adapter.adapterId !== "csharp");

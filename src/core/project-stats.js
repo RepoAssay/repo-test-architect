@@ -4,6 +4,8 @@ import { classifyProjectAuditCoverage } from "./project-audit-coverage.js";
 import { validateProjectAudits } from "./project-audits-validation.js";
 
 const IGNORED_DIRECTORIES = new Set([
+  ".dart_tool",
+  ".pub-cache",
   ".build",
   "_build",
   ".git",
@@ -25,6 +27,7 @@ const IGNORED_DIRECTORIES = new Set([
 ]);
 
 const LANGUAGE_EXTENSIONS = new Map([
+  ["dart", [".dart"]],
   ["csharp", [".cs"]],
   ["elixir", [".ex", ".exs"]],
   ["go", [".go"]],
@@ -196,7 +199,7 @@ function countProjectSourceFiles(repoRoot, projectRoot, languages, coverageKey, 
     .map((candidate) => path.resolve(repoRoot, candidate))
     .filter((candidate) => candidate.startsWith(`${absoluteProjectRoot}${path.sep}`)));
 
-  for (const filePath of collectSourceFilePaths(absoluteProjectRoot, nestedProjectRoots)) {
+  for (const filePath of collectSourceFilePaths(absoluteProjectRoot, nestedProjectRoots, languages.includes("dart"))) {
     const language = detectSourceLanguage(filePath, languages);
     if (!language) continue;
 
@@ -210,14 +213,16 @@ function countProjectSourceFiles(repoRoot, projectRoot, languages, coverageKey, 
   return stats;
 }
 
-function collectSourceFilePaths(root, excludedRoots) {
+function collectSourceFilePaths(root, excludedRoots, includeDartBin = false) {
   const files = [];
 
   function visit(current) {
     for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
+      if (includeDartBin && entry.isSymbolicLink()) continue;
       if (entry.isDirectory()) {
         const absolute = path.join(current, entry.name);
-        if (!IGNORED_DIRECTORIES.has(entry.name) && !excludedRoots.has(absolute)) {
+        const isDartBin = includeDartBin && current === root && entry.name === "bin";
+        if ((!IGNORED_DIRECTORIES.has(entry.name) || isDartBin) && !excludedRoots.has(absolute)) {
           visit(absolute);
         }
         continue;

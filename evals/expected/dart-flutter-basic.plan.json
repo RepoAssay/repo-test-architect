@@ -1,0 +1,42 @@
+{
+  "schemaVersion": "plan/v1",
+  "summary": {
+    "confidence": "medium",
+    "verificationCommand": "flutter test",
+    "blockerCount": 0,
+    "addTestCount": 0,
+    "extendTestCount": 1,
+    "deferredCount": 0
+  },
+  "blockers": [],
+  "items": [
+    {
+      "id": "extend-test:lib/total_label.dart",
+      "action": "extend-test",
+      "targetId": "lib/total_label.dart",
+      "target": "total_label",
+      "path": "lib/total_label.dart",
+      "testLevel": "component",
+      "priority": 0,
+      "riskReductionScore": 5,
+      "maintenanceCost": 5,
+      "rationale": [
+        "Handwritten Dart behavior can be tested at its library boundary.",
+        "A conventional test entrypoint imports this library; execution and assertions are not proven."
+      ],
+      "sourceSignals": [
+        "matching-test"
+      ],
+      "existingTestPaths": [
+        "test/total_label_test.dart"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "test/total_label_test.dart",
+          "kind": "direct-relative-import",
+          "strength": "direct"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,177 @@
+{
+  "capturedOn": "2026-09-06",
+  "sdk": {
+    "flutter": "3.47.2",
+    "dart": "3.13.2",
+    "flutterCommit": "d3b14c876900e553bc736ca19295fc09e3853e8e",
+    "platform": "macOS arm64"
+  },
+  "cases": [
+    {
+      "name": "collection",
+      "projectRoot": "pkgs/collection",
+      "observed": {
+        "testCommand": "dart test",
+        "untestedCandidates": 8,
+        "coveredButRisky": 20,
+        "skippedTargets": 1,
+        "auditDurationMs": 27,
+        "auditDurationSamplesMs": [
+          56,
+          33,
+          27,
+          26,
+          27
+        ],
+        "evidenceRelationshipCount": 380,
+        "canonicalAuditSha256": "8b5b6c82cc4629c4c6b9fe9b58540ef448965089735b5a0ec82205f4049acbe1"
+      },
+      "blockers": [],
+      "downstream": "pass",
+      "projectCount": 1,
+      "analysisSchema": "repository-analysis/v1",
+      "evidenceStrengths": {
+        "referenced": 1,
+        "indirect": 379
+      },
+      "top": [
+        "lib/src/algorithms.dart",
+        "lib/src/boollist.dart",
+        "lib/src/canonicalized_map.dart"
+      ],
+      "repository": "https://github.com/dart-lang/core",
+      "commit": "0fbe0cc3f18fe38aebea272f1ae22e5d1649285c",
+      "native": {
+        "command": "dart test",
+        "exitCode": 0,
+        "passedTests": 1784
+      }
+    },
+    {
+      "name": "compass",
+      "projectRoot": "compass_app/app",
+      "observed": {
+        "testCommand": "flutter test",
+        "untestedCandidates": 43,
+        "coveredButRisky": 40,
+        "skippedTargets": 28,
+        "auditDurationMs": 22,
+        "auditDurationSamplesMs": [
+          27,
+          23,
+          22,
+          22,
+          21
+        ],
+        "evidenceRelationshipCount": 66,
+        "canonicalAuditSha256": "fe798771650db9ffbc936395c12fc8a18532cbf6b6f2d9089a440329ceea1136"
+      },
+      "blockers": [],
+      "downstream": "pass",
+      "projectCount": 8,
+      "analysisSchema": "repository-analysis/v1",
+      "evidenceStrengths": {
+        "referenced": 66
+      },
+      "top": [
+        "lib/ui/activities/view_models/activities_viewmodel.dart",
+        "lib/data/repositories/activity/activity_repository_local.dart",
+        "lib/data/repositories/activity/activity_repository_remote.dart"
+      ],
+      "repository": "https://github.com/flutter/samples",
+      "commit": "463e365e4842f252ffab9c6198594a504d69469f",
+      "native": {
+        "command": "flutter test",
+        "exitCode": 0,
+        "passedTests": 67
+      }
+    },
+    {
+      "name": "bloc",
+      "projectRoot": "packages/bloc",
+      "observed": {
+        "testCommand": "dart test",
+        "untestedCandidates": 0,
+        "coveredButRisky": 5,
+        "skippedTargets": 3,
+        "auditDurationMs": 6,
+        "auditDurationSamplesMs": [
+          8,
+          6,
+          6,
+          5,
+          5
+        ],
+        "evidenceRelationshipCount": 30,
+        "canonicalAuditSha256": "c73f49ffeb9dab36e6cc8e4f525bd51b1c6425bc6c2130c489d49975fc974a6b"
+      },
+      "blockers": [],
+      "downstream": "pass",
+      "projectCount": 1,
+      "analysisSchema": "repository-analysis/v1",
+      "evidenceStrengths": {
+        "indirect": 30
+      },
+      "top": [
+        "lib/src/bloc.dart",
+        "lib/src/bloc_observer.dart",
+        "lib/src/change.dart"
+      ],
+      "repository": "https://github.com/felangel/bloc",
+      "commit": "8fcf54dfea7ba51ef04c091d1a27e0da498b29f0",
+      "native": {
+        "command": "dart test",
+        "exitCode": 0,
+        "passedTests": 119
+      }
+    },
+    {
+      "name": "flutter-bloc",
+      "projectRoot": "packages/flutter_bloc",
+      "observed": {
+        "testCommand": "flutter test",
+        "untestedCandidates": 0,
+        "coveredButRisky": 9,
+        "skippedTargets": 1,
+        "auditDurationMs": 6,
+        "auditDurationSamplesMs": [
+          6,
+          6,
+          5,
+          5,
+          6
+        ],
+        "evidenceRelationshipCount": 81,
+        "canonicalAuditSha256": "48766edb164a5fd05f2694aa0198f8404046d2a6ede9b731e1a7902c9e2099e4"
+      },
+      "blockers": [],
+      "downstream": "pass",
+      "projectCount": 2,
+      "analysisSchema": "repository-analysis/v1",
+      "evidenceStrengths": {
+        "indirect": 81
+      },
+      "top": [
+        "lib/src/bloc_listener.dart",
+        "lib/src/bloc_provider.dart",
+        "lib/src/repository_provider.dart"
+      ],
+      "repository": "https://github.com/felangel/bloc",
+      "commit": "8fcf54dfea7ba51ef04c091d1a27e0da498b29f0",
+      "native": {
+        "command": "flutter test",
+        "exitCode": 0,
+        "passedTests": 94
+      }
+    }
+  ],
+  "fixtures": {
+    "dartTestBasic": "passed",
+    "dartFlutterBasic": "passed"
+  },
+  "adapterCoverage": {
+    "lines": 100,
+    "branches": 98.04,
+    "functions": 100
+  }
+}

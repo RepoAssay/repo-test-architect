@@ -144,6 +144,47 @@ No new attributable external-use evidence was recorded in the repository by this
 
 The publication rollout has produced real directory exposure—most visibly 628 mcp.so listing views—and continued npm activity. It has not yet produced a measured conversion to an install, repository visit attributed to a directory, issue, star, or completed feedback loop.
 
+## Pre-release Snapshot — 2026-09-06
+
+Captured on 2026-09-06 using the authenticated GitHub traffic API and npm downloads API. [Machine-readable capture](metrics/2026-09-06.json) preserves the daily series, reported counters, referrers, popular paths, and npm tags. Previous snapshots remain unchanged.
+
+### npm
+
+| Fixed window | Downloads reported |
+| --- | ---: |
+| First publication, 2026-07-24 through 2026-09-05 | 1,390 |
+| Trailing 30 calendar days, 2026-08-07 through 2026-09-05 | 661 |
+| Prior week, 2026-08-23 through 2026-08-29 | 141 |
+| Latest week, 2026-08-30 through 2026-09-05 | 76 |
+| Since baseline day, 2026-08-05 through 2026-09-05 | 700 |
+
+The latest reported week is down 65 downloads (46.1%) from the preceding week. The API returns entries through September 5, including zero on September 3 and low counts on September 4–5; reporting completeness cannot be independently confirmed, so these are capture-time values subject to late revisions. Downloads cannot identify unique people, successful MCP starts, or alpha-versus-beta usage. [npm daily source](https://api.npmjs.org/downloads/range/2026-07-24:2026-09-05/repo-test-architect).
+
+Live npm metadata reports `latest: 0.3.0` and `beta: 1.0.0-beta.1`. No stable version is published. [Package metadata](https://registry.npmjs.org/repo-test-architect).
+
+### GitHub
+
+The reported 14-day window is August 23 through September 5:
+
+| Measure | Total | Unique |
+| --- | ---: | ---: |
+| Repository views | 18 | 6 |
+| Repository clones | 74 | 32 |
+| LinkedIn referrer views | 7 | 2 |
+| Glama referrer views | 4 | 1 |
+
+Public counters are 0 stars, 1 fork, and 0 subscribers. The repository API's `open_issues_count: 3` comprises three open pull requests and zero open issues: two Dependabot dependency updates and [PR #271](https://github.com/RepoAssay/repo-test-architect/pull/271), an external documentation-link correction. That contribution is community activity, not a confirmed product-use feedback loop. [Repository](https://github.com/RepoAssay/repo-test-architect).
+
+Glama now appears as a measured referral source: four views from one unique visitor, versus no directory referrals in the August 11 snapshot. This establishes referral traffic only. The GitHub clone and viewer totals remain automation-sensitive; daily unique counts are not summed into arbitrary-window users.
+
+### Directory and external-use evidence
+
+The [mcp.so listing](https://mcp.so/servers/repo-test-architect) remains public with Verified and Featured labels and beta install instructions. Its fetched page exposes no current views/install counter; the historical 628 views must not be carried forward as a current measurement. The [Glama listing](https://glama.ai/mcp/servers/RepoAssay/repo-test-architect) is public; its previously used API endpoint now returns HTTP 401, so no current listing-native usage number is recorded. Neither directory's display substitutes for npm or successful-start metrics.
+
+No new attributable successful starts, external repository audits, or completed product feedback loops were established by this refresh. The ledger therefore still has 0 recorded external users, 0 recorded external repositories, 0 completed feedback loops, and 0 issue-backed adapter requests. The external pull request and fork remain separate evidence. Other directory/Registry statuses above are historical snapshots, not reverified September 6 claims.
+
+The usage record is now current, but these counters alone do not establish stable-release readiness. The [release checklist](release-checklist.md) and the documented Dart support boundary still govern the release review.
+
 ## mcp.so Paid-Placement Baseline
 
 The mcp.so submission page displayed the following self-reported site-level marketing metrics on 2026-08-04:

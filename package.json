@@ -30,6 +30,8 @@
     "examples/",
     "!examples/**/vendor/**",
     "!examples/**/.phpunit.result.cache",
+    "!examples/**/.dart_tool/**",
+    "!examples/**/.pub-cache/**",
     "schemas/",
     "scripts/",
     "src/"
@@ -125,6 +127,8 @@
     "corpus:measure": "node ./scripts/measure-validation-corpus.js",
     "adapter:coverage:check": "node ./scripts/check-adapter-coverage.js",
     "csharp:performance:check": "node ./scripts/check-csharp-performance.js",
+    "dart:performance:check": "node ./scripts/check-dart-performance.js",
+    "dart:native:check": "node ./scripts/check-dart-native-fixtures.js",
     "elixir:performance:check": "node ./scripts/check-elixir-performance.js",
     "elixir:native:check": "node ./scripts/check-elixir-native-fixture.js",
     "go:performance:check": "node ./scripts/check-go-performance.js",
@@ -160,7 +164,8 @@
   "license": "MIT",
   "dependencies": {
     "@lezer/go": "^1.0.1",
-    "@modelcontextprotocol/sdk": "^1.29.0"
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "yaml": "^2.9.0"
   },
   "overrides": {
     "@hono/node-server": "^2.0.11"

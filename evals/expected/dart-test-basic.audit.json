@@ -1,0 +1,147 @@
+{
+  "schemaVersion": "audit/v1",
+  "profile": {
+    "root": "<fixture>",
+    "languages": [
+      "dart"
+    ],
+    "packageManagers": [
+      "pub"
+    ],
+    "testFrameworks": [
+      "dart-test"
+    ],
+    "architectures": [
+      "dart-package"
+    ],
+    "testCommand": "dart test",
+    "detectedConventions": [
+      "Dart lib/ and bin/ source ownership",
+      "Conventional test/*_test.dart entrypoints",
+      "Static library imports are reachability evidence only"
+    ],
+    "existingTestLocations": [
+      "test"
+    ],
+    "setupSignals": [
+      "pubspec.yaml"
+    ],
+    "confidence": "medium",
+    "blockers": []
+  },
+  "untestedCandidates": [
+    {
+      "id": "lib/shipping.dart",
+      "name": "shipping",
+      "path": "lib/shipping.dart",
+      "kind": "module",
+      "signals": [
+        "branching-logic"
+      ],
+      "risk": "high",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 8,
+      "maintenanceCost": 2,
+      "reasons": [
+        "Conditional or error-handling behavior merits focused tests."
+      ],
+      "existingTestPaths": []
+    }
+  ],
+  "coveredButRisky": [
+    {
+      "id": "lib/price.dart",
+      "name": "price",
+      "path": "lib/price.dart",
+      "kind": "module",
+      "signals": [
+        "branching-logic",
+        "matching-test"
+      ],
+      "risk": "high",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 8,
+      "maintenanceCost": 2,
+      "reasons": [
+        "Conditional or error-handling behavior merits focused tests.",
+        "A conventional test entrypoint imports this library; execution and assertions are not proven."
+      ],
+      "existingTestPaths": [
+        "test/price_test.dart"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "test/price_test.dart",
+          "kind": "package-entry-import",
+          "strength": "referenced"
+        }
+      ]
+    }
+  ],
+  "recommended": [
+    {
+      "id": "lib/price.dart",
+      "name": "price",
+      "path": "lib/price.dart",
+      "kind": "module",
+      "signals": [
+        "branching-logic",
+        "matching-test"
+      ],
+      "risk": "high",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 8,
+      "maintenanceCost": 2,
+      "reasons": [
+        "Conditional or error-handling behavior merits focused tests.",
+        "A conventional test entrypoint imports this library; execution and assertions are not proven."
+      ],
+      "existingTestPaths": [
+        "test/price_test.dart"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "test/price_test.dart",
+          "kind": "package-entry-import",
+          "strength": "referenced"
+        }
+      ]
+    },
+    {
+      "id": "lib/shipping.dart",
+      "name": "shipping",
+      "path": "lib/shipping.dart",
+      "kind": "module",
+      "signals": [
+        "branching-logic"
+      ],
+      "risk": "high",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 8,
+      "maintenanceCost": 2,
+      "reasons": [
+        "Conditional or error-handling behavior merits focused tests."
+      ],
+      "existingTestPaths": []
+    }
+  ],
+  "skipped": [
+    {
+      "id": "lib/checkout_rules.dart",
+      "name": "checkout_rules",
+      "path": "lib/checkout_rules.dart",
+      "kind": "module",
+      "signals": [
+        "barrel-export"
+      ],
+      "riskReductionScore": 0,
+      "maintenanceCost": 1,
+      "reason": "Export-only library should be covered through its implementation libraries."
+    }
+  ],
+  "risks": []
+}

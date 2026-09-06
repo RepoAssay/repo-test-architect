@@ -64,7 +64,7 @@ describe("tool API", () => {
     const registry = getAdapterRegistry();
 
     assert.equal(registry.schemaVersion, "adapter-registry/v1");
-    assert.deepEqual(registry.adapters.map((adapter) => adapter.id), ["javascript", "csharp", "elixir", "go", "kotlin", "php", "python", "rust", "ruby", "swift"]);
+    assert.deepEqual(registry.adapters.map((adapter) => adapter.id), ["javascript", "csharp", "elixir", "go", "kotlin", "php", "python", "rust", "ruby", "swift", "dart"]);
     assert.deepEqual(registry.adapters[0].supportedProjectTypes, ["node", "express", "react", "browser-e2e"]);
     assert.deepEqual(registry.adapters.find((adapter) => adapter.id === "csharp").supportedProjectTypes, ["dotnet-sdk-test-project", "dotnet-sdk-project-pair"]);
     assert.deepEqual(registry.adapters.find((adapter) => adapter.id === "go").supportedProjectTypes, ["go-module"]);

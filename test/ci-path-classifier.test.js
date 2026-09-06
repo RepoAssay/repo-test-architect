@@ -56,4 +56,15 @@ describe("CI path classifier", () => {
       macos: false,
     });
   });
+
+  it("routes Dart adapter, fixture, golden, and regression changes to both portability gates", () => {
+    for (const filePath of ["src/adapters/dart/audit.js", "test/dart-audit.test.js",
+      "examples/dart-flutter-basic/test/widget_test.dart", "evals/expected/dart-test-basic.audit.json",
+      "evals/model-consistency/dart-test-basic-plan.scenario.json", "scripts/check-dart-performance.js"]) {
+      const result = classifyCiPaths([filePath]);
+      assert.equal(result.docsOnly, false, filePath);
+      assert.equal(result.windows, true, filePath);
+      assert.equal(result.macos, true, filePath);
+    }
+  });
 });

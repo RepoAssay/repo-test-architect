@@ -28,7 +28,7 @@ export function classifyCiPaths(inputPaths) {
     docsOnly: paths.length > 0 && paths.every(isDocumentationPath),
     release: paths.some(isReleasePath),
     windows: paths.some(isWindowsPortabilityPath),
-    macos: paths.some(isMacosSwiftPath),
+    macos: paths.some(isMacosPortabilityPath),
   };
 }
 
@@ -66,11 +66,19 @@ function isWindowsPortabilityPath(filePath) {
     filePath.startsWith(".github/workflows/") ||
     filePath.startsWith("schemas/") ||
     filePath.startsWith("scripts/") ||
-    filePath.startsWith("src/")
+    filePath.startsWith("src/") ||
+    isDartPath(filePath)
   );
 }
 
-function isMacosSwiftPath(filePath) {
+function isDartPath(filePath) {
+  return filePath.startsWith("src/adapters/dart/") ||
+    filePath === "test/dart-audit.test.js" ||
+    /^scripts\/check-dart-/.test(filePath) ||
+    /^(examples|evals)\/.*dart-/.test(filePath);
+}
+
+function isMacosPortabilityPath(filePath) {
   return (
     filePath === "package.json" ||
     filePath === "package-lock.json" ||
@@ -78,7 +86,8 @@ function isMacosSwiftPath(filePath) {
     filePath === "scripts/classify-ci-paths.js" ||
     filePath.startsWith("src/adapters/swift/") ||
     filePath === "test/swift-audit.test.js" ||
-    /^(examples|evals)\/.*(swift|apple|vapor)/.test(filePath)
+    /^(examples|evals)\/.*(swift|apple|vapor)/.test(filePath) ||
+    isDartPath(filePath)
   );
 }
 

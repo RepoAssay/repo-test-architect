@@ -1,0 +1,95 @@
+{
+  "schemaVersion": "audit/v1",
+  "profile": {
+    "root": "<fixture>",
+    "languages": [
+      "dart"
+    ],
+    "packageManagers": [
+      "pub"
+    ],
+    "testFrameworks": [
+      "flutter-test"
+    ],
+    "architectures": [
+      "flutter"
+    ],
+    "testCommand": "flutter test",
+    "detectedConventions": [
+      "Dart lib/ and bin/ source ownership",
+      "Conventional test/*_test.dart entrypoints",
+      "Static library imports are reachability evidence only"
+    ],
+    "existingTestLocations": [
+      "test"
+    ],
+    "setupSignals": [
+      "pubspec.yaml"
+    ],
+    "confidence": "medium",
+    "blockers": []
+  },
+  "untestedCandidates": [],
+  "coveredButRisky": [
+    {
+      "id": "lib/total_label.dart",
+      "name": "total_label",
+      "path": "lib/total_label.dart",
+      "kind": "component",
+      "signals": [
+        "matching-test"
+      ],
+      "risk": "medium",
+      "testability": "medium",
+      "recommendedTestLevel": "component",
+      "riskReductionScore": 5,
+      "maintenanceCost": 5,
+      "reasons": [
+        "Handwritten Dart behavior can be tested at its library boundary.",
+        "A conventional test entrypoint imports this library; execution and assertions are not proven."
+      ],
+      "existingTestPaths": [
+        "test/total_label_test.dart"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "test/total_label_test.dart",
+          "kind": "direct-relative-import",
+          "strength": "direct"
+        }
+      ]
+    }
+  ],
+  "recommended": [
+    {
+      "id": "lib/total_label.dart",
+      "name": "total_label",
+      "path": "lib/total_label.dart",
+      "kind": "component",
+      "signals": [
+        "matching-test"
+      ],
+      "risk": "medium",
+      "testability": "medium",
+      "recommendedTestLevel": "component",
+      "riskReductionScore": 5,
+      "maintenanceCost": 5,
+      "reasons": [
+        "Handwritten Dart behavior can be tested at its library boundary.",
+        "A conventional test entrypoint imports this library; execution and assertions are not proven."
+      ],
+      "existingTestPaths": [
+        "test/total_label_test.dart"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "test/total_label_test.dart",
+          "kind": "direct-relative-import",
+          "strength": "direct"
+        }
+      ]
+    }
+  ],
+  "skipped": [],
+  "risks": []
+}
