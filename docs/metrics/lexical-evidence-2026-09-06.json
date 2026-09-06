@@ -1,0 +1,724 @@
+{
+  "capturedOn": "2026-09-06",
+  "kind": "Static five-run re-audits only; no native upstream suites rerun",
+  "implementationBase": "6fee2bd1bbcc86a5e6d5b648600a29f2bf6687e0 plus uncommitted lexical fixes",
+  "platform": "macOS arm64 / Node 23.7.0",
+  "measurements": [
+    {
+      "adapterId": "javascript",
+      "caseId": "javascript-playwright-mcp",
+      "baseline": {
+        "testCommand": "npm run test",
+        "untestedCandidates": 1,
+        "coveredButRisky": 0,
+        "skippedTargets": 1,
+        "auditDurationMs": 5,
+        "auditDurationSamplesMs": [
+          18,
+          5,
+          5
+        ],
+        "evidenceRelationshipCount": 0,
+        "canonicalAuditSha256": "9bda6c4e8c4c2c04cdc93c4b7b6608f0b327582560639e85170779624fc7d2f5"
+      },
+      "measured": {
+        "caseId": "javascript-playwright-mcp",
+        "adapterId": "javascript",
+        "commit": "55679f5f3d4b4f3e2534ec0ce2fc5683ba2eaf3f",
+        "testCommand": "npm run test",
+        "untestedCandidates": 1,
+        "coveredButRisky": 0,
+        "skippedTargets": 1,
+        "auditDurationMs": 7,
+        "auditDurationSamplesMs": [
+          21,
+          7,
+          7,
+          6,
+          6
+        ],
+        "evidenceRelationshipCount": 0,
+        "canonicalAuditSha256": "9bda6c4e8c4c2c04cdc93c4b7b6608f0b327582560639e85170779624fc7d2f5"
+      }
+    },
+    {
+      "adapterId": "javascript",
+      "caseId": "javascript-cypress-terminal-report",
+      "baseline": {
+        "testCommand": "npx cypress run --config-file test/cypress.config.js",
+        "untestedCandidates": 19,
+        "coveredButRisky": 2,
+        "skippedTargets": 11,
+        "auditDurationMs": 21,
+        "auditDurationSamplesMs": [
+          60,
+          21,
+          17
+        ],
+        "evidenceRelationshipCount": 2,
+        "canonicalAuditSha256": "0304cedae158416931ee4b13efaf897707616527e921083c55177dc835decfb6"
+      },
+      "measured": {
+        "caseId": "javascript-cypress-terminal-report",
+        "adapterId": "javascript",
+        "commit": "b66713fd88ebaf200cfe60dd4bf205e8c1030e37",
+        "testCommand": "npx cypress run --config-file test/cypress.config.js",
+        "untestedCandidates": 19,
+        "coveredButRisky": 2,
+        "skippedTargets": 11,
+        "auditDurationMs": 24,
+        "auditDurationSamplesMs": [
+          58,
+          28,
+          23,
+          24,
+          24
+        ],
+        "evidenceRelationshipCount": 2,
+        "canonicalAuditSha256": "0304cedae158416931ee4b13efaf897707616527e921083c55177dc835decfb6"
+      }
+    },
+    {
+      "adapterId": "javascript",
+      "caseId": "javascript-hono-bun",
+      "baseline": {
+        "testCommand": "bun run test",
+        "untestedCandidates": 2,
+        "coveredButRisky": 99,
+        "skippedTargets": 85,
+        "auditDurationMs": 400,
+        "auditDurationSamplesMs": [
+          528,
+          400,
+          389
+        ],
+        "evidenceRelationshipCount": 894,
+        "canonicalAuditSha256": "3255a294e5cbc4d17173ec3e6a7935801e84fcefceaa80b88550eca23224853b"
+      },
+      "measured": {
+        "caseId": "javascript-hono-bun",
+        "adapterId": "javascript",
+        "commit": "c285f9a498623fe0d2992b31c77b3738c0c0a54d",
+        "testCommand": "bun run test",
+        "untestedCandidates": 2,
+        "coveredButRisky": 99,
+        "skippedTargets": 85,
+        "auditDurationMs": 516,
+        "auditDurationSamplesMs": [
+          603,
+          516,
+          503,
+          516,
+          502
+        ],
+        "evidenceRelationshipCount": 894,
+        "canonicalAuditSha256": "3255a294e5cbc4d17173ec3e6a7935801e84fcefceaa80b88550eca23224853b"
+      }
+    },
+    {
+      "adapterId": "kotlin",
+      "caseId": "kotlin-junit4",
+      "baseline": {
+        "testCommand": "./mvnw test",
+        "untestedCandidates": 34,
+        "coveredButRisky": 82,
+        "skippedTargets": 103,
+        "auditDurationMs": 244,
+        "auditDurationSamplesMs": [
+          296,
+          244,
+          242
+        ],
+        "evidenceRelationshipCount": 706,
+        "canonicalAuditSha256": "6763041e607581dde0c85a19db15c78cf95686b98bfed4e5a88d8182e9d26635"
+      },
+      "measured": {
+        "caseId": "kotlin-junit4",
+        "adapterId": "kotlin",
+        "commit": "300468b1efd48d76fac2f7bd6d576846dcbbf5ed",
+        "testCommand": "./mvnw test",
+        "untestedCandidates": 34,
+        "coveredButRisky": 82,
+        "skippedTargets": 103,
+        "auditDurationMs": 320,
+        "auditDurationSamplesMs": [
+          391,
+          314,
+          324,
+          312,
+          320
+        ],
+        "evidenceRelationshipCount": 706,
+        "canonicalAuditSha256": "6763041e607581dde0c85a19db15c78cf95686b98bfed4e5a88d8182e9d26635"
+      }
+    },
+    {
+      "adapterId": "kotlin",
+      "caseId": "kotlin-graphql-java",
+      "baseline": {
+        "testCommand": "./gradlew test",
+        "untestedCandidates": 186,
+        "coveredButRisky": 164,
+        "skippedTargets": 303,
+        "auditDurationMs": 873,
+        "auditDurationSamplesMs": [
+          995,
+          870,
+          873
+        ],
+        "evidenceRelationshipCount": 701,
+        "canonicalAuditSha256": "b59f75df14066e2a85b6b40c5248fb38b79dd1e03183a00cc8e56bd900c42468"
+      },
+      "measured": {
+        "caseId": "kotlin-graphql-java",
+        "adapterId": "kotlin",
+        "commit": "94f398d50cbff7d5810b6ffc5692fa3947482c99",
+        "testCommand": "./gradlew test",
+        "untestedCandidates": 187,
+        "coveredButRisky": 163,
+        "skippedTargets": 303,
+        "auditDurationMs": 1519,
+        "auditDurationSamplesMs": [
+          1619,
+          1524,
+          1509,
+          1519,
+          1512
+        ],
+        "evidenceRelationshipCount": 687,
+        "canonicalAuditSha256": "53053cd8103b7ff7678102addfd9743f3f1ab16984128cdbb6640ddd1536be4b"
+      }
+    },
+    {
+      "adapterId": "kotlin",
+      "caseId": "kotlin-maven-surefire",
+      "baseline": {
+        "testCommand": "mvn test",
+        "untestedCandidates": 27,
+        "coveredButRisky": 139,
+        "skippedTargets": 137,
+        "auditDurationMs": 556,
+        "auditDurationSamplesMs": [
+          666,
+          556,
+          551
+        ],
+        "evidenceRelationshipCount": 356,
+        "canonicalAuditSha256": "c90f9bc99449f0f445ef11da29b48353b9ede6056b85d721f4aa2f65c1450127"
+      },
+      "measured": {
+        "caseId": "kotlin-maven-surefire",
+        "adapterId": "kotlin",
+        "commit": "8dcf263f808c15b00a7064ec6ea3f9268c1d4b51",
+        "testCommand": "mvn test",
+        "untestedCandidates": 25,
+        "coveredButRisky": 141,
+        "skippedTargets": 137,
+        "auditDurationMs": 752,
+        "auditDurationSamplesMs": [
+          834,
+          752,
+          750,
+          747,
+          759
+        ],
+        "evidenceRelationshipCount": 359,
+        "canonicalAuditSha256": "382aac35a309469eaaab9c786ab32938502262928363a5c6b96d238024388857"
+      }
+    },
+    {
+      "adapterId": "php",
+      "caseId": "php-brick-math",
+      "baseline": {
+        "testCommand": null,
+        "untestedCandidates": 7,
+        "coveredButRisky": 14,
+        "skippedTargets": 1,
+        "auditDurationMs": 32,
+        "auditDurationSamplesMs": [
+          73,
+          32,
+          29,
+          32,
+          30
+        ],
+        "evidenceRelationshipCount": 34,
+        "canonicalAuditSha256": "8e34141cb8ddbd4a8f6fd3858528b344adb8a39e17f13b65a36f620a6c6ed8ee"
+      },
+      "measured": {
+        "caseId": "php-brick-math",
+        "adapterId": "php",
+        "commit": "b61d8e66c3ea05fa8784888575b719f48f76f515",
+        "testCommand": null,
+        "untestedCandidates": 7,
+        "coveredButRisky": 14,
+        "skippedTargets": 1,
+        "auditDurationMs": 29,
+        "auditDurationSamplesMs": [
+          54,
+          38,
+          29,
+          29,
+          29
+        ],
+        "evidenceRelationshipCount": 34,
+        "canonicalAuditSha256": "8e34141cb8ddbd4a8f6fd3858528b344adb8a39e17f13b65a36f620a6c6ed8ee"
+      }
+    },
+    {
+      "adapterId": "php",
+      "caseId": "php-ramsey-uuid",
+      "baseline": {
+        "testCommand": "composer test",
+        "untestedCandidates": 29,
+        "coveredButRisky": 54,
+        "skippedTargets": 31,
+        "auditDurationMs": 32,
+        "auditDurationSamplesMs": [
+          89,
+          35,
+          32,
+          30,
+          31
+        ],
+        "evidenceRelationshipCount": 168,
+        "canonicalAuditSha256": "ecd0a9600b242d728580780853c2b4e64897c5cbff9d0686cb51e3370faba2f3"
+      },
+      "measured": {
+        "caseId": "php-ramsey-uuid",
+        "adapterId": "php",
+        "commit": "da5b521600a707d2dd097598464bd3090de850f5",
+        "testCommand": "composer test",
+        "untestedCandidates": 29,
+        "coveredButRisky": 54,
+        "skippedTargets": 31,
+        "auditDurationMs": 36,
+        "auditDurationSamplesMs": [
+          70,
+          41,
+          34,
+          36,
+          34
+        ],
+        "evidenceRelationshipCount": 168,
+        "canonicalAuditSha256": "ecd0a9600b242d728580780853c2b4e64897c5cbff9d0686cb51e3370faba2f3"
+      }
+    },
+    {
+      "adapterId": "php",
+      "caseId": "php-guzzle",
+      "baseline": {
+        "testCommand": null,
+        "untestedCandidates": 12,
+        "coveredButRisky": 39,
+        "skippedTargets": 17,
+        "auditDurationMs": 83,
+        "auditDurationSamplesMs": [
+          150,
+          83,
+          84,
+          80,
+          78
+        ],
+        "evidenceRelationshipCount": 112,
+        "canonicalAuditSha256": "811dc21693ec59668391c4590d446ec7ebf13fd4dd08193b4d181c3813abfae1"
+      },
+      "measured": {
+        "caseId": "php-guzzle",
+        "adapterId": "php",
+        "commit": "9b200fc5805036b331d6031199880dadecae0275",
+        "testCommand": null,
+        "untestedCandidates": 12,
+        "coveredButRisky": 39,
+        "skippedTargets": 17,
+        "auditDurationMs": 85,
+        "auditDurationSamplesMs": [
+          131,
+          92,
+          85,
+          82,
+          83
+        ],
+        "evidenceRelationshipCount": 112,
+        "canonicalAuditSha256": "9fa91f7a22224fa178330cc5e49492a040b03fb4c2e21bbbfeb358996fd08fba"
+      }
+    },
+    {
+      "adapterId": "ruby",
+      "caseId": "ruby-rubyzip",
+      "baseline": {
+        "testCommand": "bundle exec rake test",
+        "untestedCandidates": 19,
+        "coveredButRisky": 23,
+        "skippedTargets": 6,
+        "auditDurationMs": 46,
+        "auditDurationSamplesMs": [
+          79,
+          47,
+          46,
+          45,
+          45
+        ],
+        "evidenceRelationshipCount": 80,
+        "canonicalAuditSha256": "573cf0cdfbebe1464efad56187b89e01c0f600f41c107e6371be4b2ae45726eb"
+      },
+      "measured": {
+        "caseId": "ruby-rubyzip",
+        "adapterId": "ruby",
+        "commit": "4209b022069d4d5646753dd5799e8771e4699e5c",
+        "testCommand": "bundle exec rake test",
+        "untestedCandidates": 19,
+        "coveredButRisky": 23,
+        "skippedTargets": 6,
+        "auditDurationMs": 55,
+        "auditDurationSamplesMs": [
+          83,
+          57,
+          55,
+          54,
+          53
+        ],
+        "evidenceRelationshipCount": 80,
+        "canonicalAuditSha256": "573cf0cdfbebe1464efad56187b89e01c0f600f41c107e6371be4b2ae45726eb"
+      }
+    },
+    {
+      "adapterId": "ruby",
+      "caseId": "ruby-faraday",
+      "baseline": {
+        "testCommand": "bundle exec rspec",
+        "untestedCandidates": 8,
+        "coveredButRisky": 22,
+        "skippedTargets": 3,
+        "auditDurationMs": 59,
+        "auditDurationSamplesMs": [
+          89,
+          60,
+          59,
+          57,
+          56
+        ],
+        "evidenceRelationshipCount": 45,
+        "canonicalAuditSha256": "af4437cbee783ab4afc03bdb36d056d65d9f063fd75a88c53b2f3fd206b2a626"
+      },
+      "measured": {
+        "caseId": "ruby-faraday",
+        "adapterId": "ruby",
+        "commit": "3725183bead9939d3575f2df8e16d8ca7acddf5e",
+        "testCommand": "bundle exec rspec",
+        "untestedCandidates": 8,
+        "coveredButRisky": 22,
+        "skippedTargets": 3,
+        "auditDurationMs": 63,
+        "auditDurationSamplesMs": [
+          83,
+          63,
+          63,
+          62,
+          61
+        ],
+        "evidenceRelationshipCount": 45,
+        "canonicalAuditSha256": "af4437cbee783ab4afc03bdb36d056d65d9f063fd75a88c53b2f3fd206b2a626"
+      }
+    },
+    {
+      "adapterId": "ruby",
+      "caseId": "ruby-diplomat",
+      "baseline": {
+        "testCommand": "bundle exec rspec",
+        "untestedCandidates": 8,
+        "coveredButRisky": 21,
+        "skippedTargets": 3,
+        "auditDurationMs": 56,
+        "auditDurationSamplesMs": [
+          76,
+          56,
+          56,
+          56,
+          55
+        ],
+        "evidenceRelationshipCount": 26,
+        "canonicalAuditSha256": "cf7e08a848e975045418b4b1fa233006863dd9125ff60e3a18dbfa11a8197ab2"
+      },
+      "measured": {
+        "caseId": "ruby-diplomat",
+        "adapterId": "ruby",
+        "commit": "313f94ff2582c7eb161e2aa775182db10ad14285",
+        "testCommand": "bundle exec rspec",
+        "untestedCandidates": 8,
+        "coveredButRisky": 21,
+        "skippedTargets": 3,
+        "auditDurationMs": 58,
+        "auditDurationSamplesMs": [
+          59,
+          59,
+          58,
+          58,
+          58
+        ],
+        "evidenceRelationshipCount": 26,
+        "canonicalAuditSha256": "cf7e08a848e975045418b4b1fa233006863dd9125ff60e3a18dbfa11a8197ab2"
+      }
+    }
+  ],
+  "deltas": [
+    {
+      "caseId": "javascript-playwright-mcp",
+      "digestUnchanged": true,
+      "removed": [],
+      "added": []
+    },
+    {
+      "caseId": "javascript-cypress-terminal-report",
+      "digestUnchanged": true,
+      "removed": [],
+      "added": []
+    },
+    {
+      "caseId": "javascript-hono-bun",
+      "digestUnchanged": true,
+      "removed": [],
+      "added": []
+    },
+    {
+      "caseId": "kotlin-junit4",
+      "digestUnchanged": true,
+      "removed": [],
+      "added": []
+    },
+    {
+      "caseId": "kotlin-graphql-java",
+      "digestUnchanged": false,
+      "removed": [
+        {
+          "source": "src/main/java/graphql/language/ArrayValue.java",
+          "testPath": "src/test/groovy/graphql/execution/ValuesResolverTestLegacy.groovy",
+          "kind": "jvm-symbol-reference",
+          "strength": "direct"
+        },
+        {
+          "source": "src/main/java/graphql/language/BooleanValue.java",
+          "testPath": "src/test/groovy/graphql/execution/ValuesResolverTestLegacy.groovy",
+          "kind": "jvm-symbol-reference",
+          "strength": "direct",
+          "usage": "asserted"
+        },
+        {
+          "source": "src/main/java/graphql/language/EnumValue.java",
+          "testPath": "src/test/groovy/graphql/execution/ValuesResolverTestLegacy.groovy",
+          "kind": "jvm-symbol-reference",
+          "strength": "direct"
+        },
+        {
+          "source": "src/main/java/graphql/language/FloatValue.java",
+          "testPath": "src/test/groovy/graphql/execution/ValuesResolverTestLegacy.groovy",
+          "kind": "jvm-symbol-reference",
+          "strength": "direct",
+          "usage": "asserted"
+        },
+        {
+          "source": "src/main/java/graphql/GraphQLContext.java",
+          "testPath": "src/test/groovy/graphql/execution/ValuesResolverTestLegacy.groovy",
+          "kind": "jvm-symbol-reference",
+          "strength": "direct",
+          "usage": "called"
+        },
+        {
+          "source": "src/main/java/graphql/schema/GraphQLEnumType.java",
+          "testPath": "src/test/groovy/graphql/execution/ValuesResolverTestLegacy.groovy",
+          "kind": "jvm-symbol-reference",
+          "strength": "direct"
+        },
+        {
+          "source": "src/main/java/graphql/schema/GraphQLInputObjectType.java",
+          "testPath": "src/test/groovy/graphql/execution/ValuesResolverTestLegacy.groovy",
+          "kind": "jvm-symbol-reference",
+          "strength": "direct"
+        },
+        {
+          "source": "src/main/java/graphql/schema/GraphQLList.java",
+          "testPath": "src/test/groovy/graphql/execution/ValuesResolverTestLegacy.groovy",
+          "kind": "jvm-symbol-reference",
+          "strength": "direct"
+        },
+        {
+          "source": "src/main/java/graphql/schema/GraphQLNonNull.java",
+          "testPath": "src/test/groovy/graphql/execution/ValuesResolverTestLegacy.groovy",
+          "kind": "jvm-symbol-reference",
+          "strength": "direct",
+          "usage": "asserted"
+        },
+        {
+          "source": "src/main/java/graphql/language/IntValue.java",
+          "testPath": "src/test/groovy/graphql/execution/ValuesResolverTestLegacy.groovy",
+          "kind": "jvm-symbol-reference",
+          "strength": "direct",
+          "usage": "asserted"
+        },
+        {
+          "source": "src/main/java/graphql/language/ObjectField.java",
+          "testPath": "src/test/groovy/graphql/execution/ValuesResolverTestLegacy.groovy",
+          "kind": "jvm-symbol-reference",
+          "strength": "direct"
+        },
+        {
+          "source": "src/main/java/graphql/language/ObjectValue.java",
+          "testPath": "src/test/groovy/graphql/execution/ValuesResolverTestLegacy.groovy",
+          "kind": "jvm-symbol-reference",
+          "strength": "direct",
+          "usage": "asserted"
+        },
+        {
+          "source": "src/main/java/graphql/language/StringValue.java",
+          "testPath": "src/test/groovy/graphql/execution/ValuesResolverTestLegacy.groovy",
+          "kind": "jvm-symbol-reference",
+          "strength": "direct",
+          "usage": "asserted"
+        },
+        {
+          "source": "src/main/java/graphql/execution/ValuesResolverLegacy.java",
+          "testPath": "src/test/groovy/graphql/execution/ValuesResolverTestLegacy.groovy",
+          "kind": "jvm-symbol-reference",
+          "strength": "direct",
+          "usage": "asserted"
+        }
+      ],
+      "added": []
+    },
+    {
+      "caseId": "kotlin-maven-surefire",
+      "digestUnchanged": false,
+      "removed": [
+        {
+          "source": "maven-surefire-common/src/main/java/org/apache/maven/plugin/surefire/util/DependencyScanner.java",
+          "testPath": "maven-surefire-common/src/test/java/org/apache/maven/plugin/surefire/util/DependenciesScannerTest.java",
+          "kind": "jvm-symbol-reference",
+          "strength": "referenced",
+          "usage": "called"
+        },
+        {
+          "source": "surefire-api/src/main/java/org/apache/maven/surefire/api/testset/ResolvedTest.java",
+          "testPath": "surefire-api/src/test/java/org/apache/maven/surefire/api/testset/TestListResolverTest.java",
+          "kind": "jvm-symbol-reference",
+          "strength": "direct",
+          "usage": "asserted"
+        },
+        {
+          "source": "surefire-booter/src/main/java/org/apache/maven/surefire/booter/StartupConfiguration.java",
+          "testPath": "maven-surefire-common/src/test/java/org/apache/maven/plugin/surefire/booterclient/ForkConfigurationTest.java",
+          "kind": "jvm-symbol-reference",
+          "strength": "direct",
+          "usage": "called"
+        },
+        {
+          "source": "surefire-api/src/main/java/org/apache/maven/surefire/api/testset/TestListResolver.java",
+          "testPath": "maven-surefire-common/src/test/java/org/apache/maven/plugin/surefire/util/DependenciesScannerTest.java",
+          "kind": "jvm-symbol-reference",
+          "strength": "direct"
+        }
+      ],
+      "added": [
+        {
+          "source": "maven-surefire-common/src/main/java/org/apache/maven/plugin/surefire/booterclient/JarManifestForkConfiguration.java",
+          "testPath": "maven-surefire-common/src/test/java/org/apache/maven/plugin/surefire/booterclient/ForkConfigurationTest.java",
+          "kind": "jvm-symbol-reference",
+          "strength": "referenced",
+          "usage": "called"
+        },
+        {
+          "source": "surefire-providers/surefire-junit-platform/src/main/java/org/apache/maven/surefire/junitplatform/CancellationTokenAdapter.java",
+          "testPath": "surefire-providers/surefire-junit-platform/src/test/java/org/apache/maven/surefire/junitplatform/JUnitPlatformProviderTest.java",
+          "kind": "jvm-symbol-reference",
+          "strength": "referenced"
+        },
+        {
+          "source": "maven-surefire-common/src/main/java/org/apache/maven/plugin/surefire/util/DependencyScanner.java",
+          "testPath": "maven-surefire-common/src/test/java/org/apache/maven/plugin/surefire/util/DependenciesScannerTest.java",
+          "kind": "jvm-symbol-reference",
+          "strength": "referenced",
+          "usage": "asserted"
+        },
+        {
+          "source": "surefire-providers/surefire-junit-platform/src/main/java/org/apache/maven/surefire/junitplatform/LauncherSessionAdapter.java",
+          "testPath": "surefire-providers/surefire-junit-platform/src/test/java/org/apache/maven/surefire/junitplatform/JUnitPlatformProviderTest.java",
+          "kind": "jvm-symbol-reference",
+          "strength": "referenced",
+          "usage": "called"
+        },
+        {
+          "source": "surefire-api/src/main/java/org/apache/maven/surefire/api/testset/ResolvedTest.java",
+          "testPath": "surefire-api/src/test/java/org/apache/maven/surefire/api/testset/TestListResolverTest.java",
+          "kind": "jvm-symbol-reference",
+          "strength": "direct"
+        },
+        {
+          "source": "surefire-booter/src/main/java/org/apache/maven/surefire/booter/StartupConfiguration.java",
+          "testPath": "maven-surefire-common/src/test/java/org/apache/maven/plugin/surefire/booterclient/ForkConfigurationTest.java",
+          "kind": "jvm-symbol-reference",
+          "strength": "direct",
+          "usage": "asserted"
+        },
+        {
+          "source": "surefire-api/src/main/java/org/apache/maven/surefire/api/testset/TestListResolver.java",
+          "testPath": "maven-surefire-common/src/test/java/org/apache/maven/plugin/surefire/util/DependenciesScannerTest.java",
+          "kind": "jvm-symbol-reference",
+          "strength": "direct",
+          "usage": "asserted"
+        }
+      ]
+    },
+    {
+      "caseId": "php-brick-math",
+      "digestUnchanged": true,
+      "removed": [],
+      "added": []
+    },
+    {
+      "caseId": "php-ramsey-uuid",
+      "digestUnchanged": true,
+      "removed": [],
+      "added": []
+    },
+    {
+      "caseId": "php-guzzle",
+      "digestUnchanged": false,
+      "removed": [
+        {
+          "source": "src/Cookie/CookieJar.php",
+          "testPath": "tests/Cookie/CookieJarTest.php",
+          "kind": "php-symbol-reference",
+          "strength": "direct",
+          "usage": "called"
+        }
+      ],
+      "added": [
+        {
+          "source": "src/Cookie/CookieJar.php",
+          "testPath": "tests/Cookie/CookieJarTest.php",
+          "kind": "php-symbol-reference",
+          "strength": "direct",
+          "usage": "asserted"
+        }
+      ]
+    },
+    {
+      "caseId": "ruby-rubyzip",
+      "digestUnchanged": true,
+      "removed": [],
+      "added": []
+    },
+    {
+      "caseId": "ruby-faraday",
+      "digestUnchanged": true,
+      "removed": [],
+      "added": []
+    },
+    {
+      "caseId": "ruby-diplomat",
+      "digestUnchanged": true,
+      "removed": [],
+      "added": []
+    }
+  ],
+  "performanceNote": "Final PHP measurements reuse audit-local lexical facts; initial repeated scans were eliminated without changing digests."
+}

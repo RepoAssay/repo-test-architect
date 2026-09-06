@@ -4,6 +4,8 @@ The PHP adapter is supported at a deliberately bounded Composer/PHPUnit boundary
 
 ## Supported baseline
 
+The [September lexical evidence repair](lexical-evidence-hardening-2026-09.md) excludes ordinary strings, heredocs, and nowdocs from PHPUnit ownership, imports, calls, exception expectations, and asserted-result evidence. Audit-local lexical facts preserve both deterministic output and bounded scan costs. The [ownership repair](ownership-hardening-2026-09.md) also requires the exact resolved PHPUnit base or the bounded unique local-base proof; an unrelated short name `TestCase` is not sufficient. Imported aliases, fully qualified bases and compact same-line imports have positive controls.
+
 - one root `composer.json`; nested Composer roots are separate projects and are not traversed
 - valid literal JSON metadata
 - non-empty, string-valued `autoload.psr-4` source mappings and `autoload-dev.psr-4` test mappings whose directories exist inside the project root

@@ -4,6 +4,8 @@ The Ruby adapter is supported at the bounded Bundler/Minitest/RSpec boundary bel
 
 ## Supported Baseline
 
+The [September lexical evidence repair](lexical-evidence-hardening-2026-09.md) excludes `=begin` / `=end` comments and literal heredocs, including queued and indented forms, from test registration, requires, calls, and Rake-task discovery. Broader Ruby parsing and runtime interpolation remain outside this repair.
+
 | Area | Supported boundary |
 | --- | --- |
 | Project ownership | One root `Gemfile`; nested directories with their own `Gemfile` are separate detected projects; multiple root gemspecs require a complete exact named set |

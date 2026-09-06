@@ -4,6 +4,71 @@ import os from "node:os";
 import path from "node:path";
 import { describe, it } from "node:test";
 import { auditJavaScriptRepo } from "../src/adapters/javascript/audit.js";
+import { testSymlinkOwnership } from "./support/ownership-evidence.js";
+testSymlinkOwnership("node-vitest-basic", auditJavaScriptRepo, "package.json");
+import { copyTrustFixture, assertNoSemanticEvidence, assertNoPlannedUsage } from "./support/non-code-evidence.js";
+
+it("does not turn JavaScript comments or literal text into imports or asserted evidence", (t) => {
+  for (const wrap of [s => `/*\n${s}\n*/`, s => s.split("\n").map(line => `// ${line}`).join("\n"),
+    s => `const doc = ${JSON.stringify(s)};`, s => "const doc = `" + s + "`;", s => `/* unterminated\n${s}`]) {
+    const root = copyTrustFixture(t, "node-vitest-basic");
+    const filename = path.join(root, "src/deckParser.test.ts");
+    fs.writeFileSync(filename, wrap(fs.readFileSync(filename, "utf8")));
+    assertNoSemanticEvidence(auditJavaScriptRepo(root));
+    assertNoPlannedUsage(root);
+  }
+});
+
+it("keeps real JavaScript imports but not calls or assertions embedded in strings", (t) => {
+  const root = copyTrustFixture(t, "node-vitest-basic");
+  for (const nonCode of ["// expect(parseDeck('x')).toEqual([]);", "/* expect(parseDeck('x')).toEqual([]); */",
+    `const doc = "expect(parseDeck('x')).toEqual([])";`, "const doc = `expect(parseDeck('x')).toEqual([])`;"]) {
+    fs.writeFileSync(path.join(root, "src/deckParser.test.ts"), `import { parseDeck } from './deckParser';\n${nonCode}\ntest('real', () => {});`);
+    const evidence = auditJavaScriptRepo(root).coveredButRisky.find(target => target.path === "src/deckParser.ts").existingTestEvidence;
+    assert.equal(evidence[0].kind, "direct-relative-import");
+    assert.equal(evidence[0].usage, undefined);
+    assertNoPlannedUsage(root);
+  }
+});
+
+it("rejects literal CommonJS imports and nested template text while retaining following real calls", (t) => {
+  const root = copyTrustFixture(t, "node-vitest-basic");
+  const filename = path.join(root, "src/deckParser.test.ts");
+  for (const text of [
+    "const { parseDeck } = require('./deckParser'); expect(parseDeck('x')).toEqual([]);",
+    "const parser = require('./deckParser'); expect(parser.parseDeck('x')).toEqual([]);",
+    "require('./deckParser');"
+  ]) {
+    fs.writeFileSync(filename, `const doc = ${JSON.stringify(text)};`);
+    assertNoSemanticEvidence(auditJavaScriptRepo(root));
+  }
+  for (const expression of ["`expect(parseDeck()).toEqual([])`", "{ note: `expect(parseDeck()).toEqual([])` }",
+    "/* } */ `expect(parseDeck()).toEqual([])`", "// }\n `expect(parseDeck()).toEqual([])`"]) {
+    const documentation = "const doc = `${" + expression + "}`;\n";
+    fs.writeFileSync(filename, documentation);
+    assertNoSemanticEvidence(auditJavaScriptRepo(root));
+    fs.writeFileSync(filename, documentation + "import { expect } from 'vitest'; import { parseDeck } from './deckParser'; expect(parseDeck('x')).toEqual({ name: 'x', cards: [] });");
+    assert.equal(auditJavaScriptRepo(root).coveredButRisky[0].existingTestEvidence[0].usage, "asserted");
+  }
+  let nested = "`expect(parseDeck()).toEqual([])`";
+  for (let index = 0; index < 40; index++) nested = "`${" + nested + "}`";
+  for (const text of ["`unterminated ${ // comment", "`unterminated ${ /* comment", nested]) {
+    fs.writeFileSync(filename, "const doc = " + text);
+    assertNoSemanticEvidence(auditJavaScriptRepo(root));
+  }
+});
+
+it("does not follow JavaScript exports written only in comments or strings", (t) => {
+  const root = copyTrustFixture(t, "node-vitest-basic");
+  fs.writeFileSync(path.join(root, "src/consumer.test.ts"), "import { parseDeck } from './public'; expect(parseDeck('x')).toEqual([]);");
+  fs.writeFileSync(path.join(root, "src/deckParser.test.ts"), "// no test");
+  for (const text of ["export { parseDeck } from './deckParser';", "export * from './deckParser';"]) {
+    for (const wrapper of [s => `/* ${s} */`, s => `const documentation = ${JSON.stringify(s)};`]) {
+      fs.writeFileSync(path.join(root, "src/public.ts"), wrapper(text));
+      assertNoSemanticEvidence(auditJavaScriptRepo(root));
+    }
+  }
+});
 
 const exampleRoot = path.resolve("examples/node-vitest-basic");
 const noTestsRoot = path.resolve("examples/node-no-tests-yet");

@@ -17,7 +17,12 @@ const BUILD_FILE_NAMES = new Set([
 ]);
 
 export function auditKotlinRepo(root, options = {}) {
-  const files = readRepoFiles(root);
+  const files = readRepoFiles(root).map(file => ({
+    ...file,
+    content: file.path.endsWith("pom.xml")
+      ? file.content.replace(/<!--[\s\S]*?(?:-->|$)/g, " ")
+      : /(?:build|settings)\.gradle(?:\.kts)?$/.test(file.path) ? stripJvmComments(file.content) : file.content
+  }));
   const modules = resolveJvmModules(files);
   const profile = buildProfile(root, files, modules);
   const changedPaths = options.changedPaths
@@ -602,7 +607,7 @@ function moduleForPath(currentPath, modules, sourceSet) {
 function buildProfile(root, files, modules) {
   const paths = files.map((file) => normalizePath(file.path));
   const buildText = modules.map((module) => moduleBuildText(module, files)).join("\n");
-  const testText = files.filter((file) => isTestFile(file.path, modules)).map((file) => file.content).join("\n");
+  const testText = files.filter((file) => isTestFile(file.path, modules)).map((file) => stripJvmCommentsAndStrings(file.content)).join("\n");
   const testFrameworks = detectTestFrameworks(buildText, testText, files, modules);
   const unsupportedProjectShapes = detectUnsupportedProjectShapes(buildText, paths, modules);
   const testCommandResolution = detectTestCommand(root, paths, testFrameworks, modules);
@@ -610,6 +615,9 @@ function buildProfile(root, files, modules) {
     ...(module.reactorBlockers ?? []),
     ...(module.aggregateBlockers ?? [])
   ]);
+  if (!buildText.trim() && paths.some(currentPath => /(?:^|\/)(?:build\.gradle(?:\.kts)?|pom\.xml)$/.test(currentPath))) {
+    ownershipBlockers.push("No active JVM build metadata remains; a runnable test task cannot be established.");
+  }
   const commandBlockers = [...testCommandResolution.blockers, ...ownershipBlockers];
   const testCommand = ownershipBlockers.length === 0 ? testCommandResolution.command : undefined;
   const existingTestLocations = detectExistingTestLocations(paths, modules);
@@ -1442,18 +1450,46 @@ function isDeclarationOnly(content) {
 }
 
 function stripJvmCommentsAndStrings(content) {
-  return content
-    .replace(/\/\*[\s\S]*?\*\//g, " ")
-    .replace(/(^|[^:])\/\/.*$/gm, "$1")
-    .replace(/"""[\s\S]*?"""/g, '""')
-    .replace(/"(?:\\.|[^"\\])*"/g, '""')
-    .replace(/'(?:\\.|[^'\\])*'/g, "''");
+  return maskJvmNonCode(content, true);
 }
 
 function stripJvmComments(content) {
-  return content
-    .replace(/\/\*[\s\S]*?\*\//g, " ")
-    .replace(/\/\/.*$/gm, " ");
+  return maskJvmNonCode(content, false);
+}
+
+function maskJvmNonCode(content, maskStrings) {
+  const masked = content.split("");
+  for (let index = 0; index < content.length;) {
+    const start = index;
+    let hide = true;
+    if (content.startsWith("//", index)) {
+      const end = content.indexOf("\n", index);
+      index = end < 0 ? content.length : end;
+    } else if (content.startsWith("/*", index)) {
+      let depth = 1;
+      index += 2;
+      while (index < content.length && depth) {
+        if (content.startsWith("/*", index)) { depth++; index += 2; }
+        else if (content.startsWith("*/", index)) { depth--; index += 2; }
+        else index++;
+      }
+    } else if (content[index] === '"' || content[index] === "'") {
+      const delimiter = content.startsWith(content[index].repeat(3), index) ? content[index].repeat(3) : content[index];
+      index += delimiter.length;
+      while (index < content.length && !content.startsWith(delimiter, index)) {
+        index += delimiter.length === 1 && content[index] === "\\" ? 2 : 1;
+      }
+      index = Math.min(content.length, index + delimiter.length);
+      hide = maskStrings;
+    } else {
+      index++;
+      hide = false;
+    }
+    if (hide) for (let cursor = start; cursor < index; cursor++) {
+      if (content[cursor] !== "\n" && content[cursor] !== "\r") masked[cursor] = " ";
+    }
+  }
+  return masked.join("");
 }
 
 function escapeRegExp(value) {

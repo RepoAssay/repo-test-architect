@@ -134,7 +134,7 @@ function readRepoFiles(root) {
 
   function visit(current) {
     for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
-      if (ignored.has(entry.name)) continue;
+      if (ignored.has(entry.name) || entry.isSymbolicLink()) continue;
 
       const absolute = path.join(current, entry.name);
       const relative = path.relative(root, absolute).replaceAll(path.sep, "/");
@@ -144,7 +144,7 @@ function readRepoFiles(root) {
         continue;
       }
 
-      if (shouldRead(relative)) {
+      if (entry.isFile() && shouldRead(relative)) {
         files.push({
           path: relative,
           content: fs.readFileSync(absolute, "utf8")
@@ -277,6 +277,7 @@ function findOwningWorkspace(root) {
 
 function readFileIfPresent(filePath) {
   try {
+    if (!fs.lstatSync(filePath).isFile()) return "";
     return fs.readFileSync(filePath, "utf8");
   } catch (error) {
     if (error?.code === "ENOENT" || error?.code === "ENOTDIR") return "";
@@ -575,40 +576,73 @@ function collectRunnerDiscoveryRules(config, packageRoot) {
 }
 
 function stripStaticConfigComments(content) {
-  let result = "";
-  let quote;
-  let escaped = false;
+  return javascriptLexicalViews(content).withoutComments;
+}
 
-  for (let index = 0; index < content.length; index += 1) {
-    const character = content[index];
-    const next = content[index + 1];
-    if (quote) {
-      result += character;
-      if (escaped) {
-        escaped = false;
-      } else if (character === "\\") {
-        escaped = true;
-      } else if (character === quote) {
-        quote = undefined;
-      }
+// Preserve offsets and newlines. Literal values remain available for exact module
+// specifiers, while imports/calls must start in the independently masked code view.
+function javascriptLexicalViews(content) {
+  const code = content.split("");
+  const withoutComments = content.split("");
+  for (let index = 0; index < content.length;) {
+    const start = index;
+    let literal = false;
+    if (content.startsWith("//", index)) {
+      const end = content.indexOf("\n", index);
+      index = end < 0 ? content.length : end;
+    } else if (content.startsWith("/*", index)) {
+      const end = content.indexOf("*/", index + 2);
+      index = end < 0 ? content.length : end + 2;
+    } else if (["'", '"', "`"].includes(content[index])) {
+      literal = true;
+      index = javascriptStringEnd(content, index);
+    } else {
+      index++;
       continue;
     }
-    if (character === "'" || character === "\"" || character === "`") {
-      quote = character;
-      result += character;
-    } else if (character === "/" && next === "/") {
-      while (index < content.length && content[index] !== "\n") index += 1;
-      result += "\n";
-    } else if (character === "/" && next === "*") {
-      index += 2;
-      while (index < content.length - 1 && !(content[index] === "*" && content[index + 1] === "/")) index += 1;
-      index += 1;
-    } else {
-      result += character;
+    for (let cursor = start; cursor < index; cursor++) {
+      if (content[cursor] === "\n" || content[cursor] === "\r") continue;
+      code[cursor] = " ";
+      if (!literal || content[start] === "`") withoutComments[cursor] = " ";
+    }
+    // Empty quotes retain test-title/callback syntax (including AVA contexts),
+    // but the text and all template interpolation remain uncredited.
+    if (literal && index > start + 1 && content[index - 1] === content[start]) {
+      code[start] = content[start];
+      code[index - 1] = content[start];
     }
   }
+  return { code: code.join(""), withoutComments: withoutComments.join("") };
+}
 
-  return result;
+function javascriptStringEnd(content, start, nesting = 0) {
+  if (nesting >= 32) return content.length;
+  const quote = content[start];
+  let index = start + 1;
+  while (index < content.length) {
+    if (content[index] === "\\") { index += 2; continue; }
+    if (content[index] === quote) return index + 1;
+    if (quote === "`" && content.startsWith("${", index)) {
+      index += 2;
+      let depth = 1;
+      while (index < content.length && depth) {
+        if (["'", '"', "`"].includes(content[index])) {
+          index = javascriptStringEnd(content, index, nesting + 1);
+        } else if (content.startsWith("//", index)) {
+          const end = content.indexOf("\n", index);
+          index = end < 0 ? content.length : end + 1;
+        } else if (content.startsWith("/*", index)) {
+          const end = content.indexOf("*/", index + 2);
+          index = end < 0 ? content.length : end + 2;
+        } else {
+          if (content[index] === "{") depth++;
+          if (content[index] === "}") depth--;
+          index++;
+        }
+      }
+    } else index++;
+  }
+  return content.length;
 }
 
 function extractObjectPropertyBodies(content, property) {
@@ -1417,25 +1451,7 @@ function collectLiteralBrowserCalls(content, pattern, method, requests) {
 }
 
 function matchStartsInJavaScriptCode(content, targetIndex) {
-  let quote;
-  let escaped = false;
-
-  for (let index = 0; index < targetIndex; index += 1) {
-    const character = content[index];
-    if (quote) {
-      if (escaped) {
-        escaped = false;
-      } else if (character === "\\") {
-        escaped = true;
-      } else if (character === quote) {
-        quote = undefined;
-      }
-    } else if (character === "'" || character === "\"" || character === "`") {
-      quote = character;
-    }
-  }
-
-  return quote === undefined;
+  return javascriptLexicalViews(content).code[targetIndex] === content[targetIndex];
 }
 
 function addStaticBrowserRequest(requests, method, rawPath) {
@@ -1913,17 +1929,20 @@ function collectRuntimeDependencySpecifiers(content) {
 
 function collectModuleImports(content) {
   const imports = [];
-  const contentWithoutImports = content
+  const lexical = javascriptLexicalViews(content);
+  content = lexical.withoutComments;
+  const contentWithoutImports = lexical.code
     .replace(/\bimport\s+[^;"']*?\s+from\s+["'][^"']+["']\s*;?/g, "")
     .replace(/\b(?:const|let|var)\s+\{[^}]+\}\s*=\s*require\s*\(\s*["'][^"']+["']\s*\)\s*;?/g, "")
     .replace(/\b(?:const|let|var)\s+[A-Za-z_$][\w$]*\s*=\s*require\s*\(\s*["'][^"']+["']\s*\)\s*;?/g, "");
   const importPattern = /\bimport\s+([^;"']*?)\s+from\s+["']([^"']+)["']/g;
   for (const match of content.matchAll(importPattern)) {
+    if (lexical.code.slice(match.index, match.index + 6) !== "import") continue;
     if (/^\s*type\b/.test(match[1])) continue;
     imports.push({
       kind: "import",
       specifier: match[2],
-      importedNames: collectImportClauseNames(match[1], content),
+      importedNames: collectImportClauseNames(match[1], lexical.code),
       usedImportedNames: collectUsedImportClauseNames(match[1], contentWithoutImports),
       calledImportedNames: collectCalledImportClauseNames(match[1], contentWithoutImports),
       assertedImportedNames: collectAssertedImportClauseNames(match[1], contentWithoutImports)
@@ -1931,11 +1950,13 @@ function collectModuleImports(content) {
   }
   const requirePattern = /\b(?:const|let|var)\s+\{([^}]+)\}\s*=\s*require\s*\(\s*["']([^"']+)["']\s*\)/g;
   for (const match of content.matchAll(requirePattern)) {
+    if (!/^(?:const|let|var)\b/.test(lexical.code.slice(match.index))) continue;
     const importedNames = collectAliasedNames(match[1], ":");
     imports.push({ kind: "require", specifier: match[2], importedNames, usedImportedNames: collectUsedRequireNames(match[1], contentWithoutImports), calledImportedNames: collectCalledRequireNames(match[1], contentWithoutImports), assertedImportedNames: collectAssertedRequireNames(match[1], contentWithoutImports) });
   }
   const namespaceRequirePattern = /\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*require\s*\(\s*["']([^"']+)["']\s*\)/g;
   for (const match of content.matchAll(namespaceRequirePattern)) {
+    if (!/^(?:const|let|var)\b/.test(lexical.code.slice(match.index))) continue;
     const calledImportedNames = collectNamespaceMemberNames(match[1], contentWithoutImports, isIdentifierCalled);
     const assertedImportedNames = collectNamespaceMemberNames(match[1], contentWithoutImports, isIdentifierAsserted);
     if (isIdentifierCalled(contentWithoutImports, match[1])) calledImportedNames.add("default");
@@ -1951,6 +1972,7 @@ function collectModuleImports(content) {
   }
   const plainRequirePattern = /\brequire\s*\(\s*["']([^"']+)["']\s*\)/g;
   for (const match of content.matchAll(plainRequirePattern)) {
+    if (lexical.code.slice(match.index, match.index + 7) !== "require") continue;
     if (!imports.some((current) => current.kind === "require" && current.specifier === match[1])) {
       imports.push({ kind: "require", specifier: match[1], importedNames: new Set(), usedImportedNames: new Set(), calledImportedNames: new Set(), assertedImportedNames: new Set() });
     }
@@ -2128,12 +2150,16 @@ function collectAliasedNames(value, aliasToken) {
 
 function collectRelativeReExports(content) {
   const exports = [];
+  const lexical = javascriptLexicalViews(content);
+  content = lexical.withoutComments;
   const namedPattern = /\bexport\s*\{([^}]+)\}\s*from\s*["']([^"']+)["']/g;
   for (const match of content.matchAll(namedPattern)) {
+    if (lexical.code.slice(match.index, match.index + 6) !== "export") continue;
     if (match[2].startsWith(".")) exports.push({ specifier: match[2], exportedNames: collectPublicExportNames(match[1]), exportAll: false });
   }
   const allPattern = /\bexport\s*\*\s*from\s*["']([^"']+)["']/g;
   for (const match of content.matchAll(allPattern)) {
+    if (lexical.code.slice(match.index, match.index + 6) !== "export") continue;
     if (match[1].startsWith(".")) exports.push({ specifier: match[1], exportedNames: new Set(), exportAll: true });
   }
   return exports;
@@ -2147,6 +2173,7 @@ function collectPublicExportNames(value) {
 }
 
 function collectDeclaredExportNames(content) {
+  content = javascriptLexicalViews(content).code;
   const names = new Set();
   const declarationPattern = /\bexport\s+(?:async\s+)?(?:function|class|const|let|var|enum)\s+([A-Za-z_$][\w$]*)/g;
   for (const match of content.matchAll(declarationPattern)) names.add(match[1]);
@@ -2160,6 +2187,8 @@ function collectDeclaredExportNames(content) {
 
 function collectModuleSpecifiers(content) {
   const specifiers = [];
+  const lexical = javascriptLexicalViews(content);
+  content = lexical.withoutComments;
   const patterns = [
     /\b(?:import|export)\s+(?:[^"']*?\s+from\s+)?["']([^"']+)["']/g,
     /\brequire\s*\(\s*["']([^"']+)["']\s*\)/g
@@ -2167,6 +2196,7 @@ function collectModuleSpecifiers(content) {
 
   for (const pattern of patterns) {
     for (const match of content.matchAll(pattern)) {
+      if (lexical.code[match.index] !== content[match.index]) continue;
       specifiers.push(match[1]);
     }
   }

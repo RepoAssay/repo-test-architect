@@ -262,7 +262,13 @@ function detectTestFrameworks(files, packageText) {
 function detectTestCommand(paths, frameworks, bazelGraph, files) {
   if (frameworks.length === 0) return { command: undefined, blockers: [] };
   if (bazelGraph.hasSwiftTest) return { command: "bazel test //...", blockers: [] };
-  if (paths.includes("Package.swift")) return { command: "swift test", blockers: [] };
+  if (paths.includes("Package.swift")) {
+    const manifest = files.find(file => normalizePath(file.path) === "Package.swift");
+    if (!hasSwiftPmPackageDeclaration(manifest.content)) {
+      return { command: undefined, blockers: ["No active SwiftPM package declaration was found; swift test cannot be established."] };
+    }
+    return { command: "swift test", blockers: [] };
+  }
   if (hasXcodeContainer(paths)) {
     const scheme = detectXcodeScheme(paths);
     const schemeBlocker = detectXcodeSchemeBlocker(paths, scheme);
@@ -943,7 +949,7 @@ function swiftAssertionBodies(content) {
   return bodies;
 }
 
-function maskSwiftCommentsAndStrings(content) {
+function maskSwiftCommentsAndStrings(content, maskStrings = true) {
   let result = "";
   let index = 0;
   let blockCommentDepth = 0;
@@ -978,14 +984,14 @@ function maskSwiftCommentsAndStrings(content) {
     }
     if (stringDelimiter) {
       if (content.startsWith(stringDelimiter, index)) {
-        result += " ".repeat(stringDelimiter.length);
+        result += maskStrings ? " ".repeat(stringDelimiter.length) : stringDelimiter;
         index += stringDelimiter.length;
         stringDelimiter = undefined;
       } else if (current === "\\" && stringDelimiter === "\"") {
-        result += "  ";
+        result += maskStrings ? "  " : content.slice(index, index + 2);
         index += 2;
       } else {
-        result += current === "\n" ? "\n" : " ";
+        result += maskStrings && current !== "\n" ? " " : current;
         index += 1;
       }
       continue;
@@ -1000,11 +1006,11 @@ function maskSwiftCommentsAndStrings(content) {
       index += 2;
     } else if (content.startsWith("\"\"\"", index)) {
       stringDelimiter = "\"\"\"";
-      result += "   ";
+      result += maskStrings ? "   " : stringDelimiter;
       index += 3;
     } else if (current === "\"") {
       stringDelimiter = "\"";
-      result += " ";
+      result += maskStrings ? " " : stringDelimiter;
       index += 1;
     } else {
       result += current;
@@ -1047,7 +1053,8 @@ function mergeSourceGraphs(...graphs) {
 }
 
 function parseSwiftPmGraph(files) {
-  const packageFiles = files.filter((file) => isSwiftPmManifestPath(file.path));
+  const packageFiles = files.filter((file) => isSwiftPmManifestPath(file.path) && hasSwiftPmPackageDeclaration(file.content))
+    .map(file => ({ ...file, content: maskSwiftCommentsAndStrings(file.content, false) }));
   const emptyGraph = {
     hasSwiftRules: false,
     hasSwiftTest: false,
@@ -1476,8 +1483,12 @@ function swiftPmManifestText(files) {
   return files
     .filter((file) => isSwiftPmManifestPath(file.path))
     .sort((a, b) => normalizePath(a.path).localeCompare(normalizePath(b.path)))
-    .map((file) => file.content)
+    .map((file) => maskSwiftCommentsAndStrings(file.content, false))
     .join("\n");
+}
+
+function hasSwiftPmPackageDeclaration(content) {
+  return /\b(?:let|var)\s+package\s*(?::\s*Package\s*)?=\s*Package\s*\(/.test(maskSwiftCommentsAndStrings(content));
 }
 
 function isBazelBuildFile(currentPath) {

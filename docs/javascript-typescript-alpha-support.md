@@ -4,6 +4,8 @@ This matrix is the acceptance boundary for the JavaScript/TypeScript public alph
 
 ## Supported Common Patterns
 
+The [September lexical evidence repair](lexical-evidence-hardening-2026-09.md) excludes comments, quoted text, and opaque template literals from module imports, re-exports, and usage. Real import-only and filename evidence remain weaker than asserted usage. This does not introduce complete JavaScript parsing or prove runtime execution.
+
 | Area | Alpha support | Evidence used |
 | --- | --- | --- |
 | Unit and integration runners | Vitest, Jest, Node test runner, Mocha, AVA, and Bun test | dependencies, owned config files, runner imports, package scripts, recognized test filenames, and bounded static discovery fields |

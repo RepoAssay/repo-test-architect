@@ -4,6 +4,71 @@ import os from "node:os";
 import path from "node:path";
 import { describe, it } from "node:test";
 import { auditKotlinRepo } from "../src/adapters/kotlin/audit.js";
+import { assertNoProjectTestCommand } from "./support/ownership-evidence.js";
+
+it("withholds commands for empty or commented JVM build metadata", (t) => {
+  for (const wrap of [() => "", text => `/* outer /* nested */\n${text}\n*/`, text => text.split("\n").map(line => `// ${line}`).join("\n")]) {
+    const root = copyTrustFixture(t, "kotlin-junit-basic");
+    const filename = path.join(root, "build.gradle.kts");
+    fs.writeFileSync(filename, wrap(fs.readFileSync(filename, "utf8")));
+    const audit = auditKotlinRepo(root);
+    assert.equal(audit.profile.testCommand, undefined);
+    assert.notEqual(audit.profile.confidence, "high");
+    assert.ok(audit.profile.blockers.some(blocker => /build metadata/i.test(blocker)));
+    assertNoProjectTestCommand(root);
+  }
+});
+import { copyTrustFixture, assertNoSemanticEvidence, assertNoPlannedUsage } from "./support/non-code-evidence.js";
+
+it("excludes nested Kotlin comments and strings from test registration and evidence", (t) => {
+  for (const wrap of [s => `/* outer /* inner */\n${s}\n*/`, s => `/* outer /* inner */\n${s}`,
+    s => `val documentation = """\n${s}\n"""`, s => `/* outer /* middle /* inner */ */\n${s}\n*/`]) {
+    const root = copyTrustFixture(t, "kotlin-junit-basic");
+    const filename = path.join(root, "src/test/kotlin/com/example/checkout/CheckoutCalculatorTest.kt");
+    fs.writeFileSync(filename, wrap(fs.readFileSync(filename, "utf8")));
+    assertNoSemanticEvidence(auditKotlinRepo(root));
+    assertNoPlannedUsage(root);
+  }
+});
+
+it("preserves runnable Kotlin after nested comments and literal comment delimiters", (t) => {
+  const root = copyTrustFixture(t, "kotlin-junit-basic");
+  const filename = path.join(root, "src/test/kotlin/com/example/checkout/CheckoutCalculatorTest.kt");
+  const original = fs.readFileSync(filename, "utf8");
+  fs.writeFileSync(filename, `/* outer /* nested */ closed */\n${original}\nval documentation = "/* not a comment"\n`);
+  assert.ok(auditKotlinRepo(root).coveredButRisky.some(target => target.existingTestEvidence.some(e => e.usage === "asserted")));
+});
+
+it("keeps Groovy quote handling from hiding an unsupported Spock annotation", (t) => {
+  const root = copyTrustFixture(t, "kotlin-gradle-spock");
+  const filename = path.join(root, "src/test/groovy/com/example/token/TokenParserSpec.groovy");
+  const original = fs.readFileSync(filename, "utf8");
+  const withLiteral = original.replace("extends Specification {", "extends Specification {\n    def documentation = 'embedded \\\" double quote'\n");
+  fs.writeFileSync(filename, withLiteral);
+  assert.ok(auditKotlinRepo(root).coveredButRisky.length > 0);
+  fs.writeFileSync(filename, withLiteral.replace('    def "trims', '    @spock.lang.Ignore("disabled")\n    def "trims'));
+  assertNoSemanticEvidence(auditKotlinRepo(root));
+  assertNoPlannedUsage(root);
+});
+
+it("keeps Java glob and URL strings from erasing later test calls", (t) => {
+  const root = copyTrustFixture(t, "kotlin-junit-basic");
+  const filename = path.join(root, "src/test/java/com/example/checkout/MoneyFormatterTest.java");
+  fs.mkdirSync(path.dirname(filename), { recursive: true });
+  fs.writeFileSync(filename, `package com.example.checkout;
+import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+class MoneyFormatterTest {
+    @Test void formats() {
+        String glob = "**/*Test.java";
+        String url = "https://example.test";
+        assertEquals("$0.01", new MoneyFormatter().cents(1));
+    }
+}
+`);
+  const evidence = auditKotlinRepo(root).coveredButRisky.find(target => target.path.endsWith("MoneyFormatter.java")).existingTestEvidence;
+  assert.ok(evidence.some(e => e.testPath.endsWith("MoneyFormatterTest.java") && e.usage === "asserted"));
+});
 
 const exampleRoot = path.resolve("examples/kotlin-junit-basic");
 const gradleGroovyRoot = path.resolve("examples/kotlin-gradle-groovy-junit");

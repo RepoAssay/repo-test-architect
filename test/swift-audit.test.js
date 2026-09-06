@@ -4,6 +4,31 @@ import os from "node:os";
 import path from "node:path";
 import { describe, it } from "node:test";
 import { auditSwiftRepo } from "../src/adapters/swift/audit.js";
+import { copyTrustFixture } from "./support/non-code-evidence.js";
+import { assertNoProjectTestCommand } from "./support/ownership-evidence.js";
+
+it("withholds swift test for empty, commented, or string-only package declarations", (t) => {
+  for (const wrap of [() => "", text => `/* outer /* nested */\n${text}\n*/`, text => text.split("\n").map(line => `// ${line}`).join("\n"), text => `let documentation = """\n${text}\n"""`]) {
+    const root = copyTrustFixture(t, "swift-spm-xctest");
+    const filename = path.join(root, "Package.swift");
+    fs.writeFileSync(filename, wrap(fs.readFileSync(filename, "utf8")));
+    const audit = auditSwiftRepo(root);
+    assert.equal(audit.profile.testCommand, undefined);
+    assert.notEqual(audit.profile.confidence, "high");
+    assert.ok(audit.profile.blockers.some(blocker => /package declaration/i.test(blocker)));
+    assertNoProjectTestCommand(root);
+  }
+});
+
+it("ignores commented SwiftPM target attributes while preserving string values", (t) => {
+  const root = copyTrustFixture(t, "swift-spm-xctest");
+  const baseline = auditSwiftRepo(root);
+  const filename = path.join(root, "Package.swift");
+  fs.writeFileSync(filename, fs.readFileSync(filename, "utf8")
+    .replace('.target(name: "CheckoutCore")', '.target(/* path: "Missing", /* nested */ */ name: "CheckoutCore")')
+    .replace('dependencies: ["CheckoutCore"]', '/* dependencies: ["Missing"], */ dependencies: ["CheckoutCore"]'));
+  assert.deepEqual(auditSwiftRepo(root), baseline);
+});
 
 const exampleRoot = path.resolve("examples/swift-spm-xctest");
 const swiftTestingRoot = path.resolve("examples/swift-spm-swift-testing");

@@ -12,7 +12,9 @@ const IGNORED_DIRECTORIES = new Set([
 
 export function auditPhpRepo(root, options = {}) {
   const absoluteRoot = path.resolve(root);
-  const files = readRepoFiles(absoluteRoot);
+  // Lexical facts are audit-local and shared by ownership, discovery and evidence.
+  const files = readRepoFiles(absoluteRoot).map(file => file.path.endsWith(".php")
+    ? { ...file, code: maskCommentsAndStrings(file.content) } : file);
   const composerFile = files.find((file) => file.path === "composer.json");
   const metadata = parseComposer(composerFile?.content);
   const ownership = analyzeOwnership(absoluteRoot, metadata.value);
@@ -418,9 +420,9 @@ function collectEvidence(sourceFiles, testFiles, ownership) {
   }
 
   for (const test of testFiles) {
-    const imports = collectUseImports(test.content);
+    const imports = collectUseImports(test.code);
     const references = new Map(imports);
-    const namespace = declaredNamespace(test.content);
+    const namespace = declaredNamespace(test.code);
     if (namespace) {
       for (const source of uniqueFqns.values()) {
         if (source && source.fqn === `${namespace}\\${source.shortName}` && !references.has(source.shortName)) {
@@ -428,17 +430,17 @@ function collectEvidence(sourceFiles, testFiles, ownership) {
         }
       }
     }
-    const exceptionExpectations = collectDirectExceptionExpectations(test.content);
-    const assertedLocalResults = collectAssertedLocalResultClasses(test.content);
+    const exceptionExpectations = collectDirectExceptionExpectations(test.code);
+    const assertedLocalResults = collectAssertedLocalResultClasses(test.code);
     for (const [shortName, fqn] of references) {
       const source = uniqueFqns.get(fqn);
       const exceptionExpectation = exceptionExpectations.has(shortName);
-      if (!source || (!hasClassUsage(test.content, shortName) && !exceptionExpectation)) continue;
+      if (!source || (!hasClassUsage(test.code, shortName) && !exceptionExpectation)) continue;
       addEvidence(evidence, source.path, {
         testPath: test.path,
         kind: exceptionExpectation ? "php-exception-expectation" : "php-symbol-reference",
         strength: "direct",
-        usage: exceptionExpectation || hasAssertedUsage(test.content, shortName) || assertedLocalResults.has(shortName)
+        usage: exceptionExpectation || hasAssertedUsage(test.code, shortName) || assertedLocalResults.has(shortName)
           ? "asserted"
           : "called"
       });
@@ -457,7 +459,7 @@ function collectEvidence(sourceFiles, testFiles, ownership) {
 }
 
 function classifySourceFile(file) {
-  const masked = maskCommentsAndStrings(file.content);
+  const masked = file.code;
   const methods = [...masked.matchAll(/\b(?:public|protected|private)?\s*(?:static\s+)?function\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(/g)]
     .map((match) => match[1])
     .filter((name) => name !== "__construct");
@@ -492,15 +494,15 @@ function classifySourceFile(file) {
 
 function collectRunnablePhpUnitTests(testFiles, mappings, sourceFiles = [], sourceMappings = []) {
   const testClasses = testFiles.map((file) => {
-    const masked = maskCommentsAndStrings(file.content);
+    const masked = file.code;
     const owned = ownedClass(file, mappings, masked);
-    const parentFqn = owned ? resolveDeclaredParentFqn(file.content, owned.shortName, masked) : undefined;
+    const parentFqn = owned ? resolveDeclaredParentFqn(owned.shortName, masked) : undefined;
     return { file, masked, owned, parentFqn };
   });
   const sourceClasses = sourceFiles.map((file) => {
-    const masked = maskCommentsAndStrings(file.content);
+    const masked = file.code;
     const owned = ownedClass(file, sourceMappings, masked);
-    const parentFqn = owned ? resolveDeclaredParentFqn(file.content, owned.shortName, masked) : undefined;
+    const parentFqn = owned ? resolveDeclaredParentFqn(owned.shortName, masked) : undefined;
     return { file, masked, owned, parentFqn };
   });
   const uniqueClasses = new Map();
@@ -510,8 +512,8 @@ function collectRunnablePhpUnitTests(testFiles, mappings, sourceFiles = [], sour
 
   return testClasses.filter(({ file, masked, owned, parentFqn }) => {
     if (!file.path.endsWith("Test.php") || !hasPublicTestMethod(masked)) return false;
-    if (directlyExtendsPhpUnitTestCase(masked)) return true;
     if (!owned) return false;
+    if (parentFqn === "PHPUnit\\Framework\\TestCase") return true;
     const localBase = parentFqn ? uniqueClasses.get(parentFqn) : undefined;
     return Boolean(localBase && localBase.parentFqn === "PHPUnit\\Framework\\TestCase");
   }).map(({ file }) => file);
@@ -521,11 +523,7 @@ function hasPublicTestMethod(masked) {
   return /\bpublic\s+function\s+test[A-Za-z0-9_]*\s*\(/.test(masked);
 }
 
-function directlyExtendsPhpUnitTestCase(masked) {
-  return /\bclass\s+[A-Za-z_][A-Za-z0-9_]*\s+extends\s+(?:\\?PHPUnit\\Framework\\)?TestCase\b/.test(masked);
-}
-
-function resolveDeclaredParentFqn(content, className, masked = maskCommentsAndStrings(content)) {
+function resolveDeclaredParentFqn(className, masked) {
   const declaration = new RegExp(
     `\\b(?:abstract\\s+|final\\s+)?class\\s+${escapeRegExp(className)}\\s+extends\\s+(\\\\?[A-Za-z_][A-Za-z0-9_\\\\]*)\\b`
   ).exec(masked);
@@ -533,11 +531,10 @@ function resolveDeclaredParentFqn(content, className, masked = maskCommentsAndSt
   const reference = declaration[1];
   if (reference.startsWith("\\")) return reference.slice(1);
   if (reference.includes("\\")) return undefined;
-  const header = content.slice(0, declaration.index);
-  const maskedHeader = masked.slice(0, declaration.index);
+  const header = masked.slice(0, declaration.index);
   const imported = collectUseImports(header).get(reference);
   if (imported) return imported;
-  const namespace = /\bnamespace\s+([A-Za-z_\\][A-Za-z0-9_\\]*)\s*;/.exec(maskedHeader)?.[1];
+  const namespace = declaredNamespace(header);
   return namespace ? `${namespace}\\${reference}` : reference;
 }
 
@@ -547,7 +544,7 @@ function isSupportedComposerTestScript(script) {
 
 function collectUseImports(content) {
   const imports = new Map();
-  for (const match of content.matchAll(/^\s*use\s+([A-Za-z_\\][A-Za-z0-9_\\]*)(?:\s+as\s+([A-Za-z_][A-Za-z0-9_]*))?\s*;/gm)) {
+  for (const match of content.matchAll(/(?:^|(?<=[;{}]))\s*use\s+([A-Za-z_\\][A-Za-z0-9_\\]*)(?:\s+as\s+([A-Za-z_][A-Za-z0-9_]*))?\s*;/gm)) {
     const fqn = match[1].replace(/^\\/, "");
     imports.set(match[2] ?? fqn.split("\\").at(-1), fqn);
   }
@@ -555,30 +552,30 @@ function collectUseImports(content) {
 }
 
 function declaredNamespace(content) {
-  return /\bnamespace\s+([A-Za-z_\\][A-Za-z0-9_\\]*)\s*;/.exec(maskCommentsAndStrings(content))?.[1];
+  return /\bnamespace\s+([A-Za-z_\\][A-Za-z0-9_\\]*)\s*;/.exec(content)?.[1];
 }
 
 function hasClassUsage(content, name) {
-  return new RegExp(`\\b(?:new\\s+${escapeRegExp(name)}\\b|${escapeRegExp(name)}::[A-Za-z_][A-Za-z0-9_]*\\s*\\()`).test(maskComments(content));
+  return new RegExp(`\\b(?:new\\s+${escapeRegExp(name)}\\b|${escapeRegExp(name)}::[A-Za-z_][A-Za-z0-9_]*\\s*\\()`).test(content);
 }
 
 function hasAssertedUsage(content, name) {
   const escaped = escapeRegExp(name);
-  return new RegExp(`(?:assert[A-Za-z_]*|expect)\\s*\\([^;]*\\b${escaped}::[A-Za-z_][A-Za-z0-9_]*\\s*\\(`, "s").test(maskComments(content));
+  return new RegExp(`(?:assert[A-Za-z_]*|expect)\\s*\\([^;]*\\b${escaped}::[A-Za-z_][A-Za-z0-9_]*\\s*\\(`, "s").test(content);
 }
 
 function collectDirectExceptionExpectations(content) {
   const names = new Set();
   const expectation = /\bexpectException\s*\(\s*([A-Za-z_][A-Za-z0-9_]*)::class\s*\)/g;
   for (const line of content.split("\n")) {
-    for (const match of maskCommentsAndStrings(line).matchAll(expectation)) names.add(match[1]);
+    for (const match of line.matchAll(expectation)) names.add(match[1]);
   }
   return names;
 }
 
 function collectAssertedLocalResultClasses(content) {
   const classes = new Set();
-  const masked = maskCommentsAndStrings(content);
+  const masked = content;
   const assignment = /\$([A-Za-z_][A-Za-z0-9_]*)\s*=\s*([A-Za-z_][A-Za-z0-9_]*)::[A-Za-z_][A-Za-z0-9_]*\s*\(/g;
   for (const match of masked.matchAll(assignment)) {
     const statementEnd = masked.indexOf(";", match.index + match[0].length);
@@ -595,7 +592,7 @@ function collectAssertedLocalResultClasses(content) {
   return classes;
 }
 
-function ownedClass(file, mappings, masked = maskCommentsAndStrings(file.content)) {
+function ownedClass(file, mappings, masked = file.code) {
   const mapping = mappings.find((candidate) => isUnderRoot(file.path, candidate.root));
   const className = /\b(?:class|interface|trait|enum)\s+([A-Za-z_][A-Za-z0-9_]*)\b/.exec(masked)?.[1];
   const namespace = /\bnamespace\s+([A-Za-z_\\][A-Za-z0-9_\\]*)\s*;/.exec(masked)?.[1];
@@ -606,7 +603,7 @@ function ownedClass(file, mappings, masked = maskCommentsAndStrings(file.content
   return expectedFqn === declaredFqn ? { fqn: declaredFqn, shortName: className } : undefined;
 }
 
-function ownedFunctionFile(file, ownership, masked = maskCommentsAndStrings(file.content)) {
+function ownedFunctionFile(file, ownership, masked = file.code) {
   if (!ownership.functionFiles.includes(file.path)) return undefined;
   const mapping = ownership.sourceMappings.find((candidate) => isUnderRoot(file.path, candidate.root));
   const namespaces = [...masked.matchAll(/\bnamespace\s+([A-Za-z_\\][A-Za-z0-9_\\]*)\s*;/g)].map((match) => match[1]);
@@ -622,11 +619,49 @@ function addEvidence(map, sourcePath, item) {
 }
 
 function maskCommentsAndStrings(content) {
-  return maskComments(content).replace(/'(?:\\.|[^'\\])*'|"(?:\\.|[^"\\])*"/gs, (value) => " ".repeat(value.length));
+  return maskPhpNonCode(content, true);
 }
 
 function maskComments(content) {
-  return content.replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*|#[^\n]*/g, (value) => " ".repeat(value.length));
+  return maskPhpNonCode(content, false);
+}
+
+function maskPhpNonCode(content, maskStrings) {
+  const masked = content.split("");
+  for (let index = 0; index < content.length;) {
+    const start = index;
+    let hide = true;
+    if (content.startsWith("//", index) || (content[index] === "#" && content[index + 1] !== "[")) {
+      const end = content.indexOf("\n", index);
+      index = end < 0 ? content.length : end;
+    } else if (content.startsWith("/*", index)) {
+      const end = content.indexOf("*/", index + 2);
+      index = end < 0 ? content.length : end + 2;
+    } else if (content.startsWith("<<<", index)) {
+      const header = /^<<<[ \t]*(?:'([A-Za-z_][\w]*)'|"([A-Za-z_][\w]*)"|([A-Za-z_][\w]*))[ \t]*\r?\n/.exec(content.slice(index));
+      // Unsupported or unterminated heredocs cannot expose their bodies as code.
+      index = content.length;
+      if (header) {
+        const label = header[1] ?? header[2] ?? header[3];
+        const ending = new RegExp(`^[ \\t]*${label}(?![A-Za-z0-9_])`, "gm");
+        ending.lastIndex = start + header[0].length;
+        const end = ending.exec(content);
+        if (end) index = end.index + end[0].length;
+      }
+    } else if (content[index] === "'" || content[index] === '"' || content[index] === "`") {
+      const quote = content[index++];
+      while (index < content.length && content[index] !== quote) index += content[index] === "\\" ? 2 : 1;
+      index = Math.min(content.length, index + 1);
+      hide = maskStrings;
+    } else {
+      index++;
+      hide = false;
+    }
+    if (hide) for (let cursor = start; cursor < index; cursor++) {
+      if (content[cursor] !== "\n" && content[cursor] !== "\r") masked[cursor] = " ";
+    }
+  }
+  return masked.join("");
 }
 
 function isUnderRoot(filePath, root) {

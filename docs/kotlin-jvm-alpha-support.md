@@ -4,6 +4,8 @@ This matrix defines the bounded public-alpha support claim for the Kotlin/JVM ad
 
 ## Current Common-Pattern Coverage
 
+The [September lexical evidence repair](lexical-evidence-hardening-2026-09.md) handles nested block comments and quoted/triple-quoted text before test and symbol discovery. Comment-like strings cannot erase later code or hide unsupported Spock annotations. Existing framework and ownership limits are unchanged.
+
 | Area | Current support | Evidence used |
 | --- | --- | --- |
 | Project shapes | Single-module or directly audited Gradle/Maven JVM modules; complete literal root-declared Gradle aggregates; complete recursively literal Maven reactors; one KMP module or a settings-owned all-KMP aggregate whose source modules each declare exactly one literal `jvm()` or `jvm("name")` target | root/module build files, literal repository-contained settings `include(...)` declarations, complete conventional child build ownership with no remaps or unowned nested settings expansion, recursively literal repository-contained POM `<modules>` whose child POMs have static Maven coordinates, standard JVM source sets, and conventional `commonMain`/`commonTest` plus target-derived `<name>Main`/`<name>Test` source sets |
