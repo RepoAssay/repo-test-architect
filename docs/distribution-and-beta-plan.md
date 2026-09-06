@@ -2,6 +2,8 @@
 
 This plan turns the current public alpha into a discoverable, evidence-backed beta candidate without widening adapter claims merely for promotion. It was prepared on 2026-08-04 against public alpha `0.3.0`.
 
+Current update (2026-09-06): beta.1 was published August 11; [beta.2 is now being prepared](release-notes-v1.0.0-beta.2.md) with ten supported adapters and experimental Dart. The alpha rollout, counters and dates below are historical planning records. Use the updated [release lifecycle](release-lifecycle.md) for the fourteen-day beta.2 validation window, conditional September RC review and unchanged promotion gates. No external-feedback waiver or publication approval is granted by candidate preparation.
+
 ## Decisions
 
 - Treat beta as a product release stage, not a separate maturity label for each adapter. All ten adapters remain `supported` within their documented bounded matrices.

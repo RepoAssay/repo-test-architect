@@ -25,7 +25,7 @@ describe("distribution readiness", () => {
       ...packageJson,
       private: false,
       name: "repo-test-architect",
-      version: "1.0.0-beta.1",
+      version: "1.0.0-beta.2",
       mcpName: "io.github.RepoAssay/repo-test-architect",
       repository: {
         type: "git",
