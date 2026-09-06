@@ -8,6 +8,7 @@ export const alphaChecks = [
   "adapter:coverage:check",
   "corpus:check",
   "csharp:performance:check",
+  "dart:performance:check",
   "elixir:performance:check",
   "go:performance:check",
   "javascript:performance:check",

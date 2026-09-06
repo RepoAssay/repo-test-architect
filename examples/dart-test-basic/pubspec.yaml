@@ -1,0 +1,6 @@
+name: checkout_rules
+publish_to: none
+environment:
+  sdk: '^3.0.0'
+dev_dependencies:
+  test: ^1.25.0

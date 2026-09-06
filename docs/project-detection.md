@@ -15,6 +15,7 @@ npm run detect-rules:json
 
 | Marker | Ecosystem | Languages | Adapter status |
 | --- | --- | --- | --- |
+| `pubspec.yaml` | `dart` | `dart` | Experimental `dart` adapter for Dart and Flutter packages |
 | `package.json` | `javascript` | `javascript`, `typescript` | Supported by `javascript` |
 | `pyproject.toml` | `python` | `python` | Supported by `python` |
 | `requirements.txt` | `python` | `python` | Supported by `python` |
@@ -41,6 +42,8 @@ npm run detect-rules:json
 The detector skips common dependency and build output directories:
 
 - `.build`
+- `.dart_tool`
+- `.pub-cache`
 - `_build`
 - `.git`
 - `.gradle`

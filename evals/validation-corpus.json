@@ -2,6 +2,119 @@
   "schemaVersion": "validation-corpus/v1",
   "adapters": [
     {
+      "adapterId": "dart",
+      "cases": [
+        {
+          "id": "dart-core-collection",
+          "role": "conventional-library-or-service",
+          "repository": {
+            "url": "https://github.com/dart-lang/core",
+            "commit": "0fbe0cc3f18fe38aebea272f1ae22e5d1649285c",
+            "projectRoot": "pkgs/collection"
+          },
+          "supportBoundary": "Conventional collection package with public export-library imports, a direct internal-library control, and at most three unconditional owned export edges; imports remain structural.",
+          "reportPath": "docs/dart-live-validation-report.md",
+          "scorecard": {
+            "detection": "pass",
+            "ownership": "pass",
+            "command": "pass",
+            "evidence": "pass",
+            "ranking": "pass",
+            "stability": "pass",
+            "performance": "pass"
+          },
+          "observed": {
+            "testCommand": "dart test",
+            "untestedCandidates": 8,
+            "coveredButRisky": 20,
+            "skippedTargets": 1,
+            "auditDurationMs": 27,
+            "auditDurationSamplesMs": [
+              56,
+              33,
+              27,
+              26,
+              27
+            ],
+            "evidenceRelationshipCount": 380,
+            "canonicalAuditSha256": "8b5b6c82cc4629c4c6b9fe9b58540ef448965089735b5a0ec82205f4049acbe1"
+          }
+        },
+        {
+          "id": "dart-flutter-compass",
+          "role": "framework-heavy-application",
+          "repository": {
+            "url": "https://github.com/flutter/samples",
+            "commit": "463e365e4842f252ffab9c6198594a504d69469f",
+            "projectRoot": "compass_app/app"
+          },
+          "supportBoundary": "Compass Flutter app within a declared pub workspace, package-local unit/widget tests, generated model exclusions and bodyless abstract repository deferral; device integration tests excluded.",
+          "reportPath": "docs/dart-live-validation-report.md",
+          "scorecard": {
+            "detection": "pass",
+            "ownership": "pass",
+            "command": "pass",
+            "evidence": "pass",
+            "ranking": "pass",
+            "stability": "pass",
+            "performance": "pass"
+          },
+          "observed": {
+            "testCommand": "flutter test",
+            "untestedCandidates": 43,
+            "coveredButRisky": 40,
+            "skippedTargets": 28,
+            "auditDurationMs": 22,
+            "auditDurationSamplesMs": [
+              27,
+              23,
+              22,
+              22,
+              21
+            ],
+            "evidenceRelationshipCount": 66,
+            "canonicalAuditSha256": "fe798771650db9ffbc936395c12fc8a18532cbf6b6f2d9089a440329ceea1136"
+          }
+        },
+        {
+          "id": "dart-flutter-bloc",
+          "role": "difficult-ownership-graph",
+          "repository": {
+            "url": "https://github.com/felangel/bloc",
+            "commit": "8fcf54dfea7ba51ef04c091d1a27e0da498b29f0",
+            "projectRoot": "packages/flutter_bloc"
+          },
+          "supportBoundary": "Flutter package with a nested example, package-local override to sibling bloc, local public exports and foreign package reexports; source evidence stays inside the selected owner.",
+          "reportPath": "docs/dart-live-validation-report.md",
+          "scorecard": {
+            "detection": "pass",
+            "ownership": "pass",
+            "command": "pass",
+            "evidence": "pass",
+            "ranking": "pass",
+            "stability": "pass",
+            "performance": "pass"
+          },
+          "observed": {
+            "testCommand": "flutter test",
+            "untestedCandidates": 0,
+            "coveredButRisky": 9,
+            "skippedTargets": 1,
+            "auditDurationMs": 6,
+            "auditDurationSamplesMs": [
+              6,
+              6,
+              5,
+              5,
+              6
+            ],
+            "evidenceRelationshipCount": 81,
+            "canonicalAuditSha256": "48766edb164a5fd05f2694aa0198f8404046d2a6ede9b731e1a7902c9e2099e4"
+          }
+        }
+      ]
+    },
+    {
       "adapterId": "javascript",
       "cases": [
         {

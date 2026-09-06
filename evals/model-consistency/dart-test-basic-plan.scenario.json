@@ -1,0 +1,20 @@
+{
+  "schemaVersion": "model-consistency-scenario/v1",
+  "id": "dart-test-basic-plan",
+  "description": "Preserve the Dart command and structural evidence without upgrading imports to executed calls.",
+  "sourceArtifact": {
+    "path": "evals/expected/dart-test-basic.audit.json",
+    "schemaVersion": "audit/v1"
+  },
+  "toolCall": { "toolName": "generate_test_plan", "arguments": {} },
+  "lockedFields": [
+    { "path": "summary.verificationCommand", "expected": "dart test", "reason": "Keep the package-owned Dart command." },
+    { "path": "summary.addTestCount", "expected": 1, "reason": "Shipping remains untested." },
+    { "path": "summary.extendTestCount", "expected": 1, "reason": "Price retains structural test evidence." },
+    { "path": "items[0].id", "expected": "extend-test:lib/price.dart", "reason": "Keep the stable price target." },
+    { "path": "items[0].existingTestEvidence[0].kind", "expected": "package-entry-import", "reason": "Preserve import provenance." },
+    { "path": "items[0].existingTestEvidence[0].strength", "expected": "referenced", "reason": "Import reachability is not proof of calls or assertions." }
+  ],
+  "allowedVariations": ["explanation wording"],
+  "unexpectedVariations": ["invented executed usage", "different command or action counts"]
+}

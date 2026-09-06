@@ -1,5 +1,6 @@
 import { auditJavaScriptRepo } from "../adapters/javascript/audit.js";
 import { auditCSharpRepo } from "../adapters/csharp/audit.js";
+import { auditDartRepo } from "../adapters/dart/audit.js";
 import { auditElixirRepo } from "../adapters/elixir/audit.js";
 import { auditGoRepo } from "../adapters/go/audit.js";
 import { auditKotlinRepo } from "../adapters/kotlin/audit.js";
@@ -186,6 +187,16 @@ export const adapters = [
         onPhaseTiming: options.onPhaseTiming
       });
     }
+  },
+  {
+    id: "dart",
+    ecosystems: ["dart"],
+    languages: ["dart"],
+    maturity: "experimental",
+    supportedTestFrameworks: ["dart-test", "flutter-test"],
+    supportedProjectTypes: ["dart-package", "flutter"],
+    emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"],
+    audit: auditDartRepo
   }
 ];
 

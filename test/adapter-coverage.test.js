@@ -10,6 +10,12 @@ describe("adapter coverage regression gate", () => {
   it("locks adapter-owned sources, tests, and minimums", () => {
     assert.deepEqual(adapterCoverageCases, [
       {
+        adapterId: "dart",
+        sourcePath: "src/adapters/dart/audit.js",
+        testPath: "test/dart-audit.test.js",
+        thresholds: { lines: 95, branches: 90, functions: 95 }
+      },
+      {
         adapterId: "csharp",
         sourcePath: "src/adapters/csharp/audit.js",
         testPath: "test/csharp-audit.test.js",

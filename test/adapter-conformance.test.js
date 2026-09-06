@@ -3,6 +3,17 @@ import { assertAdapterConformance } from "./support/adapter-conformance.js";
 
 const cases = [
   {
+    adapterId: "dart",
+    fixturePath: "examples/dart-test-basic",
+    expectedMaturity: "experimental",
+    expectedProfile: {
+      languages: ["dart"],
+      testFrameworks: ["dart-test"],
+      testCommand: "dart test",
+      confidence: "medium"
+    }
+  },
+  {
     adapterId: "csharp",
     fixturePath: "examples/csharp-sdk-xunit-basic",
     expectedMaturity: "supported",

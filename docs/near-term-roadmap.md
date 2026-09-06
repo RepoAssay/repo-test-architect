@@ -24,6 +24,8 @@ The useful baseline is:
 
 ## Release Progression
 
+The 2026-09-06 owner direction is to prepare for stable release with Dart as the last language addition. Experimental [Dart and Flutter auditing](dart-support.md) is now implemented. Further language expansion is deferred until after release; Dart promotion evidence and the exact-commit release checklist remain distinct from implementing the adapter. See the current [usage snapshot](distribution-metrics.md#pre-release-snapshot--2026-09-06).
+
 The current planning target is to keep the public alpha active through at least mid/late September 2026, begin beta in late September or October if its evidence gates pass, and consider `1.0.0` in November or December at the earliest. These are owner-controlled planning windows rather than delivery promises: strong evidence can justify a documented acceleration, while unresolved trust work can delay promotion for as long as necessary. The normative stages, version lines, cadence, and promotion gates live in the [Release Lifecycle](release-lifecycle.md).
 
 The [Distribution And Beta Plan](distribution-and-beta-plan.md) turns those gates into the current directory rollout, reusable listing copy, external-feedback cohort, adapter stewardship, and beta go/no-go record.

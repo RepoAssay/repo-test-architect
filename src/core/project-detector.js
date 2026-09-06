@@ -7,6 +7,8 @@ import { analyzeGradleSettings } from "./gradle-settings.js";
 import { listAdapters } from "./adapter-registry.js";
 
 const IGNORED_DIRECTORIES = new Set([
+  ".dart_tool",
+  ".pub-cache",
   ".build",
   "_build",
   ".git",
@@ -28,6 +30,11 @@ const IGNORED_DIRECTORIES = new Set([
 ]);
 
 const MARKERS = [
+  {
+    fileName: "pubspec.yaml",
+    ecosystem: "dart",
+    languages: ["dart"]
+  },
   {
     fileName: "package.json",
     ecosystem: "javascript",

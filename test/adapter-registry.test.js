@@ -4,8 +4,15 @@ import { describe, it } from "node:test";
 import { getAdapter, getAdapterRegistry, listAdapters } from "../src/core/adapter-registry.js";
 
 describe("adapter registry", () => {
+  it("advertises the experimental Dart package and Flutter boundary", () => {
+    assert.deepEqual(listAdapters().find((adapter) => adapter.id === "dart"), {
+      id: "dart", ecosystems: ["dart"], languages: ["dart"], maturity: "experimental",
+      supportedTestFrameworks: ["dart-test", "flutter-test"], supportedProjectTypes: ["dart-package", "flutter"],
+      emittedArtifacts: ["audit/v1", "plan/v1", "target-explanation/v1", "candidate-ranking/v1"]
+    });
+  });
   it("lists registered adapters", () => {
-    assert.deepEqual(listAdapters(), [
+    assert.deepEqual(listAdapters().filter((adapter) => adapter.id !== "dart"), [
       {
         id: "javascript",
         ecosystems: ["javascript"],
@@ -118,7 +125,8 @@ describe("adapter registry", () => {
   });
 
   it("returns the adapter registry artifact", () => {
-    assert.deepEqual(getAdapterRegistry(), {
+    const registry = getAdapterRegistry();
+    assert.deepEqual({ ...registry, adapters: registry.adapters.filter((adapter) => adapter.id !== "dart") }, {
       schemaVersion: "adapter-registry/v1",
       adapters: [
         {
@@ -260,7 +268,7 @@ describe("adapter registry", () => {
   it("rejects unknown adapters", () => {
     assert.throws(
       () => getAdapter("unknown"),
-      /Unsupported adapter: unknown\. Available adapters: javascript, csharp, elixir, go, kotlin, php, python, rust, ruby, swift\./
+      /Unsupported adapter: unknown\. Available adapters: javascript, csharp, elixir, go, kotlin, php, python, rust, ruby, swift, dart\./
     );
   });
 

@@ -1,5 +1,15 @@
 [
   {
+    "name": "dart-test-basic",
+    "adapter": "dart",
+    "path": "examples/dart-test-basic"
+  },
+  {
+    "name": "dart-flutter-basic",
+    "adapter": "dart",
+    "path": "examples/dart-flutter-basic"
+  },
+  {
     "name": "node-vitest-basic",
     "adapter": "javascript",
     "path": "examples/node-vitest-basic"
