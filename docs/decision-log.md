@@ -2,6 +2,16 @@
 
 This log records project-level decisions that shape architecture, scope, and public positioning.
 
+# Publish Beta.2 Without Promoting The Default Channel
+
+Decision (2026-09-06): following explicit owner approval to start release/publication, squash-merge preparation PR #276 and publish `1.0.0-beta.2` from `75ae521d5d34a80d40d397cdd0a52ba68e7d0646`. Publish to npm under `beta`, matching Official MCP Registry metadata, and a GitHub prerelease/tag at that exact commit. Keep npm `latest` on `0.3.0`; do not add `next`, promote Dart, enable generation, or approve RC/stable.
+
+Evidence: the final commit passed local release/strict metadata gates and the [manually dispatched three-OS release matrix](https://github.com/RepoAssay/repo-test-architect/actions/runs/34026826589), with 1,435 tests per OS. Official publisher 1.8.1 validated the manifest. The checked tarball was published with lifecycle scripts disabled; public-registry clean install and beta.1 upgrade passed on macOS with matching integrity, three binaries, diagnostics, MCP initialization, 19 tools, and Dart fixture analysis. The exact Registry version is active. See the [publication ledger](distribution-metrics.md#beta2-publication--2026-09-06) for timestamps and downstream limitations.
+
+Observation: start the fourteen-day clean window at npm publication, September 6 at 10:20 UTC. Continue Linux/Windows public-registry installation and upgrade checks and real-repository feedback. The conditional September 20–22 RC review remains evidence-gated; the default six-week beta period reaches September 22. This publication does not establish external adoption or waive the external-feedback requirement.
+
+Operational note: Registry browser OAuth granted only the personal namespace despite verified public RepoAssay owner membership. Re-authentication using the existing GitHub CLI credential with `read:org` through the official publisher's token-login route succeeded. No new token, organization-permission change, or publishing workflow was introduced; see [Registry login troubleshooting](distribution.md#registry-login-troubleshooting).
+
 # Prepare Beta.2 And An Evidence-Gated RC Review
 
 Decision (2026-09-06): prepare `1.0.0-beta.2` after merging experimental Dart/Flutter support, cross-adapter trust repairs, security dependency updates and the contributor documentation correction. Align npm, runtime MCP, diagnostics and Registry manifest versions. Publication remains a separate owner-approved action under `beta`; do not move `latest`, promote Dart, add another language, or enable native generation.

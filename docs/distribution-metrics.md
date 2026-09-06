@@ -4,6 +4,34 @@ This ledger records discoverability, distribution, and external-use evidence for
 
 Metrics are evidence with different meanings. npm downloads, GitHub clones, directory impressions, stars, and completed user feedback loops must remain separate. None is a substitute for another, and automated traffic must not be presented as adoption.
 
+## Beta.2 Publication — 2026-09-06
+
+Owner-approved release commit: `75ae521d5d34a80d40d397cdd0a52ba68e7d0646` (PR #276). The [exact-commit three-OS release run](https://github.com/RepoAssay/repo-test-architect/actions/runs/34026826589) passed on Linux, Windows and macOS, including 1,435 tests per OS. Local release and strict metadata checks passed; official publisher 1.8.1 was downloaded from its versioned upstream release, checksum-verified, and validated `server.json`.
+
+| Channel | Verified release status | Remaining work |
+| --- | --- | --- |
+| [npm beta.2](https://www.npmjs.com/package/repo-test-architect/v/1.0.0-beta.2) | Published at 10:20:14 UTC; `beta: 1.0.0-beta.2`, `latest: 0.3.0`; no `next` tag. | Continue public-registry install/upgrade checks on Linux and Windows during observation. |
+| [Official MCP Registry exact version](https://registry.modelcontextprotocol.io/v0.1/servers/io.github.RepoAssay%2Frepo-test-architect/versions/1.0.0-beta.2) | Published at 10:23:00 UTC; active and latest Registry metadata, npm `1.0.0-beta.2`, stdio transport, positional `mcp` argument. | Downstream ingestion is not proof of independent use. |
+| [GitHub prerelease](https://github.com/RepoAssay/repo-test-architect/releases/tag/v1.0.0-beta.2) | Public prerelease; tag resolves to the exact tested commit. The default latest release remains v0.3.0. | No stable promotion. |
+| [Glama](https://glama.ai/mcp/servers/RepoAssay/repo-test-architect) | Public; inspected description still mentions beta.1 and exposes opt-in `@beta` instructions. | Repository-sourced description refresh not yet verified. |
+| [mcpservers.org](https://mcpservers.org/servers/repoassay/repo-test-architect) | Public; inspected repository-sourced description still mentions beta.1 with `@beta` instructions. | Description refresh not yet verified. |
+| [mcp.so](https://mcp.so/servers/repo-test-architect) | Public; default configuration remains intentionally unqualified, with a separate `@beta` option. Custom description still names beta.1. | Authenticated owner edit: name beta.2, update its release-notes link, and mention experimental Dart separately from supported adapters. No new purchase or submission is needed. |
+| [PulseMCP](https://www.pulsemcp.com/servers) | Exact-name public listing still not independently verified; automated directory access failed and indexed search found no exact listing. | Verify ingestion of the canonical Registry entry; do not claim publication here. |
+| [awesome-mcp-servers PR #11509](https://github.com/punkpeye/awesome-mcp-servers/pull/11509) | Open and no longer draft, not merged. | External maintainer review remains pending; no new PR or comment sent. |
+| Smithery | Still deliberately deferred. | No hosting, bundle or new distribution commitment. |
+
+The inspected directory `@beta` commands now resolve to beta.2 via npm; that does not mean their cached descriptions have refreshed. No authenticated directory edits, new submissions, purchases, emails or launch posts were performed in this release pass.
+
+Clean install and beta.1-to-beta.2 upgrade from the public npm registry passed on macOS: package identity, eleven adapters including Dart, all three binaries, diagnostics with external reporting disabled, MCP initialization, all 19 tools, and Dart fixture analysis. The pre-upgrade beta.1 installation was also verified. Both beta.2 installations matched the checked tarball's integrity:
+
+```text
+sha512-O7xyXL38osFXE2VQktWjW9gQ7RvPp7YfhoUjtNnGLXlexMoIFFGiNQn/a8tCDTRFBRHGVr4VhlEKyefIPekORQ==
+```
+
+The published archive contains the preparation-time documentation snapshot from the immutable tested commit; current publication status is recorded by the GitHub release and this follow-up documentation. Neither the release tag nor the package was rewritten for post-publication documentation.
+
+Beta.2's fourteen-day clean window starts September 6 at 10:20 UTC, with September 20 at 10:20 UTC the earliest fourteen-day point if no blocker intervenes. September 22 completes the default six weeks since beta.1. Public-registry checks above are maintainer validation, not external feedback; recorded external-use totals remain unchanged.
+
 ## Channel Status Snapshot
 
 | Channel | Status on 2026-08-04 | Cost | Next evidence |

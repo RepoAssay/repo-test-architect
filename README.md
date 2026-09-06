@@ -30,9 +30,9 @@ The current implementation can:
 
 Native test generation is intentionally deferred. `generate_selected_test` returns a structured deferred artifact until adapter-specific generation policy and repair-loop fixtures exist.
 
-Repo Test Architect `1.0.0-beta.1` is available as an opt-in public beta. The unqualified npm command remains on `0.3.0` while the beta is evaluated. Treat its findings as evidence-backed review input rather than an automatic instruction to change a repository. See the [beta release notes](https://github.com/RepoAssay/repo-test-architect/releases/tag/v1.0.0-beta.1).
+Repo Test Architect `1.0.0-beta.2` is available as an opt-in public beta on npm and the Official MCP Registry. The unqualified npm command remains on `0.3.0` while the beta is evaluated. Treat its findings as evidence-backed review input rather than an automatic instruction to change a repository. See the [beta release notes](https://github.com/RepoAssay/repo-test-architect/releases/tag/v1.0.0-beta.2).
 
-The repository is preparing `1.0.0-beta.2` with experimental Dart/Flutter support and adapter trust fixes. It is not published yet; see the [beta.2 release notes and validation plan](docs/release-notes-v1.0.0-beta.2.md). The `@beta` commands below continue to select the published version until that release is approved.
+Beta.2 adds experimental Dart/Flutter support and adapter trust fixes. The `@beta` commands below select beta.2; see the [release notes and validation plan](docs/release-notes-v1.0.0-beta.2.md). Dart remains experimental, and native generation remains deferred.
 
 ## Install
 
