@@ -116,6 +116,7 @@ describe("model consistency runner", () => {
         ["python-django-tox-plan", []],
         ["python-fastapi-client-route-plan", []],
         ["python-flask-nox-coverage-plan", []],
+        ["python-manifest-free-unittest-plan", []],
         ["python-package-local-tests-plan", []],
         ["python-poetry-pytest-plan", []],
         ["python-pytest-advanced-plan", []],
@@ -147,10 +148,10 @@ describe("model consistency runner", () => {
     assert.equal(summary.schemaVersion, "model-consistency-summary/v1");
     assert.equal(summary.profileName, "deterministic-baseline");
     assert.deepEqual(summary.summary, {
-      scenarioCount: 64,
-      passedScenarioCount: 64,
+      scenarioCount: 65,
+      passedScenarioCount: 65,
       failedScenarioCount: 0,
-      checkedFieldCount: 560,
+      checkedFieldCount: 564,
       failureCount: 0
     });
     assert.equal(summary.scenarios[24].scenarioId, "node-ava-basic-plan");
@@ -168,8 +169,8 @@ describe("model consistency runner", () => {
     assert.equal(comparison.baselineProfile, "deterministic-baseline");
     assert.equal(comparison.candidateProfile, "local-small");
     assert.deepEqual(comparison.summary, {
-      scenarioCount: 64,
-      alignedScenarioCount: 64,
+      scenarioCount: 65,
+      alignedScenarioCount: 65,
       driftedScenarioCount: 0,
       missingScenarioCount: 0,
       unexpectedScenarioCount: 0,
@@ -212,12 +213,12 @@ describe("model consistency runner", () => {
     const comparison = compareModelConsistencySummaries(baseline, candidate);
 
     assert.deepEqual(comparison.summary, {
-      scenarioCount: 65,
-      alignedScenarioCount: 62,
+      scenarioCount: 66,
+      alignedScenarioCount: 63,
       driftedScenarioCount: 1,
       missingScenarioCount: 1,
       unexpectedScenarioCount: 1,
-      checkedFieldDelta: -405,
+      checkedFieldDelta: -409,
       failureDelta: 3
     });
     assert.deepEqual(
@@ -270,6 +271,7 @@ describe("model consistency runner", () => {
         ["python-django-tox-plan", "aligned"],
         ["python-fastapi-client-route-plan", "aligned"],
         ["python-flask-nox-coverage-plan", "aligned"],
+        ["python-manifest-free-unittest-plan", "aligned"],
         ["python-package-local-tests-plan", "aligned"],
         ["python-poetry-pytest-plan", "aligned"],
         ["python-pytest-advanced-plan", "aligned"],

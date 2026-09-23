@@ -68,8 +68,25 @@ export function auditPythonRepo(root, options = {}) {
   );
   const untestedCandidates = [];
   const coveredButRisky = [];
-  const skipped = [];
-  const risks = [];
+  const skipped = files
+    .filter((file) => isSourceFile(file.path, { entries: [{ prefix: "" }] }, pytestDiscovery) &&
+      !isSourceFile(file.path, sourceLayout, pytestDiscovery) && isIncludedByChangedPaths(file.path, changedPaths))
+    .map((file) => ({
+      id: file.path,
+      name: basenameWithoutExtension(file.path),
+      path: file.path,
+      kind: "source-scope-exclusion",
+      signals: [],
+      riskReductionScore: 0,
+      maintenanceCost: 0,
+      reason: `Outside selected Python source roots: ${sourceLayout.entries.map(({ prefix }) => prefix || ".").join(", ")}; not assessed for test coverage.`
+    }));
+  const risks = skipped.length > 0 || profile.testFrameworks.includes("unittest")
+    ? ["Static Python audit: profile confidence describes detection, not audit completeness or assertion coverage. An empty candidate list does not establish coverage."]
+    : [];
+  if (profile.testFrameworks.includes("unittest")) {
+    risks.push("Unittest collection has not been executed. Confirm a nonzero test count; a successful exit with zero tests is not verification.");
+  }
 
   for (const file of sourceFiles.filter((candidate) => isIncludedByChangedPaths(candidate.path, changedPaths))) {
     const name = basenameWithoutExtension(file.path);
@@ -456,12 +473,42 @@ function detectTestCommand(paths, configText, frameworks, files) {
     return { command: "pytest", blockers: [] };
   }
   if (frameworks.includes("unittest")) {
-    if (tool === "uv") return { command: "uv run python -m unittest", blockers: [] };
-    if (tool === "poetry") return { command: "poetry run python -m unittest", blockers: [] };
     if (tool === "hatch") return { command: "hatch test", blockers: [] };
-    return { command: "python -m unittest", blockers: [] };
+    const discovery = detectUnittestDiscovery(paths);
+    if (!discovery.command) return discovery;
+    const prefix = tool === "uv" ? "uv run " : tool === "poetry" ? "poetry run " : "";
+    return { command: `${prefix}python -m unittest ${discovery.command}`, blockers: [] };
   }
   return { command: undefined, blockers: [] };
+}
+
+function detectUnittestDiscovery(paths) {
+  const tests = paths.filter((currentPath) => isTestFile(currentPath));
+  const pathSet = new Set(paths);
+  const roots = new Set(tests.map((testPath) => {
+    const directories = testPath.split("/").slice(0, -1);
+    let start = ".";
+    for (let index = 0; index < directories.length; index += 1) {
+      const directory = directories.slice(0, index + 1).join("/");
+      if (!pathSet.has(`${directory}/__init__.py`)) start = directory;
+    }
+    return start;
+  }));
+  if (roots.size !== 1) {
+    return { command: undefined, blockers: [roots.size === 0
+      ? "No unittest test files detected; configure an explicit test command and confirm nonzero collection."
+      : `Unittest tests require multiple discovery roots (${[...roots].sort().join(", ")}); configure an explicit test command covering all roots.`] };
+  }
+  const start = [...roots][0];
+  if (!/^[A-Za-z0-9_./-]+$/.test(start) || start.startsWith("-")) {
+    return { command: undefined, blockers: ["Unittest discovery path requires an explicit project test command."] };
+  }
+  const pattern = tests.every((testPath) => fileNameOf(testPath).startsWith("test"))
+    ? "" : tests.every((testPath) => fileNameOf(testPath).endsWith("_test.py")) ? ' -p "*_test.py"' : undefined;
+  if (pattern === undefined) {
+    return { command: undefined, blockers: ["Mixed unittest filename patterns require an explicit test command covering all patterns."] };
+  }
+  return { command: `discover -s ${start}${pattern}`, blockers: [] };
 }
 
 function detectExistingTestLocations(paths, pytestDiscovery) {

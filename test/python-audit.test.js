@@ -1205,7 +1205,7 @@ async def integration(session):
 
     assert.deepEqual(audit.profile.packageManagers, ["pyproject"]);
     assert.deepEqual(audit.profile.testFrameworks, ["unittest"]);
-    assert.equal(audit.profile.testCommand, "python -m unittest");
+    assert.equal(audit.profile.testCommand, 'python -m unittest discover -s tests -p "*_test.py"');
     assert.equal(audit.profile.confidence, "high");
     assert.ok(audit.profile.detectedConventions.includes("*_test.py"));
     assert.deepEqual(
@@ -1434,9 +1434,12 @@ dependencies = ["pytest"]
     const auditedPaths = [...audit.recommended, ...audit.skipped].map((target) => target.path);
 
     assert.ok(auditedPaths.includes("checkout/price_parser.py"));
-    assert.ok(!auditedPaths.includes("support/branching.py"));
-    assert.ok(!auditedPaths.includes("docs_src/tutorial.py"));
-    assert.ok(!auditedPaths.includes("scripts/release.py"));
+    assert.ok(!audit.recommended.some((target) => target.path === "support/branching.py"));
+    assert.equal(audit.skipped.find((target) => target.path === "support/branching.py")?.kind, "source-scope-exclusion");
+    assert.ok(!audit.recommended.some((target) => target.path === "docs_src/tutorial.py"));
+    assert.equal(audit.skipped.find((target) => target.path === "docs_src/tutorial.py")?.kind, "source-scope-exclusion");
+    assert.ok(!audit.recommended.some((target) => target.path === "scripts/release.py"));
+    assert.equal(audit.skipped.find((target) => target.path === "scripts/release.py")?.kind, "source-scope-exclusion");
   });
 
   it("prefers a conventional src root over repository tooling", () => {
@@ -1451,7 +1454,8 @@ dependencies = ["pytest"]
     const auditedPaths = [...audit.recommended, ...audit.skipped].map((target) => target.path);
 
     assert.ok(auditedPaths.includes("src/checkout/price_parser.py"));
-    assert.ok(!auditedPaths.includes("meta/build.py"));
+    assert.ok(!audit.recommended.some((target) => target.path === "meta/build.py"));
+    assert.equal(audit.skipped.find((target) => target.path === "meta/build.py")?.kind, "source-scope-exclusion");
   });
 
   it("keeps explicit multi-package ownership aligned with custom pytest discovery", (t) => {
@@ -1511,7 +1515,8 @@ python_files = ["check_*.py"]
       usage: "asserted"
     }]);
     assert.ok(!auditedPaths.includes("quality/helpers.py"));
-    assert.ok(!auditedPaths.includes("tools/release.py"));
+    assert.ok(!audit.recommended.some((target) => target.path === "tools/release.py"));
+    assert.equal(audit.skipped.find((target) => target.path === "tools/release.py")?.kind, "source-scope-exclusion");
   });
 
   it("uses bounded setuptools find roots for implicit namespace packages", (t) => {
@@ -1548,7 +1553,8 @@ include = ["acme*"]
     const auditedPaths = [...audit.recommended, ...audit.skipped].map((target) => target.path);
 
     assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["lib/acme/payments/price_parser.py"]);
-    assert.ok(!auditedPaths.includes("lib/other/branching.py"));
+    assert.ok(!audit.recommended.some((target) => target.path === "lib/other/branching.py"));
+    assert.equal(audit.skipped.find((target) => target.path === "lib/other/branching.py")?.kind, "source-scope-exclusion");
   });
 
   it("resolves relative imports inside a declared implicit namespace owner", (t) => {
@@ -1625,7 +1631,8 @@ def test_packages():
       audit.coveredButRisky.map((target) => target.path),
       ["checkout/price_parser.py", "lib/plugins/rule_parser.py"]
     );
-    assert.ok(!auditedPaths.includes("support/branching.py"));
+    assert.ok(!audit.recommended.some((target) => target.path === "support/branching.py"));
+    assert.equal(audit.skipped.find((target) => target.path === "support/branching.py")?.kind, "source-scope-exclusion");
   });
 
   it("honors pytest config precedence for custom testpaths and python_files", (t) => {

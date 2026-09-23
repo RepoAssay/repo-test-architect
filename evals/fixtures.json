@@ -290,5 +290,10 @@
     "name": "elixir-mix-exunit-basic",
     "adapter": "elixir",
     "path": "examples/elixir-mix-exunit-basic"
+  },
+  {
+    "name": "python-manifest-free-unittest",
+    "adapter": "python",
+    "path": "examples/python-manifest-free-unittest"
   }
 ]
