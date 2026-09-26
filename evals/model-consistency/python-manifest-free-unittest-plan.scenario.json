@@ -1,0 +1,34 @@
+{
+  "schemaVersion": "model-consistency-scenario/v1",
+  "id": "python-manifest-free-unittest-plan",
+  "description": "Preserve explicit unittest discovery and keep excluded source files out of coverage recommendations.",
+  "sourceArtifact": {
+    "path": "evals/expected/python-manifest-free-unittest.audit.json",
+    "schemaVersion": "audit/v1"
+  },
+  "toolCall": { "toolName": "generate_test_plan", "arguments": {} },
+  "lockedFields": [
+    {
+      "path": "summary.verificationCommand",
+      "expected": "python -m unittest discover -s tests",
+      "reason": "Default discovery misses this non-package tests directory."
+    },
+    {
+      "path": "summary.addTestCount",
+      "expected": 0,
+      "reason": "Excluded source files have not been assessed for missing coverage."
+    },
+    {
+      "path": "summary.deferredCount",
+      "expected": 0,
+      "reason": "Scope exclusions must not become test recommendations."
+    },
+    {
+      "path": "items[0].id",
+      "expected": "extend-test:retrotext/localization.py",
+      "reason": "The selected package retains its existing test evidence."
+    }
+  ],
+  "allowedVariations": ["Explanation wording"],
+  "unexpectedVariations": ["Implicit root discovery", "Coverage claims for excluded modules"]
+}

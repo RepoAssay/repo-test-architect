@@ -415,6 +415,13 @@
           "ignoredDirectories"
         ],
         "properties": {
+          "fallbackRules": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
           "schemaVersion": {
             "const": "project-detection-rules/v1"
           },

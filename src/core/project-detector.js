@@ -171,6 +171,7 @@ const MARKERS = [
  * @property {"project-detection-rules/v1"} schemaVersion
  * @property {ProjectDetectionMarker[]} markers
  * @property {string[]} ignoredDirectories
+ * @property {string[]} fallbackRules
  *
  * @typedef {object} ProjectDetection
  * @property {"project-detection/v1"} schemaVersion
@@ -192,7 +193,8 @@ export function getProjectDetectionRules() {
       ...marker,
       languages: [...marker.languages]
     })),
-    ignoredDirectories: [...IGNORED_DIRECTORIES].sort()
+    ignoredDirectories: [...IGNORED_DIRECTORIES].sort(),
+    fallbackRules: ["When no manifest projects are found, detect the repository root as Python if test/ or tests/ contains a direct unittest test module and the root contains Python source or a regular Python package. Other manifest-free layouts require audit_repo with adapterId=python."]
   };
 }
 
@@ -539,7 +541,32 @@ function collectMarkerGroups(root) {
   }
 
   visit(root);
+  if (groups.size === 0) {
+    for (const testPath of manifestFreeUnittestEvidence(root)) {
+      addMarkerGroup(groups, root, root, testPath, { ecosystem: "python", languages: ["python"] });
+    }
+  }
   return groups;
+}
+
+function manifestFreeUnittestEvidence(root) {
+  const entries = fs.readdirSync(root, { withFileTypes: true });
+  const hasSource = entries.some((entry) =>
+    (entry.isFile() && entry.name.endsWith(".py") && !/^(?:test_|setup\.)|_test\.py$/.test(entry.name)) ||
+    (entry.isDirectory() && !IGNORED_DIRECTORIES.has(entry.name) && !["test", "tests"].includes(entry.name) &&
+      fs.lstatSync(path.join(root, entry.name, "__init__.py"), { throwIfNoEntry: false })?.isFile())
+  );
+  if (!hasSource) return [];
+  const evidence = [];
+  for (const directory of entries.filter((entry) => entry.isDirectory() && ["test", "tests"].includes(entry.name))) {
+    for (const entry of fs.readdirSync(path.join(root, directory.name), { withFileTypes: true })) {
+      if (!entry.isFile() || !/^(?:test_.*|.*_test)\.py$/.test(entry.name)) continue;
+      const relative = `${directory.name}/${entry.name}`;
+      const content = fs.readFileSync(path.join(root, relative), "utf8");
+      if (/^\s*(?:import\s+unittest\b|from\s+unittest\s+import\b)/m.test(content)) evidence.push(relative);
+    }
+  }
+  return evidence.sort();
 }
 
 function isApplicableMarker(current, marker, swiftBazelRoots) {

@@ -141,8 +141,20 @@
       "existingTestPaths": []
     }
   ],
-  "skipped": [],
+  "skipped": [
+    {
+      "id": "noxfile.py",
+      "name": "noxfile",
+      "path": "noxfile.py",
+      "kind": "source-scope-exclusion",
+      "signals": [],
+      "riskReductionScore": 0,
+      "maintenanceCost": 0,
+      "reason": "Outside selected Python source roots: webapp/; not assessed for test coverage."
+    }
+  ],
   "risks": [
+    "Static Python audit: profile confidence describes detection, not audit completeness or assertion coverage. An empty candidate list does not establish coverage.",
     "routes has http route behavior, request or status handling and needs edge-case review."
   ]
 }

@@ -679,6 +679,9 @@ function renderMarkdownDetectionRules(rules) {
   lines.push("");
   lines.push("## Ignored Directories");
   lines.push(`- ${rules.ignoredDirectories.join(", ")}`);
+  lines.push("");
+  lines.push("## Fallback Detection");
+  for (const rule of rules.fallbackRules ?? []) lines.push(`- ${rule}`);
 
   return lines.join("\n");
 }

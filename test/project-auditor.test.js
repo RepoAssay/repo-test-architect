@@ -428,7 +428,8 @@ python_files = ["check_*.py"]
     assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["alpha/parser.py"]);
     assert.deepEqual(audit.untestedCandidates.map((target) => target.path), ["beta/parser.py"]);
     assert.ok(audit.profile.existingTestLocations.includes("configured pytest location"));
-    assert.ok(!auditedPaths.includes("tools/release.py"));
+    assert.ok(!audit.recommended.some((target) => target.path === "tools/release.py"));
+    assert.equal(audit.skipped.find((target) => target.path === "tools/release.py")?.kind, "source-scope-exclusion");
   });
 
   it("passes repository-owned pytest discovery into nested Python audits", (t) => {

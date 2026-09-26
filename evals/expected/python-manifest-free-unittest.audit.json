@@ -1,0 +1,105 @@
+{
+  "schemaVersion": "audit/v1",
+  "profile": {
+    "root": "<fixture>",
+    "languages": [
+      "python"
+    ],
+    "packageManagers": [],
+    "testFrameworks": [
+      "unittest"
+    ],
+    "architectures": [],
+    "testCommand": "python -m unittest discover -s tests",
+    "detectedConventions": [
+      "tests/test_*.py"
+    ],
+    "existingTestLocations": [
+      "tests"
+    ],
+    "setupSignals": [],
+    "confidence": "high",
+    "blockers": []
+  },
+  "untestedCandidates": [],
+  "coveredButRisky": [
+    {
+      "id": "retrotext/localization.py",
+      "name": "localization",
+      "path": "retrotext/localization.py",
+      "kind": "utility",
+      "signals": [
+        "branching-logic",
+        "matching-test"
+      ],
+      "risk": "medium",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 5,
+      "maintenanceCost": 2,
+      "reasons": [
+        "Branching logic",
+        "Existing test file detected; review missing edge cases"
+      ],
+      "existingTestPaths": [
+        "tests/test_localization.py"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "tests/test_localization.py",
+          "kind": "python-module-import",
+          "strength": "direct",
+          "usage": "asserted"
+        }
+      ]
+    }
+  ],
+  "recommended": [
+    {
+      "id": "retrotext/localization.py",
+      "name": "localization",
+      "path": "retrotext/localization.py",
+      "kind": "utility",
+      "signals": [
+        "branching-logic",
+        "matching-test"
+      ],
+      "risk": "medium",
+      "testability": "high",
+      "recommendedTestLevel": "unit",
+      "riskReductionScore": 5,
+      "maintenanceCost": 2,
+      "reasons": [
+        "Branching logic",
+        "Existing test file detected; review missing edge cases"
+      ],
+      "existingTestPaths": [
+        "tests/test_localization.py"
+      ],
+      "existingTestEvidence": [
+        {
+          "testPath": "tests/test_localization.py",
+          "kind": "python-module-import",
+          "strength": "direct",
+          "usage": "asserted"
+        }
+      ]
+    }
+  ],
+  "skipped": [
+    {
+      "id": "profiles/game/flow.py",
+      "name": "flow",
+      "path": "profiles/game/flow.py",
+      "kind": "source-scope-exclusion",
+      "signals": [],
+      "riskReductionScore": 0,
+      "maintenanceCost": 0,
+      "reason": "Outside selected Python source roots: retrotext/; not assessed for test coverage."
+    }
+  ],
+  "risks": [
+    "Static Python audit: profile confidence describes detection, not audit completeness or assertion coverage. An empty candidate list does not establish coverage.",
+    "Unittest collection has not been executed. Confirm a nonzero test count; a successful exit with zero tests is not verification."
+  ]
+}

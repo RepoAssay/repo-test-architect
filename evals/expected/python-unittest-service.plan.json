@@ -2,7 +2,7 @@
   "schemaVersion": "plan/v1",
   "summary": {
     "confidence": "high",
-    "verificationCommand": "python -m unittest",
+    "verificationCommand": "python -m unittest discover -s tests -p \"*_test.py\"",
     "blockerCount": 0,
     "addTestCount": 1,
     "extendTestCount": 1,
