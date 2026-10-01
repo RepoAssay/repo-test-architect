@@ -19,7 +19,7 @@ Remote hosting and an MCPB bundle are not part of the first release.
 - MCP Registry server: `io.github.RepoAssay/repo-test-architect`
 - GitHub repository: `https://github.com/repoassay/repo-test-architect`
 
-The GitHub repository is public. The approved stable target is `1.0.0` under npm `latest`, with matching Official MCP Registry metadata and a stable GitHub release. See the [1.0.0 release notes](release-notes-v1.0.0.md) and [publication ledger](distribution-metrics.md) for verified publication status. Historical beta tags may remain available; stable clients should use `latest` or pin `1.0.0`.
+The GitHub repository is public. `1.0.0` is published under npm `latest`, with matching active Official MCP Registry metadata and a stable GitHub release. See the [1.0.0 release notes](release-notes-v1.0.0.md) and [publication ledger](distribution-metrics.md) for verified publication status. Historical beta tags may remain available; stable clients should use `latest` or pin `1.0.0`.
 
 ## Repository Protection
 
