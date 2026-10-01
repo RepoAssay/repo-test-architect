@@ -6,7 +6,7 @@ The first public alpha is shipped. Ten supported adapters have completed the mea
 
 ## Current Baseline
 
-The repository is public, `repo-test-architect@0.3.0` is the current public alpha through npm, and `io.github.RepoAssay/repo-test-architect@0.3.0` is the matching Official MCP Registry version.
+The repository is public; `repo-test-architect@1.0.0` is the stable release target, with matching `io.github.RepoAssay/repo-test-architect@1.0.0` Registry metadata. See the [release notes](release-notes-v1.0.0.md) for publication status.
 
 The useful baseline is:
 
@@ -26,9 +26,7 @@ The useful baseline is:
 
 The 2026-09-06 owner direction is to prepare for stable release with Dart as the last language addition. Experimental [Dart and Flutter auditing](dart-support.md) is now implemented. Further language expansion is deferred until after release; Dart promotion evidence and the exact-commit release checklist remain distinct from implementing the adapter. See the current [usage snapshot](distribution-metrics.md#pre-release-snapshot--2026-09-06).
 
-The current target is to prepare [beta.2](release-notes-v1.0.0-beta.2.md), then collect at least fourteen clean days of active validation from publication before an evidence-gated RC review around September 20–22 if timing permits. Beta.1 has been public since August 11, so September 22 reaches the default six-week beta period. An RC requires at least seven clean days before separate stable approval. The [September decision](decision-log.md#prepare-beta2-and-an-evidence-gated-rc-review) updates the old calendar without waiving any promotion gate; the normative rules live in the [Release Lifecycle](release-lifecycle.md).
-
-The [Distribution And Beta Plan](distribution-and-beta-plan.md) turns those gates into the current directory rollout, reusable listing copy, external-feedback cohort, adapter stewardship, and beta go/no-go record.
+The October 1 owner decision is to proceed directly to `1.0.0` after exact-commit release verification, without adding another feature or a separate RC. The [accelerated promotion decision](decision-log.md#accelerate-stable-100-promotion) records the evidence, limited external feedback and revised promotion gates. Dart remains experimental and native generation remains deferred. After stable publication, collect real-user feedback and ship compatible fixes as patches.
 
 ### Future Release Automation
 

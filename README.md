@@ -30,9 +30,11 @@ The current implementation can:
 
 Native test generation is intentionally deferred. `generate_selected_test` returns a structured deferred artifact until adapter-specific generation policy and repair-loop fixtures exist.
 
-Repo Test Architect `1.0.0-beta.2` is available as an opt-in public beta on npm and the Official MCP Registry. The unqualified npm command remains on `0.3.0` while the beta is evaluated. Treat its findings as evidence-backed review input rather than an automatic instruction to change a repository. See the [beta release notes](https://github.com/RepoAssay/repo-test-architect/releases/tag/v1.0.0-beta.2).
+Repo Test Architect `1.0.0` is the stable release target for the documented CLI, MCP tools, configuration and versioned artifact contracts. Treat its findings as evidence-backed review input rather than an automatic instruction to change a repository. See the [1.0.0 release notes](docs/release-notes-v1.0.0.md) for changes, compatibility and publication status.
 
-Beta.2 adds experimental Dart/Flutter support and adapter trust fixes. The `@beta` commands below select beta.2; see the [release notes and validation plan](docs/release-notes-v1.0.0-beta.2.md). Dart remains experimental, and native generation remains deferred.
+Ten adapters are supported within their documented boundaries. Dart/Flutter remains experimental, and native test generation remains deferred.
+
+Maintenance is provided as time permits, with no guaranteed response time or feature schedule. Focused community PRs are welcome; see [Contributing](CONTRIBUTING.md) and [Support](SUPPORT.md).
 
 ## Install
 
@@ -45,11 +47,11 @@ npx --yes repo-test-architect doctor
 npx --yes repo-test-architect analyze .
 ```
 
-Try the public beta without changing the default npm channel:
+Pin the stable version after publication:
 
 ```sh
-npx --yes repo-test-architect@beta doctor
-npx --yes repo-test-architect@beta analyze .
+npx --yes repo-test-architect@1.0.0 doctor
+npx --yes repo-test-architect@1.0.0 analyze .
 ```
 
 Or install the CLI and MCP server binaries:
@@ -77,7 +79,7 @@ Add the local stdio MCP server to an MCP-capable client:
 }
 ```
 
-To opt into the public beta, pin the npm `beta` channel in the MCP configuration:
+To keep an MCP client on this exact release, pin its version:
 
 ```json
 {
@@ -86,7 +88,7 @@ To opt into the public beta, pin the npm `beta` channel in the MCP configuration
       "command": "npx",
       "args": [
         "--yes",
-        "repo-test-architect@beta",
+        "repo-test-architect@1.0.0",
         "mcp"
       ]
     }

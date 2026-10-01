@@ -2,6 +2,10 @@
 
 Repo Test Architect is audit-first. Contributions should preserve deterministic repository understanding before adding generation or model behavior.
 
+## Community Maintenance
+
+Focused fixes and improvements from users are welcome. Maintenance and PR review happen as time permits, with no guaranteed turnaround or feature schedule. For a behavior fix, include a minimal reproduction and regression coverage. Discuss new adapters, public-contract changes and other broad work before implementation; submitting a PR does not guarantee acceptance. Preserve the stable compatibility policy and documented support boundaries.
+
 ## Workflow
 
 - Keep changes small and traceable.

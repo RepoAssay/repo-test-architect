@@ -232,7 +232,7 @@ describe("docs links", () => {
     assert.ok(hardeningPlan.includes("ESM/CommonJS"));
     assert.ok(hardeningPlan.includes("Native test generation"));
     assert.ok(roadmap.includes("Alpha Readiness"));
-    assert.ok(roadmap.includes("repository is public, `repo-test-architect@0.3.0` is the current public alpha through npm"));
+    assert.ok(roadmap.includes("`repo-test-architect@1.0.0` is the stable release target"));
     assert.ok(roadmap.includes("[Adapter Hardening Plan](adapter-hardening-plan.md)"));
     assert.ok(roadmap.includes("Milestone 1: Alpha Test Architecture Audit"));
     assert.ok(roadmap.includes("one concise repo-level summary can show top findings with evidence"));

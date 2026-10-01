@@ -4,7 +4,11 @@ This policy defines how Repo Test Architect moves from public alpha through beta
 
 Dates are planning targets, not promises. Readiness evidence controls promotion. The release owners may move a target earlier when the gates are already satisfied and the available usage evidence is strong, or move it later whenever more hardening is useful. An accelerated stage transition should record its rationale in the [Decision Log](decision-log.md); delaying a release requires no exception.
 
-## Current Planning Windows
+## Approved 1.0.0 Promotion
+
+On October 1, 2026, the release owner approved direct stable promotion after exact-commit verification. The [accelerated promotion decision](decision-log.md#accelerate-stable-100-promotion) supersedes the default RC stage, observation periods and external-feedback threshold for this release only. It explicitly accepts limited external usage evidence; it does not claim that a clean period or external cohort was completed. Full local release checks, strict publication metadata checks, the manually dispatched Linux/Windows/macOS release matrix, clean installation and upgrade verification, and npm/MCP identity checks remain required. Publish npm `1.0.0` under `latest`, then matching Registry metadata and a stable GitHub release.
+
+## Prior Planning Windows
 
 | Stage | Version line and npm tag | Planning window | Default observation period |
 | --- | --- | --- | --- |

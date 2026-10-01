@@ -2,6 +2,18 @@
 
 This log records project-level decisions that shape architecture, scope, and public positioning.
 
+# Accelerate Stable 1.0.0 Promotion
+
+Decision (2026-10-01): following owner approval, prepare and publish `1.0.0` to npm under `latest`, publish matching Official MCP Registry metadata, and create a stable GitHub release from the same verified commit. Skip a separate RC and its default seven-day observation period for this promotion. The exact-commit release checklist and full three-OS release matrix remain mandatory.
+
+Rationale: the public CLI, MCP, configuration and versioned artifact contracts have been frozen since beta.1; ten adapters have documented support boundaries and extensive fixture, corpus, performance and packaging checks. Beta.1 has been available since August 11 and beta.2 since September 6. The subsequent Python unittest discovery repair and dependency security fixes belong in the recommended install. No additional feature is required for 1.0.
+
+Evidence limits: elapsed beta time does not establish a clean observation period after the recent fixes. The owner reports that people use the package, while how they use it is largely unknown by design: local analysis does not send repository usage telemetry. Completed external-user feedback loops are not established by the checked-in records. The owner accepts maintainer validation and exact-release checks as the promotion basis, replacing the external-cohort threshold without requiring visibility into private usage. This is an explicit accelerated-promotion decision, not a claim that the former RC or feedback gates were completed.
+
+Maintenance: the project is maintained as time permits, with no promised feature schedule or response time. Users can propose focused PRs with reproducible evidence and regression coverage; acceptance remains subject to scope and review. Stable means a compatibility commitment within documented boundaries, not an ongoing feature-delivery obligation.
+
+Scope: Dart remains experimental; native test generation and additional languages remain deferred. Supported behavior stays bounded by the adapter matrices. Compatible correctness and security fixes follow as patches; compatible features as minor releases; public contract breaks require a major release and migration guidance. Publication results are recorded separately from preparation in the release notes and publication ledger.
+
 # Publish Beta.2 Without Promoting The Default Channel
 
 Decision (2026-09-06): following explicit owner approval to start release/publication, squash-merge preparation PR #276 and publish `1.0.0-beta.2` from `75ae521d5d34a80d40d397cdd0a52ba68e7d0646`. Publish to npm under `beta`, matching Official MCP Registry metadata, and a GitHub prerelease/tag at that exact commit. Keep npm `latest` on `0.3.0`; do not add `next`, promote Dart, enable generation, or approve RC/stable.
