@@ -4,7 +4,11 @@ This policy defines how Repo Test Architect moves from public alpha through beta
 
 Dates are planning targets, not promises. Readiness evidence controls promotion. The release owners may move a target earlier when the gates are already satisfied and the available usage evidence is strong, or move it later whenever more hardening is useful. An accelerated stage transition should record its rationale in the [Decision Log](decision-log.md); delaying a release requires no exception.
 
-## Current Planning Windows
+## Approved 1.0.0 Promotion
+
+On October 1, 2026, the release owner approved direct stable promotion after exact-commit verification. The [accelerated promotion decision](decision-log.md#accelerate-stable-100-promotion) supersedes the default RC stage, observation periods and external-feedback threshold for this release only. It explicitly accepts limited external usage evidence; it does not claim that a clean period or external cohort was completed. Full local release checks, strict publication metadata checks, the manually dispatched Linux/Windows/macOS release matrix, clean installation and upgrade verification, and npm/MCP identity checks remain required. Publish npm `1.0.0` under `latest`, then matching Registry metadata and a stable GitHub release.
+
+## Prior Planning Windows
 
 | Stage | Version line and npm tag | Planning window | Default observation period |
 | --- | --- | --- | --- |
@@ -81,7 +85,7 @@ Releases group useful changes; they do not mirror every merged pull request.
 | Alpha | A coherent release roughly every one or two weeks | a supported-boundary correctness, security, installation, or packaging defect materially affects users |
 | Beta | Roughly every two or three weeks | a beta blocker is fixed and the new build is needed for validation |
 | Release candidate | Only after blocker fixes or final release verification changes | a new candidate is required to restart clean validation |
-| Stable | Patches as needed; compatible feature releases roughly every four to eight weeks | a security or severe correctness fix is ready and verified |
+| Stable | As needed and as maintainer capacity permits; no promised release or feature schedule | a security or severe correctness fix is ready and verified |
 
 A public version is justified when it contains at least one user-visible fix or capability, changes a documented contract or support boundary, or is needed to correct distribution or security behavior. Documentation-only, test-only, and internal refactoring changes normally accumulate until the next useful release.
 

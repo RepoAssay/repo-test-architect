@@ -1,6 +1,12 @@
 # Support
 
-Repo Test Architect is early audit-first tooling. Useful reports include the command that was run, the repository shape, the expected result, the actual result, and the relevant artifact excerpt.
+Repo Test Architect is local, audit-first tooling. Useful reports include the command that was run, the repository shape, the expected result, the actual result, and the relevant artifact excerpt.
+
+## Maintenance Expectations
+
+Maintenance is provided as time permits. There is no guaranteed response time, support SLA or feature-delivery schedule. A stable version commits to the documented compatibility policy and supported boundaries; it does not promise that every reported issue or requested feature will be implemented.
+
+Repository analysis runs locally without usage telemetry, so maintainers generally cannot see how people use the package. Share only the minimal evidence you choose to disclose. Focused pull requests are welcome when you need a fix or improvement; follow [Contributing](CONTRIBUTING.md), include regression coverage for behavior changes, and discuss broad changes before investing in them. Contributions remain subject to review and project scope.
 
 ## Questions
 

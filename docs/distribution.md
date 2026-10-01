@@ -19,7 +19,7 @@ Remote hosting and an MCPB bundle are not part of the first release.
 - MCP Registry server: `io.github.RepoAssay/repo-test-architect`
 - GitHub repository: `https://github.com/repoassay/repo-test-architect`
 
-The GitHub repository is public. Version `0.3.0` remains the default public alpha under npm `latest`; `1.0.0-beta.2` is the opt-in npm `beta` and the latest Official MCP Registry metadata version. See the [publication ledger](distribution-metrics.md#beta2-publication--2026-09-06).
+The GitHub repository is public. The approved stable target is `1.0.0` under npm `latest`, with matching Official MCP Registry metadata and a stable GitHub release. See the [1.0.0 release notes](release-notes-v1.0.0.md) and [publication ledger](distribution-metrics.md) for verified publication status. Historical beta tags may remain available; stable clients should use `latest` or pin `1.0.0`.
 
 ## Repository Protection
 
@@ -60,7 +60,7 @@ Local automation cannot perform account authentication or replace release-owner 
 1. Confirm the GitHub repository is public.
 2. Authenticate npm and re-check package-name availability.
 3. Verify the copyright owner in `LICENSE`.
-4. Approve and run publication with the explicit stage tag (for a beta: `npm publish --access public --tag beta --ignore-scripts`). Never omit the prerelease tag and accidentally move `latest`.
+4. Approve and run publication with the explicit stage tag (for a beta: `npm publish --access public --tag beta --ignore-scripts`). Never omit the prerelease tag and accidentally move `latest`. For the approved stable release, use `npm publish --access public --tag latest --ignore-scripts`.
 5. Authenticate `mcp-publisher` with the intended GitHub identity.
 6. Approve and publish to the official MCP Registry.
 

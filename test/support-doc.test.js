@@ -7,7 +7,7 @@ describe("support docs", () => {
     const support = fs.readFileSync("SUPPORT.md", "utf8");
     const readme = fs.readFileSync("README.md", "utf8");
 
-    assert.match(support, /Repo Test Architect is early audit-first tooling/);
+    assert.match(support, /Repo Test Architect is local, audit-first tooling/);
     assert.match(support, /CLI commands/);
     assert.match(support, /MCP client setup/);
     assert.match(support, /support question issue form/);
