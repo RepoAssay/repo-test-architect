@@ -1,6 +1,6 @@
 # Repo Test Architect 1.0.0
 
-Status: prepared for stable publication. npm, Official MCP Registry and GitHub publication must be verified before this version is described as published.
+Status: **published October 1, 2026** on npm under `latest`, the Official MCP Registry, and [GitHub as a stable release](https://github.com/RepoAssay/repo-test-architect/releases/tag/v1.0.0). Release commit: `e035d9ab308b3e3704becc6a7b9fd19aa3bd0b99` (PR #284).
 
 ## Stable Contract
 
@@ -18,7 +18,7 @@ The beta line also introduced experimental Dart/Flutter auditing and cross-adapt
 
 ## Installation And Upgrade
 
-After publication, Node.js 20 or newer is required:
+Node.js 20 or newer is required:
 
 ```sh
 npx --yes repo-test-architect@1.0.0 doctor
@@ -32,7 +32,7 @@ For MCP clients, use `npx --yes repo-test-architect@1.0.0 mcp`. Existing unversi
 
 The [October 1 decision](decision-log.md#accelerate-stable-100-promotion) approves direct stable promotion without a separate RC. Maintainer validation is the accepted evidence basis. The package has users, but their workflows are largely unknown by design: repository analysis stays local without usage telemetry. Formal feedback loops are not established, and elapsed beta time is not represented as a clean period after the recent fixes.
 
-Before publication, run the full local release and strict distribution checks and the manually dispatched Linux, Windows and macOS release matrix on the exact release commit. Verify clean installation and upgrade, CLI and MCP startup, official publisher manifest validation, and matching registry identities. Record final results in the publication ledger. No publication or final validation is claimed by this preparation document.
+The exact release commit passed the full local release gate, strict distribution checks and [manually dispatched Linux, Windows and macOS release matrix](https://github.com/RepoAssay/repo-test-architect/actions/runs/36872738354), including 1,450 tests per OS. Official publisher 1.8.1 validated the manifest. Clean installation and upgrades from 0.3.0 and beta.2 passed from the public npm registry on macOS, including CLI, diagnostics, all 19 MCP tools and MCP startup. The published npm integrity matches the tested tarball; Registry 1.0.0 is active with matching npm and stdio metadata, and the GitHub release tag points to the tested commit. See the [publication ledger](distribution-metrics.md#stable-100-publication--2026-10-01) for timestamps and verification limits.
 
 ## Maintenance And Contributions
 

@@ -4,6 +4,28 @@ This ledger records discoverability, distribution, and external-use evidence for
 
 Metrics are evidence with different meanings. npm downloads, GitHub clones, directory impressions, stars, and completed user feedback loops must remain separate. None is a substitute for another, and automated traffic must not be presented as adoption.
 
+## Stable 1.0.0 Publication — 2026-10-01
+
+Owner-approved release commit: `e035d9ab308b3e3704becc6a7b9fd19aa3bd0b99` (PR #284). The [exact-commit three-OS release matrix](https://github.com/RepoAssay/repo-test-architect/actions/runs/36872738354) passed on Linux, Windows and macOS, including 1,450 tests per OS. Local full release and strict publication-metadata gates passed. Official publisher 1.8.1 was checksum-verified and validated the manifest.
+
+| Channel | Verified release status |
+| --- | --- |
+| [npm 1.0.0](https://www.npmjs.com/package/repo-test-architect/v/1.0.0) | Published at 14:07:36 UTC; `latest: 1.0.0`, `beta: 1.0.0-beta.2`. Published tarball integrity matches the tested artifact. |
+| [Official MCP Registry 1.0.0](https://registry.modelcontextprotocol.io/v0.1/servers/io.github.RepoAssay%2Frepo-test-architect/versions/1.0.0) | Published at 14:08:33 UTC; active and latest metadata, npm 1.0.0, stdio transport and positional `mcp` argument. |
+| [GitHub stable release](https://github.com/RepoAssay/repo-test-architect/releases/tag/v1.0.0) | Published at 14:09:21 UTC; not a prerelease, marked latest; tag resolves to the exact tested commit. |
+
+Clean installation and upgrades from npm 0.3.0 and beta.2 to 1.0.0 passed on macOS, both against the final tarball and against the published registry package. Checks covered CLI startup, diagnostics with external reporting disabled, eleven adapters, all three binaries, MCP initialization, all 19 tools and the MCP smoke suite. Linux/Windows release CI verified packed installations; public-registry upgrades on those systems were not separately exercised in this release pass.
+
+```text
+sha512-8/ovSgNWCi7opUvJE3eP1wUpved9tEuUzEqLd/qsFQUF6PT0F7/morP8uo+bekojJnKblmL/M8kDnHKrplZyjg==
+```
+
+npm initially accepted the publication with HTTP 202 while processing the package; public availability, the latest tag and integrity were verified before Registry publication. Existing owner authentication was used for both registries. No new publishing automation or stored CI credential was introduced.
+
+The immutable published tarball contains preparation-time documentation. Current publication status is recorded by the GitHub release and this follow-up documentation; neither the release tag nor the package was rewritten. Downstream catalog refreshes were not part of this release. The production dependency audit passed; GitHub's remaining moderate Vitest alerts concern example-project manifests.
+
+The owner reports existing users, while their private workflows remain largely unknown by design. No usage telemetry or mandatory feedback process was added. Maintenance and community PR review are provided as time permits, without a promised feature schedule or response time. The [promotion decision](decision-log.md#accelerate-stable-100-promotion) records direct stable promotion without a separate RC; these maintainer checks are not presented as formal external-user feedback.
+
 ## Beta.2 Publication — 2026-09-06
 
 Owner-approved release commit: `75ae521d5d34a80d40d397cdd0a52ba68e7d0646` (PR #276). The [exact-commit three-OS release run](https://github.com/RepoAssay/repo-test-architect/actions/runs/34026826589) passed on Linux, Windows and macOS, including 1,435 tests per OS. Local release and strict metadata checks passed; official publisher 1.8.1 was downloaded from its versioned upstream release, checksum-verified, and validated `server.json`.
