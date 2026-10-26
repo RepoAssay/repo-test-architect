@@ -4,6 +4,8 @@
 
 <h1 align="center">Repo Test Architect</h1>
 
+[![Repo Test Architect MCP server](https://mcprush.com/badge/repo-test-architect-mcp/card.svg)](https://mcprush.com/to/repo-test-architect-mcp?ref=badge)
+
 Audit-first test strategy tooling for codebases.
 
 Repo Test Architect builds a deterministic audit graph before asking any model or agent to reason about tests. The goal is to identify repo-native, high-value test work from facts the tool can inspect locally: project roots, framework signals, existing tests, source classifications, blockers, and remaining risk.
