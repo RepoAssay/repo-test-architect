@@ -58,6 +58,14 @@ const SUPPORTED_TYPES = new Set(["object", "array", "string", "integer", "number
 const DATE_TIME_PATTERN =
   /^(\d{4})-(\d{2})-(\d{2})[Tt](\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(?:[Zz]|([+-])(\d{2}):(\d{2}))$/;
 
+// UTC dates whose last minute had an inserted leap second (IERS Bulletin C / Leap_Second.dat); none since 2016.
+const LEAP_SECOND_DATES = new Set([
+  "1972-06-30", "1972-12-31", "1973-12-31", "1974-12-31", "1975-12-31", "1976-12-31", "1977-12-31",
+  "1978-12-31", "1979-12-31", "1981-06-30", "1982-06-30", "1983-06-30", "1985-06-30", "1987-12-31",
+  "1989-12-31", "1990-12-31", "1992-06-30", "1993-06-30", "1994-06-30", "1995-12-31", "1997-06-30",
+  "1998-12-31", "2005-12-31", "2008-12-31", "2012-06-30", "2015-06-30", "2016-12-31"
+]);
+
 const FORMAT_CHECKS = new Map([["date-time", isRfc3339DateTime]]);
 
 const SAFE_PROPERTY_NAME = /^[A-Za-z_$][A-Za-z0-9_$-]{0,63}$/;
@@ -554,16 +562,14 @@ function isRfc3339DateTime(value) {
   if (offsetHour > 23 || offsetMinute > 59) return false;
 
   if (second === 60) {
-    // RFC 3339 §5.7: leap seconds are only inserted at 23:59:60 UTC on the last day of June or December.
+    // RFC 3339 §5.7: :60 is only valid for an actual leap second, inserted at 23:59:60 UTC.
     const offset = (sign === "-" ? -1 : 1) * (offsetHour * 60 + offsetMinute);
     const utc = new Date(0);
     utc.setUTCFullYear(year, month - 1, day);
     utc.setUTCHours(hour, minute - offset, 59, 0);
 
-    const utcMonth = utc.getUTCMonth() + 1;
-    const lastDayOfJuneOrDecember =
-      (utcMonth === 6 || utcMonth === 12) && utc.getUTCDate() === daysInMonth(utc.getUTCFullYear(), utcMonth);
-    if (!lastDayOfJuneOrDecember || utc.getUTCHours() !== 23 || utc.getUTCMinutes() !== 59) return false;
+    const utcDate = utc.toISOString().slice(0, 10);
+    if (!LEAP_SECOND_DATES.has(utcDate) || utc.getUTCHours() !== 23 || utc.getUTCMinutes() !== 59) return false;
   }
 
   return true;
