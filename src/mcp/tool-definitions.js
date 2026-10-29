@@ -22,6 +22,10 @@ import { getAdapterRegistry } from "../core/adapter-registry.js";
 import { createGenerationDeferredResult } from "../core/generation-deferred.js";
 import { McpToolError } from "./errors.js";
 
+// Tool descriptors advertise only the top-level artifact shape; nested contracts live in the
+// published schema file, which keeps tools/list small for clients that load every descriptor.
+const compactPropertyKeywords = ["type", "const", "enum"];
+
 const readOnlyAnnotations = Object.freeze({
   readOnlyHint: true,
   destructiveHint: false,
@@ -243,7 +247,7 @@ const toolDefinitions = [
 export const mcpTools = toolDefinitions.map((tool) => ({
   ...tool,
   title: requireToolTitle(tool.name),
-  outputSchema: loadOutputSchema(tool.outputArtifact.schemaPath),
+  outputSchema: compactOutputSchema(loadOutputSchema(tool.outputArtifact.schemaPath), tool.outputArtifact.schemaPath),
   annotations: { ...readOnlyAnnotations }
 }));
 
@@ -366,6 +370,33 @@ function artifact(schemaVersion, schemaPath) {
 function loadOutputSchema(schemaPath) {
   const schemaUrl = new URL(`../../${schemaPath}`, import.meta.url);
   return JSON.parse(fs.readFileSync(schemaUrl, "utf8"));
+}
+
+function compactOutputSchema(schema, schemaPath) {
+  return {
+    type: "object",
+    description: `Top-level shape of this artifact. The complete contract is ${schemaPath} in the published package.`,
+    required: schema.required,
+    additionalProperties: schema.additionalProperties,
+    properties: Object.fromEntries(Object.entries(schema.properties).map(([name, property]) => [
+      name,
+      compactProperty(resolveLocalRef(property, schema))
+    ]))
+  };
+}
+
+function compactProperty(property) {
+  return Object.fromEntries(compactPropertyKeywords
+    .filter((keyword) => property[keyword] !== undefined)
+    .map((keyword) => [keyword, property[keyword]]));
+}
+
+function resolveLocalRef(property, schema) {
+  if (typeof property.$ref !== "string") return property;
+  const match = /^#\/\$defs\/([^/]+)$/.exec(property.$ref);
+  const target = match ? schema.$defs?.[match[1]] : undefined;
+  if (!target) throw new Error(`Unsupported output schema reference: ${property.$ref}`);
+  return target;
 }
 
 function requireToolTitle(name) {

@@ -31,13 +31,60 @@ describe("MCP tool definitions", () => {
     }
   });
 
-  it("declares output artifacts with matching schemas", () => {
+  it("declares compact output schemas that mirror the top level of the published artifact schemas", () => {
     for (const tool of mcpTools) {
       const schema = JSON.parse(fs.readFileSync(tool.outputArtifact.schemaPath, "utf8"));
 
       assert.equal(schema.properties.schemaVersion.const, tool.outputArtifact.schemaVersion);
-      assert.deepEqual(tool.outputSchema, schema);
+      assert.equal(tool.outputSchema.properties.schemaVersion.const, tool.outputArtifact.schemaVersion);
+      assert.deepEqual(tool.outputSchema.required, schema.required);
+      assert.equal(tool.outputSchema.additionalProperties, schema.additionalProperties);
+      assert.deepEqual(Object.keys(tool.outputSchema.properties), Object.keys(schema.properties));
+      assert.ok(tool.outputSchema.description.includes(tool.outputArtifact.schemaPath));
+      for (const [name, property] of Object.entries(tool.outputSchema.properties)) {
+        assert.ok(Object.keys(property).length > 0, `${tool.name}.${name} declares a type, const, or enum`);
+      }
     }
+  });
+
+  it("keeps the tools/list payload within its context budget", () => {
+    // Every MCP client loads all descriptors into the model context; guard against schema bloat.
+    assert.ok(JSON.stringify(mcpTools).length < 30000);
+  });
+
+  it("accepts every checked-in expected artifact under the compact schema of each tool that returns it", () => {
+    const expectedDir = "evals/expected";
+    const artifacts = fs.readdirSync(expectedDir)
+      .filter((name) => name.endsWith(".json"))
+      .map((name) => ({ name, value: JSON.parse(fs.readFileSync(path.join(expectedDir, name), "utf8")) }))
+      .filter(({ value }) => typeof value?.schemaVersion === "string");
+    let checked = 0;
+
+    for (const { name, value } of artifacts) {
+      for (const tool of mcpTools.filter((candidate) => candidate.outputArtifact.schemaVersion === value.schemaVersion)) {
+        assertMatchesSchema(value, tool.outputSchema, `${name} as ${tool.name}`);
+        checked += 1;
+      }
+    }
+    assert.ok(checked > 100);
+  });
+
+  it("returns live artifacts accepted by the compact schemas, including $ref-resolved properties", () => {
+    const repoRoot = path.resolve("examples/polyglot-workspace");
+    for (const name of ["analyze_repository", "audit_projects", "detect_projects", "list_adapters", "list_project_detection_rules"]) {
+      const tool = mcpTools.find((candidate) => candidate.name === name);
+      const args = Object.keys(tool.inputSchema.properties ?? {}).includes("repoRoot") ? { repoRoot } : {};
+      assertMatchesSchema(callTool(name, args), tool.outputSchema, `${name}.compact`);
+    }
+  });
+
+  it("returns artifacts accepted by both the compact and the published output schemas", () => {
+    const audit = callTool("audit_repo", { repoRoot: path.resolve("examples/node-vitest-basic") });
+    const auditTool = mcpTools.find((tool) => tool.name === "audit_repo");
+    const fullSchema = JSON.parse(fs.readFileSync(auditTool.outputArtifact.schemaPath, "utf8"));
+
+    assertMatchesSchema(audit, auditTool.outputSchema, "audit_repo.compact");
+    assertMatchesSchema(audit, fullSchema, "audit_repo.full");
   });
 
   it("matches the MCP tool descriptor schema", () => {
