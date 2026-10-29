@@ -1,4 +1,5 @@
 import { getAdapter, getAdapterRegistry as readAdapterRegistry } from "./adapter-registry.js";
+import { ArtifactValidationError, assertValidArtifact } from "./artifact-validation.js";
 import { explainTarget } from "./explain-target.js";
 import { auditDetectedProjects } from "./project-auditor.js";
 import { summarizeProjectAudits } from "./project-audit-summary.js";
@@ -16,6 +17,7 @@ import { createTestPlacementFindings } from "./test-placement-findings.js";
 import { createTestPlan } from "./test-plan.js";
 
 export { validateProjectAudits } from "./project-audits-validation.js";
+export { ArtifactValidationError } from "./artifact-validation.js";
 
 /**
  * @typedef {import("./adapter-registry.js").AdapterRegistry} AdapterRegistry
@@ -251,18 +253,24 @@ export function analyzeRepoTestPlacement(audit, options = {}) {
  */
 export function validateAudit(audit) {
   if (audit?.schemaVersion !== "audit/v1") {
-    throw new Error("Expected audit schemaVersion audit/v1.");
+    throw invalidAudit("Expected audit schemaVersion audit/v1.", "$.schemaVersion");
   }
 
   if (!audit.profile || typeof audit.profile !== "object") {
-    throw new Error("Audit profile is missing.");
+    throw invalidAudit("Audit profile is missing.", "$.profile");
   }
 
   for (const key of ["untestedCandidates", "coveredButRisky", "skipped", "risks"]) {
     if (!Array.isArray(audit[key])) {
-      throw new Error(`Audit ${key} must be an array.`);
+      throw invalidAudit(`Audit ${key} must be an array.`, `$.${key}`);
     }
   }
+
+  assertValidArtifact(audit, "audit/v1");
+}
+
+function invalidAudit(message, path) {
+  return new ArtifactValidationError(message, { schemaVersion: "audit/v1", path });
 }
 
 /**

@@ -67,7 +67,6 @@ describe("project findings", () => {
           projectId: "apps/web",
           projectRoot: "apps/web",
           adapterId: "javascript",
-          adapterMatches: [],
           audit: {
             schemaVersion: "audit/v1",
             profile: { confidence: "high", blockers: [], testCommand: "npm test" },
@@ -94,7 +93,6 @@ describe("project findings", () => {
           projectId: "packages/docs",
           projectRoot: "packages/docs",
           adapterId: "javascript",
-          adapterMatches: [],
           audit: {
             schemaVersion: "audit/v1",
             profile: {
@@ -215,7 +213,6 @@ describe("project findings", () => {
         projectId: ".",
         projectRoot: ".",
         adapterId: "javascript",
-        adapterMatches: [],
         audit: {
           schemaVersion: "audit/v1",
           profile: { confidence: "high", blockers: [] },
@@ -266,7 +263,6 @@ describe("project findings", () => {
           projectId: "apps/web",
           projectRoot: "apps/web",
           adapterId: "javascript",
-          adapterMatches: [],
           audit: {
             schemaVersion: "audit/v1",
             profile: {

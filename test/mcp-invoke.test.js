@@ -116,14 +116,7 @@ describe("MCP invoke harness", () => {
   });
 
   it("calls placement tools with JSON args", () => {
-    const audit = {
-      schemaVersion: "audit/v1",
-      profile: {},
-      untestedCandidates: [],
-      coveredButRisky: [],
-      skipped: [],
-      risks: []
-    };
+    const audit = JSON.parse(fs.readFileSync("evals/expected/node-vitest-basic.audit.json", "utf8"));
     const projectAudits = {
       schemaVersion: "project-audits/v1",
       root: ".",

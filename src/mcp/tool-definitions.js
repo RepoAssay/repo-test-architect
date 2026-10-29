@@ -19,6 +19,7 @@ import {
   summarizeRepoProjectAudits
 } from "../core/tool-api.js";
 import { getAdapterRegistry } from "../core/adapter-registry.js";
+import { ArtifactValidationError } from "../core/artifact-validation.js";
 import { createGenerationDeferredResult } from "../core/generation-deferred.js";
 import { McpToolError } from "./errors.js";
 
@@ -327,12 +328,28 @@ export function callTool(name, args = {}) {
         throw new Error(`Unhandled MCP tool: ${name}`);
     }
   } catch (error) {
+    const artifactArgument = savedArtifactArgument(tool);
+    if (error instanceof ArtifactValidationError && artifactArgument) {
+      throw new McpToolError("invalid-arguments", error.message, {
+        toolName: name,
+        argument: artifactArgument,
+        path: error.path
+      });
+    }
+
     if (error instanceof McpToolError && !error.details.toolName) {
       throw new McpToolError(error.kind, error.message, { toolName: name, ...error.details });
     }
 
     throw error;
   }
+}
+
+function savedArtifactArgument(tool) {
+  const properties = tool.inputSchema.properties ?? {};
+  if (Object.hasOwn(properties, "audit")) return "audit";
+  if (Object.hasOwn(properties, "projectAudits")) return "projectAudits";
+  return undefined;
 }
 
 function isSafeToolName(value) {
