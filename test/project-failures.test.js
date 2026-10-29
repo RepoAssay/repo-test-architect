@@ -578,6 +578,51 @@ describe("repository-controlled project roots in text output", () => {
     assert.ok(result.stdout.includes("- `` apps/`web` ``: The kotlin adapter failed with TypeError."));
   });
 
+  it("escapes Unicode format and bidi characters", (t) => {
+    const cases = [
+      ["apps/\u202ePASS\u202c", "- `apps/\\u202ePASS\\u202c`: The kotlin adapter failed with TypeError."],
+      ["apps/\u200bweb\u200d", "- `apps/\\u200bweb\\u200d`: The kotlin adapter failed with TypeError."],
+      ["\ufeffapps/\u2066x\u2069\u061c\u2028\u{e0001}", "- `\\ufeffapps/\\u2066x\\u2069\\u061c\\u2028\\udb40\\udc01`: The kotlin adapter failed with TypeError."]
+    ];
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-bidi-root-"));
+    t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+
+    for (const [projectRoot, expectedLine] of cases) {
+      const artifactPath = path.join(directory, "project-audits.json");
+      fs.writeFileSync(artifactPath, JSON.stringify(partialArtifact({ projectRoot })));
+      const result = spawnSync(process.execPath, [cliPath, "summarize-projects", "--from-project-audits", artifactPath], { encoding: "utf8" });
+
+      assert.equal(result.status, 2);
+      for (const output of [result.stdout, result.stderr]) {
+        assert.ok(output.includes(expectedLine), expectedLine);
+        assert.doesNotMatch(output, /[\p{Cf}\p{Zl}\p{Zp}]/u);
+      }
+    }
+  });
+
+  it("renders roots with very many backtick runs without overflowing the stack", (t) => {
+    const projectRoot = "a`".repeat(150000);
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-backtick-runs-"));
+    t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+    const artifactPath = path.join(directory, "project-audits.json");
+    fs.writeFileSync(artifactPath, JSON.stringify(partialArtifact({ projectRoot })));
+    const run = (...args) => spawnSync(process.execPath, [cliPath, ...args, "--from-project-audits", artifactPath], {
+      encoding: "utf8",
+      maxBuffer: 64 * 1024 * 1024
+    });
+
+    const markdown = run("summarize-projects");
+    assert.equal(markdown.status, 2);
+    assert.ok(markdown.stdout.includes(`- \`\` ${projectRoot} \`\`: The kotlin adapter failed with TypeError.`));
+    assert.match(markdown.stderr, /^Warning: 1 project failed to audit/);
+    assert.doesNotMatch(markdown.stderr, /RangeError/);
+
+    const json = run("audit-projects", "--format", "json");
+    assert.equal(json.status, 2);
+    assert.equal(JSON.parse(json.stdout).failedProjects[0].projectRoot, projectRoot);
+    assert.match(json.stderr, /^Warning: 1 project failed to audit/);
+  });
+
   function partialArtifact(overrides = { projectRoot: hostileRoot, projectId: hostileRoot }) {
     return {
       schemaVersion: "project-audits/v1",

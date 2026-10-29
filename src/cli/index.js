@@ -32,7 +32,8 @@ import {
 
 const MAX_DISPLAYED_EXISTING_TEST_PATHS = 5;
 const PARTIAL_FAILURE_EXIT_CODE = 2;
-const CONTROL_CHARACTER_ESCAPES = Object.freeze({ "\\": "\\\\", "\n": "\\n", "\r": "\\r", "\t": "\\t" });
+const UNSAFE_TEXT_CHARACTERS = /[\\\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/gu;
+const CONTROL_CHARACTER_ESCAPES =Object.freeze({ "\\": "\\\\", "\n": "\\n", "\r": "\\r", "\t": "\\t" });
 const COMMANDS = [
   "analyze",
   "doctor",
@@ -1323,19 +1324,26 @@ function formatFailedProject(project) {
   return `- ${formatInlineCode(project.projectRoot)}: ${project.reason}${code}`;
 }
 
-// Project roots and owners come from repository-controlled directory names. Escape C0/C1 controls,
-// DEL and Unicode line separators (plus backslash, so escapes stay unambiguous) before they reach
-// Markdown or a terminal; JSON output keeps the original strings.
+// Project roots and owners come from repository-controlled directory names. Escape control
+// characters (Cc: C0, DEL, C1), format and bidi characters (Cf: zero-width, directional
+// overrides and isolates, BOM) and Unicode line separators, plus backslash so escapes stay
+// unambiguous, before they reach Markdown or a terminal. JSON output keeps the original strings.
 function escapeControlCharacters(value) {
-  return String(value).replace(/[\\\u0000-\u001f\u007f-\u009f\u2028\u2029]/g, (character) =>
-    CONTROL_CHARACTER_ESCAPES[character] ?? `\\u${character.charCodeAt(0).toString(16).padStart(4, "0")}`
+  return String(value).replace(UNSAFE_TEXT_CHARACTERS, (character) =>
+    CONTROL_CHARACTER_ESCAPES[character] ?? [...Array(character.length).keys()]
+      .map((index) => `\\u${character.charCodeAt(index).toString(16).padStart(4, "0")}`)
+      .join("")
   );
 }
 
 // Inline code with a fence longer than any backtick run, so Markdown metacharacters stay literal.
+// The longest run is tracked in one scan: spreading every run into Math.max overflows the stack.
 function formatInlineCode(value) {
   const text = escapeControlCharacters(value);
-  const longestRun = Math.max(0, ...(text.match(/`+/g) ?? []).map((run) => run.length));
+  let longestRun = 0;
+  for (const [run] of text.matchAll(/`+/g)) {
+    if (run.length > longestRun) longestRun = run.length;
+  }
   const fence = "`".repeat(longestRun + 1);
   const padding = text.startsWith("`") || text.endsWith("`") ? " " : "";
   return `${fence}${padding}${text}${padding}${fence}`;
