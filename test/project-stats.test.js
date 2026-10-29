@@ -162,4 +162,32 @@ describe("project stats", () => {
 
     assert.equal(stats.sourceFiles.total, 0);
   });
+
+  it("does not count source files reached through a symlinked project root", { skip: process.platform === "win32" }, () => {
+    const outside = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-outside-"));
+    fs.writeFileSync(path.join(outside, "secret.ts"), "export const secret = 1;\n");
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-stats-"));
+    fs.symlinkSync(outside, path.join(root, "link"), "dir");
+    const projectAudits = auditDetectedProjects(path.resolve("examples/node-vitest-basic"));
+    const escaped = {
+      ...projectAudits,
+      root,
+      audits: projectAudits.audits.map((entry) => ({ ...entry, projectRoot: "link" }))
+    };
+
+    assert.equal(collectProjectStats(escaped).sourceFiles.total, 0);
+  });
+
+  it("counts source files for projects under a filesystem root", { skip: process.platform === "win32" }, () => {
+    const project = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-stats-")));
+    fs.writeFileSync(path.join(project, "index.ts"), "export const value = 1;\n");
+    const projectAudits = auditDetectedProjects(path.resolve("examples/node-vitest-basic"));
+    const rooted = {
+      ...projectAudits,
+      root: "/",
+      audits: projectAudits.audits.map((entry) => ({ ...entry, projectRoot: path.relative("/", project) }))
+    };
+
+    assert.equal(collectProjectStats(rooted).sourceFiles.total, 1);
+  });
 });

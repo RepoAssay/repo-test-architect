@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -893,5 +894,20 @@ describe("project detector", () => {
     const detection = detectProjects(root);
 
     assert.deepEqual(detection.projects.map((project) => project.root), []);
+  });
+
+  it("ignores FIFO and symlinked BUILD files while checking Bazel roots for Swift rules", { skip: process.platform === "win32" }, () => {
+    const outside = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-outside-"));
+    fs.writeFileSync(path.join(outside, "BUILD.bazel"), "swift_library(name = \"outside\")\n");
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-bazel-"));
+    fs.writeFileSync(path.join(root, "MODULE.bazel"), "module(name = \"demo\")\n");
+    fs.writeFileSync(path.join(root, "App.swift"), "struct App {}\n");
+    execFileSync("mkfifo", [path.join(root, "BUILD.bazel")]);
+    fs.mkdirSync(path.join(root, "linked"));
+    fs.symlinkSync(path.join(outside, "BUILD.bazel"), path.join(root, "linked", "BUILD.bazel"));
+
+    const detection = detectProjects(root);
+
+    assert.equal(detection.projects.some((project) => project.ecosystems.includes("bazel")), false);
   });
 });

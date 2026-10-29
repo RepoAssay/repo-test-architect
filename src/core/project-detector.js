@@ -587,6 +587,7 @@ function containsSwiftBazelProject(root) {
         if (!IGNORED_DIRECTORIES.has(entry.name)) visit(path.join(current, entry.name));
         continue;
       }
+      if (!entry.isFile()) continue;
       if (entry.name.endsWith(".swift")) hasSwiftSource = true;
       if (entry.name === "BUILD" || entry.name === "BUILD.bazel") {
         const content = fs.readFileSync(path.join(current, entry.name), "utf8");
