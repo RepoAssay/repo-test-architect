@@ -355,6 +355,7 @@ function savedArtifactArgument(tool) {
   const properties = tool.inputSchema.properties ?? {};
   if (Object.hasOwn(properties, "audit")) return "audit";
   if (Object.hasOwn(properties, "projectAudits")) return "projectAudits";
+  if (Object.hasOwn(properties, "plan")) return "plan";
   return undefined;
 }
 

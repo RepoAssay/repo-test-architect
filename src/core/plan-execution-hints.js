@@ -71,7 +71,7 @@ export function createPlanExecutionHints(plan, options = {}) {
   const selectedItems = filterItems(normalizedItems, options.itemId);
   const items = selectedItems.map(toExecutionHint);
   const failedProjects = plan.schemaVersion === "project-test-plan/v1"
-    ? copyUntrustedFailedProjects(plan.failedProjects, "Project plan")
+    ? copyUntrustedFailedProjects(plan.failedProjects, { schemaVersion: "project-test-plan/v1" })
     : [];
 
   return {

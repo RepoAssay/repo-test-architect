@@ -32,6 +32,7 @@ import {
 
 const MAX_DISPLAYED_EXISTING_TEST_PATHS = 5;
 const PARTIAL_FAILURE_EXIT_CODE = 2;
+const CONTROL_CHARACTER_ESCAPES = Object.freeze({ "\\": "\\\\", "\n": "\\n", "\r": "\\r", "\t": "\\t" });
 const COMMANDS = [
   "analyze",
   "doctor",
@@ -732,7 +733,7 @@ function renderMarkdownProjectAudits(projectAudits) {
   } else {
     for (const project of projectAudits.audits) {
       lines.push(
-        `- ${project.projectRoot}: ${project.adapterId} (${project.audit.untestedCandidates.length} untested, ${project.audit.coveredButRisky.length} covered but risky, ${project.audit.risks.length} risks)`
+        `- ${escapeControlCharacters(project.projectRoot)}: ${project.adapterId} (${project.audit.untestedCandidates.length} untested, ${project.audit.coveredButRisky.length} covered but risky, ${project.audit.risks.length} risks)`
       );
     }
   }
@@ -783,7 +784,7 @@ function renderMarkdownRepositoryAnalysis(analysis) {
     for (const finding of analysis.findings.findings) {
       const subject = finding.target ? `${finding.target} [${finding.targetId}]` : finding.title;
       const rationale = finding.rationale[0] ? ` ${trimTrailingPeriod(finding.rationale[0])}.` : "";
-      lines.push(`- ${finding.projectRoot}: ${finding.severity} ${finding.category}, priority ${finding.priority}: ${subject}.${rationale}`);
+      lines.push(`- ${escapeControlCharacters(finding.projectRoot)}: ${finding.severity} ${finding.category}, priority ${finding.priority}: ${subject}.${rationale}`);
     }
   }
   lines.push("");
@@ -792,7 +793,7 @@ function renderMarkdownRepositoryAnalysis(analysis) {
     lines.push("- No plan items generated.");
   } else {
     for (const item of analysis.testPlan.items) {
-      lines.push(`- ${item.projectRoot}: ${item.action} ${item.target} [${item.projectItemId}] (${item.testLevel}, priority ${item.priority})`);
+      lines.push(`- ${escapeControlCharacters(item.projectRoot)}: ${item.action} ${item.target} [${item.projectItemId}] (${item.testLevel}, priority ${item.priority})`);
     }
   }
   lines.push("");
@@ -801,7 +802,7 @@ function renderMarkdownRepositoryAnalysis(analysis) {
     lines.push("- No supported projects audited.");
   } else {
     for (const project of analysis.auditSummary.projects) {
-      lines.push(`- ${project.projectRoot}: ${project.adapterId}, ${project.confidence} confidence, ${project.untestedCandidateCount} untested, command ${project.testCommand ?? "not detected"}`);
+      lines.push(`- ${escapeControlCharacters(project.projectRoot)}: ${project.adapterId}, ${project.confidence} confidence, ${project.untestedCandidateCount} untested, command ${project.testCommand ?? "not detected"}`);
     }
   }
   lines.push("");
@@ -840,7 +841,7 @@ function renderMarkdownProjectAuditSummary(summary) {
   } else {
     for (const project of summary.projects) {
       lines.push(
-        `- ${project.projectRoot}: ${project.adapterId}, ${project.confidence} confidence, ${project.untestedCandidateCount} untested, top candidates: ${formatList(project.topCandidateIds)}`
+        `- ${escapeControlCharacters(project.projectRoot)}: ${project.adapterId}, ${project.confidence} confidence, ${project.untestedCandidateCount} untested, top candidates: ${formatList(project.topCandidateIds)}`
       );
     }
   }
@@ -884,7 +885,7 @@ function renderMarkdownProjectCandidateRanking(ranking) {
         ? formatEvidenceSentences(candidate.existingTestEvidence)
         : "";
       lines.push(
-        `- ${candidate.projectRoot}: ${candidate.target} [${candidate.projectTargetId}] (${candidate.category}, ${candidate.testLevel}, priority ${candidate.priority}, risk reduction ${candidate.riskReductionScore}/10, maintenance ${candidate.maintenanceCost}/10). ${rationale}.${evidenceStrengths}`
+        `- ${escapeControlCharacters(candidate.projectRoot)}: ${candidate.target} [${candidate.projectTargetId}] (${candidate.category}, ${candidate.testLevel}, priority ${candidate.priority}, risk reduction ${candidate.riskReductionScore}/10, maintenance ${candidate.maintenanceCost}/10). ${rationale}.${evidenceStrengths}`
       );
     }
   }
@@ -930,7 +931,7 @@ function renderMarkdownProjectTestPlan(plan) {
         ? formatEvidenceSentences(item.existingTestEvidence)
         : "";
       lines.push(
-        `- ${item.projectRoot}: ${item.action}: ${item.target} [${item.projectItemId}] (${item.testLevel}, priority ${item.priority}, risk reduction ${item.riskReductionScore}/10, maintenance ${item.maintenanceCost}/10). ${rationale}.${evidenceStrengths}`
+        `- ${escapeControlCharacters(item.projectRoot)}: ${item.action}: ${item.target} [${item.projectItemId}] (${item.testLevel}, priority ${item.priority}, risk reduction ${item.riskReductionScore}/10, maintenance ${item.maintenanceCost}/10). ${rationale}.${evidenceStrengths}`
       );
     }
   }
@@ -975,7 +976,7 @@ function renderMarkdownProjectFindings(findings) {
     for (const finding of findings.findings) {
       const subject = finding.target ? `${finding.target} [${finding.targetId}]` : finding.title;
       lines.push(
-        `- ${finding.projectRoot}: ${finding.category}, ${finding.severity}, priority ${finding.priority}: ${subject}.`
+        `- ${escapeControlCharacters(finding.projectRoot)}: ${finding.category}, ${finding.severity}, priority ${finding.priority}: ${subject}.`
       );
       lines.push(`  - Source: ${formatFindingSource(finding)}`);
       lines.push(`  - Recommended level: ${finding.testLevel ?? "review"}`);
@@ -1235,7 +1236,7 @@ function renderMarkdownPlacement(placement) {
   } else {
     for (const finding of placement.findings) {
       lines.push(
-        `- ${finding.action}: ${finding.testFile} (${finding.currentOwner} -> ${finding.suggestedOwner}). ${finding.reason}`
+        `- ${finding.action}: ${escapeControlCharacters(finding.testFile)} (${escapeControlCharacters(finding.currentOwner)} -> ${escapeControlCharacters(finding.suggestedOwner)}). ${finding.reason}`
       );
       lines.push(`  Evidence: ${finding.evidence.join("; ")}`);
     }
@@ -1314,12 +1315,30 @@ function trimTrailingPeriod(value) {
 }
 
 function formatUnsupportedProject(project) {
-  return `- ${project.projectRoot}: ${project.reason} (ecosystems: ${formatList(project.ecosystems)}; languages: ${formatList(project.languages)})`;
+  return `- ${escapeControlCharacters(project.projectRoot)}: ${project.reason} (ecosystems: ${formatList(project.ecosystems)}; languages: ${formatList(project.languages)})`;
 }
 
 function formatFailedProject(project) {
   const code = project.errorCode ? ` [${project.errorCode}]` : "";
-  return `- ${project.projectRoot}: ${project.reason}${code}`;
+  return `- ${formatInlineCode(project.projectRoot)}: ${project.reason}${code}`;
+}
+
+// Project roots and owners come from repository-controlled directory names. Escape C0/C1 controls,
+// DEL and Unicode line separators (plus backslash, so escapes stay unambiguous) before they reach
+// Markdown or a terminal; JSON output keeps the original strings.
+function escapeControlCharacters(value) {
+  return String(value).replace(/[\\\u0000-\u001f\u007f-\u009f\u2028\u2029]/g, (character) =>
+    CONTROL_CHARACTER_ESCAPES[character] ?? `\\u${character.charCodeAt(0).toString(16).padStart(4, "0")}`
+  );
+}
+
+// Inline code with a fence longer than any backtick run, so Markdown metacharacters stay literal.
+function formatInlineCode(value) {
+  const text = escapeControlCharacters(value);
+  const longestRun = Math.max(0, ...(text.match(/`+/g) ?? []).map((run) => run.length));
+  const fence = "`".repeat(longestRun + 1);
+  const padding = text.startsWith("`") || text.endsWith("`") ? " " : "";
+  return `${fence}${padding}${text}${padding}${fence}`;
 }
 
 function formatFailedProjectCount(count) {

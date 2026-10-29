@@ -1,3 +1,4 @@
+import { ArtifactValidationError } from "./artifact-validation.js";
 import { classifyProjectAuditCoverage } from "./project-audit-coverage.js";
 import { compareText } from "./ordering.js";
 
@@ -36,8 +37,21 @@ const FAILED_PROJECT_ERROR_CODE_DESCRIPTIONS = Object.freeze({
 
 export const FAILED_PROJECT_ERROR_CODES = Object.freeze(Object.keys(FAILED_PROJECT_ERROR_CODE_DESCRIPTIONS).sort());
 
+/** Adapter ids are registry identifiers; every published schema uses this pattern for failure entries. */
+export const FAILED_PROJECT_ADAPTER_ID_PATTERN = "^[a-z][a-z0-9-]{0,63}$";
+
+/**
+ * Exact JSON Schema pattern for reason, generated from the same constants as describeReason so
+ * the published schemas cannot accept a sentence this module would never produce.
+ */
+export const FAILED_PROJECT_REASON_PATTERN = [
+  "^The [a-z][a-z0-9-]{0,63} adapter failed with ",
+  `(?:${FAILED_PROJECT_ERROR_NAMES.join("|")})\\.`,
+  `(?: (?:${FAILED_PROJECT_ERROR_CODES.map((code) => escapeRegExp(FAILED_PROJECT_ERROR_CODE_DESCRIPTIONS[code])).join("|")}))?$`
+].join("");
+
 const ERROR_NAMES = new Set(FAILED_PROJECT_ERROR_NAMES);
-const ADAPTER_ID = /^[a-z][a-z0-9-]{0,63}$/;
+const ADAPTER_ID = new RegExp(FAILED_PROJECT_ADAPTER_ID_PATTERN);
 const ENTRY_KEYS = new Set(["projectId", "projectRoot", "adapterId", "ecosystems", "languages", "errorName", "errorCode", "reason"]);
 
 /**
@@ -103,28 +117,45 @@ export function normalizeFailedProjects(projectAudits) {
 }
 
 /**
- * Copy failedProjects from an artifact that was not schema-validated, such as a caller-supplied
- * project-test-plan/v1. Rejects anything that the fixed failure vocabulary could not have produced.
+ * The canonical failure-entry check shared by every ingestion point: saved project-audits/v1
+ * artifacts, MCP projectAudits arguments and caller-supplied project plans. Beyond the schema, it
+ * requires reason to be exactly the sentence describeReason produces for the entry's own fields.
+ * Throws ArtifactValidationError naming the first invalid path; values are never echoed.
  *
  * @param {unknown} failedProjects
- * @param {string} label
+ * @param {{ schemaVersion: string, path?: string }} context
+ * @returns {void}
+ */
+export function assertCanonicalFailedProjects(failedProjects, { schemaVersion, path = "$.failedProjects" }) {
+  if (failedProjects === undefined) return;
+  if (!Array.isArray(failedProjects)) {
+    throw new ArtifactValidationError(`Invalid ${schemaVersion} artifact at ${path}: expected array.`, { schemaVersion, path });
+  }
+
+  failedProjects.forEach((entry, index) => {
+    const field = findInvalidFailedProjectField(entry);
+    if (field === undefined) return;
+    const fieldPath = field ? `${path}[${index}].${field}` : `${path}[${index}]`;
+    throw new ArtifactValidationError(
+      `Invalid ${schemaVersion} artifact at ${fieldPath}: not a canonical failed project entry.`,
+      { schemaVersion, path: fieldPath }
+    );
+  });
+}
+
+/**
+ * Copy failedProjects from an artifact that was not schema-validated, such as a caller-supplied
+ * project-test-plan/v1, after the canonical check.
+ *
+ * @param {unknown} failedProjects
+ * @param {{ schemaVersion: string, path?: string }} context
  * @returns {FailedProjectAudit[]}
  */
-export function copyUntrustedFailedProjects(failedProjects, label) {
+export function copyUntrustedFailedProjects(failedProjects, context) {
+  assertCanonicalFailedProjects(failedProjects, context);
   if (failedProjects === undefined) return [];
-  if (!Array.isArray(failedProjects)) throw new Error(`${label} failedProjects must be an array.`);
 
-  return failedProjects.map((entry, index) => {
-    const invalid = () => new Error(`${label} failedProjects[${index}] is not a valid failed project entry.`);
-    if (!entry || typeof entry !== "object" || Array.isArray(entry)) throw invalid();
-    if (Object.keys(entry).some((key) => !ENTRY_KEYS.has(key))) throw invalid();
-    if (![entry.projectId, entry.projectRoot].every((value) => typeof value === "string" && value.length > 0)) throw invalid();
-    if (![entry.ecosystems, entry.languages].every(isStringArray)) throw invalid();
-    if (typeof entry.adapterId !== "string" || !ADAPTER_ID.test(entry.adapterId)) throw invalid();
-    if (!ERROR_NAMES.has(entry.errorName)) throw invalid();
-    if (entry.errorCode !== undefined && !Object.hasOwn(FAILED_PROJECT_ERROR_CODE_DESCRIPTIONS, entry.errorCode)) throw invalid();
-    if (entry.reason !== describeReason(entry.adapterId, entry.errorName, entry.errorCode)) throw invalid();
-
+  return failedProjects.map((entry) => {
     return {
       projectId: entry.projectId,
       projectRoot: entry.projectRoot,
@@ -206,6 +237,31 @@ function readErrorCode(error) {
   } catch {
     return undefined;
   }
+}
+
+/**
+ * @param {unknown} entry
+ * @returns {string | undefined} "" for a malformed entry, a field name for an invalid field, or undefined when valid
+ */
+function findInvalidFailedProjectField(entry) {
+  if (!entry || typeof entry !== "object" || Array.isArray(entry)) return "";
+  const unknownKey = Object.keys(entry).find((key) => !ENTRY_KEYS.has(key));
+  if (unknownKey !== undefined) return "";
+  for (const key of ["projectId", "projectRoot"]) {
+    if (typeof entry[key] !== "string" || entry[key].length === 0) return key;
+  }
+  for (const key of ["ecosystems", "languages"]) {
+    if (!isStringArray(entry[key])) return key;
+  }
+  if (typeof entry.adapterId !== "string" || !ADAPTER_ID.test(entry.adapterId)) return "adapterId";
+  if (!ERROR_NAMES.has(entry.errorName)) return "errorName";
+  if (entry.errorCode !== undefined && !Object.hasOwn(FAILED_PROJECT_ERROR_CODE_DESCRIPTIONS, entry.errorCode)) return "errorCode";
+  if (entry.reason !== describeReason(entry.adapterId, entry.errorName, entry.errorCode)) return "reason";
+  return undefined;
+}
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function isStringArray(value) {
