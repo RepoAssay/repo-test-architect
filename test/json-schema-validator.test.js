@@ -101,6 +101,78 @@ describe("JSON schema validator", () => {
     assert.throws(() => assertMatchesSchema(1, { type: ["string", "null"] }, "nullable"), /expected string or null, got integer/);
   });
 
+  it("validates date-time against RFC 3339 calendar, leap-year, leap-second, and offset rules", () => {
+    const dateTime = { type: "string", format: "date-time" };
+    const valid = [
+      "2024-02-29T12:00:00Z",
+      "2000-02-29T00:00:00Z",
+      "2016-12-31T23:59:60Z",
+      "2016-12-31T15:59:60-08:00",
+      "2026-10-29t12:00:00.5+05:30",
+      "2026-10-29T12:00:00z"
+    ];
+    const invalid = [
+      "2026-02-30T12:00:00Z",
+      "2025-02-29T12:00:00Z",
+      "1900-02-29T12:00:00Z",
+      "2026-04-31T12:00:00Z",
+      "2026-10-29T12:00:60Z",
+      "2016-12-31T23:59:60+01:00",
+      "2026-10-29T24:00:00Z",
+      "2026-10-29T12:00:00+24:00",
+      "2026-10-29T12:00:00+05:60",
+      "2026-10-29T12:00:00",
+      "2026-10-29 12:00:00Z"
+    ];
+
+    for (const value of valid) assert.deepEqual(validateAgainstSchema(value, dateTime), [], value);
+    for (const value of invalid) {
+      assert.deepEqual(validateAgainstSchema(value, dateTime), [{ path: "$", message: "expected date-time format" }], value);
+    }
+  });
+
+  it("rejects inherited object members as format names", () => {
+    for (const format of ["constructor", "toString", "__proto__", "hasOwnProperty"]) {
+      assert.throws(() => compileSchema({ type: "string", format }), /Unsupported JSON schema format/, format);
+    }
+  });
+
+  it("rejects nested $id instead of resolving references against the wrong resource", () => {
+    assert.doesNotThrow(() => compileSchema({ $id: "https://example.com/root.json", type: "object" }));
+    assert.throws(
+      () => compileSchema({ $id: "https://example.com/root.json", $defs: { word: { $id: "word.json", type: "string" } } }),
+      /Unsupported nested JSON schema \$id at #\/\$defs\/word/
+    );
+  });
+
+  it("checks item types before pairwise uniqueness", () => {
+    const schema = { type: "array", items: { type: "string" }, uniqueItems: true };
+
+    assert.deepEqual(validateAgainstSchema([{ a: 1 }, { a: 1 }], schema, { maxErrors: 1 }), [
+      { path: "$[0]", message: "expected string, got object" }
+    ]);
+    assert.deepEqual(validateAgainstSchema(["a", "a"], schema), [{ path: "$", message: "expected unique items" }]);
+  });
+
+  it("fails with a validation error instead of overflowing on deep or cyclic values", () => {
+    const tree = {
+      $ref: "#/$defs/node",
+      $defs: {
+        node: { type: "object", properties: { children: { type: "array", items: { $ref: "#/$defs/node" } } } }
+      }
+    };
+    let deep = { children: [] };
+    for (let level = 0; level < 5000; level += 1) deep = { children: [deep] };
+    const cyclic = { children: [] };
+    cyclic.children.push(cyclic);
+
+    for (const value of [deep, cyclic]) {
+      const [issue] = validateAgainstSchema(value, tree, { maxErrors: 1 });
+      assert.match(issue.message, /exceeds maximum validation depth of \d+/);
+    }
+    assert.match(validateAgainstSchema(deep, tree)[0].message, /exceeds maximum validation depth/);
+  });
+
   it("resolves recursive $defs references", () => {
     const tree = {
       $ref: "#/$defs/node",

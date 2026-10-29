@@ -5,7 +5,11 @@
  * Schemas are compiled once into closures. Any keyword outside the supported
  * set makes compilation throw, so a schema can never silently skip a rule.
  * Error messages never include instance values; they only name the failing
- * path and the expectation taken from the (trusted) schema.
+ * path and the expectation taken from the (trusted) schema. Property names are
+ * echoed only when the schema declares them; any other key is redacted.
+ *
+ * Unlike the draft 2020-12 default, `format` is asserted rather than treated as
+ * an annotation: a string that fails a supported format is a validation error.
  */
 
 const ANNOTATION_KEYWORDS = new Set([
@@ -50,15 +54,18 @@ const VALIDATION_KEYWORDS = new Set([
 
 const SUPPORTED_TYPES = new Set(["object", "array", "string", "integer", "number", "boolean", "null"]);
 
+// RFC 3339 §5.6 date-time; calendar and leap-second rules are checked in isRfc3339DateTime.
 const DATE_TIME_PATTERN =
-  /^\d{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])[Tt](?:[01]\d|2[0-3]):[0-5]\d:(?:[0-5]\d|60)(?:\.\d+)?(?:[Zz]|[+-](?:[01]\d|2[0-3]):[0-5]\d)$/;
+  /^(\d{4})-(\d{2})-(\d{2})[Tt](\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(?:[Zz]|([+-])(\d{2}):(\d{2}))$/;
 
-const FORMAT_CHECKS = {
-  "date-time": (value) => DATE_TIME_PATTERN.test(value) && !Number.isNaN(Date.parse(value))
-};
+const FORMAT_CHECKS = new Map([["date-time", isRfc3339DateTime]]);
 
 const SAFE_PROPERTY_NAME = /^[A-Za-z_$][A-Za-z0-9_$-]{0,63}$/;
+const REDACTED_PROPERTY_SEGMENT = "[<property>]";
 const MAX_RENDERED_PATH_LENGTH = 240;
+// Bounds nested schema applications so deep or cyclic in-process values fail with
+// a validation error instead of exhausting the call stack.
+const MAX_VALIDATION_DEPTH = 512;
 
 /**
  * @typedef {{ path: string, message: string }} SchemaValidationIssue
@@ -76,7 +83,7 @@ export function compileSchema(schema) {
   const validateRoot = compiler.compile(schema, "#");
 
   return (value, { rootPath = "$", maxErrors = Infinity } = {}) => {
-    const context = { errors: [], maxErrors };
+    const context = { errors: [], maxErrors, depth: 0 };
     validateRoot(value, { segment: rootPath }, context);
     return context.errors;
   };
@@ -127,6 +134,11 @@ class SchemaCompiler {
       throw new Error(`Invalid JSON schema at ${location}: expected an object or boolean.`);
     }
 
+    // References always resolve against the root, so a nested schema resource would be misread.
+    if (schema !== this.rootSchema && Object.hasOwn(schema, "$id")) {
+      throw new Error(`Unsupported nested JSON schema $id at ${location}; only the root schema may declare $id.`);
+    }
+
     const cached = this.compiled.get(schema);
     if (cached) return cached;
 
@@ -135,7 +147,7 @@ class SchemaCompiler {
     const forward = (value, path, context) => implementation(value, path, context);
     this.compiled.set(schema, forward);
 
-    implementation = this.compileKeywords(schema, location);
+    implementation = withDepthGuard(this.compileKeywords(schema, location));
     this.compiled.set(schema, implementation);
     return implementation;
   }
@@ -243,7 +255,7 @@ class SchemaCompiler {
     if (schema.oneOf !== undefined) {
       const branches = this.compileBranches(schema.oneOf, `${location}/oneOf`);
       checks.push((value, path, context) => {
-        const matchCount = branches.filter((branch) => matchesSilently(branch, value, path)).length;
+        const matchCount = branches.filter((branch) => matchesSilently(branch, value, path, context)).length;
         return matchCount === 1 || fail(context, path, `expected exactly one matching oneOf schema, matched ${matchCount}`);
       });
     }
@@ -251,7 +263,7 @@ class SchemaCompiler {
     if (schema.anyOf !== undefined) {
       const branches = this.compileBranches(schema.anyOf, `${location}/anyOf`);
       checks.push((value, path, context) =>
-        branches.some((branch) => matchesSilently(branch, value, path)) ||
+        branches.some((branch) => matchesSilently(branch, value, path, context)) ||
         fail(context, path, "expected at least one matching anyOf schema")
       );
     }
@@ -273,7 +285,7 @@ class SchemaCompiler {
     if (schema.not !== undefined) {
       const negated = this.compile(schema.not, `${location}/not`);
       checks.push((value, path, context) =>
-        !matchesSilently(negated, value, path) || fail(context, path, "expected value not to match the not schema")
+        !matchesSilently(negated, value, path, context) || fail(context, path, "expected value not to match the not schema")
       );
     }
   }
@@ -316,7 +328,7 @@ class SchemaCompiler {
 
       for (const key of required) {
         if (!Object.hasOwn(value, key) || value[key] === undefined) {
-          valid = fail(context, childPath(path, key), "required property missing");
+          valid = fail(context, childPath(path, key, true), "required property missing");
           if (isFull(context)) return false;
         }
       }
@@ -329,11 +341,11 @@ class SchemaCompiler {
         let propertyValid = true;
 
         if (validateProperty) {
-          propertyValid = validateProperty(value[key], childPath(path, key), context);
+          propertyValid = validateProperty(value[key], childPath(path, key, true), context);
         } else if (validateAdditional === false) {
-          propertyValid = fail(context, childPath(path, key), "additional property not allowed");
+          propertyValid = fail(context, childPath(path, key, false), "additional property not allowed");
         } else if (validateAdditional) {
-          propertyValid = validateAdditional(value[key], childPath(path, key), context);
+          propertyValid = validateAdditional(value[key], childPath(path, key, false), context);
         }
 
         if (!propertyValid) {
@@ -367,18 +379,22 @@ class SchemaCompiler {
         if (isFull(context)) return false;
       }
 
-      if (uniqueItems && !hasUniqueItems(value)) {
-        valid = fail(context, path, "expected unique items");
-        if (isFull(context)) return false;
-      }
-
+      let itemsValid = true;
       if (validateItem) {
         for (let index = 0; index < value.length; index += 1) {
           if (!validateItem(value[index], { parent: path, index }, context)) {
-            valid = false;
+            itemsValid = false;
             if (isFull(context)) return false;
           }
         }
+      }
+
+      // Item checks run first so ill-typed items fail before the pairwise uniqueness comparison.
+      if (!itemsValid) return false;
+
+      if (uniqueItems && !hasUniqueItems(value)) {
+        valid = fail(context, path, "expected unique items");
+        if (isFull(context)) return false;
       }
 
       return valid;
@@ -391,7 +407,7 @@ class SchemaCompiler {
     let formatCheck;
 
     if (format !== undefined) {
-      formatCheck = FORMAT_CHECKS[format];
+      formatCheck = FORMAT_CHECKS.get(format);
       if (!formatCheck) {
         throw new Error(`Unsupported JSON schema format "${format}" at ${location}.`);
       }
@@ -471,12 +487,32 @@ function isFull(context) {
   return context.errors.length >= context.maxErrors;
 }
 
-function matchesSilently(validate, value, path) {
-  return validate(value, path, { errors: [], maxErrors: 1 });
+function matchesSilently(validate, value, path, context) {
+  return validate(value, path, { errors: [], maxErrors: 1, depth: context.depth });
 }
 
-function childPath(parent, key) {
-  return { parent, key };
+function withDepthGuard(validate) {
+  return (value, path, context) => {
+    if (context.depth >= MAX_VALIDATION_DEPTH) {
+      return fail(context, path, `exceeds maximum validation depth of ${MAX_VALIDATION_DEPTH}`);
+    }
+
+    context.depth += 1;
+    try {
+      return validate(value, path, context);
+    } finally {
+      context.depth -= 1;
+    }
+  };
+}
+
+/**
+ * @param {unknown} parent
+ * @param {string} key
+ * @param {boolean} declared whether the key comes from the schema rather than the instance
+ */
+function childPath(parent, key, declared) {
+  return { parent, key, declared };
 }
 
 function renderPath(path) {
@@ -485,13 +521,43 @@ function renderPath(path) {
   for (let node = path; node; node = node.parent) {
     if (node.segment !== undefined) parts.push(node.segment);
     else if (node.index !== undefined) parts.push(`[${node.index}]`);
-    else parts.push(SAFE_PROPERTY_NAME.test(node.key) ? `.${node.key}` : "[<property>]");
+    else parts.push(node.declared && SAFE_PROPERTY_NAME.test(node.key) ? `.${node.key}` : REDACTED_PROPERTY_SEGMENT);
   }
 
   const rendered = parts.reverse().join("");
   return rendered.length > MAX_RENDERED_PATH_LENGTH
     ? `${rendered.slice(0, MAX_RENDERED_PATH_LENGTH)}...`
     : rendered;
+}
+
+function isRfc3339DateTime(value) {
+  const match = DATE_TIME_PATTERN.exec(value);
+  if (!match) return false;
+
+  const [year, month, day, hour, minute, second] = match.slice(1, 7).map(Number);
+  const [sign, offsetHour, offsetMinute] = [match[7], Number(match[8] ?? 0), Number(match[9] ?? 0)];
+
+  if (month < 1 || month > 12 || day < 1 || day > daysInMonth(year, month)) return false;
+  if (hour > 23 || minute > 59 || second > 60) return false;
+  if (offsetHour > 23 || offsetMinute > 59) return false;
+
+  if (second === 60) {
+    // RFC 3339 §5.7: a leap second may only occur at 23:59:60 UTC.
+    const offset = (sign === "-" ? -1 : 1) * (offsetHour * 60 + offsetMinute);
+    const utcMinutes = (((hour * 60 + minute - offset) % 1440) + 1440) % 1440;
+    if (utcMinutes !== 23 * 60 + 59) return false;
+  }
+
+  return true;
+}
+
+function daysInMonth(year, month) {
+  if (month === 2) {
+    const leapYear = (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+    return leapYear ? 29 : 28;
+  }
+
+  return [4, 6, 9, 11].includes(month) ? 30 : 31;
 }
 
 function matchesType(value, type) {

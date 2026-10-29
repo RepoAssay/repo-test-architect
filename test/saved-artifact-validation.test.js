@@ -150,6 +150,29 @@ describe("saved artifact validation", () => {
           !error.message.includes(secretMarker)
       );
     });
+
+    it("redacts unknown property names even when they look like safe identifiers", () => {
+      const unknownName = "SECRET_VALUE_SHOULD_NOT_ECHO";
+      const audit = validAudit();
+      audit.untestedCandidates[0][unknownName] = true;
+
+      assert.throws(
+        () => validateAudit(audit),
+        (error) =>
+          error.path === "$.untestedCandidates[0][<property>]" &&
+          /additional property not allowed/.test(error.message) &&
+          !error.message.includes(unknownName) &&
+          !error.path.includes(unknownName)
+      );
+
+      assert.throws(
+        () => callTool("generate_test_plan", { audit: { ...validAudit(), [unknownName]: true } }),
+        (error) => {
+          const safe = toSafeMcpError(error);
+          return safe.data.path === "$[<property>]" && !JSON.stringify(safe).includes(unknownName);
+        }
+      );
+    });
   });
 
   describe("MCP callTool", () => {
@@ -275,6 +298,30 @@ describe("saved artifact validation", () => {
     for (const fileName of fs.readdirSync("examples/mcp").filter((name) => name.endsWith(".json"))) {
       it(`accepts saved artifacts in examples/mcp/${fileName}`, () => {
         const args = readJson(path.join("examples/mcp", fileName));
+
+        if (args.audit) assert.doesNotThrow(() => validateAudit(args.audit));
+        if (args.projectAudits) assert.doesNotThrow(() => validateProjectAudits(args.projectAudits));
+      });
+    }
+
+    it("keeps the MCP placement example audit in sync with the saved node-vitest-basic audit", () => {
+      assert.deepEqual(readJson("examples/mcp/node-vitest-basic-audit.args.json").audit, validAudit());
+    });
+
+    const packageScripts = Object.entries(readJson("package.json").scripts).filter(([, command]) =>
+      /src\/mcp\/invoke\.js call(?:-envelope)? /.test(command)
+    );
+
+    it("finds package MCP example scripts to check", () => {
+      assert.ok(packageScripts.length > 0);
+    });
+
+    for (const [scriptName, command] of packageScripts) {
+      it(`accepts saved artifacts passed by npm run ${scriptName}`, () => {
+        const rawArgs = command.replace(/^.*src\/mcp\/invoke\.js call(?:-envelope)? \S+ /, "");
+        const args = rawArgs.startsWith("@")
+          ? readJson(rawArgs.slice(1).replace(/^"|"$/g, ""))
+          : JSON.parse(rawArgs.slice(1, -1).replaceAll('\\"', '"'));
 
         if (args.audit) assert.doesNotThrow(() => validateAudit(args.audit));
         if (args.projectAudits) assert.doesNotThrow(() => validateProjectAudits(args.projectAudits));
