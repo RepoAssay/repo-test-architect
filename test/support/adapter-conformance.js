@@ -199,7 +199,8 @@ function assertProjectPipelineAgreement(audit, root, adapterId) {
   assert.deepEqual(projectAudits.summary, {
     projectCount: 1,
     auditedProjectCount: 1,
-    skippedProjectCount: 0
+    skippedProjectCount: 0,
+    failedProjectCount: 0
   }, `${adapterId} conformance fixture must resolve to one supported project`);
   assert.equal(projectAudits.audits[0].projectId, ".", `${adapterId} project id must agree`);
   assert.equal(projectAudits.audits[0].projectRoot, ".", `${adapterId} project root must agree`);

@@ -5,7 +5,8 @@
     "summary": {
       "projectCount": 3,
       "auditedProjectCount": 3,
-      "skippedProjectCount": 0
+      "skippedProjectCount": 0,
+      "failedProjectCount": 0
     },
     "audits": [
       {
@@ -243,6 +244,7 @@
         }
       }
     ],
-    "skippedProjects": []
+    "skippedProjects": [],
+    "failedProjects": []
   }
 }

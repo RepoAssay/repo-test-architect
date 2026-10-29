@@ -9,7 +9,7 @@ describe("project auditor", () => {
   it("audits a literal C# production/test pair once at the common root", () => {
     const result = auditDetectedProjects(path.resolve("examples/csharp-sdk-project-pair"));
 
-    assert.deepEqual(result.summary, { projectCount: 1, auditedProjectCount: 1, skippedProjectCount: 0 });
+    assert.deepEqual(result.summary, { projectCount: 1, auditedProjectCount: 1, skippedProjectCount: 0, failedProjectCount: 0 });
     assert.equal(result.audits[0].projectId, ".");
     assert.equal(result.audits[0].adapterId, "csharp");
     assert.equal(result.audits[0].audit.profile.testCommand, "dotnet test tests/CheckoutRules.Tests/CheckoutRules.Tests.csproj");
@@ -19,7 +19,7 @@ describe("project auditor", () => {
   it("audits one unique C# test edge without merging unrelated projects", () => {
     const result = auditDetectedProjects(path.resolve("examples/csharp-sdk-unique-pair"));
 
-    assert.deepEqual(result.summary, { projectCount: 3, auditedProjectCount: 3, skippedProjectCount: 0 });
+    assert.deepEqual(result.summary, { projectCount: 3, auditedProjectCount: 3, skippedProjectCount: 0, failedProjectCount: 0 });
     const selectedPair = result.audits.find((entry) => entry.projectId === ".");
     assert.equal(selectedPair.adapterId, "csharp");
     assert.equal(selectedPair.audit.profile.testCommand, "dotnet test tests/Pricing.Tests/Pricing.Tests.csproj");
@@ -71,7 +71,8 @@ describe("project auditor", () => {
     assert.deepEqual(result.summary, {
       projectCount: 2,
       auditedProjectCount: 2,
-      skippedProjectCount: 0
+      skippedProjectCount: 0,
+      failedProjectCount: 0
     });
     assert.deepEqual(result.audits.map((entry) => ({
       projectId: entry.projectId,
@@ -102,7 +103,7 @@ describe("project auditor", () => {
       goTarget: { goos: "darwin", goarch: "arm64", tags: ["integration"] }
     });
 
-    assert.deepEqual(result.summary, { projectCount: 1, auditedProjectCount: 1, skippedProjectCount: 0 });
+    assert.deepEqual(result.summary, { projectCount: 1, auditedProjectCount: 1, skippedProjectCount: 0, failedProjectCount: 0 });
     assert.equal(result.audits[0].adapterId, "go");
     assert.equal(
       result.audits[0].audit.profile.testCommand,
@@ -120,7 +121,8 @@ describe("project auditor", () => {
     assert.deepEqual(result.summary, {
       projectCount: 2,
       auditedProjectCount: 2,
-      skippedProjectCount: 0
+      skippedProjectCount: 0,
+      failedProjectCount: 0
     });
     assert.deepEqual(result.audits.map((entry) => ({
       projectId: entry.projectId,
@@ -153,7 +155,8 @@ describe("project auditor", () => {
     assert.deepEqual(result.summary, {
       projectCount: 3,
       auditedProjectCount: 3,
-      skippedProjectCount: 0
+      skippedProjectCount: 0,
+      failedProjectCount: 0
     });
     assert.deepEqual(
       result.audits.map((entry) => ({
@@ -188,7 +191,8 @@ describe("project auditor", () => {
     assert.deepEqual(result.summary, {
       projectCount: 1,
       auditedProjectCount: 1,
-      skippedProjectCount: 0
+      skippedProjectCount: 0,
+      failedProjectCount: 0
     });
     assert.equal(result.audits[0].projectId, ".");
     assert.equal(result.audits[0].adapterId, "kotlin");
@@ -211,7 +215,7 @@ describe("project auditor", () => {
 
     const result = auditDetectedProjects(root);
     const rootAudit = result.audits.find((entry) => entry.projectId === ".")?.audit;
-    assert.deepEqual(result.summary, { projectCount: 1, auditedProjectCount: 1, skippedProjectCount: 0 });
+    assert.deepEqual(result.summary, { projectCount: 1, auditedProjectCount: 1, skippedProjectCount: 0, failedProjectCount: 0 });
     assert.equal(rootAudit.profile.testCommand, "./mvnw test");
     assert.deepEqual(rootAudit.profile.blockers, []);
     assert.deepEqual(rootAudit.coveredButRisky.map((target) => target.path), ["platform/core/src/main/java/TokenParser.java"]);
@@ -238,7 +242,7 @@ describe("project auditor", () => {
     const rootAudit = result.audits.find((entry) => entry.projectId === ".")?.audit;
     const coreAudit = result.audits.find((entry) => entry.projectId === "core")?.audit;
 
-    assert.deepEqual(result.summary, { projectCount: 2, auditedProjectCount: 2, skippedProjectCount: 0 });
+    assert.deepEqual(result.summary, { projectCount: 2, auditedProjectCount: 2, skippedProjectCount: 0, failedProjectCount: 0 });
     assert.equal(rootAudit.profile.testCommand, undefined);
     assert.ok(rootAudit.profile.blockers.includes("Gradle settings include declarations must use literal repository-contained project paths."));
     assert.equal(coreAudit.profile.testCommand, "gradle test");
@@ -615,7 +619,8 @@ dependencies = ["fastapi", "pytest"]
     assert.deepEqual(result.summary, {
       projectCount: 1,
       auditedProjectCount: 1,
-      skippedProjectCount: 0
+      skippedProjectCount: 0,
+      failedProjectCount: 0
     });
     assert.deepEqual(
       result.audits.map((entry) => entry.projectId),

@@ -29,6 +29,11 @@
         "skippedProjectCount": {
           "type": "integer",
           "minimum": 0
+        },
+        "failedProjectCount": {
+          "description": "Projects whose adapter failed during audit. Emitted since 1.1.0; absent from earlier artifacts.",
+          "type": "integer",
+          "minimum": 0
         }
       }
     },
@@ -167,6 +172,64 @@
             "type": "string",
             "minLength": 1
           }
+        }
+      }
+    },
+    "failedProjects": {
+      "description": "Supported projects whose adapter threw during audit, with a sanitized error summary. Emitted since 1.1.0 (possibly empty); absent from earlier artifacts.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/failedProject"
+      }
+    }
+  },
+  "$defs": {
+    "failedProject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["projectId", "projectRoot", "adapterId", "ecosystems", "languages", "errorName", "reason"],
+      "properties": {
+        "projectId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "projectRoot": {
+          "type": "string",
+          "minLength": 1
+        },
+        "adapterId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "ecosystems": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "languages": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "errorName": {
+          "description": "The thrown error's name, such as Error or TypeError.",
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_$]{0,63}$"
+        },
+        "errorCode": {
+          "description": "A Node.js-style error code such as ENOENT, when the error carried one.",
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_]{0,63}$"
+        },
+        "reason": {
+          "description": "First line of the error message without absolute paths, quoted content or stack frames, at most 200 characters.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
         }
       }
     }

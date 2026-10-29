@@ -48,6 +48,7 @@ export function createRepositoryAnalysis(projectAudits) {
       projectCount: auditSummary.summary.projectCount,
       auditedProjectCount: auditSummary.summary.auditedProjectCount,
       unsupportedProjectCount: auditSummary.summary.unsupportedProjectCount,
+      ...(auditSummary.summary.failedProjectCount ? { failedProjectCount: auditSummary.summary.failedProjectCount } : {}),
       auditCoverage: auditSummary.summary.auditCoverage,
       blockerCount: stats.counts.blockerCount,
       findingCount: findings.summary.findingCount,

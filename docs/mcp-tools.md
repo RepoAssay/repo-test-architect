@@ -145,6 +145,8 @@ For example, `changedPaths: [""]` on `audit_repo` returns `kind: "invalid-argume
 
 Saved `audit` and `projectAudits` arguments are validated against `schemas/audit-v1.schema.json` and `schemas/project-audits-v1.schema.json` before use. A mismatch returns `kind: "invalid-arguments"`, the artifact `argument`, and a `path` naming the first invalid JSON location, for example `Invalid audit/v1 artifact at $.untestedCandidates[0]: expected object, got null.` Argument values are never echoed back. The CLI `--from-audit` and `--from-project-audits` options apply the same validation.
 
+An adapter failure for one detected project is not a tool error. `analyze_repository` and `audit_projects` still return their artifact, with the failing project listed in `projectAudits.failedProjects` (or `failedProjects` for `audit_projects`) by root, adapter, error name and code, and a sanitized message. Derived summaries count it in `summary.failedProjectCount`, list it in `failedProjects`, and report `auditCoverage: "partial"`. Report the failed roots to the user rather than presenting the result as complete. See [Failed Projects](artifact-contract.md#failed-projects).
+
 Unexpected exceptions return JSON-RPC code `-32603`, the generic message `Internal server error.`, `kind: "internal-error"`, and a locally generated `reportId`. Raw exception messages and stack traces are not returned to the client.
 
 Optional MCP call diagnostics are disabled by default and documented in [Local Diagnostics](diagnostics.md). Events never contain tool arguments, repository paths, source content, prompts, environment values, or stack traces. MCP stdout remains JSON-RPC-only.

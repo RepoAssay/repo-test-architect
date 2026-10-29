@@ -38,6 +38,11 @@
         "projectCount": { "type": "integer", "minimum": 0 },
         "auditedProjectCount": { "type": "integer", "minimum": 0 },
         "unsupportedProjectCount": { "type": "integer", "minimum": 0 },
+        "failedProjectCount": {
+          "description": "Projects whose adapter failed during audit. Present only when at least one project failed (since 1.1.0).",
+          "type": "integer",
+          "minimum": 1
+        },
         "auditCoverage": { "enum": ["complete", "partial", "none"] },
         "blockerCount": { "type": "integer", "minimum": 0 },
         "findingCount": { "type": "integer", "minimum": 0 },

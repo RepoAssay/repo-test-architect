@@ -1,5 +1,6 @@
 import { validateProjectAudits } from "./project-audits-validation.js";
 import { classifyProjectAuditCoverage } from "./project-audit-coverage.js";
+import { failedProjectCountField, failedProjectsField, normalizeFailedProjects } from "./project-failures.js";
 import { collectUnsupportedReasons, normalizeUnsupportedProjects } from "./project-unsupported.js";
 import { createTestPlan } from "./test-plan.js";
 import { compareText } from "./ordering.js";
@@ -33,8 +34,9 @@ import { compareText } from "./ordering.js";
  * @typedef {object} ProjectTestPlan
  * @property {"project-test-plan/v1"} schemaVersion
  * @property {string} root
- * @property {{ projectCount: number, plannedProjectCount: number, unsupportedProjectCount: number, auditCoverage: ProjectAuditCoverage, unsupportedReasons: string[], addTestCount: number, extendTestCount: number, deferredCount: number, itemCount: number }} summary
+ * @property {{ projectCount: number, plannedProjectCount: number, unsupportedProjectCount: number, failedProjectCount?: number, auditCoverage: ProjectAuditCoverage, unsupportedReasons: string[], addTestCount: number, extendTestCount: number, deferredCount: number, itemCount: number }} summary
  * @property {SkippedProjectAudit[]} unsupportedProjects
+ * @property {import("./project-failures.js").FailedProjectAudit[]} [failedProjects]
  * @property {object[]} projectPlans
  * @property {object[]} items
  */
@@ -76,6 +78,7 @@ export function createProjectTestPlan(projectAudits) {
     );
 
   const unsupportedProjects = normalizeUnsupportedProjects(projectAudits.skippedProjects);
+  const failedProjects = normalizeFailedProjects(projectAudits);
 
   return {
     schemaVersion: "project-test-plan/v1",
@@ -84,7 +87,8 @@ export function createProjectTestPlan(projectAudits) {
       projectCount: projectAudits.summary.projectCount,
       plannedProjectCount: projectPlans.length,
       unsupportedProjectCount: unsupportedProjects.length,
-      auditCoverage: classifyProjectAuditCoverage(projectPlans.length, unsupportedProjects.length),
+      ...failedProjectCountField(failedProjects),
+      auditCoverage: classifyProjectAuditCoverage(projectPlans.length, unsupportedProjects.length + failedProjects.length),
       unsupportedReasons: collectUnsupportedReasons(unsupportedProjects),
       addTestCount: countItems(items, "add-test"),
       extendTestCount: countItems(items, "extend-test"),
@@ -92,6 +96,7 @@ export function createProjectTestPlan(projectAudits) {
       itemCount: items.length
     },
     unsupportedProjects,
+    ...failedProjectsField(failedProjects),
     projectPlans,
     items
   };

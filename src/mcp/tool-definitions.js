@@ -103,7 +103,7 @@ const toolDefinitions = [
   },
   {
     name: "audit_projects",
-    description: "Return raw per-project audit artifacts for all detected supported roots and report unsupported roots. Use when a downstream specialist tool needs project-audits/v1; for a complete first-pass review, prefer analyze_repository.",
+    description: "Return raw per-project audit artifacts for all detected supported roots, report unsupported roots, and list roots whose adapter failed in failedProjects. Use when a downstream specialist tool needs project-audits/v1; for a complete first-pass review, prefer analyze_repository.",
     outputArtifact: artifact("project-audits/v1", "schemas/project-audits-v1.schema.json"),
     inputSchema: objectSchema({
       repoRoot: { type: "string", description: "Repository root path." },

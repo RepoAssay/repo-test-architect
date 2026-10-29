@@ -460,6 +460,23 @@ node ./src/cli/index.js audit-projects ./examples/polyglot-workspace --format js
 This artifact runs the matching adapter for each supported detected project root and reports unsupported project roots separately with their ecosystems, languages, adapter match evidence, and support status reason.
 It does not yet merge or rank findings across projects; that belongs in a later core merge layer.
 
+### Failed Projects
+
+Since 1.1.0, one project's adapter failure no longer aborts the run. When an adapter throws while auditing a supported project, that project is left out of `audits`, recorded in the top-level `failedProjects` array, and counted in `summary.failedProjectCount`; every other project is still audited. Both fields are always emitted by 1.1.0 and later (empty and `0` when nothing failed). They are optional in the schema, so saved 1.0.x artifacts without them remain valid inputs.
+
+Each `failedProjects` entry contains:
+
+- `projectId`, `projectRoot`, `ecosystems`, and `languages`, using the same repository-relative identity as `audits` and `skippedProjects`
+- `adapterId`, the adapter that failed
+- `errorName`, such as `Error` or `TypeError`, and `errorCode` when the error carried a Node.js-style code such as `ENOENT`
+- `reason`, the first line of the error message with paths under the repository made repository-relative, other absolute paths replaced by `<path>`, double-quoted and backtick-quoted content replaced by `<redacted>`, and at most 200 characters
+
+Stack traces and file contents are never recorded. Entries are ordered by `projectRoot`, then `adapterId`, using the locale-independent text ordering shared by other artifacts.
+
+Every error thrown from an adapter's audit is contained, including programming errors such as `TypeError`, so a defect in one adapter cannot hide the results for other ecosystems. `errorName` keeps such defects visible; report them as bugs. Errors raised outside an adapter, for example during project detection or saved-artifact validation, still fail the whole run.
+
+Derived project artifacts (`project-audit-summary/v1`, `project-findings/v1`, `project-candidate-ranking/v1`, `project-test-plan/v1`, `project-stats/v1`, and `repository-analysis/v1`) count failed projects as not audited, so `auditCoverage` is `partial`, or `none` when no project was audited. They add `summary.failedProjectCount` and, except for stats and the repository analysis summary, a copied `failedProjects` list only when at least one project failed, so complete runs keep their 1.0 shape. `repository-analysis/v1` always embeds the full `projectAudits` artifact, including `failedProjects`.
+
 ## Project Audit Summary Artifact
 
 Schema:

@@ -76,6 +76,16 @@ Unknown options fail instead of being silently ignored. Use quoted glob patterns
 
 Go target options apply to `analyze`, `audit-projects`, and direct single-project scans. They cannot be combined with saved audit artifacts because target selection must happen during evidence collection. For example: `repo-test-architect audit ./service --adapter go --goos darwin --goarch arm64 --go-tag integration`.
 
+## Exit Status
+
+| Status | Meaning |
+| --- | --- |
+| `0` | The command completed |
+| `1` | Usage error, invalid saved artifact, or a failure that stopped the run |
+| `2` | Partial result: at least one project's adapter failed to audit |
+
+Status `2` applies to every project-aware command, including runs that reuse a saved `project-audits/v1` artifact whose `failedProjects` list is not empty. The partial result is still printed to standard output, so `--format json` output remains a complete, parseable artifact. A warning naming each failed project, its adapter, and a sanitized error summary is written to standard error, and Markdown reports add a `Failed to audit` count and a `Failed Projects` section. Findings and test gaps never change the exit status. See [Failed Projects](artifact-contract.md#failed-projects) for the recorded fields.
+
 ## Metadata and Diagnostics
 
 - `adapters` lists registered adapter capabilities.

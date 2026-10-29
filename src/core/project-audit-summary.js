@@ -1,5 +1,6 @@
 import { validateProjectAudits } from "./project-audits-validation.js";
 import { classifyProjectAuditCoverage } from "./project-audit-coverage.js";
+import { failedProjectCountField, failedProjectsField, normalizeFailedProjects } from "./project-failures.js";
 import { collectUnsupportedReasons, normalizeUnsupportedProjects } from "./project-unsupported.js";
 import { rankTestCandidates } from "./rank-test-candidates.js";
 
@@ -38,16 +39,20 @@ import { rankTestCandidates } from "./rank-test-candidates.js";
  * @typedef {object} ProjectAudits
  * @property {"project-audits/v1"} schemaVersion
  * @property {string} root
- * @property {{ projectCount: number, auditedProjectCount: number, skippedProjectCount: number }} summary
+ * @property {{ projectCount: number, auditedProjectCount: number, skippedProjectCount: number, failedProjectCount?: number }} summary
  * @property {ProjectAuditEntry[]} audits
  * @property {SkippedProjectAudit[]} skippedProjects
+ * @property {FailedProjectAudit[]} [failedProjects]
+ *
+ * @typedef {import("./project-failures.js").FailedProjectAudit} FailedProjectAudit
  *
  * @typedef {object} ProjectAuditSummary
  * @property {"project-audit-summary/v1"} schemaVersion
  * @property {string} root
- * @property {{ projectCount: number, auditedProjectCount: number, unsupportedProjectCount: number, auditCoverage: ProjectAuditCoverage, unsupportedReasons: string[], untestedCandidateCount: number, coveredButRiskyCount: number, skippedTargetCount: number, riskCount: number }} summary
+ * @property {{ projectCount: number, auditedProjectCount: number, unsupportedProjectCount: number, failedProjectCount?: number, auditCoverage: ProjectAuditCoverage, unsupportedReasons: string[], untestedCandidateCount: number, coveredButRiskyCount: number, skippedTargetCount: number, riskCount: number }} summary
  * @property {ProjectAuditSummaryEntry[]} projects
  * @property {SkippedProjectAudit[]} unsupportedProjects
+ * @property {FailedProjectAudit[]} [failedProjects]
  */
 
 /**
@@ -85,6 +90,7 @@ export function summarizeProjectAudits(projectAudits) {
   });
 
   const unsupportedProjects = normalizeUnsupportedProjects(projectAudits.skippedProjects);
+  const failedProjects = normalizeFailedProjects(projectAudits);
 
   return {
     schemaVersion: "project-audit-summary/v1",
@@ -93,7 +99,11 @@ export function summarizeProjectAudits(projectAudits) {
       projectCount: projectAudits.summary.projectCount,
       auditedProjectCount: projectAudits.summary.auditedProjectCount,
       unsupportedProjectCount: projectAudits.summary.skippedProjectCount,
-      auditCoverage: classifyProjectAuditCoverage(projectAudits.summary.auditedProjectCount, projectAudits.summary.skippedProjectCount),
+      ...failedProjectCountField(failedProjects),
+      auditCoverage: classifyProjectAuditCoverage(
+        projectAudits.summary.auditedProjectCount,
+        projectAudits.summary.skippedProjectCount + failedProjects.length
+      ),
       unsupportedReasons: collectUnsupportedReasons(unsupportedProjects),
       untestedCandidateCount: sum(projects, "untestedCandidateCount"),
       coveredButRiskyCount: sum(projects, "coveredButRiskyCount"),
@@ -101,7 +111,8 @@ export function summarizeProjectAudits(projectAudits) {
       riskCount: sum(projects, "riskCount")
     },
     projects,
-    unsupportedProjects
+    unsupportedProjects,
+    ...failedProjectsField(failedProjects)
   };
 }
 

@@ -22,9 +22,11 @@ export interface ProjectAudits {
     projectCount: number;
     auditedProjectCount: number;
     skippedProjectCount: number;
+    failedProjectCount?: number;
   };
   audits: ProjectAuditEntry[];
   skippedProjects: SkippedProjectAudit[];
+  failedProjects?: FailedProjectAudit[];
 }
 
 export interface ProjectAuditSummary {
@@ -34,6 +36,7 @@ export interface ProjectAuditSummary {
     projectCount: number;
     auditedProjectCount: number;
     unsupportedProjectCount: number;
+    failedProjectCount?: number;
     auditCoverage: "complete" | "partial" | "none";
     unsupportedReasons: string[];
     untestedCandidateCount: number;
@@ -43,6 +46,7 @@ export interface ProjectAuditSummary {
   };
   projects: ProjectAuditSummaryEntry[];
   unsupportedProjects: SkippedProjectAudit[];
+  failedProjects?: FailedProjectAudit[];
 }
 
 export interface ProjectCandidateRanking {
@@ -52,11 +56,13 @@ export interface ProjectCandidateRanking {
     projectCount: number;
     auditedProjectCount: number;
     unsupportedProjectCount: number;
+    failedProjectCount?: number;
     auditCoverage: "complete" | "partial" | "none";
     unsupportedReasons: string[];
     candidateCount: number;
   };
   unsupportedProjects: SkippedProjectAudit[];
+  failedProjects?: FailedProjectAudit[];
   candidates: ProjectCandidate[];
 }
 
@@ -67,6 +73,7 @@ export interface ProjectTestPlan {
     projectCount: number;
     plannedProjectCount: number;
     unsupportedProjectCount: number;
+    failedProjectCount?: number;
     auditCoverage: "complete" | "partial" | "none";
     unsupportedReasons: string[];
     addTestCount: number;
@@ -75,6 +82,7 @@ export interface ProjectTestPlan {
     itemCount: number;
   };
   unsupportedProjects: SkippedProjectAudit[];
+  failedProjects?: FailedProjectAudit[];
   projectPlans: ProjectPlanEntry[];
   items: ProjectPlanItem[];
 }
@@ -86,6 +94,7 @@ export interface ProjectFindings {
     projectCount: number;
     auditedProjectCount: number;
     unsupportedProjectCount: number;
+    failedProjectCount?: number;
     auditCoverage: "complete" | "partial" | "none";
     unsupportedReasons: string[];
     findingCount: number;
@@ -98,6 +107,7 @@ export interface ProjectFindings {
   };
   findings: ProjectFinding[];
   unsupportedProjects: SkippedProjectAudit[];
+  failedProjects?: FailedProjectAudit[];
 }
 
 export interface ProjectFinding {
@@ -130,6 +140,7 @@ export interface ProjectStats {
     projectCount: number;
     auditedProjectCount: number;
     unsupportedProjectCount: number;
+    failedProjectCount?: number;
     auditCoverage: "complete" | "partial" | "none";
   };
   sourceFiles: {
@@ -170,6 +181,7 @@ export interface RepositoryAnalysis {
     projectCount: number;
     auditedProjectCount: number;
     unsupportedProjectCount: number;
+    failedProjectCount?: number;
     auditCoverage: "complete" | "partial" | "none";
     blockerCount: number;
     findingCount: number;
@@ -262,6 +274,18 @@ export interface SkippedProjectAudit {
   languages: string[];
   adapterMatches: AdapterMatch[];
   supportStatusReason: string;
+}
+
+/** A supported project whose adapter threw during audit. Absent from artifacts written before 1.1.0. */
+export interface FailedProjectAudit {
+  projectId: string;
+  projectRoot: string;
+  adapterId: string;
+  ecosystems: string[];
+  languages: string[];
+  errorName: string;
+  errorCode?: string;
+  reason: string;
 }
 
 export interface DetectedProject {

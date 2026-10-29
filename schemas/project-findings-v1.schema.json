@@ -29,6 +29,11 @@
         "projectCount": { "type": "integer", "minimum": 0 },
         "auditedProjectCount": { "type": "integer", "minimum": 0 },
         "unsupportedProjectCount": { "type": "integer", "minimum": 0 },
+        "failedProjectCount": {
+          "description": "Projects whose adapter failed during audit. Present only when at least one project failed (since 1.1.0).",
+          "type": "integer",
+          "minimum": 1
+        },
         "auditCoverage": { "enum": ["complete", "partial", "none"] },
         "unsupportedReasons": {
           "type": "array",
@@ -133,6 +138,32 @@
           "languages": { "type": "array" },
           "adapterMatches": { "type": "array" },
           "supportStatusReason": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "failedProjects": {
+      "description": "Supported projects whose adapter failed during audit, copied from project-audits/v1. Present only when at least one project failed (since 1.1.0).",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["projectId", "projectRoot", "adapterId", "ecosystems", "languages", "errorName", "reason"],
+        "properties": {
+          "projectId": { "type": "string", "minLength": 1 },
+          "projectRoot": { "type": "string", "minLength": 1 },
+          "adapterId": { "type": "string", "minLength": 1 },
+          "ecosystems": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "languages": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "errorName": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_$]{0,63}$" },
+          "errorCode": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]{0,63}$" },
+          "reason": { "type": "string", "minLength": 1, "maxLength": 200 }
         }
       }
     }
