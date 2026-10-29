@@ -1,4 +1,5 @@
 import { ArtifactValidationError, assertValidArtifact } from "./artifact-validation.js";
+import { assertCanonicalFailedProjects } from "./project-failures.js";
 
 /**
  * Validate a saved project-audits/v1 artifact against
@@ -35,6 +36,7 @@ export function validateProjectAudits(projectAudits) {
   }
 
   assertValidArtifact(projectAudits, "project-audits/v1");
+  assertCanonicalFailedProjects(projectAudits.failedProjects, { schemaVersion: "project-audits/v1" });
 }
 
 function invalid(message, path) {

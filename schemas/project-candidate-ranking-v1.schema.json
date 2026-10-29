@@ -28,6 +28,11 @@
         "projectCount": { "type": "integer", "minimum": 0 },
         "auditedProjectCount": { "type": "integer", "minimum": 0 },
         "unsupportedProjectCount": { "type": "integer", "minimum": 0 },
+        "failedProjectCount": {
+          "description": "Projects whose adapter failed during audit. Present only when at least one project failed (since 1.1.0).",
+          "type": "integer",
+          "minimum": 1
+        },
         "auditCoverage": { "enum": ["complete", "partial", "none"] },
         "unsupportedReasons": {
           "type": "array",
@@ -87,6 +92,32 @@
             "type": "string",
             "minLength": 1
           }
+        }
+      }
+    },
+    "failedProjects": {
+      "description": "Supported projects whose adapter failed during audit, copied from project-audits/v1. Present only when at least one project failed (since 1.1.0).",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["projectId", "projectRoot", "adapterId", "ecosystems", "languages", "errorName", "reason"],
+        "properties": {
+          "projectId": { "type": "string", "minLength": 1 },
+          "projectRoot": { "type": "string", "minLength": 1 },
+          "adapterId": { "type": "string", "pattern": "^[a-z][a-z0-9-]{0,63}$" },
+          "ecosystems": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "languages": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "errorName": { "enum": ["AggregateError", "Error", "EvalError", "RangeError", "ReferenceError", "SyntaxError", "TypeError", "URIError"] },
+          "errorCode": { "enum": ["EACCES", "EIO", "EISDIR", "ELOOP", "EMFILE", "ENAMETOOLONG", "ENFILE", "ENOENT", "ENOMEM", "ENOTDIR", "EPERM"] },
+          "reason": { "type": "string", "maxLength": 240, "pattern": "^The [a-z][a-z0-9-]{0,63} adapter failed with (?:AggregateError|Error|EvalError|RangeError|ReferenceError|SyntaxError|TypeError|URIError)\\.(?: (?:Permission was denied while reading the project\\.|An input or output error occurred while reading the project\\.|A directory was found where a file was expected\\.|Too many symbolic links were encountered while reading the project\\.|The process ran out of file handles while reading the project\\.|A file name in the project is too long\\.|The system ran out of file handles while reading the project\\.|A file or directory disappeared or was not found during the audit\\.|The system ran out of memory while reading the project\\.|A file was found where a directory was expected\\.|The operation was not permitted while reading the project\\.))?$" }
         }
       }
     },

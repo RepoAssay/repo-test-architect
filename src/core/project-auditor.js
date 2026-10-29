@@ -1,6 +1,9 @@
 import path from "node:path";
+import { normalizeGoTarget } from "../adapters/go/audit.js";
 import { getAdapter } from "./adapter-registry.js";
+import { InvalidOptionError } from "./invalid-option-error.js";
 import { detectProjects } from "./project-detector.js";
+import { describeFailedProject, sortFailedProjects } from "./project-failures.js";
 
 /**
  * @typedef {object} ProjectAuditEntry
@@ -18,12 +21,15 @@ import { detectProjects } from "./project-detector.js";
  * @property {Array<{ adapterId: string, maturity: string, matchedEcosystems: string[], matchedLanguages: string[] }>} adapterMatches
  * @property {string} supportStatusReason
  *
+ * @typedef {import("./project-failures.js").FailedProjectAudit} FailedProjectAudit
+ *
  * @typedef {object} ProjectAudits
  * @property {"project-audits/v1"} schemaVersion
  * @property {string} root
- * @property {{ projectCount: number, auditedProjectCount: number, skippedProjectCount: number }} summary
+ * @property {{ projectCount: number, auditedProjectCount: number, skippedProjectCount: number, failedProjectCount: number }} summary
  * @property {ProjectAuditEntry[]} audits
  * @property {SkippedProjectAudit[]} skippedProjects
+ * @property {FailedProjectAudit[]} failedProjects
  *
  * @typedef {object} AuditDetectedProjectsOptions
  * @property {string[]} [changedPaths]
@@ -32,16 +38,24 @@ import { detectProjects } from "./project-detector.js";
  */
 
 /**
+ * Audit every detected supported project. An adapter that throws for one project is contained:
+ * the project is reported in failedProjects with a fixed error summary and the remaining
+ * projects are still audited. Invalid options are usage errors: they are validated before any
+ * adapter runs and InvalidOptionError is never contained. Errors raised outside an adapter's
+ * audit call are not contained either.
+ *
  * @param {string} repoRoot
  * @param {AuditDetectedProjectsOptions} [options]
  * @returns {ProjectAudits}
  */
 export function auditDetectedProjects(repoRoot, options = {}) {
+  normalizeGoTarget(options.goTarget);
   const detection = detectProjects(repoRoot, {
     excludeProjectRoots: options.excludeProjectRoots
   });
   const audits = [];
   const skippedProjects = [];
+  const failedProjects = [];
 
   for (const project of detection.projects) {
     if (project.adapterIds.length === 0) {
@@ -58,12 +72,24 @@ export function auditDetectedProjects(repoRoot, options = {}) {
     }
 
     const adapterId = project.adapterIds[0];
+    const adapter = getAdapter(adapterId);
     const projectRoot = path.resolve(detection.root, project.root);
-    const audit = getAdapter(adapterId).audit(projectRoot, {
+    const auditOptions = {
       changedPaths: selectProjectChangedPaths(detection.root, project.root, options.changedPaths),
       repositoryRoot: detection.root,
       goTarget: options.goTarget
-    });
+    };
+    let audit;
+
+    try {
+      audit = adapter.audit(projectRoot, auditOptions);
+    } catch (error) {
+      if (isInvalidOptionError(error)) throw error;
+      // Programmer errors such as TypeError are contained too: one adapter defect should not hide
+      // every other project's results. errorName keeps such defects visible in the artifact.
+      failedProjects.push(describeFailedProject(project, adapterId, error));
+      continue;
+    }
 
     audits.push({
       projectId: project.id,
@@ -79,11 +105,22 @@ export function auditDetectedProjects(repoRoot, options = {}) {
     summary: {
       projectCount: detection.summary.projectCount,
       auditedProjectCount: audits.length,
-      skippedProjectCount: skippedProjects.length
+      skippedProjectCount: skippedProjects.length,
+      failedProjectCount: failedProjects.length
     },
     audits,
-    skippedProjects
+    skippedProjects,
+    failedProjects: sortFailedProjects(failedProjects)
   };
+}
+
+function isInvalidOptionError(error) {
+  try {
+    return error instanceof InvalidOptionError;
+  } catch {
+    // A Proxy whose prototype lookup throws is an adapter failure, not a usage error.
+    return false;
+  }
 }
 
 function selectProjectChangedPaths(repoRoot, projectRoot, changedPaths) {

@@ -1,5 +1,6 @@
 import { validateProjectAudits } from "./project-audits-validation.js";
 import { classifyProjectAuditCoverage } from "./project-audit-coverage.js";
+import { failedProjectCountField, failedProjectsField, normalizeFailedProjects } from "./project-failures.js";
 import { collectUnsupportedReasons, normalizeUnsupportedProjects } from "./project-unsupported.js";
 import { rankTestCandidates } from "./rank-test-candidates.js";
 import { compareText } from "./ordering.js";
@@ -32,8 +33,9 @@ import { compareText } from "./ordering.js";
  * @typedef {object} ProjectCandidateRanking
  * @property {"project-candidate-ranking/v1"} schemaVersion
  * @property {string} root
- * @property {{ projectCount: number, auditedProjectCount: number, unsupportedProjectCount: number, auditCoverage: ProjectAuditCoverage, unsupportedReasons: string[], candidateCount: number }} summary
+ * @property {{ projectCount: number, auditedProjectCount: number, unsupportedProjectCount: number, failedProjectCount?: number, auditCoverage: ProjectAuditCoverage, unsupportedReasons: string[], candidateCount: number }} summary
  * @property {SkippedProjectAudit[]} unsupportedProjects
+ * @property {import("./project-failures.js").FailedProjectAudit[]} [failedProjects]
  * @property {object[]} candidates
  */
 
@@ -63,6 +65,7 @@ export function rankProjectTestCandidates(projectAudits) {
   );
 
   const unsupportedProjects = normalizeUnsupportedProjects(projectAudits.skippedProjects);
+  const failedProjects = normalizeFailedProjects(projectAudits);
 
   return {
     schemaVersion: "project-candidate-ranking/v1",
@@ -71,11 +74,16 @@ export function rankProjectTestCandidates(projectAudits) {
       projectCount: projectAudits.summary.projectCount,
       auditedProjectCount: projectAudits.summary.auditedProjectCount,
       unsupportedProjectCount: projectAudits.summary.skippedProjectCount,
-      auditCoverage: classifyProjectAuditCoverage(projectAudits.summary.auditedProjectCount, projectAudits.summary.skippedProjectCount),
+      ...failedProjectCountField(failedProjects),
+      auditCoverage: classifyProjectAuditCoverage(
+        projectAudits.summary.auditedProjectCount,
+        projectAudits.summary.skippedProjectCount + failedProjects.length
+      ),
       unsupportedReasons: collectUnsupportedReasons(unsupportedProjects),
       candidateCount: candidates.length
     },
     unsupportedProjects,
+    ...failedProjectsField(failedProjects),
     candidates
   };
 }

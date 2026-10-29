@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { analyzeGoSyntax } from "./syntax.js";
+import { InvalidOptionError } from "../../core/invalid-option-error.js";
 import { compareText } from "../../core/ordering.js";
 import { readRepositoryTextFiles } from "../../core/repository-text-files.js";
 
@@ -393,28 +394,28 @@ function isRepositoryContainedWorkspacePath(value) {
   return !normalized.split("/").includes("..");
 }
 
-function normalizeGoTarget(value) {
+export function normalizeGoTarget(value) {
   if (value === undefined) return undefined;
   if (!value || typeof value !== "object" || Array.isArray(value)) {
-    throw new Error("goTarget must be an object with goos, goarch, and optional tags.");
+    throw new InvalidOptionError("goTarget must be an object with goos, goarch, and optional tags.", { option: "goTarget" });
   }
   const unknownKeys = Object.keys(value).filter((key) => !["goos", "goarch", "tags"].includes(key));
-  if (unknownKeys.length > 0) throw new Error(`Unsupported goTarget option: ${unknownKeys[0]}.`);
+  if (unknownKeys.length > 0) throw new InvalidOptionError(`Unsupported goTarget option: ${unknownKeys[0]}.`, { option: "goTarget" });
   if (typeof value.goos !== "string" || typeof value.goarch !== "string") {
-    throw new Error("goTarget.goos and goTarget.goarch must be strings.");
+    throw new InvalidOptionError("goTarget.goos and goTarget.goarch must be strings.", { option: "goTarget" });
   }
   const targetName = `${value.goos}/${value.goarch}`;
-  if (!VALID_GO_TARGETS.has(targetName)) throw new Error(`Unsupported Go build target: ${targetName}.`);
+  if (!VALID_GO_TARGETS.has(targetName)) throw new InvalidOptionError(`Unsupported Go build target: ${targetName}.`, { option: "goTarget" });
   const tags = value.tags ?? [];
   if (!Array.isArray(tags) || tags.some((tag) => typeof tag !== "string" || !/^[A-Za-z0-9_.]+$/.test(tag))) {
-    throw new Error("goTarget.tags must be an array of Go build tag names.");
+    throw new InvalidOptionError("goTarget.tags must be an array of Go build tag names.", { option: "goTarget" });
   }
   const reservedTag = tags.find((tag) =>
     KNOWN_GOOS.has(tag) || KNOWN_GOARCH.has(tag) ||
     ["cgo", "gc", "gccgo", "ignore", "unix"].includes(tag) ||
     /^go1\./.test(tag) || isArchitectureFeatureTag(tag)
   );
-  if (reservedTag) throw new Error(`goTarget.tags cannot override environment-defined tag: ${reservedTag}.`);
+  if (reservedTag) throw new InvalidOptionError(`goTarget.tags cannot override environment-defined tag: ${reservedTag}.`, { option: "goTarget" });
   return {
     goos: value.goos,
     goarch: value.goarch,

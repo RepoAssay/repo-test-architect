@@ -75,6 +75,7 @@ Implemented:
 - project detection adapter match evidence and support status reasons
 - project audit artifacts that preserve adapter match evidence and support status reasons for unsupported projects
 - project audit summaries with complete, partial, or none audit coverage status
+- per-project adapter failure containment: a throwing adapter is reported in `failedProjects` with a fixed error summary (messages are never recorded) while other projects are still audited, and the CLI exits with status 2 for partial results
 - project ranking and plan artifacts that preserve audit coverage status before clients act on recommendations
 - shared project-audits validation for saved artifact reuse across CLI and MCP-style flows
 - file-backed MCP invoke arguments for local calls that reuse saved artifacts

@@ -15,6 +15,9 @@ const ALLOWED_ACTIONS = new Set(["move", "split", "keep"]);
  * @typedef {object} TestPlacementFindings
  * @property {"test-placement-findings/v1"} schemaVersion
  * @property {TestPlacementFinding[]} findings
+ * @property {"partial" | "none"} [auditCoverage] Project placement only, when a project failed to audit
+ * @property {number} [failedProjectCount] Project placement only, when a project failed to audit
+ * @property {import("./project-failures.js").FailedProjectAudit[]} [failedProjects] Project placement only, when a project failed to audit
  */
 
 /**

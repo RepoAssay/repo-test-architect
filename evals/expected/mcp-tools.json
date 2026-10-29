@@ -271,7 +271,7 @@
     },
     {
       "name": "audit_projects",
-      "description": "Return raw per-project audit artifacts for all detected supported roots and report unsupported roots. Use when a downstream specialist tool needs project-audits/v1; for a complete first-pass review, prefer analyze_repository.",
+      "description": "Return raw per-project audit artifacts for all detected supported roots, report unsupported roots, and list roots whose adapter failed in failedProjects. Use when a downstream specialist tool needs project-audits/v1; for a complete first-pass review, prefer analyze_repository.",
       "outputArtifact": {
         "schemaVersion": "project-audits/v1",
         "schemaPath": "schemas/project-audits-v1.schema.json"
@@ -360,6 +360,9 @@
           },
           "skippedProjects": {
             "type": "array"
+          },
+          "failedProjects": {
+            "type": "array"
           }
         }
       },
@@ -417,6 +420,9 @@
           },
           "unsupportedProjects": {
             "type": "array"
+          },
+          "failedProjects": {
+            "type": "array"
           }
         }
       },
@@ -470,6 +476,9 @@
             "type": "object"
           },
           "unsupportedProjects": {
+            "type": "array"
+          },
+          "failedProjects": {
             "type": "array"
           },
           "candidates": {
@@ -528,6 +537,9 @@
             "type": "object"
           },
           "unsupportedProjects": {
+            "type": "array"
+          },
+          "failedProjects": {
             "type": "array"
           },
           "projectPlans": {
@@ -592,6 +604,9 @@
           },
           "unsupportedProjects": {
             "type": "array"
+          },
+          "failedProjects": {
+            "type": "array"
           }
         }
       },
@@ -634,6 +649,18 @@
         "properties": {
           "schemaVersion": {
             "const": "test-placement-findings/v1"
+          },
+          "auditCoverage": {
+            "enum": [
+              "partial",
+              "none"
+            ]
+          },
+          "failedProjectCount": {
+            "type": "integer"
+          },
+          "failedProjects": {
+            "type": "array"
           },
           "findings": {
             "type": "array"
@@ -701,6 +728,9 @@
             "type": "object"
           },
           "adapters": {
+            "type": "array"
+          },
+          "failedProjects": {
             "type": "array"
           }
         }
@@ -984,6 +1014,9 @@
           "summary": {
             "type": "object"
           },
+          "failedProjects": {
+            "type": "array"
+          },
           "items": {
             "type": "array"
           }
@@ -1211,6 +1244,18 @@
         "properties": {
           "schemaVersion": {
             "const": "test-placement-findings/v1"
+          },
+          "auditCoverage": {
+            "enum": [
+              "partial",
+              "none"
+            ]
+          },
+          "failedProjectCount": {
+            "type": "integer"
+          },
+          "failedProjects": {
+            "type": "array"
           },
           "findings": {
             "type": "array"

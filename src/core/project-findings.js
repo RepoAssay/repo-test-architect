@@ -1,5 +1,6 @@
 import { classifyProjectAuditCoverage } from "./project-audit-coverage.js";
 import { validateProjectAudits } from "./project-audits-validation.js";
+import { failedProjectCountField, failedProjectsField, normalizeFailedProjects } from "./project-failures.js";
 import { collectUnsupportedReasons, normalizeUnsupportedProjects } from "./project-unsupported.js";
 import { analyzeProjectTestPlacement } from "./project-test-placement-analysis.js";
 import { compareText } from "./ordering.js";
@@ -19,9 +20,10 @@ const MISSING_TEST_INFRASTRUCTURE_BLOCKERS = new Set([
  * @typedef {object} ProjectFindings
  * @property {"project-findings/v1"} schemaVersion
  * @property {string} root
- * @property {{ projectCount: number, auditedProjectCount: number, unsupportedProjectCount: number, auditCoverage: "complete" | "partial" | "none", unsupportedReasons: string[], findingCount: number, displayedFindingCount: number, maxFindings: number, highSeverityCount: number, placementFindingCount: number, blockedProjectCount: number, categoryCounts: Record<ProjectFindingCategory, number> }} summary
+ * @property {{ projectCount: number, auditedProjectCount: number, unsupportedProjectCount: number, failedProjectCount?: number, auditCoverage: "complete" | "partial" | "none", unsupportedReasons: string[], findingCount: number, displayedFindingCount: number, maxFindings: number, highSeverityCount: number, placementFindingCount: number, blockedProjectCount: number, categoryCounts: Record<ProjectFindingCategory, number> }} summary
  * @property {object[]} findings
  * @property {object[]} unsupportedProjects
+ * @property {object[]} [failedProjects]
  */
 
 /**
@@ -34,6 +36,7 @@ export function createProjectFindings(projectAudits, options = {}) {
 
   const maxFindings = normalizeMaxFindings(options.maxFindings);
   const unsupportedProjects = normalizeUnsupportedProjects(projectAudits.skippedProjects);
+  const failedProjects = normalizeFailedProjects(projectAudits);
   const coverageFindings = projectAudits.audits.flatMap(toAuditFindings);
   const placementFindings = analyzeProjectTestPlacement(projectAudits).findings
     .filter((finding) => finding.action !== "keep")
@@ -49,7 +52,11 @@ export function createProjectFindings(projectAudits, options = {}) {
       projectCount: projectAudits.summary.projectCount,
       auditedProjectCount: projectAudits.summary.auditedProjectCount,
       unsupportedProjectCount: unsupportedProjects.length,
-      auditCoverage: classifyProjectAuditCoverage(projectAudits.summary.auditedProjectCount, unsupportedProjects.length),
+      ...failedProjectCountField(failedProjects),
+      auditCoverage: classifyProjectAuditCoverage(
+        projectAudits.summary.auditedProjectCount,
+        unsupportedProjects.length + failedProjects.length
+      ),
       unsupportedReasons: collectUnsupportedReasons(unsupportedProjects),
       findingCount: findings.length,
       displayedFindingCount: displayedFindings.length,
@@ -60,7 +67,8 @@ export function createProjectFindings(projectAudits, options = {}) {
       categoryCounts
     },
     findings: displayedFindings,
-    unsupportedProjects
+    unsupportedProjects,
+    ...failedProjectsField(failedProjects)
   };
 }
 

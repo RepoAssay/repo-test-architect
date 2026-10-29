@@ -1,3 +1,5 @@
+import { copyUntrustedFailedProjects, failedProjectsField } from "./project-failures.js";
+
 const PROJECT_BOUNDARY_SIGNALS = new Set([
   "app-integration-dependency",
   "app-wiring",
@@ -53,8 +55,9 @@ const HIGH_COMPLEXITY_SIGNALS = new Set([
  * @typedef {object} PlanExecutionHints
  * @property {"plan-execution-hints/v1"} schemaVersion
  * @property {{ schemaVersion: "plan/v1" | "project-test-plan/v1", itemCount: number, root?: string }} source
- * @property {{ itemCount: number, lowComplexityCount: number, mediumComplexityCount: number, highComplexityCount: number, parallelizableCount: number, repositoryReasoningCount: number }} summary
+ * @property {{ itemCount: number, lowComplexityCount: number, mediumComplexityCount: number, highComplexityCount: number, parallelizableCount: number, repositoryReasoningCount: number, auditCoverage?: "partial" | "none", failedProjectCount?: number }} summary
  * @property {PlanExecutionHint[]} items
+ * @property {import("./project-failures.js").FailedProjectAudit[]} [failedProjects]
  */
 
 /**
@@ -67,6 +70,9 @@ export function createPlanExecutionHints(plan, options = {}) {
   const normalizedItems = normalizePlanItems(plan);
   const selectedItems = filterItems(normalizedItems, options.itemId);
   const items = selectedItems.map(toExecutionHint);
+  const failedProjects = plan.schemaVersion === "project-test-plan/v1"
+    ? copyUntrustedFailedProjects(plan.failedProjects, { schemaVersion: "project-test-plan/v1" })
+    : [];
 
   return {
     schemaVersion: "plan-execution-hints/v1",
@@ -81,10 +87,20 @@ export function createPlanExecutionHints(plan, options = {}) {
       mediumComplexityCount: count(items, (item) => item.complexity === "medium"),
       highComplexityCount: count(items, (item) => item.complexity === "high"),
       parallelizableCount: count(items, (item) => item.parallelizable),
-      repositoryReasoningCount: count(items, (item) => item.requiresRepositoryReasoning)
+      repositoryReasoningCount: count(items, (item) => item.requiresRepositoryReasoning),
+      ...failureSummaryFields(plan, failedProjects)
     },
-    items
+    items,
+    ...failedProjectsField(failedProjects)
   };
+}
+
+function failureSummaryFields(plan, failedProjects) {
+  if (failedProjects.length === 0) return {};
+
+  // A plan with failed projects cannot have complete coverage, whatever its summary claims.
+  const auditCoverage = plan.summary?.auditCoverage === "none" ? "none" : "partial";
+  return { auditCoverage, failedProjectCount: failedProjects.length };
 }
 
 function validateSupportedPlan(plan) {

@@ -2,6 +2,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { readGitChangedPathsSince, readGitWorkingTreeChangedPaths } from "../core/git-changed-paths.js";
+import { InvalidOptionError } from "../core/invalid-option-error.js";
 import { renderMarkdownReport } from "../core/report.js";
 import {
   createDiagnosticBundle,
@@ -30,6 +31,9 @@ import {
 } from "../core/tool-api.js";
 
 const MAX_DISPLAYED_EXISTING_TEST_PATHS = 5;
+const PARTIAL_FAILURE_EXIT_CODE = 2;
+const UNSAFE_TEXT_CHARACTERS = /[\\\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/gu;
+const CONTROL_CHARACTER_ESCAPES = Object.freeze({ "\\": "\\\\", "\n": "\\n", "\r": "\\r", "\t": "\\t" });
 const COMMANDS = [
   "analyze",
   "doctor",
@@ -138,21 +142,21 @@ const detection = options.command === "detect" ? detectRepoProjects(repoRoot, {
 const projectAudits = options.fromProjectAuditsPath !== undefined
   ? readProjectAuditsJson(options.fromProjectAuditsPath)
   : PROJECT_AUDIT_COMMANDS.includes(options.command)
-    ? auditRepoProjects(repoRoot, {
+    ? runWithOptionValidation(() => auditRepoProjects(repoRoot, {
       changedPaths: readSelectedChangedPaths(repoRoot, options),
       excludeProjectRoots: options.excludeProjectRoots,
       goTarget: options.goTarget
-    })
+    }))
     : undefined;
 const audit = options.fromAuditPath !== undefined
   ? readAuditJson(options.fromAuditPath)
   : diagnosticsOutput || adapterRegistry || detectionRules || detection || projectAudits
     ? undefined
-    : auditRepo(repoRoot, {
+    : runWithOptionValidation(() => auditRepo(repoRoot, {
       adapterId: options.adapterId,
       changedPaths: readSelectedChangedPaths(repoRoot, options),
       goTarget: options.goTarget
-    });
+    }));
 const output = diagnosticsOutput ?? adapterRegistry ?? detectionRules ?? detection ?? selectProjectOutput(projectAudits, options) ?? selectOutput(audit, options);
 
 if (options.format === "json") {
@@ -197,6 +201,14 @@ if (options.format === "json") {
   console.log(renderMarkdownPlacement(output));
 } else {
   console.log(renderMarkdownReport(audit));
+}
+
+// Partial results stay on stdout (JSON remains parseable); a distinct exit status lets scripts
+// tell an incomplete audit apart from success (0) and from a usage or fatal error (1).
+const failedProjects = projectAudits?.failedProjects ?? [];
+if (failedProjects.length > 0) {
+  console.error(renderFailedProjectsWarning(failedProjects));
+  process.exitCode = PARTIAL_FAILURE_EXIT_CODE;
 }
 
 function parseArgs(args) {
@@ -403,6 +415,16 @@ function selectDiagnosticsOutput(repoRoot, options) {
     return createDiagnosticBundle(path.resolve(process.cwd(), options.diagnosticsFilePath));
   } catch {
     console.error("Failed to read the local diagnostics file.");
+    process.exit(1);
+  }
+}
+
+function runWithOptionValidation(run) {
+  try {
+    return run();
+  } catch (error) {
+    if (!(error instanceof InvalidOptionError)) throw error;
+    console.error(error.message);
     process.exit(1);
   }
 }
@@ -703,6 +725,7 @@ function renderMarkdownProjectAudits(projectAudits) {
   lines.push(`- Projects: ${projectAudits.summary.projectCount}`);
   lines.push(`- Audited: ${projectAudits.summary.auditedProjectCount}`);
   lines.push(`- Skipped: ${projectAudits.summary.skippedProjectCount}`);
+  pushFailedProjectCount(lines, projectAudits.failedProjects?.length);
   lines.push("");
   lines.push("## Audited Projects");
 
@@ -711,7 +734,7 @@ function renderMarkdownProjectAudits(projectAudits) {
   } else {
     for (const project of projectAudits.audits) {
       lines.push(
-        `- ${project.projectRoot}: ${project.adapterId} (${project.audit.untestedCandidates.length} untested, ${project.audit.coveredButRisky.length} covered but risky, ${project.audit.risks.length} risks)`
+        `- ${escapeControlCharacters(project.projectRoot)}: ${project.adapterId} (${project.audit.untestedCandidates.length} untested, ${project.audit.coveredButRisky.length} covered but risky, ${project.audit.risks.length} risks)`
       );
     }
   }
@@ -727,6 +750,7 @@ function renderMarkdownProjectAudits(projectAudits) {
     }
   }
 
+  pushFailedProjects(lines, projectAudits.failedProjects);
   return lines.join("\n");
 }
 
@@ -738,6 +762,7 @@ function renderMarkdownRepositoryAnalysis(analysis) {
   lines.push(`- Projects: ${analysis.summary.projectCount}`);
   lines.push(`- Audited: ${analysis.summary.auditedProjectCount}`);
   lines.push(`- Unsupported: ${analysis.summary.unsupportedProjectCount}`);
+  pushFailedProjectCount(lines, analysis.summary.failedProjectCount);
   lines.push(`- Audit coverage: ${analysis.summary.auditCoverage}`);
   lines.push(`- Blockers: ${analysis.summary.blockerCount}`);
   lines.push(`- Findings: ${analysis.summary.findingCount}`);
@@ -760,7 +785,7 @@ function renderMarkdownRepositoryAnalysis(analysis) {
     for (const finding of analysis.findings.findings) {
       const subject = finding.target ? `${finding.target} [${finding.targetId}]` : finding.title;
       const rationale = finding.rationale[0] ? ` ${trimTrailingPeriod(finding.rationale[0])}.` : "";
-      lines.push(`- ${finding.projectRoot}: ${finding.severity} ${finding.category}, priority ${finding.priority}: ${subject}.${rationale}`);
+      lines.push(`- ${escapeControlCharacters(finding.projectRoot)}: ${finding.severity} ${finding.category}, priority ${finding.priority}: ${subject}.${rationale}`);
     }
   }
   lines.push("");
@@ -769,7 +794,7 @@ function renderMarkdownRepositoryAnalysis(analysis) {
     lines.push("- No plan items generated.");
   } else {
     for (const item of analysis.testPlan.items) {
-      lines.push(`- ${item.projectRoot}: ${item.action} ${item.target} [${item.projectItemId}] (${item.testLevel}, priority ${item.priority})`);
+      lines.push(`- ${escapeControlCharacters(item.projectRoot)}: ${item.action} ${item.target} [${item.projectItemId}] (${item.testLevel}, priority ${item.priority})`);
     }
   }
   lines.push("");
@@ -778,7 +803,7 @@ function renderMarkdownRepositoryAnalysis(analysis) {
     lines.push("- No supported projects audited.");
   } else {
     for (const project of analysis.auditSummary.projects) {
-      lines.push(`- ${project.projectRoot}: ${project.adapterId}, ${project.confidence} confidence, ${project.untestedCandidateCount} untested, command ${project.testCommand ?? "not detected"}`);
+      lines.push(`- ${escapeControlCharacters(project.projectRoot)}: ${project.adapterId}, ${project.confidence} confidence, ${project.untestedCandidateCount} untested, command ${project.testCommand ?? "not detected"}`);
     }
   }
   lines.push("");
@@ -788,6 +813,7 @@ function renderMarkdownRepositoryAnalysis(analysis) {
   } else {
     for (const project of analysis.auditSummary.unsupportedProjects) lines.push(formatUnsupportedProject(project));
   }
+  pushFailedProjects(lines, analysis.auditSummary.failedProjects);
   lines.push("");
   lines.push("Use --format json for the complete project audits, evidence, findings, ranking, plan, execution hints, and stats.");
   return lines.join("\n");
@@ -802,6 +828,7 @@ function renderMarkdownProjectAuditSummary(summary) {
   lines.push(`- Projects: ${summary.summary.projectCount}`);
   lines.push(`- Audited: ${summary.summary.auditedProjectCount}`);
   lines.push(`- Unsupported: ${summary.summary.unsupportedProjectCount}`);
+  pushFailedProjectCount(lines, summary.summary.failedProjectCount);
   lines.push(`- Audit coverage: ${summary.summary.auditCoverage}`);
   lines.push(`- Untested candidates: ${summary.summary.untestedCandidateCount}`);
   lines.push(`- Covered but risky: ${summary.summary.coveredButRiskyCount}`);
@@ -815,7 +842,7 @@ function renderMarkdownProjectAuditSummary(summary) {
   } else {
     for (const project of summary.projects) {
       lines.push(
-        `- ${project.projectRoot}: ${project.adapterId}, ${project.confidence} confidence, ${project.untestedCandidateCount} untested, top candidates: ${formatList(project.topCandidateIds)}`
+        `- ${escapeControlCharacters(project.projectRoot)}: ${project.adapterId}, ${project.confidence} confidence, ${project.untestedCandidateCount} untested, top candidates: ${formatList(project.topCandidateIds)}`
       );
     }
   }
@@ -831,6 +858,7 @@ function renderMarkdownProjectAuditSummary(summary) {
     }
   }
 
+  pushFailedProjects(lines, summary.failedProjects);
   return lines.join("\n");
 }
 
@@ -843,6 +871,7 @@ function renderMarkdownProjectCandidateRanking(ranking) {
   lines.push(`- Projects: ${ranking.summary.projectCount}`);
   lines.push(`- Audited: ${ranking.summary.auditedProjectCount}`);
   lines.push(`- Unsupported: ${ranking.summary.unsupportedProjectCount}`);
+  pushFailedProjectCount(lines, ranking.summary.failedProjectCount);
   lines.push(`- Audit coverage: ${ranking.summary.auditCoverage}`);
   lines.push(`- Candidates: ${ranking.summary.candidateCount}`);
   lines.push("");
@@ -857,7 +886,7 @@ function renderMarkdownProjectCandidateRanking(ranking) {
         ? formatEvidenceSentences(candidate.existingTestEvidence)
         : "";
       lines.push(
-        `- ${candidate.projectRoot}: ${candidate.target} [${candidate.projectTargetId}] (${candidate.category}, ${candidate.testLevel}, priority ${candidate.priority}, risk reduction ${candidate.riskReductionScore}/10, maintenance ${candidate.maintenanceCost}/10). ${rationale}.${evidenceStrengths}`
+        `- ${escapeControlCharacters(candidate.projectRoot)}: ${candidate.target} [${candidate.projectTargetId}] (${candidate.category}, ${candidate.testLevel}, priority ${candidate.priority}, risk reduction ${candidate.riskReductionScore}/10, maintenance ${candidate.maintenanceCost}/10). ${rationale}.${evidenceStrengths}`
       );
     }
   }
@@ -873,6 +902,7 @@ function renderMarkdownProjectCandidateRanking(ranking) {
     }
   }
 
+  pushFailedProjects(lines, ranking.failedProjects);
   return lines.join("\n");
 }
 
@@ -885,6 +915,7 @@ function renderMarkdownProjectTestPlan(plan) {
   lines.push(`- Projects: ${plan.summary.projectCount}`);
   lines.push(`- Planned: ${plan.summary.plannedProjectCount}`);
   lines.push(`- Unsupported: ${plan.summary.unsupportedProjectCount}`);
+  pushFailedProjectCount(lines, plan.summary.failedProjectCount);
   lines.push(`- Audit coverage: ${plan.summary.auditCoverage}`);
   lines.push(`- Add tests: ${plan.summary.addTestCount}`);
   lines.push(`- Extend tests: ${plan.summary.extendTestCount}`);
@@ -901,7 +932,7 @@ function renderMarkdownProjectTestPlan(plan) {
         ? formatEvidenceSentences(item.existingTestEvidence)
         : "";
       lines.push(
-        `- ${item.projectRoot}: ${item.action}: ${item.target} [${item.projectItemId}] (${item.testLevel}, priority ${item.priority}, risk reduction ${item.riskReductionScore}/10, maintenance ${item.maintenanceCost}/10). ${rationale}.${evidenceStrengths}`
+        `- ${escapeControlCharacters(item.projectRoot)}: ${item.action}: ${item.target} [${item.projectItemId}] (${item.testLevel}, priority ${item.priority}, risk reduction ${item.riskReductionScore}/10, maintenance ${item.maintenanceCost}/10). ${rationale}.${evidenceStrengths}`
       );
     }
   }
@@ -917,6 +948,7 @@ function renderMarkdownProjectTestPlan(plan) {
     }
   }
 
+  pushFailedProjects(lines, plan.failedProjects);
   return lines.join("\n");
 }
 
@@ -929,6 +961,7 @@ function renderMarkdownProjectFindings(findings) {
   lines.push(`- Projects: ${findings.summary.projectCount}`);
   lines.push(`- Audited: ${findings.summary.auditedProjectCount}`);
   lines.push(`- Unsupported: ${findings.summary.unsupportedProjectCount}`);
+  pushFailedProjectCount(lines, findings.summary.failedProjectCount);
   lines.push(`- Audit coverage: ${findings.summary.auditCoverage}`);
   lines.push(`- Findings: ${findings.summary.displayedFindingCount} of ${findings.summary.findingCount}`);
   lines.push(`- High severity: ${findings.summary.highSeverityCount}`);
@@ -944,7 +977,7 @@ function renderMarkdownProjectFindings(findings) {
     for (const finding of findings.findings) {
       const subject = finding.target ? `${finding.target} [${finding.targetId}]` : finding.title;
       lines.push(
-        `- ${finding.projectRoot}: ${finding.category}, ${finding.severity}, priority ${finding.priority}: ${subject}.`
+        `- ${escapeControlCharacters(finding.projectRoot)}: ${finding.category}, ${finding.severity}, priority ${finding.priority}: ${subject}.`
       );
       lines.push(`  - Source: ${formatFindingSource(finding)}`);
       lines.push(`  - Recommended level: ${finding.testLevel ?? "review"}`);
@@ -965,6 +998,7 @@ function renderMarkdownProjectFindings(findings) {
     }
   }
 
+  pushFailedProjects(lines, findings.failedProjects);
   return lines.join("\n");
 }
 
@@ -977,6 +1011,7 @@ function renderMarkdownProjectStats(stats) {
   lines.push(`- Projects: ${stats.summary.projectCount}`);
   lines.push(`- Audited: ${stats.summary.auditedProjectCount}`);
   lines.push(`- Unsupported: ${stats.summary.unsupportedProjectCount}`);
+  pushFailedProjectCount(lines, stats.summary.failedProjectCount);
   lines.push(`- Audit coverage: ${stats.summary.auditCoverage}`);
   lines.push("");
   lines.push("## Source Files");
@@ -1006,6 +1041,7 @@ function renderMarkdownProjectStats(stats) {
   lines.push("");
   lines.push("## Adapters");
   lines.push(`- ${stats.adapters.map((adapter) => `${adapter.adapterId}: ${adapter.projectCount}`).join(", ") || "none detected"}`);
+  pushFailedProjects(lines, stats.failedProjects);
 
   return lines.join("\n");
 }
@@ -1086,6 +1122,8 @@ function renderMarkdownPlanExecutionHints(hints) {
   lines.push(`- Complexity: ${hints.summary.lowComplexityCount} low, ${hints.summary.mediumComplexityCount} medium, ${hints.summary.highComplexityCount} high`);
   lines.push(`- Parallelizable: ${hints.summary.parallelizableCount}`);
   lines.push(`- Repository reasoning: ${hints.summary.repositoryReasoningCount}`);
+  pushFailedProjectCount(lines, hints.summary.failedProjectCount);
+  if (hints.summary.auditCoverage) lines.push(`- Audit coverage: ${hints.summary.auditCoverage}`);
   lines.push("");
   lines.push("## Items");
 
@@ -1104,6 +1142,7 @@ function renderMarkdownPlanExecutionHints(hints) {
     }
   }
 
+  pushFailedProjects(lines, hints.failedProjects);
   return lines.join("\n");
 }
 
@@ -1188,6 +1227,8 @@ function renderMarkdownPlacement(placement) {
   lines.push("");
   lines.push("## Summary");
   lines.push(`- Findings: ${placement.findings.length}`);
+  pushFailedProjectCount(lines, placement.failedProjectCount);
+  if (placement.auditCoverage) lines.push(`- Audit coverage: ${placement.auditCoverage}`);
   lines.push("");
   lines.push("## Findings");
 
@@ -1196,12 +1237,13 @@ function renderMarkdownPlacement(placement) {
   } else {
     for (const finding of placement.findings) {
       lines.push(
-        `- ${finding.action}: ${finding.testFile} (${finding.currentOwner} -> ${finding.suggestedOwner}). ${finding.reason}`
+        `- ${finding.action}: ${escapeControlCharacters(finding.testFile)} (${escapeControlCharacters(finding.currentOwner)} -> ${escapeControlCharacters(finding.suggestedOwner)}). ${finding.reason}`
       );
       lines.push(`  Evidence: ${finding.evidence.join("; ")}`);
     }
   }
 
+  pushFailedProjects(lines, placement.failedProjects);
   return lines.join("\n");
 }
 
@@ -1274,5 +1316,59 @@ function trimTrailingPeriod(value) {
 }
 
 function formatUnsupportedProject(project) {
-  return `- ${project.projectRoot}: ${project.reason} (ecosystems: ${formatList(project.ecosystems)}; languages: ${formatList(project.languages)})`;
+  return `- ${escapeControlCharacters(project.projectRoot)}: ${project.reason} (ecosystems: ${formatList(project.ecosystems)}; languages: ${formatList(project.languages)})`;
+}
+
+function formatFailedProject(project) {
+  const code = project.errorCode ? ` [${project.errorCode}]` : "";
+  return `- ${formatInlineCode(project.projectRoot)}: ${project.reason}${code}`;
+}
+
+// Project roots and owners come from repository-controlled directory names. Escape control
+// characters (Cc: C0, DEL, C1), format and bidi characters (Cf: zero-width, directional
+// overrides and isolates, BOM) and Unicode line separators, plus backslash so escapes stay
+// unambiguous, before they reach Markdown or a terminal. JSON output keeps the original strings.
+function escapeControlCharacters(value) {
+  return String(value).replace(UNSAFE_TEXT_CHARACTERS, (character) =>
+    CONTROL_CHARACTER_ESCAPES[character] ?? [...Array(character.length).keys()]
+      .map((index) => `\\u${character.charCodeAt(index).toString(16).padStart(4, "0")}`)
+      .join("")
+  );
+}
+
+// Inline code with a fence longer than any backtick run, so Markdown metacharacters stay literal.
+// The longest run is tracked in one scan: spreading every run into Math.max overflows the stack.
+function formatInlineCode(value) {
+  const text = escapeControlCharacters(value);
+  let longestRun = 0;
+  for (const [run] of text.matchAll(/`+/g)) {
+    if (run.length > longestRun) longestRun = run.length;
+  }
+  const fence = "`".repeat(longestRun + 1);
+  const padding = text.startsWith("`") || text.endsWith("`") ? " " : "";
+  return `${fence}${padding}${text}${padding}${fence}`;
+}
+
+function formatFailedProjectCount(count) {
+  return `${count} project${count === 1 ? "" : "s"} failed to audit`;
+}
+
+function pushFailedProjectCount(lines, failedProjectCount) {
+  if (failedProjectCount) lines.push(`- Failed to audit: ${failedProjectCount}`);
+}
+
+function pushFailedProjects(lines, failedProjects = []) {
+  if (failedProjects.length === 0) return;
+
+  lines.push("");
+  lines.push("## Failed Projects");
+  lines.push(`- ${formatFailedProjectCount(failedProjects.length)}; their results are missing from this report.`);
+  for (const project of failedProjects) lines.push(formatFailedProject(project));
+}
+
+function renderFailedProjectsWarning(failedProjects) {
+  return [
+    `Warning: ${formatFailedProjectCount(failedProjects.length)}; results are partial. Run the audit command on a failed project root to see its full error.`,
+    ...failedProjects.map(formatFailedProject)
+  ].join("\n");
 }

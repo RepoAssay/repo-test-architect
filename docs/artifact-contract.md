@@ -460,6 +460,31 @@ node ./src/cli/index.js audit-projects ./examples/polyglot-workspace --format js
 This artifact runs the matching adapter for each supported detected project root and reports unsupported project roots separately with their ecosystems, languages, adapter match evidence, and support status reason.
 It does not yet merge or rank findings across projects; that belongs in a later core merge layer.
 
+### Failed Projects
+
+Since 1.1.0, one project's adapter failure no longer aborts the run. When an adapter throws while auditing a supported project, that project is left out of `audits`, recorded in the top-level `failedProjects` array, and counted in `summary.failedProjectCount`; every other project is still audited. Both fields are always emitted by 1.1.0 and later (empty and `0` when nothing failed). They are optional in the schema, so saved 1.0.x artifacts without them remain valid inputs.
+
+Each `failedProjects` entry contains:
+
+- `projectId`, `projectRoot`, `ecosystems`, and `languages`, using the same repository-relative identity as `audits` and `skippedProjects`
+- `adapterId`, the adapter that failed
+- `errorName`, the thrown error's built-in class name (`Error`, `TypeError`, `RangeError`, `SyntaxError`, `ReferenceError`, `EvalError`, `URIError`, or `AggregateError`); any other name, including custom error subclasses, is recorded as `Error`
+- `errorCode`, only when the error carried one of the allowlisted Node.js file-system codes `EACCES`, `EIO`, `EISDIR`, `ELOOP`, `EMFILE`, `ENAMETOOLONG`, `ENFILE`, `ENOENT`, `ENOMEM`, `ENOTDIR`, or `EPERM`
+- `reason`, a fixed public sentence such as `The kotlin adapter failed with TypeError.`, followed by a fixed description of `errorCode` when one is present
+
+Error messages, stack traces, and every other property of the thrown value are intentionally not recorded: they can contain absolute paths, source text, or secrets that would otherwise reach reports, standard error, and MCP clients. Every published schema that carries failure entries enforces this vocabulary with the same `adapterId` identifier pattern, `errorName` and `errorCode` enums, and an exact `reason` pattern generated from the fixed sentences. Saved artifacts passed to `--from-project-audits`, MCP `projectAudits` arguments, and plans passed to `get_plan_execution_hints` must also have `reason` equal to the sentence for that entry's own `adapterId`, `errorName`, and `errorCode`; anything else is rejected as invalid input (CLI status 1, MCP `invalid-arguments`). Markdown and standard-error output escape control, Unicode format and bidirectional, and line-separator characters in project roots as literals (for example `\n`, `\u001b`, and `\u202e`) and print failed roots as inline code; JSON and MCP output keep the original strings. To see the full error for a failed project, rerun its adapter directly on that root, for example `repo-test-architect audit <repo>/<projectRoot> --adapter <adapterId>`; the single-project `audit` command does not contain failures. Entries are ordered by `projectRoot`, then `adapterId`, using the locale-independent text ordering shared by other artifacts.
+
+Every error thrown from an adapter's audit is contained, including programming errors such as `TypeError` and thrown values whose inspection itself throws, so a defect in one adapter cannot hide the results for other ecosystems. `errorName` keeps such defects visible; report them as bugs. Invalid caller options, such as an unsupported Go target or a reserved Go build tag, are usage errors: they are validated before any adapter runs and are never contained, so the CLI exits with status 1 and MCP tools return `invalid-arguments`. Errors raised outside an adapter, for example during project detection or saved-artifact validation, still fail the whole run.
+
+Derived project artifacts count failed projects as not audited, so `auditCoverage` is `partial`, or `none` when no project was audited. They add failure fields only when at least one project failed, so complete runs keep their 1.0 shape:
+
+- `project-audit-summary/v1`, `project-findings/v1`, `project-candidate-ranking/v1`, `project-test-plan/v1`, and `project-stats/v1` add `summary.failedProjectCount` and a copied `failedProjects` list
+- `repository-analysis/v1` adds `summary.failedProjectCount` and always embeds the full `projectAudits` artifact, including `failedProjects`
+- project-derived `test-placement-findings/v1` adds top-level `auditCoverage`, `failedProjectCount`, and `failedProjects`
+- `plan-execution-hints/v1` derived from a `project-test-plan/v1` adds `summary.auditCoverage`, `summary.failedProjectCount`, and `failedProjects`; a caller-supplied plan whose `failedProjects` entries fall outside the fixed vocabulary is rejected
+
+Failed project roots remain project boundaries in `project-stats/v1`, so their source files are never counted under a successful parent project. They are not counted as audited or unsupported either.
+
 ## Project Audit Summary Artifact
 
 Schema:
