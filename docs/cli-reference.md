@@ -62,8 +62,8 @@ Use these when one project root and, if needed, one adapter have already been se
 | Option | Meaning |
 | --- | --- |
 | `--format json` | Emit the complete JSON artifact |
-| `--changed` | Limit adapter evidence to files changed from the default Git base |
-| `--changed-since <ref>` | Limit adapter evidence to files changed since a Git ref |
+| `--changed` | Limit adapter evidence to staged, unstaged, and untracked working-tree changes under the audited root |
+| `--changed-since <ref>` | Limit adapter evidence to files under the audited root changed between the merge base of `<ref>` and `HEAD` |
 | `--exclude-project <root-or-glob>` | Exclude a project root or subtree; repeat as needed |
 | `--from-project-audits <file>` | Reuse `project-audits/v1` without rescanning |
 | `--adapter <id>` | Select an adapter for explicit single-project commands |
