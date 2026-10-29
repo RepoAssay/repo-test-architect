@@ -2022,10 +2022,10 @@ describe("JavaScript skipped tests", () => {
     'test.skip("b", () => assert.equal(calc(2), 1));',
     'it.skip("b", () => assert.equal(calc(2), 1));',
     'xit("b", () => assert.equal(calc(2), 1));\nxtest("c", () => calc(3));',
-    'test.todo("b", () => assert.equal(calc(2), 1));',
     'it.skip.each([[2]])("b %i", (value) => assert.equal(calc(value), 1));',
     'test("b", { skip: true }, () => assert.equal(calc(2), 1));',
-    'test("b", { todo: "later" }, () => assert.equal(calc(2), 1));',
+    'it.skipIf(true)("b", () => assert.equal(calc(2), 1));\nit.runIf(false)("c", () => calc(3));',
+    'test.skip("b", () => { const re = /\\(/; assert.equal(calc(2), 4); });',
     'describe.skip("calc", () => {\n  it("b", () => assert.equal(calc(2), 1));\n});',
     'xdescribe("calc", () => {\n  it("b", () => assert.equal(calc(2), 1));\n});'
   ]) {
@@ -2056,5 +2056,39 @@ describe("JavaScript skipped tests", () => {
   it("keeps evidence from active tests with non-skip options and from framework-less files", (t) => {
     assert.equal(calcEvidence(auditCalcTest(t, 'test("a", { timeout: 5 }, () => assert.equal(calc(2), 4));'))[0].usage, "asserted");
     assert.equal(calcEvidence(auditCalcTest(t, "assert.equal(calc(2), 4);"))[0].usage, "asserted");
+  });
+
+  it("keeps active evidence that only uncertain or executing skip lookalikes surround", (t) => {
+    for (const body of [
+      // Regex parentheses must not join a skipped call to the next active test.
+      'test.skip("old", () => { const re = /[(]/; });\ntest("active", () => {\n  const re = /[)]/;\n  assert.equal(calc(2), 4);\n});',
+      // An aliased active test is not proof that the file is skip-only.
+      'import { test as check } from "node:test";\ntest.skip("old", () => {});\ncheck("active", () => assert.equal(calc(2), 4));',
+      // A local `test` binding inside an active test is not the framework.
+      'test("active", () => {\n  const test = { skip: (fn) => fn() };\n  test.skip(() => assert.equal(calc(2), 4));\n});',
+      'const it = { skip: (name, fn) => fn() };\nit.skip("helper", () => assert.equal(calc(2), 4));',
+      // node:test runs TODO callbacks; only reporting changes.
+      'test("pending", { todo: "later" },\n  () => assert.equal(calc(2), 4));',
+      'test.todo("pending", () => assert.equal(calc(2), 4));',
+      'it.skipIf(process.env.CI)("maybe", () => assert.equal(calc(2), 4));',
+      'test("a", { skip: "" }, () => assert.equal(calc(2), 4));'
+    ]) {
+      assert.equal(calcEvidence(auditCalcTest(t, body))?.[0].usage, "asserted", body);
+    }
+  });
+
+  it("keeps the evidence of unbalanced files instead of guessing skipped ranges", (t) => {
+    const evidence = calcEvidence(auditCalcTest(t, 'test.skip("old", () => {\ntest("active", () => assert.equal(calc(2), 4));'));
+    assert.equal(evidence?.[0].usage, "asserted");
+  });
+
+  it("scans deeply nested suites with a single delimiter pass", (t) => {
+    const depth = 6000;
+    const body = 'describe("outer", () => {\n'.repeat(depth) + 'test("leaf", () => assert.equal(calc(2), 4));\n' + "});\n".repeat(depth) +
+      'describe.skip("outer", () => {\n'.repeat(depth) + 'test("leaf", () => calc(3));\n' + "});\n".repeat(depth);
+    const startedAt = performance.now();
+    const evidence = calcEvidence(auditCalcTest(t, body));
+    assert.equal(evidence[0].usage, "asserted");
+    assert.ok(performance.now() - startedAt < 2000);
   });
 });
