@@ -193,7 +193,10 @@ function createSourceFileStats() {
 function countProjectSourceFiles(repoRoot, projectRoot, languages, coverageKey, projectRoots) {
   const stats = createSourceFileStats();
   const absoluteProjectRoot = path.resolve(repoRoot, projectRoot);
-  if (!fs.existsSync(absoluteProjectRoot)) return stats;
+  if (!fs.existsSync(repoRoot) || !fs.existsSync(absoluteProjectRoot)) return stats;
+  // Saved artifacts are untrusted input: never count files outside the artifact's repository root,
+  // including through symlinked project roots or intermediate directories.
+  if (!isWithinDirectory(fs.realpathSync(repoRoot), fs.realpathSync(absoluteProjectRoot))) return stats;
   const nestedProjectRoots = new Set(projectRoots
     .filter((candidate) => candidate !== projectRoot)
     .map((candidate) => path.resolve(repoRoot, candidate))
@@ -211,6 +214,11 @@ function countProjectSourceFiles(repoRoot, projectRoot, languages, coverageKey, 
   }
 
   return stats;
+}
+
+function isWithinDirectory(directory, candidate) {
+  const relative = path.relative(directory, candidate);
+  return relative === "" || (relative !== ".." && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative));
 }
 
 function collectSourceFilePaths(root, excludedRoots, includeDartBin = false) {

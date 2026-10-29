@@ -529,6 +529,8 @@ function collectMarkerGroups(root) {
         }
         continue;
       }
+      // Manifests must be regular files: symlinks may point outside the repository, and FIFOs block reads.
+      if (!entry.isFile()) continue;
 
       const marker = MARKERS.find((candidate) =>
         candidate.fileName === entry.name ||
@@ -585,6 +587,7 @@ function containsSwiftBazelProject(root) {
         if (!IGNORED_DIRECTORIES.has(entry.name)) visit(path.join(current, entry.name));
         continue;
       }
+      if (!entry.isFile()) continue;
       if (entry.name.endsWith(".swift")) hasSwiftSource = true;
       if (entry.name === "BUILD" || entry.name === "BUILD.bazel") {
         const content = fs.readFileSync(path.join(current, entry.name), "utf8");
