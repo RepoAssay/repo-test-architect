@@ -75,7 +75,7 @@ export function analyzePythonSkips(content) {
       const imperative = body && imperativeSkip(body, context);
       const functionSkipped = skipped || Boolean(imperative?.first);
       if (functionSkipped) skippedDefinitionLines.add(definitionLine);
-      else if (imperative?.truncatable) truncatedDefinitionLines.set(definitionLine, lineOf(imperative.statement.from));
+      else if (imperative?.truncatable) truncatedDefinitionLines.set(definitionLine, lineOf(imperative.statement.to) + 1);
       // Module- and class-level definitions are the ones pytest/unittest collect.
       if (text(definition.getChild("VariableName") ?? definition).startsWith("test")) testsSkipped.push(moduleSkipped || functionSkipped);
     }
@@ -164,13 +164,27 @@ function isReadOnlyUse(node, memberReadsAllowed) {
   let current = node;
   while (current.parent?.name === "MemberExpression" && sameNode(current.parent.firstChild, current)) current = current.parent;
   const parent = current.parent;
-  if (parent?.name === "CallExpression" && sameNode(parent.firstChild, current)) return true;
-  if (!memberReadsAllowed || sameNode(current, node) || !parent || parent.name === "DeleteStatement") return false;
-  if (parent.name === "AssignStatement" || parent.name === "UpdateStatement") {
-    const operator = childrenOf(parent).find((child) => child.name === "AssignOp" || child.name === "UpdateOp");
-    return Boolean(operator) && current.from > operator.from;
+  const called = parent?.name === "CallExpression" && sameNode(parent.firstChild, current);
+  const memberRead = memberReadsAllowed && !sameNode(current, node) && Boolean(parent);
+  return (called || memberRead) && !isBindingTarget(current);
+}
+
+// Whether the expression is (part of) an assignment, augmented assignment, `del`
+// or `for` target, including inside tuple/list/starred/parenthesised patterns such
+// as `(pytest.skip,) = ...`.
+function isBindingTarget(node) {
+  for (let ancestor = node.parent; ancestor; ancestor = ancestor.parent) {
+    if (ancestor.name === "DeleteStatement") return true;
+    const children = childrenOf(ancestor);
+    if (ancestor.name === "AssignStatement" || ancestor.name === "UpdateStatement") {
+      const operator = children.findLast((child) => child.name === "AssignOp" || child.name === "UpdateOp");
+      return !operator || node.from < operator.from;
+    }
+    const forKeyword = children.find((child) => child.name === "for");
+    const inKeyword = children.find((child) => child.name === "in" && child.from > (forKeyword?.from ?? Infinity));
+    if (forKeyword && inKeyword && node.from > forKeyword.from && node.to <= inKeyword.from) return true;
   }
-  return true;
+  return false;
 }
 
 // `a.b.c` from VariableName/MemberExpression nodes; undefined for anything else.
@@ -197,8 +211,21 @@ function literalCondition(argList, text) {
   return value?.name === "Boolean" ? text(value) : undefined;
 }
 
+// Arguments that evaluate nothing: literals and keyword arguments with literal
+// values. Anything else (calls, names, f-strings) runs real code, whose evidence a
+// "skipped" verdict would delete.
+const INERT_VALUES = new Set(["String", "Boolean", "Number", "None"]);
+function hasInertArguments(argList) {
+  const parts = childrenOf(argList).filter((child) => !["(", ")", ","].includes(child.name));
+  for (let index = 0; index < parts.length; index += 1) {
+    if (parts[index].name === "VariableName" && parts[index + 1]?.name === "AssignOp") index += 2;
+    if (!INERT_VALUES.has(parts[index]?.name)) return false;
+  }
+  return true;
+}
+
 function isDefiniteSkip(kind, argList, requireCall, text) {
-  if (!kind) return false;
+  if (!kind || (argList && !hasInertArguments(argList))) return false;
   if (kind === "always") return !requireCall || Boolean(argList);
   return Boolean(argList) && literalCondition(argList, text) === kind;
 }
@@ -227,23 +254,25 @@ function isDefiniteSkipMark(node, { text, trusted }) {
 }
 
 // The first statement of the body that is exactly `pytest.skip(...)` or
-// `self.skipTest(...)`. `first` when only docstrings precede it; `truncatable` when it
-// starts its own line, so the lines from there on never run.
+// `self.skipTest(...)`. The statement itself runs (its arguments are evaluated), so
+// only what follows is dropped: `first` (the whole test is skipped) when only
+// docstrings precede it and its arguments are inert; `truncatable` when it ends
+// its line, so the lines after it never run.
 function imperativeSkip(body, { text, trusted, skipTestOverridden }) {
   let onlyDocstrings = true;
-  let previous;
-  for (const statement of childrenOf(body)) {
-    if (statement.name === ":") continue;
+  const statements = childrenOf(body).filter((statement) => statement.name !== ":");
+  for (const [index, statement] of statements.entries()) {
     const expression = statement.name === "ExpressionStatement" ? childrenOf(statement) : [];
     if (expression.length === 1 && expression[0].name === "CallExpression") {
       const callee = dottedName(expression[0].firstChild, text);
       if ((callee === "pytest.skip" && trusted.has("pytest")) || (callee === "self.skipTest" && !skipTestOverridden)) {
-        const startsLine = /\n[ \t]*$/.test(text({ from: previous?.to ?? body.from, to: statement.from }));
-        return { statement, first: onlyDocstrings, truncatable: startsLine };
+        const argList = expression[0].getChild("ArgList");
+        const next = statements[index + 1];
+        const endsLine = !next || text({ from: statement.to, to: next.from }).includes("\n");
+        return { statement, first: onlyDocstrings && Boolean(argList) && hasInertArguments(argList), truncatable: endsLine };
       }
     }
     if (!(expression.length === 1 && expression[0].name === "String")) onlyDocstrings = false;
-    previous = statement;
   }
   return undefined;
 }
@@ -281,7 +310,7 @@ function isModuleSkipped(tree, context) {
         const [call, ...rest] = childrenOf(node);
         if (rest.length > 0 || call?.name !== "CallExpression" || dottedName(call.firstChild, text) !== "pytest.skip") return;
         const argList = call.getChild("ArgList");
-        moduleLevelSkip ||= Boolean(argList) && /(?:^|[(,])\s*allow_module_level\s*=\s*True\s*(?:[,)]|$)/.test(text(argList));
+        moduleLevelSkip ||= Boolean(argList) && hasInertArguments(argList) && /(?:^|[(,])\s*allow_module_level\s*=\s*True\s*(?:[,)]|$)/.test(text(argList));
       }
     }
   });

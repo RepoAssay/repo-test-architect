@@ -1865,7 +1865,7 @@ function parsePythonFunctions(content, maskedContent = maskPythonCommentsAndStri
       if (line.trim() && indentationWidth(line.match(/^\s*/)?.[0] ?? "") <= indent) break;
       end += 1;
     }
-    // Lines from an unconditional top-level skip statement on never run.
+    // Lines after an unconditional top-level skip statement never run.
     const skipLine = skips.truncatedDefinitionLines.get(index);
     const activeEnd = skipLine === undefined ? end : Math.max(index + 1, Math.min(end, skipLine));
     functions.push({

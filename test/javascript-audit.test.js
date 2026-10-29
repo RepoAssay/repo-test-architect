@@ -2131,6 +2131,28 @@ describe("JavaScript skipped tests", () => {
   it("keeps eagerly evaluated arguments of skipped calls", (t) => {
     assert.equal(calcEvidence(auditCalcTest(t, 'test.skip("old", {skip:assert.equal(calc(2),4)}, ()=>{});'))?.[0].usage, "asserted");
     assert.equal(calcEvidence(auditCalcTest(t, 'it.skip.each([[calc(2)]])("old %i", (value) => assert.equal(value, 4));'))?.[0].usage, "called");
+    // Functions under an inner call may run while the arguments are built.
+    assert.equal(calcEvidence(auditCalcTest(t, 'it.skip.each([2].map((value) => calc(value)))("old %i", () => {});'))?.[0].usage, "called");
+  });
+
+  it("gives no credit to function bodies that a skipped call never runs", (t) => {
+    for (const body of [
+      'it.skip.each([[() => assert.equal(calc(2),4)]])("case",fn=>fn());',
+      'it.skip.each([[() => calc(2)]])("case",fn=>fn());',
+      'describe.skip("old",()=>{beforeEach(()=>assert.equal(calc(2),4));it("case",()=>{});});'
+    ]) {
+      assert.equal(calcEvidence(auditCalcTest(t, body)), undefined, body);
+    }
+  });
+
+  it("keeps collection code of skipped suites while skipping their tests", (t) => {
+    assert.equal(calcEvidence(auditCalcTest(t, 'describe.skip("old",()=>{for(const value of [calc(2)])it("case",()=>assert.equal(value,4));});'))?.[0].usage, "called");
+    assert.equal(calcEvidence(auditCalcTest(t, 'xdescribe("old",()=>{const value=calc(2);describe("inner",()=>{it("case",()=>assert.equal(value,4));});});'))?.[0].usage, "called");
+  });
+
+  it("keeps trusting framework names used through documented members", (t) => {
+    const evidence = calcEvidence(auditCalcTest(t, 'test.for([2])("other",()=>assert.ok(true));test.skip("old",()=>assert.equal(calc(2),4));'));
+    assert.deepEqual(evidence, [{ testPath: "test/calc.test.js", kind: "direct-relative-import", strength: "direct" }]);
   });
 
   it("stops trusting a framework name that is mutated or passed around", (t) => {
@@ -2179,11 +2201,16 @@ describe("JavaScript skipped tests", () => {
 
   it("does not let closing brackets inside strings defeat the nesting bound", (t) => {
     const depth = 4000;
-    const body = 'const pad="' + ")".repeat(2 * depth) + '";' + 'describe("a",()=>{'.repeat(depth) + 'it.skip("x",()=>{assert.equal(calc(2),4);});' + "});".repeat(depth);
-    const startedAt = performance.now();
-    const evidence = calcEvidence(auditCalcTest(t, body));
-    const elapsed = performance.now() - startedAt;
-    assert.equal(evidence?.[0].usage, "asserted");
-    assert.ok(elapsed < 250, `took ${elapsed} ms`);
+    const leaf = 'it.skip("x",()=>{assert.equal(calc(2),4);});';
+    for (const body of [
+      'const pad="' + ")".repeat(2 * depth) + '";' + 'describe("a",()=>{'.repeat(depth) + leaf + "});".repeat(depth),
+      'describe(")))",()=>{'.repeat(depth) + leaf + "});".repeat(depth)
+    ]) {
+      const startedAt = performance.now();
+      const evidence = calcEvidence(auditCalcTest(t, body));
+      const elapsed = performance.now() - startedAt;
+      assert.equal(evidence?.[0].usage, "asserted");
+      assert.ok(elapsed < 250, `took ${elapsed} ms`);
+    }
   });
 });

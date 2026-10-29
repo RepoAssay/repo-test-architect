@@ -1957,12 +1957,36 @@ describe("Python skipped tests", () => {
       "def test_calc():\n    pytest = Helper()\n    pytest.skip(\"noop\")\n    assert calc(2)==4\n",
       "pytest.mark.skip = lambda f: f\n\n@pytest.mark.skip\ndef test_calc():\n    assert calc(2)==4\n",
       "pytestmark=[pytest.mark.skip(reason=\"old\")]\npytestmark.clear()\ndef test_calc():\n    assert calc(2)==4\n",
-      "pytestmark=[pytest.mark.skip(reason=\"old\")]\ndel pytestmark\ndef test_calc():\n    assert calc(2)==4\n"
+      "pytestmark=[pytest.mark.skip(reason=\"old\")]\ndel pytestmark\ndef test_calc():\n    assert calc(2)==4\n",
+      "(pytest.skip,)=[lambda *args:None]\ndef test_calc():\n    pytest.skip(\"noop\")\n    assert calc(2)==4\n",
+      "for pytest.skip in [lambda *args:None]:\n    pass\n\ndef test_calc():\n    pytest.skip(\"noop\")\n    assert calc(2)==4\n"
     ]) {
       assert.equal(calcEvidence(auditCalcTest(t, body))?.[0].usage, "asserted", body);
     }
     const skipped = "from unittest import skip\n\n@skip(\"later\")\ndef test_calc():\n    assert calc(2)==4\n";
     assert.equal(calcEvidence(auditCalcTest(t, skipped)), undefined);
+  });
+
+  it("keeps evidence from the arguments of skip calls and markers", (t) => {
+    for (const body of [
+      "class TestCalc(unittest.TestCase):\n    def test_calc(self):\n        self.skipTest(str(calc(2)))\n",
+      "def test_calc():\n    pytest.skip(str(calc(2)))\n",
+      "def test_calc():\n    pytest.skip(f\"{calc(2)}\")\n    assert calc(3) == 6\n",
+      "@pytest.mark.skip(reason=str(calc(2)))\ndef test_calc():\n    pass\n",
+      "pytestmark = pytest.mark.skip(reason=str(calc(2)))\n\ndef test_calc():\n    pass\n",
+      "pytest.skip(str(calc(2)), allow_module_level=True)\n\ndef test_calc():\n    pass\n"
+    ]) {
+      assert.ok(calcEvidence(auditCalcTest(t, body))?.length, body);
+    }
+    for (const body of [
+      "class TestCalc(unittest.TestCase):\n    def test_calc(self):\n        self.skipTest(str(calc(2)))\n",
+      "def test_calc():\n    pytest.skip(str(calc(2)))\n"
+    ]) {
+      assert.equal(calcEvidence(auditCalcTest(t, body))?.[0].usage, "called", body);
+    }
+    // The skip statement runs; only what follows it is dropped.
+    const truncated = calcEvidence(auditCalcTest(t, "def test_calc():\n    pytest.skip(str(calc(2)))\n    assert calc(2) == 4\n"));
+    assert.equal(truncated?.[0].usage, "called");
   });
 
   it("decides whole-module removal from every test definition in the syntax tree", (t) => {

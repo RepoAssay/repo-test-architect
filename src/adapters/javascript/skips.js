@@ -12,25 +12,33 @@ const JSX_PARSER = parser.configure({ dialect: "jsx" });
 const TEST_CALLEES = new Set(["it", "test", "describe", "suite", "context", "specify"]);
 const EXCLUDED_CALLEES = new Set(["xit", "xtest", "xdescribe", "xcontext", "xspecify"]);
 const SUITE_CALLEES = new Set(["describe", "context", "suite", "fdescribe"]);
+const SKIPPED_SUITE_CALLEES = new Set([...SUITE_CALLEES, "xdescribe", "xcontext"]);
+const HOOK_CALLEES = new Set(["before", "after", "beforeEach", "afterEach", "beforeAll", "afterAll"]);
 const NODE_OPTION_CALLEES = new Set(["it", "test", "describe", "suite"]);
 const FRAMEWORK_MODULES = new Set(["node:test", "vitest", "@jest/globals", "mocha", "@playwright/test", "ava", "bun:test"]);
-const FRAMEWORK_NAMES = new Set([...TEST_CALLEES, ...EXCLUDED_CALLEES, ...SUITE_CALLEES]);
-// Framework members that may sit between a framework name and the call that uses
-// it. Anything else (e.g. `test.skip.mockImplementation(...)`) is not a
-// recognised read-only use, so the name is no longer trusted.
+const FRAMEWORK_NAMES = new Set([...TEST_CALLEES, ...EXCLUDED_CALLEES, ...SUITE_CALLEES, ...HOOK_CALLEES]);
+// Documented framework members (Jest, Vitest, node:test, Mocha, Playwright, Bun)
+// that may sit between a framework name and the call that uses it. Anything else
+// (e.g. `test.skip.mockImplementation(...)`) is not a recognised read-only use,
+// so the name is no longer trusted.
 const FRAMEWORK_MEMBERS = new Set([
-  "skip", "only", "todo", "each", "concurrent", "sequential", "serial", "parallel", "skipIf", "runIf", "describe",
-  "fixme", "fail", "fails", "failing", "slow", "step", "extend", "use", "info", "setTimeout", "configure", "shuffle",
-  "beforeEach", "afterEach", "beforeAll", "afterAll", "before", "after"
+  "skip", "only", "todo", "each", "for", "concurrent", "sequential", "serial", "parallel", "shuffle", "skipIf", "runIf",
+  "if", "todoIf", "describe", "fixme", "fail", "fails", "failing", "slow", "step", "extend", "scoped", "use", "info",
+  "setTimeout", "configure", "beforeEach", "afterEach", "beforeAll", "afterAll", "before", "after"
 ]);
 const SKIP_HINT = /\b(?:skip|skipIf|runIf|x(?:it|test|describe|context|specify))\b/;
 const COMMENTS = new Set(["LineComment", "BlockComment"]);
 const FUNCTIONS = new Set(["ArrowFunction", "FunctionExpression"]);
+const SCOPE_BOUNDARIES = new Set([...FUNCTIONS, "FunctionDeclaration", "ClassDeclaration", "ClassExpression"]);
+const EAGER_CALLS = new Set(["CallExpression", "NewExpression", "TaggedTemplateExpression"]);
 const MAX_NESTING = 256;
 
 // Returns sorted, non-overlapping [from, to) ranges to blank for statically skipped
-// test calls: the callee's own tokens and the callback arguments. Other arguments
-// (titles, options, tables) are evaluated eagerly, so they stay.
+// test calls: the callee's own tokens and function expressions in its arguments
+// that are never called while the arguments are built (callbacks, functions in
+// `.each` tables). Everything else in the arguments is evaluated eagerly, so it
+// stays. A skipped suite still runs its callback to collect tests, so instead of
+// blanking that callback, the tests and hooks registered inside it are skipped.
 export function findSkippedJavaScriptTestRanges(filePath, content) {
   if (!SKIP_HINT.test(content) || exceedsNestingLimit(content)) return [];
   const tree = parseWithoutErrors(filePath, content);
@@ -38,7 +46,21 @@ export function findSkippedJavaScriptTestRanges(filePath, content) {
   const text = (node) => content.slice(node.from, node.to);
   const untrusted = collectUntrustedFrameworkNames(tree, text);
   const ranges = [];
-  // Statement lists to inspect: the program, then callback bodies of suite calls.
+  const skippedSuiteBodies = [];
+  const skip = (chain) => {
+    ranges.push(...chain.calleeRanges);
+    const suite = isSuiteLikeChain(chain);
+    for (const [index, step] of chain.steps.entries()) {
+      if (!step.args) continue;
+      for (const argument of argumentsOf(step.args)) {
+        const block = suite && index === chain.steps.length - 1 && FUNCTIONS.has(argument.name) ? argument.getChild("Block") : undefined;
+        if (block) skippedSuiteBodies.push(block);
+        else ranges.push(...dormantFunctionRanges(argument));
+      }
+    }
+  };
+
+  // Statement lists of active code: the program, then callback bodies of suite calls.
   const pending = [tree.topNode];
   while (pending.length > 0) {
     const container = pending.pop();
@@ -46,30 +68,80 @@ export function findSkippedJavaScriptTestRanges(filePath, content) {
       if (statement.name !== "ExpressionStatement" || statement.firstChild?.name !== "CallExpression") continue;
       const chain = calleeChain(statement.firstChild, text);
       if (!chain || untrusted.has(chain.base)) continue;
-      const finalArgs = chain.steps.at(-1).args;
-      if (isSkippedChain(chain, text)) {
-        ranges.push(...chain.calleeRanges);
-        for (const callback of argumentsOf(finalArgs).filter((argument) => FUNCTIONS.has(argument.name))) ranges.push([callback.from, callback.to]);
-      } else if (isSuiteChain(chain)) {
-        pending.push(...callbackBodies(finalArgs));
-      }
+      if (isSkippedChain(chain, text)) skip(chain);
+      else if (isSuiteChain(chain)) pending.push(...callbackBodies(chain.steps.at(-1).args));
     }
   }
-  return ranges.sort((left, right) => left[0] - right[0]);
+  // Inside a skipped suite every framework call reached without entering another
+  // function (loops and conditionals included) registers a skipped test or hook.
+  while (skippedSuiteBodies.length > 0) {
+    const stack = [skippedSuiteBodies.pop()];
+    while (stack.length > 0) {
+      const node = stack.pop();
+      if (SCOPE_BOUNDARIES.has(node.name)) continue;
+      const chain = node.name === "CallExpression" ? calleeChain(node, text) : undefined;
+      if (chain && FRAMEWORK_NAMES.has(chain.base) && !untrusted.has(chain.base)) {
+        skip(chain);
+        continue;
+      }
+      for (let child = node.firstChild; child; child = child.nextSibling) stack.push(child);
+    }
+  }
+  return mergeRanges(ranges);
+}
+
+function mergeRanges(ranges) {
+  const merged = [];
+  for (const [start, end] of ranges.sort((left, right) => left[0] - right[0])) {
+    const previous = merged.at(-1);
+    if (previous && start <= previous[1]) previous[1] = Math.max(previous[1], end);
+    else merged.push([start, end]);
+  }
+  return merged;
+}
+
+// Function expressions in an argument that nothing calls while the argument is
+// evaluated. Anything under an inner call (`cases.map(fn)`, an IIFE) may run
+// eagerly, so it stays.
+function dormantFunctionRanges(argument) {
+  const ranges = [];
+  const stack = [argument];
+  while (stack.length > 0) {
+    const node = stack.pop();
+    if (FUNCTIONS.has(node.name)) ranges.push([node.from, node.to]);
+    else if (!EAGER_CALLS.has(node.name)) {
+      for (let child = node.firstChild; child; child = child.nextSibling) stack.push(child);
+    }
+  }
+  return ranges;
 }
 
 // The parser recovers with error nodes (slowly) beyond a few hundred nesting
 // levels, and error trees are never used, so give up early. Brackets inside
-// strings can only raise the count (closers clamp at zero), which keeps more
-// evidence.
+// strings, templates and comments are ignored; anything this quick pass misreads
+// (e.g. regex literals) can only end the scan with "keep evidence" or reach the
+// parser, never blank more.
 function exceedsNestingLimit(content) {
   let depth = 0;
   for (let index = 0; index < content.length; index += 1) {
-    const code = content.charCodeAt(index);
-    if (code === 40 || code === 91 || code === 123) {
+    const character = content[index];
+    if (character === "\"" || character === "'" || character === "`") {
+      index += 1;
+      while (index < content.length && content[index] !== character && (character === "`" || content[index] !== "\n")) {
+        if (content[index] === "\\") index += 1;
+        index += 1;
+      }
+    } else if (character === "/" && content[index + 1] === "/") {
+      while (index < content.length && content[index] !== "\n") index += 1;
+    } else if (character === "/" && content[index + 1] === "*") {
+      const end = content.indexOf("*/", index + 2);
+      index = end < 0 ? content.length : end + 1;
+    } else if (character === "(" || character === "[" || character === "{") {
       depth += 1;
       if (depth > MAX_NESTING) return true;
-    } else if (code === 41 || code === 93 || code === 125) depth = Math.max(0, depth - 1);
+    } else if (character === ")" || character === "]" || character === "}") {
+      depth = Math.max(0, depth - 1);
+    }
   }
   return false;
 }
@@ -149,6 +221,11 @@ function isSuiteChain({ base, steps }) {
   const properties = steps.flatMap((step) => (step.property ? [step.property] : []));
   if (!steps.at(-1)?.args || properties.includes("skip")) return false;
   return SUITE_CALLEES.has(base) || (base === "test" && properties[0] === "describe");
+}
+
+// Suites, skipped or not, run their callback while tests are collected.
+function isSuiteLikeChain({ base, steps }) {
+  return SKIPPED_SUITE_CALLEES.has(base) || (base === "test" && steps[0]?.property === "describe");
 }
 
 function callbackBodies(argList) {
