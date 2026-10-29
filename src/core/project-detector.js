@@ -445,8 +445,10 @@ function collapseOwnedGradleModules(repoRoot, markerGroups) {
     .sort((left, right) => projectRootDepth(left.root) - projectRootDepth(right.root) || compareText(left.root, right.root));
   for (const group of groups) {
     if (!collapsed.has(group.root)) continue;
-    const settingsMarker = group.markerFiles.find((markerFile) => /(?:^|\/)settings\.gradle(?:\.kts)?$/.test(markerFile));
-    if (!settingsMarker) continue;
+    const settingsMarkers = group.markerFiles.filter((markerFile) => /(?:^|\/)settings\.gradle(?:\.kts)?$/.test(markerFile));
+    // Both settings.gradle and settings.gradle.kts is ambiguous ownership: never collapse on a guess.
+    if (settingsMarkers.length !== 1) continue;
+    const [settingsMarker] = settingsMarkers;
     const analysis = analyzeGradleSettings(fs.readFileSync(path.resolve(repoRoot, settingsMarker), "utf8"));
     if (
       analysis.hasUnsupportedDeclarations ||
@@ -469,8 +471,10 @@ function collapseOwnedGradleModules(repoRoot, markerGroups) {
 
     const hasUnownedNestedSettings = ownedProjectRoots.some(({ declaration, projectRoot }) => {
       const candidate = markerGroups.get(projectRoot);
-      const nestedSettingsMarker = candidate?.markerFiles.find((markerFile) => /(?:^|\/)settings\.gradle(?:\.kts)?$/.test(markerFile));
-      if (!nestedSettingsMarker) return false;
+      const nestedSettingsMarkers = candidate?.markerFiles.filter((markerFile) => /(?:^|\/)settings\.gradle(?:\.kts)?$/.test(markerFile)) ?? [];
+      if (nestedSettingsMarkers.length === 0) return false;
+      if (nestedSettingsMarkers.length > 1) return true;
+      const [nestedSettingsMarker] = nestedSettingsMarkers;
       const nested = analyzeGradleSettings(fs.readFileSync(path.resolve(repoRoot, nestedSettingsMarker), "utf8"));
       return nested.hasUnsupportedDeclarations ||
         nested.hasUnsupportedRemaps ||
@@ -515,7 +519,9 @@ function collectMarkerGroups(root) {
   const swiftBazelRoots = new Map();
 
   function visit(current) {
-    for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
+    // Sorted so marker groups (and the marker file chosen from each) never depend on readdir order.
+    const entries = fs.readdirSync(current, { withFileTypes: true }).sort((left, right) => compareText(left.name, right.name));
+    for (const entry of entries) {
       if (entry.isDirectory()) {
         const marker = MARKERS.find((candidate) =>
           candidate.directoryExtension && entry.name.endsWith(candidate.directoryExtension)

@@ -1,6 +1,8 @@
 /**
- * Locale-independent string ordering, so artifact order is identical on every machine
- * regardless of ICU data or the user's locale (unlike String#localeCompare). Compares
+ * Locale-independent string ordering, so artifact order does not depend on the user's locale or
+ * ICU collation data (unlike String#localeCompare). Lowercasing follows the runtime's Unicode
+ * case mappings, so names using characters whose casing changed between Unicode versions may
+ * still order differently across Node.js releases; ASCII and long-stable scripts do not. Compares
  * case-insensitively first, keeping the familiar "configure, routes, UserResponseDTO"
  * order, then by UTF-16 code unit so distinct strings never compare equal.
  *
