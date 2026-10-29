@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import fs from "node:fs";
-import { execFileSync } from "node:child_process";
 import path from "node:path";
+import { readGitChangedPathsSince, readGitWorkingTreeChangedPaths } from "../core/git-changed-paths.js";
 import { renderMarkdownReport } from "../core/report.js";
 import {
   createDiagnosticBundle,
@@ -113,17 +113,17 @@ if (!["markdown", "json"].includes(options.format)) {
   process.exit(1);
 }
 
-if (options.fromAuditPath && !["plan", "hints", "explain", "rank", "placement"].includes(options.command)) {
+if (options.fromAuditPath !== undefined && !["plan", "hints", "explain", "rank", "placement"].includes(options.command)) {
   console.error("--from-audit is only supported with plan, hints, explain, rank, and placement commands.");
   process.exit(1);
 }
 
-if (options.fromProjectAuditsPath && !PROJECT_AUDIT_COMMANDS.includes(options.command)) {
+if (options.fromProjectAuditsPath !== undefined && !PROJECT_AUDIT_COMMANDS.includes(options.command)) {
   console.error(`--from-project-audits is only supported with ${PROJECT_AUDIT_COMMANDS.join(", ")} commands.`);
   process.exit(1);
 }
 
-if (options.goTarget && (options.fromAuditPath || options.fromProjectAuditsPath)) {
+if (options.goTarget && (options.fromAuditPath !== undefined || options.fromProjectAuditsPath !== undefined)) {
   console.error("Go target options require a repository scan and cannot be combined with saved audit artifacts.");
   process.exit(1);
 }
@@ -135,7 +135,7 @@ const detectionRules = options.command === "detect-rules" ? getProjectDetectionR
 const detection = options.command === "detect" ? detectRepoProjects(repoRoot, {
   excludeProjectRoots: options.excludeProjectRoots
 }) : undefined;
-const projectAudits = options.fromProjectAuditsPath
+const projectAudits = options.fromProjectAuditsPath !== undefined
   ? readProjectAuditsJson(options.fromProjectAuditsPath)
   : PROJECT_AUDIT_COMMANDS.includes(options.command)
     ? auditRepoProjects(repoRoot, {
@@ -144,7 +144,7 @@ const projectAudits = options.fromProjectAuditsPath
       goTarget: options.goTarget
     })
     : undefined;
-const audit = options.fromAuditPath
+const audit = options.fromAuditPath !== undefined
   ? readAuditJson(options.fromAuditPath)
   : diagnosticsOutput || adapterRegistry || detectionRules || detection || projectAudits
     ? undefined
@@ -441,17 +441,7 @@ function readProjectAuditsJson(projectAuditsPath) {
 
 function readChangedPaths(repoRoot) {
   try {
-    const output = execFileSync("git", ["-C", repoRoot, "status", "--short"], {
-      encoding: "utf8"
-    });
-
-    return output
-      .split(/\r?\n/)
-      .map((line) => line.trim())
-      .filter(Boolean)
-      .map((line) => line.slice(3).trim())
-      .map((line) => line.includes(" -> ") ? line.split(" -> ").at(-1) : line)
-      .map((line) => line.replaceAll("\\", "/"));
+    return readGitWorkingTreeChangedPaths(repoRoot);
   } catch (error) {
     console.error(`Failed to read changed files: ${error.message}`);
     process.exit(1);
@@ -465,15 +455,7 @@ function readChangedPathsSince(repoRoot, ref) {
   }
 
   try {
-    const output = execFileSync("git", ["-C", repoRoot, "diff", "--name-only", `${ref}...HEAD`], {
-      encoding: "utf8"
-    });
-
-    return output
-      .split(/\r?\n/)
-      .map((line) => line.trim())
-      .filter(Boolean)
-      .map((line) => line.replaceAll("\\", "/"));
+    return readGitChangedPathsSince(repoRoot, ref);
   } catch (error) {
     console.error(`Failed to read changed files since ${ref}: ${error.message}`);
     process.exit(1);
@@ -481,7 +463,7 @@ function readChangedPathsSince(repoRoot, ref) {
 }
 
 function readSelectedChangedPaths(repoRoot, options) {
-  if (options.changedSinceRef) return readChangedPathsSince(repoRoot, options.changedSinceRef);
+  if (options.changedSinceRef !== undefined) return readChangedPathsSince(repoRoot, options.changedSinceRef);
   if (options.changedOnly) return readChangedPaths(repoRoot);
   return undefined;
 }
