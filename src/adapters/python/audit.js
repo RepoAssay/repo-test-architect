@@ -1888,7 +1888,9 @@ function activePythonTestFile(testFile) {
   const isTest = (pythonFunction) => pythonFunction.name.startsWith("test");
   const tests = testFile.analysis.functions.filter(isTest);
   if (!tests.some((pythonFunction) => pythonFunction.skipped)) return testFile;
-  if (tests.every((pythonFunction) => pythonFunction.skipped)) return undefined;
+  // The line-based parser misses some definitions (e.g. multi-line signatures), so
+  // whole-module removal is decided on the syntax tree's complete test list.
+  if (tests.every((pythonFunction) => pythonFunction.skipped) && analyzePythonSkips(testFile.content).allTestsSkipped) return undefined;
   return Object.freeze({
     ...testFile,
     analysis: Object.freeze({

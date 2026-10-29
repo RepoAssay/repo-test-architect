@@ -1340,8 +1340,9 @@ function isTestFile(currentPath) {
 
 const ACTIVE_TEST_CALL_PATTERN = /(?<![\w$.])(?:it|test|describe|context|suite|specify|fit|fdescribe)\b(?:\s*\.\s*[A-Za-z_$][\w$]*)*\s*[(`]/;
 
-// Evidence is derived from active tests only. Skipped calls found on the syntax
-// tree are blanked (newlines kept so offsets stay stable). A file is dropped only
+// Evidence is derived from active tests only. The callee and callbacks of skipped
+// calls found on the syntax tree are blanked (newlines kept so offsets stay
+// stable); eagerly evaluated arguments keep their evidence. A file is dropped only
 // when, after blanking, no imported binding is still used, called or asserted and
 // no test call remains, so aliased or unrecognised active tests keep evidence.
 function activeJavaScriptTestFile(testFile) {

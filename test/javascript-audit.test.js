@@ -2113,6 +2113,37 @@ describe("JavaScript skipped tests", () => {
     assert.equal(evidence?.[0].usage, "called");
   });
 
+  it("matches each require binding with its own declarator", (t) => {
+    const options = {
+      header: 'const assert = require("node:assert/strict");\nconst {calc} = require("../src/calc.js");\n',
+      source: "module.exports.calc = function calc(value) {\n  if (value > 1) return value * 2;\n  return 0;\n};\n"
+    };
+    for (const body of [
+      'const api=require("node:test"), {test}={test:{skip:fn=>fn()}};test.skip(()=>assert.equal(calc(2),4));',
+      'const {test}={test:{skip:fn=>fn()}}, api=require("node:test");test.skip(()=>assert.equal(calc(2),4));'
+    ]) {
+      assert.equal(calcEvidence(auditCalcTest(t, body, options))?.[0].usage, "asserted", body);
+    }
+    const skipped = 'const api=require("node:assert"), {test}=require("node:test");test.skip("old",()=>assert.equal(calc(2),4));';
+    assert.equal(calcEvidence(auditCalcTest(t, skipped, options)), undefined);
+  });
+
+  it("keeps eagerly evaluated arguments of skipped calls", (t) => {
+    assert.equal(calcEvidence(auditCalcTest(t, 'test.skip("old", {skip:assert.equal(calc(2),4)}, ()=>{});'))?.[0].usage, "asserted");
+    assert.equal(calcEvidence(auditCalcTest(t, 'it.skip.each([[calc(2)]])("old %i", (value) => assert.equal(value, 4));'))?.[0].usage, "called");
+  });
+
+  it("stops trusting a framework name that is mutated or passed around", (t) => {
+    for (const body of [
+      'test.skip=(_name,fn)=>fn();test.skip("active",()=>assert.equal(calc(2),4));',
+      'Object.assign(test,{skip:(_name,fn)=>fn()});test.skip("active",()=>assert.equal(calc(2),4));',
+      'test.skip.mockImplementation?.((_name,fn)=>fn());test.skip("active",()=>assert.equal(calc(2),4));',
+      'const helpers={test};helpers.test.skip=(_name,fn)=>fn();test.skip("active",()=>assert.equal(calc(2),4));'
+    ]) {
+      assert.equal(calcEvidence(auditCalcTest(t, body))?.[0].usage, "asserted", body);
+    }
+  });
+
   it("never blanks skip-looking calls inside non-suite calls", (t) => {
     for (const body of [
       'import {test as check} from "node:test";\ncheck("active", function(){function run(test){test.skip(()=>assert.equal(calc(2),4));} run({skip:fn=>fn()});});',
@@ -2144,5 +2175,15 @@ describe("JavaScript skipped tests", () => {
     const evidence = calcEvidence(auditCalcTest(t, body));
     assert.equal(evidence[0].usage, "asserted");
     assert.ok(performance.now() - startedAt < 2000);
+  });
+
+  it("does not let closing brackets inside strings defeat the nesting bound", (t) => {
+    const depth = 4000;
+    const body = 'const pad="' + ")".repeat(2 * depth) + '";' + 'describe("a",()=>{'.repeat(depth) + 'it.skip("x",()=>{assert.equal(calc(2),4);});' + "});".repeat(depth);
+    const startedAt = performance.now();
+    const evidence = calcEvidence(auditCalcTest(t, body));
+    const elapsed = performance.now() - startedAt;
+    assert.equal(evidence?.[0].usage, "asserted");
+    assert.ok(elapsed < 250, `took ${elapsed} ms`);
   });
 });

@@ -1949,4 +1949,28 @@ describe("Python skipped tests", () => {
       assert.equal(calcEvidence(auditCalcTest(t, body))?.[0].usage, "asserted", body);
     }
   });
+
+  it("stops trusting skip names that are rebound, mutated or deleted", (t) => {
+    for (const body of [
+      "from unittest import skip\nskip=lambda _: lambda f:f\n@skip(\"noop\")\ndef test_calc():\n    assert calc(2)==4\n",
+      "def test_calc(pytest):\n    pytest.skip(\"noop\")\n    assert calc(2)==4\n",
+      "def test_calc():\n    pytest = Helper()\n    pytest.skip(\"noop\")\n    assert calc(2)==4\n",
+      "pytest.mark.skip = lambda f: f\n\n@pytest.mark.skip\ndef test_calc():\n    assert calc(2)==4\n",
+      "pytestmark=[pytest.mark.skip(reason=\"old\")]\npytestmark.clear()\ndef test_calc():\n    assert calc(2)==4\n",
+      "pytestmark=[pytest.mark.skip(reason=\"old\")]\ndel pytestmark\ndef test_calc():\n    assert calc(2)==4\n"
+    ]) {
+      assert.equal(calcEvidence(auditCalcTest(t, body))?.[0].usage, "asserted", body);
+    }
+    const skipped = "from unittest import skip\n\n@skip(\"later\")\ndef test_calc():\n    assert calc(2)==4\n";
+    assert.equal(calcEvidence(auditCalcTest(t, skipped)), undefined);
+  });
+
+  it("decides whole-module removal from every test definition in the syntax tree", (t) => {
+    for (const body of [
+      "class TestCalc(unittest.TestCase):\n    @unittest.skip(\"old\")\n    def test_old(self):\n        pass\n    def test_active(\n        self\n    ):\n        self.assertEqual(calc(2),4)\n",
+      "@pytest.mark.skip\ndef test_old():\n    pass\n\ndef test_active(\n):\n    assert calc(2)==4\n"
+    ]) {
+      assert.deepEqual(calcEvidence(auditCalcTest(t, body)), [{ testPath: "tests/test_math.py", kind: "python-module-import", strength: "direct" }], body);
+    }
+  });
 });
