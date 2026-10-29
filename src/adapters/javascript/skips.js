@@ -29,6 +29,7 @@ const FRAMEWORK_MEMBERS = new Set([
 const SKIP_HINT = /\b(?:skip|skipIf|runIf|x(?:it|test|describe|context|specify))\b/;
 const COMMENTS = new Set(["LineComment", "BlockComment"]);
 const FUNCTIONS = new Set(["ArrowFunction", "FunctionExpression"]);
+const FUNCTION_LIKE = new Set([...FUNCTIONS, "FunctionDeclaration", "ClassDeclaration", "ClassExpression", "MethodDeclaration"]);
 const EAGER_CALLS = new Set(["CallExpression", "NewExpression", "TaggedTemplateExpression"]);
 const MAX_NESTING = 256;
 
@@ -53,14 +54,19 @@ export function findSkippedJavaScriptTestRanges(filePath, content) {
   const skippedSuiteBodies = [];
   const skip = (chain) => {
     ranges.push(...chain.calleeRanges);
-    const collecting = isSuiteLikeChain(chain) && !nonCollecting.has(chain.base);
+    const suite = isSuiteLikeChain(chain);
+    const collecting = suite && !nonCollecting.has(chain.base);
     for (const [index, step] of chain.steps.entries()) {
       if (!step.args) continue;
       const final = index === chain.steps.length - 1;
       for (const argument of argumentsOf(step.args)) {
-        const block = collecting && final && FUNCTIONS.has(argument.name) ? argument.getChild("Block") : undefined;
+        const named = final && argument.name === "VariableName" ? soleCallbacks.get(text(argument)) : undefined;
+        const block = collecting && final ? (FUNCTIONS.has(argument.name) ? argument.getChild("Block") : named?.block) : undefined;
         if (block) skippedSuiteBodies.push(block);
-        else if (final && argument.name === "VariableName" && soleCallbacks.has(text(argument))) ranges.push(soleCallbacks.get(text(argument)));
+        // A named test/hook callback used nowhere else never runs. Named suite
+        // callbacks are never blanked: collecting runners execute them, and for the
+        // others a missed skip only keeps evidence.
+        else if (!suite && named) ranges.push(named.range);
         else ranges.push(...dormantFunctionRanges(argument));
       }
     }
@@ -78,13 +84,16 @@ export function findSkippedJavaScriptTestRanges(filePath, content) {
       else if (isSuiteChain(chain)) pending.push(...callbackBodies(chain.steps.at(-1).args));
     }
   }
-  // Every framework call anywhere inside a collected skipped suite (loops, helper
-  // callbacks such as `cases.forEach(...)`) registers a skipped test or hook.
-  // Framework names are trusted file-wide, so these calls are the framework's.
+  // Framework calls inside a collected skipped suite register skipped tests or
+  // hooks, including those in loops and in inline call arguments such as
+  // `cases.forEach(...)`. Other nested functions (assigned, returned, declared) may
+  // escape and run elsewhere, so they are not searched. Framework names are
+  // trusted file-wide, so these calls are the framework's.
   while (skippedSuiteBodies.length > 0) {
     const stack = [skippedSuiteBodies.pop()];
     while (stack.length > 0) {
       const node = stack.pop();
+      if (FUNCTION_LIKE.has(node.name) && !(FUNCTIONS.has(node.name) && node.parent?.name === "ArgList" && node.parent.parent?.name === "CallExpression")) continue;
       const chain = node.name === "CallExpression" ? calleeChain(node, text) : undefined;
       if (chain && FRAMEWORK_NAMES.has(chain.base) && !untrusted.has(chain.base)) {
         skip(chain);
@@ -123,8 +132,10 @@ function dormantFunctionRanges(argument) {
 }
 
 // `const name = () => ...` / `function name() {...}` whose name is defined once and
-// referenced exactly once in the file, mapped to the range of the function's
-// code. When that one reference is a skipped test's callback, the code never runs.
+// referenced exactly once in the file, mapped to { range, block }: the function's
+// code and its body block. When that one reference is a skipped test's callback,
+// the code never runs; when it is a collected skipped suite's callback, the body
+// runs only as that suite's collector.
 function collectSoleUseFunctions(tree, text) {
   const definitions = new Map();
   const references = new Map();
@@ -138,14 +149,15 @@ function collectSoleUseFunctions(tree, text) {
       const parent = node.parent;
       const value = parent?.name === "VariableDeclaration" && node.nextSibling?.name === "Equals" ? node.nextSibling.nextSibling : undefined;
       const body = parent?.name === "FunctionDeclaration" ? parent.getChild("Block") : undefined;
-      const range = value && FUNCTIONS.has(value.name) ? [value.from, value.to] : body ? [body.from, body.to] : undefined;
+      const fn = value && FUNCTIONS.has(value.name) ? { range: [value.from, value.to], block: value.getChild("Block") }
+        : body ? { range: [body.from, body.to], block: body } : undefined;
       const name = text(ref);
-      definitions.set(name, definitions.has(name) ? undefined : range);
+      definitions.set(name, definitions.has(name) ? undefined : fn);
     }
   });
   const sole = new Map();
-  for (const [name, range] of definitions) {
-    if (range && references.get(name) === 1) sole.set(name, range);
+  for (const [name, fn] of definitions) {
+    if (fn && references.get(name) === 1) sole.set(name, fn);
   }
   return sole;
 }

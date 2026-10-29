@@ -2009,6 +2009,14 @@ describe("Python skipped tests", () => {
     }
   });
 
+  it("never drops a module whose fixtures may run before a skip", (t) => {
+    const withFixture = calcEvidence(auditCalcTest(t, "REASON=\"old\"\n@pytest.fixture\ndef data():\n    return calc(2)\n\ndef test_calc(data):\n    pytest.skip(REASON)\n"));
+    assert.ok(withFixture?.some((evidence) => evidence.kind === "python-pytest-fixture"), JSON.stringify(withFixture));
+    // A fixture from elsewhere (conftest.py) still runs; the skipped body gets no credit.
+    const requested = calcEvidence(auditCalcTest(t, "def test_calc(data):\n    pytest.skip(\"later\")\n    assert calc(2)==4\n"));
+    assert.deepEqual(requested, [{ testPath: "tests/test_math.py", kind: "python-module-import", strength: "direct" }]);
+  });
+
   it("decides whole-module removal from every test definition in the syntax tree", (t) => {
     for (const body of [
       "class TestCalc(unittest.TestCase):\n    @unittest.skip(\"old\")\n    def test_old(self):\n        pass\n    def test_active(\n        self\n    ):\n        self.assertEqual(calc(2),4)\n",

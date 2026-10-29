@@ -60,6 +60,8 @@ export function analyzePythonSkips(content) {
   const truncatedDefinitionLines = new Map();
   const liveDecoratorLines = new Map();
   const testsSkipped = [];
+  let definesFixture = false;
+  let skippedTestRequestsFixtures = false;
   const visit = (container, inheritedSkip) => {
     for (let child = container.firstChild; child; child = child.nextSibling) {
       const decorated = child.name === "DecoratedStatement";
@@ -68,7 +70,9 @@ export function analyzePythonSkips(content) {
         visit(child, inheritedSkip);
         continue;
       }
-      const skipDecorators = decorated ? child.getChildren("Decorator").filter((decorator) => isDefiniteSkipDecorator(decorator, context)) : [];
+      const decorators = decorated ? child.getChildren("Decorator") : [];
+      if (decorators.some((decorator) => /^@\s*(?:pytest\s*\.\s*)?fixture\b/.test(text(decorator)))) definesFixture = true;
+      const skipDecorators = decorators.filter((decorator) => isDefiniteSkipDecorator(decorator, context));
       const skipped = inheritedSkip || skipDecorators.length > 0;
       const body = definition.getChild("Body");
       if (definition.name === "ClassDefinition") {
@@ -90,14 +94,20 @@ export function analyzePythonSkips(content) {
       if (liveDecorators.length > 0) liveDecoratorLines.set(definitionLine, [lineOf(liveDecorators[0].from), lineOf(liveDecorators.at(-1).to - 1) + 1]);
       // Module- and class-level definitions are the ones pytest/unittest collect.
       const testSkipped = moduleSkipped || skipped || Boolean(imperative?.first && imperative.truncatable);
-      if (text(definition.getChild("VariableName") ?? definition).startsWith("test")) testsSkipped.push(testSkipped);
+      if (!text(definition.getChild("VariableName") ?? definition).startsWith("test")) continue;
+      testsSkipped.push(testSkipped);
+      // Requested fixtures run before the test body reaches an imperative skip.
+      const parameters = definition.getChild("ParamList")?.getChildren("VariableName") ?? [];
+      if (testSkipped && parameters.some((parameter) => !["self", "cls"].includes(text(parameter)))) skippedTestRequestsFixtures = true;
     }
   };
   visit(tree.topNode, false);
   return {
     moduleSkipped,
-    // Skip arguments that run real code keep the module (and that evidence) alive.
-    allTestsSkipped: !context.liveSkipArguments && testsSkipped.length > 0 && testsSkipped.every(Boolean),
+    // Code that still runs keeps the module (and that evidence) alive: skip
+    // arguments that call code, and fixtures that tests may request.
+    allTestsSkipped: !context.liveSkipArguments && !definesFixture && !skippedTestRequestsFixtures &&
+      testsSkipped.length > 0 && testsSkipped.every(Boolean),
     skippedDefinitionLines,
     truncatedDefinitionLines,
     liveDecoratorLines

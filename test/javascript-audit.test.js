@@ -2173,6 +2173,16 @@ describe("JavaScript skipped tests", () => {
     assert.equal(calcEvidence(auditCalcTest(t, shared, { header: MOCHA_HEADER }))?.[0].usage, "asserted");
   });
 
+  it("keeps named suite callbacks and escaping helpers of collected skipped suites", (t) => {
+    const collector = 'const collect=()=>{const value=calc(2);it("x",()=>assert.equal(value,4));};describe.skip("s",collect);';
+    assert.equal(calcEvidence(auditCalcTest(t, collector, { header: MOCHA_HEADER }))?.[0].usage, "called");
+    const escaping = 'let register;describe.skip("s",()=>{register=()=>it("live",()=>assert.equal(calc(2),4));});describe("active",()=>register());';
+    assert.equal(calcEvidence(auditCalcTest(t, escaping, { header: MOCHA_HEADER }))?.[0].usage, "asserted");
+    // node:test never runs a skipped suite's callback, but a named one is simply left
+    // alone (an accepted missed skip, as on master).
+    assert.equal(calcEvidence(auditCalcTest(t, collector))?.[0].usage, "asserted");
+  });
+
   it("blanks whole skipped suite callbacks for node:test, which never runs them", (t) => {
     assert.equal(calcEvidence(auditCalcTest(t, 'describe.skip("s",()=>{assert.equal(calc(2),4);it("x",()=>{});});')), undefined);
   });
