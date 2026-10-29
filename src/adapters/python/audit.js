@@ -45,6 +45,8 @@ export function auditPythonRepo(root, options = {}) {
   const parsedTestSupportFiles = Object.values(parsedTestSupportFileFactsByPath);
   const testFiles = parsedTestSupportFiles
     .filter((file) => isTestFile(file.path, pytestDiscovery))
+    .map(activePythonTestFile)
+    .filter(Boolean)
     .sort((left, right) => compareText(left.path, right.path));
   const pytestFixtures = collectPytestFixtures(files, parsedTestSupportFiles, sourceLayout, pytestDiscovery);
   const frameworkClientEvidence = collectPythonFrameworkClientEvidence(
@@ -1843,9 +1845,24 @@ function parsePythonFunctions(content, maskedContent = maskPythonCommentsAndStri
   const rawLines = content.split(/\r?\n/);
   const maskedLines = maskedContent.split(/\r?\n/);
   const functions = [];
+  const continuationLines = pythonContinuationLines(maskedLines);
+  const moduleSkipped = isPythonModuleSkipped(maskedLines, continuationLines);
+  const importsUnittestSkip = /^\s*from\s+unittest\s+import\b[^\n]*\bskip(?:If|Unless)?\b/m.test(maskedContent);
+  const classStack = [];
 
   for (let index = 0; index < maskedLines.length; index += 1) {
-    const match = maskedLines[index].match(/^(\s*)(?:async\s+)?def\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(([^)]*)\)\s*(?:->\s*[^:]+)?\s*:/);
+    const maskedLine = maskedLines[index];
+    if (maskedLine.trim() && !continuationLines[index] && !maskedLine.trimStart().startsWith("@")) {
+      const lineIndent = indentationWidth(maskedLine.match(/^\s*/)?.[0] ?? "");
+      while (classStack.length > 0 && classStack.at(-1).indent >= lineIndent) classStack.pop();
+      if (/^\s*class\s+[A-Za-z_]/.test(maskedLine)) {
+        classStack.push({
+          indent: lineIndent,
+          skipped: Boolean(classStack.at(-1)?.skipped) || hasPythonSkipDecorator(maskedLines, continuationLines, index, importsUnittestSkip)
+        });
+      }
+    }
+    const match = maskedLine.match(/^(\s*)(?:async\s+)?def\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(([^)]*)\)\s*(?:->\s*[^:]+)?\s*:/);
     if (!match) continue;
     const indent = indentationWidth(match[1]);
     let decoratorIndex = index - 1;
@@ -1860,16 +1877,80 @@ function parsePythonFunctions(content, maskedContent = maskPythonCommentsAndStri
       if (line.trim() && indentationWidth(line.match(/^\s*/)?.[0] ?? "") <= indent) break;
       end += 1;
     }
+    const body = maskedLines.slice(index + 1, end).join("\n");
     functions.push({
       name: match[2],
       parameters: parsePythonParameters(match[3]),
       decorators,
-      body: maskedLines.slice(index + 1, end).join("\n"),
-      rawBody: rawLines.slice(index + 1, end).join("\n")
+      body,
+      rawBody: rawLines.slice(index + 1, end).join("\n"),
+      skipped: moduleSkipped ||
+        Boolean(classStack.at(-1)?.skipped) ||
+        hasPythonSkipDecorator(maskedLines, continuationLines, index, importsUnittestSkip) ||
+        /^\s*pytest\s*\.\s*skip\s*\(/.test(body.split("\n").find((line) => line.trim()) ?? "")
     });
     index = end - 1;
   }
   return functions;
+}
+
+// Static skip markers: skipif/skipIf/skipUnless conditions cannot be evaluated
+// statically, so they are treated as skipped. xfail tests still run.
+const PYTHON_SKIP_DECORATOR_PATTERN = /^@\s*(?:(?:pytest\s*\.\s*)?mark\s*\.\s*skip(?:if)?|unittest\s*\.\s*skip(?:If|Unless)?)\b/;
+const PYTHON_IMPORTED_SKIP_DECORATOR_PATTERN = /^@\s*skip(?:If|Unless)?\b/;
+
+function pythonContinuationLines(maskedLines) {
+  const continuation = [];
+  let depth = 0;
+  for (const line of maskedLines) {
+    continuation.push(depth > 0);
+    for (const character of line) {
+      if ("([{".includes(character)) depth += 1;
+      else if (")]}".includes(character)) depth = Math.max(0, depth - 1);
+    }
+  }
+  return continuation;
+}
+
+function pythonStatementText(maskedLines, continuationLines, index) {
+  let end = index + 1;
+  while (end < maskedLines.length && continuationLines[end]) end += 1;
+  return maskedLines.slice(index, end).join("\n");
+}
+
+function hasPythonSkipDecorator(maskedLines, continuationLines, definitionIndex, importsUnittestSkip) {
+  for (let index = definitionIndex - 1; index >= 0; index -= 1) {
+    if (continuationLines[index]) continue;
+    const line = maskedLines[index].trim();
+    if (!line.startsWith("@")) break;
+    if (PYTHON_SKIP_DECORATOR_PATTERN.test(line) || (importsUnittestSkip && PYTHON_IMPORTED_SKIP_DECORATOR_PATTERN.test(line))) return true;
+  }
+  return false;
+}
+
+function isPythonModuleSkipped(maskedLines, continuationLines) {
+  for (let index = 0; index < maskedLines.length; index += 1) {
+    if (continuationLines[index]) continue;
+    const line = maskedLines[index];
+    if (/^pytestmark\s*=/.test(line) && /\bmark\s*\.\s*skip(?:if)?\b/.test(pythonStatementText(maskedLines, continuationLines, index))) return true;
+    if (/^pytest\s*\.\s*skip\s*\(/.test(line) && /\ballow_module_level\s*=\s*True\b/.test(pythonStatementText(maskedLines, continuationLines, index))) return true;
+  }
+  return false;
+}
+
+// Evidence is derived from active tests only: skipped test functions are dropped,
+// and a test module whose tests are all skipped contributes no evidence at all.
+function activePythonTestFile(testFile) {
+  const tests = testFile.analysis.functions.filter((pythonFunction) => pythonFunction.name.startsWith("test_"));
+  if (!tests.some((pythonFunction) => pythonFunction.skipped)) return testFile;
+  if (tests.every((pythonFunction) => pythonFunction.skipped)) return undefined;
+  return Object.freeze({
+    ...testFile,
+    analysis: Object.freeze({
+      ...testFile.analysis,
+      functions: Object.freeze(testFile.analysis.functions.filter((pythonFunction) => !pythonFunction.skipped || !pythonFunction.name.startsWith("test_")))
+    })
+  });
 }
 
 function parsePythonParameters(value) {

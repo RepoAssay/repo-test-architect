@@ -1844,3 +1844,57 @@ dependencies = ["pytest"]
     });
   }
 });
+
+describe("Python skipped tests", () => {
+  function auditCalcTest(t, body) {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-py-skipped-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "app"), { recursive: true });
+    fs.mkdirSync(path.join(root, "tests"), { recursive: true });
+    fs.writeFileSync(path.join(root, "pyproject.toml"), '[project]\nname = "skipped"\nversion = "1.0.0"\n\n[tool.pytest.ini_options]\ntestpaths = ["tests"]\n');
+    fs.writeFileSync(path.join(root, "app/__init__.py"), "");
+    fs.writeFileSync(path.join(root, "app/pricing.py"), "def calc(value):\n    if value > 1:\n        return value * 2\n    return 0\n");
+    fs.writeFileSync(path.join(root, "tests/test_math.py"), `import sys\nimport unittest\nimport pytest\nfrom app.pricing import calc\n\n${body}`);
+    return auditPythonRepo(root);
+  }
+
+  function calcEvidence(audit) {
+    return audit.coveredButRisky.find((target) => target.path === "app/pricing.py")?.existingTestEvidence;
+  }
+
+  for (const body of [
+    "@pytest.mark.skip\ndef test_calc():\n    assert calc(2) == 1\n",
+    "@pytest.mark.skipif(\n    sys.platform == 'win32',\n    reason='windows',\n)\ndef test_calc():\n    assert calc(2) == 1\n",
+    "@unittest.skipUnless(False, 'never')\ndef test_calc():\n    assert calc(2) == 1\n",
+    "@unittest.skip('later')\nclass TestCalc(unittest.TestCase):\n    def test_calc(self):\n        self.assertEqual(calc(2), 1)\n",
+    "@pytest.mark.skip(reason='later')\nclass TestCalc:\n    def test_calc(self):\n        assert calc(2) == 1\n",
+    "def test_calc():\n    \"\"\"Pending.\"\"\"\n    pytest.skip('later')\n    assert calc(2) == 1\n",
+    "pytestmark = pytest.mark.skip(reason='later')\n\ndef test_calc():\n    assert calc(2) == 1\n"
+  ]) {
+    it(`treats a skip-only test module as no evidence: ${body.split("\n")[0]}`, (t) => {
+      const audit = auditCalcTest(t, body);
+      assert.equal(calcEvidence(audit), undefined);
+      const target = audit.untestedCandidates.find((candidate) => candidate.path === "app/pricing.py");
+      assert.ok(target);
+      assert.equal(target.existingTestEvidence, undefined);
+    });
+  }
+
+  it("does not credit assertions from skipped tests next to active ones", (t) => {
+    for (const body of [
+      "def test_other():\n    assert True\n\n@pytest.mark.skip(reason='x')\ndef test_calc():\n    assert calc(2) == 1\n",
+      "class TestCalc(unittest.TestCase):\n    @unittest.skipIf(True, 'x')\n    def test_calc(self):\n        self.assertEqual(calc(2), 1)\n\n    def test_other(self):\n        self.assertTrue(True)\n"
+    ]) {
+      assert.deepEqual(calcEvidence(auditCalcTest(t, body)), [{ testPath: "tests/test_math.py", kind: "python-module-import", strength: "direct" }]);
+    }
+  });
+
+  it("still credits xfail tests and ignores skip text in comments", (t) => {
+    for (const body of [
+      "@pytest.mark.xfail(reason='known')\ndef test_calc():\n    assert calc(2) == 1\n",
+      "def test_calc():\n    # @pytest.mark.skip\n    assert calc(2) == 4\n"
+    ]) {
+      assert.equal(calcEvidence(auditCalcTest(t, body))[0].usage, "asserted");
+    }
+  });
+});

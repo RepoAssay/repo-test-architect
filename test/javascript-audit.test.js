@@ -1998,3 +1998,63 @@ test("browser near misses", async ({ page }) => {
     assert.deepEqual(audit.untestedCandidates.map((target) => target.path), ["src/checkout.ts"]);
   });
 });
+
+describe("JavaScript skipped tests", () => {
+  function auditCalcTest(t, body) {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-js-skipped-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "src"), { recursive: true });
+    fs.mkdirSync(path.join(root, "test"), { recursive: true });
+    fs.writeFileSync(path.join(root, "package.json"), JSON.stringify({ name: "skipped", type: "module", scripts: { test: "node --test" } }));
+    fs.writeFileSync(path.join(root, "src/calc.js"), "export function calc(value) {\n  if (value > 1) return value * 2;\n  return 0;\n}\n");
+    fs.writeFileSync(
+      path.join(root, "test/calc.test.js"),
+      `import { describe, it, test } from "node:test";\nimport assert from "node:assert/strict";\nimport { calc } from "../src/calc.js";\n\n${body}\n`
+    );
+    return auditJavaScriptRepo(root);
+  }
+
+  function calcEvidence(audit) {
+    return audit.coveredButRisky.find((target) => target.path === "src/calc.js")?.existingTestEvidence;
+  }
+
+  for (const body of [
+    'test.skip("b", () => assert.equal(calc(2), 1));',
+    'it.skip("b", () => assert.equal(calc(2), 1));',
+    'xit("b", () => assert.equal(calc(2), 1));\nxtest("c", () => calc(3));',
+    'test.todo("b", () => assert.equal(calc(2), 1));',
+    'it.skip.each([[2]])("b %i", (value) => assert.equal(calc(value), 1));',
+    'test("b", { skip: true }, () => assert.equal(calc(2), 1));',
+    'test("b", { todo: "later" }, () => assert.equal(calc(2), 1));',
+    'describe.skip("calc", () => {\n  it("b", () => assert.equal(calc(2), 1));\n});',
+    'xdescribe("calc", () => {\n  it("b", () => assert.equal(calc(2), 1));\n});'
+  ]) {
+    it(`treats a skip-only test file as no evidence: ${body.split("\n")[0]}`, (t) => {
+      const audit = auditCalcTest(t, body);
+      assert.equal(calcEvidence(audit), undefined);
+      const target = audit.untestedCandidates.find((candidate) => candidate.path === "src/calc.js");
+      assert.ok(target);
+      assert.equal(target.existingTestEvidence, undefined);
+    });
+  }
+
+  it("does not credit assertions from a skipped block next to an active test", (t) => {
+    const evidence = calcEvidence(auditCalcTest(t, 'test("a", () => assert.ok(true));\ntest.skip("b", () => assert.equal(calc(2), 1));'));
+    assert.deepEqual(evidence, [{ testPath: "test/calc.test.js", kind: "direct-relative-import", strength: "direct" }]);
+  });
+
+  it("blanks active-looking tests nested in describe.skip", (t) => {
+    const evidence = calcEvidence(auditCalcTest(t, 'test("a", () => assert.ok(true));\ndescribe.skip("calc", () => {\n  it("b", () => assert.equal(calc(2), 1));\n});'));
+    assert.deepEqual(evidence, [{ testPath: "test/calc.test.js", kind: "direct-relative-import", strength: "direct" }]);
+  });
+
+  it("ignores skip markers inside strings and comments", (t) => {
+    const evidence = calcEvidence(auditCalcTest(t, 'test("a", () => {\n  const note = "test.skip(";\n  // it.skip("x", () => {\n  /* describe.skip( */\n  assert.equal(calc(2), 4);\n});'));
+    assert.equal(evidence[0].usage, "asserted");
+  });
+
+  it("keeps evidence from active tests with non-skip options and from framework-less files", (t) => {
+    assert.equal(calcEvidence(auditCalcTest(t, 'test("a", { timeout: 5 }, () => assert.equal(calc(2), 4));'))[0].usage, "asserted");
+    assert.equal(calcEvidence(auditCalcTest(t, "assert.equal(calc(2), 4);"))[0].usage, "asserted");
+  });
+});

@@ -28,7 +28,10 @@ export function auditJavaScriptRepo(root, options = {}) {
   const changedPaths = options.changedPaths ? new Set(options.changedPaths.map((currentPath) => normalizeChangedPath(root, currentPath))) : undefined;
   const moduleFiles = files.map((file) => analyzeModuleFile({ ...file, path: normalizePath(file.path) }));
   const moduleIndex = createJavaScriptModuleIndex(moduleFiles);
-  const testFiles = moduleFiles.filter((file) => testFilePaths.has(file.path));
+  const testFiles = moduleFiles
+    .filter((file) => testFilePaths.has(file.path))
+    .map(activeJavaScriptTestFile)
+    .filter(Boolean);
   const tsconfigData = resolveTsconfigData("tsconfig.json", files);
   const pathAliasEntries = findTsconfigPathAliasEntries(tsconfigData, moduleFiles);
   const boundedTransitiveImports = collectBoundedTransitiveImports(testFiles, moduleIndex, pathAliasEntries);
@@ -1332,6 +1335,82 @@ function isTestFile(currentPath) {
     /\.(test|spec|cy)\.[cm]?[jt]sx?$/.test(normalized) ||
     /_(test|spec)\.[cm]?[jt]sx?$/.test(normalized)
   );
+}
+
+const SKIPPED_TEST_CALL_PATTERN = /(?<![\w$.])(?:(?:test\s*\.\s*)?(?:it|test|describe|context|suite|specify)(?:\s*\.\s*[A-Za-z_$][\w$]*)*?\s*\.\s*(?:skip|todo)|x(?:it|test|describe|context|specify))\b(?:\s*\.\s*[A-Za-z_$][\w$]*)*\s*[(`]/g;
+const ACTIVE_TEST_CALL_PATTERN = /(?<![\w$.])(?:it|test|describe|context|suite|specify|fit|fdescribe)\b(?:\s*\.\s*[A-Za-z_$][\w$]*)*\s*[(`]/g;
+const NODE_TEST_CALL_PATTERN = /(?<![\w$.])(?:it|test|describe|suite)\s*\(/g;
+
+// Evidence is derived from active tests only. Skipped/todo blocks are blanked
+// (newlines kept so offsets stay stable); a file whose recognisable test calls
+// are all skipped contributes no evidence. Files without recognisable test calls
+// keep their content unchanged.
+function activeJavaScriptTestFile(testFile) {
+  const ranges = findSkippedJavaScriptTestRanges(testFile.content);
+  if (ranges.length === 0) return testFile;
+  const characters = testFile.content.split("");
+  for (const [start, end] of ranges) {
+    for (let index = start; index < end; index += 1) {
+      if (characters[index] !== "\n" && characters[index] !== "\r") characters[index] = " ";
+    }
+  }
+  const content = characters.join("");
+  const code = javascriptLexicalViews(content).code;
+  if (![...code.matchAll(ACTIVE_TEST_CALL_PATTERN)].length) return undefined;
+  return analyzeModuleFile({ ...testFile, content, moduleImports: undefined, relativeModuleSpecifiers: undefined, runtimeDependencySpecifiers: undefined });
+}
+
+function findSkippedJavaScriptTestRanges(content) {
+  const code = javascriptLexicalViews(content).code;
+  const ranges = [];
+  for (const match of code.matchAll(SKIPPED_TEST_CALL_PATTERN)) {
+    const end = findJavaScriptCallChainEnd(code, match.index + match[0].length - 1);
+    if (end !== undefined) ranges.push([match.index, end]);
+  }
+  for (const match of code.matchAll(NODE_TEST_CALL_PATTERN)) {
+    const openIndex = match.index + match[0].length - 1;
+    const closeIndex = findClosingDelimiter(code, openIndex, "(", ")");
+    if (closeIndex === undefined) continue;
+    if (hasNodeTestSkipOption(code, content, openIndex, closeIndex)) ranges.push([match.index, closeIndex + 1]);
+  }
+  return ranges;
+}
+
+// Walks `callee(...)(...)` / `callee\`table\`(...)` chains (e.g. `it.skip.each([...])("name", fn)`).
+function findJavaScriptCallChainEnd(code, openIndex) {
+  let index = openIndex;
+  let end;
+  while (code[index] === "(" || code[index] === "`") {
+    const closeIndex = code[index] === "("
+      ? findClosingDelimiter(code, index, "(", ")")
+      : code.indexOf("`", index + 1);
+    if (closeIndex === undefined || closeIndex < 0) return end;
+    end = closeIndex + 1;
+    index = end;
+    while (/\s/.test(code[index] ?? "")) index += 1;
+  }
+  return end;
+}
+
+// node:test options object passed before the callback, e.g. `test("x", { skip: true }, fn)`.
+function hasNodeTestSkipOption(code, content, openIndex, closeIndex) {
+  let depth = 0;
+  for (let index = openIndex + 1; index < closeIndex; index += 1) {
+    const character = code[index];
+    if (depth === 0 && (code.startsWith("=>", index) || /^function\b/.test(code.slice(index, index + 9)))) return false;
+    if (character === "(" || character === "[") depth += 1;
+    else if (character === ")" || character === "]") depth -= 1;
+    else if (character === "{") {
+      if (depth !== 0) { depth += 1; continue; }
+      const objectEnd = findClosingDelimiter(code, index, "{", "}");
+      if (objectEnd === undefined) return false;
+      const objectText = content.slice(index, objectEnd + 1);
+      const objectCode = code.slice(index, objectEnd + 1);
+      if (/[{}]/.test(objectCode.slice(1, -1))) return false;
+      return /(?:^\{|,)\s*(?:skip|todo)\s*:\s*(?:true\b|["'`])/.test(objectCode) && !/(?:skip|todo)\s*:\s*(["'`])\1/.test(objectText);
+    } else if (character === "}") depth -= 1;
+  }
+  return false;
 }
 
 function findExistingTestEvidence(sourcePath, testFiles, moduleIndex, boundedTransitiveImports, packageEntry) {
