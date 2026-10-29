@@ -5,6 +5,7 @@ import { analyzeDirectoryBuildProps, findNearestDirectoryBuildProps } from "../a
 import { analyzeRepositoryGlobalJson } from "../adapters/csharp/global-json.js";
 import { analyzeGradleSettings } from "./gradle-settings.js";
 import { listAdapters } from "./adapter-registry.js";
+import { compareText } from "./ordering.js";
 
 const IGNORED_DIRECTORIES = new Set([
   ".dart_tool",
@@ -218,7 +219,7 @@ export function detectProjects(repoRoot, options = {}) {
   const projects = [...markerGroups.values()]
     .map((project) => toDetectedProject(absoluteRoot, project))
     .filter((project) => !isExcludedProjectRoot(project.root, options.excludeProjectRoots))
-    .sort((a, b) => a.root.localeCompare(b.root));
+    .sort((a, b) => compareText(a.root, b.root));
 
   return {
     schemaVersion: "project-detection/v1",
@@ -350,7 +351,7 @@ function removeLiteralCargoWorkspaceAggregates(repoRoot, markerGroups) {
 function collapseOwnedMavenModules(repoRoot, markerGroups) {
   const collapsed = new Map(markerGroups);
   const groups = [...markerGroups.values()]
-    .sort((left, right) => projectRootDepth(left.root) - projectRootDepth(right.root) || left.root.localeCompare(right.root));
+    .sort((left, right) => projectRootDepth(left.root) - projectRootDepth(right.root) || compareText(left.root, right.root));
   for (const group of groups) {
     if (!collapsed.has(group.root)) continue;
     const ownedRoots = completeOwnedMavenProjectRoots(repoRoot, group, markerGroups);
@@ -441,7 +442,7 @@ function projectRootDepth(root) {
 function collapseOwnedGradleModules(repoRoot, markerGroups) {
   const collapsed = new Map(markerGroups);
   const groups = [...markerGroups.values()]
-    .sort((left, right) => projectRootDepth(left.root) - projectRootDepth(right.root) || left.root.localeCompare(right.root));
+    .sort((left, right) => projectRootDepth(left.root) - projectRootDepth(right.root) || compareText(left.root, right.root));
   for (const group of groups) {
     if (!collapsed.has(group.root)) continue;
     const settingsMarker = group.markerFiles.find((markerFile) => /(?:^|\/)settings\.gradle(?:\.kts)?$/.test(markerFile));
@@ -670,7 +671,7 @@ function matchingAdapters({ ecosystems, languages }) {
       matchedLanguages: adapter.languages.filter((language) => languageSet.has(language)).sort()
     }))
     .filter((adapter) => adapter.matchedEcosystems.length > 0 || adapter.matchedLanguages.length > 0)
-    .sort((a, b) => a.adapterId.localeCompare(b.adapterId));
+    .sort((a, b) => compareText(a.adapterId, b.adapterId));
 }
 
 /**

@@ -1,3 +1,4 @@
+import { compareText } from "./ordering.js";
 /**
  * @typedef {"unit" | "integration" | "component" | "ui" | "none"} TestLevel
  * @typedef {"untested" | "covered-but-risky"} CandidateCategory
@@ -69,7 +70,7 @@ export function rankTestCandidates(audit) {
       existingTestPaths: target.existingTestPaths ?? [],
       ...(target.existingTestEvidence ? { existingTestEvidence: target.existingTestEvidence } : {})
     }))
-    .sort((a, b) => b.priority - a.priority || b.riskReductionScore - a.riskReductionScore || a.target.localeCompare(b.target));
+    .sort((a, b) => b.priority - a.priority || b.riskReductionScore - a.riskReductionScore || compareText(a.target, b.target));
 
   return {
     schemaVersion: "candidate-ranking/v1",

@@ -11,6 +11,7 @@ import {
   findNearestDirectoryPackagesProps
 } from "./directory-packages-props.js";
 import { analyzeRepositoryGlobalJson, isLiteralVersion } from "./global-json.js";
+import { compareText } from "../../core/ordering.js";
 
 const IGNORED_DIRECTORIES = new Set([
   ".git",
@@ -177,7 +178,7 @@ export function auditCSharpRepo(root, options = {}) {
     untestedCandidates: untestedCandidates.sort(byRiskThenName),
     coveredButRisky: coveredButRisky.sort(byRiskThenName),
     recommended,
-    skipped: skipped.sort((left, right) => left.path.localeCompare(right.path)),
+    skipped: skipped.sort((left, right) => compareText(left.path, right.path)),
     risks
   };
 }
@@ -200,7 +201,7 @@ function readRepoFiles(root) {
   }
 
   visit(root);
-  return files.sort((left, right) => left.path.localeCompare(right.path));
+  return files.sort((left, right) => compareText(left.path, right.path));
 }
 
 function analyzeProject(content, inherited, inheritedPath, centralPackages, globalJson = { blockers: [] }, compileContext = {}) {
@@ -932,7 +933,7 @@ function collectTestEvidence(sourceFiles, testFiles, { testFrameworks = [] } = {
   }
 
   for (const values of evidence.values()) {
-    values.sort((left, right) => left.testPath.localeCompare(right.testPath) || left.kind.localeCompare(right.kind));
+    values.sort((left, right) => compareText(left.testPath, right.testPath) || compareText(left.kind, right.kind));
   }
   return evidence;
 }
@@ -1791,5 +1792,5 @@ function escapeRegExp(value) {
 
 function byRiskThenName(left, right) {
   const riskOrder = { high: 0, medium: 1, low: 2 };
-  return (riskOrder[left.risk] ?? 3) - (riskOrder[right.risk] ?? 3) || left.name.localeCompare(right.name);
+  return (riskOrder[left.risk] ?? 3) - (riskOrder[right.risk] ?? 3) || compareText(left.name, right.name);
 }

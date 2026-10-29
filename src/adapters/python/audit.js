@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { finishAuditPhase, startAuditPhase } from "../../core/audit-phase-timing.js";
+import { compareText } from "../../core/ordering.js";
 
 const SOURCE_EXTENSIONS = [".py"];
 const DEFAULT_PYTEST_PYTHON_FILES = ["test_*.py", "*_test.py"];
@@ -44,7 +45,7 @@ export function auditPythonRepo(root, options = {}) {
   const parsedTestSupportFiles = Object.values(parsedTestSupportFileFactsByPath);
   const testFiles = parsedTestSupportFiles
     .filter((file) => isTestFile(file.path, pytestDiscovery))
-    .sort((left, right) => left.path.localeCompare(right.path));
+    .sort((left, right) => compareText(left.path, right.path));
   const pytestFixtures = collectPytestFixtures(files, parsedTestSupportFiles, sourceLayout, pytestDiscovery);
   const frameworkClientEvidence = collectPythonFrameworkClientEvidence(
     files,
@@ -151,7 +152,7 @@ export function auditPythonRepo(root, options = {}) {
     untestedCandidates: untestedCandidates.sort(byRiskThenName),
     coveredButRisky: coveredButRisky.sort(byRiskThenName),
     recommended,
-    skipped: skipped.sort((a, b) => a.name.localeCompare(b.name)),
+    skipped: skipped.sort((a, b) => compareText(a.name, b.name)),
     risks
   };
   finishAuditPhase(onPhaseTiming, "python", "evidence-classification-and-artifact", phaseStartedAt);
@@ -193,7 +194,7 @@ function readRepoFiles(root) {
   }
 
   visit(root);
-  return files;
+  return files.sort((left, right) => compareText(left.path, right.path));
 }
 
 function shouldRead(relative) {
@@ -906,7 +907,7 @@ function isBoundedPackageGlob(value) {
 
 function deduplicatePackageEntries(entries) {
   const unique = [...new Map(entries.map((entry) => [`${entry.importRoot}\0${entry.prefix}`, entry])).values()]
-    .sort((left, right) => left.prefix.length - right.prefix.length || left.prefix.localeCompare(right.prefix));
+    .sort((left, right) => left.prefix.length - right.prefix.length || compareText(left.prefix, right.prefix));
   return unique.filter((entry, index) => !unique.slice(0, index).some((parent) =>
     parent.importRoot === entry.importRoot && entry.prefix.startsWith(parent.prefix)
   ));
@@ -1092,7 +1093,7 @@ function collectPythonTestEvidence(sourceFiles, testFiles, sourceLayout, sourceB
   }
   return new Map([...bySourcePath].map(([sourcePath, evidence]) => [
     sourcePath,
-    evidence.sort((left, right) => left.testPath.localeCompare(right.testPath))
+    evidence.sort((left, right) => compareText(left.testPath, right.testPath))
   ]));
 }
 
@@ -1184,7 +1185,7 @@ function collectPytestFixtures(files, parsedTestSupportFiles, sourceLayout, pyte
           };
         });
     })
-    .sort((left, right) => left.path.localeCompare(right.path) || left.name.localeCompare(right.name));
+    .sort((left, right) => compareText(left.path, right.path) || compareText(left.name, right.name));
 
   const definitionsByName = new Map();
   for (const definition of definitions) {
@@ -1419,7 +1420,7 @@ function collectPythonFrameworkClientEvidence(
   return {
     bootSourcePaths,
     relationships: [...relationships.values()].sort(
-      (left, right) => left.sourcePath.localeCompare(right.sourcePath) || left.testPath.localeCompare(right.testPath)
+      (left, right) => compareText(left.sourcePath, right.sourcePath) || compareText(left.testPath, right.testPath)
     )
   };
 }
@@ -1775,9 +1776,9 @@ function deduplicatePythonRoutes(routes) {
       .map((route) => [`${route.sourcePath}\0${route.method}\0${route.routePath}`, route])
   ).values()].sort(
     (left, right) =>
-      left.sourcePath.localeCompare(right.sourcePath) ||
-      left.method.localeCompare(right.method) ||
-      left.routePath.localeCompare(right.routePath)
+      compareText(left.sourcePath, right.sourcePath) ||
+      compareText(left.method, right.method) ||
+      compareText(left.routePath, right.routePath)
   );
 }
 
@@ -1926,7 +1927,7 @@ function collectPythonPackageReexports(files, sourceLayout, pytestDiscovery) {
   }
   return new Map([...reexportsByModule].map(([sourcePath, reexports]) => [
     sourcePath,
-    reexports.sort((left, right) => left.packageModule.localeCompare(right.packageModule) || left.exported.localeCompare(right.exported))
+    reexports.sort((left, right) => compareText(left.packageModule, right.packageModule) || compareText(left.exported, right.exported))
   ]));
 }
 
@@ -1950,7 +1951,7 @@ function pythonSourceLayoutOwner(currentPath, sourceLayout) {
   const normalized = normalizePath(currentPath);
   return sourceLayout.entries
     .filter(({ prefix }) => normalized.startsWith(prefix))
-    .sort((left, right) => right.prefix.length - left.prefix.length || left.importRoot.localeCompare(right.importRoot))[0];
+    .sort((left, right) => right.prefix.length - left.prefix.length || compareText(left.importRoot, right.importRoot))[0];
 }
 
 function pythonSourceLayoutOwnerKey(owner) {
@@ -2134,5 +2135,5 @@ function hasBranching(content) {
 
 function byRiskThenName(a, b) {
   const order = { high: 0, medium: 1, low: 2 };
-  return order[a.risk] - order[b.risk] || a.name.localeCompare(b.name);
+  return order[a.risk] - order[b.risk] || compareText(a.name, b.name);
 }

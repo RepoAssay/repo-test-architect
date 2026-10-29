@@ -5,6 +5,7 @@ import {
   normalizeRepositoryPath as normalizePath,
   readRepositoryTextFiles
 } from "../../core/repository-text-files.js";
+import { compareText } from "../../core/ordering.js";
 
 const IGNORED_DIRECTORIES = new Set([
   ".elixir_ls", ".git", ".idea", ".vscode", "_build", "coverage", "deps", "node_modules", "vendor"
@@ -86,7 +87,7 @@ export function auditElixirRepo(root, options = {}) {
     untestedCandidates: untestedCandidates.sort(byRiskThenName),
     coveredButRisky: coveredButRisky.sort(byRiskThenName),
     recommended,
-    skipped: skipped.sort((left, right) => left.path.localeCompare(right.path)),
+    skipped: skipped.sort((left, right) => compareText(left.path, right.path)),
     risks
   };
 }
@@ -504,7 +505,7 @@ function maskCommentsAndStrings(content) {
 
 function byRiskThenName(left, right) {
   const riskWeight = { high: 0, medium: 1, low: 2 };
-  return (riskWeight[left.risk] ?? 3) - (riskWeight[right.risk] ?? 3) || left.name.localeCompare(right.name);
+  return (riskWeight[left.risk] ?? 3) - (riskWeight[right.risk] ?? 3) || compareText(left.name, right.name);
 }
 
 function escapeRegExp(value) {

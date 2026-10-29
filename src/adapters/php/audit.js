@@ -5,6 +5,7 @@ import {
   normalizeRepositoryPath as normalizePath,
   readRepositoryTextFiles
 } from "../../core/repository-text-files.js";
+import { compareText } from "../../core/ordering.js";
 
 const IGNORED_DIRECTORIES = new Set([
   ".git", ".idea", ".vscode", "build", "cache", "coverage", "dist", "node_modules", "vendor"
@@ -97,7 +98,7 @@ export function auditPhpRepo(root, options = {}) {
     untestedCandidates: untestedCandidates.sort(byRiskThenName),
     coveredButRisky: coveredButRisky.sort(byRiskThenName),
     recommended,
-    skipped: skipped.sort((left, right) => left.path.localeCompare(right.path)),
+    skipped: skipped.sort((left, right) => compareText(left.path, right.path)),
     risks
   };
 }
@@ -684,7 +685,7 @@ function firstDirectory(filePath) {
 
 function byRiskThenName(left, right) {
   const risk = { high: 0, medium: 1, low: 2 };
-  return (risk[left.risk] ?? 3) - (risk[right.risk] ?? 3) || left.name.localeCompare(right.name);
+  return (risk[left.risk] ?? 3) - (risk[right.risk] ?? 3) || compareText(left.name, right.name);
 }
 
 function escapeRegExp(value) {

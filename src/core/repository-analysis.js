@@ -5,6 +5,7 @@ import { createProjectFindings } from "./project-findings.js";
 import { collectProjectStats } from "./project-stats.js";
 import { createProjectTestPlan } from "./project-test-plan.js";
 import { validateProjectAudits } from "./project-audits-validation.js";
+import { compareText } from "./ordering.js";
 
 /**
  * @typedef {object} RepositoryAnalysis
@@ -38,7 +39,7 @@ export function createRepositoryAnalysis(projectAudits) {
   const stats = collectProjectStats(projectAudits);
   const verificationCommands = Object.entries(stats.distributions.testCommands)
     .map(([command, projectCount]) => ({ command, projectCount }))
-    .sort((left, right) => left.command.localeCompare(right.command));
+    .sort((left, right) => compareText(left.command, right.command));
 
   return {
     schemaVersion: "repository-analysis/v1",

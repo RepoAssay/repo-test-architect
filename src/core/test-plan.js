@@ -1,3 +1,4 @@
+import { compareText } from "./ordering.js";
 /**
  * @typedef {"unit" | "integration" | "component" | "ui" | "none"} TestLevel
  * @typedef {"add-test" | "extend-test" | "defer"} PlanAction
@@ -73,7 +74,7 @@ export function createTestPlan(audit) {
     }));
 
   const items = [...addItems, ...extendItems, ...deferredItems].sort(
-    (a, b) => b.priority - a.priority || b.riskReductionScore - a.riskReductionScore || a.target.localeCompare(b.target)
+    (a, b) => b.priority - a.priority || b.riskReductionScore - a.riskReductionScore || compareText(a.target, b.target)
   );
 
   return {

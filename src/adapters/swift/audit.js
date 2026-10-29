@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { finishAuditPhase, startAuditPhase } from "../../core/audit-phase-timing.js";
+import { compareText } from "../../core/ordering.js";
 
 const SOURCE_EXTENSIONS = [".swift", ".m", ".mm"];
 const GENERIC_SOURCE_BASENAMES = new Set(["common", "handler", "helpers", "main", "types", "utilities", "utility", "utils"]);
@@ -28,7 +29,7 @@ export function auditSwiftRepo(root, options = {}) {
   const testFiles = files
     .filter((file) => isTestFile(file.path, sourceGraph))
     .map((file) => buildSwiftTestFacts(file, sourceGraph))
-    .sort((a, b) => a.path.localeCompare(b.path));
+    .sort((a, b) => compareText(a.path, b.path));
   finishAuditPhase(onPhaseTiming, "swift", "test-parsing-and-index", phaseStartedAt);
 
   phaseStartedAt = startAuditPhase(onPhaseTiming);
@@ -100,7 +101,7 @@ export function auditSwiftRepo(root, options = {}) {
     untestedCandidates: untestedCandidates.sort(byRiskThenName),
     coveredButRisky: coveredButRisky.sort(byRiskThenName),
     recommended,
-    skipped: skipped.sort((a, b) => a.name.localeCompare(b.name)),
+    skipped: skipped.sort((a, b) => compareText(a.name, b.name)),
     risks
   };
   finishAuditPhase(onPhaseTiming, "swift", "evidence-classification-and-artifact", phaseStartedAt);
@@ -148,7 +149,7 @@ function readRepoFiles(root) {
   }
 
   visit(root);
-  return files;
+  return files.sort((left, right) => compareText(left.path, right.path));
 }
 
 function shouldRead(relative) {
@@ -827,7 +828,7 @@ function findClosingSwiftBrace(content, openBrace) {
 function findSwiftSymbolUsage(testFile, symbols) {
   if (symbols.size === 0) return undefined;
 
-  for (const [, descriptor] of [...symbols].sort(([left], [right]) => left.localeCompare(right))) {
+  for (const [, descriptor] of [...symbols].sort(([left], [right]) => compareText(left, right))) {
     if (descriptor.kind === "extension-func") {
       const extensionUsage = findSwiftExtensionMemberUsage(testFile, descriptor);
       if (extensionUsage) return extensionUsage;
@@ -1482,7 +1483,7 @@ function isVersionSpecificSwiftPmManifestPath(currentPath) {
 function swiftPmManifestText(files) {
   return files
     .filter((file) => isSwiftPmManifestPath(file.path))
-    .sort((a, b) => normalizePath(a.path).localeCompare(normalizePath(b.path)))
+    .sort((a, b) => compareText(normalizePath(a.path), normalizePath(b.path)))
     .map((file) => maskSwiftCommentsAndStrings(file.content, false))
     .join("\n");
 }
@@ -1860,5 +1861,5 @@ function isFluentPersistenceModel(content) {
 
 function byRiskThenName(a, b) {
   const order = { high: 0, medium: 1, low: 2 };
-  return order[a.risk] - order[b.risk] || a.name.localeCompare(b.name);
+  return order[a.risk] - order[b.risk] || compareText(a.name, b.name);
 }

@@ -2,6 +2,7 @@ import { validateProjectAudits } from "./project-audits-validation.js";
 import { classifyProjectAuditCoverage } from "./project-audit-coverage.js";
 import { collectUnsupportedReasons, normalizeUnsupportedProjects } from "./project-unsupported.js";
 import { createTestPlan } from "./test-plan.js";
+import { compareText } from "./ordering.js";
 
 /**
  * @typedef {"add-test" | "extend-test" | "defer"} ProjectPlanAction
@@ -70,8 +71,8 @@ export function createProjectTestPlan(projectAudits) {
       (a, b) =>
         b.priority - a.priority ||
         b.riskReductionScore - a.riskReductionScore ||
-        a.projectRoot.localeCompare(b.projectRoot) ||
-        a.target.localeCompare(b.target)
+        compareText(a.projectRoot, b.projectRoot) ||
+        compareText(a.target, b.target)
     );
 
   const unsupportedProjects = normalizeUnsupportedProjects(projectAudits.skippedProjects);

@@ -2,6 +2,7 @@ import { classifyProjectAuditCoverage } from "./project-audit-coverage.js";
 import { validateProjectAudits } from "./project-audits-validation.js";
 import { collectUnsupportedReasons, normalizeUnsupportedProjects } from "./project-unsupported.js";
 import { analyzeProjectTestPlacement } from "./project-test-placement-analysis.js";
+import { compareText } from "./ordering.js";
 
 const DEFAULT_MAX_FINDINGS = 10;
 const AUXILIARY_PROJECT_ROOT_NAMES = new Set(["docs", "examples", "playground"]);
@@ -251,8 +252,8 @@ function bySeverityThenPriority(a, b) {
   return (
     severityOrder[a.severity] - severityOrder[b.severity] ||
     b.priority - a.priority ||
-    a.projectRoot.localeCompare(b.projectRoot) ||
-    a.title.localeCompare(b.title)
+    compareText(a.projectRoot, b.projectRoot) ||
+    compareText(a.title, b.title)
   );
 }
 

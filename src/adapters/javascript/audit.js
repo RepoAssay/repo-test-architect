@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { compareText } from "../../core/ordering.js";
 
 const SOURCE_EXTENSIONS = [".cjs", ".cts", ".js", ".jsx", ".mjs", ".mts", ".ts", ".tsx"];
 const SOURCE_ROOTS = ["src/", "source/", "lib/"];
@@ -118,7 +119,7 @@ export function auditJavaScriptRepo(root, options = {}) {
     untestedCandidates: untestedCandidates.sort(byRiskThenName),
     coveredButRisky: coveredButRisky.sort(byRiskThenName),
     recommended,
-    skipped: skipped.sort((a, b) => a.name.localeCompare(b.name)),
+    skipped: skipped.sort((a, b) => compareText(a.name, b.name)),
     risks
   };
 }
@@ -154,7 +155,7 @@ function readRepoFiles(root) {
   }
 
   visit(root);
-  return files;
+  return files.sort((left, right) => compareText(left.path, right.path));
 }
 
 function shouldRead(relative) {
@@ -2347,5 +2348,5 @@ function isReactHook(currentPath, content, profile) {
 
 function byRiskThenName(a, b) {
   const order = { high: 0, medium: 1, low: 2 };
-  return order[a.risk] - order[b.risk] || a.name.localeCompare(b.name);
+  return order[a.risk] - order[b.risk] || compareText(a.name, b.name);
 }

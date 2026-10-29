@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { compareText } from "./ordering.js";
 
 export function readRepositoryTextFiles(root, {
   ignoredDirectoryNames = new Set(),
@@ -40,7 +41,7 @@ export function readRepositoryTextFiles(root, {
   }
 
   visit(root, 0);
-  return files.sort((left, right) => left.path.localeCompare(right.path));
+  return files.sort((left, right) => compareText(left.path, right.path));
 }
 
 export function normalizeRepositoryPath(filePath) {

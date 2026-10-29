@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { classifyProjectAuditCoverage } from "./project-audit-coverage.js";
 import { validateProjectAudits } from "./project-audits-validation.js";
+import { compareText } from "./ordering.js";
 
 const IGNORED_DIRECTORIES = new Set([
   ".dart_tool",
@@ -178,7 +179,7 @@ function increment(record, key) {
 }
 
 function sortRecord(record) {
-  return Object.fromEntries(Object.entries(record).sort(([left], [right]) => left.localeCompare(right)));
+  return Object.fromEntries(Object.entries(record).sort(([left], [right]) => compareText(left, right)));
 }
 
 function createSourceFileStats() {
@@ -274,7 +275,7 @@ function normalizeSourceFileStats(stats) {
     audited: stats.audited,
     unsupported: stats.unsupported,
     byLanguage: Object.fromEntries(
-      Object.entries(stats.byLanguage).sort(([left], [right]) => left.localeCompare(right))
+      Object.entries(stats.byLanguage).sort(([left], [right]) => compareText(left, right))
     )
   };
 }

@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { analyzeGoSyntax } from "./syntax.js";
+import { compareText } from "../../core/ordering.js";
 
 const GO_SOURCE_EXTENSION = ".go";
 const BUILD_FILES = new Set(["go.mod", "go.sum", "go.work"]);
@@ -48,7 +49,7 @@ export function auditGoRepo(root, options = {}) {
   const analyzedTestFiles = files
     .filter((file) => buildSelection.byPath.get(file.path)?.included !== false && isTestFile(file.path))
     .map((file) => analyzeTestFile(file))
-    .sort((left, right) => left.path.localeCompare(right.path));
+    .sort((left, right) => compareText(left.path, right.path));
   const testFiles = analyzedTestFiles.filter((file) => file.runnableKinds.size > 0);
   const sourceFiles = files.filter((file) => isSourceFile(file.path));
   const selectedSourceFiles = sourceFiles.filter((file) => buildSelection.byPath.get(file.path)?.included !== false);
@@ -139,7 +140,7 @@ export function auditGoRepo(root, options = {}) {
     untestedCandidates: untestedCandidates.sort(byRiskThenName),
     coveredButRisky: coveredButRisky.sort(byRiskThenName),
     recommended: recommendedTargets,
-    skipped: skipped.sort((left, right) => left.path.localeCompare(right.path)),
+    skipped: skipped.sort((left, right) => compareText(left.path, right.path)),
     risks
   };
 }
@@ -167,7 +168,7 @@ function readRepoFiles(root) {
   }
 
   visit(root);
-  return files.sort((left, right) => left.path.localeCompare(right.path));
+  return files.sort((left, right) => compareText(left.path, right.path));
 }
 
 function shouldRead(currentPath) {
@@ -1638,9 +1639,9 @@ function deduplicateEvidence(evidence) {
   }
   const strengthOrder = { direct: 0, referenced: 1, indirect: 2, naming: 3 };
   return [...unique.values()].sort((left, right) =>
-    left.testPath.localeCompare(right.testPath) ||
+    compareText(left.testPath, right.testPath) ||
     strengthOrder[left.strength] - strengthOrder[right.strength] ||
-    left.kind.localeCompare(right.kind)
+    compareText(left.kind, right.kind)
   );
 }
 
@@ -1888,5 +1889,5 @@ function escapeRegex(value) {
 
 function byRiskThenName(left, right) {
   const weights = { high: 0, medium: 1, low: 2 };
-  return weights[left.risk] - weights[right.risk] || left.name.localeCompare(right.name) || left.path.localeCompare(right.path);
+  return weights[left.risk] - weights[right.risk] || compareText(left.name, right.name) || compareText(left.path, right.path);
 }
