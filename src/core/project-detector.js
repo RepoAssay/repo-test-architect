@@ -529,6 +529,8 @@ function collectMarkerGroups(root) {
         }
         continue;
       }
+      // Manifests must be regular files: symlinks may point outside the repository, and FIFOs block reads.
+      if (!entry.isFile()) continue;
 
       const marker = MARKERS.find((candidate) =>
         candidate.fileName === entry.name ||

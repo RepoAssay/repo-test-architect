@@ -882,4 +882,16 @@ describe("project detector", () => {
     assert.equal(detection.summary.projectCount, 0);
     assert.deepEqual(detection.projects, []);
   });
+
+  it("ignores symlinked manifests that could point outside the repository", { skip: process.platform === "win32" }, () => {
+    const outside = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-outside-"));
+    fs.writeFileSync(path.join(outside, "Cargo.toml"), "[package]\nname = \"outside\"\n");
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-detect-"));
+    fs.mkdirSync(path.join(root, "linked"));
+    fs.symlinkSync(path.join(outside, "Cargo.toml"), path.join(root, "linked", "Cargo.toml"));
+
+    const detection = detectProjects(root);
+
+    assert.deepEqual(detection.projects.map((project) => project.root), []);
+  });
 });

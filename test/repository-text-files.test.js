@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { execFileSync } from "node:child_process";
 import { describe, it } from "node:test";
 import {
   normalizeChangedPath,
@@ -56,5 +57,17 @@ describe("repository text-file kernel", () => {
       () => readRepositoryTextFiles(root, { shouldIncludeFile: () => true, symbolicLinks: "follow" }),
       /supports only symbolicLinks: skip/
     );
+  });
+
+  it("reads only regular files so FIFOs and other special entries cannot block traversal", { skip: process.platform === "win32" }, () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-text-files-"));
+    fs.writeFileSync(path.join(root, "a.txt"), "a\n");
+    execFileSync("mkfifo", [path.join(root, "block.txt")]);
+
+    const files = readRepositoryTextFiles(root, {
+      shouldIncludeFile: ({ relativePath }) => relativePath.endsWith(".txt")
+    });
+
+    assert.deepEqual(files, [{ path: "a.txt", content: "a\n" }]);
   });
 });

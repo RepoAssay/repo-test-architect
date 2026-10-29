@@ -192,7 +192,10 @@ function createSourceFileStats() {
 
 function countProjectSourceFiles(repoRoot, projectRoot, languages, coverageKey, projectRoots) {
   const stats = createSourceFileStats();
-  const absoluteProjectRoot = path.resolve(repoRoot, projectRoot);
+  const absoluteRepoRoot = path.resolve(repoRoot);
+  const absoluteProjectRoot = path.resolve(absoluteRepoRoot, projectRoot);
+  // Saved artifacts are untrusted input: never count files outside the artifact's repository root.
+  if (absoluteProjectRoot !== absoluteRepoRoot && !absoluteProjectRoot.startsWith(`${absoluteRepoRoot}${path.sep}`)) return stats;
   if (!fs.existsSync(absoluteProjectRoot)) return stats;
   const nestedProjectRoots = new Set(projectRoots
     .filter((candidate) => candidate !== projectRoot)

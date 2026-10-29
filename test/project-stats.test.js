@@ -150,4 +150,16 @@ describe("project stats", () => {
       /Expected project audits schemaVersion project-audits\/v1/
     );
   });
+
+  it("does not count source files for project roots outside the artifact root", () => {
+    const projectAudits = auditDetectedProjects(path.resolve("examples/node-vitest-basic"));
+    const escaped = {
+      ...projectAudits,
+      audits: projectAudits.audits.map((entry) => ({ ...entry, projectRoot: "../../src" }))
+    };
+
+    const stats = collectProjectStats(escaped);
+
+    assert.equal(stats.sourceFiles.total, 0);
+  });
 });

@@ -30,7 +30,7 @@ export function readRepositoryTextFiles(root, {
       const relativePath = normalizeRepositoryPath(path.relative(root, absolutePath));
       if (entry.isDirectory()) {
         visit(absolutePath, depth + 1);
-      } else if (shouldIncludeFile({ absolutePath, relativePath, depth })) {
+      } else if (entry.isFile() && shouldIncludeFile({ absolutePath, relativePath, depth })) {
         files.push({
           path: relativePath,
           content: fs.readFileSync(absolutePath, "utf8")
