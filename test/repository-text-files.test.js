@@ -4,8 +4,11 @@ import os from "node:os";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { describe, it } from "node:test";
+import { getProjectDetectionRules } from "../src/core/project-detector.js";
 import {
+  DEFAULT_IGNORED_DIRECTORY_NAMES,
   normalizeChangedPath,
+  normalizePlatformSeparators,
   normalizeRepositoryPath,
   readRepositoryTextFiles
 } from "../src/core/repository-text-files.js";
@@ -41,6 +44,28 @@ describe("repository text-file kernel", () => {
       { path: "z.txt", content: "z\n" }
     ]);
     assert.deepEqual(pruned, [{ relativePath: "nested", depth: 1 }]);
+  });
+
+  it("owns the default ignore list that project detection publishes", () => {
+    assert.deepEqual(getProjectDetectionRules().ignoredDirectories, [...DEFAULT_IGNORED_DIRECTORY_NAMES].sort());
+
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-text-files-defaults-"));
+    for (const directory of ["node_modules", "vendor", "src"]) {
+      fs.mkdirSync(path.join(root, directory));
+      fs.writeFileSync(path.join(root, directory, "a.txt"), `${directory}\n`);
+    }
+    const files = readRepositoryTextFiles(root, { shouldIncludeFile: () => true });
+    assert.deepEqual(files.map((file) => file.path), ["src/a.txt"]);
+  });
+
+  it("can keep backslashes in POSIX file names when only platform separators are converted", { skip: process.platform === "win32" }, () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-text-files-separators-"));
+    fs.mkdirSync(path.join(root, "src"));
+    fs.writeFileSync(path.join(root, "src", "a\\b.txt"), "ab\n");
+    const read = (options) => readRepositoryTextFiles(root, { shouldIncludeFile: () => true, ...options }).map((file) => file.path);
+
+    assert.deepEqual(read({}), ["src/a/b.txt"]);
+    assert.deepEqual(read({ toRepositoryPath: normalizePlatformSeparators }), ["src/a\\b.txt"]);
   });
 
   it("normalizes repository and changed paths portably", () => {

@@ -2,11 +2,40 @@ import fs from "node:fs";
 import path from "node:path";
 import { compareText } from "./ordering.js";
 
+// Default directory names skipped during repository traversal: build output, dependency caches,
+// tool state and fixture trees. Project detection and project stats use this list as-is;
+// adapters pass their own ecosystem-specific set.
+export const DEFAULT_IGNORED_DIRECTORY_NAMES = new Set([
+  ".dart_tool",
+  ".pub-cache",
+  ".build",
+  "_build",
+  ".git",
+  ".gradle",
+  ".swiftpm",
+  ".venv",
+  "__fixtures__",
+  "bin",
+  "build",
+  "coverage",
+  "dist",
+  "deps",
+  "fixtures",
+  "node_modules",
+  "obj",
+  "target",
+  "testdata",
+  "vendor"
+]);
+
 export function readRepositoryTextFiles(root, {
-  ignoredDirectoryNames = new Set(),
+  ignoredDirectoryNames = DEFAULT_IGNORED_DIRECTORY_NAMES,
   shouldPruneDirectory = () => false,
   shouldIncludeFile,
-  symbolicLinks = "skip"
+  symbolicLinks = "skip",
+  // Some adapters historically convert only the platform separator, so a POSIX file name
+  // containing a backslash keeps it. They pass toRepositoryPath to preserve that.
+  toRepositoryPath = normalizeRepositoryPath
 }) {
   if (typeof shouldIncludeFile !== "function") {
     throw new TypeError("readRepositoryTextFiles requires shouldIncludeFile.");
@@ -18,7 +47,7 @@ export function readRepositoryTextFiles(root, {
   const files = [];
 
   function visit(current, depth) {
-    const currentRelativePath = normalizeRepositoryPath(path.relative(root, current));
+    const currentRelativePath = toRepositoryPath(path.relative(root, current));
     if (depth > 0 && shouldPruneDirectory({
       absolutePath: current,
       relativePath: currentRelativePath,
@@ -28,7 +57,7 @@ export function readRepositoryTextFiles(root, {
     for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
       if (ignoredDirectoryNames.has(entry.name) || entry.isSymbolicLink()) continue;
       const absolutePath = path.join(current, entry.name);
-      const relativePath = normalizeRepositoryPath(path.relative(root, absolutePath));
+      const relativePath = toRepositoryPath(path.relative(root, absolutePath));
       if (entry.isDirectory()) {
         visit(absolutePath, depth + 1);
       } else if (entry.isFile() && shouldIncludeFile({ absolutePath, relativePath, depth })) {
@@ -46,6 +75,10 @@ export function readRepositoryTextFiles(root, {
 
 export function normalizeRepositoryPath(filePath) {
   return filePath.replaceAll("\\", "/");
+}
+
+export function normalizePlatformSeparators(filePath) {
+  return filePath.replaceAll(path.sep, "/");
 }
 
 export function normalizeChangedPath(root, currentPath) {

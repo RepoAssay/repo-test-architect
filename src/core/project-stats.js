@@ -3,29 +3,7 @@ import path from "node:path";
 import { classifyProjectAuditCoverage } from "./project-audit-coverage.js";
 import { validateProjectAudits } from "./project-audits-validation.js";
 import { compareText } from "./ordering.js";
-
-const IGNORED_DIRECTORIES = new Set([
-  ".dart_tool",
-  ".pub-cache",
-  ".build",
-  "_build",
-  ".git",
-  ".gradle",
-  ".swiftpm",
-  ".venv",
-  "__fixtures__",
-  "bin",
-  "build",
-  "coverage",
-  "dist",
-  "deps",
-  "fixtures",
-  "node_modules",
-  "obj",
-  "target",
-  "testdata",
-  "vendor"
-]);
+import { DEFAULT_IGNORED_DIRECTORY_NAMES as IGNORED_DIRECTORIES } from "./repository-text-files.js";
 
 const LANGUAGE_EXTENSIONS = new Map([
   ["dart", [".dart"]],
