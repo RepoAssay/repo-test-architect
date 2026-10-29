@@ -29,32 +29,38 @@ const FRAMEWORK_MEMBERS = new Set([
 const SKIP_HINT = /\b(?:skip|skipIf|runIf|x(?:it|test|describe|context|specify))\b/;
 const COMMENTS = new Set(["LineComment", "BlockComment"]);
 const FUNCTIONS = new Set(["ArrowFunction", "FunctionExpression"]);
-const SCOPE_BOUNDARIES = new Set([...FUNCTIONS, "FunctionDeclaration", "ClassDeclaration", "ClassExpression"]);
 const EAGER_CALLS = new Set(["CallExpression", "NewExpression", "TaggedTemplateExpression"]);
 const MAX_NESTING = 256;
+
+// Runners that never call a skipped suite's callback; elsewhere (Mocha, Jest,
+// Vitest, Playwright, globals) the callback runs to collect tests.
+const NON_COLLECTING_MODULES = new Set(["node:test", "bun:test"]);
 
 // Returns sorted, non-overlapping [from, to) ranges to blank for statically skipped
 // test calls: the callee's own tokens and function expressions in its arguments
 // that are never called while the arguments are built (callbacks, functions in
 // `.each` tables). Everything else in the arguments is evaluated eagerly, so it
-// stays. A skipped suite still runs its callback to collect tests, so instead of
-// blanking that callback, the tests and hooks registered inside it are skipped.
+// stays. Where a skipped suite still runs its callback to collect tests, that
+// callback stays and the tests and hooks registered inside it are skipped instead.
 export function findSkippedJavaScriptTestRanges(filePath, content) {
   if (!SKIP_HINT.test(content) || exceedsNestingLimit(content)) return [];
   const tree = parseWithoutErrors(filePath, content);
   if (!tree) return [];
   const text = (node) => content.slice(node.from, node.to);
-  const untrusted = collectUntrustedFrameworkNames(tree, text);
+  const { untrusted, nonCollecting } = collectFrameworkNameTrust(tree, text);
+  const soleCallbacks = collectSoleUseFunctions(tree, text);
   const ranges = [];
   const skippedSuiteBodies = [];
   const skip = (chain) => {
     ranges.push(...chain.calleeRanges);
-    const suite = isSuiteLikeChain(chain);
+    const collecting = isSuiteLikeChain(chain) && !nonCollecting.has(chain.base);
     for (const [index, step] of chain.steps.entries()) {
       if (!step.args) continue;
+      const final = index === chain.steps.length - 1;
       for (const argument of argumentsOf(step.args)) {
-        const block = suite && index === chain.steps.length - 1 && FUNCTIONS.has(argument.name) ? argument.getChild("Block") : undefined;
+        const block = collecting && final && FUNCTIONS.has(argument.name) ? argument.getChild("Block") : undefined;
         if (block) skippedSuiteBodies.push(block);
+        else if (final && argument.name === "VariableName" && soleCallbacks.has(text(argument))) ranges.push(soleCallbacks.get(text(argument)));
         else ranges.push(...dormantFunctionRanges(argument));
       }
     }
@@ -72,13 +78,13 @@ export function findSkippedJavaScriptTestRanges(filePath, content) {
       else if (isSuiteChain(chain)) pending.push(...callbackBodies(chain.steps.at(-1).args));
     }
   }
-  // Inside a skipped suite every framework call reached without entering another
-  // function (loops and conditionals included) registers a skipped test or hook.
+  // Every framework call anywhere inside a collected skipped suite (loops, helper
+  // callbacks such as `cases.forEach(...)`) registers a skipped test or hook.
+  // Framework names are trusted file-wide, so these calls are the framework's.
   while (skippedSuiteBodies.length > 0) {
     const stack = [skippedSuiteBodies.pop()];
     while (stack.length > 0) {
       const node = stack.pop();
-      if (SCOPE_BOUNDARIES.has(node.name)) continue;
       const chain = node.name === "CallExpression" ? calleeChain(node, text) : undefined;
       if (chain && FRAMEWORK_NAMES.has(chain.base) && !untrusted.has(chain.base)) {
         skip(chain);
@@ -116,21 +122,63 @@ function dormantFunctionRanges(argument) {
   return ranges;
 }
 
+// `const name = () => ...` / `function name() {...}` whose name is defined once and
+// referenced exactly once in the file, mapped to the range of the function's
+// code. When that one reference is a skipped test's callback, the code never runs.
+function collectSoleUseFunctions(tree, text) {
+  const definitions = new Map();
+  const references = new Map();
+  tree.iterate({
+    enter(ref) {
+      // Shorthand properties (`{ check }`) are references too.
+      const shorthand = ref.name === "PropertyDefinition" && ref.node.parent?.name === "Property" && childrenOf(ref.node.parent).length === 1;
+      if (ref.name === "VariableName" || shorthand) references.set(text(ref), (references.get(text(ref)) ?? 0) + 1);
+      if (ref.name !== "VariableDefinition") return;
+      const node = ref.node;
+      const parent = node.parent;
+      const value = parent?.name === "VariableDeclaration" && node.nextSibling?.name === "Equals" ? node.nextSibling.nextSibling : undefined;
+      const body = parent?.name === "FunctionDeclaration" ? parent.getChild("Block") : undefined;
+      const range = value && FUNCTIONS.has(value.name) ? [value.from, value.to] : body ? [body.from, body.to] : undefined;
+      const name = text(ref);
+      definitions.set(name, definitions.has(name) ? undefined : range);
+    }
+  });
+  const sole = new Map();
+  for (const [name, range] of definitions) {
+    if (range && references.get(name) === 1) sole.set(name, range);
+  }
+  return sole;
+}
+
 // The parser recovers with error nodes (slowly) beyond a few hundred nesting
 // levels, and error trees are never used, so give up early. Brackets inside
-// strings, templates and comments are ignored; anything this quick pass misreads
-// (e.g. regex literals) can only end the scan with "keep evidence" or reach the
-// parser, never blank more.
+// strings, template text and comments are ignored, while `${...}` interpolations
+// count as code; anything this quick pass misreads (e.g. regex literals) can
+// only end the scan with "keep evidence" or reach the parser, never blank more.
 function exceedsNestingLimit(content) {
   let depth = 0;
+  let inTemplate = false;
+  const interpolationDepths = [];
   for (let index = 0; index < content.length; index += 1) {
     const character = content[index];
-    if (character === "\"" || character === "'" || character === "`") {
+    if (inTemplate) {
+      if (character === "\\") index += 1;
+      else if (character === "`") inTemplate = false;
+      else if (character === "$" && content[index + 1] === "{") {
+        interpolationDepths.push(depth);
+        depth += 1;
+        if (depth > MAX_NESTING) return true;
+        inTemplate = false;
+        index += 1;
+      }
+    } else if (character === "\"" || character === "'") {
       index += 1;
-      while (index < content.length && content[index] !== character && (character === "`" || content[index] !== "\n")) {
+      while (index < content.length && content[index] !== character && content[index] !== "\n") {
         if (content[index] === "\\") index += 1;
         index += 1;
       }
+    } else if (character === "`") {
+      inTemplate = true;
     } else if (character === "/" && content[index + 1] === "/") {
       while (index < content.length && content[index] !== "\n") index += 1;
     } else if (character === "/" && content[index + 1] === "*") {
@@ -141,6 +189,10 @@ function exceedsNestingLimit(content) {
       if (depth > MAX_NESTING) return true;
     } else if (character === ")" || character === "]" || character === "}") {
       depth = Math.max(0, depth - 1);
+      if (character === "}" && interpolationDepths.at(-1) === depth) {
+        interpolationDepths.pop();
+        inTemplate = true;
+      }
     }
   }
   return false;
@@ -260,21 +312,25 @@ function hasNodeTestSkipOption(argList, text) {
 // Framework names with any occurrence other than a plain framework import/require
 // binding or the base of a recognised call chain (rebinding, parameters, member
 // assignment such as `test.skip = ...`, passing `test` as a value, ...).
-function collectUntrustedFrameworkNames(tree, text) {
+// Also reports names imported from runners that never run skipped suite callbacks.
+function collectFrameworkNameTrust(tree, text) {
   const untrusted = new Set();
+  const nonCollecting = new Set();
   tree.iterate({
     enter(ref) {
       if (!["VariableName", "VariableDefinition", "PropertyDefinition"].includes(ref.name)) return;
       const name = text(ref);
       if (!FRAMEWORK_NAMES.has(name) || untrusted.has(name)) return;
       const node = ref.node;
-      const trusted = ref.name === "VariableDefinition" ? isFrameworkImport(node, text)
+      const importedFrom = ref.name === "VariableDefinition" ? frameworkImportModule(node, text) : undefined;
+      if (NON_COLLECTING_MODULES.has(importedFrom)) nonCollecting.add(name);
+      const trusted = ref.name === "VariableDefinition" ? Boolean(importedFrom)
         : ref.name === "PropertyDefinition" ? node.parent?.name === "Property" && childrenOf(node.parent).length > 1
           : (node.parent?.name === "ImportGroup" && node.nextSibling?.name === "as") || isRecognisedCallBase(node, text);
       if (!trusted) untrusted.add(name);
     }
   });
-  return untrusted;
+  return { untrusted, nonCollecting };
 }
 
 // The name is the base of `name(.member)*(...)...` where every member before the
@@ -295,19 +351,24 @@ function isRecognisedCallBase(node, text) {
   }
 }
 
-function isFrameworkImport(definition, text) {
-  const fromFramework = (stringNode) => stringNode?.name === "String" && FRAMEWORK_MODULES.has(text(stringNode).slice(1, -1));
+// The framework module a binding is a plain import/require destructuring of.
+function frameworkImportModule(definition, text) {
+  const fromFramework = (stringNode) => {
+    const module = stringNode?.name === "String" ? text(stringNode).slice(1, -1) : undefined;
+    return FRAMEWORK_MODULES.has(module) ? module : undefined;
+  };
   const parent = definition.parent;
-  if (definition.prevSibling?.name === "as") return false;
+  if (definition.prevSibling?.name === "as") return undefined;
   if (parent?.name === "ImportDeclaration") return fromFramework(parent.getChild("String"));
   if (parent?.name === "ImportGroup") return fromFramework(parent.parent?.getChild("String"));
-  if (parent?.name !== "PatternProperty" || childrenOf(parent).length !== 1) return false;
+  if (parent?.name !== "PatternProperty" || childrenOf(parent).length !== 1) return undefined;
   // `const { test } = require("node:test")`: the initializer of this declarator only.
   const pattern = parent.parent;
-  if (pattern?.name !== "ObjectPattern" || pattern.parent?.name !== "VariableDeclaration") return false;
+  if (pattern?.name !== "ObjectPattern" || pattern.parent?.name !== "VariableDeclaration") return undefined;
   const equals = pattern.nextSibling;
   const initializer = equals?.name === "Equals" ? equals.nextSibling : undefined;
   const parts = initializer?.name === "CallExpression" ? childrenOf(initializer) : [];
   const args = parts[1]?.name === "ArgList" ? argumentsOf(parts[1]) : [];
-  return parts.length === 2 && parts[0].name === "VariableName" && text(parts[0]) === "require" && args.length === 1 && fromFramework(args[0]);
+  const isRequire = parts.length === 2 && parts[0].name === "VariableName" && text(parts[0]) === "require" && args.length === 1;
+  return isRequire ? fromFramework(args[0]) : undefined;
 }

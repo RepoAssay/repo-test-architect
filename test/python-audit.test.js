@@ -1978,15 +1978,35 @@ describe("Python skipped tests", () => {
     ]) {
       assert.ok(calcEvidence(auditCalcTest(t, body))?.length, body);
     }
+    // The skip call's arguments are credited; the skipped body never is.
     for (const body of [
       "class TestCalc(unittest.TestCase):\n    def test_calc(self):\n        self.skipTest(str(calc(2)))\n",
-      "def test_calc():\n    pytest.skip(str(calc(2)))\n"
+      "def test_calc():\n    pytest.skip(str(calc(2)))\n",
+      "def test_calc():\n    pytest.skip(str(calc(2)))\n    assert calc(2) == 4\n",
+      "@pytest.mark.skip(reason=str(calc(2)))\ndef test_calc():\n    assert calc(2)==4\n",
+      "class TestCalc(unittest.TestCase):\n    @unittest.skip(str(calc(2)))\n    def test_calc(self):\n        self.assertEqual(calc(2), 4)\n"
     ]) {
       assert.equal(calcEvidence(auditCalcTest(t, body))?.[0].usage, "called", body);
     }
-    // The skip statement runs; only what follows it is dropped.
-    const truncated = calcEvidence(auditCalcTest(t, "def test_calc():\n    pytest.skip(str(calc(2)))\n    assert calc(2) == 4\n"));
-    assert.equal(truncated?.[0].usage, "called");
+    // Module-level code is not usage evidence, so module-level skips keep only the import.
+    for (const body of [
+      "pytestmark = pytest.mark.skip(reason=str(calc(2)))\n\ndef test_calc():\n    assert calc(2)==4\n",
+      "pytest.skip(str(calc(2)), allow_module_level=True)\n\ndef test_calc():\n    assert calc(2)==4\n"
+    ]) {
+      assert.deepEqual(calcEvidence(auditCalcTest(t, body)), [{ testPath: "tests/test_math.py", kind: "python-module-import", strength: "direct" }], body);
+    }
+  });
+
+  it("excludes skipped bodies whatever the skip's non-calling arguments are", (t) => {
+    for (const body of [
+      "REASON=\"old\"\n@pytest.mark.skip(reason=REASON)\ndef test_calc():\n    assert calc(2)==4\n",
+      "REASON=\"old\"\nclass TestCalc(unittest.TestCase):\n    @unittest.skip(REASON)\n    def test_calc(self):\n        self.assertEqual(calc(2), 4)\n",
+      "REASON=\"old\"\npytestmark = pytest.mark.skip(reason=REASON)\n\ndef test_calc():\n    assert calc(2)==4\n",
+      "REASON=\"old\"\npytest.skip(REASON, allow_module_level=True)\n\ndef test_calc():\n    assert calc(2)==4\n",
+      "class TestCalc(unittest.TestCase):\n    def test_calc(self):\n        self.skipTest(self.REASON)\n        self.assertEqual(calc(2), 4)\n"
+    ]) {
+      assert.equal(calcEvidence(auditCalcTest(t, body)), undefined, body);
+    }
   });
 
   it("decides whole-module removal from every test definition in the syntax tree", (t) => {

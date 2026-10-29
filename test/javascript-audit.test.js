@@ -2145,9 +2145,36 @@ describe("JavaScript skipped tests", () => {
     }
   });
 
-  it("keeps collection code of skipped suites while skipping their tests", (t) => {
-    assert.equal(calcEvidence(auditCalcTest(t, 'describe.skip("old",()=>{for(const value of [calc(2)])it("case",()=>assert.equal(value,4));});'))?.[0].usage, "called");
-    assert.equal(calcEvidence(auditCalcTest(t, 'xdescribe("old",()=>{const value=calc(2);describe("inner",()=>{it("case",()=>assert.equal(value,4));});});'))?.[0].usage, "called");
+  const MOCHA_HEADER = 'import { describe, it, beforeEach } from "mocha";\nimport assert from "node:assert/strict";\nimport { calc } from "../src/calc.js";\n';
+  const VITEST_HEADER = 'import { describe, it } from "vitest";\nimport assert from "node:assert/strict";\nimport { calc } from "../src/calc.js";\n';
+  const GLOBALS_HEADER = 'import assert from "node:assert/strict";\nimport { calc } from "../src/calc.js";\n';
+
+  it("keeps collection code of skipped suites in runners that collect them", (t) => {
+    for (const header of [MOCHA_HEADER, VITEST_HEADER, GLOBALS_HEADER]) {
+      for (const body of [
+        'describe.skip("old",()=>{for(const value of [calc(2)])it("case",()=>assert.equal(value,4));});',
+        'xdescribe("old",()=>{const value=calc(2);describe("inner",()=>{it("case",()=>assert.equal(value,4));});});'
+      ]) {
+        assert.equal(calcEvidence(auditCalcTest(t, body, { header }))?.[0].usage, "called", `${header}${body}`);
+      }
+    }
+  });
+
+  it("skips tests and hooks registered anywhere inside a collected skipped suite", (t) => {
+    for (const body of [
+      'describe.skip("s",()=>{[2].forEach(v=>it("x",()=>assert.equal(calc(v),4)));});',
+      'describe.skip("s",()=>{const check=()=>assert.equal(calc(2),4);it("x",check);});',
+      'describe.skip("s",()=>{function check(){assert.equal(calc(2),4);}beforeEach(check);it("x",()=>{});});'
+    ]) {
+      assert.equal(calcEvidence(auditCalcTest(t, body, { header: MOCHA_HEADER })), undefined, body);
+    }
+    // A helper referenced elsewhere may run, so it stays.
+    const shared = 'const check=()=>assert.equal(calc(2),4);describe.skip("s",()=>{it("x",check);});check();';
+    assert.equal(calcEvidence(auditCalcTest(t, shared, { header: MOCHA_HEADER }))?.[0].usage, "asserted");
+  });
+
+  it("blanks whole skipped suite callbacks for node:test, which never runs them", (t) => {
+    assert.equal(calcEvidence(auditCalcTest(t, 'describe.skip("s",()=>{assert.equal(calc(2),4);it("x",()=>{});});')), undefined);
   });
 
   it("keeps trusting framework names used through documented members", (t) => {
@@ -2204,7 +2231,8 @@ describe("JavaScript skipped tests", () => {
     const leaf = 'it.skip("x",()=>{assert.equal(calc(2),4);});';
     for (const body of [
       'const pad="' + ")".repeat(2 * depth) + '";' + 'describe("a",()=>{'.repeat(depth) + leaf + "});".repeat(depth),
-      'describe(")))",()=>{'.repeat(depth) + leaf + "});".repeat(depth)
+      'describe(")))",()=>{'.repeat(depth) + leaf + "});".repeat(depth),
+      "const x=`${(()=>{" + 'describe("a",()=>{'.repeat(depth) + "0;" + "});".repeat(depth) + "})()}`;" + leaf
     ]) {
       const startedAt = performance.now();
       const evidence = calcEvidence(auditCalcTest(t, body));

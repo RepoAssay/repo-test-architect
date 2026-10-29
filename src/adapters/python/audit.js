@@ -942,7 +942,8 @@ function isTestFile(currentPath, pytestDiscovery = EMPTY_PYTEST_DISCOVERY) {
 function buildPythonParsedFileFacts(file, sourceLayout) {
   const normalizedPath = normalizePath(file.path);
   const maskedContent = maskPythonCommentsAndStrings(file.content);
-  const functions = Object.freeze(parsePythonFunctions(file.content, maskedContent).map((pythonFunction) => Object.freeze({
+  const skips = analyzePythonSkips(file.content);
+  const functions = Object.freeze(parsePythonFunctions(file.content, maskedContent, skips).map((pythonFunction) => Object.freeze({
     ...pythonFunction,
     parameters: Object.freeze(pythonFunction.parameters),
     decorators: Object.freeze(pythonFunction.decorators)
@@ -957,7 +958,7 @@ function buildPythonParsedFileFacts(file, sourceLayout) {
     content: file.content,
     maskedContent,
     maskedFunctionBlocks: maskPythonFunctionBlocks(file.content, maskedContent),
-    analysis: Object.freeze({ functions, imports })
+    analysis: Object.freeze({ functions, imports, allTestsSkipped: skips.allTestsSkipped })
   });
 }
 
@@ -1842,11 +1843,10 @@ function maskPythonTypeCheckingBlocks(content) {
   return lines.join("\n");
 }
 
-function parsePythonFunctions(content, maskedContent = maskPythonCommentsAndStrings(content)) {
+function parsePythonFunctions(content, maskedContent = maskPythonCommentsAndStrings(content), skips = analyzePythonSkips(content)) {
   const rawLines = content.split(/\r?\n/);
   const maskedLines = maskedContent.split(/\r?\n/);
   const functions = [];
-  const skips = analyzePythonSkips(content);
 
   for (let index = 0; index < maskedLines.length; index += 1) {
     const maskedLine = maskedLines[index];
@@ -1868,13 +1868,17 @@ function parsePythonFunctions(content, maskedContent = maskPythonCommentsAndStri
     // Lines after an unconditional top-level skip statement never run.
     const skipLine = skips.truncatedDefinitionLines.get(index);
     const activeEnd = skipLine === undefined ? end : Math.max(index + 1, Math.min(end, skipLine));
+    // A skipped function whose skip decorator calls code keeps only that decorator
+    // text as evidence; its body never runs.
+    const [liveStart, liveEnd] = skips.liveDecoratorLines.get(index) ?? [];
+    const [bodyStart, bodyEnd] = liveStart === undefined ? [index + 1, activeEnd] : [liveStart, liveEnd];
     functions.push({
       name: match[2],
       parameters: parsePythonParameters(match[3]),
       decorators,
-      body: maskedLines.slice(index + 1, activeEnd).join("\n"),
-      rawBody: rawLines.slice(index + 1, activeEnd).join("\n"),
-      skipped: skips.moduleSkipped || skips.skippedDefinitionLines.has(index)
+      body: maskedLines.slice(bodyStart, bodyEnd).join("\n"),
+      rawBody: rawLines.slice(bodyStart, bodyEnd).join("\n"),
+      skipped: liveStart === undefined && (skips.moduleSkipped || skips.skippedDefinitionLines.has(index))
     });
     index = end - 1;
   }
@@ -1886,11 +1890,10 @@ function parsePythonFunctions(content, maskedContent = maskPythonCommentsAndStri
 // Both pytest and unittest collect any `test`-prefixed name (e.g. `testCalc`).
 function activePythonTestFile(testFile) {
   const isTest = (pythonFunction) => pythonFunction.name.startsWith("test");
-  const tests = testFile.analysis.functions.filter(isTest);
-  if (!tests.some((pythonFunction) => pythonFunction.skipped)) return testFile;
   // The line-based parser misses some definitions (e.g. multi-line signatures), so
   // whole-module removal is decided on the syntax tree's complete test list.
-  if (tests.every((pythonFunction) => pythonFunction.skipped) && analyzePythonSkips(testFile.content).allTestsSkipped) return undefined;
+  if (testFile.analysis.allTestsSkipped) return undefined;
+  if (!testFile.analysis.functions.some((pythonFunction) => pythonFunction.skipped && isTest(pythonFunction))) return testFile;
   return Object.freeze({
     ...testFile,
     analysis: Object.freeze({

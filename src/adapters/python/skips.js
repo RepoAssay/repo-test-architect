@@ -9,7 +9,8 @@ const NO_SKIPS = Object.freeze({
   moduleSkipped: false,
   allTestsSkipped: false,
   skippedDefinitionLines: new Set(),
-  truncatedDefinitionLines: new Map()
+  truncatedDefinitionLines: new Map(),
+  liveDecoratorLines: new Map()
 });
 const SKIP_HINT = /skip/;
 const COMMENTS = new Set(["Comment"]);
@@ -51,11 +52,13 @@ export function analyzePythonSkips(content) {
   const context = {
     text,
     trusted: collectTrustedNames(tree, text),
-    skipTestOverridden: isSkipTestOverridden(tree, text)
+    skipTestOverridden: isSkipTestOverridden(tree, text),
+    liveSkipArguments: false
   };
   const moduleSkipped = isModuleSkipped(tree, context);
   const skippedDefinitionLines = new Set();
   const truncatedDefinitionLines = new Map();
+  const liveDecoratorLines = new Map();
   const testsSkipped = [];
   const visit = (container, inheritedSkip) => {
     for (let child = container.firstChild; child; child = child.nextSibling) {
@@ -65,27 +68,39 @@ export function analyzePythonSkips(content) {
         visit(child, inheritedSkip);
         continue;
       }
-      const skipped = inheritedSkip || (decorated && child.getChildren("Decorator").some((decorator) => isDefiniteSkipDecorator(decorator, context)));
+      const skipDecorators = decorated ? child.getChildren("Decorator").filter((decorator) => isDefiniteSkipDecorator(decorator, context)) : [];
+      const skipped = inheritedSkip || skipDecorators.length > 0;
       const body = definition.getChild("Body");
       if (definition.name === "ClassDefinition") {
         if (body) visit(body, skipped);
         continue;
       }
       const definitionLine = lineOf(definition.from);
-      const imperative = body && imperativeSkip(body, context);
-      const functionSkipped = skipped || Boolean(imperative?.first);
-      if (functionSkipped) skippedDefinitionLines.add(definitionLine);
+      // A skipped body is excluded whatever the skip's arguments are; an imperative
+      // skip keeps its own statement (whose arguments run) and drops what follows.
+      const imperative = skipped ? undefined : body && imperativeSkip(body, context);
+      if (skipped) skippedDefinitionLines.add(definitionLine);
       else if (imperative?.truncatable) truncatedDefinitionLines.set(definitionLine, lineOf(imperative.statement.to) + 1);
+      // Calls in a skip decorator's arguments run at import: the decorator lines stay
+      // as the skipped function's only evidence.
+      const liveDecorators = skipDecorators.filter((decorator) => {
+        const argList = decorator.getChild("ArgList");
+        return argList && !hasInertArguments(argList);
+      });
+      if (liveDecorators.length > 0) liveDecoratorLines.set(definitionLine, [lineOf(liveDecorators[0].from), lineOf(liveDecorators.at(-1).to - 1) + 1]);
       // Module- and class-level definitions are the ones pytest/unittest collect.
-      if (text(definition.getChild("VariableName") ?? definition).startsWith("test")) testsSkipped.push(moduleSkipped || functionSkipped);
+      const testSkipped = moduleSkipped || skipped || Boolean(imperative?.first && imperative.truncatable);
+      if (text(definition.getChild("VariableName") ?? definition).startsWith("test")) testsSkipped.push(testSkipped);
     }
   };
   visit(tree.topNode, false);
   return {
     moduleSkipped,
-    allTestsSkipped: testsSkipped.length > 0 && testsSkipped.every(Boolean),
+    // Skip arguments that run real code keep the module (and that evidence) alive.
+    allTestsSkipped: !context.liveSkipArguments && testsSkipped.length > 0 && testsSkipped.every(Boolean),
     skippedDefinitionLines,
-    truncatedDefinitionLines
+    truncatedDefinitionLines,
+    liveDecoratorLines
   };
 }
 
@@ -211,54 +226,59 @@ function literalCondition(argList, text) {
   return value?.name === "Boolean" ? text(value) : undefined;
 }
 
-// Arguments that evaluate nothing: literals and keyword arguments with literal
-// values. Anything else (calls, names, f-strings) runs real code, whose evidence a
-// "skipped" verdict would delete.
-const INERT_VALUES = new Set(["String", "Boolean", "Number", "None"]);
+// Skip arguments that call code (directly or in f-string replacements) run even
+// though the test is skipped, so a module with such skip arguments is never
+// dropped as a whole. Literals, names and attribute reads (`reason=REASON`) do not
+// call anything.
 function hasInertArguments(argList) {
-  const parts = childrenOf(argList).filter((child) => !["(", ")", ","].includes(child.name));
-  for (let index = 0; index < parts.length; index += 1) {
-    if (parts[index].name === "VariableName" && parts[index + 1]?.name === "AssignOp") index += 2;
-    if (!INERT_VALUES.has(parts[index]?.name)) return false;
+  const stack = [argList];
+  while (stack.length > 0) {
+    const node = stack.pop();
+    if (node.name === "CallExpression" || node.name === "FormatReplacement") return false;
+    for (let child = node.firstChild; child; child = child.nextSibling) stack.push(child);
   }
   return true;
 }
 
-function isDefiniteSkip(kind, argList, requireCall, text) {
-  if (!kind || (argList && !hasInertArguments(argList))) return false;
-  if (kind === "always") return !requireCall || Boolean(argList);
-  return Boolean(argList) && literalCondition(argList, text) === kind;
+function isDefiniteSkip(kind, argList, requireCall, context) {
+  const definite = Boolean(kind) && (kind === "always"
+    ? !requireCall || Boolean(argList)
+    : Boolean(argList) && literalCondition(argList, context.text) === kind);
+  if (definite && argList && !hasInertArguments(argList)) context.liveSkipArguments = true;
+  return definite;
 }
 
 // Decorators are flat `@ Name . Name ... ArgList?` sequences in this grammar.
-function isDefiniteSkipDecorator(decorator, { text, trusted }) {
+function isDefiniteSkipDecorator(decorator, context) {
+  const { text, trusted } = context;
   const parts = childrenOf(decorator).slice(1);
   const argList = parts.at(-1)?.name === "ArgList" ? parts.pop() : undefined;
   if (parts.length === 0 || parts.some((part, index) => part.name !== (index % 2 === 0 ? "VariableName" : "."))) return false;
   const name = parts.filter((part) => part.name === "VariableName").map(text).join(".");
   if (!isTrustedDottedName(name, trusted)) return false;
   const kind = DEFINITE_DECORATORS.get(name) ?? UNITTEST_SKIP_NAMES.get(name);
-  return isDefiniteSkip(kind, argList, !name.startsWith("pytest."), text);
+  return isDefiniteSkip(kind, argList, !name.startsWith("pytest."), context);
 }
 
 // `pytest.mark.skip`, `pytest.mark.skip(...)` or `pytest.mark.skipif(True, ...)` as an expression.
-function isDefiniteSkipMark(node, { text, trusted }) {
+function isDefiniteSkipMark(node, context) {
+  const { text, trusted } = context;
   if (!trusted.has("pytest")) return false;
   if (node.name === "CallExpression") {
     const [callee, argList, ...rest] = childrenOf(node);
     if (rest.length > 0 || argList?.name !== "ArgList") return false;
     const name = dottedName(callee, text);
-    return (name === "pytest.mark.skip" || name === "pytest.mark.skipif") && isDefiniteSkip(DEFINITE_DECORATORS.get(name), argList, true, text);
+    return (name === "pytest.mark.skip" || name === "pytest.mark.skipif") && isDefiniteSkip(DEFINITE_DECORATORS.get(name), argList, true, context);
   }
   return dottedName(node, text) === "pytest.mark.skip";
 }
 
 // The first statement of the body that is exactly `pytest.skip(...)` or
 // `self.skipTest(...)`. The statement itself runs (its arguments are evaluated), so
-// only what follows is dropped: `first` (the whole test is skipped) when only
-// docstrings precede it and its arguments are inert; `truncatable` when it ends
-// its line, so the lines after it never run.
-function imperativeSkip(body, { text, trusted, skipTestOverridden }) {
+// only what follows is dropped: `first` (the test is skipped) when only docstrings
+// precede it; `truncatable` when it ends its line, so the lines after it never run.
+function imperativeSkip(body, context) {
+  const { text, trusted, skipTestOverridden } = context;
   let onlyDocstrings = true;
   const statements = childrenOf(body).filter((statement) => statement.name !== ":");
   for (const [index, statement] of statements.entries()) {
@@ -269,7 +289,8 @@ function imperativeSkip(body, { text, trusted, skipTestOverridden }) {
         const argList = expression[0].getChild("ArgList");
         const next = statements[index + 1];
         const endsLine = !next || text({ from: statement.to, to: next.from }).includes("\n");
-        return { statement, first: onlyDocstrings && Boolean(argList) && hasInertArguments(argList), truncatable: endsLine };
+        if (onlyDocstrings && argList && !hasInertArguments(argList)) context.liveSkipArguments = true;
+        return { statement, first: onlyDocstrings, truncatable: endsLine };
       }
     }
     if (!(expression.length === 1 && expression[0].name === "String")) onlyDocstrings = false;
@@ -310,7 +331,9 @@ function isModuleSkipped(tree, context) {
         const [call, ...rest] = childrenOf(node);
         if (rest.length > 0 || call?.name !== "CallExpression" || dottedName(call.firstChild, text) !== "pytest.skip") return;
         const argList = call.getChild("ArgList");
-        moduleLevelSkip ||= Boolean(argList) && hasInertArguments(argList) && /(?:^|[(,])\s*allow_module_level\s*=\s*True\s*(?:[,)]|$)/.test(text(argList));
+        if (!argList || !/(?:^|[(,])\s*allow_module_level\s*=\s*True\s*(?:[,)]|$)/.test(text(argList))) return;
+        moduleLevelSkip = true;
+        if (!hasInertArguments(argList)) context.liveSkipArguments = true;
       }
     }
   });
