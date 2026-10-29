@@ -33,7 +33,7 @@ import {
 const MAX_DISPLAYED_EXISTING_TEST_PATHS = 5;
 const PARTIAL_FAILURE_EXIT_CODE = 2;
 const UNSAFE_TEXT_CHARACTERS = /[\\\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/gu;
-const CONTROL_CHARACTER_ESCAPES =Object.freeze({ "\\": "\\\\", "\n": "\\n", "\r": "\\r", "\t": "\\t" });
+const CONTROL_CHARACTER_ESCAPES = Object.freeze({ "\\": "\\\\", "\n": "\\n", "\r": "\\r", "\t": "\\t" });
 const COMMANDS = [
   "analyze",
   "doctor",
