@@ -32,7 +32,7 @@ The current implementation can:
 
 Native test generation is intentionally deferred. `generate_selected_test` returns a structured deferred artifact until adapter-specific generation policy and repair-loop fixtures exist.
 
-Repo Test Architect `1.0.0` is available on npm as `latest` and in the Official MCP Registry, with stable support for the documented CLI, MCP tools, configuration and versioned artifact contracts. Treat its findings as evidence-backed review input rather than an automatic instruction to change a repository. See the [1.0.0 release notes](docs/release-notes-v1.0.0.md) for changes, compatibility and publication status.
+Repo Test Architect `1.0.1` is the current stable patch release, with stable support for the documented CLI, MCP tools, configuration and versioned artifact contracts. Treat its findings as evidence-backed review input rather than an automatic instruction to change a repository. See the [1.0.1 release notes](docs/release-notes-v1.0.1.md) for security and correctness fixes and publication status, and the [1.0.0 release notes](docs/release-notes-v1.0.0.md) for the stable contract.
 
 Ten adapters are supported within their documented boundaries. Dart/Flutter remains experimental, and native test generation remains deferred.
 
@@ -52,8 +52,8 @@ npx --yes repo-test-architect analyze .
 Pin the stable version:
 
 ```sh
-npx --yes repo-test-architect@1.0.0 doctor
-npx --yes repo-test-architect@1.0.0 analyze .
+npx --yes repo-test-architect@1.0.1 doctor
+npx --yes repo-test-architect@1.0.1 analyze .
 ```
 
 Or install the CLI and MCP server binaries:
@@ -90,7 +90,7 @@ To keep an MCP client on this exact release, pin its version:
       "command": "npx",
       "args": [
         "--yes",
-        "repo-test-architect@1.0.0",
+        "repo-test-architect@1.0.1",
         "mcp"
       ]
     }

@@ -2,6 +2,14 @@
 
 This log records project-level decisions that shape architecture, scope, and public positioning.
 
+# Publish 1.0.1 Patch Release
+
+Decision (2026-10-29): following owner approval, prepare and publish `1.0.1` as a compatible patch release under npm `latest`, with matching Official MCP Registry metadata and a stable GitHub release from the same verified commit.
+
+Rationale: a code assessment found Git option injection through `--changed-since`, a FIFO that could block the MCP server, stats counting outside a saved artifact's root, and changed-path selection that silently dropped unstaged edits and mishandled subdirectory roots. Production dependencies also carried published advisories, including one critical. All fixes are compatible: no CLI, MCP tool, configuration or artifact schema changes. Under the post-1.0 semantic versioning policy these are patch-level fixes.
+
+Scope: per-project error containment, shared adapter file traversal, skipped-test evidence, cross-platform output ordering, MCP artifact validation and MCP tool-definition size are deferred to later releases; per-project error containment needs an artifact contract decision first. The exact-commit release checklist and three-OS release matrix remain mandatory.
+
 # Accelerate Stable 1.0.0 Promotion
 
 Decision (2026-10-01): following owner approval, prepare and publish `1.0.0` to npm under `latest`, publish matching Official MCP Registry metadata, and create a stable GitHub release from the same verified commit. Skip a separate RC and its default seven-day observation period for this promotion. The exact-commit release checklist and full three-OS release matrix remain mandatory.
