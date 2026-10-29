@@ -368,6 +368,13 @@ export declare function analyzeRepoTestPlacement(audit: AuditResult, options?: A
 
 export declare function validateProjectAudits(projectAudits: ProjectAudits): void;
 
+export declare class ArtifactValidationError extends Error {
+  readonly schemaVersion: string;
+  readonly path: string;
+}
+
+declare function assertValidArtifact(artifact: unknown, schemaVersion: "audit/v1" | "project-audits/v1"): void;
+
 export function getAuditGraph(audit: AuditResult): AuditResult {
   validateAudit(audit);
   return audit;
@@ -409,6 +416,9 @@ export function validateAudit(audit: AuditResult): void {
       throw new Error(`Audit ${key} must be an array.`);
     }
   }
+
+  // Deep validation against schemas/audit-v1.schema.json; names the first invalid JSON path.
+  assertValidArtifact(audit, "audit/v1");
 }
 
 function filterPlan(plan: TestPlan, itemId?: string): TestPlan {

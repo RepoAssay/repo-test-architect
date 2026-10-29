@@ -143,6 +143,8 @@ Known tool errors may also include:
 `toolName` identifies the tool that failed. `argument` identifies the missing, unsupported, or invalid argument when the failure is argument-specific.
 For example, `changedPaths: [""]` on `audit_repo` returns `kind: "invalid-arguments"`, `toolName: "audit_repo"`, and `argument: "changedPaths"`.
 
+Saved `audit` and `projectAudits` arguments are validated against `schemas/audit-v1.schema.json` and `schemas/project-audits-v1.schema.json` before use. A mismatch returns `kind: "invalid-arguments"`, the artifact `argument`, and a `path` naming the first invalid JSON location, for example `Invalid audit/v1 artifact at $.untestedCandidates[0]: expected object, got null.` Argument values are never echoed back. The CLI `--from-audit` and `--from-project-audits` options apply the same validation.
+
 Unexpected exceptions return JSON-RPC code `-32603`, the generic message `Internal server error.`, `kind: "internal-error"`, and a locally generated `reportId`. Raw exception messages and stack traces are not returned to the client.
 
 Optional MCP call diagnostics are disabled by default and documented in [Local Diagnostics](diagnostics.md). Events never contain tool arguments, repository paths, source content, prompts, environment values, or stack traces. MCP stdout remains JSON-RPC-only.

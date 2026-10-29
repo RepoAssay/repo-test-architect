@@ -12,7 +12,6 @@
         "projectId": ".",
         "projectRoot": ".",
         "adapterId": "javascript",
-        "adapterMatches": [],
         "audit": {
           "schemaVersion": "audit/v1",
           "profile": {

@@ -63,16 +63,28 @@
                 "type": "object"
               },
               "untestedCandidates": {
-                "type": "array"
+                "type": "array",
+                "items": {
+                  "type": "object"
+                }
               },
               "coveredButRisky": {
-                "type": "array"
+                "type": "array",
+                "items": {
+                  "type": "object"
+                }
               },
               "skipped": {
-                "type": "array"
+                "type": "array",
+                "items": {
+                  "type": "object"
+                }
               },
               "risks": {
-                "type": "array"
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
               }
             }
           }

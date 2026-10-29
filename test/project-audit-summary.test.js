@@ -46,6 +46,7 @@ describe("project audit summary", () => {
             projectRoot: "app",
             adapterId: "javascript",
             audit: {
+              schemaVersion: "audit/v1",
               profile: { confidence: "high" },
               untestedCandidates: [],
               coveredButRisky: [],
