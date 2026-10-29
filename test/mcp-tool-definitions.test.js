@@ -52,6 +52,32 @@ describe("MCP tool definitions", () => {
     assert.ok(JSON.stringify(mcpTools).length < 30000);
   });
 
+  it("accepts every checked-in expected artifact under the compact schema of each tool that returns it", () => {
+    const expectedDir = "evals/expected";
+    const artifacts = fs.readdirSync(expectedDir)
+      .filter((name) => name.endsWith(".json"))
+      .map((name) => ({ name, value: JSON.parse(fs.readFileSync(path.join(expectedDir, name), "utf8")) }))
+      .filter(({ value }) => typeof value?.schemaVersion === "string");
+    let checked = 0;
+
+    for (const { name, value } of artifacts) {
+      for (const tool of mcpTools.filter((candidate) => candidate.outputArtifact.schemaVersion === value.schemaVersion)) {
+        assertMatchesSchema(value, tool.outputSchema, `${name} as ${tool.name}`);
+        checked += 1;
+      }
+    }
+    assert.ok(checked > 100);
+  });
+
+  it("returns live artifacts accepted by the compact schemas, including $ref-resolved properties", () => {
+    const repoRoot = path.resolve("examples/polyglot-workspace");
+    for (const name of ["analyze_repository", "audit_projects", "detect_projects", "list_adapters", "list_project_detection_rules"]) {
+      const tool = mcpTools.find((candidate) => candidate.name === name);
+      const args = Object.keys(tool.inputSchema.properties ?? {}).includes("repoRoot") ? { repoRoot } : {};
+      assertMatchesSchema(callTool(name, args), tool.outputSchema, `${name}.compact`);
+    }
+  });
+
   it("returns artifacts accepted by both the compact and the published output schemas", () => {
     const audit = callTool("audit_repo", { repoRoot: path.resolve("examples/node-vitest-basic") });
     const auditTool = mcpTools.find((tool) => tool.name === "audit_repo");
