@@ -108,6 +108,8 @@ describe("JSON schema validator", () => {
       "2000-02-29T00:00:00Z",
       "2016-12-31T23:59:60Z",
       "2016-12-31T15:59:60-08:00",
+      "2017-01-01T00:59:60+01:00",
+      "2015-06-30T23:59:60.5Z",
       "2026-10-29t12:00:00.5+05:30",
       "2026-10-29T12:00:00z"
     ];
@@ -118,6 +120,8 @@ describe("JSON schema validator", () => {
       "2026-04-31T12:00:00Z",
       "2026-10-29T12:00:60Z",
       "2016-12-31T23:59:60+01:00",
+      "2016-12-31T00:59:60+01:00",
+      "2026-10-29T23:59:60Z",
       "2026-10-29T24:00:00Z",
       "2026-10-29T12:00:00+24:00",
       "2026-10-29T12:00:00+05:60",
@@ -171,6 +175,17 @@ describe("JSON schema validator", () => {
       assert.match(issue.message, /exceeds maximum validation depth of \d+/);
     }
     assert.match(validateAgainstSchema(deep, tree)[0].message, /exceeds maximum validation depth/);
+  });
+
+  it("does not let not/oneOf/anyOf invert depth exhaustion into success", () => {
+    let wrapped = { const: 1 };
+    for (let level = 0; level < 512; level += 1) wrapped = { allOf: [wrapped] };
+
+    for (const schema of [{ not: wrapped }, { anyOf: [wrapped] }, { oneOf: [wrapped] }]) {
+      const issues = validateAgainstSchema(1, schema);
+      assert.equal(issues.length, 1);
+      assert.match(issues[0].message, /exceeds maximum validation depth of 512/);
+    }
   });
 
   it("resolves recursive $defs references", () => {

@@ -299,8 +299,8 @@ describe("saved artifact validation", () => {
       it(`accepts saved artifacts in examples/mcp/${fileName}`, () => {
         const args = readJson(path.join("examples/mcp", fileName));
 
-        if (args.audit) assert.doesNotThrow(() => validateAudit(args.audit));
-        if (args.projectAudits) assert.doesNotThrow(() => validateProjectAudits(args.projectAudits));
+        if (Object.hasOwn(args, "audit")) assert.doesNotThrow(() => validateAudit(args.audit));
+        if (Object.hasOwn(args, "projectAudits")) assert.doesNotThrow(() => validateProjectAudits(args.projectAudits));
       });
     }
 
@@ -323,8 +323,8 @@ describe("saved artifact validation", () => {
           ? readJson(rawArgs.slice(1).replace(/^"|"$/g, ""))
           : JSON.parse(rawArgs.slice(1, -1).replaceAll('\\"', '"'));
 
-        if (args.audit) assert.doesNotThrow(() => validateAudit(args.audit));
-        if (args.projectAudits) assert.doesNotThrow(() => validateProjectAudits(args.projectAudits));
+        if (Object.hasOwn(args, "audit")) assert.doesNotThrow(() => validateAudit(args.audit));
+        if (Object.hasOwn(args, "projectAudits")) assert.doesNotThrow(() => validateProjectAudits(args.projectAudits));
       });
     }
   });

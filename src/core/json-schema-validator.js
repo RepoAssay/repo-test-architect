@@ -84,7 +84,14 @@ export function compileSchema(schema) {
 
   return (value, { rootPath = "$", maxErrors = Infinity } = {}) => {
     const context = { errors: [], maxErrors, depth: 0 };
-    validateRoot(value, { segment: rootPath }, context);
+
+    try {
+      validateRoot(value, { segment: rootPath }, context);
+    } catch (error) {
+      if (!(error instanceof DepthExceeded)) throw error;
+      fail(context, error.path, `exceeds maximum validation depth of ${MAX_VALIDATION_DEPTH}`);
+    }
+
     return context.errors;
   };
 }
@@ -491,11 +498,16 @@ function matchesSilently(validate, value, path, context) {
   return validate(value, path, { errors: [], maxErrors: 1, depth: context.depth });
 }
 
+// Thrown rather than reported as a mismatch so `not`/`oneOf`/`anyOf` cannot turn exhaustion into success.
+class DepthExceeded {
+  constructor(path) {
+    this.path = path;
+  }
+}
+
 function withDepthGuard(validate) {
   return (value, path, context) => {
-    if (context.depth >= MAX_VALIDATION_DEPTH) {
-      return fail(context, path, `exceeds maximum validation depth of ${MAX_VALIDATION_DEPTH}`);
-    }
+    if (context.depth >= MAX_VALIDATION_DEPTH) throw new DepthExceeded(path);
 
     context.depth += 1;
     try {
@@ -542,10 +554,16 @@ function isRfc3339DateTime(value) {
   if (offsetHour > 23 || offsetMinute > 59) return false;
 
   if (second === 60) {
-    // RFC 3339 §5.7: a leap second may only occur at 23:59:60 UTC.
+    // RFC 3339 §5.7: leap seconds are only inserted at 23:59:60 UTC on the last day of June or December.
     const offset = (sign === "-" ? -1 : 1) * (offsetHour * 60 + offsetMinute);
-    const utcMinutes = (((hour * 60 + minute - offset) % 1440) + 1440) % 1440;
-    if (utcMinutes !== 23 * 60 + 59) return false;
+    const utc = new Date(0);
+    utc.setUTCFullYear(year, month - 1, day);
+    utc.setUTCHours(hour, minute - offset, 59, 0);
+
+    const utcMonth = utc.getUTCMonth() + 1;
+    const lastDayOfJuneOrDecember =
+      (utcMonth === 6 || utcMonth === 12) && utc.getUTCDate() === daysInMonth(utc.getUTCFullYear(), utcMonth);
+    if (!lastDayOfJuneOrDecember || utc.getUTCHours() !== 23 || utc.getUTCMinutes() !== 59) return false;
   }
 
   return true;
