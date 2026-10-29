@@ -2,6 +2,8 @@
 
 ## Current State
 
+`1.0.1` is prepared as a compatible patch release with security and correctness fixes: Git option injection through `--changed-since`, changed-path selection, regular-file-only scanning, artifact-root containment for stats, and production dependency advisories. See the [1.0.1 release notes](release-notes-v1.0.1.md); publication status is recorded there and in the [publication ledger](distribution-metrics.md).
+
 `1.0.0` was published on October 1, 2026 to npm under `latest`, the Official MCP Registry and [GitHub as a stable release](https://github.com/RepoAssay/repo-test-architect/releases/tag/v1.0.0). Release commit: `e035d9ab308b3e3704becc6a7b9fd19aa3bd0b99` (PR #284). The full three-OS release matrix passed with 1,450 tests per OS; public npm clean-install and upgrades from 0.3.0 and beta.2 passed on macOS. See the [release notes](release-notes-v1.0.0.md) and [publication ledger](distribution-metrics.md#stable-100-publication--2026-10-01).
 
 The stable scope is ten supported adapters and experimental Dart/Flutter, with frozen CLI, MCP, configuration and versioned artifact contracts. Recent changes fix manifest-free Python unittest discovery and production dependency advisories. The owner approved skipping a separate RC while retaining exact-commit three-OS verification. Recorded external feedback remains limited and is not presented as proof of adoption.
