@@ -1934,7 +1934,17 @@ describe("Python skipped tests", () => {
       // An overridden skipTest need not abort.
       "class TestCalc(unittest.TestCase):\n    def skipTest(self, reason):\n        pass\n\n    def test_calc(self):\n        self.skipTest('noop')\n        self.assertEqual(calc(2), 4)\n",
       // The last pytestmark assignment wins.
-      "pytestmark = pytest.mark.skip(reason='old')\npytestmark = []\n\ndef test_calc():\n    assert calc(2) == 4\n"
+      "pytestmark = pytest.mark.skip(reason='old')\npytestmark = []\n\ndef test_calc():\n    assert calc(2) == 4\n",
+      "pytestmark = pytest.mark.skip(reason='old')\npytestmark: list = []\n\ndef test_calc():\n    assert calc(2) == 4\n",
+      "pytestmark = pytest.mark.skip(reason='old'); pytestmark = []\n\ndef test_calc():\n    assert calc(2) == 4\n",
+      "pytestmark = pytest.mark.skip(reason='old') if False else []\n\ndef test_calc():\n    assert calc(2) == 4\n",
+      // Instance and annotated class-level skipTest overrides.
+      "class TestCalc(unittest.TestCase):\n    def test_calc(self):\n        self.skipTest = lambda reason: None\n        self.skipTest('noop')\n        self.assertEqual(calc(2), 4)\n",
+      "class TestCalc(unittest.TestCase):\n    skipTest: object = lambda self, reason: None\n\n    def test_calc(self):\n        self.skipTest('noop')\n        self.assertEqual(calc(2), 4)\n",
+      // A conditional expression is not an unconditional skip statement.
+      "class TestCalc(unittest.TestCase):\n    def test_calc(self):\n        self.skipTest('old') if False else None\n        self.assertEqual(calc(2), 4)\n",
+      // Files that do not parse cleanly report no skips.
+      "@pytest.mark.skip\ndef test_calc():\n    assert calc(2) == 4\n\ndef broken(:\n    pass\n"
     ]) {
       assert.equal(calcEvidence(auditCalcTest(t, body))?.[0].usage, "asserted", body);
     }

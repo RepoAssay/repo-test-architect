@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { compareText } from "../../core/ordering.js";
+import { findSkippedJavaScriptTestRanges } from "./skips.js";
 
 const SOURCE_EXTENSIONS = [".cjs", ".cts", ".js", ".jsx", ".mjs", ".mts", ".ts", ".tsx"];
 const SOURCE_ROOTS = ["src/", "source/", "lib/"];
@@ -1337,26 +1338,14 @@ function isTestFile(currentPath) {
   );
 }
 
-// `.skip`, x-prefixed callees, and literal `.skipIf(true)` / `.runIf(false)`. TODO
-// variants are not matched: node:test runs TODO callbacks, and Jest/Vitest
-// `test.todo("name")` has no callback to credit.
-const SKIPPED_TEST_CALL_PATTERN = /(?<![\w$.])(?:(?:test\s*\.\s*)?(?:it|test|describe|context|suite|specify)(?:\s*\.\s*[A-Za-z_$][\w$]*)*?\s*\.\s*(?:skip\b|skipIf(?=\s*\(\s*true\s*\))|runIf(?=\s*\(\s*false\s*\)))|x(?:it|test|describe|context|specify)\b)(?:\s*\.\s*[A-Za-z_$][\w$]*)*\s*[(`]/g;
 const ACTIVE_TEST_CALL_PATTERN = /(?<![\w$.])(?:it|test|describe|context|suite|specify|fit|fdescribe)\b(?:\s*\.\s*[A-Za-z_$][\w$]*)*\s*[(`]/;
-// Suite callees (including `.skip`/`.only`/`.each` chains). A skip call is blanked
-// only at top level or when every enclosing call is one of these; inside any other
-// call (test callbacks, aliases, helpers) a skip-looking call may be a runtime
-// skip or a shadowing local, so its evidence is kept.
-const SUITE_CALL_PATTERN = /(?<![\w$.])(?:(?:test\s*\.\s*)?(?:describe|context|suite)|x(?:describe|context)|fdescribe)\b(?:\s*\.\s*[A-Za-z_$][\w$]*)*\s*[(`]/g;
-const NODE_TEST_CALL_PATTERN = /(?<![\w$.])(?:it|test|describe|suite)\s*\(/g;
-const LOCAL_TEST_BINDING_PATTERN = /(?<![\w$.])(?:const|let|var|function|class)\s+(it|test|describe|context|suite|specify|xit|xtest|xdescribe|xcontext|xspecify)\b/g;
-const REGEX_PREFIX_KEYWORDS = new Set(["return", "typeof", "instanceof", "in", "of", "new", "delete", "void", "throw", "case", "do", "else", "yield", "await"]);
 
-// Evidence is derived from active tests only. Skipped blocks are blanked
-// (newlines kept so offsets stay stable). A file is dropped only when, after
-// blanking, no imported binding is still used or called and no test call
-// remains, so aliased or unrecognised active tests keep their evidence.
+// Evidence is derived from active tests only. Skipped calls found on the syntax
+// tree are blanked (newlines kept so offsets stay stable). A file is dropped only
+// when, after blanking, no imported binding is still used, called or asserted and
+// no test call remains, so aliased or unrecognised active tests keep evidence.
 function activeJavaScriptTestFile(testFile) {
-  const ranges = findSkippedJavaScriptTestRanges(testFile.content);
+  const ranges = findSkippedJavaScriptTestRanges(testFile.path, testFile.content);
   if (ranges.length === 0) return testFile;
   const characters = testFile.content.split("");
   for (const [start, end] of ranges) {
@@ -1370,199 +1359,6 @@ function activeJavaScriptTestFile(testFile) {
     moduleImport.usedImportedNames.size > 0 || moduleImport.calledImportedNames.size > 0 || moduleImport.assertedImportedNames.size > 0);
   if (!importsStillUsed && !ACTIVE_TEST_CALL_PATTERN.test(javascriptLexicalViews(content).code)) return undefined;
   return activeFile;
-}
-
-// Whether a `/` starts a regex or divides cannot always be decided lexically, and a
-// wrong guess moves closing delimiters. Ranges are therefore computed twice, with
-// and without regex literals, and only spans both scans agree on are blanked.
-function findSkippedJavaScriptTestRanges(content) {
-  const withRegex = scanJavaScriptDelimiters(content, true);
-  const withoutRegex = withRegex && scanJavaScriptDelimiters(content, false);
-  if (!withoutRegex) return [];
-  const agreed = new Set(skippedJavaScriptCallSpans(withoutRegex).map(([start, end]) => `${start}:${end}`));
-  const ranges = [];
-  for (const [start, end] of skippedJavaScriptCallSpans(withRegex)) {
-    if (!agreed.has(`${start}:${end}`)) continue;
-    const previous = ranges.at(-1);
-    if (previous && start <= previous[1]) previous[1] = Math.max(previous[1], end);
-    else ranges.push([start, end]);
-  }
-  return ranges;
-}
-
-function skippedJavaScriptCallSpans(scan) {
-  const { code, closeOf, innermostOpen, parentOpen, openIndices } = scan;
-  const localBindings = new Set([...code.matchAll(LOCAL_TEST_BINDING_PATTERN)].map((match) => match[1]));
-  const isLocal = (match) => localBindings.has(match[0].match(/^[A-Za-z_$][\w$]*/)[0]);
-  const suiteParens = new Set();
-  for (const match of code.matchAll(SUITE_CALL_PATTERN)) {
-    if (isLocal(match)) continue;
-    let index = match.index + match[0].length - 1;
-    while ((code[index] === "(" || code[index] === "`") && closeOf[index] >= 0) {
-      if (code[index] === "(") suiteParens.add(index);
-      index = closeOf[index] + 1;
-      while (/\s/.test(code[index] ?? "")) index += 1;
-    }
-  }
-  // Openers are recorded in source order, so each parent is decided before its children.
-  const blankable = new Uint8Array(code.length);
-  for (const openIndex of openIndices) {
-    const parent = parentOpen[openIndex];
-    const opener = code[openIndex];
-    blankable[openIndex] = Number((parent < 0 || blankable[parent] === 1) &&
-      (opener === "{" || opener === "[" || (opener === "(" && suiteParens.has(openIndex))));
-  }
-  const inBlankableScope = (index) => innermostOpen[index] < 0 || blankable[innermostOpen[index]] === 1;
-  const spans = [];
-  for (const match of code.matchAll(SKIPPED_TEST_CALL_PATTERN)) {
-    if (isLocal(match) || !inBlankableScope(match.index)) continue;
-    const end = findJavaScriptCallChainEnd(code, closeOf, match.index + match[0].length - 1);
-    if (end !== undefined) spans.push([match.index, end]);
-  }
-  for (const match of code.matchAll(NODE_TEST_CALL_PATTERN)) {
-    const openIndex = match.index + match[0].length - 1;
-    if (!isLocal(match) && inBlankableScope(match.index) && hasNodeTestSkipOption(code, closeOf, openIndex)) spans.push([match.index, closeOf[openIndex] + 1]);
-  }
-  return spans.sort((left, right) => left[0] - right[0] || left[1] - right[1]);
-}
-
-// One linear pass that blanks comments, string/template text and (when
-// `regexLiterals`) regex literal bodies, offsets kept, and pairs every ( [ { `${`
-// and template backtick. Returns undefined when delimiters do not balance, so
-// callers keep evidence rather than guess at skipped ranges.
-function scanJavaScriptDelimiters(content, regexLiterals) {
-  const code = content.split("");
-  const closeOf = new Int32Array(content.length).fill(-1);
-  const innermostOpen = new Int32Array(content.length).fill(-1);
-  const parentOpen = new Int32Array(content.length).fill(-1);
-  const openIndices = [];
-  const stack = [];
-  const blank = (start, end) => {
-    for (let cursor = start; cursor < end; cursor += 1) {
-      if (code[cursor] !== "\n" && code[cursor] !== "\r") code[cursor] = " ";
-    }
-  };
-  const open = (character, index) => {
-    parentOpen[index] = stack.at(-1)?.index ?? -1;
-    openIndices.push(index);
-    stack.push({ character, index });
-  };
-  let previous = "";
-  let index = 0;
-  if (content.startsWith("#!")) {
-    index = content.indexOf("\n") < 0 ? content.length : content.indexOf("\n");
-    blank(0, index);
-  }
-  while (index < content.length) {
-    const character = content[index];
-    if (stack.at(-1)?.character === "`") {
-      if (character === "\\") {
-        blank(index, index + 2);
-        index += 2;
-      } else if (character === "`") {
-        closeOf[stack.pop().index] = index;
-        previous = "value";
-        index += 1;
-      } else if (content.startsWith("${", index)) {
-        open("${", index);
-        previous = "{";
-        index += 2;
-      } else {
-        blank(index, index + 1);
-        index += 1;
-      }
-      continue;
-    }
-    innermostOpen[index] = stack.at(-1)?.index ?? -1;
-    if (/\s/.test(character)) {
-      index += 1;
-    } else if (content.startsWith("//", index)) {
-      const end = content.indexOf("\n", index);
-      blank(index, end < 0 ? content.length : end);
-      index = end < 0 ? content.length : end;
-    } else if (content.startsWith("/*", index)) {
-      const end = content.indexOf("*/", index + 2);
-      if (end < 0) return undefined;
-      blank(index, end + 2);
-      index = end + 2;
-    } else if (character === "'" || character === "\"" || (regexLiterals && character === "/" && regexMayStart(previous))) {
-      let cursor = index + 1;
-      let inClass = false;
-      while (cursor < content.length) {
-        const current = content[cursor];
-        if (current === "\\") cursor += 1;
-        else if (current === "\n" || current === "\r") return undefined;
-        else if (character === "/" && current === "[") inClass = true;
-        else if (character === "/" && current === "]") inClass = false;
-        else if (current === character && !inClass) break;
-        cursor += 1;
-      }
-      if (cursor >= content.length) return undefined;
-      blank(index + 1, cursor);
-      index = cursor + 1;
-      if (character === "/") while (/[\w$]/.test(content[index] ?? "")) index += 1;
-      previous = "value";
-    } else if (character === "`" || character === "(" || character === "[" || character === "{") {
-      open(character, index);
-      previous = character;
-      index += 1;
-    } else if (character === ")" || character === "]" || character === "}") {
-      const opened = stack.pop();
-      const expected = { ")": "(", "]": "[", "}": "{" }[character];
-      if (!opened || (opened.character !== expected && !(character === "}" && opened.character === "${"))) return undefined;
-      closeOf[opened.index] = index;
-      if (opened.character !== "${") previous = character;
-      index += 1;
-    } else if (/[\w$]/.test(character) || character.charCodeAt(0) > 127) {
-      let end = index + 1;
-      while (end < content.length && (/[\w$]/.test(content[end]) || content.charCodeAt(end) > 127)) end += 1;
-      previous = previous !== "." && REGEX_PREFIX_KEYWORDS.has(content.slice(index, end)) ? "keyword" : "value";
-      index = end;
-    } else {
-      previous = character;
-      index += 1;
-    }
-  }
-  return stack.length === 0 ? { code: code.join(""), closeOf, innermostOpen, parentOpen, openIndices } : undefined;
-}
-
-// A `/` after a value or a closing delimiter is division; elsewhere it starts a regex.
-function regexMayStart(previous) {
-  return previous !== "value" && previous !== ")" && previous !== "]" && previous !== "}";
-}
-
-// Walks `callee(...)(...)` / `callee\`table\`(...)` chains (e.g. `it.skip.each([...])("name", fn)`).
-function findJavaScriptCallChainEnd(code, closeOf, openIndex) {
-  let index = openIndex;
-  let end;
-  while ((code[index] === "(" || code[index] === "`") && closeOf[index] >= 0) {
-    end = closeOf[index] + 1;
-    index = end;
-    while (/\s/.test(code[index] ?? "")) index += 1;
-  }
-  return end;
-}
-
-// node:test options object passed before the callback, e.g. `test("x", { skip: true }, fn)`.
-// Only a single `skip` whose whole value is `true` or a non-empty string literal
-// counts; spreads, computed values and duplicate keys leave the test active.
-// `{ todo }` is deliberately ignored: node:test still runs TODO callbacks.
-function hasNodeTestSkipOption(code, closeOf, openIndex) {
-  const closeIndex = closeOf[openIndex];
-  for (let index = openIndex + 1; index < closeIndex; index += 1) {
-    const character = code[index];
-    if (code.startsWith("=>", index) || (code.startsWith("function", index) && !/[\w$]/.test(code[index - 1]))) return false;
-    if (character === "(" || character === "[" || character === "`") index = closeOf[index];
-    else if (character === "{") {
-      const objectCode = code.slice(index + 1, closeOf[index]);
-      if (/[{}()[\]`]|\.\.\./.test(objectCode)) return false;
-      const entries = objectCode.split(",").map((entry) => entry.trim()).filter(Boolean);
-      if (entries.some((entry) => !/^[A-Za-z_$][\w$]*\s*:/.test(entry))) return false;
-      const skipEntries = entries.filter((entry) => /^skip\s*:/.test(entry));
-      return skipEntries.length === 1 && /^skip\s*:\s*(?:true|(["'])\s+\1)$/.test(skipEntries[0]);
-    }
-  }
-  return false;
 }
 
 function findExistingTestEvidence(sourcePath, testFiles, moduleIndex, boundedTransitiveImports, packageEntry) {

@@ -2026,6 +2026,7 @@ describe("JavaScript skipped tests", () => {
     'test("b", { skip: true }, () => assert.equal(calc(2), 1));',
     'it.skipIf(true)("b", () => assert.equal(calc(2), 1));\nit.runIf(false)("c", () => calc(3));',
     'test.skip("b", () => { const re = /\\(x\\)/; assert.equal(calc(2), 4); });',
+    'test.skip("b", () => { const re = /\\(/; assert.equal(calc(2), 4); });',
     'describe.skip("calc", () => {\n  it("b", () => assert.equal(calc(2), 1));\n});',
     'xdescribe("calc", () => {\n  it("b", () => assert.equal(calc(2), 1));\n});'
   ]) {
@@ -2077,17 +2078,16 @@ describe("JavaScript skipped tests", () => {
     }
   });
 
-  // Each scanner reproduction stays on one physical line: a newline can make the
-  // scanner bail out and hide the defect.
-  it("keeps evidence when regex and division readings of a slash disagree", (t) => {
+  // Each reproduction stays on one physical line: a newline could mask the defect.
+  it("keeps active tests separate from skipped ones around regex, division, templates and JSX", (t) => {
     for (const body of [
       'test.skip("old",()=>{let x=8;const a=x++ /2;}); test("active",()=>{let x=8;const b=x++ /2; assert.equal(calc(2),4);});',
       'test.skip("old",()=>{const o={return:8};const a=o.return /2;}); test("active",()=>{const o={return:8};const b=o.return /2; assert.equal(calc(2),4);});',
       'test.skip("old",()=>{if(true) /\\(/.test("(");}); test("active",()=>{if(true) /\\)/.test(")"); assert.equal(calc(2),4);});',
       'test.skip("old",()=>{const a=`a ${`${1}${/\\(/.source}`}`;}); test("active",()=>{const b=`b ${`${1}${/\\)/.source}`}`; assert.equal(calc(2),4);});',
       'test.skip("old",()=>{const el=<div></div>;}); test("active",()=>{const el=<div></div>; assert.equal(calc(2),4);});',
-      // Accepted false negative: an unbalanced regex makes the readings disagree.
-      'test.skip("old", () => { const re = /\\(/; assert.equal(calc(2), 4); });'
+      'test.skip("old",()=>{if(true) /\\(\\{x/;}); test("active",()=>{if(true) /\\}\\)x/; assert.equal(calc(2),4);});',
+      'test.skip("old",()=>{if(true) {} /\\(\\{x/;}); test("active",()=>{if(true) {} /\\}\\)x/; assert.equal(calc(2),4);});'
     ]) {
       assert.equal(calcEvidence(auditCalcTest(t, body))?.[0].usage, "asserted", body);
     }
@@ -2116,7 +2116,9 @@ describe("JavaScript skipped tests", () => {
   it("never blanks skip-looking calls inside non-suite calls", (t) => {
     for (const body of [
       'import {test as check} from "node:test";\ncheck("active", function(){function run(test){test.skip(()=>assert.equal(calc(2),4));} run({skip:fn=>fn()});});',
-      '[1].forEach(() => { it.skip("helper", () => assert.equal(calc(2), 4)); });'
+      '[1].forEach(() => { it.skip("helper", () => assert.equal(calc(2), 4)); });',
+      'function run(test){test.skip(()=>assert.equal(calc(2),4));} run({skip:fn=>fn()});',
+      'describe("active", function(){function run(test){test.skip(()=>assert.equal(calc(2),4));} run({skip:fn=>fn()});});'
     ]) {
       assert.equal(calcEvidence(auditCalcTest(t, body))?.[0].usage, "asserted", body);
     }
@@ -2129,9 +2131,14 @@ describe("JavaScript skipped tests", () => {
     assert.equal(evidence?.[0].usage, "asserted");
   });
 
-  it("scans deeply nested suites with a single delimiter pass", (t) => {
+  it("handles deeply nested suites in bounded time", (t) => {
+    const nested = (depth, leaf) => 'describe("outer", () => {\n'.repeat(depth) + `${leaf}\n` + "});\n".repeat(depth);
+    // Realistic depth: the nested skip is found and blanked.
+    const skippedOnly = calcEvidence(auditCalcTest(t, nested(60, 'it.skip("leaf", () => assert.equal(calc(2), 4));')));
+    assert.deepEqual(skippedOnly, [{ testPath: "test/calc.test.js", kind: "direct-relative-import", strength: "direct" }]);
+    // Implausibly deep nesting is not parsed, so evidence is kept.
     const depth = 6000;
-    const body = 'describe("outer", () => {\n'.repeat(depth) + 'test("leaf", () => assert.equal(calc(2), 4));\n' + "});\n".repeat(depth) +
+    const body = nested(depth, 'test("leaf", () => assert.equal(calc(2), 4));') +
       'describe.skip("outer", () => {\n'.repeat(depth) + 'test("leaf", () => calc(3));\n' + "});\n".repeat(depth);
     const startedAt = performance.now();
     const evidence = calcEvidence(auditCalcTest(t, body));
