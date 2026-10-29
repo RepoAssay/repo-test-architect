@@ -2,9 +2,11 @@ import fs from "node:fs";
 import path from "node:path";
 import { finishAuditPhase, startAuditPhase } from "../../core/audit-phase-timing.js";
 import { compareText } from "../../core/ordering.js";
+import { normalizePlatformSeparators, readRepositoryTextFiles } from "../../core/repository-text-files.js";
 import { analyzePythonSkips } from "./skips.js";
 
 const SOURCE_EXTENSIONS = [".py"];
+const IGNORED_DIRECTORIES = new Set([".git", ".mypy_cache", ".pytest_cache", ".ruff_cache", ".tox", ".venv", "__pycache__", "build", "dist", "htmlcov"]);
 const DEFAULT_PYTEST_PYTHON_FILES = ["test_*.py", "*_test.py"];
 const EMPTY_PYTEST_DISCOVERY = Object.freeze({
   configPath: undefined,
@@ -168,36 +170,16 @@ function isIncludedByChangedPaths(currentPath, changedPaths) {
 }
 
 function readRepoFiles(root) {
-  const ignored = new Set([".git", ".mypy_cache", ".pytest_cache", ".ruff_cache", ".tox", ".venv", "__pycache__", "build", "dist", "htmlcov"]);
-  const files = [];
-
-  function visit(current) {
-    for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
-      if (ignored.has(entry.name) || entry.isSymbolicLink()) continue;
-
-      const absolute = path.join(current, entry.name);
-      const relative = path.relative(root, absolute).replaceAll(path.sep, "/");
-
-      if (entry.isDirectory()) {
-        // Keep ownership aligned with the Python markers in project detection.
-        if (["pyproject.toml", "requirements.txt"].some(marker =>
-          fs.lstatSync(path.join(absolute, marker), { throwIfNoEntry: false })?.isFile()
-        )) continue;
-        visit(absolute);
-        continue;
-      }
-
-      if (entry.isFile() && shouldRead(relative)) {
-        files.push({
-          path: relative,
-          content: fs.readFileSync(absolute, "utf8")
-        });
-      }
-    }
-  }
-
-  visit(root);
-  return files.sort((left, right) => compareText(left.path, right.path));
+  return readRepositoryTextFiles(root, {
+    ignoredDirectoryNames: IGNORED_DIRECTORIES,
+    // Keep ownership aligned with the Python markers in project detection.
+    shouldPruneDirectory: ({ absolutePath }) => ["pyproject.toml", "requirements.txt"].some(marker =>
+      fs.lstatSync(path.join(absolutePath, marker), { throwIfNoEntry: false })?.isFile()
+    ),
+    shouldIncludeFile: ({ relativePath }) => shouldRead(relativePath),
+    symbolicLinks: "skip",
+    toRepositoryPath: normalizePlatformSeparators
+  });
 }
 
 function shouldRead(relative) {

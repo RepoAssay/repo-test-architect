@@ -50,9 +50,12 @@ readRepositoryTextFiles(root, {
   ignoredDirectoryNames,
   shouldPruneDirectory({ absolutePath, relativePath, depth }),
   shouldIncludeFile({ absolutePath, relativePath }),
-  symbolicLinks: "skip"
+  symbolicLinks: "skip",
+  toRepositoryPath
 }) -> [{ path, content }]
 ```
+
+`ignoredDirectoryNames` defaults to `DEFAULT_IGNORED_DIRECTORY_NAMES`, the single list that project detection publishes through `detect-rules` and that project stats also uses. Adapters pass their own ecosystem-specific set because their historical lists differ from the default in both directions. `toRepositoryPath` defaults to backslash-to-slash normalization; JavaScript, Python, and Swift pass `normalizePlatformSeparators`, which keeps a backslash that is part of a POSIX file name, as their original readers did.
 
 The helper owns only recursive directory iteration, portable relative paths, UTF-8 reads, symbolic-link rejection under the selected policy, and final lexicographic path ordering. PHP supplies its Composer nested-owner callback and PHP/Composer/PHPUnit/Make inclusion policy; Elixir separately supplies its Mix nested-owner callback and Mix/Elixir/ExUnit inclusion policy. The helper does not infer a project type from a filename.
 
@@ -113,4 +116,4 @@ Every refactor or optimization slice must prove:
 - unchanged generated 400-source/200-test candidate and evidence counts
 - focused adapter tests, shared conformance, implementation coverage, package checks, cross-platform CI, alpha, and exact-commit release gates all pass
 
-The first extraction is complete for PHP and Elixir only. Focused nested-project, ignored-directory, symbolic-link, changed-path, UTF-8, and deterministic-order regressions preserve the intended API boundary, while fixture, golden, corpus, generated-scale, conformance, packaging, cross-platform, alpha, and release gates enforce artifact stability. Wider adoption requires a separate adapter-specific proof slice. Swift and Python optimization follows phase evidence rather than being bundled into this traversal refactor.
+The first extraction covered PHP and Elixir; Dart then adopted the helper, and every remaining adapter now reads through it with its original ignore list, nested-owner pruning, and inclusion policy. The only intended difference is the helper's hardening: entries that are not regular files, such as FIFOs, are skipped instead of read, and `test/adapter-repository-traversal.test.js` checks symbolic-link and FIFO handling for every registered adapter. Focused nested-project, ignored-directory, symbolic-link, changed-path, UTF-8, and deterministic-order regressions preserve the intended API boundary, while fixture, golden, corpus, generated-scale, conformance, packaging, cross-platform, alpha, and release gates enforce artifact stability. Swift and Python optimization follows phase evidence rather than being bundled into this traversal refactor.

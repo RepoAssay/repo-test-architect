@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { analyzeGoSyntax } from "./syntax.js";
 import { compareText } from "../../core/ordering.js";
+import { readRepositoryTextFiles } from "../../core/repository-text-files.js";
 
 const GO_SOURCE_EXTENSION = ".go";
 const BUILD_FILES = new Set(["go.mod", "go.sum", "go.work"]);
@@ -146,29 +147,12 @@ export function auditGoRepo(root, options = {}) {
 }
 
 function readRepoFiles(root) {
-  const files = [];
-
-  function visit(current) {
-    if (current !== root && fs.existsSync(path.join(current, "go.mod"))) return;
-
-    for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
-      if (IGNORED_DIRECTORIES.has(entry.name)) continue;
-      const absolute = path.join(current, entry.name);
-      const relative = normalizePath(path.relative(root, absolute));
-
-      if (entry.isSymbolicLink()) continue;
-      if (entry.isDirectory()) {
-        visit(absolute);
-        continue;
-      }
-      if (shouldRead(relative)) {
-        files.push({ path: relative, content: fs.readFileSync(absolute, "utf8") });
-      }
-    }
-  }
-
-  visit(root);
-  return files.sort((left, right) => compareText(left.path, right.path));
+  return readRepositoryTextFiles(root, {
+    ignoredDirectoryNames: IGNORED_DIRECTORIES,
+    shouldPruneDirectory: ({ absolutePath }) => fs.existsSync(path.join(absolutePath, "go.mod")),
+    shouldIncludeFile: ({ relativePath }) => shouldRead(relativePath),
+    symbolicLinks: "skip"
+  });
 }
 
 function shouldRead(currentPath) {
