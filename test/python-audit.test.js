@@ -1925,4 +1925,18 @@ describe("Python skipped tests", () => {
     const conditional = "def test_calc():\n    if sys.platform == 'win32':\n        pytest.skip('windows')\n    assert calc(2) == 4\n";
     assert.equal(calcEvidence(auditCalcTest(t, conditional))?.[0].usage, "asserted");
   });
+
+  it("keeps evidence when an apparent skip does not definitely run or abort", (t) => {
+    for (const body of [
+      // Backslash continuations: the skip is an unreachable operand, not a statement.
+      "class TestCalc(unittest.TestCase):\n    def test_calc(self):\n        value = True or \\\n        self.skipTest('unreachable')\n        self.assertEqual(calc(2), 4)\n",
+      "def test_calc():\n    value = True or \\\n    pytest.skip('unreachable')\n    assert calc(2) == 4\n",
+      // An overridden skipTest need not abort.
+      "class TestCalc(unittest.TestCase):\n    def skipTest(self, reason):\n        pass\n\n    def test_calc(self):\n        self.skipTest('noop')\n        self.assertEqual(calc(2), 4)\n",
+      // The last pytestmark assignment wins.
+      "pytestmark = pytest.mark.skip(reason='old')\npytestmark = []\n\ndef test_calc():\n    assert calc(2) == 4\n"
+    ]) {
+      assert.equal(calcEvidence(auditCalcTest(t, body))?.[0].usage, "asserted", body);
+    }
+  });
 });

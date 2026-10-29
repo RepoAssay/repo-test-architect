@@ -2000,17 +2000,17 @@ test("browser near misses", async ({ page }) => {
 });
 
 describe("JavaScript skipped tests", () => {
-  function auditCalcTest(t, body) {
+  const ESM_HEADER = 'import { describe, it, test } from "node:test";\nimport assert from "node:assert/strict";\nimport { calc } from "../src/calc.js";\n';
+  const ESM_SOURCE = "export function calc(value) {\n  if (value > 1) return value * 2;\n  return 0;\n}\n";
+
+  function auditCalcTest(t, body, { header = ESM_HEADER, source = ESM_SOURCE } = {}) {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-js-skipped-"));
     t.after(() => fs.rmSync(root, { recursive: true, force: true }));
     fs.mkdirSync(path.join(root, "src"), { recursive: true });
     fs.mkdirSync(path.join(root, "test"), { recursive: true });
     fs.writeFileSync(path.join(root, "package.json"), JSON.stringify({ name: "skipped", type: "module", scripts: { test: "node --test" } }));
-    fs.writeFileSync(path.join(root, "src/calc.js"), "export function calc(value) {\n  if (value > 1) return value * 2;\n  return 0;\n}\n");
-    fs.writeFileSync(
-      path.join(root, "test/calc.test.js"),
-      `import { describe, it, test } from "node:test";\nimport assert from "node:assert/strict";\nimport { calc } from "../src/calc.js";\n\n${body}\n`
-    );
+    fs.writeFileSync(path.join(root, "src/calc.js"), source);
+    fs.writeFileSync(path.join(root, "test/calc.test.js"), `${header}\n${body}\n`);
     return auditJavaScriptRepo(root);
   }
 
@@ -2025,7 +2025,7 @@ describe("JavaScript skipped tests", () => {
     'it.skip.each([[2]])("b %i", (value) => assert.equal(calc(value), 1));',
     'test("b", { skip: true }, () => assert.equal(calc(2), 1));',
     'it.skipIf(true)("b", () => assert.equal(calc(2), 1));\nit.runIf(false)("c", () => calc(3));',
-    'test.skip("b", () => { const re = /\\(/; assert.equal(calc(2), 4); });',
+    'test.skip("b", () => { const re = /\\(x\\)/; assert.equal(calc(2), 4); });',
     'describe.skip("calc", () => {\n  it("b", () => assert.equal(calc(2), 1));\n});',
     'xdescribe("calc", () => {\n  it("b", () => assert.equal(calc(2), 1));\n});'
   ]) {
@@ -2075,6 +2075,53 @@ describe("JavaScript skipped tests", () => {
     ]) {
       assert.equal(calcEvidence(auditCalcTest(t, body))?.[0].usage, "asserted", body);
     }
+  });
+
+  // Each scanner reproduction stays on one physical line: a newline can make the
+  // scanner bail out and hide the defect.
+  it("keeps evidence when regex and division readings of a slash disagree", (t) => {
+    for (const body of [
+      'test.skip("old",()=>{let x=8;const a=x++ /2;}); test("active",()=>{let x=8;const b=x++ /2; assert.equal(calc(2),4);});',
+      'test.skip("old",()=>{const o={return:8};const a=o.return /2;}); test("active",()=>{const o={return:8};const b=o.return /2; assert.equal(calc(2),4);});',
+      'test.skip("old",()=>{if(true) /\\(/.test("(");}); test("active",()=>{if(true) /\\)/.test(")"); assert.equal(calc(2),4);});',
+      'test.skip("old",()=>{const a=`a ${`${1}${/\\(/.source}`}`;}); test("active",()=>{const b=`b ${`${1}${/\\)/.source}`}`; assert.equal(calc(2),4);});',
+      'test.skip("old",()=>{const el=<div></div>;}); test("active",()=>{const el=<div></div>; assert.equal(calc(2),4);});',
+      // Accepted false negative: an unbalanced regex makes the readings disagree.
+      'test.skip("old", () => { const re = /\\(/; assert.equal(calc(2), 4); });'
+    ]) {
+      assert.equal(calcEvidence(auditCalcTest(t, body))?.[0].usage, "asserted", body);
+    }
+  });
+
+  it("only treats a node:test skip option as skipped when its whole value is definite", (t) => {
+    for (const body of [
+      'test("active", {skip: true && false}, () => assert.equal(calc(2),4));',
+      'test("active", {skip: true, skip: false}, () => assert.equal(calc(2),4));',
+      'const enabled = {skip: false}; test("active", {skip: true, ...enabled}, () => assert.equal(calc(2),4));',
+      'test("active", {skip: "later" && false}, () => assert.equal(calc(2),4));'
+    ]) {
+      assert.equal(calcEvidence(auditCalcTest(t, body))?.[0].usage, "asserted", body);
+    }
+    assert.equal(calcEvidence(auditCalcTest(t, 'test("old", {timeout: 5, skip: "later"}, () => assert.equal(calc(2),4));')), undefined);
+  });
+
+  it("keeps files whose callable CommonJS bindings still run", (t) => {
+    const evidence = calcEvidence(auditCalcTest(t, 'test.skip("old",()=>{});\ncheck("active",()=>{if(calc(2)!==4) throw new Error("bad");});', {
+      header: 'const {test} = require("node:test");\nconst check = require("node:test");\nconst calc = require("../src/calc.js");\n',
+      source: "module.exports = function calc(value) {\n  if (value > 1) return value * 2;\n  return 0;\n};\n"
+    }));
+    assert.equal(evidence?.[0].usage, "called");
+  });
+
+  it("never blanks skip-looking calls inside non-suite calls", (t) => {
+    for (const body of [
+      'import {test as check} from "node:test";\ncheck("active", function(){function run(test){test.skip(()=>assert.equal(calc(2),4));} run({skip:fn=>fn()});});',
+      '[1].forEach(() => { it.skip("helper", () => assert.equal(calc(2), 4)); });'
+    ]) {
+      assert.equal(calcEvidence(auditCalcTest(t, body))?.[0].usage, "asserted", body);
+    }
+    const nested = 'describe("calc", () => {\n  describe.each([[1]])("case %i", () => {\n    it.skip("b", () => assert.equal(calc(2), 1));\n  });\n});';
+    assert.deepEqual(calcEvidence(auditCalcTest(t, nested)), [{ testPath: "test/calc.test.js", kind: "direct-relative-import", strength: "direct" }]);
   });
 
   it("keeps the evidence of unbalanced files instead of guessing skipped ranges", (t) => {
