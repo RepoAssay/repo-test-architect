@@ -1,8 +1,10 @@
 import fs from "node:fs";
 import path from "node:path";
 import { compareText } from "../../core/ordering.js";
+import { normalizePlatformSeparators, readRepositoryTextFiles } from "../../core/repository-text-files.js";
 import { findSkippedJavaScriptTestRanges } from "./skips.js";
 
+const IGNORED_DIRECTORIES = new Set([".git", "node_modules", "dist", "build", "coverage"]);
 const SOURCE_EXTENSIONS = [".cjs", ".cts", ".js", ".jsx", ".mjs", ".mts", ".ts", ".tsx"];
 const SOURCE_ROOTS = ["src/", "source/", "lib/"];
 const GENERIC_SOURCE_BASENAMES = new Set(["handler", "index", "types", "utils"]);
@@ -134,32 +136,12 @@ function isIncludedByChangedPaths(currentPath, changedPaths) {
 }
 
 function readRepoFiles(root) {
-  const ignored = new Set([".git", "node_modules", "dist", "build", "coverage"]);
-  const files = [];
-
-  function visit(current) {
-    for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
-      if (ignored.has(entry.name) || entry.isSymbolicLink()) continue;
-
-      const absolute = path.join(current, entry.name);
-      const relative = path.relative(root, absolute).replaceAll(path.sep, "/");
-
-      if (entry.isDirectory()) {
-        visit(absolute);
-        continue;
-      }
-
-      if (entry.isFile() && shouldRead(relative)) {
-        files.push({
-          path: relative,
-          content: fs.readFileSync(absolute, "utf8")
-        });
-      }
-    }
-  }
-
-  visit(root);
-  return files.sort((left, right) => compareText(left.path, right.path));
+  return readRepositoryTextFiles(root, {
+    ignoredDirectoryNames: IGNORED_DIRECTORIES,
+    shouldIncludeFile: ({ relativePath }) => shouldRead(relativePath),
+    symbolicLinks: "skip",
+    toRepositoryPath: normalizePlatformSeparators
+  });
 }
 
 function shouldRead(relative) {

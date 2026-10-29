@@ -6,6 +6,7 @@ import {
   hasCargoSection
 } from "./cargo-workspace.js";
 import { compareText } from "../../core/ordering.js";
+import { readRepositoryTextFiles } from "../../core/repository-text-files.js";
 
 const IGNORED_DIRECTORIES = new Set([
   ".git",
@@ -132,25 +133,13 @@ export function auditRustRepo(root, options = {}) {
 }
 
 function readRepoFiles(root) {
-  const files = [];
-
-  function visit(current) {
-    for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
-      if (IGNORED_DIRECTORIES.has(entry.name)) continue;
-      const absolute = path.join(current, entry.name);
-      const relative = normalizePath(path.relative(root, absolute));
-      if (entry.isSymbolicLink()) continue;
-      if (entry.isDirectory()) {
-        if (fs.lstatSync(path.join(absolute, "Cargo.toml"), { throwIfNoEntry: false })?.isFile()) continue;
-        visit(absolute);
-      } else if (relative.endsWith(".rs") || relative === "Cargo.toml") {
-        files.push({ path: relative, content: fs.readFileSync(absolute, "utf8") });
-      }
-    }
-  }
-
-  visit(root);
-  return files.sort((left, right) => compareText(left.path, right.path));
+  return readRepositoryTextFiles(root, {
+    ignoredDirectoryNames: IGNORED_DIRECTORIES,
+    shouldPruneDirectory: ({ absolutePath }) =>
+      fs.lstatSync(path.join(absolutePath, "Cargo.toml"), { throwIfNoEntry: false })?.isFile(),
+    shouldIncludeFile: ({ relativePath }) => relativePath.endsWith(".rs") || relativePath === "Cargo.toml",
+    symbolicLinks: "skip"
+  });
 }
 
 function buildProfile(

@@ -2,8 +2,22 @@ import fs from "node:fs";
 import path from "node:path";
 import { finishAuditPhase, startAuditPhase } from "../../core/audit-phase-timing.js";
 import { compareText } from "../../core/ordering.js";
+import { normalizePlatformSeparators, readRepositoryTextFiles } from "../../core/repository-text-files.js";
 
 const SOURCE_EXTENSIONS = [".swift", ".m", ".mm"];
+const IGNORED_DIRECTORIES = new Set([
+  ".build",
+  ".git",
+  ".swiftpm",
+  ".symlinks",
+  "build",
+  "Carthage",
+  "DerivedData",
+  "Pods",
+  "SourcePackages",
+  "Vendor",
+  "vendor"
+]);
 const GENERIC_SOURCE_BASENAMES = new Set(["common", "handler", "helpers", "main", "types", "utilities", "utility", "utils"]);
 
 export function auditSwiftRepo(root, options = {}) {
@@ -109,47 +123,13 @@ export function auditSwiftRepo(root, options = {}) {
 }
 
 function readRepoFiles(root) {
-  const ignored = new Set([
-    ".build",
-    ".git",
-    ".swiftpm",
-    ".symlinks",
-    "build",
-    "Carthage",
-    "DerivedData",
-    "Pods",
-    "SourcePackages",
-    "Vendor",
-    "vendor"
-  ]);
-  const files = [];
-
-  function visit(current) {
-    for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
-      if (ignored.has(entry.name)) continue;
-
-      const absolute = path.join(current, entry.name);
-      const relative = path.relative(root, absolute).replaceAll(path.sep, "/");
-
-      if (entry.isDirectory()) {
-        if (shouldIgnoreSwiftDirectory(absolute, entry.name)) continue;
-        visit(absolute);
-        continue;
-      }
-
-      if (entry.isSymbolicLink()) continue;
-
-      if (shouldRead(relative)) {
-        files.push({
-          path: relative,
-          content: fs.readFileSync(absolute, "utf8")
-        });
-      }
-    }
-  }
-
-  visit(root);
-  return files.sort((left, right) => compareText(left.path, right.path));
+  return readRepositoryTextFiles(root, {
+    ignoredDirectoryNames: IGNORED_DIRECTORIES,
+    shouldPruneDirectory: ({ absolutePath }) => shouldIgnoreSwiftDirectory(absolutePath, path.basename(absolutePath)),
+    shouldIncludeFile: ({ relativePath }) => shouldRead(relativePath),
+    symbolicLinks: "skip",
+    toRepositoryPath: normalizePlatformSeparators
+  });
 }
 
 function shouldRead(relative) {

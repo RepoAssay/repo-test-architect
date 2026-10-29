@@ -2,8 +2,10 @@ import fs from "node:fs";
 import path from "node:path";
 import { analyzeGradleSettings } from "../../core/gradle-settings.js";
 import { compareText } from "../../core/ordering.js";
+import { readRepositoryTextFiles } from "../../core/repository-text-files.js";
 
 const SOURCE_EXTENSIONS = [".kt", ".java", ".groovy"];
+const IGNORED_DIRECTORIES = new Set([".git", ".gradle", ".idea", "build", "generated", "out", "target"]);
 const BUILD_FILE_NAMES = new Set([
   "build.gradle",
   "build.gradle.kts",
@@ -115,26 +117,11 @@ function isIncludedByChangedPaths(currentPath, changedPaths) {
 }
 
 function readRepoFiles(root) {
-  const ignored = new Set([".git", ".gradle", ".idea", "build", "generated", "out", "target"]);
-  const files = [];
-
-  function visit(current) {
-    for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
-      if (ignored.has(entry.name)) continue;
-      const absolute = path.join(current, entry.name);
-      const relative = normalizePath(path.relative(root, absolute));
-
-      if (entry.isDirectory()) {
-        visit(absolute);
-        continue;
-      }
-      if (entry.isSymbolicLink()) continue;
-      if (shouldRead(relative)) files.push({ path: relative, content: fs.readFileSync(absolute, "utf8") });
-    }
-  }
-
-  visit(root);
-  return files.sort((left, right) => compareText(left.path, right.path));
+  return readRepositoryTextFiles(root, {
+    ignoredDirectoryNames: IGNORED_DIRECTORIES,
+    shouldIncludeFile: ({ relativePath }) => shouldRead(relativePath),
+    symbolicLinks: "skip"
+  });
 }
 
 function shouldRead(relative) {

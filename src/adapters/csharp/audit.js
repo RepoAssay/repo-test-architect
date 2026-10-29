@@ -12,6 +12,7 @@ import {
 } from "./directory-packages-props.js";
 import { analyzeRepositoryGlobalJson, isLiteralVersion } from "./global-json.js";
 import { compareText } from "../../core/ordering.js";
+import { readRepositoryTextFiles } from "../../core/repository-text-files.js";
 
 const IGNORED_DIRECTORIES = new Set([
   ".git",
@@ -184,24 +185,11 @@ export function auditCSharpRepo(root, options = {}) {
 }
 
 function readRepoFiles(root) {
-  const files = [];
-
-  function visit(current) {
-    for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
-      if (IGNORED_DIRECTORIES.has(entry.name)) continue;
-      const absolute = path.join(current, entry.name);
-      const relative = normalizePath(path.relative(root, absolute));
-      if (entry.isSymbolicLink()) continue;
-      if (entry.isDirectory()) {
-        visit(absolute);
-      } else if (relative.endsWith(".cs") || relative.endsWith(".csproj")) {
-        files.push({ path: relative, content: fs.readFileSync(absolute, "utf8") });
-      }
-    }
-  }
-
-  visit(root);
-  return files.sort((left, right) => compareText(left.path, right.path));
+  return readRepositoryTextFiles(root, {
+    ignoredDirectoryNames: IGNORED_DIRECTORIES,
+    shouldIncludeFile: ({ relativePath }) => relativePath.endsWith(".cs") || relativePath.endsWith(".csproj"),
+    symbolicLinks: "skip"
+  });
 }
 
 function analyzeProject(content, inherited, inheritedPath, centralPackages, globalJson = { blockers: [] }, compileContext = {}) {

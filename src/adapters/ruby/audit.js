@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { compareText } from "../../core/ordering.js";
+import { readRepositoryTextFiles } from "../../core/repository-text-files.js";
 
 const RUBY_SOURCE_EXTENSION = ".rb";
 const RUBY_REQUIRE_GRAPH_DEPTH = 3;
@@ -135,26 +136,12 @@ export function auditRubyRepo(root, options = {}) {
 }
 
 function readRepoFiles(root) {
-  const files = [];
-
-  function visit(current) {
-    if (current !== root && fs.existsSync(path.join(current, "Gemfile"))) return;
-
-    for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
-      if (IGNORED_DIRECTORIES.has(entry.name)) continue;
-      const absolute = path.join(current, entry.name);
-      const relative = normalizePath(path.relative(root, absolute));
-      if (entry.isSymbolicLink()) continue;
-      if (entry.isDirectory()) {
-        visit(absolute);
-      } else if (shouldRead(relative)) {
-        files.push({ path: relative, content: fs.readFileSync(absolute, "utf8") });
-      }
-    }
-  }
-
-  visit(root);
-  return files.sort((left, right) => compareText(left.path, right.path));
+  return readRepositoryTextFiles(root, {
+    ignoredDirectoryNames: IGNORED_DIRECTORIES,
+    shouldPruneDirectory: ({ absolutePath }) => fs.existsSync(path.join(absolutePath, "Gemfile")),
+    shouldIncludeFile: ({ relativePath }) => shouldRead(relativePath),
+    symbolicLinks: "skip"
+  });
 }
 
 function shouldRead(currentPath) {

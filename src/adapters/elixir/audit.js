@@ -1,10 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import {
-  normalizeChangedPath,
-  normalizeRepositoryPath as normalizePath,
-  readRepositoryTextFiles
-} from "../../core/repository-text-files.js";
+import { normalizeChangedPath, readRepositoryTextFiles } from "../../core/repository-text-files.js";
 import { compareText } from "../../core/ordering.js";
 
 const IGNORED_DIRECTORIES = new Set([
