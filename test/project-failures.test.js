@@ -5,6 +5,8 @@ import os from "node:os";
 import path from "node:path";
 import { describe, it } from "node:test";
 import { adapters } from "../src/core/adapter-registry.js";
+import { InvalidOptionError } from "../src/core/invalid-option-error.js";
+import { createPlanExecutionHints } from "../src/core/plan-execution-hints.js";
 import { summarizeProjectAudits } from "../src/core/project-audit-summary.js";
 import { validateProjectAudits } from "../src/core/project-audits-validation.js";
 import { auditDetectedProjects } from "../src/core/project-auditor.js";
@@ -12,8 +14,10 @@ import { rankProjectTestCandidates } from "../src/core/project-candidate-ranking
 import { describeFailedProject, sortFailedProjects } from "../src/core/project-failures.js";
 import { createProjectFindings } from "../src/core/project-findings.js";
 import { collectProjectStats } from "../src/core/project-stats.js";
+import { analyzeProjectTestPlacement } from "../src/core/project-test-placement-analysis.js";
 import { createProjectTestPlan } from "../src/core/project-test-plan.js";
 import { createRepositoryAnalysis } from "../src/core/repository-analysis.js";
+import { McpToolError } from "../src/mcp/errors.js";
 import { callTool } from "../src/mcp/tool-definitions.js";
 import { assertMatchesSchema } from "./support/json-schema-validator.js";
 
@@ -29,6 +33,10 @@ function failAdapter(t, adapterId, error) {
   });
 }
 
+function failAllPolyglotAdapters(t) {
+  for (const adapterId of ["javascript", "kotlin", "python"]) failAdapter(t, adapterId, new Error("boom"));
+}
+
 function readSchema(name) {
   return JSON.parse(fs.readFileSync(path.join("schemas", name), "utf8"));
 }
@@ -36,6 +44,10 @@ function readSchema(name) {
 function auditWithKotlinFailure(t) {
   failAdapter(t, "kotlin", new TypeError("Cannot read properties of undefined (reading 'modules')"));
   return auditDetectedProjects(polyglotRoot);
+}
+
+function throwingGetter() {
+  throw new Error("getter must not escape containment");
 }
 
 describe("project audit failure containment", () => {
@@ -53,7 +65,7 @@ describe("project audit failure containment", () => {
         ecosystems: ["jvm"],
         languages: ["java", "kotlin"],
         errorName: "TypeError",
-        reason: "Cannot read properties of undefined (reading 'modules')"
+        reason: "The kotlin adapter failed with TypeError."
       }
     ]);
     assert.doesNotThrow(() => validateProjectAudits(result));
@@ -76,6 +88,7 @@ describe("project audit failure containment", () => {
       ["services/api", "python"]
     ]);
     assert.equal(result.failedProjects[1].errorCode, "ENOENT");
+    assert.equal(result.failedProjects[1].reason, "The python adapter failed with Error. A file or directory disappeared or was not found during the audit.");
     assert.equal(Object.hasOwn(result.failedProjects[0], "errorCode"), false);
 
     const entries = [
@@ -93,59 +106,82 @@ describe("project audit failure containment", () => {
     assert.deepEqual(sortFailedProjects([...entries].reverse()), sortFailedProjects(entries));
   });
 
-  it("keeps absolute paths, quoted content and stack frames out of the error summary", () => {
-    const repoRoot = path.join(os.tmpdir(), "rta-sanitize", "repo");
-    const error = new Error(
-      `Cannot parse ${path.join(repoRoot, "apps", "android", "build.gradle.kts")} near "password = hunter2" ` +
-        "via /etc/secrets/key.pem, C:\\Users\\me\\settings.gradle and (file:///home/me/init.gradle)\n" +
-        `    at parseGradle (${path.join(repoRoot, "src", "parser.js")}:10:5)`
-    );
-    error.code = "ERR_GRADLE_PARSE";
+  it("never records error messages, custom names or unlisted codes", () => {
+    const repoRoot = path.join(os.tmpdir(), "rta-failure", "repo");
+    const leaks = [
+      "Parse failed near 'API_TOKEN=secret123'",
+      `Cannot parse ${path.join(repoRoot, "apps", "build.gradle.kts")} near "password = hunter2"`,
+      "~/private/token and ../private/token",
+      "/repo/../../private/token",
+      "C:\\Users\\Jane Doe\\private\\token",
+      "first\rsecond\u2028third \u201Cquoted\u201D \"esc\\\"aped\""
+    ];
 
-    const failure = describeFailedProject(androidProject, "kotlin", error, repoRoot);
-
-    assert.deepEqual(failure, {
-      projectId: "apps/android",
-      projectRoot: "apps/android",
-      adapterId: "kotlin",
-      ecosystems: ["jvm"],
-      languages: ["java", "kotlin"],
-      errorName: "Error",
-      errorCode: "ERR_GRADLE_PARSE",
-      reason: `Cannot parse ${["apps", "android", "build.gradle.kts"].join(path.sep)} near "<redacted>" via <path>, <path> and (<path>)`
-    });
-    const sibling = describeFailedProject(androidProject, "kotlin", new Error(`compared ${repoRoot} with ${repoRoot}-old`), repoRoot);
-    assert.equal(sibling.reason, "compared . with <path>");
-    const serialized = JSON.stringify(failure);
-    for (const leaked of [repoRoot, "hunter2", "/etc/secrets", "Users\\\\me", "/home/me", "parseGradle", "\\n"]) {
-      assert.equal(serialized.includes(leaked), false, `failure summary leaked ${leaked}`);
+    for (const message of leaks) {
+      const error = new Error(message);
+      error.code = "SECRET_TOKEN";
+      const failure = describeFailedProject(androidProject, "kotlin", error);
+      assert.deepEqual(failure, {
+        projectId: "apps/android",
+        projectRoot: "apps/android",
+        adapterId: "kotlin",
+        ecosystems: ["jvm"],
+        languages: ["java", "kotlin"],
+        errorName: "Error",
+        reason: "The kotlin adapter failed with Error."
+      });
     }
+
+    class GradleSecretError extends Error {
+      name = "GradleSecretError";
+    }
+    assert.equal(describeFailedProject(androidProject, "kotlin", new GradleSecretError("x")).errorName, "Error");
+    assert.equal(describeFailedProject(androidProject, "kotlin", new RangeError("x")).errorName, "RangeError");
+    assert.equal(describeFailedProject(androidProject, "kotlin", { name: "TypeError", code: "EACCES" }).errorName, "TypeError");
+    assert.equal(describeFailedProject(androidProject, "kotlin", "plain string failure").reason, "The kotlin adapter failed with Error.");
+    assert.equal(describeFailedProject(androidProject, "kotlin", undefined).errorName, "Error");
+    assert.equal(describeFailedProject(androidProject, "kotlin", Symbol("s")).errorName, "Error");
   });
 
-  it("bounds unusual thrown values to a safe name, code and message", () => {
-    const longMessage = new RangeError("x".repeat(500));
-    longMessage.code = "not a code; /etc/passwd";
+  it("contains thrown values whose inspection throws", (t) => {
+    const hostileValues = [
+      Object.defineProperty(new Error("x"), "name", { get: throwingGetter }),
+      Object.defineProperty(new Error("x"), "message", { get: throwingGetter }),
+      Object.defineProperty(new Error("x"), "code", { get: throwingGetter }),
+      Object.defineProperty({}, "constructor", { get: throwingGetter }),
+      new Proxy({}, { get: throwingGetter, getPrototypeOf: throwingGetter, has: throwingGetter, ownKeys: throwingGetter })
+    ];
 
-    assert.deepEqual(describeFailedProject(androidProject, "kotlin", longMessage, polyglotRoot).reason.length, 200);
-    assert.equal(Object.hasOwn(describeFailedProject(androidProject, "kotlin", longMessage, polyglotRoot), "errorCode"), false);
-    assert.equal(describeFailedProject(androidProject, "kotlin", longMessage, polyglotRoot).errorName, "RangeError");
+    for (const value of hostileValues) {
+      const adapter = adapters.find((candidate) => candidate.id === "kotlin");
+      const mock = t.mock.method(adapter, "audit", () => {
+        throw value;
+      });
+      const result = auditDetectedProjects(polyglotRoot);
+      mock.mock.restore();
 
-    const fromString = describeFailedProject(androidProject, "kotlin", "plain string failure", polyglotRoot);
-    assert.equal(fromString.errorName, "Error");
-    assert.equal(fromString.reason, "plain string failure");
-
-    const fromObject = describeFailedProject(androidProject, "kotlin", { name: "<script>", message: "ignored" }, polyglotRoot);
-    assert.equal(fromObject.errorName, "Error");
-    assert.equal(fromObject.reason, "Adapter audit failed without a message.");
-
-    const badName = new Error("renamed");
-    badName.name = "Bad Name\nwith newline";
-    assert.equal(describeFailedProject(androidProject, "kotlin", badName, polyglotRoot).errorName, "Error");
+      assert.deepEqual(result.audits.map((entry) => entry.projectRoot), ["apps/web", "services/api"]);
+      assert.equal(result.failedProjects[0].errorName, "Error");
+      assert.equal(Object.hasOwn(result.failedProjects[0], "errorCode"), false);
+      assert.equal(result.failedProjects[0].reason, "The kotlin adapter failed with Error.");
+    }
   });
 
   it("does not contain errors raised outside an adapter's audit call", () => {
     // Detection runs before any adapter, so its defects still fail the whole run.
     assert.throws(() => auditDetectedProjects(polyglotRoot, { excludeProjectRoots: "apps/**" }), { name: "TypeError" });
+  });
+
+  it("does not contain usage errors", (t) => {
+    const goRoot = path.resolve("examples/go-testing-basic");
+
+    assert.throws(() => auditDetectedProjects(goRoot, { goTarget: { goos: "nonsense", goarch: "amd64" } }), InvalidOptionError);
+    assert.throws(() => auditDetectedProjects(goRoot, { goTarget: { goos: "linux", goarch: "amd64", tags: ["cgo"] } }), InvalidOptionError);
+    // Validation happens before any adapter runs, even for a repository with no Go project.
+    assert.throws(() => auditDetectedProjects(polyglotRoot, { goTarget: { goos: "nonsense", goarch: "amd64" } }), InvalidOptionError);
+
+    failAdapter(t, "kotlin", new InvalidOptionError("bad option", { option: "goTarget" }));
+    assert.throws(() => auditDetectedProjects(polyglotRoot), InvalidOptionError);
   });
 });
 
@@ -174,7 +210,7 @@ describe("project audits failedProjects schema compatibility", () => {
     assertMatchesSchema(JSON.parse(JSON.stringify(result)), projectAuditsSchema, "saved-project-audits.json");
   });
 
-  it("rejects malformed failed project entries", () => {
+  it("rejects failed project entries outside the fixed vocabulary", () => {
     const base = {
       schemaVersion: "project-audits/v1",
       root: ".",
@@ -189,15 +225,19 @@ describe("project audits failedProjects schema compatibility", () => {
       ecosystems: ["jvm"],
       languages: ["kotlin"],
       errorName: "TypeError",
-      reason: "boom"
+      errorCode: "ENOENT",
+      reason: "The kotlin adapter failed with TypeError. A file or directory disappeared or was not found during the audit."
     };
+    const withEntry = (overrides) => ({ ...base, failedProjects: [{ ...entry, ...overrides }] });
 
-    assert.doesNotThrow(() => validateProjectAudits({ ...base, failedProjects: [entry] }));
+    assert.doesNotThrow(() => validateProjectAudits(withEntry({})));
     assert.throws(() => validateProjectAudits({ ...base, failedProjects: {} }), /\$\.failedProjects/);
-    assert.throws(() => validateProjectAudits({ ...base, failedProjects: [{ ...entry, reason: undefined }] }), /\$\.failedProjects\[0\]/);
-    assert.throws(() => validateProjectAudits({ ...base, failedProjects: [{ ...entry, stack: "at x" }] }), /\$\.failedProjects\[0\]/);
-    assert.throws(() => validateProjectAudits({ ...base, failedProjects: [{ ...entry, errorName: "Type Error" }] }), /errorName/);
-    assert.throws(() => validateProjectAudits({ ...base, failedProjects: [{ ...entry, reason: "x".repeat(201) }] }), /reason/);
+    assert.throws(() => validateProjectAudits(withEntry({ reason: undefined })), /\$\.failedProjects\[0\]/);
+    assert.throws(() => validateProjectAudits(withEntry({ stack: "at x" })), /\$\.failedProjects\[0\]/);
+    assert.throws(() => validateProjectAudits(withEntry({ errorName: "GradleError" })), /errorName/);
+    assert.throws(() => validateProjectAudits(withEntry({ errorCode: "SECRET_TOKEN" })), /errorCode/);
+    assert.throws(() => validateProjectAudits(withEntry({ reason: "API_TOKEN=secret123" })), /reason/);
+    assert.throws(() => validateProjectAudits(withEntry({ reason: "The kotlin adapter failed with Error. Token is abc123." })), /reason/);
     assert.throws(() => validateProjectAudits({ ...base, summary: { ...base.summary, failedProjectCount: -1 } }), /failedProjectCount/);
   });
 });
@@ -211,7 +251,7 @@ describe("derived artifacts surface failed projects", () => {
       ["project-candidate-ranking-v1.schema.json", rankProjectTestCandidates, true],
       ["project-test-plan-v1.schema.json", createProjectTestPlan, true],
       ["project-findings-v1.schema.json", createProjectFindings, true],
-      ["project-stats-v1.schema.json", collectProjectStats, false],
+      ["project-stats-v1.schema.json", collectProjectStats, true],
       ["repository-analysis-v1.schema.json", createRepositoryAnalysis, false]
     ];
 
@@ -233,11 +273,95 @@ describe("derived artifacts surface failed projects", () => {
   });
 
   it("reports no audit coverage when every supported project failed", (t) => {
-    for (const adapterId of ["javascript", "kotlin", "python"]) failAdapter(t, adapterId, new Error("boom"));
+    failAllPolyglotAdapters(t);
     const summary = summarizeProjectAudits(auditDetectedProjects(polyglotRoot));
 
     assert.equal(summary.summary.auditCoverage, "none");
     assert.equal(summary.summary.failedProjectCount, 3);
+  });
+
+  it("keeps failure context in project placement and execution hints", (t) => {
+    const complete = auditDetectedProjects(polyglotRoot);
+    failAllPolyglotAdapters(t);
+    const failed = auditDetectedProjects(polyglotRoot);
+    const placementSchema = readSchema("test-placement-findings-v1.schema.json");
+    const hintsSchema = readSchema("plan-execution-hints-v1.schema.json");
+
+    const completePlacement = analyzeProjectTestPlacement(complete);
+    assert.deepEqual(Object.keys(completePlacement), ["schemaVersion", "findings"]);
+    const placement = analyzeProjectTestPlacement(failed);
+    assert.deepEqual(placement, {
+      schemaVersion: "test-placement-findings/v1",
+      findings: [],
+      auditCoverage: "none",
+      failedProjectCount: 3,
+      failedProjects: failed.failedProjects
+    });
+    assertMatchesSchema(placement, placementSchema, "placement.json");
+
+    const completeHints = createPlanExecutionHints(createProjectTestPlan(complete));
+    assert.equal(Object.hasOwn(completeHints, "failedProjects"), false);
+    assert.equal(Object.hasOwn(completeHints.summary, "auditCoverage"), false);
+    const hints = createPlanExecutionHints(createProjectTestPlan(failed));
+    assert.equal(hints.summary.auditCoverage, "none");
+    assert.equal(hints.summary.failedProjectCount, 3);
+    assert.deepEqual(hints.failedProjects, failed.failedProjects);
+    assertMatchesSchema(hints, hintsSchema, "hints.json");
+  });
+
+  it("rejects execution-hint inputs whose failedProjects could carry arbitrary text", (t) => {
+    const plan = createProjectTestPlan(auditWithKotlinFailure(t));
+    const tampered = { ...plan, failedProjects: [{ ...plan.failedProjects[0], reason: "API_TOKEN=secret123" }] };
+
+    assert.throws(() => createPlanExecutionHints(tampered), /Project plan failedProjects\[0\] is not a valid failed project entry/);
+    assert.throws(() => createPlanExecutionHints({ ...plan, failedProjects: [{ ...plan.failedProjects[0], extra: 1 }] }), /failedProjects\[0\]/);
+    assert.throws(() => createPlanExecutionHints({ ...plan, failedProjects: "x" }), /must be an array/);
+  });
+
+  it("keeps a failed nested project out of its successful parent's source-file stats", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-failed-stats-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "src"), { recursive: true });
+    fs.mkdirSync(path.join(root, "apps", "web", "src"), { recursive: true });
+    fs.writeFileSync(path.join(root, "src", "index.js"), "export const value = 1;\n");
+    fs.writeFileSync(path.join(root, "apps", "web", "src", "app.ts"), "export const app = 1;\n");
+    const artifact = {
+      schemaVersion: "project-audits/v1",
+      root,
+      summary: { projectCount: 2, auditedProjectCount: 1, skippedProjectCount: 0, failedProjectCount: 1 },
+      audits: [
+        {
+          projectId: ".",
+          projectRoot: ".",
+          adapterId: "javascript",
+          audit: {
+            schemaVersion: "audit/v1",
+            profile: { languages: ["javascript", "typescript"] },
+            untestedCandidates: [],
+            coveredButRisky: [],
+            skipped: [],
+            risks: []
+          }
+        }
+      ],
+      skippedProjects: [],
+      failedProjects: [
+        {
+          projectId: "apps/web",
+          projectRoot: "apps/web",
+          adapterId: "javascript",
+          ecosystems: ["javascript"],
+          languages: ["javascript", "typescript"],
+          errorName: "Error",
+          reason: "The javascript adapter failed with Error."
+        }
+      ]
+    };
+
+    const stats = collectProjectStats(artifact);
+
+    assert.equal(stats.sourceFiles.audited, 1);
+    assert.deepEqual(Object.keys(stats.sourceFiles.byLanguage), ["javascript"]);
   });
 });
 
@@ -258,6 +382,20 @@ describe("MCP and CLI surface failed projects", () => {
     assert.deepEqual(summary.failedProjects, projectAudits.failedProjects);
   });
 
+  it("returns invalid-arguments for invalid MCP Go targets without echoing the value", () => {
+    for (const goTarget of [{ goos: "nonsense", goarch: "amd64" }, { goos: "linux", goarch: "amd64", tags: ["cgo"] }]) {
+      assert.throws(
+        () => callTool("audit_projects", { repoRoot: path.resolve("examples/go-testing-basic"), goTarget }),
+        (error) =>
+          error instanceof McpToolError &&
+          error.kind === "invalid-arguments" &&
+          error.details.argument === "goTarget" &&
+          !error.message.includes("nonsense") &&
+          !error.message.includes("cgo")
+      );
+    }
+  });
+
   it("prints partial CLI results, lists failures and exits with status 2", (t) => {
     const artifact = auditWithKotlinFailure(t);
     const directory = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-failed-projects-"));
@@ -271,8 +409,8 @@ describe("MCP and CLI surface failed projects", () => {
     assert.equal(markdown.status, 2);
     assert.match(markdown.stdout, /- Failed to audit: 1/);
     assert.match(markdown.stdout, /- Audit coverage: partial/);
-    assert.match(markdown.stdout, /## Failed Projects\n- 1 project failed to audit; their results are missing from this report\.\n- apps\/android: kotlin adapter failed \(TypeError\): Cannot read properties/);
-    assert.match(markdown.stderr, /^Warning: 1 project failed to audit; results are partial\.\n- apps\/android: kotlin adapter failed/);
+    assert.match(markdown.stdout, /## Failed Projects\n- 1 project failed to audit; their results are missing from this report\.\n- apps\/android: The kotlin adapter failed with TypeError\.\n/);
+    assert.match(markdown.stderr, /^Warning: 1 project failed to audit; results are partial\. Run the audit command on a failed project root to see its full error\.\n- apps\/android: The kotlin adapter failed with TypeError\./);
 
     const json = run("audit-projects", "--format", "json");
     assert.equal(json.status, 2);
@@ -282,9 +420,18 @@ describe("MCP and CLI surface failed projects", () => {
       const result = run(command);
       assert.equal(result.status, 2, command);
       assert.match(result.stderr, /1 project failed to audit/, command);
-      if (!["hints-projects", "placement-projects", "stats-projects"].includes(command)) {
-        assert.match(result.stdout, /## Failed Projects/, command);
-      }
+      assert.match(result.stdout, /- Failed to audit: 1/, command);
+      assert.match(result.stdout, /## Failed Projects\n- 1 project failed to audit/, command);
+    }
+  });
+
+  it("exits with status 1 for invalid Go target options instead of recording a failed project", () => {
+    for (const args of [["--goos", "nonsense", "--goarch", "amd64"], ["--goos", "linux", "--goarch", "amd64", "--go-tag", "cgo"]]) {
+      const result = spawnSync(process.execPath, [cliPath, "audit-projects", "examples/go-testing-basic", ...args, "--format", "json"], { encoding: "utf8" });
+
+      assert.equal(result.status, 1, args.join(" "));
+      assert.equal(result.stdout, "");
+      assert.match(result.stderr, /Unsupported Go build target|cannot override environment-defined tag/);
     }
   });
 

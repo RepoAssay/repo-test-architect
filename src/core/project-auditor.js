@@ -1,5 +1,7 @@
 import path from "node:path";
+import { normalizeGoTarget } from "../adapters/go/audit.js";
 import { getAdapter } from "./adapter-registry.js";
+import { InvalidOptionError } from "./invalid-option-error.js";
 import { detectProjects } from "./project-detector.js";
 import { describeFailedProject, sortFailedProjects } from "./project-failures.js";
 
@@ -37,14 +39,17 @@ import { describeFailedProject, sortFailedProjects } from "./project-failures.js
 
 /**
  * Audit every detected supported project. An adapter that throws for one project is contained:
- * the project is reported in failedProjects with a sanitized error summary and the remaining
- * projects are still audited. Errors raised outside an adapter's audit call are not contained.
+ * the project is reported in failedProjects with a fixed error summary and the remaining
+ * projects are still audited. Invalid options are usage errors: they are validated before any
+ * adapter runs and InvalidOptionError is never contained. Errors raised outside an adapter's
+ * audit call are not contained either.
  *
  * @param {string} repoRoot
  * @param {AuditDetectedProjectsOptions} [options]
  * @returns {ProjectAudits}
  */
 export function auditDetectedProjects(repoRoot, options = {}) {
+  normalizeGoTarget(options.goTarget);
   const detection = detectProjects(repoRoot, {
     excludeProjectRoots: options.excludeProjectRoots
   });
@@ -79,9 +84,10 @@ export function auditDetectedProjects(repoRoot, options = {}) {
     try {
       audit = adapter.audit(projectRoot, auditOptions);
     } catch (error) {
+      if (isInvalidOptionError(error)) throw error;
       // Programmer errors such as TypeError are contained too: one adapter defect should not hide
       // every other project's results. errorName keeps such defects visible in the artifact.
-      failedProjects.push(describeFailedProject(project, adapterId, error, detection.root));
+      failedProjects.push(describeFailedProject(project, adapterId, error));
       continue;
     }
 
@@ -106,6 +112,15 @@ export function auditDetectedProjects(repoRoot, options = {}) {
     skippedProjects,
     failedProjects: sortFailedProjects(failedProjects)
   };
+}
+
+function isInvalidOptionError(error) {
+  try {
+    return error instanceof InvalidOptionError;
+  } catch {
+    // A Proxy whose prototype lookup throws is an adapter failure, not a usage error.
+    return false;
+  }
 }
 
 function selectProjectChangedPaths(repoRoot, projectRoot, changedPaths) {

@@ -2,6 +2,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { readGitChangedPathsSince, readGitWorkingTreeChangedPaths } from "../core/git-changed-paths.js";
+import { InvalidOptionError } from "../core/invalid-option-error.js";
 import { renderMarkdownReport } from "../core/report.js";
 import {
   createDiagnosticBundle,
@@ -139,21 +140,21 @@ const detection = options.command === "detect" ? detectRepoProjects(repoRoot, {
 const projectAudits = options.fromProjectAuditsPath !== undefined
   ? readProjectAuditsJson(options.fromProjectAuditsPath)
   : PROJECT_AUDIT_COMMANDS.includes(options.command)
-    ? auditRepoProjects(repoRoot, {
+    ? runWithOptionValidation(() => auditRepoProjects(repoRoot, {
       changedPaths: readSelectedChangedPaths(repoRoot, options),
       excludeProjectRoots: options.excludeProjectRoots,
       goTarget: options.goTarget
-    })
+    }))
     : undefined;
 const audit = options.fromAuditPath !== undefined
   ? readAuditJson(options.fromAuditPath)
   : diagnosticsOutput || adapterRegistry || detectionRules || detection || projectAudits
     ? undefined
-    : auditRepo(repoRoot, {
+    : runWithOptionValidation(() => auditRepo(repoRoot, {
       adapterId: options.adapterId,
       changedPaths: readSelectedChangedPaths(repoRoot, options),
       goTarget: options.goTarget
-    });
+    }));
 const output = diagnosticsOutput ?? adapterRegistry ?? detectionRules ?? detection ?? selectProjectOutput(projectAudits, options) ?? selectOutput(audit, options);
 
 if (options.format === "json") {
@@ -412,6 +413,16 @@ function selectDiagnosticsOutput(repoRoot, options) {
     return createDiagnosticBundle(path.resolve(process.cwd(), options.diagnosticsFilePath));
   } catch {
     console.error("Failed to read the local diagnostics file.");
+    process.exit(1);
+  }
+}
+
+function runWithOptionValidation(run) {
+  try {
+    return run();
+  } catch (error) {
+    if (!(error instanceof InvalidOptionError)) throw error;
+    console.error(error.message);
     process.exit(1);
   }
 }
@@ -1028,6 +1039,7 @@ function renderMarkdownProjectStats(stats) {
   lines.push("");
   lines.push("## Adapters");
   lines.push(`- ${stats.adapters.map((adapter) => `${adapter.adapterId}: ${adapter.projectCount}`).join(", ") || "none detected"}`);
+  pushFailedProjects(lines, stats.failedProjects);
 
   return lines.join("\n");
 }
@@ -1108,6 +1120,8 @@ function renderMarkdownPlanExecutionHints(hints) {
   lines.push(`- Complexity: ${hints.summary.lowComplexityCount} low, ${hints.summary.mediumComplexityCount} medium, ${hints.summary.highComplexityCount} high`);
   lines.push(`- Parallelizable: ${hints.summary.parallelizableCount}`);
   lines.push(`- Repository reasoning: ${hints.summary.repositoryReasoningCount}`);
+  pushFailedProjectCount(lines, hints.summary.failedProjectCount);
+  if (hints.summary.auditCoverage) lines.push(`- Audit coverage: ${hints.summary.auditCoverage}`);
   lines.push("");
   lines.push("## Items");
 
@@ -1126,6 +1140,7 @@ function renderMarkdownPlanExecutionHints(hints) {
     }
   }
 
+  pushFailedProjects(lines, hints.failedProjects);
   return lines.join("\n");
 }
 
@@ -1210,6 +1225,8 @@ function renderMarkdownPlacement(placement) {
   lines.push("");
   lines.push("## Summary");
   lines.push(`- Findings: ${placement.findings.length}`);
+  pushFailedProjectCount(lines, placement.failedProjectCount);
+  if (placement.auditCoverage) lines.push(`- Audit coverage: ${placement.auditCoverage}`);
   lines.push("");
   lines.push("## Findings");
 
@@ -1224,6 +1241,7 @@ function renderMarkdownPlacement(placement) {
     }
   }
 
+  pushFailedProjects(lines, placement.failedProjects);
   return lines.join("\n");
 }
 
@@ -1300,8 +1318,8 @@ function formatUnsupportedProject(project) {
 }
 
 function formatFailedProject(project) {
-  const error = project.errorCode ? `${project.errorName} ${project.errorCode}` : project.errorName;
-  return `- ${project.projectRoot}: ${project.adapterId} adapter failed (${error}): ${project.reason}`;
+  const code = project.errorCode ? ` [${project.errorCode}]` : "";
+  return `- ${project.projectRoot}: ${project.reason}${code}`;
 }
 
 function formatFailedProjectCount(count) {
@@ -1323,7 +1341,7 @@ function pushFailedProjects(lines, failedProjects = []) {
 
 function renderFailedProjectsWarning(failedProjects) {
   return [
-    `Warning: ${formatFailedProjectCount(failedProjects.length)}; results are partial.`,
+    `Warning: ${formatFailedProjectCount(failedProjects.length)}; results are partial. Run the audit command on a failed project root to see its full error.`,
     ...failedProjects.map(formatFailedProject)
   ].join("\n");
 }

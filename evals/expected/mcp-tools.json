@@ -650,6 +650,18 @@
           "schemaVersion": {
             "const": "test-placement-findings/v1"
           },
+          "auditCoverage": {
+            "enum": [
+              "partial",
+              "none"
+            ]
+          },
+          "failedProjectCount": {
+            "type": "integer"
+          },
+          "failedProjects": {
+            "type": "array"
+          },
           "findings": {
             "type": "array"
           }
@@ -716,6 +728,9 @@
             "type": "object"
           },
           "adapters": {
+            "type": "array"
+          },
+          "failedProjects": {
             "type": "array"
           }
         }
@@ -999,6 +1014,9 @@
           "summary": {
             "type": "object"
           },
+          "failedProjects": {
+            "type": "array"
+          },
           "items": {
             "type": "array"
           }
@@ -1226,6 +1244,18 @@
         "properties": {
           "schemaVersion": {
             "const": "test-placement-findings/v1"
+          },
+          "auditCoverage": {
+            "enum": [
+              "partial",
+              "none"
+            ]
+          },
+          "failedProjectCount": {
+            "type": "integer"
+          },
+          "failedProjects": {
+            "type": "array"
           },
           "findings": {
             "type": "array"

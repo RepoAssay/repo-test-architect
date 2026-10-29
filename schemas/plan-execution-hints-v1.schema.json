@@ -34,7 +34,42 @@
         "mediumComplexityCount": { "type": "integer", "minimum": 0 },
         "highComplexityCount": { "type": "integer", "minimum": 0 },
         "parallelizableCount": { "type": "integer", "minimum": 0 },
-        "repositoryReasoningCount": { "type": "integer", "minimum": 0 }
+        "repositoryReasoningCount": { "type": "integer", "minimum": 0 },
+        "auditCoverage": {
+          "description": "Copied from a project-test-plan/v1 source whose audit had failed projects (since 1.1.0).",
+          "enum": ["partial", "none"]
+        },
+        "failedProjectCount": {
+          "description": "Projects whose adapter failed during the source audit. Present only when at least one project failed (since 1.1.0).",
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "failedProjects": {
+      "description": "Supported projects whose adapter failed during audit, copied from the source artifact. Present only when at least one project failed (since 1.1.0).",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["projectId", "projectRoot", "adapterId", "ecosystems", "languages", "errorName", "reason"],
+        "properties": {
+          "projectId": { "type": "string", "minLength": 1 },
+          "projectRoot": { "type": "string", "minLength": 1 },
+          "adapterId": { "type": "string", "minLength": 1 },
+          "ecosystems": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "languages": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "errorName": { "enum": ["AggregateError", "Error", "EvalError", "RangeError", "ReferenceError", "SyntaxError", "TypeError", "URIError"] },
+          "errorCode": { "enum": ["EACCES", "EIO", "EISDIR", "ELOOP", "EMFILE", "ENAMETOOLONG", "ENFILE", "ENOENT", "ENOMEM", "ENOTDIR", "EPERM"] },
+          "reason": { "type": "string", "maxLength": 240, "pattern": "^The [a-z][a-z0-9-]{0,63} adapter failed with (?:AggregateError|Error|EvalError|RangeError|ReferenceError|SyntaxError|TypeError|URIError)\\.(?: [A-Z][A-Za-z ]{0,120}\\.)?$" }
+        }
       }
     },
     "items": {

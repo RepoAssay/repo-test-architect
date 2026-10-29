@@ -52,8 +52,11 @@ export interface PlanExecutionHints {
     highComplexityCount: number;
     parallelizableCount: number;
     repositoryReasoningCount: number;
+    auditCoverage?: "partial" | "none";
+    failedProjectCount?: number;
   };
   items: PlanExecutionHint[];
+  failedProjects?: import("./tool-api").FailedProjectAudit[];
 }
 
 type SupportedPlan = TestPlan | ProjectTestPlan;

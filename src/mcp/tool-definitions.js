@@ -21,6 +21,7 @@ import {
 import { getAdapterRegistry } from "../core/adapter-registry.js";
 import { ArtifactValidationError } from "../core/artifact-validation.js";
 import { createGenerationDeferredResult } from "../core/generation-deferred.js";
+import { InvalidOptionError } from "../core/invalid-option-error.js";
 import { McpToolError } from "./errors.js";
 
 // Tool descriptors advertise only the top-level artifact shape; nested contracts live in the
@@ -335,6 +336,11 @@ export function callTool(name, args = {}) {
         argument: artifactArgument,
         path: error.path
       });
+    }
+
+    if (error instanceof InvalidOptionError) {
+      // Option values are never echoed back; name the argument only.
+      throw new McpToolError("invalid-arguments", `Invalid ${error.option} argument.`, { toolName: name, argument: error.option });
     }
 
     if (error instanceof McpToolError && !error.details.toolName) {

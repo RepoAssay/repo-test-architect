@@ -176,7 +176,7 @@
       }
     },
     "failedProjects": {
-      "description": "Supported projects whose adapter threw during audit, with a sanitized error summary. Emitted since 1.1.0 (possibly empty); absent from earlier artifacts.",
+      "description": "Supported projects whose adapter threw during audit, with a fixed public error summary. Emitted since 1.1.0 (possibly empty); absent from earlier artifacts.",
       "type": "array",
       "items": {
         "$ref": "#/$defs/failedProject"
@@ -216,20 +216,18 @@
           }
         },
         "errorName": {
-          "description": "The thrown error's name, such as Error or TypeError.",
-          "type": "string",
-          "pattern": "^[A-Za-z][A-Za-z0-9_$]{0,63}$"
+          "description": "The thrown error's built-in class name; any other name is recorded as Error.",
+          "enum": ["AggregateError", "Error", "EvalError", "RangeError", "ReferenceError", "SyntaxError", "TypeError", "URIError"]
         },
         "errorCode": {
-          "description": "A Node.js-style error code such as ENOENT, when the error carried one.",
-          "type": "string",
-          "pattern": "^[A-Z][A-Z0-9_]{0,63}$"
+          "description": "An allowlisted Node.js file-system error code, when the thrown error carried one.",
+          "enum": ["EACCES", "EIO", "EISDIR", "ELOOP", "EMFILE", "ENAMETOOLONG", "ENFILE", "ENOENT", "ENOMEM", "ENOTDIR", "EPERM"]
         },
         "reason": {
-          "description": "First line of the error message without absolute paths, quoted content or stack frames, at most 200 characters.",
+          "description": "Fixed public summary built from adapterId, errorName and errorCode. Error messages are intentionally not recorded.",
           "type": "string",
-          "minLength": 1,
-          "maxLength": 200
+          "maxLength": 240,
+          "pattern": "^The [a-z][a-z0-9-]{0,63} adapter failed with (?:AggregateError|Error|EvalError|RangeError|ReferenceError|SyntaxError|TypeError|URIError)\\.(?: [A-Z][A-Za-z ]{0,120}\\.)?$"
         }
       }
     }

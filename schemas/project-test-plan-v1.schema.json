@@ -116,9 +116,9 @@
             "type": "array",
             "items": { "type": "string", "minLength": 1 }
           },
-          "errorName": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_$]{0,63}$" },
-          "errorCode": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]{0,63}$" },
-          "reason": { "type": "string", "minLength": 1, "maxLength": 200 }
+          "errorName": { "enum": ["AggregateError", "Error", "EvalError", "RangeError", "ReferenceError", "SyntaxError", "TypeError", "URIError"] },
+          "errorCode": { "enum": ["EACCES", "EIO", "EISDIR", "ELOOP", "EMFILE", "ENAMETOOLONG", "ENFILE", "ENOENT", "ENOMEM", "ENOTDIR", "EPERM"] },
+          "reason": { "type": "string", "maxLength": 240, "pattern": "^The [a-z][a-z0-9-]{0,63} adapter failed with (?:AggregateError|Error|EvalError|RangeError|ReferenceError|SyntaxError|TypeError|URIError)\\.(?: [A-Z][A-Za-z ]{0,120}\\.)?$" }
         }
       }
     },

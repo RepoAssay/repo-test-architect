@@ -1,4 +1,5 @@
 import { validateProjectAudits } from "./project-audits-validation.js";
+import { failureContextFields, normalizeFailedProjects } from "./project-failures.js";
 import { analyzeTestPlacement } from "./test-placement-analysis.js";
 import { createTestPlacementFindings } from "./test-placement-findings.js";
 
@@ -82,7 +83,10 @@ export function analyzeProjectTestPlacement(projectAudits) {
     });
   });
 
-  return createTestPlacementFindings(findings);
+  return {
+    ...createTestPlacementFindings(findings),
+    ...failureContextFields(projectAudits, normalizeFailedProjects(projectAudits))
+  };
 }
 
 /**

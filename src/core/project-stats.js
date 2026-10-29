@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { classifyProjectAuditCoverage } from "./project-audit-coverage.js";
 import { validateProjectAudits } from "./project-audits-validation.js";
-import { failedProjectCountField, normalizeFailedProjects } from "./project-failures.js";
+import { failedProjectCountField, failedProjectsField, normalizeFailedProjects } from "./project-failures.js";
 import { compareText } from "./ordering.js";
 import { DEFAULT_IGNORED_DIRECTORY_NAMES as IGNORED_DIRECTORIES } from "./repository-text-files.js";
 
@@ -32,6 +32,7 @@ const LANGUAGE_EXTENSIONS = new Map([
  * @property {{ untestedCandidateCount: number, coveredButRiskyCount: number, skippedTargetCount: number, riskCount: number, blockerCount: number }} counts
  * @property {{ confidence: Record<string, number>, testFrameworks: Record<string, number>, testCommands: Record<string, number>, targetKinds: Record<string, number>, riskLevels: Record<string, number>, signals: Record<string, number>, evidenceStrengths: Record<string, number>, evidenceKinds: Record<string, number>, evidenceUsage: Record<string, number>, evidenceViaUsage: Record<string, number> }} distributions
  * @property {{ adapterId: string, projectCount: number }[]} adapters
+ * @property {import("./project-failures.js").FailedProjectAudit[]} [failedProjects]
  */
 
 /**
@@ -63,7 +64,9 @@ export function collectProjectStats(projectAudits) {
   const sourceFiles = createSourceFileStats();
   const projectRoots = [
     ...projectAudits.audits.map((entry) => entry.projectRoot),
-    ...projectAudits.skippedProjects.map((entry) => entry.projectRoot)
+    ...projectAudits.skippedProjects.map((entry) => entry.projectRoot),
+    // Failed roots are project boundaries too: a successful parent must not absorb their files.
+    ...failedProjects.map((entry) => entry.projectRoot)
   ];
 
   for (const entry of projectAudits.audits) {
@@ -154,7 +157,8 @@ export function collectProjectStats(projectAudits) {
       .map((adapterId) => ({
         adapterId,
         projectCount: adapters[adapterId]
-      }))
+      })),
+    ...failedProjectsField(failedProjects)
   };
 }
 

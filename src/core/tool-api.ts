@@ -172,6 +172,7 @@ export interface ProjectStats {
     adapterId: string;
     projectCount: number;
   }>;
+  failedProjects?: FailedProjectAudit[];
 }
 
 export interface RepositoryAnalysis {
@@ -337,6 +338,10 @@ export interface GenerateTestPlanOptions {
 export interface TestPlacementFindings {
   schemaVersion: "test-placement-findings/v1";
   findings: TestPlacementFinding[];
+  /** Project placement only, present when a project failed to audit. */
+  auditCoverage?: "partial" | "none";
+  failedProjectCount?: number;
+  failedProjects?: FailedProjectAudit[];
 }
 
 export interface TestPlacementFinding {
