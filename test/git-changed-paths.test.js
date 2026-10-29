@@ -77,11 +77,37 @@ describe("git changed paths", () => {
     assert.deepEqual(readGitChangedPathsSince(repo, base).sort(), ["README.md", "packages/app/src/index.js"]);
   });
 
-  it("treats an option-shaped ref as a revision instead of a git option", () => {
+  it("handles audited roots whose directory name starts with whitespace", () => {
+    const repo = createRepo({
+      " app/src/index.js": "export const a = 1;\n",
+      "app/src/index.js": "export const b = 1;\n"
+    });
+    const base = git(repo, "rev-parse", "HEAD").trim();
+    fs.writeFileSync(path.join(repo, " app/src/index.js"), "export const a = 2;\n");
+    fs.writeFileSync(path.join(repo, "app/src/index.js"), "export const b = 2;\n");
+
+    assert.deepEqual(readGitWorkingTreeChangedPaths(path.join(repo, " app")), ["src/index.js"]);
+    commitAll(repo, "change");
+    assert.deepEqual(readGitChangedPathsSince(path.join(repo, " app"), base), ["src/index.js"]);
+    assert.deepEqual(readGitWorkingTreeChangedPaths(path.join(repo, "app")), []);
+  });
+
+  it("lists many untracked files without exceeding the subprocess output buffer", () => {
+    const repo = createRepo({ "README.md": "root\n" });
+    const generated = path.join(repo, "generated", "x".repeat(100));
+    fs.mkdirSync(generated, { recursive: true });
+    for (let index = 0; index < 12000; index += 1) {
+      fs.writeFileSync(path.join(generated, `file-${index}.js`), "");
+    }
+
+    assert.equal(readGitWorkingTreeChangedPaths(repo).length, 12000);
+  });
+
+  it("rejects option-shaped refs instead of passing them to git", () => {
     const repo = createRepo({ "README.md": "root\n" });
     const outputPath = path.join(repo, "injected");
 
-    assert.throws(() => readGitChangedPathsSince(repo, `--output=${outputPath}`));
+    assert.throws(() => readGitChangedPathsSince(repo, `--output=${outputPath}`), /invalid Git ref/);
     assert.deepEqual(fs.readdirSync(repo).filter((name) => name.startsWith("injected")), []);
   });
 

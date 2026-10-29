@@ -8,8 +8,10 @@ import { execFileSync } from "node:child_process";
  * @returns {string[]}
  */
 export function readGitWorkingTreeChangedPaths(repoRoot) {
-  const prefix = runGit(repoRoot, ["rev-parse", "--show-prefix"]).trim();
-  const output = runGit(repoRoot, ["status", "--porcelain=v1", "-z", "--untracked-files=all"]);
+  // Strip only the trailing newline: directory names may legitimately start or end with whitespace.
+  const prefix = runGit(repoRoot, ["rev-parse", "--show-prefix"]).replace(/\r?\n$/, "");
+  // The "." pathspec scopes status to repoRoot, so changes elsewhere in the work tree are never listed.
+  const output = runGit(repoRoot, ["status", "--porcelain=v1", "-z", "--untracked-files=all", "--", "."]);
   return toRepoRootPaths(parseGitStatusPorcelainZ(output), prefix);
 }
 
@@ -24,8 +26,12 @@ export function readGitChangedPathsSince(repoRoot, ref) {
   if (typeof ref !== "string" || ref.length === 0) {
     throw new Error("a Git ref is required.");
   }
-  // --end-of-options keeps a ref such as "--output=<file>" from being parsed as a git option.
-  const output = runGit(repoRoot, ["diff", "--name-only", "-z", "--relative", "--end-of-options", `${ref}...HEAD`, "--"]);
+  // Reject option-shaped refs so a value such as "--output=<file>" is never parsed as a git option.
+  // (git's --end-of-options would also work, but requires Git 2.24.)
+  if (ref.startsWith("-")) {
+    throw new Error(`invalid Git ref: ${ref}`);
+  }
+  const output = runGit(repoRoot, ["diff", "--name-only", "-z", "--relative", `${ref}...HEAD`, "--"]);
   return splitNul(output);
 }
 
@@ -67,6 +73,8 @@ function splitNul(output) {
 function runGit(repoRoot, args) {
   return execFileSync("git", ["-C", repoRoot, ...args], {
     encoding: "utf8",
+    // Large working trees (e.g. many untracked generated files) exceed the 1 MiB default.
+    maxBuffer: 256 * 1024 * 1024,
     stdio: ["ignore", "pipe", "pipe"]
   });
 }
