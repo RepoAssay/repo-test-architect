@@ -1998,3 +1998,257 @@ test("browser near misses", async ({ page }) => {
     assert.deepEqual(audit.untestedCandidates.map((target) => target.path), ["src/checkout.ts"]);
   });
 });
+
+describe("JavaScript skipped tests", () => {
+  const ESM_HEADER = 'import { describe, it, test } from "node:test";\nimport assert from "node:assert/strict";\nimport { calc } from "../src/calc.js";\n';
+  const ESM_SOURCE = "export function calc(value) {\n  if (value > 1) return value * 2;\n  return 0;\n}\n";
+
+  function auditCalcTest(t, body, { header = ESM_HEADER, source = ESM_SOURCE } = {}) {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-js-skipped-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "src"), { recursive: true });
+    fs.mkdirSync(path.join(root, "test"), { recursive: true });
+    fs.writeFileSync(path.join(root, "package.json"), JSON.stringify({ name: "skipped", type: "module", scripts: { test: "node --test" } }));
+    fs.writeFileSync(path.join(root, "src/calc.js"), source);
+    fs.writeFileSync(path.join(root, "test/calc.test.js"), `${header}\n${body}\n`);
+    return auditJavaScriptRepo(root);
+  }
+
+  function calcEvidence(audit) {
+    return audit.coveredButRisky.find((target) => target.path === "src/calc.js")?.existingTestEvidence;
+  }
+
+  for (const body of [
+    'test.skip("b", () => assert.equal(calc(2), 1));',
+    'it.skip("b", () => assert.equal(calc(2), 1));',
+    'xit("b", () => assert.equal(calc(2), 1));\nxtest("c", () => calc(3));',
+    'it.skip.each([[2]])("b %i", (value) => assert.equal(calc(value), 1));',
+    'test("b", { skip: true }, () => assert.equal(calc(2), 1));',
+    'it.skipIf(true)("b", () => assert.equal(calc(2), 1));\nit.runIf(false)("c", () => calc(3));',
+    'test.skip("b", () => { const re = /\\(x\\)/; assert.equal(calc(2), 4); });',
+    'test.skip("b", () => { const re = /\\(/; assert.equal(calc(2), 4); });',
+    'describe.skip("calc", () => {\n  it("b", () => assert.equal(calc(2), 1));\n});',
+    'xdescribe("calc", () => {\n  it("b", () => assert.equal(calc(2), 1));\n});'
+  ]) {
+    it(`treats a skip-only test file as no evidence: ${body.split("\n")[0]}`, (t) => {
+      const audit = auditCalcTest(t, body);
+      assert.equal(calcEvidence(audit), undefined);
+      const target = audit.untestedCandidates.find((candidate) => candidate.path === "src/calc.js");
+      assert.ok(target);
+      assert.equal(target.existingTestEvidence, undefined);
+    });
+  }
+
+  it("does not credit assertions from a skipped block next to an active test", (t) => {
+    const evidence = calcEvidence(auditCalcTest(t, 'test("a", () => assert.ok(true));\ntest.skip("b", () => assert.equal(calc(2), 1));'));
+    assert.deepEqual(evidence, [{ testPath: "test/calc.test.js", kind: "direct-relative-import", strength: "direct" }]);
+  });
+
+  it("blanks active-looking tests nested in describe.skip", (t) => {
+    const evidence = calcEvidence(auditCalcTest(t, 'test("a", () => assert.ok(true));\ndescribe.skip("calc", () => {\n  it("b", () => assert.equal(calc(2), 1));\n});'));
+    assert.deepEqual(evidence, [{ testPath: "test/calc.test.js", kind: "direct-relative-import", strength: "direct" }]);
+  });
+
+  it("ignores skip markers inside strings and comments", (t) => {
+    const evidence = calcEvidence(auditCalcTest(t, 'test("a", () => {\n  const note = "test.skip(";\n  // it.skip("x", () => {\n  /* describe.skip( */\n  assert.equal(calc(2), 4);\n});'));
+    assert.equal(evidence[0].usage, "asserted");
+  });
+
+  it("keeps evidence from active tests with non-skip options and from framework-less files", (t) => {
+    assert.equal(calcEvidence(auditCalcTest(t, 'test("a", { timeout: 5 }, () => assert.equal(calc(2), 4));'))[0].usage, "asserted");
+    assert.equal(calcEvidence(auditCalcTest(t, "assert.equal(calc(2), 4);"))[0].usage, "asserted");
+  });
+
+  it("keeps active evidence that only uncertain or executing skip lookalikes surround", (t) => {
+    for (const body of [
+      // Regex parentheses must not join a skipped call to the next active test.
+      'test.skip("old", () => { const re = /[(]/; });\ntest("active", () => {\n  const re = /[)]/;\n  assert.equal(calc(2), 4);\n});',
+      // An aliased active test is not proof that the file is skip-only.
+      'import { test as check } from "node:test";\ntest.skip("old", () => {});\ncheck("active", () => assert.equal(calc(2), 4));',
+      // A local `test` binding inside an active test is not the framework.
+      'test("active", () => {\n  const test = { skip: (fn) => fn() };\n  test.skip(() => assert.equal(calc(2), 4));\n});',
+      'const it = { skip: (name, fn) => fn() };\nit.skip("helper", () => assert.equal(calc(2), 4));',
+      // node:test runs TODO callbacks; only reporting changes.
+      'test("pending", { todo: "later" },\n  () => assert.equal(calc(2), 4));',
+      'test.todo("pending", () => assert.equal(calc(2), 4));',
+      'it.skipIf(process.env.CI)("maybe", () => assert.equal(calc(2), 4));',
+      'test("a", { skip: "" }, () => assert.equal(calc(2), 4));'
+    ]) {
+      assert.equal(calcEvidence(auditCalcTest(t, body))?.[0].usage, "asserted", body);
+    }
+  });
+
+  // Each reproduction stays on one physical line: a newline could mask the defect.
+  it("keeps active tests separate from skipped ones around regex, division, templates and JSX", (t) => {
+    for (const body of [
+      'test.skip("old",()=>{let x=8;const a=x++ /2;}); test("active",()=>{let x=8;const b=x++ /2; assert.equal(calc(2),4);});',
+      'test.skip("old",()=>{const o={return:8};const a=o.return /2;}); test("active",()=>{const o={return:8};const b=o.return /2; assert.equal(calc(2),4);});',
+      'test.skip("old",()=>{if(true) /\\(/.test("(");}); test("active",()=>{if(true) /\\)/.test(")"); assert.equal(calc(2),4);});',
+      'test.skip("old",()=>{const a=`a ${`${1}${/\\(/.source}`}`;}); test("active",()=>{const b=`b ${`${1}${/\\)/.source}`}`; assert.equal(calc(2),4);});',
+      'test.skip("old",()=>{const el=<div></div>;}); test("active",()=>{const el=<div></div>; assert.equal(calc(2),4);});',
+      'test.skip("old",()=>{if(true) /\\(\\{x/;}); test("active",()=>{if(true) /\\}\\)x/; assert.equal(calc(2),4);});',
+      'test.skip("old",()=>{if(true) {} /\\(\\{x/;}); test("active",()=>{if(true) {} /\\}\\)x/; assert.equal(calc(2),4);});'
+    ]) {
+      assert.equal(calcEvidence(auditCalcTest(t, body))?.[0].usage, "asserted", body);
+    }
+  });
+
+  it("only treats a node:test skip option as skipped when its whole value is definite", (t) => {
+    for (const body of [
+      'test("active", {skip: true && false}, () => assert.equal(calc(2),4));',
+      'test("active", {skip: true, skip: false}, () => assert.equal(calc(2),4));',
+      'const enabled = {skip: false}; test("active", {skip: true, ...enabled}, () => assert.equal(calc(2),4));',
+      'test("active", {skip: "later" && false}, () => assert.equal(calc(2),4));'
+    ]) {
+      assert.equal(calcEvidence(auditCalcTest(t, body))?.[0].usage, "asserted", body);
+    }
+    assert.equal(calcEvidence(auditCalcTest(t, 'test("old", {timeout: 5, skip: "later"}, () => assert.equal(calc(2),4));')), undefined);
+  });
+
+  it("keeps files whose callable CommonJS bindings still run", (t) => {
+    const evidence = calcEvidence(auditCalcTest(t, 'test.skip("old",()=>{});\ncheck("active",()=>{if(calc(2)!==4) throw new Error("bad");});', {
+      header: 'const {test} = require("node:test");\nconst check = require("node:test");\nconst calc = require("../src/calc.js");\n',
+      source: "module.exports = function calc(value) {\n  if (value > 1) return value * 2;\n  return 0;\n};\n"
+    }));
+    assert.equal(evidence?.[0].usage, "called");
+  });
+
+  it("matches each require binding with its own declarator", (t) => {
+    const options = {
+      header: 'const assert = require("node:assert/strict");\nconst {calc} = require("../src/calc.js");\n',
+      source: "module.exports.calc = function calc(value) {\n  if (value > 1) return value * 2;\n  return 0;\n};\n"
+    };
+    for (const body of [
+      'const api=require("node:test"), {test}={test:{skip:fn=>fn()}};test.skip(()=>assert.equal(calc(2),4));',
+      'const {test}={test:{skip:fn=>fn()}}, api=require("node:test");test.skip(()=>assert.equal(calc(2),4));'
+    ]) {
+      assert.equal(calcEvidence(auditCalcTest(t, body, options))?.[0].usage, "asserted", body);
+    }
+    const skipped = 'const api=require("node:assert"), {test}=require("node:test");test.skip("old",()=>assert.equal(calc(2),4));';
+    assert.equal(calcEvidence(auditCalcTest(t, skipped, options)), undefined);
+  });
+
+  it("keeps eagerly evaluated arguments of skipped calls", (t) => {
+    assert.equal(calcEvidence(auditCalcTest(t, 'test.skip("old", {skip:assert.equal(calc(2),4)}, ()=>{});'))?.[0].usage, "asserted");
+    assert.equal(calcEvidence(auditCalcTest(t, 'it.skip.each([[calc(2)]])("old %i", (value) => assert.equal(value, 4));'))?.[0].usage, "called");
+    // Functions under an inner call may run while the arguments are built.
+    assert.equal(calcEvidence(auditCalcTest(t, 'it.skip.each([2].map((value) => calc(value)))("old %i", () => {});'))?.[0].usage, "called");
+  });
+
+  it("gives no credit to function bodies that a skipped call never runs", (t) => {
+    for (const body of [
+      'it.skip.each([[() => assert.equal(calc(2),4)]])("case",fn=>fn());',
+      'it.skip.each([[() => calc(2)]])("case",fn=>fn());',
+      'describe.skip("old",()=>{beforeEach(()=>assert.equal(calc(2),4));it("case",()=>{});});'
+    ]) {
+      assert.equal(calcEvidence(auditCalcTest(t, body)), undefined, body);
+    }
+  });
+
+  const MOCHA_HEADER = 'import { describe, it, beforeEach } from "mocha";\nimport assert from "node:assert/strict";\nimport { calc } from "../src/calc.js";\n';
+  const VITEST_HEADER = 'import { describe, it } from "vitest";\nimport assert from "node:assert/strict";\nimport { calc } from "../src/calc.js";\n';
+  const GLOBALS_HEADER = 'import assert from "node:assert/strict";\nimport { calc } from "../src/calc.js";\n';
+
+  it("keeps collection code of skipped suites in runners that collect them", (t) => {
+    for (const header of [MOCHA_HEADER, VITEST_HEADER, GLOBALS_HEADER]) {
+      for (const body of [
+        'describe.skip("old",()=>{for(const value of [calc(2)])it("case",()=>assert.equal(value,4));});',
+        'xdescribe("old",()=>{const value=calc(2);describe("inner",()=>{it("case",()=>assert.equal(value,4));});});'
+      ]) {
+        assert.equal(calcEvidence(auditCalcTest(t, body, { header }))?.[0].usage, "called", `${header}${body}`);
+      }
+    }
+  });
+
+  it("skips tests and hooks registered anywhere inside a collected skipped suite", (t) => {
+    for (const body of [
+      'describe.skip("s",()=>{[2].forEach(v=>it("x",()=>assert.equal(calc(v),4)));});',
+      'describe.skip("s",()=>{const check=()=>assert.equal(calc(2),4);it("x",check);});',
+      'describe.skip("s",()=>{function check(){assert.equal(calc(2),4);}beforeEach(check);it("x",()=>{});});'
+    ]) {
+      assert.equal(calcEvidence(auditCalcTest(t, body, { header: MOCHA_HEADER })), undefined, body);
+    }
+    // A helper referenced elsewhere may run, so it stays.
+    const shared = 'const check=()=>assert.equal(calc(2),4);describe.skip("s",()=>{it("x",check);});check();';
+    assert.equal(calcEvidence(auditCalcTest(t, shared, { header: MOCHA_HEADER }))?.[0].usage, "asserted");
+  });
+
+  it("keeps named suite callbacks and escaping helpers of collected skipped suites", (t) => {
+    const collector = 'const collect=()=>{const value=calc(2);it("x",()=>assert.equal(value,4));};describe.skip("s",collect);';
+    assert.equal(calcEvidence(auditCalcTest(t, collector, { header: MOCHA_HEADER }))?.[0].usage, "called");
+    const escaping = 'let register;describe.skip("s",()=>{register=()=>it("live",()=>assert.equal(calc(2),4));});describe("active",()=>register());';
+    assert.equal(calcEvidence(auditCalcTest(t, escaping, { header: MOCHA_HEADER }))?.[0].usage, "asserted");
+    // node:test never runs a skipped suite's callback, but a named one is simply left
+    // alone (an accepted missed skip, as on master).
+    assert.equal(calcEvidence(auditCalcTest(t, collector))?.[0].usage, "asserted");
+  });
+
+  it("blanks whole skipped suite callbacks for node:test, which never runs them", (t) => {
+    assert.equal(calcEvidence(auditCalcTest(t, 'describe.skip("s",()=>{assert.equal(calc(2),4);it("x",()=>{});});')), undefined);
+  });
+
+  it("keeps trusting framework names used through documented members", (t) => {
+    const evidence = calcEvidence(auditCalcTest(t, 'test.for([2])("other",()=>assert.ok(true));test.skip("old",()=>assert.equal(calc(2),4));'));
+    assert.deepEqual(evidence, [{ testPath: "test/calc.test.js", kind: "direct-relative-import", strength: "direct" }]);
+  });
+
+  it("stops trusting a framework name that is mutated or passed around", (t) => {
+    for (const body of [
+      'test.skip=(_name,fn)=>fn();test.skip("active",()=>assert.equal(calc(2),4));',
+      'Object.assign(test,{skip:(_name,fn)=>fn()});test.skip("active",()=>assert.equal(calc(2),4));',
+      'test.skip.mockImplementation?.((_name,fn)=>fn());test.skip("active",()=>assert.equal(calc(2),4));',
+      'const helpers={test};helpers.test.skip=(_name,fn)=>fn();test.skip("active",()=>assert.equal(calc(2),4));'
+    ]) {
+      assert.equal(calcEvidence(auditCalcTest(t, body))?.[0].usage, "asserted", body);
+    }
+  });
+
+  it("never blanks skip-looking calls inside non-suite calls", (t) => {
+    for (const body of [
+      'import {test as check} from "node:test";\ncheck("active", function(){function run(test){test.skip(()=>assert.equal(calc(2),4));} run({skip:fn=>fn()});});',
+      '[1].forEach(() => { it.skip("helper", () => assert.equal(calc(2), 4)); });',
+      'function run(test){test.skip(()=>assert.equal(calc(2),4));} run({skip:fn=>fn()});',
+      'describe("active", function(){function run(test){test.skip(()=>assert.equal(calc(2),4));} run({skip:fn=>fn()});});'
+    ]) {
+      assert.equal(calcEvidence(auditCalcTest(t, body))?.[0].usage, "asserted", body);
+    }
+    const nested = 'describe("calc", () => {\n  describe.each([[1]])("case %i", () => {\n    it.skip("b", () => assert.equal(calc(2), 1));\n  });\n});';
+    assert.deepEqual(calcEvidence(auditCalcTest(t, nested)), [{ testPath: "test/calc.test.js", kind: "direct-relative-import", strength: "direct" }]);
+  });
+
+  it("keeps the evidence of unbalanced files instead of guessing skipped ranges", (t) => {
+    const evidence = calcEvidence(auditCalcTest(t, 'test.skip("old", () => {\ntest("active", () => assert.equal(calc(2), 4));'));
+    assert.equal(evidence?.[0].usage, "asserted");
+  });
+
+  it("handles deeply nested suites in bounded time", (t) => {
+    const nested = (depth, leaf) => 'describe("outer", () => {\n'.repeat(depth) + `${leaf}\n` + "});\n".repeat(depth);
+    // Realistic depth: the nested skip is found and blanked.
+    const skippedOnly = calcEvidence(auditCalcTest(t, nested(60, 'it.skip("leaf", () => assert.equal(calc(2), 4));')));
+    assert.deepEqual(skippedOnly, [{ testPath: "test/calc.test.js", kind: "direct-relative-import", strength: "direct" }]);
+    // Implausibly deep nesting is not parsed, so evidence is kept.
+    const depth = 6000;
+    const body = nested(depth, 'test("leaf", () => assert.equal(calc(2), 4));') +
+      'describe.skip("outer", () => {\n'.repeat(depth) + 'test("leaf", () => calc(3));\n' + "});\n".repeat(depth);
+    const startedAt = performance.now();
+    const evidence = calcEvidence(auditCalcTest(t, body));
+    assert.equal(evidence[0].usage, "asserted");
+    assert.ok(performance.now() - startedAt < 2000);
+  });
+
+  it("does not let closing brackets inside strings defeat the nesting bound", (t) => {
+    const depth = 4000;
+    const leaf = 'it.skip("x",()=>{assert.equal(calc(2),4);});';
+    for (const body of [
+      'const pad="' + ")".repeat(2 * depth) + '";' + 'describe("a",()=>{'.repeat(depth) + leaf + "});".repeat(depth),
+      'describe(")))",()=>{'.repeat(depth) + leaf + "});".repeat(depth),
+      "const x=`${(()=>{" + 'describe("a",()=>{'.repeat(depth) + "0;" + "});".repeat(depth) + "})()}`;" + leaf
+    ]) {
+      const startedAt = performance.now();
+      const evidence = calcEvidence(auditCalcTest(t, body));
+      const elapsed = performance.now() - startedAt;
+      assert.equal(evidence?.[0].usage, "asserted");
+      assert.ok(elapsed < 250, `took ${elapsed} ms`);
+    }
+  });
+});

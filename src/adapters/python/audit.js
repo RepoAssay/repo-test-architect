@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { finishAuditPhase, startAuditPhase } from "../../core/audit-phase-timing.js";
 import { compareText } from "../../core/ordering.js";
+import { analyzePythonSkips } from "./skips.js";
 
 const SOURCE_EXTENSIONS = [".py"];
 const DEFAULT_PYTEST_PYTHON_FILES = ["test_*.py", "*_test.py"];
@@ -45,6 +46,8 @@ export function auditPythonRepo(root, options = {}) {
   const parsedTestSupportFiles = Object.values(parsedTestSupportFileFactsByPath);
   const testFiles = parsedTestSupportFiles
     .filter((file) => isTestFile(file.path, pytestDiscovery))
+    .map(activePythonTestFile)
+    .filter(Boolean)
     .sort((left, right) => compareText(left.path, right.path));
   const pytestFixtures = collectPytestFixtures(files, parsedTestSupportFiles, sourceLayout, pytestDiscovery);
   const frameworkClientEvidence = collectPythonFrameworkClientEvidence(
@@ -939,7 +942,8 @@ function isTestFile(currentPath, pytestDiscovery = EMPTY_PYTEST_DISCOVERY) {
 function buildPythonParsedFileFacts(file, sourceLayout) {
   const normalizedPath = normalizePath(file.path);
   const maskedContent = maskPythonCommentsAndStrings(file.content);
-  const functions = Object.freeze(parsePythonFunctions(file.content, maskedContent).map((pythonFunction) => Object.freeze({
+  const skips = analyzePythonSkips(file.content);
+  const functions = Object.freeze(parsePythonFunctions(file.content, maskedContent, skips).map((pythonFunction) => Object.freeze({
     ...pythonFunction,
     parameters: Object.freeze(pythonFunction.parameters),
     decorators: Object.freeze(pythonFunction.decorators)
@@ -954,7 +958,7 @@ function buildPythonParsedFileFacts(file, sourceLayout) {
     content: file.content,
     maskedContent,
     maskedFunctionBlocks: maskPythonFunctionBlocks(file.content, maskedContent),
-    analysis: Object.freeze({ functions, imports })
+    analysis: Object.freeze({ functions, imports, allTestsSkipped: skips.allTestsSkipped })
   });
 }
 
@@ -1839,13 +1843,14 @@ function maskPythonTypeCheckingBlocks(content) {
   return lines.join("\n");
 }
 
-function parsePythonFunctions(content, maskedContent = maskPythonCommentsAndStrings(content)) {
+function parsePythonFunctions(content, maskedContent = maskPythonCommentsAndStrings(content), skips = analyzePythonSkips(content)) {
   const rawLines = content.split(/\r?\n/);
   const maskedLines = maskedContent.split(/\r?\n/);
   const functions = [];
 
   for (let index = 0; index < maskedLines.length; index += 1) {
-    const match = maskedLines[index].match(/^(\s*)(?:async\s+)?def\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(([^)]*)\)\s*(?:->\s*[^:]+)?\s*:/);
+    const maskedLine = maskedLines[index];
+    const match = maskedLine.match(/^(\s*)(?:async\s+)?def\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(([^)]*)\)\s*(?:->\s*[^:]+)?\s*:/);
     if (!match) continue;
     const indent = indentationWidth(match[1]);
     let decoratorIndex = index - 1;
@@ -1860,16 +1865,42 @@ function parsePythonFunctions(content, maskedContent = maskPythonCommentsAndStri
       if (line.trim() && indentationWidth(line.match(/^\s*/)?.[0] ?? "") <= indent) break;
       end += 1;
     }
+    // Lines after an unconditional top-level skip statement never run.
+    const skipLine = skips.truncatedDefinitionLines.get(index);
+    const activeEnd = skipLine === undefined ? end : Math.max(index + 1, Math.min(end, skipLine));
+    // A skipped function whose skip decorator calls code keeps only that decorator
+    // text as evidence; its body never runs.
+    const [liveStart, liveEnd] = skips.liveDecoratorLines.get(index) ?? [];
+    const [bodyStart, bodyEnd] = liveStart === undefined ? [index + 1, activeEnd] : [liveStart, liveEnd];
     functions.push({
       name: match[2],
       parameters: parsePythonParameters(match[3]),
       decorators,
-      body: maskedLines.slice(index + 1, end).join("\n"),
-      rawBody: rawLines.slice(index + 1, end).join("\n")
+      body: maskedLines.slice(bodyStart, bodyEnd).join("\n"),
+      rawBody: rawLines.slice(bodyStart, bodyEnd).join("\n"),
+      skipped: liveStart === undefined && (skips.moduleSkipped || skips.skippedDefinitionLines.has(index))
     });
     index = end - 1;
   }
   return functions;
+}
+
+// Evidence is derived from active tests only: skipped test functions are dropped,
+// and a test module whose tests are all skipped contributes no evidence at all.
+// Both pytest and unittest collect any `test`-prefixed name (e.g. `testCalc`).
+function activePythonTestFile(testFile) {
+  const isTest = (pythonFunction) => pythonFunction.name.startsWith("test");
+  // The line-based parser misses some definitions (e.g. multi-line signatures), so
+  // whole-module removal is decided on the syntax tree's complete test list.
+  if (testFile.analysis.allTestsSkipped) return undefined;
+  if (!testFile.analysis.functions.some((pythonFunction) => pythonFunction.skipped && isTest(pythonFunction))) return testFile;
+  return Object.freeze({
+    ...testFile,
+    analysis: Object.freeze({
+      ...testFile.analysis,
+      functions: Object.freeze(testFile.analysis.functions.filter((pythonFunction) => !pythonFunction.skipped || !isTest(pythonFunction)))
+    })
+  });
 }
 
 function parsePythonParameters(value) {

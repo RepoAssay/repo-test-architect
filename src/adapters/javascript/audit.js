@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { compareText } from "../../core/ordering.js";
+import { findSkippedJavaScriptTestRanges } from "./skips.js";
 
 const SOURCE_EXTENSIONS = [".cjs", ".cts", ".js", ".jsx", ".mjs", ".mts", ".ts", ".tsx"];
 const SOURCE_ROOTS = ["src/", "source/", "lib/"];
@@ -28,7 +29,10 @@ export function auditJavaScriptRepo(root, options = {}) {
   const changedPaths = options.changedPaths ? new Set(options.changedPaths.map((currentPath) => normalizeChangedPath(root, currentPath))) : undefined;
   const moduleFiles = files.map((file) => analyzeModuleFile({ ...file, path: normalizePath(file.path) }));
   const moduleIndex = createJavaScriptModuleIndex(moduleFiles);
-  const testFiles = moduleFiles.filter((file) => testFilePaths.has(file.path));
+  const testFiles = moduleFiles
+    .filter((file) => testFilePaths.has(file.path))
+    .map(activeJavaScriptTestFile)
+    .filter(Boolean);
   const tsconfigData = resolveTsconfigData("tsconfig.json", files);
   const pathAliasEntries = findTsconfigPathAliasEntries(tsconfigData, moduleFiles);
   const boundedTransitiveImports = collectBoundedTransitiveImports(testFiles, moduleIndex, pathAliasEntries);
@@ -1332,6 +1336,30 @@ function isTestFile(currentPath) {
     /\.(test|spec|cy)\.[cm]?[jt]sx?$/.test(normalized) ||
     /_(test|spec)\.[cm]?[jt]sx?$/.test(normalized)
   );
+}
+
+const ACTIVE_TEST_CALL_PATTERN = /(?<![\w$.])(?:it|test|describe|context|suite|specify|fit|fdescribe)\b(?:\s*\.\s*[A-Za-z_$][\w$]*)*\s*[(`]/;
+
+// Evidence is derived from active tests only. The callee and callbacks of skipped
+// calls found on the syntax tree are blanked (newlines kept so offsets stay
+// stable); eagerly evaluated arguments keep their evidence. A file is dropped only
+// when, after blanking, no imported binding is still used, called or asserted and
+// no test call remains, so aliased or unrecognised active tests keep evidence.
+function activeJavaScriptTestFile(testFile) {
+  const ranges = findSkippedJavaScriptTestRanges(testFile.path, testFile.content);
+  if (ranges.length === 0) return testFile;
+  const characters = testFile.content.split("");
+  for (const [start, end] of ranges) {
+    for (let index = start; index < end; index += 1) {
+      if (characters[index] !== "\n" && characters[index] !== "\r") characters[index] = " ";
+    }
+  }
+  const content = characters.join("");
+  const activeFile = analyzeModuleFile({ ...testFile, content, moduleImports: undefined, relativeModuleSpecifiers: undefined, runtimeDependencySpecifiers: undefined });
+  const importsStillUsed = getModuleImports(activeFile).some((moduleImport) =>
+    moduleImport.usedImportedNames.size > 0 || moduleImport.calledImportedNames.size > 0 || moduleImport.assertedImportedNames.size > 0);
+  if (!importsStillUsed && !ACTIVE_TEST_CALL_PATTERN.test(javascriptLexicalViews(content).code)) return undefined;
+  return activeFile;
 }
 
 function findExistingTestEvidence(sourcePath, testFiles, moduleIndex, boundedTransitiveImports, packageEntry) {

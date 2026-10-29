@@ -1844,3 +1844,185 @@ dependencies = ["pytest"]
     });
   }
 });
+
+describe("Python skipped tests", () => {
+  function auditCalcTest(t, body) {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-py-skipped-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "app"), { recursive: true });
+    fs.mkdirSync(path.join(root, "tests"), { recursive: true });
+    fs.writeFileSync(path.join(root, "pyproject.toml"), '[project]\nname = "skipped"\nversion = "1.0.0"\n\n[tool.pytest.ini_options]\ntestpaths = ["tests"]\n');
+    fs.writeFileSync(path.join(root, "app/__init__.py"), "");
+    fs.writeFileSync(path.join(root, "app/pricing.py"), "def calc(value):\n    if value > 1:\n        return value * 2\n    return 0\n");
+    fs.writeFileSync(path.join(root, "tests/test_math.py"), `import sys\nimport unittest\nimport pytest\nfrom app.pricing import calc\n\n${body}`);
+    return auditPythonRepo(root);
+  }
+
+  function calcEvidence(audit) {
+    return audit.coveredButRisky.find((target) => target.path === "app/pricing.py")?.existingTestEvidence;
+  }
+
+  for (const body of [
+    "@pytest.mark.skip\ndef test_calc():\n    assert calc(2) == 1\n",
+    "@pytest.mark.skipif(\n    True,\n    reason='always',\n)\ndef test_calc():\n    assert calc(2) == 1\n",
+    "@unittest.skipUnless(False, 'never')\ndef test_calc():\n    assert calc(2) == 1\n",
+    "@unittest.skip('later')\nclass TestCalc(unittest.TestCase):\n    def test_calc(self):\n        self.assertEqual(calc(2), 1)\n",
+    "@pytest.mark.skip(reason='later')\nclass TestCalc:\n    def test_calc(self):\n        assert calc(2) == 1\n",
+    "def test_calc():\n    \"\"\"Pending.\"\"\"\n    pytest.skip('later')\n    assert calc(2) == 1\n",
+    "pytestmark = pytest.mark.skip(reason='later')\n\ndef test_calc():\n    assert calc(2) == 1\n",
+    "pytestmark = [pytest.mark.slow, pytest.mark.skipif(condition=True, reason='x')]\n\ndef test_calc():\n    assert calc(2) == 1\n",
+    "@unittest.skip('disabled')\n# Explanation of the disabled test\n\ndef test_calc():\n    assert calc(2) == 4\n",
+    "class TestCalc(unittest.TestCase):\n    def testCalc(self):\n        self.skipTest('later')\n        self.assertEqual(calc(2), 4)\n"
+  ]) {
+    it(`treats a skip-only test module as no evidence: ${body.split("\n")[0]}`, (t) => {
+      const audit = auditCalcTest(t, body);
+      assert.equal(calcEvidence(audit), undefined);
+      const target = audit.untestedCandidates.find((candidate) => candidate.path === "app/pricing.py");
+      assert.ok(target);
+      assert.equal(target.existingTestEvidence, undefined);
+    });
+  }
+
+  it("does not credit assertions from skipped tests next to active ones", (t) => {
+    for (const body of [
+      "def test_other():\n    assert True\n\n@pytest.mark.skip(reason='x')\ndef test_calc():\n    assert calc(2) == 1\n",
+      "class TestCalc(unittest.TestCase):\n    @unittest.skipIf(True, 'x')\n    def test_calc(self):\n        self.assertEqual(calc(2), 1)\n\n    def test_other(self):\n        self.assertTrue(True)\n"
+    ]) {
+      assert.deepEqual(calcEvidence(auditCalcTest(t, body)), [{ testPath: "tests/test_math.py", kind: "python-module-import", strength: "direct" }]);
+    }
+  });
+
+  it("still credits xfail tests and ignores skip text in comments", (t) => {
+    for (const body of [
+      "@pytest.mark.xfail(reason='known')\ndef test_calc():\n    assert calc(2) == 1\n",
+      "def test_calc():\n    # @pytest.mark.skip\n    assert calc(2) == 4\n"
+    ]) {
+      assert.equal(calcEvidence(auditCalcTest(t, body))[0].usage, "asserted");
+    }
+  });
+
+  it("keeps evidence for conditional skips that are not definitely true", (t) => {
+    for (const body of [
+      "@pytest.mark.skipif(False, reason='enabled')\ndef test_calc():\n    assert calc(2) == 4\n",
+      "@pytest.mark.skipif(\n    sys.platform == 'win32',\n    reason='windows',\n)\ndef test_calc():\n    assert calc(2) == 4\n",
+      "@unittest.skipUnless(True, 'enabled')\ndef test_calc():\n    assert calc(2) == 4\n",
+      "@unittest.skipIf(sys.version_info < (3, 8), 'old')\ndef test_calc():\n    assert calc(2) == 4\n",
+      "pytestmark = pytest.mark.skipif(False, reason='enabled')\n\ndef test_calc():\n    assert calc(2) == 4\n",
+      "@pytest.mark.parametrize('value', [pytest.param(1, marks=pytest.mark.skip)])\ndef test_calc(value):\n    assert calc(2) == 4\n"
+    ]) {
+      assert.equal(calcEvidence(auditCalcTest(t, body))?.[0].usage, "asserted", body);
+    }
+  });
+
+  it("counts unittest's test-prefixed methods as active tests", (t) => {
+    const body = "class TestCalc(unittest.TestCase):\n    @unittest.skip('old')\n    def test_old(self):\n        pass\n\n    def testCalc(self):\n        self.assertEqual(calc(2), 4)\n";
+    assert.deepEqual(calcEvidence(auditCalcTest(t, body)), [{ testPath: "tests/test_math.py", kind: "python-module-import", strength: "direct" }]);
+  });
+
+  it("stops crediting a test body at a top-level imperative skip", (t) => {
+    const body = "def test_calc():\n    value = 2\n    pytest.skip('disabled')\n    assert calc(value) == 4\n";
+    assert.deepEqual(calcEvidence(auditCalcTest(t, body)), [{ testPath: "tests/test_math.py", kind: "python-module-import", strength: "direct" }]);
+    const conditional = "def test_calc():\n    if sys.platform == 'win32':\n        pytest.skip('windows')\n    assert calc(2) == 4\n";
+    assert.equal(calcEvidence(auditCalcTest(t, conditional))?.[0].usage, "asserted");
+  });
+
+  it("keeps evidence when an apparent skip does not definitely run or abort", (t) => {
+    for (const body of [
+      // Backslash continuations: the skip is an unreachable operand, not a statement.
+      "class TestCalc(unittest.TestCase):\n    def test_calc(self):\n        value = True or \\\n        self.skipTest('unreachable')\n        self.assertEqual(calc(2), 4)\n",
+      "def test_calc():\n    value = True or \\\n    pytest.skip('unreachable')\n    assert calc(2) == 4\n",
+      // An overridden skipTest need not abort.
+      "class TestCalc(unittest.TestCase):\n    def skipTest(self, reason):\n        pass\n\n    def test_calc(self):\n        self.skipTest('noop')\n        self.assertEqual(calc(2), 4)\n",
+      // The last pytestmark assignment wins.
+      "pytestmark = pytest.mark.skip(reason='old')\npytestmark = []\n\ndef test_calc():\n    assert calc(2) == 4\n",
+      "pytestmark = pytest.mark.skip(reason='old')\npytestmark: list = []\n\ndef test_calc():\n    assert calc(2) == 4\n",
+      "pytestmark = pytest.mark.skip(reason='old'); pytestmark = []\n\ndef test_calc():\n    assert calc(2) == 4\n",
+      "pytestmark = pytest.mark.skip(reason='old') if False else []\n\ndef test_calc():\n    assert calc(2) == 4\n",
+      // Instance and annotated class-level skipTest overrides.
+      "class TestCalc(unittest.TestCase):\n    def test_calc(self):\n        self.skipTest = lambda reason: None\n        self.skipTest('noop')\n        self.assertEqual(calc(2), 4)\n",
+      "class TestCalc(unittest.TestCase):\n    skipTest: object = lambda self, reason: None\n\n    def test_calc(self):\n        self.skipTest('noop')\n        self.assertEqual(calc(2), 4)\n",
+      // A conditional expression is not an unconditional skip statement.
+      "class TestCalc(unittest.TestCase):\n    def test_calc(self):\n        self.skipTest('old') if False else None\n        self.assertEqual(calc(2), 4)\n",
+      // Files that do not parse cleanly report no skips.
+      "@pytest.mark.skip\ndef test_calc():\n    assert calc(2) == 4\n\ndef broken(:\n    pass\n"
+    ]) {
+      assert.equal(calcEvidence(auditCalcTest(t, body))?.[0].usage, "asserted", body);
+    }
+  });
+
+  it("stops trusting skip names that are rebound, mutated or deleted", (t) => {
+    for (const body of [
+      "from unittest import skip\nskip=lambda _: lambda f:f\n@skip(\"noop\")\ndef test_calc():\n    assert calc(2)==4\n",
+      "def test_calc(pytest):\n    pytest.skip(\"noop\")\n    assert calc(2)==4\n",
+      "def test_calc():\n    pytest = Helper()\n    pytest.skip(\"noop\")\n    assert calc(2)==4\n",
+      "pytest.mark.skip = lambda f: f\n\n@pytest.mark.skip\ndef test_calc():\n    assert calc(2)==4\n",
+      "pytestmark=[pytest.mark.skip(reason=\"old\")]\npytestmark.clear()\ndef test_calc():\n    assert calc(2)==4\n",
+      "pytestmark=[pytest.mark.skip(reason=\"old\")]\ndel pytestmark\ndef test_calc():\n    assert calc(2)==4\n",
+      "(pytest.skip,)=[lambda *args:None]\ndef test_calc():\n    pytest.skip(\"noop\")\n    assert calc(2)==4\n",
+      "for pytest.skip in [lambda *args:None]:\n    pass\n\ndef test_calc():\n    pytest.skip(\"noop\")\n    assert calc(2)==4\n"
+    ]) {
+      assert.equal(calcEvidence(auditCalcTest(t, body))?.[0].usage, "asserted", body);
+    }
+    const skipped = "from unittest import skip\n\n@skip(\"later\")\ndef test_calc():\n    assert calc(2)==4\n";
+    assert.equal(calcEvidence(auditCalcTest(t, skipped)), undefined);
+  });
+
+  it("keeps evidence from the arguments of skip calls and markers", (t) => {
+    for (const body of [
+      "class TestCalc(unittest.TestCase):\n    def test_calc(self):\n        self.skipTest(str(calc(2)))\n",
+      "def test_calc():\n    pytest.skip(str(calc(2)))\n",
+      "def test_calc():\n    pytest.skip(f\"{calc(2)}\")\n    assert calc(3) == 6\n",
+      "@pytest.mark.skip(reason=str(calc(2)))\ndef test_calc():\n    pass\n",
+      "pytestmark = pytest.mark.skip(reason=str(calc(2)))\n\ndef test_calc():\n    pass\n",
+      "pytest.skip(str(calc(2)), allow_module_level=True)\n\ndef test_calc():\n    pass\n"
+    ]) {
+      assert.ok(calcEvidence(auditCalcTest(t, body))?.length, body);
+    }
+    // The skip call's arguments are credited; the skipped body never is.
+    for (const body of [
+      "class TestCalc(unittest.TestCase):\n    def test_calc(self):\n        self.skipTest(str(calc(2)))\n",
+      "def test_calc():\n    pytest.skip(str(calc(2)))\n",
+      "def test_calc():\n    pytest.skip(str(calc(2)))\n    assert calc(2) == 4\n",
+      "@pytest.mark.skip(reason=str(calc(2)))\ndef test_calc():\n    assert calc(2)==4\n",
+      "class TestCalc(unittest.TestCase):\n    @unittest.skip(str(calc(2)))\n    def test_calc(self):\n        self.assertEqual(calc(2), 4)\n"
+    ]) {
+      assert.equal(calcEvidence(auditCalcTest(t, body))?.[0].usage, "called", body);
+    }
+    // Module-level code is not usage evidence, so module-level skips keep only the import.
+    for (const body of [
+      "pytestmark = pytest.mark.skip(reason=str(calc(2)))\n\ndef test_calc():\n    assert calc(2)==4\n",
+      "pytest.skip(str(calc(2)), allow_module_level=True)\n\ndef test_calc():\n    assert calc(2)==4\n"
+    ]) {
+      assert.deepEqual(calcEvidence(auditCalcTest(t, body)), [{ testPath: "tests/test_math.py", kind: "python-module-import", strength: "direct" }], body);
+    }
+  });
+
+  it("excludes skipped bodies whatever the skip's non-calling arguments are", (t) => {
+    for (const body of [
+      "REASON=\"old\"\n@pytest.mark.skip(reason=REASON)\ndef test_calc():\n    assert calc(2)==4\n",
+      "REASON=\"old\"\nclass TestCalc(unittest.TestCase):\n    @unittest.skip(REASON)\n    def test_calc(self):\n        self.assertEqual(calc(2), 4)\n",
+      "REASON=\"old\"\npytestmark = pytest.mark.skip(reason=REASON)\n\ndef test_calc():\n    assert calc(2)==4\n",
+      "REASON=\"old\"\npytest.skip(REASON, allow_module_level=True)\n\ndef test_calc():\n    assert calc(2)==4\n",
+      "class TestCalc(unittest.TestCase):\n    def test_calc(self):\n        self.skipTest(self.REASON)\n        self.assertEqual(calc(2), 4)\n"
+    ]) {
+      assert.equal(calcEvidence(auditCalcTest(t, body)), undefined, body);
+    }
+  });
+
+  it("never drops a module whose fixtures may run before a skip", (t) => {
+    const withFixture = calcEvidence(auditCalcTest(t, "REASON=\"old\"\n@pytest.fixture\ndef data():\n    return calc(2)\n\ndef test_calc(data):\n    pytest.skip(REASON)\n"));
+    assert.ok(withFixture?.some((evidence) => evidence.kind === "python-pytest-fixture"), JSON.stringify(withFixture));
+    // A fixture from elsewhere (conftest.py) still runs; the skipped body gets no credit.
+    const requested = calcEvidence(auditCalcTest(t, "def test_calc(data):\n    pytest.skip(\"later\")\n    assert calc(2)==4\n"));
+    assert.deepEqual(requested, [{ testPath: "tests/test_math.py", kind: "python-module-import", strength: "direct" }]);
+  });
+
+  it("decides whole-module removal from every test definition in the syntax tree", (t) => {
+    for (const body of [
+      "class TestCalc(unittest.TestCase):\n    @unittest.skip(\"old\")\n    def test_old(self):\n        pass\n    def test_active(\n        self\n    ):\n        self.assertEqual(calc(2),4)\n",
+      "@pytest.mark.skip\ndef test_old():\n    pass\n\ndef test_active(\n):\n    assert calc(2)==4\n"
+    ]) {
+      assert.deepEqual(calcEvidence(auditCalcTest(t, body)), [{ testPath: "tests/test_math.py", kind: "python-module-import", strength: "direct" }], body);
+    }
+  });
+});
