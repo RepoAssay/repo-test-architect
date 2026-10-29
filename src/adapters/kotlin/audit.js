@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { analyzeGradleSettings } from "../../core/gradle-settings.js";
+import { compareText } from "../../core/ordering.js";
 
 const SOURCE_EXTENSIONS = [".kt", ".java", ".groovy"];
 const BUILD_FILE_NAMES = new Set([
@@ -36,7 +37,7 @@ export function auditKotlinRepo(root, options = {}) {
       moduleProjectPath: moduleForPath(file.path, modules, "test")?.projectPath,
       analysis: analyzeJvmFile(file.content, file.path)
     }))
-    .sort((left, right) => left.path.localeCompare(right.path));
+    .sort((left, right) => compareText(left.path, right.path));
   const sourceFiles = files
     .filter((candidate) => isSourceFile(candidate.path, modules))
     .map((file) => ({ ...file, moduleProjectPath: moduleForPath(file.path, modules, "main")?.projectPath }));
@@ -104,7 +105,7 @@ export function auditKotlinRepo(root, options = {}) {
     untestedCandidates: untestedCandidates.sort(byRiskThenName),
     coveredButRisky: coveredButRisky.sort(byRiskThenName),
     recommended,
-    skipped: skipped.sort((a, b) => a.name.localeCompare(b.name)),
+    skipped: skipped.sort((a, b) => compareText(a.name, b.name)),
     risks
   };
 }
@@ -133,7 +134,7 @@ function readRepoFiles(root) {
   }
 
   visit(root);
-  return files;
+  return files.sort((left, right) => compareText(left.path, right.path));
 }
 
 function shouldRead(relative) {
@@ -212,7 +213,7 @@ function resolveGradleModules(files, settings) {
 
   populateKmpReachableTestDependencies(modules);
   populateReachableModuleDependencies(modules);
-  return modules.sort((left, right) => right.directory.length - left.directory.length || left.projectPath.localeCompare(right.projectPath));
+  return modules.sort((left, right) => right.directory.length - left.directory.length || compareText(left.projectPath, right.projectPath));
 }
 
 function detectGradleAggregateBlockers(files, settingsAnalysis) {
@@ -309,7 +310,7 @@ function resolveMavenModules(files, rootPom) {
   }
 
   populateReachableModuleDependencies(modules);
-  return modules.sort((left, right) => right.directory.length - left.directory.length || left.projectPath.localeCompare(right.projectPath));
+  return modules.sort((left, right) => right.directory.length - left.directory.length || compareText(left.projectPath, right.projectPath));
 }
 
 function populateReachableModuleDependencies(modules) {
@@ -757,7 +758,7 @@ function detectTestCommand(root, paths, frameworks, modules) {
   const candidates = [];
   const kmpJvmModules = modules
     .filter((module) => module.supportsKmpJvm)
-    .sort((left, right) => left.projectPath.localeCompare(right.projectPath));
+    .sort((left, right) => compareText(left.projectPath, right.projectPath));
   const hasRootGradleBuild = paths.includes("build.gradle") || paths.includes("build.gradle.kts") ||
     paths.includes("settings.gradle") || paths.includes("settings.gradle.kts");
   if (kmpJvmModules.length > 0) {
@@ -1175,7 +1176,7 @@ function collectJvmTestEvidence(sourceSymbols, testFiles, modules) {
         ...(match.usage ? { usage: match.usage } : {})
       });
     }
-    if (evidence.length > 0) evidenceBySourcePath.set(source.path, evidence.sort((a, b) => a.testPath.localeCompare(b.testPath)));
+    if (evidence.length > 0) evidenceBySourcePath.set(source.path, evidence.sort((a, b) => compareText(a.testPath, b.testPath)));
   }
 
   return evidenceBySourcePath;
@@ -1498,5 +1499,5 @@ function escapeRegExp(value) {
 
 function byRiskThenName(a, b) {
   const order = { high: 0, medium: 1, low: 2 };
-  return order[a.risk] - order[b.risk] || a.name.localeCompare(b.name);
+  return order[a.risk] - order[b.risk] || compareText(a.name, b.name);
 }

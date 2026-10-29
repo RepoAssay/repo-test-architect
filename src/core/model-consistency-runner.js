@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { callTool } from "../mcp/tool-definitions.js";
+import { compareText } from "./ordering.js";
 
 /**
  * @typedef {object} ModelConsistencyScenario
@@ -291,5 +292,5 @@ function parsePath(fieldPath) {
  * @returns {string[]}
  */
 function uniqueSorted(values) {
-  return [...new Set(values)].sort((left, right) => left.localeCompare(right));
+  return [...new Set(values)].sort((left, right) => compareText(left, right));
 }

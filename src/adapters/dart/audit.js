@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { parseDocument } from "yaml";
 import { normalizeChangedPath, readRepositoryTextFiles } from "../../core/repository-text-files.js";
+import { compareText } from "../../core/ordering.js";
 
 const ignoredDirectoryNames = new Set([
   ".git", ".dart_tool", ".pub-cache", ".flutter-plugins", "build", "coverage", "node_modules", "vendor"
@@ -128,7 +129,7 @@ export function auditDartRepo(root, options = {}) {
     };
     (evidence.length ? coveredButRisky : untestedCandidates).push(target);
   }
-  const byRisk = (a, b) => b.riskReductionScore - a.riskReductionScore || a.path.localeCompare(b.path);
+  const byRisk = (a, b) => b.riskReductionScore - a.riskReductionScore || compareText(a.path, b.path);
   const profile = {
     root: absoluteRoot, languages: ["dart"], packageManagers: ["pub"], testFrameworks,
     architectures: [flutter ? "flutter" : "dart-package"],

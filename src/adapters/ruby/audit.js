@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { compareText } from "../../core/ordering.js";
 
 const RUBY_SOURCE_EXTENSION = ".rb";
 const RUBY_REQUIRE_GRAPH_DEPTH = 3;
@@ -128,7 +129,7 @@ export function auditRubyRepo(root, options = {}) {
     untestedCandidates: untestedCandidates.sort(byRiskThenName),
     coveredButRisky: coveredButRisky.sort(byRiskThenName),
     recommended,
-    skipped: skipped.sort((left, right) => left.path.localeCompare(right.path)),
+    skipped: skipped.sort((left, right) => compareText(left.path, right.path)),
     risks
   };
 }
@@ -153,7 +154,7 @@ function readRepoFiles(root) {
   }
 
   visit(root);
-  return files.sort((left, right) => left.path.localeCompare(right.path));
+  return files.sort((left, right) => compareText(left.path, right.path));
 }
 
 function shouldRead(currentPath) {
@@ -446,7 +447,7 @@ function collectConfiguredRSpecHelpers(content, rubyFilesByPath) {
       .filter((candidate) => rubyFilesByPath.has(candidate));
     if (candidates.length === 1) helpers.push(rubyFilesByPath.get(candidates[0]));
   }
-  return helpers.sort((left, right) => left.path.localeCompare(right.path));
+  return helpers.sort((left, right) => compareText(left.path, right.path));
 }
 
 function collectReachableRubySources(testFile, rubyFilesByPath, hasBundledLibraryLoadPath, configuredHelpers = []) {
@@ -482,7 +483,7 @@ function collectReachableRubySources(testFile, rubyFilesByPath, hasBundledLibrar
     }
   }
 
-  return new Map([...sourceDepth].sort(([left], [right]) => left.localeCompare(right)));
+  return new Map([...sourceDepth].sort(([left], [right]) => compareText(left, right)));
 }
 
 function collectLiteralRubyRequires(content) {
@@ -604,7 +605,7 @@ function collectRubySourceDeclarations(content) {
   }
   return new Map(
     [...declarations]
-      .sort(([left], [right]) => left.localeCompare(right))
+      .sort(([left], [right]) => compareText(left, right))
       .map(([constant, declaration]) => [constant, {
         ...declaration,
         declarationKinds: new Set([...declaration.declarationKinds].sort()),
@@ -1309,7 +1310,7 @@ function escapeRegex(value) {
 function addRubyEvidence(evidenceByPath, sourcePath, evidence) {
   const current = evidenceByPath.get(sourcePath) ?? [];
   current.push(evidence);
-  current.sort((left, right) => left.testPath.localeCompare(right.testPath) || left.strength.localeCompare(right.strength));
+  current.sort((left, right) => compareText(left.testPath, right.testPath) || compareText(left.strength, right.strength));
   evidenceByPath.set(sourcePath, current);
 }
 
@@ -1501,5 +1502,5 @@ function normalizePath(currentPath) {
 
 function byRiskThenName(left, right) {
   const riskOrder = { high: 0, medium: 1, low: 2 };
-  return (riskOrder[left.risk] ?? 3) - (riskOrder[right.risk] ?? 3) || left.name.localeCompare(right.name);
+  return (riskOrder[left.risk] ?? 3) - (riskOrder[right.risk] ?? 3) || compareText(left.name, right.name);
 }

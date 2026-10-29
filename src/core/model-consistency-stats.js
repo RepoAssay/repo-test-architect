@@ -1,4 +1,5 @@
 import { compareModelConsistencySummaries } from "./model-consistency-runner.js";
+import { compareText } from "./ordering.js";
 
 /**
  * @typedef {import("./model-consistency-runner.js").ModelConsistencySummary} ModelConsistencySummary
@@ -68,5 +69,5 @@ function countBy(items, key) {
     counts[item[key]] = (counts[item[key]] ?? 0) + 1;
   }
 
-  return Object.fromEntries(Object.entries(counts).sort(([left], [right]) => left.localeCompare(right)));
+  return Object.fromEntries(Object.entries(counts).sort(([left], [right]) => compareText(left, right)));
 }

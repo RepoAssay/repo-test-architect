@@ -5,6 +5,7 @@ import {
   findNearestCargoWorkspace,
   hasCargoSection
 } from "./cargo-workspace.js";
+import { compareText } from "../../core/ordering.js";
 
 const IGNORED_DIRECTORIES = new Set([
   ".git",
@@ -125,7 +126,7 @@ export function auditRustRepo(root, options = {}) {
     untestedCandidates: untestedCandidates.sort(byRiskThenName),
     coveredButRisky: coveredButRisky.sort(byRiskThenName),
     recommended,
-    skipped: skipped.sort((left, right) => left.path.localeCompare(right.path)),
+    skipped: skipped.sort((left, right) => compareText(left.path, right.path)),
     risks
   };
 }
@@ -149,7 +150,7 @@ function readRepoFiles(root) {
   }
 
   visit(root);
-  return files.sort((left, right) => left.path.localeCompare(right.path));
+  return files.sort((left, right) => compareText(left.path, right.path));
 }
 
 function buildProfile(
@@ -303,7 +304,7 @@ function collectRustModuleGraph(files, crateRootPaths) {
     modulePaths: [...modulePaths].sort(),
     testOnlyPaths: [...testOnlyPaths].sort(),
     modules: modules
-      .sort((left, right) => left.path.localeCompare(right.path) || left.moduleName.localeCompare(right.moduleName))
+      .sort((left, right) => compareText(left.path, right.path) || compareText(left.moduleName, right.moduleName))
       .map(({ testOnly: _testOnly, ...current }) => current)
   };
 }
@@ -341,7 +342,7 @@ function collectRustModulePaths(file, isCrateRoot, filesByPath) {
   }
   return modules.filter((current, index) => modules.findIndex((candidate) => (
     candidate.name === current.name && candidate.path === current.path
-  )) === index).sort((left, right) => left.path.localeCompare(right.path) || left.name.localeCompare(right.name));
+  )) === index).sort((left, right) => compareText(left.path, right.path) || compareText(left.name, right.name));
 }
 
 function rustHasExactCfgTestAttribute(maskedAttributes) {
@@ -693,7 +694,7 @@ function collectInlineRustModuleEvidence(
     }
   }
   return [...evidence].map(([sourcePath, usage]) => ({ sourcePath, usage }))
-    .sort((left, right) => left.sourcePath.localeCompare(right.sourcePath));
+    .sort((left, right) => compareText(left.sourcePath, right.sourcePath));
 }
 
 function collectRustRelativeImports(masked, depth) {
@@ -914,7 +915,7 @@ function addRustEvidence(evidenceBySourcePath, sourcePath, testPath, usage) {
   };
   if (existingIndex === -1) current.push(evidence);
   else if (strongerRustUsage(current[existingIndex].usage, usage) !== current[existingIndex].usage) current[existingIndex] = evidence;
-  current.sort((left, right) => left.testPath.localeCompare(right.testPath));
+  current.sort((left, right) => compareText(left.testPath, right.testPath));
   evidenceBySourcePath.set(normalizedSourcePath, current);
 }
 
@@ -1067,7 +1068,7 @@ function normalizePath(currentPath) {
 
 function byRiskThenName(left, right) {
   const riskOrder = { high: 0, medium: 1, low: 2 };
-  return (riskOrder[left.risk] ?? 3) - (riskOrder[right.risk] ?? 3) || left.name.localeCompare(right.name);
+  return (riskOrder[left.risk] ?? 3) - (riskOrder[right.risk] ?? 3) || compareText(left.name, right.name);
 }
 
 function escapeRegExp(value) {

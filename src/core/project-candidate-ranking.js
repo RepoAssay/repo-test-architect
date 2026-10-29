@@ -2,6 +2,7 @@ import { validateProjectAudits } from "./project-audits-validation.js";
 import { classifyProjectAuditCoverage } from "./project-audit-coverage.js";
 import { collectUnsupportedReasons, normalizeUnsupportedProjects } from "./project-unsupported.js";
 import { rankTestCandidates } from "./rank-test-candidates.js";
+import { compareText } from "./ordering.js";
 
 /**
  * @typedef {object} ProjectAuditEntry
@@ -57,8 +58,8 @@ export function rankProjectTestCandidates(projectAudits) {
     (a, b) =>
       b.priority - a.priority ||
       b.riskReductionScore - a.riskReductionScore ||
-      a.projectRoot.localeCompare(b.projectRoot) ||
-      a.target.localeCompare(b.target)
+      compareText(a.projectRoot, b.projectRoot) ||
+      compareText(a.target, b.target)
   );
 
   const unsupportedProjects = normalizeUnsupportedProjects(projectAudits.skippedProjects);
