@@ -2,6 +2,8 @@
 
 ## Current State
 
+`1.1.0` is prepared as a compatible minor release: per-project adapter failures are contained in `failedProjects` (CLI exit status 2 on partial results), skipped JavaScript and Python tests no longer count as coverage, saved artifacts are validated against the published schemas, output ordering no longer depends on locale or filesystem order, and MCP tool descriptors are about 57% smaller. See the [1.1.0 release notes](release-notes-v1.1.0.md); publication status is recorded there and in the [publication ledger](distribution-metrics.md).
+
 `1.0.1` was published on October 29, 2026 to npm under `latest`, the Official MCP Registry and [GitHub as a stable release](https://github.com/RepoAssay/repo-test-architect/releases/tag/v1.0.1). Release commit: `0848a9b43b311ab21ecadc752fa522699f3ea9e3` (PR #294). It is a compatible patch with security and correctness fixes: Git option injection through `--changed-since`, changed-path selection, regular-file-only scanning, artifact-root containment for stats, and production dependency advisories. See the [release notes](release-notes-v1.0.1.md) and [publication ledger](distribution-metrics.md#patch-101-publication--2026-10-29).
 
 The stable `1.0.0` release was published on October 1, 2026 to npm under `latest`, the Official MCP Registry and [GitHub as a stable release](https://github.com/RepoAssay/repo-test-architect/releases/tag/v1.0.0). Release commit: `e035d9ab308b3e3704becc6a7b9fd19aa3bd0b99` (PR #284). The full three-OS release matrix passed with 1,450 tests per OS; public npm clean-install and upgrades from 0.3.0 and beta.2 passed on macOS. See the [release notes](release-notes-v1.0.0.md) and [publication ledger](distribution-metrics.md#stable-100-publication--2026-10-01).
