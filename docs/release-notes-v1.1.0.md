@@ -1,6 +1,6 @@
 # Repo Test Architect 1.1.0
 
-Status: **prepared, not yet published.** Publication status will be recorded here and in the [publication ledger](distribution-metrics.md).
+Status: **published October 30, 2026** on npm under `latest`, the Official MCP Registry, and [GitHub as a stable release](https://github.com/RepoAssay/repo-test-architect/releases/tag/v1.1.0). Release commit: `6681bcd219c01868233d06acfc1d400b70ca6557` (PR #302). See the [publication ledger](distribution-metrics.md#minor-110-publication--2026-10-30) for verification details.
 
 ## Summary
 
@@ -52,4 +52,4 @@ For MCP clients, use `npx --yes repo-test-architect@1.1.0 mcp`. Unversioned inst
 
 ## Verification
 
-Each change has regression tests. All six pull requests passed the Linux `pr-gate` and Windows portability checks, plus an independent model review before merge. The skipped-test change went through eight review rounds. Golden snapshots were unchanged except the MCP tool descriptor snapshot, and all model-consistency scenarios pass. Release-commit verification will be recorded here at publication.
+Each change has regression tests. All six pull requests passed the Linux `pr-gate` and Windows portability checks, plus an independent model review before merge. The skipped-test change went through eight review rounds. Golden snapshots were unchanged except the MCP tool descriptor snapshot, and all model-consistency scenarios pass. The release commit passed the full local release gate (1,698 tests), strict distribution checks and the [manually dispatched Linux, Windows and macOS release matrix](https://github.com/RepoAssay/repo-test-architect/actions/runs/41033826022). A clean install from the public npm registry passed on macOS.

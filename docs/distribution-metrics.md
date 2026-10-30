@@ -4,6 +4,24 @@ This ledger records discoverability, distribution, and external-use evidence for
 
 Metrics are evidence with different meanings. npm downloads, GitHub clones, directory impressions, stars, and completed user feedback loops must remain separate. None is a substitute for another, and automated traffic must not be presented as adoption.
 
+## Minor 1.1.0 Publication — 2026-10-30
+
+Owner-approved release commit: `6681bcd219c01868233d06acfc1d400b70ca6557` (PR #302). The [exact-commit three-OS release matrix](https://github.com/RepoAssay/repo-test-architect/actions/runs/41033826022) passed on Linux, Windows and macOS. Local full release (1,698 tests), strict distribution-readiness and pack-contents checks passed on the release commit. Official publisher 1.8.6 validated the manifest.
+
+| Channel | Verified release status |
+| --- | --- |
+| [npm 1.1.0](https://www.npmjs.com/package/repo-test-architect/v/1.1.0) | Published at 09:39:56 UTC; `latest: 1.1.0`, `beta: 1.0.0-beta.2`. Published tarball integrity matches the tested artifact; `gitHead` is the release commit. |
+| [Official MCP Registry 1.1.0](https://registry.modelcontextprotocol.io/v0.1/servers/io.github.RepoAssay%2Frepo-test-architect/versions/1.1.0) | Published at 09:40:27 UTC; active and latest metadata, npm 1.1.0. |
+| [GitHub stable release](https://github.com/RepoAssay/repo-test-architect/releases/tag/v1.1.0) | Published at 09:40:41 UTC; not a prerelease, marked latest; tag resolves to the exact tested commit. |
+
+A clean installation of `repo-test-architect@1.1.0` from the public npm registry passed on macOS: CLI `doctor`, eleven adapters, `analyze` on an example repository, and MCP initialization reporting 1.1.0 with all 19 tools. Upgrades from earlier versions and public-registry installs on Linux/Windows were not separately exercised.
+
+```text
+sha512-LEU2pGPA76IECSOUrCxh/zFw6DKTeO+fezLCNZCE8BHGD6mdEHS8/3Fe501YRtR2MYUs+FbPHv6QEBhKDc+kcg==
+```
+
+npm required browser-based two-factor confirmation, which the owner completed interactively. The MCP Registry login used the documented `login github --token` route with the existing GitHub CLI credential; no credential was printed, stored or added to CI.
+
 ## Patch 1.0.1 Publication — 2026-10-29
 
 Owner-approved release commit: `0848a9b43b311ab21ecadc752fa522699f3ea9e3` (PR #294). The [exact-commit three-OS release matrix](https://github.com/RepoAssay/repo-test-architect/actions/runs/40889128118) passed on Linux, Windows and macOS. Local full release (1,467 tests), strict publication-metadata, pack-contents, installed-package and MCP smoke gates passed on the release commit. Official publisher 1.8.6 validated the manifest.
