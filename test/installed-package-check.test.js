@@ -8,6 +8,6 @@ describe("installed package check", () => {
       encoding: "utf8"
     });
 
-    assert.match(output, /^Installed package check passed \(repo-test-architect@1\.0\.1\)\./);
+    assert.match(output, /^Installed package check passed \(repo-test-architect@1\.1\.0\)\./);
   });
 });
