@@ -46,7 +46,7 @@ export function handleJsonRpcRequest(request) {
 
     if (request.method === "tools/call") {
       const params = request.params ?? {};
-      const result = toMcpToolResult(callTool(params.name, params.arguments ?? {}));
+      const result = toMcpToolResult(callTool(params.name, params.arguments ?? {}), { toolName: params.name });
       return successResponse(request.id, result);
     }
 

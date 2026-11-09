@@ -78,6 +78,36 @@ describe("MCP JSON-RPC scaffold", () => {
     assert.equal(analysis.testPlan.schemaVersion, "project-test-plan/v1");
   });
 
+  it("returns result-too-large instead of an oversized tool result", () => {
+    const previous = process.env.REPO_TEST_ARCHITECT_MAX_RESULT_CHARS;
+    process.env.REPO_TEST_ARCHITECT_MAX_RESULT_CHARS = "200";
+
+    try {
+      const response = handleJsonRpcRequest({
+        jsonrpc: "2.0",
+        id: 9,
+        method: "tools/call",
+        params: {
+          name: "analyze_repository",
+          arguments: { repoRoot: "./examples/polyglot-workspace" }
+        }
+      });
+
+      assert.equal(response.id, 9);
+      assert.equal(response.result, undefined);
+      assert.equal(response.error.code, -32000);
+      assert.equal(response.error.data.kind, "result-too-large");
+      assert.equal(response.error.data.toolName, "analyze_repository");
+      assert.equal(response.error.data.maxResultChars, 200);
+      assert.ok(response.error.data.resultChars > 200);
+      assert.match(response.error.message, /excludeProjectRoots/);
+      assert.doesNotMatch(response.error.message, /polyglot-workspace/);
+    } finally {
+      if (previous === undefined) delete process.env.REPO_TEST_ARCHITECT_MAX_RESULT_CHARS;
+      else process.env.REPO_TEST_ARCHITECT_MAX_RESULT_CHARS = previous;
+    }
+  });
+
   it("returns JSON-RPC errors", () => {
     const response = handleJsonRpcRequest({
       jsonrpc: "2.0",
@@ -100,7 +130,8 @@ describe("MCP JSON-RPC scaffold", () => {
       "unknown-tool",
       "invalid-arguments",
       "missing-required-argument",
-      "unsupported-argument"
+      "unsupported-argument",
+      "result-too-large"
     ]);
   });
 

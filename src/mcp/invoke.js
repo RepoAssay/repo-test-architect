@@ -12,7 +12,7 @@ try {
   } else if (command === "call") {
     writeJson(callTool(requireToolName(toolName), parseArgsJson(argsJson)));
   } else if (command === "call-envelope") {
-    writeJson(toMcpToolResult(callTool(requireToolName(toolName), parseArgsJson(argsJson))));
+    writeJson(toMcpToolResult(callTool(requireToolName(toolName), parseArgsJson(argsJson)), { toolName }));
   } else {
     throw new Error("Usage: repo-test-architect-mcp <tools|call|call-envelope toolName argsJson|@args.json>");
   }

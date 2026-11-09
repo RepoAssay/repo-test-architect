@@ -5,7 +5,8 @@ export const mcpToolErrorKinds = [
   "unknown-tool",
   "invalid-arguments",
   "missing-required-argument",
-  "unsupported-argument"
+  "unsupported-argument",
+  "result-too-large"
 ];
 
 export const INTERNAL_ERROR_CODE = -32603;

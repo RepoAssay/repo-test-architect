@@ -33,7 +33,9 @@ server.setRequestHandler(CallToolRequestSchema, (request) => {
   const startedAt = performance.now();
 
   try {
-    const result = toMcpToolResult(callTool(request.params.name, request.params.arguments ?? {}));
+    const result = toMcpToolResult(callTool(request.params.name, request.params.arguments ?? {}), {
+      toolName: request.params.name
+    });
     diagnostics.recordToolCall({
       toolName: request.params.name,
       status: "success",

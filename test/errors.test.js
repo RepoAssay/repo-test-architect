@@ -16,7 +16,8 @@ describe("MCP tool errors", () => {
       "unknown-tool",
       "invalid-arguments",
       "missing-required-argument",
-      "unsupported-argument"
+      "unsupported-argument",
+      "result-too-large"
     ]);
   });
 
