@@ -25,21 +25,27 @@ describe("MCP responses", () => {
   });
 
   it("rejects results above the serialized character budget before they reach the transport", () => {
-    const artifact = { schemaVersion: "audit/v1", padding: "x".repeat(200) };
-    const serializedLength = JSON.stringify(artifact).length;
+    const artifact = { schemaVersion: "audit/v1", padding: "x".repeat(200), quoted: "needs \"escaping\"\n" };
+    const artifactLength = JSON.stringify(artifact).length;
+    // The budget covers the whole serialized result: text copy, structuredContent copy, and JSON escaping.
+    const resultLength = JSON.stringify(toMcpToolResult(artifact, { maxChars: 0 })).length;
 
+    assert.ok(resultLength > 2 * artifactLength);
     assert.throws(
       () => toMcpToolResult(artifact, { toolName: "audit_repo", maxChars: 100 }),
       (error) =>
         error.kind === "result-too-large" &&
         error.details.toolName === "audit_repo" &&
-        error.details.resultChars === serializedLength &&
+        error.details.resultChars === resultLength &&
         error.details.maxResultChars === 100 &&
         /above the 100-character limit/.test(error.message) &&
         new RegExp(MAX_RESULT_CHARS_ENV).test(error.message) &&
-        !/x{10}/.test(error.message)
+        !/x{10}|escaping/.test(error.message)
     );
-    assert.doesNotThrow(() => toMcpToolResult(artifact, { maxChars: serializedLength }));
+    // An artifact just inside the budget on its own still fails once both copies are counted.
+    assert.throws(() => toMcpToolResult(artifact, { maxChars: artifactLength + 10 }), /result is \d+ characters/);
+    assert.doesNotThrow(() => toMcpToolResult(artifact, { maxChars: resultLength }));
+    assert.throws(() => toMcpToolResult(artifact, { maxChars: resultLength - 1 }), /above the/);
     assert.doesNotThrow(() => toMcpToolResult(artifact, { maxChars: 0 }));
   });
 
@@ -51,6 +57,9 @@ describe("MCP responses", () => {
     assert.equal(resolveMaxResultChars({ [MAX_RESULT_CHARS_ENV]: "1e6" }), DEFAULT_MAX_RESULT_CHARS);
     assert.equal(resolveMaxResultChars({ [MAX_RESULT_CHARS_ENV]: " 250000 " }), 250000);
     assert.equal(resolveMaxResultChars({ [MAX_RESULT_CHARS_ENV]: "0" }), 0);
+    assert.equal(resolveMaxResultChars({ [MAX_RESULT_CHARS_ENV]: "0000000000" }), 0);
+    assert.equal(resolveMaxResultChars({ [MAX_RESULT_CHARS_ENV]: "1000000000" }), 1_000_000_000);
+    assert.equal(resolveMaxResultChars({ [MAX_RESULT_CHARS_ENV]: "99999999999999999999" }), DEFAULT_MAX_RESULT_CHARS);
     assert.equal(DEFAULT_MAX_RESULT_CHARS, 1_000_000);
   });
 
