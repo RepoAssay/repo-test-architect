@@ -20,7 +20,8 @@ describe("MCP JSON-RPC scaffold", () => {
     assert.equal(response.result.protocolVersion, "test-protocol");
     assert.equal(response.result.serverInfo.name, "repo-test-architect");
     assert.equal(response.result.serverInfo.version, "1.1.0");
-    assert.match(response.result.instructions, /Start with analyze_repository/i);
+    assert.match(response.result.instructions, /Start with review_repository/i);
+    assert.match(response.result.instructions, /analyze_repository only when the complete bundle/i);
   });
 
   it("lists tools", () => {
@@ -31,8 +32,10 @@ describe("MCP JSON-RPC scaffold", () => {
     });
 
     assert.deepEqual(response.result.tools.map((tool) => tool.name), expectedMcpToolNames);
-    assert.equal(response.result.tools[0].name, "analyze_repository");
-    assert.equal(response.result.tools[0].title, "Analyze Repository");
+    assert.equal(response.result.tools[0].name, "review_repository");
+    assert.equal(response.result.tools[0].title, "Review Repository");
+    assert.equal(response.result.tools[1].name, "analyze_repository");
+    assert.equal(response.result.tools[1].title, "Analyze Repository");
     assert.equal(response.result.tools.find((tool) => tool.name === "audit_repo").title, "Audit Repository");
     assert.deepEqual(response.result.tools.find((tool) => tool.name === "audit_repo").annotations, {
       readOnlyHint: true,

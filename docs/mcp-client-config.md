@@ -2,7 +2,7 @@
 
 Repo Test Architect should be used as a local stdio MCP server for repository audits.
 
-The MCP client starts the server process. For an unfamiliar repository or a general review, the connected model should call `analyze_repository`; specialist tools remain available for narrower questions and saved artifacts.
+The MCP client starts the server process. For an unfamiliar repository or a general review, the connected model should call `review_repository`, which returns a bounded review; `analyze_repository` returns the complete bundle when it is explicitly needed. Specialist tools remain available for narrower questions and accept `repoRoot` as well as saved artifacts.
 
 ## Local Checkout
 

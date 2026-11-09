@@ -25,6 +25,7 @@ import {
   getProjectDetectionRules,
   rankRepoProjectCandidates,
   rankAuditTestCandidates,
+  reviewProjectAudits,
   summarizeRepoProjectAudits,
   validateAudit,
   validateProjectAudits
@@ -36,6 +37,7 @@ const UNSAFE_TEXT_CHARACTERS = /[\\\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/gu;
 const CONTROL_CHARACTER_ESCAPES = Object.freeze({ "\\": "\\\\", "\n": "\\n", "\r": "\\r", "\t": "\\t" });
 const COMMANDS = [
   "analyze",
+  "review",
   "doctor",
   "diagnostic-bundle",
   "adapters",
@@ -58,6 +60,7 @@ const COMMANDS = [
 ];
 const PROJECT_AUDIT_COMMANDS = [
   "analyze",
+  "review",
   "audit-projects",
   "summarize-projects",
   "rank-projects",
@@ -69,6 +72,7 @@ const PROJECT_AUDIT_COMMANDS = [
 ];
 const COMMAND_DESCRIPTIONS = Object.freeze({
   analyze: "Start here for a complete repository review: detection, audits, blockers, findings, ranking, plan, execution hints, commands, and stats.",
+  review: "Bounded repository review for agents and saved context: summary, blockers, top findings, top candidates and plan items with hints, commands, and stats. Ranked lists stop at --limit and evidence is reduced to counts.",
   doctor: "Check runtime and local diagnostics readiness.",
   "diagnostic-bundle": "Build a sanitized bundle from an explicitly enabled local diagnostics file.",
   adapters: "List registered adapters and supported boundaries.",
@@ -127,6 +131,11 @@ if (options.fromProjectAuditsPath !== undefined && !PROJECT_AUDIT_COMMANDS.inclu
   process.exit(1);
 }
 
+if (options.limit !== undefined && options.command !== "review") {
+  console.error("--limit is only supported with the review command.");
+  process.exit(1);
+}
+
 if (options.goTarget && (options.fromAuditPath !== undefined || options.fromProjectAuditsPath !== undefined)) {
   console.error("Go target options require a repository scan and cannot be combined with saved audit artifacts.");
   process.exit(1);
@@ -173,6 +182,8 @@ if (options.format === "json") {
   console.log(renderMarkdownDetection(output));
 } else if (options.command === "analyze") {
   console.log(renderMarkdownRepositoryAnalysis(output));
+} else if (options.command === "review") {
+  console.log(renderMarkdownRepositoryReview(output));
 } else if (options.command === "audit-projects") {
   console.log(renderMarkdownProjectAudits(output));
 } else if (options.command === "summarize-projects") {
@@ -224,6 +235,7 @@ function parseArgs(args) {
   let changedOnly = false;
   let changedSinceRef;
   let diagnosticsFilePath;
+  let limit;
   const excludeProjectRoots = [];
   let goos;
   let goarch;
@@ -342,6 +354,21 @@ function parseArgs(args) {
       continue;
     }
 
+    if (arg === "--limit") {
+      limit = rest[index + 1];
+      index += 1;
+      if (limit === undefined) {
+        console.error("--limit requires a value.");
+        process.exit(1);
+      }
+      continue;
+    }
+
+    if (arg.startsWith("--limit=")) {
+      limit = arg.slice("--limit=".length);
+      continue;
+    }
+
     if (arg === "--changed") {
       changedOnly = true;
       continue;
@@ -396,7 +423,28 @@ function parseArgs(args) {
   }
   const goTarget = hasGoTargetOption ? { goos, goarch, tags: goTags } : undefined;
 
-  return { command, repoPath, format, fromAuditPath, fromProjectAuditsPath, adapterId, itemId, targetId, owner, changedOnly, changedSinceRef, diagnosticsFilePath, excludeProjectRoots, goTarget };
+  if (limit !== undefined && (!/^\d+$/.test(limit) || Number(limit) < 1 || Number(limit) > 500)) {
+    console.error("--limit must be an integer between 1 and 500.");
+    process.exit(1);
+  }
+
+  return {
+    command,
+    repoPath,
+    format,
+    fromAuditPath,
+    fromProjectAuditsPath,
+    adapterId,
+    itemId,
+    targetId,
+    owner,
+    changedOnly,
+    changedSinceRef,
+    diagnosticsFilePath,
+    excludeProjectRoots,
+    goTarget,
+    limit: limit === undefined ? undefined : Number(limit)
+  };
 }
 
 function selectDiagnosticsOutput(repoRoot, options) {
@@ -528,6 +576,7 @@ function selectOutput(audit, options) {
 function selectProjectOutput(projectAudits, options) {
   if (!projectAudits) return undefined;
   if (options.command === "analyze") return analyzeProjectAudits(projectAudits);
+  if (options.command === "review") return reviewProjectAudits(projectAudits, { limit: options.limit });
   if (options.command === "summarize-projects") return summarizeRepoProjectAudits(projectAudits);
   if (options.command === "rank-projects") return rankRepoProjectCandidates(projectAudits);
   if (options.command === "plan-projects") return generateRepoProjectTestPlan(projectAudits);
@@ -548,6 +597,7 @@ function renderGlobalHelp() {
     "",
     "Start here:",
     "  analyze              Complete repository analysis (recommended)",
+    "  review               Bounded review for agents and saved context",
     "  doctor               Runtime and diagnostics readiness",
     "",
     "Focused repository views:",
@@ -557,7 +607,7 @@ function renderGlobalHelp() {
     "  stats-projects       Repository audit statistics",
     "",
     "Advanced commands:",
-    `  ${COMMANDS.filter((command) => !["analyze", "doctor", "detect", "findings-projects", "plan-projects", "stats-projects"].includes(command)).join(", ")}`,
+    `  ${COMMANDS.filter((command) => !["analyze", "review", "doctor", "detect", "findings-projects", "plan-projects", "stats-projects"].includes(command)).join(", ")}`,
     "",
     "Run repo-test-architect <command> --help for command guidance.",
     "See docs/cli-reference.md for the complete command and option reference."
@@ -598,6 +648,7 @@ function renderCommandHelp(command) {
   if (command === "explain") lines.push("  --target id                  Select one stable audit target ID");
   if (command === "placement") lines.push("  --owner label                Override the project owner label");
   if (command === "diagnostic-bundle") lines.push("  --diagnostics-file file      Read an explicitly enabled local diagnostics JSONL file");
+  if (command === "review") lines.push("  --limit n                    Cap ranked candidates and plan items (default 25, max 500)");
   lines.push("  -h, --help                   Show this help without scanning the repository");
   return lines.join("\n");
 }
@@ -816,6 +867,93 @@ function renderMarkdownRepositoryAnalysis(analysis) {
   pushFailedProjects(lines, analysis.auditSummary.failedProjects);
   lines.push("");
   lines.push("Use --format json for the complete project audits, evidence, findings, ranking, plan, execution hints, and stats.");
+  return lines.join("\n");
+}
+
+function renderMarkdownRepositoryReview(review) {
+  const lines = [];
+  lines.push("# Repository Test Review");
+  lines.push("");
+  lines.push("## Overview");
+  lines.push(`- Projects: ${review.summary.projectCount}`);
+  lines.push(`- Audited: ${review.summary.auditedProjectCount}`);
+  lines.push(`- Unsupported: ${review.summary.unsupportedProjectCount}`);
+  pushFailedProjectCount(lines, review.summary.failedProjectCount);
+  lines.push(`- Audit coverage: ${review.summary.auditCoverage}`);
+  lines.push(`- Blockers: ${review.summary.blockerCount}`);
+  lines.push(`- Findings: ${review.summary.findingCount}`);
+  lines.push(`- Ranked candidates: ${review.summary.candidateCount} (showing ${review.summary.displayedCandidateCount})`);
+  lines.push(`- Plan items: ${review.summary.planItemCount} (showing ${review.summary.displayedPlanItemCount})`);
+  lines.push("");
+  lines.push("## Verification Commands");
+  if (review.verificationCommands.length === 0) {
+    lines.push("- No runnable verification commands detected.");
+  } else {
+    for (const entry of review.verificationCommands) {
+      lines.push(`- ${entry.command} (${entry.projectCount} project${entry.projectCount === 1 ? "" : "s"})`);
+    }
+  }
+  lines.push("");
+  lines.push("## Blockers");
+  if (review.blockers.length === 0) {
+    lines.push("- No blockers.");
+  } else {
+    for (const entry of review.blockers) {
+      lines.push(`- ${escapeControlCharacters(entry.projectRoot)}: ${escapeControlCharacters(entry.blocker)}`);
+    }
+  }
+  lines.push("");
+  lines.push("## Top Findings");
+  if (review.findings.findings.length === 0) {
+    lines.push("- No project findings detected.");
+  } else {
+    for (const finding of review.findings.findings) {
+      const subject = finding.target ? `${finding.target} [${finding.targetId}]` : finding.title;
+      const rationale = finding.rationale[0] ? ` ${trimTrailingPeriod(finding.rationale[0])}.` : "";
+      lines.push(`- ${escapeControlCharacters(finding.projectRoot)}: ${finding.severity} ${finding.category}, priority ${finding.priority}: ${subject}.${rationale}`);
+    }
+  }
+  lines.push("");
+  lines.push("## Top Candidates");
+  if (review.topCandidates.length === 0) {
+    lines.push("- No testable candidates ranked.");
+  } else {
+    for (const candidate of review.topCandidates) {
+      const tests = `${candidate.existingTestCount} existing test${candidate.existingTestCount === 1 ? "" : "s"}`;
+      lines.push(`- ${escapeControlCharacters(candidate.projectRoot)}: ${candidate.category} ${candidate.target} [${candidate.projectTargetId}] (${candidate.testLevel}, priority ${candidate.priority}, ${tests})`);
+    }
+  }
+  lines.push("");
+  lines.push("## Recommended Plan");
+  if (review.topPlanItems.length === 0) {
+    lines.push("- No plan items generated.");
+  } else {
+    for (const item of review.topPlanItems) {
+      lines.push(`- ${escapeControlCharacters(item.projectRoot)}: ${item.action} ${item.target} [${item.projectItemId}] (${item.testLevel}, priority ${item.priority})`);
+    }
+    if (review.summary.truncated) {
+      lines.push(`- ${review.summary.planItemCount - review.summary.displayedPlanItemCount} more plan items are available with a higher --limit or in analyze output.`);
+    }
+  }
+  lines.push("");
+  lines.push("## Project Coverage");
+  if (review.auditSummary.projects.length === 0) {
+    lines.push("- No supported projects audited.");
+  } else {
+    for (const project of review.auditSummary.projects) {
+      lines.push(`- ${escapeControlCharacters(project.projectRoot)}: ${project.adapterId}, ${project.confidence} confidence, ${project.untestedCandidateCount} untested, command ${project.testCommand ?? "not detected"}`);
+    }
+  }
+  lines.push("");
+  lines.push("## Unsupported Projects");
+  if (review.auditSummary.unsupportedProjects.length === 0) {
+    lines.push("- No unsupported projects.");
+  } else {
+    for (const project of review.auditSummary.unsupportedProjects) lines.push(formatUnsupportedProject(project));
+  }
+  pushFailedProjects(lines, review.auditSummary.failedProjects);
+  lines.push("");
+  lines.push("Use --format json for the bounded review artifact, --limit to show more ranked items, and analyze --format json for complete per-target evidence.");
   return lines.join("\n");
 }
 

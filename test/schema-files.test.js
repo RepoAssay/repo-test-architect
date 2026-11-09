@@ -15,6 +15,28 @@ describe("schema files", () => {
     assert.deepEqual(schema.properties.verificationCommands.items.required, ["command", "projectCount"]);
   });
 
+  it("documents repository-review/v1", () => {
+    const schema = readSchema("schemas/repository-review-v1.schema.json");
+
+    assert.equal(schema.properties.schemaVersion.const, "repository-review/v1");
+    for (const field of ["blockers", "auditSummary", "findings", "topCandidates", "topPlanItems", "topExecutionHints", "stats"]) {
+      assert.ok(schema.required.includes(field));
+    }
+    assert.equal(schema.required.includes("projectAudits"), false);
+    for (const field of ["limit", "displayedCandidateCount", "displayedPlanItemCount", "truncated"]) {
+      assert.ok(schema.properties.summary.required.includes(field));
+    }
+    assert.equal(schema.properties.summary.properties.limit.maximum, 500);
+    for (const def of ["reviewCandidate", "reviewPlanItem"]) {
+      assert.ok(schema.$defs[def].required.includes("existingTestCount"));
+      assert.ok(schema.$defs[def].required.includes("directEvidenceCount"));
+      assert.equal(Object.hasOwn(schema.$defs[def].properties, "existingTestPaths"), false);
+      assert.equal(Object.hasOwn(schema.$defs[def].properties, "existingTestEvidence"), false);
+      assert.equal(schema.$defs[def].additionalProperties, false);
+    }
+    assert.deepEqual(schema.properties.blockers.items.required, ["projectId", "projectRoot", "adapterId", "blocker"]);
+  });
+
   it("documents audit/v1", () => {
     const schema = readSchema("schemas/audit-v1.schema.json");
 

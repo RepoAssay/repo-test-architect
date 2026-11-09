@@ -49,7 +49,18 @@ describe("MCP tool definitions", () => {
 
   it("keeps the tools/list payload within its context budget", () => {
     // Every MCP client loads all descriptors into the model context; guard against schema bloat.
-    assert.ok(JSON.stringify(mcpTools).length < 30000);
+    // 1.2.0 raised the budget from 30k when every artifact-consuming tool gained repoRoot inputs.
+    assert.ok(JSON.stringify(mcpTools).length < 45000);
+  });
+
+  it("declares the Claude Code inline-result hint only on the bounded review tool", () => {
+    for (const tool of mcpTools) {
+      if (tool.name === "review_repository") {
+        assert.deepEqual(tool._meta, { "anthropic/maxResultSizeChars": 200000 });
+      } else {
+        assert.equal(tool._meta, undefined);
+      }
+    }
   });
 
   it("accepts every checked-in expected artifact under the compact schema of each tool that returns it", () => {
@@ -71,7 +82,7 @@ describe("MCP tool definitions", () => {
 
   it("returns live artifacts accepted by the compact schemas, including $ref-resolved properties", () => {
     const repoRoot = path.resolve("examples/polyglot-workspace");
-    for (const name of ["analyze_repository", "audit_projects", "detect_projects", "list_adapters", "list_project_detection_rules"]) {
+    for (const name of ["review_repository", "analyze_repository", "audit_projects", "detect_projects", "list_adapters", "list_project_detection_rules"]) {
       const tool = mcpTools.find((candidate) => candidate.name === name);
       const args = Object.keys(tool.inputSchema.properties ?? {}).includes("repoRoot") ? { repoRoot } : {};
       assertMatchesSchema(callTool(name, args), tool.outputSchema, `${name}.compact`);
@@ -94,7 +105,7 @@ describe("MCP tool definitions", () => {
   });
 
   it("declares non-empty changed path items", () => {
-    const changedPathTools = ["analyze_repository", "audit_projects", "audit_repo"];
+    const changedPathTools = ["review_repository", "analyze_repository", "audit_projects", "audit_repo", "explain_target", "rank_project_candidates"];
 
     for (const toolName of changedPathTools) {
       const tool = mcpTools.find((candidate) => candidate.name === toolName);
@@ -104,7 +115,7 @@ describe("MCP tool definitions", () => {
   });
 
   it("declares non-empty project exclusion items", () => {
-    const projectExclusionTools = ["analyze_repository", "detect_projects", "audit_projects"];
+    const projectExclusionTools = ["review_repository", "analyze_repository", "detect_projects", "audit_projects", "collect_project_stats", "get_plan_execution_hints"];
 
     for (const toolName of projectExclusionTools) {
       const tool = mcpTools.find((candidate) => candidate.name === toolName);
@@ -114,7 +125,7 @@ describe("MCP tool definitions", () => {
   });
 
   it("declares bounded Go target objects on repository audit tools", () => {
-    for (const toolName of ["analyze_repository", "audit_projects", "audit_repo"]) {
+    for (const toolName of ["review_repository", "analyze_repository", "audit_projects", "audit_repo", "explain_target", "generate_project_test_plan"]) {
       const target = mcpTools.find((tool) => tool.name === toolName).inputSchema.properties.goTarget;
 
       assert.equal(target.type, "object");
@@ -244,6 +255,161 @@ describe("MCP tool definitions", () => {
     assert.equal(placement.findings[0].testFile, "src/deckParser.test.ts");
     assert.equal(deferredGeneration.schemaVersion, "generation-deferred/v1");
     assert.equal(deferredGeneration.status, "deferred");
+  });
+
+  it("returns the bounded repository review with capped lists and evidence counts", () => {
+    const repoRoot = path.resolve("examples/polyglot-workspace");
+    const review = callTool("review_repository", { repoRoot });
+    const analysis = callTool("analyze_repository", { repoRoot });
+    const reviewTool = mcpTools.find((tool) => tool.name === "review_repository");
+    const fullSchema = JSON.parse(fs.readFileSync(reviewTool.outputArtifact.schemaPath, "utf8"));
+
+    assertMatchesSchema(review, reviewTool.outputSchema, "review_repository.compact");
+    assertMatchesSchema(review, fullSchema, "review_repository.full");
+    assert.equal(review.schemaVersion, "repository-review/v1");
+    assert.equal(review.summary.limit, 25);
+    assert.equal(review.summary.truncated, false);
+    assert.equal(review.summary.candidateCount, analysis.summary.candidateCount);
+    assert.deepEqual(review.verificationCommands, analysis.verificationCommands);
+    assert.deepEqual(review.findings, analysis.findings);
+    assert.deepEqual(review.stats, analysis.stats);
+    assert.deepEqual(review.blockers.map((entry) => entry.projectRoot), ["services/api", "services/api"]);
+    assert.equal(Object.hasOwn(review, "projectAudits"), false);
+    assert.deepEqual(
+      review.topCandidates.map((candidate) => candidate.projectTargetId),
+      analysis.candidateRanking.candidates.map((candidate) => candidate.projectTargetId)
+    );
+    for (const item of [...review.topCandidates, ...review.topPlanItems]) {
+      assert.equal(Object.hasOwn(item, "existingTestPaths"), false);
+      assert.equal(Object.hasOwn(item, "existingTestEvidence"), false);
+      assert.equal(typeof item.existingTestCount, "number");
+      assert.equal(typeof item.directEvidenceCount, "number");
+    }
+    assert.deepEqual(
+      review.topExecutionHints.map((hint) => hint.planItemId),
+      review.topPlanItems.map((item) => item.projectItemId)
+    );
+
+    const limited = callTool("review_repository", { repoRoot, limit: 1 });
+    assert.equal(limited.summary.truncated, true);
+    assert.equal(limited.topCandidates.length, 1);
+    assert.equal(limited.topPlanItems.length, 1);
+    assert.equal(limited.topExecutionHints.length, 1);
+    assert.equal(limited.summary.candidateCount, review.summary.candidateCount);
+
+    for (const limit of [0, 501, 2.5, "25"]) {
+      assert.throws(
+        () => callTool("review_repository", { repoRoot, limit }),
+        (error) =>
+          error.kind === "invalid-arguments" &&
+          error.details.toolName === "review_repository" &&
+          error.details.argument === "limit" &&
+          /between 1 and 500/.test(error.message) &&
+          !/501|2\.5/.test(error.message)
+      );
+    }
+  });
+
+  it("keeps the bounded review small on a repository with many project roots", () => {
+    // This repository's example fixtures are detected as 60+ project roots, which is the shape that
+    // produced a 21 MB complete bundle on a client's monorepo; the review must stay bounded regardless.
+    const review = callTool("review_repository", { repoRoot: path.resolve(".") });
+    const serialized = JSON.stringify(review);
+
+    assert.ok(review.summary.projectCount > 50, `fixture roots detected: ${review.summary.projectCount}`);
+    assert.equal(review.summary.truncated, true);
+    assert.ok(serialized.length < 160000, `review is ${serialized.length} characters`);
+    assert.doesNotMatch(serialized, /"existingTestEvidence"/);
+  });
+
+  it("lets artifact-consuming tools take repoRoot instead of an echoed artifact", () => {
+    const repoRoot = path.resolve("examples/polyglot-workspace");
+    const projectAudits = callTool("audit_projects", { repoRoot });
+
+    assert.deepEqual(callTool("summarize_project_audits", { repoRoot }), callTool("summarize_project_audits", { projectAudits }));
+    assert.deepEqual(callTool("rank_project_candidates", { repoRoot }), callTool("rank_project_candidates", { projectAudits }));
+    assert.deepEqual(callTool("generate_project_test_plan", { repoRoot }), callTool("generate_project_test_plan", { projectAudits }));
+    assert.deepEqual(callTool("collect_project_findings", { repoRoot }), callTool("collect_project_findings", { projectAudits }));
+    assert.deepEqual(callTool("analyze_project_test_placement", { repoRoot }), callTool("analyze_project_test_placement", { projectAudits }));
+    assert.deepEqual(callTool("collect_project_stats", { repoRoot }), callTool("collect_project_stats", { projectAudits }));
+    assert.deepEqual(
+      callTool("get_plan_execution_hints", { repoRoot }),
+      callTool("get_plan_execution_hints", { plan: callTool("generate_project_test_plan", { projectAudits }) })
+    );
+
+    const scoped = callTool("rank_project_candidates", { repoRoot, excludeProjectRoots: ["apps/**"], changedPaths: ["services/api/app.py"] });
+    assert.deepEqual(scoped.candidates.map((candidate) => candidate.projectId), ["services/api"]);
+
+    const audit = projectAudits.audits.find((entry) => entry.projectRoot === "apps/web").audit;
+    const targetId = "src/sessionClient.ts";
+    assert.deepEqual(
+      callTool("explain_target", { repoRoot, projectRoot: "apps/web", targetId }),
+      callTool("explain_target", { audit, targetId })
+    );
+    assert.deepEqual(
+      callTool("explain_target", { repoRoot, projectRoot: "./apps/web/", targetId }),
+      callTool("explain_target", { audit, targetId })
+    );
+    assert.deepEqual(callTool("rank_test_candidates", { repoRoot, projectRoot: "apps/web" }), callTool("rank_test_candidates", { audit }));
+    assert.deepEqual(callTool("generate_test_plan", { repoRoot, projectRoot: "apps/web" }), callTool("generate_test_plan", { audit }));
+    assert.deepEqual(
+      callTool("analyze_test_placement", { repoRoot, projectRoot: "apps/web", owner: "web" }),
+      callTool("analyze_test_placement", { audit, owner: "web" })
+    );
+
+    const singleRoot = path.resolve("examples/node-vitest-basic");
+    const direct = callTool("audit_repo", { repoRoot: singleRoot });
+    assert.deepEqual(callTool("rank_test_candidates", { repoRoot: singleRoot, projectRoot: "." }), callTool("rank_test_candidates", { audit: direct }));
+  });
+
+  it("rejects ambiguous or incomplete artifact sources", () => {
+    const repoRoot = path.resolve("examples/polyglot-workspace");
+    const projectAudits = { schemaVersion: "project-audits/v1", audits: [], skippedProjects: [], summary: {} };
+
+    assert.throws(
+      () => callTool("rank_project_candidates", {}),
+      (error) =>
+        error.kind === "missing-required-argument" &&
+        error.details.toolName === "rank_project_candidates" &&
+        error.details.argument === "projectAudits" &&
+        /projectAudits or repoRoot is required for rank_project_candidates/.test(error.message)
+    );
+    assert.throws(
+      () => callTool("rank_project_candidates", { repoRoot, projectAudits }),
+      (error) => error.kind === "invalid-arguments" && error.details.argument === "repoRoot" && /not both/.test(error.message)
+    );
+    assert.throws(
+      () => callTool("rank_project_candidates", { projectAudits, excludeProjectRoots: ["apps/**"] }),
+      (error) => error.kind === "invalid-arguments" && error.details.argument === "excludeProjectRoots" && /applies only when/.test(error.message)
+    );
+    assert.throws(
+      () => callTool("explain_target", { targetId: "src/sessionClient.ts" }),
+      (error) => error.kind === "missing-required-argument" && error.details.argument === "audit" && /audit or repoRoot is required/.test(error.message)
+    );
+    assert.throws(
+      () => callTool("explain_target", { repoRoot, targetId: "src/sessionClient.ts" }),
+      (error) =>
+        error.kind === "missing-required-argument" &&
+        error.details.toolName === "explain_target" &&
+        error.details.argument === "projectRoot" &&
+        /projectRoot is required with repoRoot/.test(error.message)
+    );
+    assert.throws(
+      () => callTool("explain_target", { repoRoot, projectRoot: "packages/secret-service", targetId: "src/sessionClient.ts" }),
+      (error) =>
+        error.kind === "invalid-arguments" &&
+        error.details.argument === "projectRoot" &&
+        /not an audited project root/.test(error.message) &&
+        !/secret-service/.test(error.message)
+    );
+    assert.throws(
+      () => callTool("explain_target", { audit: {}, projectRoot: "apps/web", targetId: "src/sessionClient.ts" }),
+      (error) => error.kind === "invalid-arguments" && error.details.argument === "projectRoot" && /applies only when/.test(error.message)
+    );
+    assert.throws(
+      () => callTool("get_plan_execution_hints", {}),
+      (error) => error.kind === "missing-required-argument" && error.details.argument === "plan"
+    );
   });
 
   it("passes Kotlin changed paths through audit_repo", () => {
@@ -403,6 +569,7 @@ describe("MCP tool definitions", () => {
 });
 
 function minimalArgsFor(toolName) {
+  if (toolName === "review_repository") return { repoRoot: "./examples/polyglot-workspace" };
   if (toolName === "analyze_repository") return { repoRoot: "." };
   if (toolName === "list_adapters") return {};
   if (toolName === "list_project_detection_rules") return {};
