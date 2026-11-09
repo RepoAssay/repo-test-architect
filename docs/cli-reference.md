@@ -10,11 +10,19 @@ repo-test-architect analyze . --changed
 
 It audits all detected project roots once and derives `repository-analysis/v1`, containing the project audits, coverage summary, findings, candidate ranking, test plan, execution hints, stats, and detected verification commands. Markdown is designed for human review; JSON is the complete reusable artifact.
 
+`review` runs the same audit pass and derives the bounded `repository-review/v1` artifact instead: every blocker, the concise findings, the top `--limit` ranked candidates and plan items with their execution hints, verification commands, and stats, with per-target evidence reduced to counts. Use it when the output feeds an agent or a saved context rather than a terminal; it is the CLI twin of the MCP `review_repository` tool.
+
+```sh
+repo-test-architect review . --format json
+repo-test-architect review . --limit 50 --format json
+```
+
 ## Everyday Commands
 
 | Command | Use |
 | --- | --- |
 | `analyze` | Complete repository review; start here |
+| `review` | Bounded review for agents and saved context |
 | `doctor` | Check runtime and local diagnostics readiness |
 | `detect` | Inspect project roots and adapter matches |
 | `findings-projects` | Read the highest-priority findings only |
@@ -66,6 +74,7 @@ Use these when one project root and, if needed, one adapter have already been se
 | `--changed-since <ref>` | Limit adapter evidence to files under the audited root changed between the merge base of `<ref>` and `HEAD` |
 | `--exclude-project <root-or-glob>` | Exclude a project root or subtree; repeat as needed |
 | `--from-project-audits <file>` | Reuse `project-audits/v1` without rescanning |
+| `--limit <n>` | `review` only: cap ranked candidates and plan items (default 25, 1 to 500) |
 | `--adapter <id>` | Select an adapter for explicit single-project commands |
 | `--goos <value>` | Select `GOOS` for target-aware Go audits; requires `--goarch` |
 | `--goarch <value>` | Select `GOARCH` for target-aware Go audits; requires `--goos` |
@@ -84,7 +93,7 @@ Go target options apply to `analyze`, `audit-projects`, and direct single-projec
 | `1` | Usage error, invalid saved artifact, or a failure that stopped the run |
 | `2` | Partial result: at least one project's adapter failed to audit |
 
-Status `2` applies to every project-aware command, including runs that reuse a saved `project-audits/v1` artifact whose `failedProjects` list is not empty. The partial result is still printed to standard output, so `--format json` output remains a complete, parseable artifact. A warning naming each failed project root with its fixed error summary is written to standard error. The Markdown output of every project-aware command (`analyze`, `audit-projects`, `summarize-projects`, `rank-projects`, `plan-projects`, `hints-projects`, `findings-projects`, `placement-projects`, and `stats-projects`) adds a `Failed to audit` count and a `Failed Projects` section listing each root. Error messages are intentionally not recorded; to see one, rerun the adapter on that root with `repo-test-architect audit <repo>/<projectRoot> --adapter <adapterId>`, which does not contain failures. Invalid options such as an unsupported `--goos`/`--goarch` pair or a reserved `--go-tag` remain usage errors with status `1`. Findings and test gaps never change the exit status. See [Failed Projects](artifact-contract.md#failed-projects) for the recorded fields.
+Status `2` applies to every project-aware command, including runs that reuse a saved `project-audits/v1` artifact whose `failedProjects` list is not empty. The partial result is still printed to standard output, so `--format json` output remains a complete, parseable artifact. A warning naming each failed project root with its fixed error summary is written to standard error. The Markdown output of every project-aware command (`analyze`, `review`, `audit-projects`, `summarize-projects`, `rank-projects`, `plan-projects`, `hints-projects`, `findings-projects`, `placement-projects`, and `stats-projects`) adds a `Failed to audit` count and a `Failed Projects` section listing each root. Error messages are intentionally not recorded; to see one, rerun the adapter on that root with `repo-test-architect audit <repo>/<projectRoot> --adapter <adapterId>`, which does not contain failures. Invalid options such as an unsupported `--goos`/`--goarch` pair or a reserved `--go-tag` remain usage errors with status `1`. Findings and test gaps never change the exit status. See [Failed Projects](artifact-contract.md#failed-projects) for the recorded fields.
 
 ## Metadata and Diagnostics
 

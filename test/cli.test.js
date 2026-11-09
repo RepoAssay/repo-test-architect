@@ -63,6 +63,69 @@ describe("CLI", () => {
     assert.equal(analysis.executionHints.schemaVersion, "plan-execution-hints/v1");
   });
 
+  it("reviews a repository with bounded markdown", () => {
+    const output = execFileSync(
+      process.execPath,
+      [cliPath, "review", "examples/polyglot-workspace"],
+      { encoding: "utf8" }
+    );
+
+    assert.match(output, /^# Repository Test Review/);
+    assert.match(output, /- Projects: 3/);
+    assert.match(output, /- Ranked candidates: 3 \(showing 3\)/);
+    assert.match(output, /## Blockers/);
+    assert.match(output, /services\/api: No supported Python test framework detected\./);
+    assert.match(output, /## Top Candidates/);
+    assert.match(output, /\(unit, priority 7, 0 existing tests\)/);
+    assert.match(output, /## Recommended Plan/);
+    assert.match(output, /--limit to show more ranked items/);
+  });
+
+  it("emits the bounded repository review as JSON and honors --limit", () => {
+    const output = execFileSync(
+      process.execPath,
+      [cliPath, "review", "examples/polyglot-workspace", "--format=json", "--limit", "1"],
+      { encoding: "utf8" }
+    );
+    const review = JSON.parse(output);
+
+    assert.equal(review.schemaVersion, "repository-review/v1");
+    assert.equal(review.summary.projectCount, 3);
+    assert.equal(review.summary.limit, 1);
+    assert.equal(review.summary.truncated, true);
+    assert.equal(review.summary.candidateCount, 3);
+    assert.equal(review.topCandidates.length, 1);
+    assert.equal(review.topPlanItems.length, 1);
+    assert.equal(review.topExecutionHints.length, 1);
+    assert.equal(Object.hasOwn(review, "projectAudits"), false);
+    assert.equal(Object.hasOwn(review.topCandidates[0], "existingTestEvidence"), false);
+    assert.equal(review.topCandidates[0].existingTestCount, 0);
+    assert.equal(review.findings.summary.findingCount, 5);
+    assert.equal(review.findings.items.length, 5);
+    assert.equal(Object.hasOwn(review.findings.items[0], "existingTestPaths"), false);
+  });
+
+  it("validates --limit and restricts it to the review command", () => {
+    for (const args of [
+      ["review", "examples/polyglot-workspace", "--limit", "0"],
+      ["review", "examples/polyglot-workspace", "--limit=501"],
+      ["review", "examples/polyglot-workspace", "--limit", "many"],
+      ["review", "examples/polyglot-workspace", "--limit"],
+      ["analyze", "examples/polyglot-workspace", "--limit", "5"]
+    ]) {
+      assert.throws(
+        () => execFileSync(process.execPath, [cliPath, ...args], { stdio: "pipe", encoding: "utf8" }),
+        (error) => error.status === 1 && /--limit/.test(error.stderr)
+      );
+    }
+
+    const help = execFileSync(process.execPath, [cliPath, "review", "--help"], { encoding: "utf8" });
+    assert.match(help, /--limit n/);
+    assert.match(help, /--from-project-audits/);
+    const globalHelp = execFileSync(process.execPath, [cliPath, "--help"], { encoding: "utf8" });
+    assert.match(globalHelp, /review\s+Bounded review for agents and saved context/);
+  });
+
   it("rejects unknown options instead of silently ignoring them", () => {
     assert.throws(
       () => execFileSync(process.execPath, [cliPath, "analyze", ".", "--mystery"], { stdio: "pipe" }),

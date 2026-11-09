@@ -98,7 +98,7 @@ To keep an MCP client on this exact release, pin its version:
 }
 ```
 
-The client launches the server locally. Repository source stays on the machine unless the client or another configured tool sends it elsewhere. Connected models receive instructions to start with `analyze_repository` for a general repository review. See [MCP client config](docs/mcp-client-config.md) and [agent install paths](docs/agent-install-paths.md) for global-install, local-checkout, and host-specific guidance.
+The client launches the server locally. Repository source stays on the machine unless the client or another configured tool sends it elsewhere. Connected models receive instructions to start with `review_repository`, a bounded review that stays small on large monorepos, and to use `analyze_repository` only when the complete evidence bundle is needed. See [MCP client config](docs/mcp-client-config.md) and [agent install paths](docs/agent-install-paths.md) for global-install, local-checkout, and host-specific guidance.
 
 ## Quick Start
 
@@ -115,11 +115,18 @@ npx --yes repo-test-architect analyze . --format json
 npx --yes repo-test-architect analyze . --changed
 ```
 
+`review` returns the same review bounded for agents and saved context: every blocker, the top findings, and the top-ranked candidates and plan items with execution hints, with per-test evidence reduced to counts. `--limit` (default 25) caps the ranked lists:
+
+```sh
+npx --yes repo-test-architect review . --format json --limit 50
+```
+
 Useful focused views:
 
 | Goal | Command |
 | --- | --- |
 | Complete repository review | `repo-test-architect analyze .` |
+| Bounded review for agents | `repo-test-architect review . --format json` |
 | Concise architecture findings | `repo-test-architect findings-projects .` |
 | Actionable cross-project plan | `repo-test-architect plan-projects .` |
 | Raw reusable project audits | `repo-test-architect audit-projects . --format json` |
@@ -127,7 +134,7 @@ Useful focused views:
 
 Run `repo-test-architect --help` for the short command map or `repo-test-architect <command> --help` for options. The [CLI reference](docs/cli-reference.md) documents the full surface.
 
-For an MCP-connected model, the equivalent default is `analyze_repository`. Use narrower tools only when the request asks for one artifact or already supplies an audit artifact.
+For an MCP-connected model, the default is `review_repository`, which returns the bounded `repository-review/v1` artifact; `analyze_repository` returns the complete bundle and can exceed client limits on large repositories. Specialist tools accept `repoRoot` (plus `projectRoot` for single-project tools) instead of a saved artifact, so `explain_target` can follow a review without echoing the audit back.
 
 ## Current Scope
 
@@ -165,6 +172,10 @@ npm run analyze
 npm run analyze:json
 npm run analyze:example
 npm run analyze:example:json
+npm run review
+npm run review:json
+npm run review:example
+npm run review:example:json
 ```
 
 Check runtime and diagnostics readiness:
@@ -301,6 +312,7 @@ Exercise the MCP-style tool surface:
 
 ```powershell
 npm run mcp:tools
+npm run mcp:review:example
 npm run mcp:analyze:example
 npm run mcp:adapters
 npm run mcp:detect-rules

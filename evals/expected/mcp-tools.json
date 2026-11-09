@@ -1,8 +1,142 @@
 {
   "tools": [
     {
+      "name": "review_repository",
+      "description": "Start here for an unfamiliar repository or a general test-architecture review. Detect and audit all project roots once, then return a bounded deterministic review: summary counts, blockers, top findings, the top-ranked candidates and plan items with execution hints, verification commands, and stats. limit caps the ranked lists (default 25) and per-test evidence is reduced to counts, so the result stays small on large monorepos. Use explain_target with repoRoot and projectRoot for one target's evidence, and analyze_repository only when the complete bundle is explicitly needed.",
+      "outputArtifact": {
+        "schemaVersion": "repository-review/v1",
+        "schemaPath": "schemas/repository-review-v1.schema.json"
+      },
+      "_meta": {
+        "anthropic/maxResultSizeChars": 200000
+      },
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "repoRoot"
+        ],
+        "properties": {
+          "repoRoot": {
+            "type": "string",
+            "description": "Repository root path."
+          },
+          "changedPaths": {
+            "type": "array",
+            "description": "Optional repository-relative source paths to limit target selection.",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "excludeProjectRoots": {
+            "type": "array",
+            "description": "Optional project roots or subtree patterns such as examples/** to exclude before the review.",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "goTarget": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "goos",
+              "goarch"
+            ],
+            "properties": {
+              "goos": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Explicit GOOS for bounded Go build-constraint evaluation."
+              },
+              "goarch": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Explicit GOARCH for bounded Go build-constraint evaluation."
+              },
+              "tags": {
+                "type": "array",
+                "description": "Optional custom Go build tags passed to the target-aware verification command.",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 500,
+            "description": "Maximum ranked candidates and plan items to return. Defaults to 25."
+          }
+        }
+      },
+      "title": "Review Repository",
+      "outputSchema": {
+        "type": "object",
+        "description": "Top-level shape of this artifact. The complete contract is schemas/repository-review-v1.schema.json in the published package.",
+        "required": [
+          "schemaVersion",
+          "root",
+          "summary",
+          "verificationCommands",
+          "blockers",
+          "auditSummary",
+          "findings",
+          "topCandidates",
+          "topPlanItems",
+          "topExecutionHints",
+          "stats"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "schemaVersion": {
+            "const": "repository-review/v1"
+          },
+          "root": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "object"
+          },
+          "verificationCommands": {
+            "type": "array"
+          },
+          "blockers": {
+            "type": "array"
+          },
+          "auditSummary": {
+            "type": "object"
+          },
+          "findings": {
+            "type": "object"
+          },
+          "topCandidates": {
+            "type": "array"
+          },
+          "topPlanItems": {
+            "type": "array"
+          },
+          "topExecutionHints": {
+            "type": "array"
+          },
+          "stats": {
+            "type": "object"
+          }
+        }
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
       "name": "analyze_repository",
-      "description": "Start here for an unfamiliar repository or a general test-architecture review. Detect and audit all project roots once, then return the complete deterministic summary, blockers, findings, ranking, plan, execution hints, verification commands, and stats. Prefer this over audit_repo unless one project root and adapter were explicitly selected.",
+      "description": "Return the complete repository-analysis/v1 bundle: every project audit with per-target test evidence plus the derived summary, findings, ranking, plan, execution hints, and stats. The result grows with repository size and can exceed client limits on large monorepos, so prefer review_repository first and use this only when the complete bundle is explicitly needed or the repository is small.",
       "outputArtifact": {
         "schemaVersion": "repository-analysis/v1",
         "schemaPath": "schemas/repository-analysis-v1.schema.json"
@@ -20,7 +154,7 @@
           },
           "changedPaths": {
             "type": "array",
-            "description": "Optional repository-relative source paths to limit target selection inside detected projects.",
+            "description": "Optional repository-relative source paths to limit target selection.",
             "items": {
               "type": "string",
               "minLength": 1
@@ -28,7 +162,7 @@
           },
           "excludeProjectRoots": {
             "type": "array",
-            "description": "Optional exact project roots or subtree patterns such as examples/** to exclude before analysis.",
+            "description": "Optional project roots or subtree patterns such as examples/** to exclude before analysis.",
             "items": {
               "type": "string",
               "minLength": 1
@@ -210,7 +344,7 @@
     },
     {
       "name": "detect_projects",
-      "description": "Discover project roots, support status, and matching adapters without auditing source targets. Use this when project boundaries are needed before a specialized workflow; use analyze_repository for a complete review. Reads local repository markers and returns project-detection/v1 without executing tests or writing files.",
+      "description": "Discover project roots, support status, and matching adapters without auditing source targets. Use this when project boundaries are needed before a specialized workflow; use review_repository for a general review. Reads local repository markers and returns project-detection/v1 without executing tests or writing files.",
       "outputArtifact": {
         "schemaVersion": "project-detection/v1",
         "schemaPath": "schemas/project-detection-v1.schema.json"
@@ -271,7 +405,7 @@
     },
     {
       "name": "audit_projects",
-      "description": "Return raw per-project audit artifacts for all detected supported roots, report unsupported roots, and list roots whose adapter failed in failedProjects. Use when a downstream specialist tool needs project-audits/v1; for a complete first-pass review, prefer analyze_repository.",
+      "description": "Return raw per-project audit artifacts for all detected supported roots, report unsupported roots, and list roots whose adapter failed in failedProjects. Use when a downstream specialist tool needs project-audits/v1; for a general first-pass review, prefer review_repository. The result can be large; specialist tools also accept repoRoot directly, so the artifact rarely needs to be passed back.",
       "outputArtifact": {
         "schemaVersion": "project-audits/v1",
         "schemaPath": "schemas/project-audits-v1.schema.json"
@@ -289,7 +423,7 @@
           },
           "changedPaths": {
             "type": "array",
-            "description": "Optional repository-relative source paths to limit target selection inside detected projects.",
+            "description": "Optional repository-relative source paths to limit target selection.",
             "items": {
               "type": "string",
               "minLength": 1
@@ -297,7 +431,7 @@
           },
           "excludeProjectRoots": {
             "type": "array",
-            "description": "Optional exact project roots or subtree patterns such as examples/** to exclude before auditing detected projects.",
+            "description": "Optional project roots or subtree patterns such as examples/** to exclude before auditing detected projects.",
             "items": {
               "type": "string",
               "minLength": 1
@@ -375,7 +509,7 @@
     },
     {
       "name": "summarize_project_audits",
-      "description": "Summarize an existing project-audits/v1 artifact. Use only when a compact coverage view is needed separately; analyze_repository already includes this result.",
+      "description": "Summarize an existing project-audits/v1 artifact. Use only when a compact coverage view is needed separately; review_repository returns a bounded version of this result; pass repoRoot here for the complete artifact.",
       "outputArtifact": {
         "schemaVersion": "project-audit-summary/v1",
         "schemaPath": "schemas/project-audit-summary-v1.schema.json"
@@ -383,13 +517,59 @@
       "inputSchema": {
         "type": "object",
         "additionalProperties": false,
-        "required": [
-          "projectAudits"
-        ],
+        "required": [],
         "properties": {
           "projectAudits": {
             "type": "object",
-            "description": "A project-audits/v1 artifact."
+            "description": "A project-audits/v1 artifact; or pass repoRoot instead."
+          },
+          "repoRoot": {
+            "type": "string",
+            "description": "Repository root to audit instead of passing projectAudits."
+          },
+          "changedPaths": {
+            "type": "array",
+            "description": "Optional repository-relative source paths to limit target selection.",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "excludeProjectRoots": {
+            "type": "array",
+            "description": "Optional project roots or subtree patterns such as examples/** to exclude before auditing.",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "goTarget": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "goos",
+              "goarch"
+            ],
+            "properties": {
+              "goos": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Explicit GOOS for bounded Go build-constraint evaluation."
+              },
+              "goarch": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Explicit GOARCH for bounded Go build-constraint evaluation."
+              },
+              "tags": {
+                "type": "array",
+                "description": "Optional custom Go build tags passed to the target-aware verification command.",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
           }
         }
       },
@@ -435,7 +615,7 @@
     },
     {
       "name": "rank_project_candidates",
-      "description": "Rank candidates from an existing project-audits/v1 artifact while preserving project identity. analyze_repository already includes this result.",
+      "description": "Rank candidates from an existing project-audits/v1 artifact while preserving project identity. review_repository returns a bounded version of this result; pass repoRoot here for the complete artifact.",
       "outputArtifact": {
         "schemaVersion": "project-candidate-ranking/v1",
         "schemaPath": "schemas/project-candidate-ranking-v1.schema.json"
@@ -443,13 +623,59 @@
       "inputSchema": {
         "type": "object",
         "additionalProperties": false,
-        "required": [
-          "projectAudits"
-        ],
+        "required": [],
         "properties": {
           "projectAudits": {
             "type": "object",
-            "description": "A project-audits/v1 artifact."
+            "description": "A project-audits/v1 artifact; or pass repoRoot instead."
+          },
+          "repoRoot": {
+            "type": "string",
+            "description": "Repository root to audit instead of passing projectAudits."
+          },
+          "changedPaths": {
+            "type": "array",
+            "description": "Optional repository-relative source paths to limit target selection.",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "excludeProjectRoots": {
+            "type": "array",
+            "description": "Optional project roots or subtree patterns such as examples/** to exclude before auditing.",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "goTarget": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "goos",
+              "goarch"
+            ],
+            "properties": {
+              "goos": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Explicit GOOS for bounded Go build-constraint evaluation."
+              },
+              "goarch": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Explicit GOARCH for bounded Go build-constraint evaluation."
+              },
+              "tags": {
+                "type": "array",
+                "description": "Optional custom Go build tags passed to the target-aware verification command.",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
           }
         }
       },
@@ -495,7 +721,7 @@
     },
     {
       "name": "generate_project_test_plan",
-      "description": "Generate a project-aware plan from an existing project-audits/v1 artifact. analyze_repository already includes this result.",
+      "description": "Generate a project-aware plan from an existing project-audits/v1 artifact. review_repository returns a bounded version of this result; pass repoRoot here for the complete artifact.",
       "outputArtifact": {
         "schemaVersion": "project-test-plan/v1",
         "schemaPath": "schemas/project-test-plan-v1.schema.json"
@@ -503,13 +729,59 @@
       "inputSchema": {
         "type": "object",
         "additionalProperties": false,
-        "required": [
-          "projectAudits"
-        ],
+        "required": [],
         "properties": {
           "projectAudits": {
             "type": "object",
-            "description": "A project-audits/v1 artifact."
+            "description": "A project-audits/v1 artifact; or pass repoRoot instead."
+          },
+          "repoRoot": {
+            "type": "string",
+            "description": "Repository root to audit instead of passing projectAudits."
+          },
+          "changedPaths": {
+            "type": "array",
+            "description": "Optional repository-relative source paths to limit target selection.",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "excludeProjectRoots": {
+            "type": "array",
+            "description": "Optional project roots or subtree patterns such as examples/** to exclude before auditing.",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "goTarget": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "goos",
+              "goarch"
+            ],
+            "properties": {
+              "goos": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Explicit GOOS for bounded Go build-constraint evaluation."
+              },
+              "goarch": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Explicit GOARCH for bounded Go build-constraint evaluation."
+              },
+              "tags": {
+                "type": "array",
+                "description": "Optional custom Go build tags passed to the target-aware verification command.",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
           }
         }
       },
@@ -559,7 +831,7 @@
     },
     {
       "name": "collect_project_findings",
-      "description": "Collect concise top findings from an existing project-audits/v1 artifact. analyze_repository already includes this result.",
+      "description": "Collect concise top findings from an existing project-audits/v1 artifact. review_repository returns a bounded version of this result; pass repoRoot here for the complete artifact.",
       "outputArtifact": {
         "schemaVersion": "project-findings/v1",
         "schemaPath": "schemas/project-findings-v1.schema.json"
@@ -567,13 +839,59 @@
       "inputSchema": {
         "type": "object",
         "additionalProperties": false,
-        "required": [
-          "projectAudits"
-        ],
+        "required": [],
         "properties": {
           "projectAudits": {
             "type": "object",
-            "description": "A project-audits/v1 artifact."
+            "description": "A project-audits/v1 artifact; or pass repoRoot instead."
+          },
+          "repoRoot": {
+            "type": "string",
+            "description": "Repository root to audit instead of passing projectAudits."
+          },
+          "changedPaths": {
+            "type": "array",
+            "description": "Optional repository-relative source paths to limit target selection.",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "excludeProjectRoots": {
+            "type": "array",
+            "description": "Optional project roots or subtree patterns such as examples/** to exclude before auditing.",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "goTarget": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "goos",
+              "goarch"
+            ],
+            "properties": {
+              "goos": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Explicit GOOS for bounded Go build-constraint evaluation."
+              },
+              "goarch": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Explicit GOARCH for bounded Go build-constraint evaluation."
+              },
+              "tags": {
+                "type": "array",
+                "description": "Optional custom Go build tags passed to the target-aware verification command.",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
           }
         }
       },
@@ -619,7 +937,7 @@
     },
     {
       "name": "analyze_project_test_placement",
-      "description": "Derive advisory test-placement findings across an existing project-audits/v1 artifact while preserving project identity. Use this for multiple audited projects; use analyze_test_placement for one audit/v1 artifact. Does not rescan the repository, execute tests, or create, move, or modify files.",
+      "description": "Derive advisory test-placement findings across audited projects while preserving project identity, from a project-audits/v1 artifact or, with repoRoot, from a fresh audit. Use analyze_test_placement for one project. Does not execute tests or create, move, or modify files.",
       "outputArtifact": {
         "schemaVersion": "test-placement-findings/v1",
         "schemaPath": "schemas/test-placement-findings-v1.schema.json"
@@ -627,13 +945,59 @@
       "inputSchema": {
         "type": "object",
         "additionalProperties": false,
-        "required": [
-          "projectAudits"
-        ],
+        "required": [],
         "properties": {
           "projectAudits": {
             "type": "object",
-            "description": "The project-audits/v1 object returned by audit_projects; pass the artifact itself, not a file path."
+            "description": "A project-audits/v1 artifact; or pass repoRoot instead."
+          },
+          "repoRoot": {
+            "type": "string",
+            "description": "Repository root to audit instead of passing projectAudits."
+          },
+          "changedPaths": {
+            "type": "array",
+            "description": "Optional repository-relative source paths to limit target selection.",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "excludeProjectRoots": {
+            "type": "array",
+            "description": "Optional project roots or subtree patterns such as examples/** to exclude before auditing.",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "goTarget": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "goos",
+              "goarch"
+            ],
+            "properties": {
+              "goos": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Explicit GOOS for bounded Go build-constraint evaluation."
+              },
+              "goarch": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Explicit GOARCH for bounded Go build-constraint evaluation."
+              },
+              "tags": {
+                "type": "array",
+                "description": "Optional custom Go build tags passed to the target-aware verification command.",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
           }
         }
       },
@@ -676,7 +1040,7 @@
     },
     {
       "name": "collect_project_stats",
-      "description": "Aggregate coverage, counts, risk and signal distributions, frameworks, and adapter usage from an existing project-audits/v1 artifact. Use this for separate reporting or comparisons; analyze_repository already includes the same stats. Returns project-stats/v1 without rescanning the repository, executing tests, or writing files.",
+      "description": "Aggregate coverage, counts, risk and signal distributions, frameworks, and adapter usage from a project-audits/v1 artifact or, with repoRoot, from a fresh audit. Use this for separate reporting or comparisons; review_repository already includes the same stats. Returns project-stats/v1 without executing tests or writing files.",
       "outputArtifact": {
         "schemaVersion": "project-stats/v1",
         "schemaPath": "schemas/project-stats-v1.schema.json"
@@ -684,13 +1048,59 @@
       "inputSchema": {
         "type": "object",
         "additionalProperties": false,
-        "required": [
-          "projectAudits"
-        ],
+        "required": [],
         "properties": {
           "projectAudits": {
             "type": "object",
-            "description": "The project-audits/v1 object returned by audit_projects; pass the artifact itself, not a file path."
+            "description": "A project-audits/v1 artifact; or pass repoRoot instead."
+          },
+          "repoRoot": {
+            "type": "string",
+            "description": "Repository root to audit instead of passing projectAudits."
+          },
+          "changedPaths": {
+            "type": "array",
+            "description": "Optional repository-relative source paths to limit target selection.",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "excludeProjectRoots": {
+            "type": "array",
+            "description": "Optional project roots or subtree patterns such as examples/** to exclude before auditing.",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "goTarget": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "goos",
+              "goarch"
+            ],
+            "properties": {
+              "goos": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Explicit GOOS for bounded Go build-constraint evaluation."
+              },
+              "goarch": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Explicit GOARCH for bounded Go build-constraint evaluation."
+              },
+              "tags": {
+                "type": "array",
+                "description": "Optional custom Go build tags passed to the target-aware verification command.",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
           }
         }
       },
@@ -744,7 +1154,7 @@
     },
     {
       "name": "audit_repo",
-      "description": "Audit one explicitly selected project root and return audit/v1. Use only when the caller selected a single adapter or project boundary; adapterId defaults to javascript. For an unfamiliar or complete repository review, use analyze_repository.",
+      "description": "Audit one explicitly selected project root and return audit/v1. Use only when the caller selected a single adapter or project boundary; adapterId defaults to javascript. For an unfamiliar repository or a general review, use review_repository.",
       "outputArtifact": {
         "schemaVersion": "audit/v1",
         "schemaPath": "schemas/audit-v1.schema.json"
@@ -849,7 +1259,7 @@
     },
     {
       "name": "get_audit_graph",
-      "description": "Validate and return an existing audit/v1 artifact unchanged; this does not scan a repository. Use audit_repo or analyze_repository for repository discovery.",
+      "description": "Return one project's audit/v1 artifact: validate and return a saved audit unchanged, or pass repoRoot plus projectRoot to audit that detected project. Use audit_repo when the adapter is selected explicitly, and review_repository for a general review.",
       "outputArtifact": {
         "schemaVersion": "audit/v1",
         "schemaPath": "schemas/audit-v1.schema.json"
@@ -857,13 +1267,55 @@
       "inputSchema": {
         "type": "object",
         "additionalProperties": false,
-        "required": [
-          "audit"
-        ],
+        "required": [],
         "properties": {
           "audit": {
             "type": "object",
-            "description": "An audit/v1 artifact."
+            "description": "An audit/v1 artifact; or pass repoRoot plus projectRoot instead."
+          },
+          "repoRoot": {
+            "type": "string",
+            "description": "Repository root to audit instead of passing audit; requires projectRoot."
+          },
+          "projectRoot": {
+            "type": "string",
+            "description": "Project root relative to repoRoot as detected, such as . or packages/api."
+          },
+          "changedPaths": {
+            "type": "array",
+            "description": "Optional repository-relative source paths to limit target selection.",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "goTarget": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "goos",
+              "goarch"
+            ],
+            "properties": {
+              "goos": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Explicit GOOS for bounded Go build-constraint evaluation."
+              },
+              "goarch": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Explicit GOARCH for bounded Go build-constraint evaluation."
+              },
+              "tags": {
+                "type": "array",
+                "description": "Optional custom Go build tags passed to the target-aware verification command.",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
           }
         }
       },
@@ -914,7 +1366,7 @@
     },
     {
       "name": "generate_test_plan",
-      "description": "Create a deterministic plan/v1 from an existing single-project audit/v1 artifact. Use this after audit_repo, optionally selecting one exact plan item; use generate_project_test_plan for multiple audited projects. Does not rescan the repository, execute tests, or generate or write test code.",
+      "description": "Create a deterministic plan/v1 for one project, optionally selecting one exact plan item; use generate_project_test_plan for multiple audited projects. Pass an existing audit/v1 artifact, or pass repoRoot plus projectRoot to audit that project deterministically. Does not execute tests or generate or write test code.",
       "outputArtifact": {
         "schemaVersion": "plan/v1",
         "schemaPath": "schemas/plan-v1.schema.json"
@@ -922,13 +1374,55 @@
       "inputSchema": {
         "type": "object",
         "additionalProperties": false,
-        "required": [
-          "audit"
-        ],
+        "required": [],
         "properties": {
           "audit": {
             "type": "object",
-            "description": "The audit/v1 object returned by audit_repo or contained in projectAudits.audits[].audit; pass the artifact itself, not a file path."
+            "description": "An audit/v1 artifact; or pass repoRoot plus projectRoot instead."
+          },
+          "repoRoot": {
+            "type": "string",
+            "description": "Repository root to audit instead of passing audit; requires projectRoot."
+          },
+          "projectRoot": {
+            "type": "string",
+            "description": "Project root relative to repoRoot as detected, such as . or packages/api."
+          },
+          "changedPaths": {
+            "type": "array",
+            "description": "Optional repository-relative source paths to limit target selection.",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "goTarget": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "goos",
+              "goarch"
+            ],
+            "properties": {
+              "goos": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Explicit GOOS for bounded Go build-constraint evaluation."
+              },
+              "goarch": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Explicit GOARCH for bounded Go build-constraint evaluation."
+              },
+              "tags": {
+                "type": "array",
+                "description": "Optional custom Go build tags passed to the target-aware verification command.",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
           },
           "itemId": {
             "type": "string",
@@ -971,7 +1465,7 @@
     },
     {
       "name": "get_plan_execution_hints",
-      "description": "Derive provider-neutral execution, context, parallel-safety, and repository-reasoning hints from a plan without invoking models or subagents.",
+      "description": "Derive provider-neutral execution, context, parallel-safety, and repository-reasoning hints from a plan without invoking models or subagents. Pass an existing plan/v1 or project-test-plan/v1 artifact, or pass repoRoot to derive hints for the project-aware plan of that repository.",
       "outputArtifact": {
         "schemaVersion": "plan-execution-hints/v1",
         "schemaPath": "schemas/plan-execution-hints-v1.schema.json"
@@ -979,13 +1473,59 @@
       "inputSchema": {
         "type": "object",
         "additionalProperties": false,
-        "required": [
-          "plan"
-        ],
+        "required": [],
         "properties": {
           "plan": {
             "type": "object",
-            "description": "A plan/v1 or project-test-plan/v1 artifact."
+            "description": "A plan/v1 or project-test-plan/v1 artifact. Omit it and pass repoRoot to plan the repository instead."
+          },
+          "repoRoot": {
+            "type": "string",
+            "description": "Repository root to audit and plan instead of passing plan."
+          },
+          "changedPaths": {
+            "type": "array",
+            "description": "Optional repository-relative source paths to limit target selection.",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "excludeProjectRoots": {
+            "type": "array",
+            "description": "Optional project roots or subtree patterns such as examples/** to exclude before planning.",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "goTarget": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "goos",
+              "goarch"
+            ],
+            "properties": {
+              "goos": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Explicit GOOS for bounded Go build-constraint evaluation."
+              },
+              "goarch": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Explicit GOARCH for bounded Go build-constraint evaluation."
+              },
+              "tags": {
+                "type": "array",
+                "description": "Optional custom Go build tags passed to the target-aware verification command.",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
           },
           "itemId": {
             "type": "string",
@@ -1031,7 +1571,7 @@
     },
     {
       "name": "explain_target",
-      "description": "Explain the evidence, risk, testability, and recommendation for one target in an existing audit/v1 artifact. Use this after audit_repo or audit_projects when one target needs detail beyond the audit summary. Returns target-explanation/v1 without rescanning the repository, executing tests, or writing files.",
+      "description": "Explain the evidence, risk, testability, and recommendation for one audited target, including its complete existing-test evidence. Use this after review_repository when one target needs detail: pass repoRoot plus the projectRoot and targetId from the review, or pass an existing audit/v1 artifact. Returns target-explanation/v1 without executing tests or writing files.",
       "outputArtifact": {
         "schemaVersion": "target-explanation/v1",
         "schemaPath": "schemas/target-explanation-v1.schema.json"
@@ -1040,13 +1580,56 @@
         "type": "object",
         "additionalProperties": false,
         "required": [
-          "audit",
           "targetId"
         ],
         "properties": {
           "audit": {
             "type": "object",
-            "description": "The audit/v1 object returned by audit_repo or contained in projectAudits.audits[].audit; pass the artifact itself, not a file path."
+            "description": "An audit/v1 artifact; or pass repoRoot plus projectRoot instead."
+          },
+          "repoRoot": {
+            "type": "string",
+            "description": "Repository root to audit instead of passing audit; requires projectRoot."
+          },
+          "projectRoot": {
+            "type": "string",
+            "description": "Project root relative to repoRoot as detected, such as . or packages/api."
+          },
+          "changedPaths": {
+            "type": "array",
+            "description": "Optional repository-relative source paths to limit target selection.",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "goTarget": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "goos",
+              "goarch"
+            ],
+            "properties": {
+              "goos": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Explicit GOOS for bounded Go build-constraint evaluation."
+              },
+              "goarch": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Explicit GOARCH for bounded Go build-constraint evaluation."
+              },
+              "tags": {
+                "type": "array",
+                "description": "Optional custom Go build tags passed to the target-aware verification command.",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
           },
           "targetId": {
             "type": "string",
@@ -1157,7 +1740,7 @@
     },
     {
       "name": "rank_test_candidates",
-      "description": "Rank testable audit targets by risk reduction and maintenance cost.",
+      "description": "Rank testable audit targets of one project by risk reduction and maintenance cost. Pass an existing audit/v1 artifact, or pass repoRoot plus projectRoot to audit that project deterministically.",
       "outputArtifact": {
         "schemaVersion": "candidate-ranking/v1",
         "schemaPath": "schemas/candidate-ranking-v1.schema.json"
@@ -1165,13 +1748,55 @@
       "inputSchema": {
         "type": "object",
         "additionalProperties": false,
-        "required": [
-          "audit"
-        ],
+        "required": [],
         "properties": {
           "audit": {
             "type": "object",
-            "description": "An audit/v1 artifact."
+            "description": "An audit/v1 artifact; or pass repoRoot plus projectRoot instead."
+          },
+          "repoRoot": {
+            "type": "string",
+            "description": "Repository root to audit instead of passing audit; requires projectRoot."
+          },
+          "projectRoot": {
+            "type": "string",
+            "description": "Project root relative to repoRoot as detected, such as . or packages/api."
+          },
+          "changedPaths": {
+            "type": "array",
+            "description": "Optional repository-relative source paths to limit target selection.",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "goTarget": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "goos",
+              "goarch"
+            ],
+            "properties": {
+              "goos": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Explicit GOOS for bounded Go build-constraint evaluation."
+              },
+              "goarch": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Explicit GOARCH for bounded Go build-constraint evaluation."
+              },
+              "tags": {
+                "type": "array",
+                "description": "Optional custom Go build tags passed to the target-aware verification command.",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
           }
         }
       },
@@ -1210,7 +1835,7 @@
     },
     {
       "name": "analyze_test_placement",
-      "description": "Derive advisory test-placement findings from an existing single-project audit/v1 artifact. Use this for one audited project; use analyze_project_test_placement for a project-audits/v1 artifact. Does not rescan the repository, execute tests, or create, move, or modify files.",
+      "description": "Derive advisory test-placement findings for one project; use analyze_project_test_placement for multiple audited projects. Pass an existing audit/v1 artifact, or pass repoRoot plus projectRoot to audit that project deterministically. Does not execute tests or create, move, or modify files.",
       "outputArtifact": {
         "schemaVersion": "test-placement-findings/v1",
         "schemaPath": "schemas/test-placement-findings-v1.schema.json"
@@ -1218,13 +1843,55 @@
       "inputSchema": {
         "type": "object",
         "additionalProperties": false,
-        "required": [
-          "audit"
-        ],
+        "required": [],
         "properties": {
           "audit": {
             "type": "object",
-            "description": "The audit/v1 object returned by audit_repo or contained in projectAudits.audits[].audit; pass the artifact itself, not a file path."
+            "description": "An audit/v1 artifact; or pass repoRoot plus projectRoot instead."
+          },
+          "repoRoot": {
+            "type": "string",
+            "description": "Repository root to audit instead of passing audit; requires projectRoot."
+          },
+          "projectRoot": {
+            "type": "string",
+            "description": "Project root relative to repoRoot as detected, such as . or packages/api."
+          },
+          "changedPaths": {
+            "type": "array",
+            "description": "Optional repository-relative source paths to limit target selection.",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "goTarget": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "goos",
+              "goarch"
+            ],
+            "properties": {
+              "goos": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Explicit GOOS for bounded Go build-constraint evaluation."
+              },
+              "goarch": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Explicit GOARCH for bounded Go build-constraint evaluation."
+              },
+              "tags": {
+                "type": "array",
+                "description": "Optional custom Go build tags passed to the target-aware verification command.",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
           },
           "owner": {
             "type": "string",

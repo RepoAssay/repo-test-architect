@@ -42,6 +42,19 @@ try {
     method: "tools/list"
   });
 
+  const repositoryReviewResponse = await sendRequest({
+    jsonrpc: "2.0",
+    id: 14,
+    method: "tools/call",
+    params: {
+      name: "review_repository",
+      arguments: {
+        repoRoot: "./examples/polyglot-workspace",
+        limit: 2
+      }
+    }
+  });
+
   const repositoryAnalysisResponse = await sendRequest({
     jsonrpc: "2.0",
     id: 13,
@@ -154,16 +167,25 @@ try {
   assert.equal(initialize.result.serverInfo.name, "repo-test-architect");
   assert.equal(initialize.result.serverInfo.version, "1.1.0");
   assert.deepEqual(initialize.result.capabilities.tools, {});
-  assert.match(initialize.result.instructions, /Start with analyze_repository/i);
+  assert.match(initialize.result.instructions, /Start with review_repository/i);
 
   assert.equal(tools.id, 2);
-  assert.equal(tools.result.tools[0].name, "analyze_repository");
+  assert.equal(tools.result.tools[0].name, "review_repository");
+  assert.equal(tools.result.tools[1].name, "analyze_repository");
   assert.ok(tools.result.tools.some((tool) => tool.name === "detect_projects"));
   assert.ok(tools.result.tools.some((tool) => tool.name === "audit_projects"));
   assert.ok(tools.result.tools.some((tool) => tool.name === "generate_project_test_plan"));
   assert.ok(tools.result.tools.some((tool) => tool.name === "get_plan_execution_hints"));
 
   const repositoryAnalysis = parseToolArtifact(repositoryAnalysisResponse);
+  const repositoryReview = repositoryReviewResponse.result.structuredContent;
+  assert.equal(repositoryReviewResponse.id, 14);
+  assert.equal(repositoryReview.schemaVersion, "repository-review/v1");
+  assert.equal(repositoryReview.summary.projectCount, 3);
+  assert.equal(repositoryReview.summary.limit, 2);
+  assert.equal(repositoryReview.topCandidates.length, 2);
+  assert.equal(repositoryReviewResponse.result.content[0].text, JSON.stringify(repositoryReview));
+
   assert.equal(repositoryAnalysisResponse.id, 13);
   assert.equal(repositoryAnalysis.schemaVersion, "repository-analysis/v1");
   assert.equal(repositoryAnalysis.summary.projectCount, 3);

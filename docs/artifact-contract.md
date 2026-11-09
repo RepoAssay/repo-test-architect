@@ -23,7 +23,7 @@ MCP tool:
 
 - `analyze_repository`
 
-This is the canonical complete review artifact. One project-audit pass supplies all deterministic inputs; the remaining views are derived without rescanning.
+This is the complete review artifact. One project-audit pass supplies all deterministic inputs; the remaining views are derived without rescanning. It grows with repository size because it embeds every project audit and repeats per-target evidence in the derived views; model consumers should start with the bounded [Repository Review Artifact](#repository-review-artifact) and request this bundle only when they need the complete evidence.
 
 It contains:
 
@@ -35,6 +35,37 @@ It contains:
 - repository statistics and detected verification commands
 
 Human-readable CLI output selects the most useful overview, findings, plan items, and commands. JSON preserves every child artifact for agents, automation, saved review evidence, and later focused transformations.
+
+## Repository Review Artifact
+
+Schema:
+
+- `schemas/repository-review-v1.schema.json`
+- `schemaVersion: "repository-review/v1"`
+
+Commands:
+
+```powershell
+node ./src/cli/index.js review . --format json
+node ./src/cli/index.js review . --limit 50 --format json
+node ./src/cli/index.js review --from-project-audits ./project-audits.json --format json
+```
+
+MCP tool:
+
+- `review_repository`
+
+This is the bounded entry point for model consumers. It is derived from the same single project-audit pass as `repository-analysis/v1`, so every number in it matches the complete bundle, but it is designed to stay within a model's context on large monorepos:
+
+- the raw `project-audits/v1` artifact is omitted; `explain_target` with `repoRoot` and `projectRoot` serves one target's complete evidence, and `analyze_repository` serves the complete bundle
+- `blockers` lists every audit blocker with its project identity, so coverage gaps are never hidden by a list cap
+- `auditSummary` (`project-audit-summary/v1`), `stats` (`project-stats/v1`), and `verificationCommands` are embedded unchanged
+- `findings` carries the `project-findings/v1` summary and its displayed findings (already limited to ten) as `items`; each item replaces `existingTestPaths` with `existingTestCount`, and its `existing tests:` evidence line lists at most five paths followed by `(+N more; see explain_target)`
+- `topCandidates` and `topPlanItems` are the first `summary.limit` entries of the project-aware ranking and plan, in the same deterministic order; `summary.candidateCount` and `summary.planItemCount` keep the totals and `summary.truncated` is true when a list was cut
+- each candidate and plan item replaces `existingTestPaths` and `existingTestEvidence` with `existingTestCount` and `directEvidenceCount`
+- `topExecutionHints` holds the `plan-execution-hints/v1` items for exactly the displayed plan items, with `contextScope.paths` capped at five entries and `contextScope.omittedPathCount` present when paths were dropped; `get_plan_execution_hints` with `repoRoot` returns the complete lists
+
+The five-path rule is the same one Markdown output applies, so no part of the review grows with the number of tests that reach a single target. `limit` defaults to 25 and must be an integer from 1 to 500. On this repository with all example fixtures detected (more than 60 project roots) the review is about 100 KB, while the complete bundle is about 1.6 MB.
 
 ## Audit Artifact
 

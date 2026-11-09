@@ -48,6 +48,14 @@
     "outputSchema": {
       "type": "object"
     },
+    "_meta": {
+      "description": "Optional client hints. anthropic/maxResultSizeChars raises the inline result threshold in Claude Code.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "anthropic/maxResultSizeChars": { "type": "integer", "minimum": 1, "maximum": 500000 }
+      }
+    },
     "annotations": {
       "type": "object",
       "additionalProperties": false,

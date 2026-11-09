@@ -16,8 +16,10 @@ import {
   getProjectDetectionRules,
   rankRepoProjectCandidates,
   rankAuditTestCandidates,
+  reviewRepository,
   summarizeRepoProjectAudits
 } from "../core/tool-api.js";
+import { MAX_REVIEW_LIMIT } from "../core/repository-review.js";
 import { getAdapterRegistry } from "../core/adapter-registry.js";
 import { ArtifactValidationError } from "../core/artifact-validation.js";
 import { createGenerationDeferredResult } from "../core/generation-deferred.js";
@@ -28,6 +30,10 @@ import { McpToolError } from "./errors.js";
 // published schema file, which keeps tools/list small for clients that load every descriptor.
 const compactPropertyKeywords = ["type", "const", "enum"];
 
+// Claude Code keeps text results inline up to this many characters when a tool declares it; the bounded
+// review is meant to be read directly rather than spilled to a file. Other clients ignore the hint.
+const REVIEW_MAX_RESULT_SIZE_CHARS = 200_000;
+
 const readOnlyAnnotations = Object.freeze({
   readOnlyHint: true,
   destructiveHint: false,
@@ -36,6 +42,7 @@ const readOnlyAnnotations = Object.freeze({
 });
 
 const toolTitles = Object.freeze({
+  review_repository: "Review Repository",
   analyze_repository: "Analyze Repository",
   list_adapters: "List Adapters",
   list_project_detection_rules: "List Project Detection Rules",
@@ -59,23 +66,25 @@ const toolTitles = Object.freeze({
 
 const toolDefinitions = [
   {
-    name: "analyze_repository",
-    description: "Start here for an unfamiliar repository or a general test-architecture review. Detect and audit all project roots once, then return the complete deterministic summary, blockers, findings, ranking, plan, execution hints, verification commands, and stats. Prefer this over audit_repo unless one project root and adapter were explicitly selected.",
-    outputArtifact: artifact("repository-analysis/v1", "schemas/repository-analysis-v1.schema.json"),
+    name: "review_repository",
+    description: "Start here for an unfamiliar repository or a general test-architecture review. Detect and audit all project roots once, then return a bounded deterministic review: summary counts, blockers, top findings, the top-ranked candidates and plan items with execution hints, verification commands, and stats. limit caps the ranked lists (default 25) and per-test evidence is reduced to counts, so the result stays small on large monorepos. Use explain_target with repoRoot and projectRoot for one target's evidence, and analyze_repository only when the complete bundle is explicitly needed.",
+    outputArtifact: artifact("repository-review/v1", "schemas/repository-review-v1.schema.json"),
+    _meta: { "anthropic/maxResultSizeChars": REVIEW_MAX_RESULT_SIZE_CHARS },
     inputSchema: objectSchema({
-      repoRoot: { type: "string", description: "Repository root path." },
-      changedPaths: {
-        type: "array",
-        description: "Optional repository-relative source paths to limit target selection inside detected projects.",
-        items: { type: "string", minLength: 1 }
-      },
-      excludeProjectRoots: {
-        type: "array",
-        description: "Optional exact project roots or subtree patterns such as examples/** to exclude before analysis.",
-        items: { type: "string", minLength: 1 }
-      },
-      goTarget: goTargetSchema()
+      ...repositoryScanProperties("before the review"),
+      limit: {
+        type: "integer",
+        minimum: 1,
+        maximum: MAX_REVIEW_LIMIT,
+        description: "Maximum ranked candidates and plan items to return. Defaults to 25."
+      }
     }, ["repoRoot"])
+  },
+  {
+    name: "analyze_repository",
+    description: "Return the complete repository-analysis/v1 bundle: every project audit with per-target test evidence plus the derived summary, findings, ranking, plan, execution hints, and stats. The result grows with repository size and can exceed client limits on large monorepos, so prefer review_repository first and use this only when the complete bundle is explicitly needed or the repository is small.",
+    outputArtifact: artifact("repository-analysis/v1", "schemas/repository-analysis-v1.schema.json"),
+    inputSchema: objectSchema(repositoryScanProperties("before analysis"), ["repoRoot"])
   },
   {
     name: "list_adapters",
@@ -91,7 +100,7 @@ const toolDefinitions = [
   },
   {
     name: "detect_projects",
-    description: "Discover project roots, support status, and matching adapters without auditing source targets. Use this when project boundaries are needed before a specialized workflow; use analyze_repository for a complete review. Reads local repository markers and returns project-detection/v1 without executing tests or writing files.",
+    description: "Discover project roots, support status, and matching adapters without auditing source targets. Use this when project boundaries are needed before a specialized workflow; use review_repository for a general review. Reads local repository markers and returns project-detection/v1 without executing tests or writing files.",
     outputArtifact: artifact("project-detection/v1", "schemas/project-detection-v1.schema.json"),
     inputSchema: objectSchema({
       repoRoot: { type: "string", description: "Readable repository directory whose project markers should be inspected." },
@@ -104,74 +113,49 @@ const toolDefinitions = [
   },
   {
     name: "audit_projects",
-    description: "Return raw per-project audit artifacts for all detected supported roots, report unsupported roots, and list roots whose adapter failed in failedProjects. Use when a downstream specialist tool needs project-audits/v1; for a complete first-pass review, prefer analyze_repository.",
+    description: "Return raw per-project audit artifacts for all detected supported roots, report unsupported roots, and list roots whose adapter failed in failedProjects. Use when a downstream specialist tool needs project-audits/v1; for a general first-pass review, prefer review_repository. The result can be large; specialist tools also accept repoRoot directly, so the artifact rarely needs to be passed back.",
     outputArtifact: artifact("project-audits/v1", "schemas/project-audits-v1.schema.json"),
-    inputSchema: objectSchema({
-      repoRoot: { type: "string", description: "Repository root path." },
-      changedPaths: {
-        type: "array",
-        description: "Optional repository-relative source paths to limit target selection inside detected projects.",
-        items: { type: "string", minLength: 1 }
-      },
-      excludeProjectRoots: {
-        type: "array",
-        description: "Optional exact project roots or subtree patterns such as examples/** to exclude before auditing detected projects.",
-        items: { type: "string", minLength: 1 }
-      },
-      goTarget: goTargetSchema()
-    }, ["repoRoot"])
+    inputSchema: objectSchema(repositoryScanProperties("before auditing detected projects"), ["repoRoot"])
   },
   {
     name: "summarize_project_audits",
-    description: "Summarize an existing project-audits/v1 artifact. Use only when a compact coverage view is needed separately; analyze_repository already includes this result.",
+    description: "Summarize an existing project-audits/v1 artifact. Use only when a compact coverage view is needed separately; review_repository returns a bounded version of this result; pass repoRoot here for the complete artifact.",
     outputArtifact: artifact("project-audit-summary/v1", "schemas/project-audit-summary-v1.schema.json"),
-    inputSchema: objectSchema({
-      projectAudits: { type: "object", description: "A project-audits/v1 artifact." }
-    }, ["projectAudits"])
+    inputSchema: objectSchema(projectAuditsSourceProperties(), [])
   },
   {
     name: "rank_project_candidates",
-    description: "Rank candidates from an existing project-audits/v1 artifact while preserving project identity. analyze_repository already includes this result.",
+    description: "Rank candidates from an existing project-audits/v1 artifact while preserving project identity. review_repository returns a bounded version of this result; pass repoRoot here for the complete artifact.",
     outputArtifact: artifact("project-candidate-ranking/v1", "schemas/project-candidate-ranking-v1.schema.json"),
-    inputSchema: objectSchema({
-      projectAudits: { type: "object", description: "A project-audits/v1 artifact." }
-    }, ["projectAudits"])
+    inputSchema: objectSchema(projectAuditsSourceProperties(), [])
   },
   {
     name: "generate_project_test_plan",
-    description: "Generate a project-aware plan from an existing project-audits/v1 artifact. analyze_repository already includes this result.",
+    description: "Generate a project-aware plan from an existing project-audits/v1 artifact. review_repository returns a bounded version of this result; pass repoRoot here for the complete artifact.",
     outputArtifact: artifact("project-test-plan/v1", "schemas/project-test-plan-v1.schema.json"),
-    inputSchema: objectSchema({
-      projectAudits: { type: "object", description: "A project-audits/v1 artifact." }
-    }, ["projectAudits"])
+    inputSchema: objectSchema(projectAuditsSourceProperties(), [])
   },
   {
     name: "collect_project_findings",
-    description: "Collect concise top findings from an existing project-audits/v1 artifact. analyze_repository already includes this result.",
+    description: "Collect concise top findings from an existing project-audits/v1 artifact. review_repository returns a bounded version of this result; pass repoRoot here for the complete artifact.",
     outputArtifact: artifact("project-findings/v1", "schemas/project-findings-v1.schema.json"),
-    inputSchema: objectSchema({
-      projectAudits: { type: "object", description: "A project-audits/v1 artifact." }
-    }, ["projectAudits"])
+    inputSchema: objectSchema(projectAuditsSourceProperties(), [])
   },
   {
     name: "analyze_project_test_placement",
-    description: "Derive advisory test-placement findings across an existing project-audits/v1 artifact while preserving project identity. Use this for multiple audited projects; use analyze_test_placement for one audit/v1 artifact. Does not rescan the repository, execute tests, or create, move, or modify files.",
+    description: "Derive advisory test-placement findings across audited projects while preserving project identity, from a project-audits/v1 artifact or, with repoRoot, from a fresh audit. Use analyze_test_placement for one project. Does not execute tests or create, move, or modify files.",
     outputArtifact: artifact("test-placement-findings/v1", "schemas/test-placement-findings-v1.schema.json"),
-    inputSchema: objectSchema({
-      projectAudits: { type: "object", description: "The project-audits/v1 object returned by audit_projects; pass the artifact itself, not a file path." }
-    }, ["projectAudits"])
+    inputSchema: objectSchema(projectAuditsSourceProperties(), [])
   },
   {
     name: "collect_project_stats",
-    description: "Aggregate coverage, counts, risk and signal distributions, frameworks, and adapter usage from an existing project-audits/v1 artifact. Use this for separate reporting or comparisons; analyze_repository already includes the same stats. Returns project-stats/v1 without rescanning the repository, executing tests, or writing files.",
+    description: "Aggregate coverage, counts, risk and signal distributions, frameworks, and adapter usage from a project-audits/v1 artifact or, with repoRoot, from a fresh audit. Use this for separate reporting or comparisons; review_repository already includes the same stats. Returns project-stats/v1 without executing tests or writing files.",
     outputArtifact: artifact("project-stats/v1", "schemas/project-stats-v1.schema.json"),
-    inputSchema: objectSchema({
-      projectAudits: { type: "object", description: "The project-audits/v1 object returned by audit_projects; pass the artifact itself, not a file path." }
-    }, ["projectAudits"])
+    inputSchema: objectSchema(projectAuditsSourceProperties(), [])
   },
   {
     name: "audit_repo",
-    description: "Audit one explicitly selected project root and return audit/v1. Use only when the caller selected a single adapter or project boundary; adapterId defaults to javascript. For an unfamiliar or complete repository review, use analyze_repository.",
+    description: "Audit one explicitly selected project root and return audit/v1. Use only when the caller selected a single adapter or project boundary; adapterId defaults to javascript. For an unfamiliar repository or a general review, use review_repository.",
     outputArtifact: artifact("audit/v1", "schemas/audit-v1.schema.json"),
     inputSchema: objectSchema({
       repoRoot: { type: "string", description: "Repository root path." },
@@ -186,55 +170,52 @@ const toolDefinitions = [
   },
   {
     name: "get_audit_graph",
-    description: "Validate and return an existing audit/v1 artifact unchanged; this does not scan a repository. Use audit_repo or analyze_repository for repository discovery.",
+    description: "Return one project's audit/v1 artifact: validate and return a saved audit unchanged, or pass repoRoot plus projectRoot to audit that detected project. Use audit_repo when the adapter is selected explicitly, and review_repository for a general review.",
     outputArtifact: artifact("audit/v1", "schemas/audit-v1.schema.json"),
-    inputSchema: objectSchema({
-      audit: { type: "object", description: "An audit/v1 artifact." }
-    }, ["audit"])
+    inputSchema: objectSchema(auditSourceProperties(), [])
   },
   {
     name: "generate_test_plan",
-    description: "Create a deterministic plan/v1 from an existing single-project audit/v1 artifact. Use this after audit_repo, optionally selecting one exact plan item; use generate_project_test_plan for multiple audited projects. Does not rescan the repository, execute tests, or generate or write test code.",
+    description: "Create a deterministic plan/v1 for one project, optionally selecting one exact plan item; use generate_project_test_plan for multiple audited projects. Pass an existing audit/v1 artifact, or pass repoRoot plus projectRoot to audit that project deterministically. Does not execute tests or generate or write test code.",
     outputArtifact: artifact("plan/v1", "schemas/plan-v1.schema.json"),
     inputSchema: objectSchema({
-      audit: { type: "object", description: "The audit/v1 object returned by audit_repo or contained in projectAudits.audits[].audit; pass the artifact itself, not a file path." },
+      ...auditSourceProperties(),
       itemId: { type: "string", description: "Optional exact plan item id to return; omit it to return the complete deterministic plan." }
-    }, ["audit"])
+    }, [])
   },
   {
     name: "get_plan_execution_hints",
-    description: "Derive provider-neutral execution, context, parallel-safety, and repository-reasoning hints from a plan without invoking models or subagents.",
+    description: "Derive provider-neutral execution, context, parallel-safety, and repository-reasoning hints from a plan without invoking models or subagents. Pass an existing plan/v1 or project-test-plan/v1 artifact, or pass repoRoot to derive hints for the project-aware plan of that repository.",
     outputArtifact: artifact("plan-execution-hints/v1", "schemas/plan-execution-hints-v1.schema.json"),
     inputSchema: objectSchema({
-      plan: { type: "object", description: "A plan/v1 or project-test-plan/v1 artifact." },
+      plan: { type: "object", description: "A plan/v1 or project-test-plan/v1 artifact. Omit it and pass repoRoot to plan the repository instead." },
+      ...repositoryScanProperties("before planning", "Repository root to audit and plan instead of passing plan."),
       itemId: { type: "string", description: "Optional stable plan item or project item id to select." }
-    }, ["plan"])
+    }, [])
   },
   {
     name: "explain_target",
-    description: "Explain the evidence, risk, testability, and recommendation for one target in an existing audit/v1 artifact. Use this after audit_repo or audit_projects when one target needs detail beyond the audit summary. Returns target-explanation/v1 without rescanning the repository, executing tests, or writing files.",
+    description: "Explain the evidence, risk, testability, and recommendation for one audited target, including its complete existing-test evidence. Use this after review_repository when one target needs detail: pass repoRoot plus the projectRoot and targetId from the review, or pass an existing audit/v1 artifact. Returns target-explanation/v1 without executing tests or writing files.",
     outputArtifact: artifact("target-explanation/v1", "schemas/target-explanation-v1.schema.json"),
     inputSchema: objectSchema({
-      audit: { type: "object", description: "The audit/v1 object returned by audit_repo or contained in projectAudits.audits[].audit; pass the artifact itself, not a file path." },
+      ...auditSourceProperties(),
       targetId: { type: "string", description: "Exact stable id from an audit target in untestedCandidates, coveredButRisky, recommended, or skipped." }
-    }, ["audit", "targetId"])
+    }, ["targetId"])
   },
   {
     name: "rank_test_candidates",
-    description: "Rank testable audit targets by risk reduction and maintenance cost.",
+    description: "Rank testable audit targets of one project by risk reduction and maintenance cost. Pass an existing audit/v1 artifact, or pass repoRoot plus projectRoot to audit that project deterministically.",
     outputArtifact: artifact("candidate-ranking/v1", "schemas/candidate-ranking-v1.schema.json"),
-    inputSchema: objectSchema({
-      audit: { type: "object", description: "An audit/v1 artifact." }
-    }, ["audit"])
+    inputSchema: objectSchema(auditSourceProperties(), [])
   },
   {
     name: "analyze_test_placement",
-    description: "Derive advisory test-placement findings from an existing single-project audit/v1 artifact. Use this for one audited project; use analyze_project_test_placement for a project-audits/v1 artifact. Does not rescan the repository, execute tests, or create, move, or modify files.",
+    description: "Derive advisory test-placement findings for one project; use analyze_project_test_placement for multiple audited projects. Pass an existing audit/v1 artifact, or pass repoRoot plus projectRoot to audit that project deterministically. Does not execute tests or create, move, or modify files.",
     outputArtifact: artifact("test-placement-findings/v1", "schemas/test-placement-findings-v1.schema.json"),
     inputSchema: objectSchema({
-      audit: { type: "object", description: "The audit/v1 object returned by audit_repo or contained in projectAudits.audits[].audit; pass the artifact itself, not a file path." },
+      ...auditSourceProperties(),
       owner: { type: "string", description: "Optional owner label for the audited project. Defaults to audit.profile.root." }
-    }, ["audit"])
+    }, [])
   },
   {
     name: "generate_selected_test",
@@ -267,12 +248,13 @@ export function callTool(name, args = {}) {
 
   try {
     switch (name) {
-      case "analyze_repository":
-        return analyzeRepository(requireString(args.repoRoot, "repoRoot"), {
-          changedPaths: optionalStringArray(args.changedPaths, "changedPaths"),
-          excludeProjectRoots: optionalStringArray(args.excludeProjectRoots, "excludeProjectRoots"),
-          goTarget: optionalGoTarget(args.goTarget)
+      case "review_repository":
+        return reviewRepository(requireString(args.repoRoot, "repoRoot"), {
+          ...repositoryScanOptions(args),
+          limit: optionalLimit(args.limit)
         });
+      case "analyze_repository":
+        return analyzeRepository(requireString(args.repoRoot, "repoRoot"), repositoryScanOptions(args));
       case "list_adapters":
         return getAdapterRegistry();
       case "list_project_detection_rules":
@@ -282,23 +264,19 @@ export function callTool(name, args = {}) {
           excludeProjectRoots: optionalStringArray(args.excludeProjectRoots, "excludeProjectRoots")
         });
       case "audit_projects":
-        return auditRepoProjects(requireString(args.repoRoot, "repoRoot"), {
-          changedPaths: optionalStringArray(args.changedPaths, "changedPaths"),
-          excludeProjectRoots: optionalStringArray(args.excludeProjectRoots, "excludeProjectRoots"),
-          goTarget: optionalGoTarget(args.goTarget)
-        });
+        return auditRepoProjects(requireString(args.repoRoot, "repoRoot"), repositoryScanOptions(args));
       case "summarize_project_audits":
-        return summarizeRepoProjectAudits(requireObject(args.projectAudits, "projectAudits"));
+        return summarizeRepoProjectAudits(resolveProjectAudits(tool, args));
       case "rank_project_candidates":
-        return rankRepoProjectCandidates(requireObject(args.projectAudits, "projectAudits"));
+        return rankRepoProjectCandidates(resolveProjectAudits(tool, args));
       case "generate_project_test_plan":
-        return generateRepoProjectTestPlan(requireObject(args.projectAudits, "projectAudits"));
+        return generateRepoProjectTestPlan(resolveProjectAudits(tool, args));
       case "collect_project_findings":
-        return collectRepoProjectFindings(requireObject(args.projectAudits, "projectAudits"));
+        return collectRepoProjectFindings(resolveProjectAudits(tool, args));
       case "analyze_project_test_placement":
-        return analyzeRepoProjectTestPlacement(requireObject(args.projectAudits, "projectAudits"));
+        return analyzeRepoProjectTestPlacement(resolveProjectAudits(tool, args));
       case "collect_project_stats":
-        return collectRepoProjectStats(requireObject(args.projectAudits, "projectAudits"));
+        return collectRepoProjectStats(resolveProjectAudits(tool, args));
       case "audit_repo":
         return auditRepo(requireString(args.repoRoot, "repoRoot"), {
           adapterId: optionalString(args.adapterId, "adapterId"),
@@ -306,21 +284,21 @@ export function callTool(name, args = {}) {
           goTarget: optionalGoTarget(args.goTarget)
         });
       case "get_audit_graph":
-        return getAuditGraph(requireObject(args.audit, "audit"));
+        return getAuditGraph(resolveAudit(tool, args));
       case "generate_test_plan":
-        return generateTestPlan(requireObject(args.audit, "audit"), {
+        return generateTestPlan(resolveAudit(tool, args), {
           itemId: optionalString(args.itemId, "itemId")
         });
       case "get_plan_execution_hints":
-        return getPlanExecutionHints(requireObject(args.plan, "plan"), {
+        return getPlanExecutionHints(resolvePlan(tool, args), {
           itemId: optionalString(args.itemId, "itemId")
         });
       case "explain_target":
-        return explainAuditTarget(requireObject(args.audit, "audit"), requireString(args.targetId, "targetId"));
+        return explainAuditTarget(resolveAudit(tool, args), requireString(args.targetId, "targetId"));
       case "rank_test_candidates":
-        return rankAuditTestCandidates(requireObject(args.audit, "audit"));
+        return rankAuditTestCandidates(resolveAudit(tool, args));
       case "analyze_test_placement":
-        return analyzeRepoTestPlacement(requireObject(args.audit, "audit"), {
+        return analyzeRepoTestPlacement(resolveAudit(tool, args), {
           owner: optionalString(args.owner, "owner")
         });
       case "generate_selected_test":
@@ -351,6 +329,110 @@ export function callTool(name, args = {}) {
   }
 }
 
+/**
+ * Scan options shared by every tool that detects and audits a repository.
+ */
+function repositoryScanOptions(args) {
+  return {
+    changedPaths: optionalStringArray(args.changedPaths, "changedPaths"),
+    excludeProjectRoots: optionalStringArray(args.excludeProjectRoots, "excludeProjectRoots"),
+    goTarget: optionalGoTarget(args.goTarget)
+  };
+}
+
+// Arguments that only make sense when the tool scans a repository itself.
+const scanOnlyArguments = ["changedPaths", "excludeProjectRoots", "goTarget", "projectRoot"];
+
+/**
+ * Artifact-consuming tools accept either the saved artifact or repoRoot. Scanning again is deterministic
+ * and cheap, and it spares the client from echoing a large artifact back as an argument.
+ */
+function resolveArtifactSource(tool, args, artifactArgument, scan) {
+  const hasArtifact = args[artifactArgument] !== undefined;
+  const hasRepoRoot = args.repoRoot !== undefined;
+
+  if (hasArtifact && hasRepoRoot) {
+    throw new McpToolError("invalid-arguments", `Pass either ${artifactArgument} or repoRoot to ${tool.name}, not both.`, {
+      toolName: tool.name,
+      argument: "repoRoot"
+    });
+  }
+
+  if (hasArtifact) {
+    const scanArgument = scanOnlyArguments.find((key) => args[key] !== undefined);
+    if (scanArgument) {
+      throw new McpToolError("invalid-arguments", `${scanArgument} applies only when ${tool.name} scans a repository with repoRoot.`, {
+        toolName: tool.name,
+        argument: scanArgument
+      });
+    }
+    return requireObject(args[artifactArgument], artifactArgument);
+  }
+
+  if (!hasRepoRoot) {
+    throw new McpToolError("missing-required-argument", `${artifactArgument} or repoRoot is required for ${tool.name}.`, {
+      toolName: tool.name,
+      argument: artifactArgument
+    });
+  }
+
+  return scan();
+}
+
+function resolveProjectAudits(tool, args) {
+  return resolveArtifactSource(tool, args, "projectAudits", () =>
+    auditRepoProjects(requireString(args.repoRoot, "repoRoot"), repositoryScanOptions(args)));
+}
+
+function resolvePlan(tool, args) {
+  return resolveArtifactSource(tool, args, "plan", () =>
+    generateRepoProjectTestPlan(auditRepoProjects(requireString(args.repoRoot, "repoRoot"), repositoryScanOptions(args))));
+}
+
+function resolveAudit(tool, args) {
+  return resolveArtifactSource(tool, args, "audit", () => {
+    if (args.projectRoot === undefined) {
+      throw new McpToolError("missing-required-argument", `projectRoot is required with repoRoot for ${tool.name}.`, {
+        toolName: tool.name,
+        argument: "projectRoot"
+      });
+    }
+
+    const projectRoot = normalizeProjectRoot(requireString(args.projectRoot, "projectRoot"));
+    const projectAudits = auditRepoProjects(requireString(args.repoRoot, "repoRoot"), {
+      changedPaths: optionalStringArray(args.changedPaths, "changedPaths"),
+      goTarget: optionalGoTarget(args.goTarget)
+    });
+    const entry = projectAudits.audits.find((candidate) => normalizeProjectRoot(candidate.projectRoot) === projectRoot);
+
+    if (!entry) {
+      // The value is never echoed; it is repository-controlled text.
+      throw new McpToolError(
+        "invalid-arguments",
+        `projectRoot is not an audited project root under repoRoot for ${tool.name}; it may be unsupported, failed, or not a detected project root.`,
+        { toolName: tool.name, argument: "projectRoot" }
+      );
+    }
+
+    return entry.audit;
+  });
+}
+
+function normalizeProjectRoot(value) {
+  const unified = value.replaceAll("\\", "/").replace(/^(\.\/)+/, "").replace(/\/+$/, "");
+  return unified === "" ? "." : unified;
+}
+
+function optionalLimit(value) {
+  if (value === undefined) return undefined;
+
+  if (!Number.isInteger(value) || value < 1 || value > MAX_REVIEW_LIMIT) {
+    throw new McpToolError("invalid-arguments", `limit must be an integer between 1 and ${MAX_REVIEW_LIMIT}.`, { argument: "limit" });
+  }
+
+  return value;
+}
+
 function savedArtifactArgument(tool) {
   const properties = tool.inputSchema.properties ?? {};
   if (Object.hasOwn(properties, "audit")) return "audit";
@@ -369,6 +451,44 @@ function objectSchema(properties, required) {
     additionalProperties: false,
     required,
     properties
+  };
+}
+
+function repositoryScanProperties(excludePhrase, repoRootDescription = "Repository root path.") {
+  return {
+    repoRoot: { type: "string", description: repoRootDescription },
+    changedPaths: changedPathsProperty(),
+    excludeProjectRoots: {
+      type: "array",
+      description: `Optional project roots or subtree patterns such as examples/** to exclude ${excludePhrase}.`,
+      items: { type: "string", minLength: 1 }
+    },
+    goTarget: goTargetSchema()
+  };
+}
+
+function changedPathsProperty() {
+  return {
+    type: "array",
+    description: "Optional repository-relative source paths to limit target selection.",
+    items: { type: "string", minLength: 1 }
+  };
+}
+
+function projectAuditsSourceProperties() {
+  return {
+    projectAudits: { type: "object", description: "A project-audits/v1 artifact; or pass repoRoot instead." },
+    ...repositoryScanProperties("before auditing", "Repository root to audit instead of passing projectAudits.")
+  };
+}
+
+function auditSourceProperties() {
+  return {
+    audit: { type: "object", description: "An audit/v1 artifact; or pass repoRoot plus projectRoot instead." },
+    repoRoot: { type: "string", description: "Repository root to audit instead of passing audit; requires projectRoot." },
+    projectRoot: { type: "string", description: "Project root relative to repoRoot as detected, such as . or packages/api." },
+    changedPaths: changedPathsProperty(),
+    goTarget: goTargetSchema()
   };
 }
 

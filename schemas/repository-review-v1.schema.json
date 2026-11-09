@@ -1,0 +1,354 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "repository-review-v1.schema.json",
+  "title": "Repository Review Artifact",
+  "description": "Bounded repository review derived from one project-audit pass. Ranked lists are capped at summary.limit, per-test evidence is reduced to counts, and remaining path lists keep at most five entries plus an omitted count; repository-analysis/v1 carries the complete bundle.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "root",
+    "summary",
+    "verificationCommands",
+    "blockers",
+    "auditSummary",
+    "findings",
+    "topCandidates",
+    "topPlanItems",
+    "topExecutionHints",
+    "stats"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "repository-review/v1" },
+    "root": { "type": "string", "minLength": 1 },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "projectCount",
+        "auditedProjectCount",
+        "unsupportedProjectCount",
+        "auditCoverage",
+        "blockerCount",
+        "findingCount",
+        "candidateCount",
+        "planItemCount",
+        "verificationCommandCount",
+        "limit",
+        "displayedCandidateCount",
+        "displayedPlanItemCount",
+        "truncated"
+      ],
+      "properties": {
+        "projectCount": { "type": "integer", "minimum": 0 },
+        "auditedProjectCount": { "type": "integer", "minimum": 0 },
+        "unsupportedProjectCount": { "type": "integer", "minimum": 0 },
+        "failedProjectCount": {
+          "description": "Projects whose adapter failed during audit. Present only when at least one project failed.",
+          "type": "integer",
+          "minimum": 1
+        },
+        "auditCoverage": { "enum": ["complete", "partial", "none"] },
+        "blockerCount": { "type": "integer", "minimum": 0 },
+        "findingCount": { "type": "integer", "minimum": 0 },
+        "candidateCount": { "description": "Total ranked candidates before the limit was applied.", "type": "integer", "minimum": 0 },
+        "planItemCount": { "description": "Total plan items before the limit was applied.", "type": "integer", "minimum": 0 },
+        "verificationCommandCount": { "type": "integer", "minimum": 0 },
+        "limit": { "type": "integer", "minimum": 1, "maximum": 500 },
+        "displayedCandidateCount": { "type": "integer", "minimum": 0 },
+        "displayedPlanItemCount": { "type": "integer", "minimum": 0 },
+        "truncated": { "description": "True when at least one ranked list was cut at the limit.", "type": "boolean" }
+      }
+    },
+    "verificationCommands": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["command", "projectCount"],
+        "properties": {
+          "command": { "type": "string", "minLength": 1 },
+          "projectCount": { "type": "integer", "minimum": 1 }
+        }
+      }
+    },
+    "blockers": {
+      "description": "Every audit blocker across audited projects, in project order.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["projectId", "projectRoot", "adapterId", "blocker"],
+        "properties": {
+          "projectId": { "type": "string", "minLength": 1 },
+          "projectRoot": { "type": "string", "minLength": 1 },
+          "adapterId": { "type": "string", "minLength": 1 },
+          "blocker": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "auditSummary": { "$ref": "#/$defs/auditSummary" },
+    "findings": {
+      "description": "The project-findings/v1 summary and its displayed findings with existingTestPaths reduced to a count and the existing-tests evidence line capped at five paths.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["summary", "items"],
+      "properties": {
+        "summary": { "$ref": "#/$defs/findingsSummary" },
+        "items": { "type": "array", "items": { "$ref": "#/$defs/reviewFinding" } }
+      }
+    },
+    "topCandidates": {
+      "description": "The first summary.limit entries of project-candidate-ranking/v1 candidates with evidence reduced to counts.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/reviewCandidate" }
+    },
+    "topPlanItems": {
+      "description": "The first summary.limit entries of project-test-plan/v1 items with evidence reduced to counts.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/reviewPlanItem" }
+    },
+    "topExecutionHints": {
+      "description": "plan-execution-hints/v1 items for topPlanItems, in plan order.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/executionHint" }
+    },
+    "stats": { "$ref": "#/$defs/stats" }
+  },
+  "$defs": {
+    "auditSummary": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["schemaVersion"],
+      "properties": { "schemaVersion": { "const": "project-audit-summary/v1" } }
+    },
+    "findingsSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "projectCount",
+        "auditedProjectCount",
+        "unsupportedProjectCount",
+        "auditCoverage",
+        "unsupportedReasons",
+        "findingCount",
+        "displayedFindingCount",
+        "maxFindings",
+        "highSeverityCount",
+        "placementFindingCount",
+        "blockedProjectCount",
+        "categoryCounts"
+      ],
+      "properties": {
+        "projectCount": { "type": "integer", "minimum": 0 },
+        "auditedProjectCount": { "type": "integer", "minimum": 0 },
+        "unsupportedProjectCount": { "type": "integer", "minimum": 0 },
+        "failedProjectCount": { "type": "integer", "minimum": 1 },
+        "auditCoverage": { "enum": ["complete", "partial", "none"] },
+        "unsupportedReasons": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+        "findingCount": { "type": "integer", "minimum": 0 },
+        "displayedFindingCount": { "type": "integer", "minimum": 0 },
+        "maxFindings": { "type": "integer", "minimum": 1 },
+        "highSeverityCount": { "type": "integer", "minimum": 0 },
+        "placementFindingCount": { "type": "integer", "minimum": 0 },
+        "blockedProjectCount": { "type": "integer", "minimum": 0 },
+        "categoryCounts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["missing-coverage", "weak-existing-coverage", "misplaced-coverage", "low-value-direct-test", "blocked-project"],
+          "properties": {
+            "missing-coverage": { "type": "integer", "minimum": 0 },
+            "weak-existing-coverage": { "type": "integer", "minimum": 0 },
+            "misplaced-coverage": { "type": "integer", "minimum": 0 },
+            "low-value-direct-test": { "type": "integer", "minimum": 0 },
+            "blocked-project": { "type": "integer", "minimum": 0 }
+          }
+        }
+      }
+    },
+    "reviewFinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "category", "severity", "priority", "projectId", "projectRoot", "title", "rationale", "evidence", "existingTestCount"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "category": { "enum": ["missing-coverage", "weak-existing-coverage", "misplaced-coverage", "low-value-direct-test", "blocked-project"] },
+        "severity": { "enum": ["high", "medium", "low"] },
+        "priority": { "type": "integer" },
+        "projectId": { "type": "string", "minLength": 1 },
+        "projectRoot": { "type": "string", "minLength": 1 },
+        "adapterId": { "type": "string", "minLength": 1 },
+        "targetId": { "type": "string", "minLength": 1 },
+        "target": { "type": "string", "minLength": 1 },
+        "path": { "type": "string", "minLength": 1 },
+        "kind": { "type": "string", "minLength": 1 },
+        "testLevel": { "enum": ["unit", "integration", "component", "ui", "none"] },
+        "title": { "type": "string", "minLength": 1 },
+        "testFile": { "type": "string", "minLength": 1 },
+        "currentOwner": { "type": "string", "minLength": 1 },
+        "suggestedOwner": { "type": "string", "minLength": 1 },
+        "action": { "enum": ["move", "split", "keep"] },
+        "rationale": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "evidence": {
+          "description": "Finding evidence lines; the existing-tests line lists at most five paths followed by an omitted count.",
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "existingTestCount": { "$ref": "#/$defs/existingTestCount" }
+      }
+    },
+    "stats": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["schemaVersion"],
+      "properties": { "schemaVersion": { "const": "project-stats/v1" } }
+    },
+    "existingTestCount": {
+      "description": "Number of existing test files with evidence for the target; the paths are in the complete artifacts.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "directEvidenceCount": {
+      "description": "Number of evidence entries with strength direct.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "reviewCandidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "projectId",
+        "projectRoot",
+        "adapterId",
+        "projectTargetId",
+        "targetId",
+        "target",
+        "path",
+        "category",
+        "kind",
+        "testLevel",
+        "priority",
+        "riskReductionScore",
+        "maintenanceCost",
+        "signals",
+        "rationale",
+        "existingTestCount",
+        "directEvidenceCount"
+      ],
+      "properties": {
+        "projectId": { "type": "string", "minLength": 1 },
+        "projectRoot": { "type": "string", "minLength": 1 },
+        "adapterId": { "type": "string", "minLength": 1 },
+        "projectTargetId": { "type": "string", "minLength": 1 },
+        "targetId": { "type": "string", "minLength": 1 },
+        "target": { "type": "string", "minLength": 1 },
+        "path": { "type": "string", "minLength": 1 },
+        "category": { "enum": ["untested", "covered-but-risky"] },
+        "kind": { "type": "string", "minLength": 1 },
+        "testLevel": { "enum": ["unit", "integration", "component", "ui", "none"] },
+        "priority": { "type": "integer" },
+        "riskReductionScore": { "type": "integer", "minimum": 0, "maximum": 10 },
+        "maintenanceCost": { "type": "integer", "minimum": 0, "maximum": 10 },
+        "signals": { "type": "array", "items": { "type": "string" } },
+        "rationale": { "type": "array", "items": { "type": "string" } },
+        "existingTestCount": { "$ref": "#/$defs/existingTestCount" },
+        "directEvidenceCount": { "$ref": "#/$defs/directEvidenceCount" }
+      }
+    },
+    "reviewPlanItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "projectId",
+        "projectRoot",
+        "adapterId",
+        "projectItemId",
+        "id",
+        "action",
+        "targetId",
+        "target",
+        "path",
+        "testLevel",
+        "priority",
+        "riskReductionScore",
+        "maintenanceCost",
+        "rationale",
+        "sourceSignals",
+        "existingTestCount",
+        "directEvidenceCount"
+      ],
+      "properties": {
+        "projectId": { "type": "string", "minLength": 1 },
+        "projectRoot": { "type": "string", "minLength": 1 },
+        "adapterId": { "type": "string", "minLength": 1 },
+        "projectItemId": { "type": "string", "minLength": 1 },
+        "id": { "type": "string", "minLength": 1 },
+        "action": { "enum": ["add-test", "extend-test", "defer"] },
+        "targetId": { "type": "string", "minLength": 1 },
+        "target": { "type": "string", "minLength": 1 },
+        "path": { "type": "string", "minLength": 1 },
+        "testLevel": { "enum": ["unit", "integration", "component", "ui", "none"] },
+        "priority": { "type": "integer" },
+        "riskReductionScore": { "type": "integer", "minimum": 0, "maximum": 10 },
+        "maintenanceCost": { "type": "integer", "minimum": 0, "maximum": 10 },
+        "rationale": { "type": "array", "items": { "type": "string" } },
+        "sourceSignals": { "type": "array", "items": { "type": "string" } },
+        "existingTestCount": { "$ref": "#/$defs/existingTestCount" },
+        "directEvidenceCount": { "$ref": "#/$defs/directEvidenceCount" }
+      }
+    },
+    "executionHint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "planItemId",
+        "action",
+        "target",
+        "path",
+        "complexity",
+        "contextScope",
+        "parallelizable",
+        "recommendedAgentRole",
+        "requiresRepositoryReasoning",
+        "reasons"
+      ],
+      "properties": {
+        "planItemId": { "type": "string", "minLength": 1 },
+        "action": { "enum": ["add-test", "extend-test", "defer"] },
+        "target": { "type": "string", "minLength": 1 },
+        "path": { "type": "string", "minLength": 1 },
+        "projectId": { "type": "string", "minLength": 1 },
+        "projectRoot": { "type": "string", "minLength": 1 },
+        "adapterId": { "type": "string", "minLength": 1 },
+        "complexity": { "enum": ["low", "medium", "high"] },
+        "contextScope": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["mode", "paths", "includeBuildConfiguration", "includeRepositoryInstructions"],
+          "properties": {
+            "mode": { "enum": ["target-only", "target-and-tests", "project-boundary"] },
+            "paths": {
+              "description": "At most five context paths; the complete list is in plan-execution-hints/v1 from get_plan_execution_hints.",
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 5,
+              "uniqueItems": true,
+              "items": { "type": "string", "minLength": 1 }
+            },
+            "omittedPathCount": {
+              "description": "Number of context paths dropped from paths. Present only when the list was capped.",
+              "type": "integer",
+              "minimum": 1
+            },
+            "includeBuildConfiguration": { "type": "boolean" },
+            "includeRepositoryInstructions": { "const": true }
+          }
+        },
+        "parallelizable": { "type": "boolean" },
+        "recommendedAgentRole": { "enum": ["implementation", "repository-reasoning", "review"] },
+        "requiresRepositoryReasoning": { "type": "boolean" },
+        "reasons": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } }
+      }
+    }
+  }
+}

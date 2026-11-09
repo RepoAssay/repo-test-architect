@@ -52,6 +52,7 @@ node C:/path/to/repo-test-architect/src/mcp/stdio.js
 
 Expected tools:
 
+- `review_repository`
 - `analyze_repository`
 - `list_adapters`
 - `list_project_detection_rules`
@@ -74,7 +75,7 @@ Expected tools:
 
 `generate_selected_test` remains a deferred response until native generation has adapter-specific repair-loop evidence.
 `get_plan_execution_hints` is advisory: the host may use it for context and routing decisions, but remains responsible for model choice, budgets, permissions, and subagent lifecycle.
-For a general repository review, start with `analyze_repository`; use the remaining tools for focused questions or existing artifacts.
+For a general repository review, start with `review_repository`; it returns a bounded review. Use `analyze_repository` only when the complete evidence bundle is needed, and pass `repoRoot` (plus `projectRoot` for single-project tools) to the remaining tools for focused questions instead of echoing artifacts back.
 
 ## Codex
 

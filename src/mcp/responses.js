@@ -43,7 +43,7 @@ export function toMcpToolResult(value, { toolName, maxChars = resolveMaxResultCh
       throw new McpToolError(
         "result-too-large",
         `Tool result is ${resultChars} characters, above the ${maxChars}-character limit. ` +
-          "Narrow the scan with excludeProjectRoots or changedPaths, request a smaller artifact, " +
+          "Use review_repository for a bounded review, narrow the scan with excludeProjectRoots or changedPaths, " +
           `or raise ${MAX_RESULT_CHARS_ENV}.`,
         { ...(toolName ? { toolName } : {}), resultChars, maxResultChars: maxChars }
       );

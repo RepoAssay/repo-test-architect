@@ -12,6 +12,7 @@ import { collectProjectStats } from "./project-stats.js";
 import { createPlanExecutionHints } from "./plan-execution-hints.js";
 import { rankTestCandidates } from "./rank-test-candidates.js";
 import { createRepositoryAnalysis } from "./repository-analysis.js";
+import { createRepositoryReview } from "./repository-review.js";
 import { analyzeTestPlacement } from "./test-placement-analysis.js";
 import { createTestPlacementFindings } from "./test-placement-findings.js";
 import { createTestPlan } from "./test-plan.js";
@@ -30,6 +31,7 @@ export { ArtifactValidationError } from "./artifact-validation.js";
  * @typedef {import("./project-test-plan.js").ProjectTestPlan} ProjectTestPlan
  * @typedef {import("./project-stats.js").ProjectStats} ProjectStats
  * @typedef {import("./repository-analysis.js").RepositoryAnalysis} RepositoryAnalysis
+ * @typedef {import("./repository-review.js").RepositoryReview} RepositoryReview
  * @typedef {import("./plan-execution-hints.js").PlanExecutionHints} PlanExecutionHints
  * @typedef {import("./test-placement-findings.js").TestPlacementFindings} TestPlacementFindings
  * @typedef {import("./test-placement-findings.js").TestPlacementFinding} TestPlacementFinding
@@ -46,6 +48,12 @@ export { ArtifactValidationError } from "./artifact-validation.js";
  * @property {string[]} [changedPaths]
  * @property {string[]} [excludeProjectRoots]
  * @property {{ goos: string, goarch: string, tags?: string[] }} [goTarget]
+ *
+ * @typedef {object} ReviewRepositoryOptions
+ * @property {string[]} [changedPaths]
+ * @property {string[]} [excludeProjectRoots]
+ * @property {{ goos: string, goarch: string, tags?: string[] }} [goTarget]
+ * @property {number} [limit]
  *
  * @typedef {object} DetectRepoProjectsOptions
  * @property {string[]} [excludeProjectRoots]
@@ -113,6 +121,27 @@ export function analyzeRepository(repoRoot, options = {}) {
  */
 export function analyzeProjectAudits(projectAudits) {
   return createRepositoryAnalysis(projectAudits);
+}
+
+/**
+ * Bounded repository review for model consumers: one audit pass, capped ranked lists, evidence as counts.
+ *
+ * @param {string} repoRoot
+ * @param {ReviewRepositoryOptions} [options]
+ * @returns {RepositoryReview}
+ */
+export function reviewRepository(repoRoot, options = {}) {
+  const { limit, ...auditOptions } = options;
+  return createRepositoryReview(auditRepoProjects(repoRoot, auditOptions), { limit });
+}
+
+/**
+ * @param {ProjectAudits} projectAudits
+ * @param {{ limit?: number }} [options]
+ * @returns {RepositoryReview}
+ */
+export function reviewProjectAudits(projectAudits, options = {}) {
+  return createRepositoryReview(projectAudits, options);
 }
 
 /**
