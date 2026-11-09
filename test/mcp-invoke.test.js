@@ -170,6 +170,29 @@ describe("MCP invoke harness", () => {
     assert.equal(audit.schemaVersion, "audit/v1");
   });
 
+  it("applies the result size budget to call-envelope but not to plain call output", () => {
+    const args = JSON.stringify({ repoRoot: "./examples/node-vitest-basic" });
+    const env = { ...process.env, REPO_TEST_ARCHITECT_MAX_RESULT_CHARS: "500" };
+
+    const plain = execFileSync(process.execPath, [invokePath, "call", "audit_repo", args], { encoding: "utf8", env });
+    assert.equal(JSON.parse(plain).schemaVersion, "audit/v1");
+
+    assert.throws(
+      () => execFileSync(process.execPath, [invokePath, "call-envelope", "audit_repo", args], { encoding: "utf8", env, stdio: "pipe" }),
+      (error) =>
+        error.status === 1 &&
+        error.stdout === "" &&
+        /above the 500-character limit/.test(error.stderr) &&
+        !/node-vitest-basic/.test(error.stderr)
+    );
+
+    const disabled = execFileSync(process.execPath, [invokePath, "call-envelope", "audit_repo", args], {
+      encoding: "utf8",
+      env: { ...process.env, REPO_TEST_ARCHITECT_MAX_RESULT_CHARS: "0" }
+    });
+    assert.equal(JSON.parse(JSON.parse(disabled).content[0].text).schemaVersion, "audit/v1");
+  });
+
   it("rejects invalid JSON args", () => {
     assert.throws(
       () =>

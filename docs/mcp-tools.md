@@ -36,7 +36,11 @@ Descriptor schema:
 
 ## Contract
 
-Each tool returns one of the stable artifacts documented in `docs/artifact-contract.md`. Descriptors expose a compact `outputSchema`: the artifact's top-level properties, required fields and `schemaVersion` constant. Its `description` names the complete published schema file (for example `schemas/audit-v1.schema.json`); the same path is also in the non-standard `outputArtifact.schemaPath` field, which some MCP SDK clients strip when parsing `tools/list`. Nested contracts are kept out of `tools/list` so the 19 descriptors stay small in a model's context; validate nested structure against the published schema files. Successful calls return the same artifact in `structuredContent` and as serialized JSON text for clients that rely on the earlier response shape.
+Each tool returns one of the stable artifacts documented in `docs/artifact-contract.md`. Descriptors expose a compact `outputSchema`: the artifact's top-level properties, required fields and `schemaVersion` constant. Its `description` names the complete published schema file (for example `schemas/audit-v1.schema.json`); the same path is also in the non-standard `outputArtifact.schemaPath` field, which some MCP SDK clients strip when parsing `tools/list`. Nested contracts are kept out of `tools/list` so the 19 descriptors stay small in a model's context; validate nested structure against the published schema files. Successful calls return the same artifact in `structuredContent` and as compact single-line JSON text for clients that rely on the earlier response shape; the text is not indented, so the two copies together stay close to twice the artifact size rather than three times.
+
+### Result Size Budget
+
+One oversized stdio message can exhaust or crash an MCP client, so the server refuses to emit a tool result whose serialized form exceeds a character budget. The budget is measured on the complete serialized result, which carries the artifact twice (text and `structuredContent`) plus JSON escaping, because that is what crosses the transport; it is roughly twice the compact artifact. The default budget is 1,000,000 characters. Set `REPO_TEST_ARCHITECT_MAX_RESULT_CHARS` to a non-negative decimal integer to change it; `0` disables the guard, and malformed or unsafe values fall back to the default. When a result exceeds the budget the call fails with `kind: "result-too-large"`, the `toolName`, the measured `resultChars`, and the `maxResultChars` in force. The error never echoes arguments or artifact content. Reduce the result by narrowing the scan with `excludeProjectRoots` or `changedPaths`, by requesting a smaller artifact, or by saving the complete artifact with the CLI (`repo-test-architect analyze <repo> --format json > analysis.json`) and reading it from disk.
 
 Every descriptor also declares a human-readable `title` and explicit MCP safety hints. The current surface is read-only, non-destructive, repeatable for the same repository state and arguments, and closed-world: tools inspect local repository inputs and compute artifacts without contacting external services. These annotations are client-facing hints; deterministic local controls remain the security boundary.
 
@@ -134,13 +138,15 @@ Tool call failures return JSON-RPC code `-32000` with stable `error.data.kind` v
 - `invalid-arguments`
 - `missing-required-argument`
 - `unsupported-argument`
+- `result-too-large`
 
 Known tool errors may also include:
 
 - `toolName`
 - `argument`
+- `resultChars` and `maxResultChars` (only with `result-too-large`)
 
-`toolName` identifies the tool that failed. `argument` identifies the missing, unsupported, or invalid argument when the failure is argument-specific.
+`toolName` identifies the tool that failed. `argument` identifies the missing, unsupported, or invalid argument when the failure is argument-specific. `result-too-large` means the tool computed its artifact but the serialized result exceeded the [result size budget](#result-size-budget).
 For example, `changedPaths: [""]` on `audit_repo` returns `kind: "invalid-arguments"`, `toolName: "audit_repo"`, and `argument: "changedPaths"`.
 
 Saved `audit` and `projectAudits` arguments are validated against `schemas/audit-v1.schema.json` and `schemas/project-audits-v1.schema.json` before use. A mismatch returns `kind: "invalid-arguments"`, the artifact `argument`, and a `path` naming the first invalid JSON location, for example `Invalid audit/v1 artifact at $.untestedCandidates[0]: expected object, got null.` Argument values are never echoed back. The CLI `--from-audit` and `--from-project-audits` options apply the same validation.
@@ -192,5 +198,5 @@ node ./src/mcp/invoke.js call-envelope audit_repo "{\"repoRoot\":\"./examples/no
 ```
 
 This validates the same tool descriptors and dispatcher the MCP server mounts.
-Use `call-envelope` to inspect the MCP-style `content` response shape.
+Use `call-envelope` to inspect the MCP-style `content` response shape. Only `call-envelope` applies the [result size budget](#result-size-budget); it exits with status 1 and prints the `result-too-large` message to stderr, while plain `call` prints the artifact regardless of size because its output goes to a terminal or file rather than an MCP client.
 Use `@./args.json` when a tool call needs a saved artifact, such as wrapping a `project-audits/v1` artifact as `{ "projectAudits": ... }` for project summary, ranking, planning, placement, or stats calls.

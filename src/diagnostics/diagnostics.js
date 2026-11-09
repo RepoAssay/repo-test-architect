@@ -14,6 +14,7 @@ const SAFE_ERROR_KINDS = new Set([
   "internal-error",
   "invalid-arguments",
   "missing-required-argument",
+  "result-too-large",
   "unknown-tool",
   "unsupported-argument"
 ]);

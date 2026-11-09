@@ -28,6 +28,7 @@
         "internal-error",
         "invalid-arguments",
         "missing-required-argument",
+        "result-too-large",
         "unknown-tool",
         "unsupported-argument"
       ]

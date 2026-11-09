@@ -119,4 +119,37 @@ describe("MCP SDK stdio server", () => {
     assert.equal(event.errorKind, "unsupported-argument");
     assert.doesNotMatch(result.stderr, /secret\/repository|proprietary|changedPaths/);
   });
+
+  it("rejects oversized tool results with a stable error kind and records the kind in diagnostics", () => {
+    const request = {
+      jsonrpc: "2.0",
+      id: 6,
+      method: "tools/call",
+      params: {
+        name: "analyze_repository",
+        arguments: { repoRoot: "./examples/polyglot-workspace" }
+      }
+    };
+    const result = spawnSync(process.execPath, [stdioPath], {
+      input: `${JSON.stringify(request)}\n`,
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        REPO_TEST_ARCHITECT_DIAGNOSTICS: "stderr",
+        REPO_TEST_ARCHITECT_MAX_RESULT_CHARS: "500"
+      }
+    });
+
+    assert.equal(result.status, 0);
+    const response = JSON.parse(result.stdout.trim());
+    const event = JSON.parse(result.stderr.trim());
+
+    assert.equal(response.id, 6);
+    assert.equal(response.error.code, -32000);
+    assert.equal(response.error.data.kind, "result-too-large");
+    assert.equal(response.error.data.toolName, "analyze_repository");
+    assert.equal(response.error.data.maxResultChars, 500);
+    assert.equal(event.errorKind, "result-too-large");
+    assert.doesNotMatch(result.stderr, /polyglot-workspace/);
+  });
 });
