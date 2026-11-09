@@ -19,7 +19,7 @@ describe("MCP JSON-RPC scaffold", () => {
     assert.equal(response.id, 1);
     assert.equal(response.result.protocolVersion, "test-protocol");
     assert.equal(response.result.serverInfo.name, "repo-test-architect");
-    assert.equal(response.result.serverInfo.version, "1.1.0");
+    assert.equal(response.result.serverInfo.version, "1.2.0");
     assert.match(response.result.instructions, /Start with review_repository/i);
     assert.match(response.result.instructions, /analyze_repository only when the complete bundle/i);
   });
