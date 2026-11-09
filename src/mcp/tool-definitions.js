@@ -143,7 +143,7 @@ const toolDefinitions = [
   },
   {
     name: "analyze_project_test_placement",
-    description: "Derive advisory test-placement findings across an existing project-audits/v1 artifact while preserving project identity. Use this for multiple audited projects; use analyze_test_placement for one audit/v1 artifact. Does not rescan the repository, execute tests, or create, move, or modify files.",
+    description: "Derive advisory test-placement findings across audited projects while preserving project identity, from a project-audits/v1 artifact or, with repoRoot, from a fresh audit. Use analyze_test_placement for one project. Does not execute tests or create, move, or modify files.",
     outputArtifact: artifact("test-placement-findings/v1", "schemas/test-placement-findings-v1.schema.json"),
     inputSchema: objectSchema(projectAuditsSourceProperties(), [])
   },
@@ -170,11 +170,9 @@ const toolDefinitions = [
   },
   {
     name: "get_audit_graph",
-    description: "Validate and return an existing audit/v1 artifact unchanged; this does not scan a repository. Use audit_repo or analyze_repository for repository discovery.",
+    description: "Return one project's audit/v1 artifact: validate and return a saved audit unchanged, or pass repoRoot plus projectRoot to audit that detected project. Use audit_repo when the adapter is selected explicitly, and review_repository for a general review.",
     outputArtifact: artifact("audit/v1", "schemas/audit-v1.schema.json"),
-    inputSchema: objectSchema({
-      audit: { type: "object", description: "An audit/v1 artifact." }
-    }, ["audit"])
+    inputSchema: objectSchema(auditSourceProperties(), [])
   },
   {
     name: "generate_test_plan",
@@ -286,7 +284,7 @@ export function callTool(name, args = {}) {
           goTarget: optionalGoTarget(args.goTarget)
         });
       case "get_audit_graph":
-        return getAuditGraph(requireObject(args.audit, "audit"));
+        return getAuditGraph(resolveAudit(tool, args));
       case "generate_test_plan":
         return generateTestPlan(resolveAudit(tool, args), {
           itemId: optionalString(args.itemId, "itemId")

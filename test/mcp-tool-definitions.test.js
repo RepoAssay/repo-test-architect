@@ -271,7 +271,8 @@ describe("MCP tool definitions", () => {
     assert.equal(review.summary.truncated, false);
     assert.equal(review.summary.candidateCount, analysis.summary.candidateCount);
     assert.deepEqual(review.verificationCommands, analysis.verificationCommands);
-    assert.deepEqual(review.findings, analysis.findings);
+    assert.deepEqual(review.findings.summary, analysis.findings.summary);
+    assert.deepEqual(review.findings.items.map((item) => item.id), analysis.findings.findings.map((item) => item.id));
     assert.deepEqual(review.stats, analysis.stats);
     assert.deepEqual(review.blockers.map((entry) => entry.projectRoot), ["services/api", "services/api"]);
     assert.equal(Object.hasOwn(review, "projectAudits"), false);
@@ -351,6 +352,7 @@ describe("MCP tool definitions", () => {
       callTool("explain_target", { audit, targetId })
     );
     assert.deepEqual(callTool("rank_test_candidates", { repoRoot, projectRoot: "apps/web" }), callTool("rank_test_candidates", { audit }));
+    assert.deepEqual(callTool("get_audit_graph", { repoRoot, projectRoot: "apps/web" }), audit);
     assert.deepEqual(callTool("generate_test_plan", { repoRoot, projectRoot: "apps/web" }), callTool("generate_test_plan", { audit }));
     assert.deepEqual(
       callTool("analyze_test_placement", { repoRoot, projectRoot: "apps/web", owner: "web" }),
@@ -409,6 +411,10 @@ describe("MCP tool definitions", () => {
     assert.throws(
       () => callTool("get_plan_execution_hints", {}),
       (error) => error.kind === "missing-required-argument" && error.details.argument === "plan"
+    );
+    assert.throws(
+      () => callTool("get_audit_graph", {}),
+      (error) => error.kind === "missing-required-argument" && error.details.argument === "audit"
     );
   });
 

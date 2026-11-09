@@ -904,10 +904,10 @@ function renderMarkdownRepositoryReview(review) {
   }
   lines.push("");
   lines.push("## Top Findings");
-  if (review.findings.findings.length === 0) {
+  if (review.findings.items.length === 0) {
     lines.push("- No project findings detected.");
   } else {
-    for (const finding of review.findings.findings) {
+    for (const finding of review.findings.items) {
       const subject = finding.target ? `${finding.target} [${finding.targetId}]` : finding.title;
       const rationale = finding.rationale[0] ? ` ${trimTrailingPeriod(finding.rationale[0])}.` : "";
       lines.push(`- ${escapeControlCharacters(finding.projectRoot)}: ${finding.severity} ${finding.category}, priority ${finding.priority}: ${subject}.${rationale}`);

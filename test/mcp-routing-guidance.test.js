@@ -37,8 +37,8 @@ describe("MCP routing guidance", () => {
     assert.match(auditRepo.description, /explicitly selected/i);
     assert.match(auditRepo.description, /defaults to javascript/i);
     assert.match(auditRepo.description, /review_repository/i);
-    assert.match(graph.description, /existing audit/i);
-    assert.match(graph.description, /does not scan/i);
+    assert.match(graph.description, /saved audit unchanged/i);
+    assert.match(graph.description, /repoRoot plus projectRoot/i);
     assert.match(generation.description, /does not generate or write/i);
     assert.match(explain.description, /repoRoot plus the projectRoot and targetId/i);
   });
@@ -58,7 +58,7 @@ describe("MCP routing guidance", () => {
       assert.match(tool.inputSchema.properties.repoRoot.description, /instead of passing/i);
     }
 
-    for (const name of ["generate_test_plan", "explain_target", "rank_test_candidates", "analyze_test_placement"]) {
+    for (const name of ["get_audit_graph", "generate_test_plan", "explain_target", "rank_test_candidates", "analyze_test_placement"]) {
       const tool = mcpTools.find((candidate) => candidate.name === name);
       assert.ok(tool.inputSchema.properties.repoRoot, `${name} accepts repoRoot`);
       assert.ok(tool.inputSchema.properties.projectRoot, `${name} accepts projectRoot`);

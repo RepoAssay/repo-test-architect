@@ -35,6 +35,11 @@ describe("schema files", () => {
       assert.equal(schema.$defs[def].additionalProperties, false);
     }
     assert.deepEqual(schema.properties.blockers.items.required, ["projectId", "projectRoot", "adapterId", "blocker"]);
+    assert.deepEqual(schema.properties.findings.required, ["summary", "items"]);
+    assert.ok(schema.$defs.reviewFinding.required.includes("existingTestCount"));
+    assert.equal(Object.hasOwn(schema.$defs.reviewFinding.properties, "existingTestPaths"), false);
+    assert.equal(schema.$defs.executionHint.properties.contextScope.properties.paths.maxItems, 5);
+    assert.equal(schema.$defs.executionHint.properties.contextScope.properties.omittedPathCount.minimum, 1);
   });
 
   it("documents audit/v1", () => {

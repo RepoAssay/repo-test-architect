@@ -937,7 +937,7 @@
     },
     {
       "name": "analyze_project_test_placement",
-      "description": "Derive advisory test-placement findings across an existing project-audits/v1 artifact while preserving project identity. Use this for multiple audited projects; use analyze_test_placement for one audit/v1 artifact. Does not rescan the repository, execute tests, or create, move, or modify files.",
+      "description": "Derive advisory test-placement findings across audited projects while preserving project identity, from a project-audits/v1 artifact or, with repoRoot, from a fresh audit. Use analyze_test_placement for one project. Does not execute tests or create, move, or modify files.",
       "outputArtifact": {
         "schemaVersion": "test-placement-findings/v1",
         "schemaPath": "schemas/test-placement-findings-v1.schema.json"
@@ -1259,7 +1259,7 @@
     },
     {
       "name": "get_audit_graph",
-      "description": "Validate and return an existing audit/v1 artifact unchanged; this does not scan a repository. Use audit_repo or analyze_repository for repository discovery.",
+      "description": "Return one project's audit/v1 artifact: validate and return a saved audit unchanged, or pass repoRoot plus projectRoot to audit that detected project. Use audit_repo when the adapter is selected explicitly, and review_repository for a general review.",
       "outputArtifact": {
         "schemaVersion": "audit/v1",
         "schemaPath": "schemas/audit-v1.schema.json"
@@ -1267,13 +1267,55 @@
       "inputSchema": {
         "type": "object",
         "additionalProperties": false,
-        "required": [
-          "audit"
-        ],
+        "required": [],
         "properties": {
           "audit": {
             "type": "object",
-            "description": "An audit/v1 artifact."
+            "description": "An audit/v1 artifact; or pass repoRoot plus projectRoot instead."
+          },
+          "repoRoot": {
+            "type": "string",
+            "description": "Repository root to audit instead of passing audit; requires projectRoot."
+          },
+          "projectRoot": {
+            "type": "string",
+            "description": "Project root relative to repoRoot as detected, such as . or packages/api."
+          },
+          "changedPaths": {
+            "type": "array",
+            "description": "Optional repository-relative source paths to limit target selection.",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "goTarget": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "goos",
+              "goarch"
+            ],
+            "properties": {
+              "goos": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Explicit GOOS for bounded Go build-constraint evaluation."
+              },
+              "goarch": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Explicit GOARCH for bounded Go build-constraint evaluation."
+              },
+              "tags": {
+                "type": "array",
+                "description": "Optional custom Go build tags passed to the target-aware verification command.",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
           }
         }
       },

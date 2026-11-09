@@ -59,12 +59,13 @@ This is the bounded entry point for model consumers. It is derived from the same
 
 - the raw `project-audits/v1` artifact is omitted; `explain_target` with `repoRoot` and `projectRoot` serves one target's complete evidence, and `analyze_repository` serves the complete bundle
 - `blockers` lists every audit blocker with its project identity, so coverage gaps are never hidden by a list cap
-- `auditSummary` (`project-audit-summary/v1`), `findings` (`project-findings/v1`, already limited to ten entries), `stats` (`project-stats/v1`), and `verificationCommands` are embedded unchanged
+- `auditSummary` (`project-audit-summary/v1`), `stats` (`project-stats/v1`), and `verificationCommands` are embedded unchanged
+- `findings` carries the `project-findings/v1` summary and its displayed findings (already limited to ten) as `items`; each item replaces `existingTestPaths` with `existingTestCount`, and its `existing tests:` evidence line lists at most five paths followed by `(+N more; see explain_target)`
 - `topCandidates` and `topPlanItems` are the first `summary.limit` entries of the project-aware ranking and plan, in the same deterministic order; `summary.candidateCount` and `summary.planItemCount` keep the totals and `summary.truncated` is true when a list was cut
 - each candidate and plan item replaces `existingTestPaths` and `existingTestEvidence` with `existingTestCount` and `directEvidenceCount`
-- `topExecutionHints` holds the `plan-execution-hints/v1` items for exactly the displayed plan items
+- `topExecutionHints` holds the `plan-execution-hints/v1` items for exactly the displayed plan items, with `contextScope.paths` capped at five entries and `contextScope.omittedPathCount` present when paths were dropped; `get_plan_execution_hints` with `repoRoot` returns the complete lists
 
-`limit` defaults to 25 and must be an integer from 1 to 500. On this repository with all example fixtures detected (more than 60 project roots) the review is about 100 KB, while the complete bundle is about 1.6 MB.
+The five-path rule is the same one Markdown output applies, so no part of the review grows with the number of tests that reach a single target. `limit` defaults to 25 and must be an integer from 1 to 500. On this repository with all example fixtures detected (more than 60 project roots) the review is about 100 KB, while the complete bundle is about 1.6 MB.
 
 ## Audit Artifact
 

@@ -100,7 +100,9 @@ describe("CLI", () => {
     assert.equal(Object.hasOwn(review, "projectAudits"), false);
     assert.equal(Object.hasOwn(review.topCandidates[0], "existingTestEvidence"), false);
     assert.equal(review.topCandidates[0].existingTestCount, 0);
-    assert.equal(review.findings.schemaVersion, "project-findings/v1");
+    assert.equal(review.findings.summary.findingCount, 5);
+    assert.equal(review.findings.items.length, 5);
+    assert.equal(Object.hasOwn(review.findings.items[0], "existingTestPaths"), false);
   });
 
   it("validates --limit and restricts it to the review command", () => {
