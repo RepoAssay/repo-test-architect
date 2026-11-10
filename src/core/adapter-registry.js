@@ -15,7 +15,7 @@ import { auditSwiftRepo } from "../adapters/swift/audit.js";
  * @property {string[]} [changedPaths]
  * @property {string} [repositoryRoot]
  * @property {{ goos: string, goarch: string, tags?: string[] }} [goTarget]
- * @property {Array<{ root: string, adapterId: string }>} [nestedProjects] Detected projects inside this one and the adapter that audits each; set by multi-project audits only.
+ * @property {Array<{ root: string, adapterId: string, markerFiles: string[] }>} [nestedProjects] Detected projects inside this one, the adapter that audits each, and their detector markers; set by multi-project audits only.
  * @property {(timing: { adapterId: string, phase: string, durationMs: number }) => void} [onPhaseTiming]
  *
  * @typedef {object} RuntimeAdapter

@@ -34,6 +34,7 @@ import { describeFailedProject, sortFailedProjects } from "./project-failures.js
  * @typedef {object} NestedProject
  * @property {string} root Project-relative root of a detected project inside the audited project.
  * @property {string} adapterId The adapter that audits the nested project.
+ * @property {string[]} markerFiles The detector's marker files for the nested project, so an adapter can tell project kinds apart.
  *
  * @typedef {object} AuditDetectedProjectsOptions
  * @property {string[]} [changedPaths]
@@ -139,7 +140,11 @@ function isInvalidOptionError(error) {
 function collectNestedProjects(projects, project) {
   return projects
     .filter((candidate) => candidate.root !== project.root && candidate.adapterIds.length > 0 && isInsideProject(project.root, candidate.root))
-    .map((candidate) => ({ root: toProjectRelativePath(project.root, candidate.root), adapterId: candidate.adapterIds[0] }));
+    .map((candidate) => ({
+      root: toProjectRelativePath(project.root, candidate.root),
+      adapterId: candidate.adapterIds[0],
+      markerFiles: [...candidate.markerFiles]
+    }));
 }
 
 function selectProjectChangedPaths(repoRoot, projectRoot, changedPaths) {

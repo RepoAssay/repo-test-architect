@@ -155,30 +155,40 @@ function shouldIgnoreSwiftDirectory(absolute, name) {
 
 /**
  * Leave nested Swift packages to their own project audit (#309). The project auditor lists the
- * detected projects inside this one together with the adapter that audits them, so only roots
- * that really receive a Swift audit are dropped: a directory the detector skipped, a symlinked or
- * mis-cased manifest, or a mixed package that the JavaScript adapter audits first all stay here.
- * Roots inside this package's own test targets (declared `path` or conventional test directories)
- * stay too, because fixture packages there carry the parent's test evidence. Nested Xcode projects
- * are never dropped: a root workspace may own them and workspace membership is not interpreted.
- * A direct single-project audit passes no nested projects and keeps every source.
+ * detected projects inside this one together with the adapter that audits them and their detector
+ * markers, so only SwiftPM package roots that really receive a Swift audit are dropped: a directory
+ * the detector skipped, a symlinked or mis-cased manifest, or a mixed package that the JavaScript
+ * adapter audits first all stay here. Nested Xcode projects and workspaces are never dropped, even
+ * when a package manifest sits next to them: a root workspace may own them and workspace membership
+ * is not interpreted. Roots inside this package's own test targets (declared `path` in any root
+ * manifest, or conventional test directories) stay too, because fixture packages there carry the
+ * parent's test evidence. A direct single-project audit passes no nested projects and keeps every
+ * source.
  */
 function excludeNestedSwiftProjects(files, nestedProjects) {
   const testDirectories = collectRootSwiftPmTestTargetPaths(files);
   const excludedRoots = (Array.isArray(nestedProjects) ? nestedProjects : [])
-    .filter((project) => project?.adapterId === "swift" && typeof project.root === "string" && project.root !== ".")
+    .filter((project) => project?.adapterId === "swift" && typeof project.root === "string" && project.root !== "." && isNestedSwiftPackageProject(project))
     .map((project) => normalizePath(project.root).replace(/^\.\/+/, "").replace(/\/+$/, ""))
     .filter((nestedRoot) => nestedRoot && !isTestPath(nestedRoot) && !testDirectories.some((directory) => pathContains(directory, nestedRoot)));
   if (excludedRoots.length === 0) return files;
   return files.filter((file) => !excludedRoots.some((nestedRoot) => pathContains(nestedRoot, normalizePath(file.path))));
 }
 
+function isNestedSwiftPackageProject(project) {
+  const markerNames = (Array.isArray(project.markerFiles) ? project.markerFiles : [])
+    .filter((marker) => typeof marker === "string")
+    .map((marker) => normalizePath(marker).split("/").at(-1));
+  return markerNames.some((marker) => isSwiftPmManifestPath(marker)) &&
+    !markerNames.some((marker) => marker.endsWith(".xcodeproj") || marker.endsWith(".xcworkspace"));
+}
+
 function collectRootSwiftPmTestTargetPaths(files) {
-  const manifest = files.find((file) => normalizePath(file.path) === "Package.swift" && hasSwiftPmPackageDeclaration(file.content));
-  if (!manifest) return [];
-  const content = maskSwiftCommentsAndStrings(manifest.content, false);
   const swiftPaths = files.map((file) => normalizePath(file.path)).filter((currentPath) => currentPath.endsWith(".swift"));
-  return extractSwiftPmTargets(content).targets
+  // Every root-level manifest counts: a test target may be declared only in Package@swift-<version>.swift.
+  return files
+    .filter((file) => isSwiftPmManifestPath(file.path) && hasSwiftPmPackageDeclaration(file.content))
+    .flatMap((manifest) => extractSwiftPmTargets(maskSwiftCommentsAndStrings(manifest.content, false)).targets)
     .filter((rule) => rule.kind === "testTarget")
     .map((rule) => {
       const name = readStringAttribute(rule.body, "name");
