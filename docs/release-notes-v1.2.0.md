@@ -1,6 +1,6 @@
 # Repo Test Architect 1.2.0
 
-Status: **prepared for publication**. This line, the [publication ledger](distribution-metrics.md), and the [status page](status.md) are updated when the package is published to npm, the Official MCP Registry, and GitHub.
+Status: **published November 10, 2026** on npm under `latest`, the Official MCP Registry, and [GitHub as a stable release](https://github.com/RepoAssay/repo-test-architect/releases/tag/v1.2.0). Release commit: `83e29617bd091e36539b6699de8ed628f1103db3` (PRs #308 and #313). See the [publication ledger](distribution-metrics.md#minor-120-publication--2026-11-10) for verification details.
 
 ## Summary
 
@@ -49,4 +49,4 @@ For MCP clients, use `npx --yes repo-test-architect@1.2.0 mcp` or the unversione
 
 ## Verification
 
-Each change has regression tests, including a size ceiling for the review on this repository's 60+ fixture roots, a fan-out regression that injects 2,000 test paths into one target and keeps the review under 40 KB, equivalence of `repoRoot` and artifact inputs for all twelve tools, every rejection path, and the result budget across the stdio transport, the JSON-RPC harness, and the invoke harness. Both pull requests passed the Linux `pr-gate` and Windows portability checks plus an independent model review before merge. Golden snapshots were unchanged except the MCP tool descriptor snapshot. The full local suite has 1,722 tests, and `npm run alpha:check` and `npm run mcp:smoke` pass. The three-OS release matrix and the clean install check are recorded in the publication ledger after publication.
+Each change has regression tests, including a size ceiling for the review on this repository's 60+ fixture roots, a fan-out regression that injects 2,000 test paths into one target and keeps the review under 40 KB, equivalence of `repoRoot` and artifact inputs for all twelve tools, every rejection path, the result budget across the stdio transport, the JSON-RPC harness, and the invoke harness, and the Swift nested-package cases (owned nested Xcode project, mixed package, fixture packages under declared and conventional test roots). All four pull requests (#306, #307, #308, #313) passed the Linux `pr-gate` and Windows portability checks plus an independent model review before merge; the macOS Swift check also ran and passed on #307, #308 and #313, the three whose changed paths selected it. Golden snapshots were unchanged except the MCP tool descriptor snapshot. The release commit passed the full local release gate (1,726 tests), strict distribution checks and the [manually dispatched Linux, Windows and macOS release matrix](https://github.com/RepoAssay/repo-test-architect/actions/runs/42898933131). A clean install from the public npm registry passed on macOS.
