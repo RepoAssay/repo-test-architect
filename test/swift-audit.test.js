@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { describe, it } from "node:test";
 import { auditSwiftRepo } from "../src/adapters/swift/audit.js";
+import { auditDetectedProjects } from "../src/core/project-auditor.js";
 import { copyTrustFixture } from "./support/non-code-evidence.js";
 import { assertNoProjectTestCommand } from "./support/ownership-evidence.js";
 
@@ -2005,6 +2006,50 @@ final class CollectorTests: XCTestCase {
     assert.ok(audit.profile.setupSignals.includes("xcode shared scheme"));
     assert.ok(audit.profile.blockers.includes("Multiple shared Xcode schemes detected without a unique workspace or project name match: Beta, Preview."));
     assert.ok(!audit.profile.blockers.includes("No runnable Swift test command detected from Package.swift or Xcode project/workspace markers."));
+  });
+
+  it("leaves nested Swift packages to their own project audits instead of counting them twice", (t) => {
+    // #309: an Xcode app at the repository root plus local packages in subdirectories.
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-swift-nested-packages-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    const schemesRoot = path.join(root, "CheckoutApp.xcodeproj", "xcshareddata", "xcschemes");
+    const packageRoot = path.join(root, "Packages", "PricingKit");
+    const fixturePackageRoot = path.join(root, "Tests", "Fixtures", "FixturePackage");
+    fs.mkdirSync(schemesRoot, { recursive: true });
+    fs.mkdirSync(path.join(root, "CheckoutApp", "Sources"), { recursive: true });
+    fs.mkdirSync(path.join(root, "CheckoutAppTests"), { recursive: true });
+    fs.mkdirSync(path.join(packageRoot, "Sources", "PricingKit"), { recursive: true });
+    fs.mkdirSync(path.join(packageRoot, "Tests", "PricingKitTests"), { recursive: true });
+    fs.mkdirSync(path.join(fixturePackageRoot, "Sources", "FixturePackage"), { recursive: true });
+    fs.writeFileSync(path.join(root, "CheckoutApp.xcodeproj", "project.pbxproj"), "{}\n");
+    fs.writeFileSync(path.join(schemesRoot, "CheckoutApp.xcscheme"), "<Scheme></Scheme>\n");
+    fs.writeFileSync(path.join(root, "CheckoutApp", "Sources", "CartService.swift"), "import Foundation\nfinal class CartService {\n    func total(for items: [Int]) -> Int { items.reduce(0, +) }\n}\n");
+    fs.writeFileSync(path.join(root, "CheckoutAppTests", "CartServiceTests.swift"), "import XCTest\n@testable import CheckoutApp\nfinal class CartServiceTests: XCTestCase { func testTotal() { XCTAssertEqual(CartService().total(for: [1, 2]), 3) } }\n");
+    fs.writeFileSync(path.join(packageRoot, "Package.swift"), "// swift-tools-version:5.9\nimport PackageDescription\nlet package = Package(\n    name: \"PricingKit\",\n    targets: [\n        .target(name: \"PricingKit\"),\n        .testTarget(name: \"PricingKitTests\", dependencies: [\"PricingKit\"])\n    ]\n)\n");
+    fs.writeFileSync(path.join(packageRoot, "Sources", "PricingKit", "PriceCalculator.swift"), "public struct PriceCalculator {\n    public func discounted(_ price: Int, percent: Int) -> Int { price - price * percent / 100 }\n}\n");
+    fs.writeFileSync(path.join(packageRoot, "Tests", "PricingKitTests", "PriceCalculatorTests.swift"), "import XCTest\n@testable import PricingKit\nfinal class PriceCalculatorTests: XCTestCase { func testDiscount() { XCTAssertEqual(PriceCalculator().discounted(100, percent: 10), 90) } }\n");
+    fs.writeFileSync(path.join(fixturePackageRoot, "Package.swift"), "// swift-tools-version:5.9\nimport PackageDescription\nlet package = Package(name: \"FixturePackage\", targets: [.target(name: \"FixturePackage\")])\n");
+    fs.writeFileSync(path.join(fixturePackageRoot, "Sources", "FixturePackage", "Fixture.swift"), "public struct Fixture {}\n");
+
+    const rootAudit = auditSwiftRepo(root);
+    const rootPaths = [...rootAudit.untestedCandidates, ...rootAudit.coveredButRisky, ...rootAudit.skipped].map((target) => target.path);
+
+    assert.deepEqual(rootPaths, ["CheckoutApp/Sources/CartService.swift"]);
+    assert.equal(rootAudit.profile.testCommand, "xcodebuild test -project CheckoutApp.xcodeproj -scheme CheckoutApp");
+    assert.deepEqual(rootAudit.profile.blockers, []);
+
+    const packageAudit = auditSwiftRepo(packageRoot);
+    assert.deepEqual(packageAudit.coveredButRisky.map((target) => target.path), ["Sources/PricingKit/PriceCalculator.swift"]);
+    assert.equal(packageAudit.profile.testCommand, "swift test");
+
+    const projectAudits = auditDetectedProjects(root);
+    assert.deepEqual(projectAudits.audits.map((entry) => entry.projectRoot), [".", "Packages/PricingKit", "Tests/Fixtures/FixturePackage"]);
+    const allPaths = projectAudits.audits.flatMap((entry) =>
+      [...entry.audit.untestedCandidates, ...entry.audit.coveredButRisky, ...entry.audit.skipped]
+        .map((target) => path.posix.join(entry.projectRoot, target.path))
+    );
+    assert.equal(new Set(allPaths).size, allPaths.length, "every source file is audited by exactly one project");
+    assert.equal(allPaths.filter((currentPath) => currentPath.startsWith("Packages/")).length, 1, "the package source is audited by the package project only");
   });
 
   it("selects the project that directly owns a shared scheme when multiple projects exist", (t) => {

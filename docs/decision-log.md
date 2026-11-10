@@ -901,3 +901,11 @@ Decision (2026-11-09): following owner approval, prepare and publish `1.2.0` as 
 Rationale: #306 and #307 resolve the oversized-result failure recorded in "bounded review entrypoint and repoRoot inputs for MCP clients". The new `review_repository` tool, `repository-review/v1` schema, CLI `review` command, and the optional `repoRoot` and `projectRoot` inputs are additions; `analyze_repository` and every existing artifact schema are unchanged, so 1.1.x artifacts remain valid. The compact text content, the `result-too-large` budget, the larger `tools/list`, and the changed routing guidance are behavior changes that are compatible under the post-1.0 semantic versioning policy, so a minor release with compatibility notes is appropriate rather than a major release.
 
 Scope: no CLI command, MCP tool name, input, or artifact field is removed or renamed. The exact-commit release checklist and three-OS release matrix remain mandatory.
+
+### 2026-11-10: nested Swift packages belong to their own project audit
+
+Decision: the Swift adapter prunes any non-test directory that holds its own `Package.swift` from a parent audit. Nested Xcode projects are not pruned, because a root workspace may own them and workspace membership is not interpreted. Fixture packages under test directories stay with the parent, as the JavaScript adapter keeps nested `package.json` files under test roots.
+
+Rationale: a work monorepo with an Xcode app at the root and many local packages (#309) showed every package source audited twice, once under the root and once under its package, which doubled source-file totals and duplicated the top candidates of the bounded review. The Swift support matrix already listed nested project markers as a dependency boundary; the implementation only applied it to example, demo and sample directories. Pruning packages mirrors the project detector, which already reports each `Package.swift` root as its own project, so each source file is audited by exactly one project. Golden snapshots are unchanged.
+
+Revisit when: workspace membership can be read from `contents.xcworkspacedata` so that nested Xcode projects owned by a root workspace are distinguished from independent apps, or when a validation repository shows a package that must be audited as part of its parent.

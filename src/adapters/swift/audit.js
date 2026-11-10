@@ -125,7 +125,7 @@ export function auditSwiftRepo(root, options = {}) {
 function readRepoFiles(root) {
   return readRepositoryTextFiles(root, {
     ignoredDirectoryNames: IGNORED_DIRECTORIES,
-    shouldPruneDirectory: ({ absolutePath }) => shouldIgnoreSwiftDirectory(absolutePath, path.basename(absolutePath)),
+    shouldPruneDirectory: ({ absolutePath, relativePath }) => shouldIgnoreSwiftDirectory(absolutePath, path.basename(absolutePath), relativePath),
     shouldIncludeFile: ({ relativePath }) => shouldRead(relativePath),
     symbolicLinks: "skip",
     toRepositoryPath: normalizePlatformSeparators
@@ -145,12 +145,19 @@ function shouldRead(relative) {
   );
 }
 
-function shouldIgnoreSwiftDirectory(absolute, name) {
+function shouldIgnoreSwiftDirectory(absolute, name, relative) {
   if (name.endsWith(".playground") || /^Playgrounds?$/i.test(name)) return true;
-  if (!/(?:^|[-_])(?:examples?|demos?|samples?)$|(?:Example|Demo|Sample)(?:App)?s?$/i.test(name)) return false;
-  return fs.readdirSync(absolute, { withFileTypes: true }).some((entry) =>
-    entry.name === "Package.swift" || entry.name.endsWith(".xcodeproj") || entry.name.endsWith(".xcworkspace")
-  );
+  if (/(?:^|[-_])(?:examples?|demos?|samples?)$|(?:Example|Demo|Sample)(?:App)?s?$/i.test(name)) {
+    return fs.readdirSync(absolute, { withFileTypes: true }).some((entry) =>
+      entry.name === "Package.swift" || entry.name.endsWith(".xcodeproj") || entry.name.endsWith(".xcworkspace")
+    );
+  }
+  // A nested Swift package is detected and audited as its own project with its own command, so the
+  // parent must not count its sources again. Nested Xcode projects stay with the parent because a
+  // root workspace may own them, and fixture packages under test directories stay with the parent as
+  // the JavaScript adapter keeps nested package.json files under test roots.
+  if (name.endsWith(".xcodeproj") || name.endsWith(".xcworkspace") || isTestPath(relative)) return false;
+  return fs.existsSync(path.join(absolute, "Package.swift"));
 }
 
 function buildProfile(root, files, bazelGraph) {
