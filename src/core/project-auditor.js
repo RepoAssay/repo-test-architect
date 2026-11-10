@@ -31,6 +31,11 @@ import { describeFailedProject, sortFailedProjects } from "./project-failures.js
  * @property {SkippedProjectAudit[]} skippedProjects
  * @property {FailedProjectAudit[]} failedProjects
  *
+ * @typedef {object} NestedProject
+ * @property {string} root Project-relative root of a detected project inside the audited project.
+ * @property {string} adapterId The adapter that audits the nested project.
+ * @property {string[]} markerFiles The detector's marker files for the nested project, so an adapter can tell project kinds apart.
+ *
  * @typedef {object} AuditDetectedProjectsOptions
  * @property {string[]} [changedPaths]
  * @property {string[]} [excludeProjectRoots]
@@ -77,7 +82,11 @@ export function auditDetectedProjects(repoRoot, options = {}) {
     const auditOptions = {
       changedPaths: selectProjectChangedPaths(detection.root, project.root, options.changedPaths),
       repositoryRoot: detection.root,
-      goTarget: options.goTarget
+      goTarget: options.goTarget,
+      // Detected projects inside this one receive their own audit; an adapter may leave their
+      // sources to that audit instead of counting them again. Unsupported or excluded roots are
+      // not listed, so nothing is dropped without a replacement audit.
+      nestedProjects: collectNestedProjects(detection.projects, project)
     };
     let audit;
 
@@ -121,6 +130,21 @@ function isInvalidOptionError(error) {
     // A Proxy whose prototype lookup throws is an adapter failure, not a usage error.
     return false;
   }
+}
+
+/**
+ * @param {Array<{ root: string, adapterIds: string[] }>} projects
+ * @param {{ root: string }} project
+ * @returns {NestedProject[]}
+ */
+function collectNestedProjects(projects, project) {
+  return projects
+    .filter((candidate) => candidate.root !== project.root && candidate.adapterIds.length > 0 && isInsideProject(project.root, candidate.root))
+    .map((candidate) => ({
+      root: toProjectRelativePath(project.root, candidate.root),
+      adapterId: candidate.adapterIds[0],
+      markerFiles: [...candidate.markerFiles]
+    }));
 }
 
 function selectProjectChangedPaths(repoRoot, projectRoot, changedPaths) {

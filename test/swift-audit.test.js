@@ -3,7 +3,9 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { describe, it } from "node:test";
+import { adapters } from "../src/core/adapter-registry.js";
 import { auditSwiftRepo } from "../src/adapters/swift/audit.js";
+import { auditDetectedProjects } from "../src/core/project-auditor.js";
 import { copyTrustFixture } from "./support/non-code-evidence.js";
 import { assertNoProjectTestCommand } from "./support/ownership-evidence.js";
 
@@ -2005,6 +2007,198 @@ final class CollectorTests: XCTestCase {
     assert.ok(audit.profile.setupSignals.includes("xcode shared scheme"));
     assert.ok(audit.profile.blockers.includes("Multiple shared Xcode schemes detected without a unique workspace or project name match: Beta, Preview."));
     assert.ok(!audit.profile.blockers.includes("No runnable Swift test command detected from Package.swift or Xcode project/workspace markers."));
+  });
+
+  it("leaves nested Swift packages to their own project audits instead of counting them twice", (t) => {
+    // #309: an Xcode app at the repository root plus local packages in subdirectories.
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-swift-nested-packages-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    const schemesRoot = path.join(root, "CheckoutApp.xcodeproj", "xcshareddata", "xcschemes");
+    const packageRoot = path.join(root, "Packages", "PricingKit");
+    const mixedRoot = path.join(root, "Packages", "SharedTypes");
+    const fixturePackageRoot = path.join(root, "Tests", "CheckoutAppTests", "Fixtures", "FixturePackage");
+    for (const directory of [
+      schemesRoot,
+      path.join(root, "CheckoutApp", "Sources"),
+      path.join(root, "CheckoutAppTests"),
+      path.join(packageRoot, "Sources", "PricingKit"),
+      path.join(packageRoot, "Tests", "PricingKitTests"),
+      path.join(mixedRoot, "Sources", "SharedTypes"),
+      path.join(fixturePackageRoot, "Sources", "FixturePackage"),
+      path.join(fixturePackageRoot, "Tests", "FixturePackageTests")
+    ]) fs.mkdirSync(directory, { recursive: true });
+    fs.writeFileSync(path.join(root, "CheckoutApp.xcodeproj", "project.pbxproj"), "{}\n");
+    fs.writeFileSync(path.join(schemesRoot, "CheckoutApp.xcscheme"), "<Scheme></Scheme>\n");
+    fs.writeFileSync(path.join(root, "CheckoutApp", "Sources", "CartService.swift"), "import Foundation\nfinal class CartService {\n    func total(for items: [Int]) -> Int { items.reduce(0, +) }\n}\n");
+    fs.writeFileSync(path.join(root, "CheckoutApp", "Sources", "ReceiptCalculator.swift"), "public struct ReceiptCalculator {\n    public func discounted(_ price: Int, percent: Int) -> Int { price - price * percent / 100 }\n}\n");
+    fs.writeFileSync(path.join(root, "CheckoutAppTests", "CartServiceTests.swift"), "import XCTest\n@testable import CheckoutApp\nfinal class CartServiceTests: XCTestCase { func testTotal() { XCTAssertEqual(CartService().total(for: [1, 2]), 3) } }\n");
+    fs.writeFileSync(path.join(packageRoot, "Package.swift"), "// swift-tools-version:5.9\nimport PackageDescription\nlet package = Package(\n    name: \"PricingKit\",\n    targets: [\n        .target(name: \"PricingKit\"),\n        .testTarget(name: \"PricingKitTests\", dependencies: [\"PricingKit\"])\n    ]\n)\n");
+    fs.writeFileSync(path.join(packageRoot, "Sources", "PricingKit", "PriceCalculator.swift"), "public struct PriceCalculator {\n    public func discounted(_ price: Int, percent: Int) -> Int { price - price * percent / 100 }\n}\n");
+    fs.writeFileSync(path.join(packageRoot, "Tests", "PricingKitTests", "PriceCalculatorTests.swift"), "import XCTest\n@testable import PricingKit\nfinal class PriceCalculatorTests: XCTestCase { func testDiscount() { XCTAssertEqual(PriceCalculator().discounted(100, percent: 10), 90) } }\n");
+    // A mixed package is audited by the JavaScript adapter first, so its Swift sources must stay here.
+    fs.writeFileSync(path.join(mixedRoot, "package.json"), "{\n  \"name\": \"shared-types\",\n  \"version\": \"1.0.0\"\n}\n");
+    fs.writeFileSync(path.join(mixedRoot, "Package.swift"), "// swift-tools-version:5.9\nimport PackageDescription\nlet package = Package(name: \"SharedTypes\", targets: [.target(name: \"SharedTypes\")])\n");
+    fs.writeFileSync(path.join(mixedRoot, "Sources", "SharedTypes", "Money.swift"), "public struct Money {\n    public func add(_ other: Money, to total: Int) -> Int { total + 1 }\n}\n");
+    // A fixture package inside the parent's own test directory carries parent test evidence and stays here; the
+    // adapter scopes everything under Tests/<Module>Tests to that module.
+    fs.writeFileSync(path.join(fixturePackageRoot, "Package.swift"), "// swift-tools-version:5.9\nimport PackageDescription\nlet package = Package(name: \"FixturePackage\", targets: [.target(name: \"FixturePackage\"), .testTarget(name: \"FixturePackageTests\", dependencies: [\"FixturePackage\"])])\n");
+    fs.writeFileSync(path.join(fixturePackageRoot, "Sources", "FixturePackage", "Fixture.swift"), "public struct Fixture {}\n");
+    fs.writeFileSync(path.join(fixturePackageRoot, "Tests", "FixturePackageTests", "ReceiptCalculatorFixtureTests.swift"), "import XCTest\n@testable import CheckoutApp\nfinal class ReceiptCalculatorFixtureTests: XCTestCase { func testDiscount() { XCTAssertEqual(ReceiptCalculator().discounted(100, percent: 10), 90) } }\n");
+
+    // Manifests of retained nested packages surface as skipped targets today; that is unchanged by this fix.
+    const targetPaths = (audit) => [...audit.untestedCandidates, ...audit.coveredButRisky, ...audit.skipped]
+      .map((target) => target.path)
+      .filter((currentPath) => !currentPath.endsWith("Package.swift"))
+      .sort();
+
+    // A direct single-project audit keeps every source: nothing else would audit them.
+    const directPaths = targetPaths(auditSwiftRepo(root));
+    for (const expected of [
+      "CheckoutApp/Sources/CartService.swift",
+      "CheckoutApp/Sources/ReceiptCalculator.swift",
+      "Packages/PricingKit/Sources/PricingKit/PriceCalculator.swift",
+      "Packages/SharedTypes/Sources/SharedTypes/Money.swift"
+    ]) assert.ok(directPaths.includes(expected), `direct audit keeps ${expected}`);
+
+    const swiftAdapter = adapters.find((adapter) => adapter.id === "swift");
+    const nestedProjectsSeen = [];
+    const realAudit = swiftAdapter.audit;
+    t.mock.method(swiftAdapter, "audit", (auditRoot, options) => {
+      if (auditRoot === root) nestedProjectsSeen.push(options.nestedProjects);
+      return realAudit(auditRoot, options);
+    });
+    const projectAudits = auditDetectedProjects(root);
+
+    assert.deepEqual(nestedProjectsSeen, [[
+      { root: "Packages/PricingKit", adapterId: "swift", markerFiles: ["Packages/PricingKit/Package.swift"] },
+      { root: "Packages/SharedTypes", adapterId: "javascript", markerFiles: ["Packages/SharedTypes/Package.swift", "Packages/SharedTypes/package.json"] },
+      { root: "Tests/CheckoutAppTests/Fixtures/FixturePackage", adapterId: "swift", markerFiles: ["Tests/CheckoutAppTests/Fixtures/FixturePackage/Package.swift"] }
+    ]]);
+    assert.deepEqual(projectAudits.audits.map((entry) => `${entry.projectRoot}:${entry.adapterId}`), [
+      ".:swift",
+      "Packages/PricingKit:swift",
+      "Packages/SharedTypes:javascript",
+      "Tests/CheckoutAppTests/Fixtures/FixturePackage:swift"
+    ]);
+    const rootAudit = projectAudits.audits[0].audit;
+    assert.deepEqual(targetPaths(rootAudit), [
+      "CheckoutApp/Sources/CartService.swift",
+      "CheckoutApp/Sources/ReceiptCalculator.swift",
+      "Packages/SharedTypes/Sources/SharedTypes/Money.swift"
+    ]);
+    assert.equal(rootAudit.profile.testCommand, "xcodebuild test -project CheckoutApp.xcodeproj -scheme CheckoutApp");
+    assert.deepEqual(rootAudit.profile.blockers, []);
+    const receiptTotals = rootAudit.coveredButRisky.find((target) => target.path === "CheckoutApp/Sources/ReceiptCalculator.swift");
+    assert.ok(receiptTotals, "the fixture package under Tests still provides parent test evidence");
+    assert.deepEqual(receiptTotals.existingTestPaths, ["Tests/CheckoutAppTests/Fixtures/FixturePackage/Tests/FixturePackageTests/ReceiptCalculatorFixtureTests.swift"]);
+    const packageAudit = projectAudits.audits[1].audit;
+    assert.deepEqual(packageAudit.coveredButRisky.map((target) => target.path), ["Sources/PricingKit/PriceCalculator.swift"]);
+    assert.equal(packageAudit.profile.testCommand, "swift test");
+    const sourcePaths = projectAudits.audits.flatMap((entry) =>
+      [...entry.audit.untestedCandidates, ...entry.audit.coveredButRisky, ...entry.audit.skipped]
+        .map((target) => path.posix.join(entry.projectRoot, target.path))
+    );
+    assert.deepEqual(sourcePaths.filter((currentPath) => !currentPath.endsWith("Package.swift")).sort(), [
+      "CheckoutApp/Sources/CartService.swift",
+      "CheckoutApp/Sources/ReceiptCalculator.swift",
+      "Packages/PricingKit/Sources/PricingKit/PriceCalculator.swift",
+      "Packages/SharedTypes/Sources/SharedTypes/Money.swift",
+      "Tests/CheckoutAppTests/Fixtures/FixturePackage/Sources/FixturePackage/Fixture.swift"
+    ], "every Swift source is audited by exactly one project");
+
+    // changedPaths are routed to the owning project and never resurrect pruned sources in the parent.
+    const changed = auditDetectedProjects(root, { changedPaths: ["Packages/PricingKit/Sources/PricingKit/PriceCalculator.swift", "CheckoutApp/Sources/CartService.swift"] });
+    assert.deepEqual(targetPaths(changed.audits[0].audit), ["CheckoutApp/Sources/CartService.swift"]);
+    assert.deepEqual(targetPaths(changed.audits[1].audit), ["Sources/PricingKit/PriceCalculator.swift"]);
+  });
+
+  it("keeps nested Xcode projects with a root workspace that owns them", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-swift-nested-xcodeproj-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    const childProject = path.join(root, "Modules", "Child", "Child.xcodeproj");
+    for (const directory of [
+      path.join(root, "Root.xcworkspace"),
+      path.join(childProject, "xcshareddata", "xcschemes"),
+      path.join(root, "Modules", "Child", "Sources"),
+      path.join(root, "Modules", "Child", "ChildTests"),
+      path.join(root, "Packages", "Kit", "Sources", "Kit")
+    ]) fs.mkdirSync(directory, { recursive: true });
+    fs.writeFileSync(path.join(root, "Root.xcworkspace", "contents.xcworkspacedata"), "<?xml version=\"1.0\"?><Workspace version=\"1.0\"><FileRef location=\"group:Modules/Child/Child.xcodeproj\"></FileRef></Workspace>\n");
+    fs.writeFileSync(path.join(childProject, "project.pbxproj"), "{}\n");
+    fs.writeFileSync(path.join(childProject, "xcshareddata", "xcschemes", "Child.xcscheme"), "<Scheme></Scheme>\n");
+    fs.writeFileSync(path.join(root, "Modules", "Child", "Sources", "ChildCalculator.swift"), "final class ChildCalculator {\n    func discounted(_ price: Int, percent: Int) -> Int { price - price * percent / 100 }\n}\n");
+    fs.writeFileSync(path.join(root, "Modules", "Child", "ChildTests", "ChildCalculatorTests.swift"), "import XCTest\n@testable import Child\nfinal class ChildCalculatorTests: XCTestCase { func testDiscount() { XCTAssertEqual(ChildCalculator().discounted(100, percent: 10), 90) } }\n");
+    fs.writeFileSync(path.join(root, "Packages", "Kit", "Package.swift"), "// swift-tools-version:5.9\nimport PackageDescription\nlet package = Package(name: \"Kit\", targets: [.target(name: \"Kit\")])\n");
+    fs.writeFileSync(path.join(root, "Packages", "Kit", "Sources", "Kit", "KitCalculator.swift"), "public struct KitCalculator {\n    public func discounted(_ price: Int, percent: Int) -> Int { price - price * percent / 100 }\n}\n");
+
+    const projectAudits = auditDetectedProjects(root);
+    const rootAudit = projectAudits.audits.find((entry) => entry.projectRoot === ".").audit;
+    const rootPaths = [...rootAudit.untestedCandidates, ...rootAudit.coveredButRisky, ...rootAudit.skipped].map((target) => target.path).filter((currentPath) => !currentPath.endsWith("Package.swift")).sort();
+
+    assert.deepEqual(projectAudits.audits.map((entry) => entry.projectRoot), [".", "Modules/Child", "Packages/Kit"]);
+    // The workspace still owns the child project's scheme and tests; only the package is left to its own audit.
+    assert.equal(rootAudit.profile.testCommand, "xcodebuild test -workspace Root.xcworkspace -scheme Child");
+    assert.deepEqual(rootAudit.profile.blockers, []);
+    assert.deepEqual(rootPaths, ["Modules/Child/Sources/ChildCalculator.swift"]);
+    // Apart from the pruned package, the nested-aware audit matches the direct audit target for target.
+    const direct = auditSwiftRepo(root);
+    const findTarget = (audit, targetPath) => ["untestedCandidates", "coveredButRisky", "skipped"]
+      .flatMap((bucket) => audit[bucket].filter((target) => target.path === targetPath).map((target) => ({ bucket, target })));
+    assert.deepEqual(findTarget(rootAudit, "Modules/Child/Sources/ChildCalculator.swift"), findTarget(direct, "Modules/Child/Sources/ChildCalculator.swift"));
+    assert.equal(direct.profile.testCommand, rootAudit.profile.testCommand, "the direct audit selects the same command");
+    assert.ok(findTarget(direct, "Packages/Kit/Sources/Kit/KitCalculator.swift").length === 1, "the direct audit still keeps the package");
+  });
+
+  it("recognises test targets declared only in a version-specific manifest when keeping fixture packages", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-swift-versioned-manifest-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    const fixtureRoot = path.join(root, "Verification", "Fixtures", "StubKit");
+    for (const directory of [
+      path.join(root, "Sources", "Ledger"),
+      path.join(root, "Verification"),
+      path.join(fixtureRoot, "Sources", "StubKit"),
+      path.join(fixtureRoot, "Tests", "StubKitTests")
+    ]) fs.mkdirSync(directory, { recursive: true });
+    fs.writeFileSync(path.join(root, "Package.swift"), "// swift-tools-version:5.9\nimport PackageDescription\nlet package = Package(\n    name: \"Ledger\",\n    targets: [\n        .target(name: \"Ledger\")\n    ]\n)\n");
+    fs.writeFileSync(path.join(root, "Package@swift-6.0.swift"), "// swift-tools-version:6.0\nimport PackageDescription\nlet package = Package(\n    name: \"Ledger\",\n    targets: [\n        .target(name: \"Ledger\"),\n        .testTarget(name: \"LedgerTests\", dependencies: [\"Ledger\"], path: \"Verification\")\n    ]\n)\n");
+    fs.writeFileSync(path.join(root, "Sources", "Ledger", "BalanceCalculator.swift"), "public struct BalanceCalculator {\n    public func discounted(_ price: Int, percent: Int) -> Int { price - price * percent / 100 }\n}\n");
+    fs.writeFileSync(path.join(fixtureRoot, "Package.swift"), "// swift-tools-version:5.9\nimport PackageDescription\nlet package = Package(name: \"StubKit\", targets: [.target(name: \"StubKit\"), .testTarget(name: \"StubKitTests\", dependencies: [\"StubKit\"])])\n");
+    fs.writeFileSync(path.join(fixtureRoot, "Sources", "StubKit", "Stub.swift"), "public struct Stub {}\n");
+    fs.writeFileSync(path.join(fixtureRoot, "Tests", "StubKitTests", "BalanceCalculatorStubTests.swift"), "import XCTest\n@testable import Ledger\nfinal class BalanceCalculatorStubTests: XCTestCase { func testDiscount() { XCTAssertEqual(BalanceCalculator().discounted(100, percent: 10), 90) } }\n");
+
+    const direct = auditSwiftRepo(root);
+    const withNested = auditSwiftRepo(root, { nestedProjects: [{ root: "Verification/Fixtures/StubKit", adapterId: "swift", markerFiles: ["Verification/Fixtures/StubKit/Package.swift"] }] });
+
+    assert.deepEqual(withNested, direct);
+    const calculator = withNested.coveredButRisky.find((target) => target.path === "Sources/Ledger/BalanceCalculator.swift");
+    assert.ok(calculator, "the parent source stays covered by the fixture package's test");
+    assert.deepEqual(calculator.existingTestPaths, ["Verification/Fixtures/StubKit/Tests/StubKitTests/BalanceCalculatorStubTests.swift"]);
+  });
+
+  it("keeps fixture packages inside a declared custom test target path with the parent", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-swift-custom-test-root-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    const fixtureRoot = path.join(root, "Verification", "Fixtures", "StubKit");
+    for (const directory of [
+      path.join(root, "Sources", "Ledger"),
+      path.join(root, "Verification"),
+      path.join(fixtureRoot, "Sources", "StubKit"),
+      path.join(fixtureRoot, "Tests", "StubKitTests")
+    ]) fs.mkdirSync(directory, { recursive: true });
+    fs.writeFileSync(path.join(root, "Package.swift"), "// swift-tools-version:5.9\nimport PackageDescription\nlet package = Package(\n    name: \"Ledger\",\n    targets: [\n        .target(name: \"Ledger\"),\n        .testTarget(name: \"LedgerTests\", dependencies: [\"Ledger\"], path: \"Verification\")\n    ]\n)\n");
+    fs.writeFileSync(path.join(root, "Sources", "Ledger", "BalanceCalculator.swift"), "public struct BalanceCalculator {\n    public func discounted(_ price: Int, percent: Int) -> Int { price - price * percent / 100 }\n}\n");
+    fs.writeFileSync(path.join(fixtureRoot, "Package.swift"), "// swift-tools-version:5.9\nimport PackageDescription\nlet package = Package(name: \"StubKit\", targets: [.target(name: \"StubKit\"), .testTarget(name: \"StubKitTests\", dependencies: [\"StubKit\"])])\n");
+    fs.writeFileSync(path.join(fixtureRoot, "Sources", "StubKit", "Stub.swift"), "public struct Stub {}\n");
+    fs.writeFileSync(path.join(fixtureRoot, "Tests", "StubKitTests", "BalanceCalculatorStubTests.swift"), "import XCTest\n@testable import Ledger\nfinal class BalanceCalculatorStubTests: XCTestCase { func testDiscount() { XCTAssertEqual(BalanceCalculator().discounted(100, percent: 10), 90) } }\n");
+
+    const direct = auditSwiftRepo(root);
+    const withNested = auditSwiftRepo(root, { nestedProjects: [{ root: "Verification/Fixtures/StubKit", adapterId: "swift", markerFiles: ["Verification/Fixtures/StubKit/Package.swift"] }] });
+
+    // The fixture package lies inside the parent's declared test target, so nothing is dropped.
+    assert.deepEqual(withNested, direct);
+    const calculator = withNested.coveredButRisky.find((target) => target.path === "Sources/Ledger/BalanceCalculator.swift");
+    assert.ok(calculator, "the parent source stays covered by the fixture package's test");
+    assert.deepEqual(calculator.existingTestPaths, ["Verification/Fixtures/StubKit/Tests/StubKitTests/BalanceCalculatorStubTests.swift"]);
   });
 
   it("selects the project that directly owns a shared scheme when multiple projects exist", (t) => {
