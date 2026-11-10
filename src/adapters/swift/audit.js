@@ -23,7 +23,7 @@ const GENERIC_SOURCE_BASENAMES = new Set(["common", "handler", "helpers", "main"
 export function auditSwiftRepo(root, options = {}) {
   const onPhaseTiming = typeof options.onPhaseTiming === "function" ? options.onPhaseTiming : undefined;
   let phaseStartedAt = startAuditPhase(onPhaseTiming);
-  const files = readRepoFiles(root);
+  const files = excludeNestedSwiftProjects(readRepoFiles(root), options.nestedProjects);
   finishAuditPhase(onPhaseTiming, "swift", "traversal-and-text-read", phaseStartedAt);
 
   phaseStartedAt = startAuditPhase(onPhaseTiming);
@@ -125,7 +125,7 @@ export function auditSwiftRepo(root, options = {}) {
 function readRepoFiles(root) {
   return readRepositoryTextFiles(root, {
     ignoredDirectoryNames: IGNORED_DIRECTORIES,
-    shouldPruneDirectory: ({ absolutePath, relativePath }) => shouldIgnoreSwiftDirectory(absolutePath, path.basename(absolutePath), relativePath),
+    shouldPruneDirectory: ({ absolutePath }) => shouldIgnoreSwiftDirectory(absolutePath, path.basename(absolutePath)),
     shouldIncludeFile: ({ relativePath }) => shouldRead(relativePath),
     symbolicLinks: "skip",
     toRepositoryPath: normalizePlatformSeparators
@@ -145,19 +145,48 @@ function shouldRead(relative) {
   );
 }
 
-function shouldIgnoreSwiftDirectory(absolute, name, relative) {
+function shouldIgnoreSwiftDirectory(absolute, name) {
   if (name.endsWith(".playground") || /^Playgrounds?$/i.test(name)) return true;
-  if (/(?:^|[-_])(?:examples?|demos?|samples?)$|(?:Example|Demo|Sample)(?:App)?s?$/i.test(name)) {
-    return fs.readdirSync(absolute, { withFileTypes: true }).some((entry) =>
-      entry.name === "Package.swift" || entry.name.endsWith(".xcodeproj") || entry.name.endsWith(".xcworkspace")
-    );
-  }
-  // A nested Swift package is detected and audited as its own project with its own command, so the
-  // parent must not count its sources again. Nested Xcode projects stay with the parent because a
-  // root workspace may own them, and fixture packages under test directories stay with the parent as
-  // the JavaScript adapter keeps nested package.json files under test roots.
-  if (name.endsWith(".xcodeproj") || name.endsWith(".xcworkspace") || isTestPath(relative)) return false;
-  return fs.existsSync(path.join(absolute, "Package.swift"));
+  if (!/(?:^|[-_])(?:examples?|demos?|samples?)$|(?:Example|Demo|Sample)(?:App)?s?$/i.test(name)) return false;
+  return fs.readdirSync(absolute, { withFileTypes: true }).some((entry) =>
+    entry.name === "Package.swift" || entry.name.endsWith(".xcodeproj") || entry.name.endsWith(".xcworkspace")
+  );
+}
+
+/**
+ * Leave nested Swift packages to their own project audit (#309). The project auditor lists the
+ * detected projects inside this one together with the adapter that audits them, so only roots
+ * that really receive a Swift audit are dropped: a directory the detector skipped, a symlinked or
+ * mis-cased manifest, or a mixed package that the JavaScript adapter audits first all stay here.
+ * Roots inside this package's own test targets (declared `path` or conventional test directories)
+ * stay too, because fixture packages there carry the parent's test evidence. Nested Xcode projects
+ * are never dropped: a root workspace may own them and workspace membership is not interpreted.
+ * A direct single-project audit passes no nested projects and keeps every source.
+ */
+function excludeNestedSwiftProjects(files, nestedProjects) {
+  const testDirectories = collectRootSwiftPmTestTargetPaths(files);
+  const excludedRoots = (Array.isArray(nestedProjects) ? nestedProjects : [])
+    .filter((project) => project?.adapterId === "swift" && typeof project.root === "string" && project.root !== ".")
+    .map((project) => normalizePath(project.root).replace(/^\.\/+/, "").replace(/\/+$/, ""))
+    .filter((nestedRoot) => nestedRoot && !isTestPath(nestedRoot) && !testDirectories.some((directory) => pathContains(directory, nestedRoot)));
+  if (excludedRoots.length === 0) return files;
+  return files.filter((file) => !excludedRoots.some((nestedRoot) => pathContains(nestedRoot, normalizePath(file.path))));
+}
+
+function collectRootSwiftPmTestTargetPaths(files) {
+  const manifest = files.find((file) => normalizePath(file.path) === "Package.swift" && hasSwiftPmPackageDeclaration(file.content));
+  if (!manifest) return [];
+  const content = maskSwiftCommentsAndStrings(manifest.content, false);
+  const swiftPaths = files.map((file) => normalizePath(file.path)).filter((currentPath) => currentPath.endsWith(".swift"));
+  return extractSwiftPmTargets(content).targets
+    .filter((rule) => rule.kind === "testTarget")
+    .map((rule) => {
+      const name = readStringAttribute(rule.body, "name");
+      if (!name) return undefined;
+      const declaredPath = readStringAttribute(rule.body, "path") ?? inferDefaultSwiftPmTargetPath(name, true, false, swiftPaths);
+      return normalizePath(declaredPath).replace(/^\.\/+/, "").replace(/\/+$/, "");
+    })
+    .filter(Boolean);
 }
 
 function buildProfile(root, files, bazelGraph) {
