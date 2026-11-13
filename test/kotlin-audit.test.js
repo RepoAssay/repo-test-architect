@@ -632,11 +632,17 @@ describe("Kotlin audit adapter", () => {
     fs.writeFileSync(path.join(main, "LinkMapper.kt"), "package com.example.mappers\n\nfun Long.asLink(): String? {\n    if (this < 0) return null\n    return toString()\n}\n");
     fs.writeFileSync(path.join(test, "DtoMapperTest.kt"), "package com.example.mappers\n\nimport kotlin.test.Test\nimport kotlin.test.assertNotNull\n\nclass DtoMapperTest { @Test fun `string dto`() { assertNotNull(\"x\".asDto()) } }\n");
     fs.writeFileSync(path.join(test, "LinkMapperTest.kt"), "package com.example.mappers\n\nimport kotlin.test.Test\nimport kotlin.test.assertNotNull\n\nclass LinkMapperTest { @Test fun `long link`() { assertNotNull(7L.asLink()) } }\n");
+    // A plain member named like the ambiguous extension keeps its own file's ownership.
+    fs.writeFileSync(path.join(main, "WorkerMapper.kt"), "package com.example.mappers\n\nclass WorkerMapper {\n    fun asDto(): String? {\n        if (hashCode() < 0) return null\n        return toString()\n    }\n}\n\nfun Double.asDto(): String? {\n    if (this < 0) return null\n    return toString()\n}\n");
+    fs.writeFileSync(path.join(test, "WorkerMapperTest.kt"), "package com.example.mappers\n\nimport kotlin.test.Test\nimport kotlin.test.assertNotNull\n\nclass WorkerMapperTest {\n    private fun workerFactory() = WorkerMapper()\n    @Test fun `worker dto`() { assertNotNull(workerFactory().asDto()) }\n}\n");
 
     const audit = auditKotlinRepo(root);
 
-    assert.deepEqual(audit.coveredButRisky.map((target) => target.name), ["LinkMapper"]);
-    assert.deepEqual(audit.coveredButRisky[0].existingTestPaths.map((testPath) => path.posix.basename(testPath)), ["LinkMapperTest.kt"]);
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.name).sort(), ["LinkMapper", "WorkerMapper"]);
+    assert.deepEqual(audit.coveredButRisky.find((target) => target.name === "LinkMapper").existingTestPaths.map((testPath) => path.posix.basename(testPath)), ["LinkMapperTest.kt"]);
+    // Bare member names were matched package-wide before this change; the point here is that the plain
+    // member keeps crediting its own test although the extension name is withheld.
+    assert.ok(audit.coveredButRisky.find((target) => target.name === "WorkerMapper").existingTestPaths.map((testPath) => path.posix.basename(testPath)).includes("WorkerMapperTest.kt"));
     assert.deepEqual(audit.untestedCandidates.map((target) => target.name).sort(), ["HiddenMapper", "IntDtoMapper", "StringDtoMapper"]);
   });
 

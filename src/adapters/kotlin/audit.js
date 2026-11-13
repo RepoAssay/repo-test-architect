@@ -1143,12 +1143,15 @@ function collectSourceSymbols(sourceFiles) {
   }
   const sources = [];
   for (const { file, analysis } of analyses) {
+    // Withholding applies to the extension declaration only: a type or plain function of the same name
+    // declared in this file keeps its ownership, as does the file basename.
+    const plainDeclarations = new Set([...(analysis.plainDeclarations ?? []), basenameWithoutExtension(file.path)]);
     const ambiguousExtensions = new Set((analysis.extensionFunctions ?? [])
       .map(({ name }) => name)
-      .filter((name) => extensionOwners.get(`${analysis.packageName}:${name}`)?.size > 1));
+      .filter((name) => extensionOwners.get(`${analysis.packageName}:${name}`)?.size > 1 && !plainDeclarations.has(name)));
     const fallbackName = basenameWithoutExtension(file.path);
     const symbols = [...new Set([...analysis.declarations, fallbackName])]
-      .filter((symbol) => !ambiguousExtensions.has(symbol) || symbol === fallbackName)
+      .filter((symbol) => !ambiguousExtensions.has(symbol))
       .sort();
     sources.push({
       path: normalizePath(file.path),
@@ -1252,9 +1255,13 @@ function analyzeJvmFile(content, currentPath) {
   for (const match of stripped.matchAll(importPattern)) imports.push({ qualified: match[2], alias: match[3], static: Boolean(match[1]) });
 
   const declarations = new Set();
+  const plainDeclarations = new Set();
   const extensionFunctions = [];
   const typePattern = /\b(?:class|interface|object|enum\s+class|enum|record)\s+([A-Za-z_$][\w$]*)/g;
-  for (const match of stripped.matchAll(typePattern)) declarations.add(match[1]);
+  for (const match of stripped.matchAll(typePattern)) {
+    declarations.add(match[1]);
+    plainDeclarations.add(match[1]);
+  }
   if (currentPath.endsWith(".kt")) {
     // Top-level functions, including extension functions (#315): an optional receiver type precedes the
     // name as dotted segments, each with optional generic arguments and an optional `?`, for example
@@ -1271,6 +1278,7 @@ function analyzeJvmFile(content, currentPath) {
       const receiver = match[1].replace(/\s+/g, "").replace(/\.$/, "");
       if (!receiver) {
         declarations.add(match[2]);
+        plainDeclarations.add(match[2]);
         continue;
       }
       if (jvmBraceDepthAt(stripped, match.index) !== 0) continue;
@@ -1279,7 +1287,7 @@ function analyzeJvmFile(content, currentPath) {
     }
   }
 
-  return { packageName, imports, declarations: [...declarations], extensionFunctions, content: stripped };
+  return { packageName, imports, declarations: [...declarations], plainDeclarations: [...plainDeclarations], extensionFunctions, content: stripped };
 }
 
 function jvmBraceDepthAt(content, index) {
