@@ -186,34 +186,74 @@ let package = Package(name: "Flow", targets: [.target(name: "Flow"), .testTarget
     assert.deepEqual(audit.coveredButRisky[0].existingTestPaths, ["Disposable+CombineTests.swift"]);
   });
 
-  it("withholds swift test for packages whose sources import a framework that is not available on macOS", (t) => {
+  it("withholds swift test for packages whose compiled sources import a framework that is not available on macOS", (t) => {
     // #311: swift test builds for the macOS host; UIKit-dependent packages need an xcodebuild destination.
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-swift-ios-only-package-"));
-    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
-    const write = (relative, content) => {
-      fs.mkdirSync(path.dirname(path.join(root, relative)), { recursive: true });
-      fs.writeFileSync(path.join(root, relative), content);
+    const blockerFor = (framework, simulator) => `Swift sources import ${framework}, which swift test cannot build on macOS; run xcodebuild test with a simulator destination such as -destination 'platform=${simulator},name=<device>' after selecting a device.`;
+    const makePackage = (files, manifestTargets = "        .target(name: \"PricingKit\"),\n        .testTarget(name: \"PricingKitTests\", dependencies: [\"PricingKit\"])") => {
+      const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-swift-ios-only-package-"));
+      t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+      const write = (relative, content) => {
+        fs.mkdirSync(path.dirname(path.join(root, relative)), { recursive: true });
+        fs.writeFileSync(path.join(root, relative), content);
+      };
+      write("Package.swift", `// swift-tools-version:5.9\nimport PackageDescription\nlet package = Package(\n    name: "PricingKit",\n    platforms: [.iOS(.v16)],\n    targets: [\n${manifestTargets}\n    ]\n)\n`);
+      write("Sources/PricingKit/PriceCalculator.swift", "import Foundation\n\npublic struct PriceCalculator {\n    public func discounted(_ price: Int, percent: Int) -> Int { price - price * percent / 100 }\n}\n");
+      write("Tests/PricingKitTests/PriceCalculatorTests.swift", "import XCTest\n@testable import PricingKit\nfinal class PriceCalculatorTests: XCTestCase { func testDiscount() { XCTAssertEqual(PriceCalculator().discounted(100, percent: 10), 90) } }\n");
+      for (const [relative, content] of Object.entries(files)) write(relative, content);
+      return root;
     };
-    write("Package.swift", "// swift-tools-version:5.9\nimport PackageDescription\nlet package = Package(\n    name: \"PricingKit\",\n    platforms: [.iOS(.v16)],\n    targets: [\n        .target(name: \"PricingKit\"),\n        .testTarget(name: \"PricingKitTests\", dependencies: [\"PricingKit\"])\n    ]\n)\n");
-    write("Sources/PricingKit/PriceCalculator.swift", "import UIKit\n\npublic struct PriceCalculator {\n    public func discounted(_ price: Int, percent: Int) -> Int { price - price * percent / 100 }\n    public func badge() -> UIColor { .systemGreen }\n}\n");
-    write("Tests/PricingKitTests/PriceCalculatorTests.swift", "import XCTest\n@testable import PricingKit\nfinal class PriceCalculatorTests: XCTestCase { func testDiscount() { XCTAssertEqual(PriceCalculator().discounted(100, percent: 10), 90) } }\n");
+    const commandOf = (root) => {
+      const audit = auditSwiftRepo(root);
+      return { command: audit.profile.testCommand, blockers: audit.profile.blockers, confidence: audit.profile.confidence, covered: audit.coveredButRisky.map((target) => target.path) };
+    };
 
-    const audit = auditSwiftRepo(root);
+    // Each framework, imported from production and from test code, with import modifiers.
+    const withheld = [
+      ["UIKit", "iOS Simulator", { "Sources/PricingKit/Badge.swift": "import UIKit\npublic struct Badge { public func color() -> UIColor { if Bool.random() { return .red }; return .green } }\n" }],
+      ["WatchKit", "watchOS Simulator", { "Sources/PricingKit/Face.swift": "public import WatchKit\npublic struct Face { public func style() -> Int { if Bool.random() { return 1 }; return 2 } }\n" }],
+      ["TVUIKit", "tvOS Simulator", { "Tests/PricingKitTests/PosterTests.swift": "import XCTest\n@preconcurrency import TVUIKit\n@testable import PricingKit\nfinal class PosterTests: XCTestCase { func testPoster() { XCTAssertTrue(true) } }\n" }],
+      ["UIKit", "iOS Simulator", { "Sources/PricingKit/Color.swift": "import struct UIKit.UIColor\npublic struct Color { public func value() -> Int { if Bool.random() { return 1 }; return 0 } }\n" }],
+      ["UIKit", "iOS Simulator", { "Sources/PricingKit/Debug.swift": "#if DEBUG\nimport UIKit\n#endif\npublic struct Debug { public func on() -> Bool { if Bool.random() { return true }; return false } }\n" }]
+    ];
+    for (const [framework, simulator, files] of withheld) {
+      const result = commandOf(makePackage(files));
+      assert.equal(result.command, undefined, `${framework} via ${Object.keys(files)[0]}`);
+      assert.deepEqual(result.blockers, [blockerFor(framework, simulator)]);
+      assert.notEqual(result.confidence, "high");
+      assert.ok(result.covered.includes("Sources/PricingKit/PriceCalculator.swift"), "auditing is unaffected by the withheld command");
+    }
 
-    assert.equal(audit.profile.testCommand, undefined);
-    assert.deepEqual(audit.profile.blockers, [
-      "Swift sources import UIKit, which swift test cannot build on macOS; run xcodebuild test with a simulator destination such as -destination 'platform=iOS Simulator,name=<device>' instead."
-    ]);
-    assert.deepEqual(audit.profile.testFrameworks, ["XCTest"]);
-    // The audit itself is unaffected: the source stays covered by its test.
-    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["Sources/PricingKit/PriceCalculator.swift"]);
+    // Imports that do not reach the macOS build keep swift test.
+    const kept = {
+      "portable baseline": {},
+      "block comment and string literal": { "Sources/PricingKit/Notes.swift": "/*\nimport UIKit\n*/\npublic struct Notes { public func text() -> String { if Bool.random() { return \"import UIKit\" }; return \"\" } }\n" },
+      "canImport guard with portable fallback": { "Sources/PricingKit/Platform.swift": "#if canImport(UIKit)\nimport UIKit\npublic typealias PlatformColor = UIColor\n#else\nimport Foundation\npublic typealias PlatformColor = Int\n#endif\npublic struct Platform { public func make() -> Int { if Bool.random() { return 1 }; return 0 } }\n" },
+      "os guard combined with ||": { "Sources/PricingKit/Device.swift": "#if os(iOS) || os(tvOS)\nimport UIKit\n#elseif os(macOS)\nimport AppKit\n#endif\npublic struct Device { public func kind() -> Int { if Bool.random() { return 1 }; return 0 } }\n" },
+      "mac catalyst guard": { "Sources/PricingKit/Catalyst.swift": "#if targetEnvironment(macCatalyst)\nimport UIKit\n#endif\npublic struct Catalyst { public func on() -> Bool { if Bool.random() { return true }; return false } }\n" },
+      "SwiftUI only": { "Sources/PricingKit/Screen.swift": "import SwiftUI\npublic struct Screen { public func title() -> String { if Bool.random() { return \"a\" }; return \"b\" } }\n" },
+      "snippet outside the package targets": { "Snippets/Demo.swift": "import UIKit\nlet color = UIColor.red\n" }
+    };
+    for (const [label, files] of Object.entries(kept)) {
+      const result = commandOf(makePackage(files));
+      assert.equal(result.command, "swift test", label);
+      assert.deepEqual(result.blockers, [], label);
+    }
 
-    // Only iOS minimum versions, without a non-macOS framework import, keep swift test: the platforms
-    // list declares deployment minimums, not the set of buildable platforms.
-    fs.writeFileSync(path.join(root, "Sources", "PricingKit", "PriceCalculator.swift"), "import Foundation\n// import UIKit stays a comment\n\npublic struct PriceCalculator {\n    public func discounted(_ price: Int, percent: Int) -> Int { price - price * percent / 100 }\n}\n");
-    const portable = auditSwiftRepo(root);
-    assert.equal(portable.profile.testCommand, "swift test");
-    assert.deepEqual(portable.profile.blockers, []);
+    // A file the manifest excludes from its target is not compiled.
+    const excluded = commandOf(makePackage(
+      { "Sources/PricingKit/iOS.swift": "import UIKit\npublic struct IOSOnly { public func on() -> Bool { if Bool.random() { return true }; return false } }\n" },
+      "        .target(name: \"PricingKit\", exclude: [\"iOS.swift\"]),\n        .testTarget(name: \"PricingKitTests\", dependencies: [\"PricingKit\"])"
+    ));
+    assert.equal(excluded.command, "swift test");
+    assert.deepEqual(excluded.blockers, []);
+
+    // Bazel precedence is untouched: a swift_test rule still selects bazel even when UIKit is imported.
+    const bazel = commandOf(makePackage({
+      "MODULE.bazel": "module(name = \"pricing\")\n",
+      "BUILD.bazel": "swift_library(name = \"PricingKit\", srcs = glob([\"Sources/PricingKit/*.swift\"]))\nswift_test(name = \"PricingKitTests\", srcs = glob([\"Tests/PricingKitTests/*.swift\"]), deps = [\":PricingKit\"])\n",
+      "Sources/PricingKit/Badge.swift": "import UIKit\npublic struct Badge { public func color() -> Int { if Bool.random() { return 1 }; return 0 } }\n"
+    }));
+    assert.equal(bazel.command, "bazel test //...");
   });
 
   it("excludes common vendored and checked-out Swift dependency roots", (t) => {

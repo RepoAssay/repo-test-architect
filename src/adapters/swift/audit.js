@@ -294,14 +294,15 @@ function detectTestCommand(paths, frameworks, bazelGraph, files) {
     if (!hasSwiftPmPackageDeclaration(manifest.content)) {
       return { command: undefined, blockers: ["No active SwiftPM package declaration was found; swift test cannot be established."] };
     }
-    const hostOnlyFramework = detectNonMacOsFrameworkImport(files);
+    const hostOnlyFramework = detectNonMacOsFrameworkImport(files, bazelGraph);
     if (hostOnlyFramework) {
-      // #311: `swift test` builds for the macOS host, so a package whose Swift sources import an
-      // iOS-, watchOS- or tvOS-only framework cannot run under it. A simulator destination is a host
+      // #311: `swift test` builds for the macOS host, so a package whose compiled Swift sources import
+      // an iOS-, watchOS- or tvOS-only framework cannot run under it. A simulator destination is a host
       // choice the audit must not guess, so the command is withheld with the required shape.
+      const simulator = NON_MACOS_FRAMEWORKS[hostOnlyFramework];
       return {
         command: undefined,
-        blockers: [`Swift sources import ${hostOnlyFramework}, which swift test cannot build on macOS; run xcodebuild test with a simulator destination such as -destination 'platform=iOS Simulator,name=<device>' instead.`]
+        blockers: [`Swift sources import ${hostOnlyFramework}, which swift test cannot build on macOS; run xcodebuild test with a simulator destination such as -destination 'platform=${simulator},name=<device>' after selecting a device.`]
       };
     }
     return { command: "swift test", blockers: [] };
@@ -325,16 +326,72 @@ function detectTestCommand(paths, frameworks, bazelGraph, files) {
   return { command: undefined, blockers: [] };
 }
 
-const NON_MACOS_FRAMEWORKS = ["UIKit", "WatchKit", "TVUIKit"];
+const NON_MACOS_FRAMEWORKS = Object.freeze({ UIKit: "iOS Simulator", WatchKit: "watchOS Simulator", TVUIKit: "tvOS Simulator" });
+// Import declarations may carry attributes, an access level and a kind: `@preconcurrency public import struct UIKit.UIColor`.
+const SWIFT_IMPORT_PREFIX = "^[ \\t]*(?:@[A-Za-z_][A-Za-z0-9_]*(?:\\([^)\\n]*\\))?\\s+)*(?:(?:public|package|internal|fileprivate|private|open)\\s+)?import\\s+(?:(?:class|struct|enum|protocol|typealias|func|var|let)\\s+)?";
+const MACOS_INACTIVE_PREDICATE = /^!?\s*(?:os\s*\(\s*(?:iOS|watchOS|tvOS|visionOS)\s*\)|canImport\s*\(\s*(?:UIKit|WatchKit|TVUIKit)\s*\)|targetEnvironment\s*\(\s*(?:macCatalyst|simulator)\s*\))$/;
 
-function detectNonMacOsFrameworkImport(files) {
-  for (const framework of NON_MACOS_FRAMEWORKS) {
-    const pattern = new RegExp(`^\\s*(?:@testable\\s+)?import\\s+${framework}\\b`, "m");
-    if (files.some((file) => normalizePath(file.path).endsWith(".swift") && pattern.test(maskSwiftCommentsAndStrings(file.content)))) {
-      return framework;
+/**
+ * The frameworks named by NON_MACOS_FRAMEWORKS are unavailable when `swift test` builds on macOS. Only
+ * sources the package compiles are considered (owned sources and test sources, minus `exclude`d files),
+ * and an import inside a `#if` branch that is provably inactive on macOS (`os(iOS)`, `canImport(UIKit)`,
+ * `targetEnvironment(macCatalyst)` and their `||` combinations) does not count, while the `#else` branch
+ * of such a condition does. Unresolved conditions such as `#if DEBUG` keep the import, which withholds
+ * the command rather than guessing.
+ */
+function detectNonMacOsFrameworkImport(files, sourceGraph) {
+  const compiled = files.filter((file) => isCompiledSwiftPmSource(file.path, sourceGraph));
+  const candidates = compiled.length > 0 ? compiled : files.filter((file) => normalizePath(file.path).endsWith(".swift"));
+  for (const framework of Object.keys(NON_MACOS_FRAMEWORKS)) {
+    const importPattern = new RegExp(`${SWIFT_IMPORT_PREFIX}${framework}\\b`);
+    for (const file of candidates) {
+      if (swiftLinesActiveOnMacOs(maskSwiftCommentsAndStrings(file.content)).some((line) => importPattern.test(line))) return framework;
     }
   }
   return undefined;
+}
+
+function isCompiledSwiftPmSource(currentPath, sourceGraph) {
+  const normalized = normalizePath(currentPath);
+  if (!normalized.endsWith(".swift") || sourceGraph.ignoredSources.has(normalized)) return false;
+  return sourceGraph.sourceOwners.has(normalized) || sourceGraph.testSources.has(normalized);
+}
+
+// Returns the lines of a Swift file that are compiled for the native macOS target, dropping lines
+// inside `#if` branches whose condition is provably inactive there. Each disjunct of an `||` condition
+// must be inactive; anything else (including `&&` and unknown flags) is treated as active.
+function swiftLinesActiveOnMacOs(content) {
+  const active = [];
+  const stack = [];
+  for (const line of content.split("\n")) {
+    const directive = line.match(/^\s*#(if|elseif|else|endif)\b(.*)$/);
+    if (!directive) {
+      if (stack.every((frame) => frame.active)) active.push(line);
+      continue;
+    }
+    const [, keyword, rest] = directive;
+    if (keyword === "if") {
+      const inactive = isSwiftConditionInactiveOnMacOs(rest);
+      stack.push({ active: !inactive, sawInactive: inactive });
+    } else if (keyword === "elseif" && stack.length > 0) {
+      const frame = stack[stack.length - 1];
+      const inactive = isSwiftConditionInactiveOnMacOs(rest);
+      frame.active = !inactive;
+      frame.sawInactive = frame.sawInactive || inactive;
+    } else if (keyword === "else" && stack.length > 0) {
+      const frame = stack[stack.length - 1];
+      frame.active = true;
+    } else if (keyword === "endif") {
+      stack.pop();
+    }
+  }
+  return active;
+}
+
+function isSwiftConditionInactiveOnMacOs(condition) {
+  const trimmed = condition.trim().replace(/\/\/.*$/, "").trim();
+  if (!trimmed) return false;
+  return trimmed.split("||").every((part) => MACOS_INACTIVE_PREDICATE.test(part.trim().replace(/^\((.*)\)$/, "$1").trim()));
 }
 
 function detectExistingTestLocations(paths, bazelGraph) {
