@@ -575,7 +575,7 @@ describe("Kotlin audit adapter", () => {
     assert.equal(audit.coveredButRisky[0].existingTestEvidence[0].strength, "direct");
   });
 
-  it("indexes top-level Kotlin extension functions whatever the receiver form", () => {
+  it("indexes file-scope Kotlin extension functions for common receiver forms", () => {
     // #315: mapper files holding only extension functions were reported as missing coverage.
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-kotlin-extension-functions-"));
     const main = path.join(root, "src", "main", "kotlin", "com", "example");
@@ -615,6 +615,29 @@ describe("Kotlin audit adapter", () => {
         ["TagMapper", ["TagMapperTest.kt"], "referenced", "asserted"]
       ]
     );
+  });
+
+  it("withholds same-package extension names declared on different receivers and ignores member extensions", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-kotlin-extension-ambiguity-"));
+    const main = path.join(root, "src", "main", "kotlin", "com", "example", "mappers");
+    const test = path.join(root, "src", "test", "kotlin", "com", "example", "mappers");
+    fs.mkdirSync(main, { recursive: true });
+    fs.mkdirSync(test, { recursive: true });
+    fs.writeFileSync(path.join(root, "build.gradle.kts"), 'dependencies { testImplementation(kotlin("test")) }\n');
+    // Two files declare `asDto` on different receivers: a call site cannot be attributed without inference.
+    fs.writeFileSync(path.join(main, "StringDtoMapper.kt"), "package com.example.mappers\n\nfun String.asDto(): String? {\n    if (isBlank()) return null\n    return trim()\n}\n");
+    fs.writeFileSync(path.join(main, "IntDtoMapper.kt"), "package com.example.mappers\n\nfun Int.asDto(): String? {\n    if (this < 0) return null\n    return toString()\n}\n");
+    // A member extension inside a class is not a package symbol.
+    fs.writeFileSync(path.join(main, "HiddenMapper.kt"), "package com.example.mappers\n\nclass HiddenMapper {\n    private fun String.asLink(): String? {\n        if (isBlank()) return null\n        return trim()\n    }\n    fun run(value: String): String? = value.asLink()\n}\n");
+    fs.writeFileSync(path.join(main, "LinkMapper.kt"), "package com.example.mappers\n\nfun Long.asLink(): String? {\n    if (this < 0) return null\n    return toString()\n}\n");
+    fs.writeFileSync(path.join(test, "DtoMapperTest.kt"), "package com.example.mappers\n\nimport kotlin.test.Test\nimport kotlin.test.assertNotNull\n\nclass DtoMapperTest { @Test fun `string dto`() { assertNotNull(\"x\".asDto()) } }\n");
+    fs.writeFileSync(path.join(test, "LinkMapperTest.kt"), "package com.example.mappers\n\nimport kotlin.test.Test\nimport kotlin.test.assertNotNull\n\nclass LinkMapperTest { @Test fun `long link`() { assertNotNull(7L.asLink()) } }\n");
+
+    const audit = auditKotlinRepo(root);
+
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.name), ["LinkMapper"]);
+    assert.deepEqual(audit.coveredButRisky[0].existingTestPaths.map((testPath) => path.posix.basename(testPath)), ["LinkMapperTest.kt"]);
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.name).sort(), ["HiddenMapper", "IntDtoMapper", "StringDtoMapper"]);
   });
 
   it("maps Java static member imports back to the declaring source file", () => {

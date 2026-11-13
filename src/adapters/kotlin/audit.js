@@ -1130,11 +1130,26 @@ function skipped(kind, signals, riskReductionScore, maintenanceCost, skipReason,
 }
 
 function collectSourceSymbols(sourceFiles) {
+  const analyses = sourceFiles.map((file) => ({ file, analysis: analyzeJvmFile(file.content, file.path) }));
+  // An extension function name declared in more than one source file of the same package cannot be
+  // attributed from a call site without type inference (`String.asDto()` vs `Int.asDto()`), so it is
+  // withheld from all of them; overloads inside one file still attribute to that file.
+  const extensionOwners = new Map();
+  for (const { file, analysis } of analyses) {
+    for (const { name } of analysis.extensionFunctions ?? []) {
+      const key = `${analysis.packageName}:${name}`;
+      extensionOwners.set(key, new Set([...(extensionOwners.get(key) ?? []), normalizePath(file.path)]));
+    }
+  }
   const sources = [];
-  for (const file of sourceFiles) {
-    const analysis = analyzeJvmFile(file.content, file.path);
+  for (const { file, analysis } of analyses) {
+    const ambiguousExtensions = new Set((analysis.extensionFunctions ?? [])
+      .map(({ name }) => name)
+      .filter((name) => extensionOwners.get(`${analysis.packageName}:${name}`)?.size > 1));
     const fallbackName = basenameWithoutExtension(file.path);
-    const symbols = [...new Set([...analysis.declarations, fallbackName])].sort();
+    const symbols = [...new Set([...analysis.declarations, fallbackName])]
+      .filter((symbol) => !ambiguousExtensions.has(symbol) || symbol === fallbackName)
+      .sort();
     sources.push({
       path: normalizePath(file.path),
       moduleProjectPath: file.moduleProjectPath,
@@ -1237,22 +1252,43 @@ function analyzeJvmFile(content, currentPath) {
   for (const match of stripped.matchAll(importPattern)) imports.push({ qualified: match[2], alias: match[3], static: Boolean(match[1]) });
 
   const declarations = new Set();
+  const extensionFunctions = [];
   const typePattern = /\b(?:class|interface|object|enum\s+class|enum|record)\s+([A-Za-z_$][\w$]*)/g;
   for (const match of stripped.matchAll(typePattern)) declarations.add(match[1]);
   if (currentPath.endsWith(".kt")) {
     // Top-level functions, including extension functions (#315): an optional receiver type precedes the
     // name as dotted segments, each with optional generic arguments and an optional `?`, for example
     // `fun LinkDto.asLink(`, `fun ImageDto?.asImage(`, `fun com.example.api.ChannelDto.asChannel(`,
-    // `fun ApiTag.asTag(` (import alias) or `fun <T> List<T>.firstOrNull(`.
+    // `fun ApiTag.asTag(` (import alias) or `fun <T> List<T>.firstOrNull(`. Function-type receivers and
+    // backtick-quoted names are not indexed. Extension functions count only at file scope: a member or
+    // local extension is not a package symbol, so it must not attract same-package references.
     const receiverSegment = "[A-Za-z_$][\\w$]*(?:\\s*<[^<>]*(?:<[^<>]*>[^<>]*)*>)?\\s*\\??\\s*\\.\\s*";
     const functionPattern = new RegExp(
-      `^(?:\\s*(?:public|internal|private|protected|inline|tailrec|suspend|operator|infix|external|expect|actual|open|final|override)\\s+)*\\s*fun\\s+(?:<[^>]+>\\s*)?(?:${receiverSegment})*([A-Za-z_$][\\w$]*)\\s*\\(`,
+      `^(?:\\s*(?:public|internal|private|protected|inline|tailrec|suspend|operator|infix|external|expect|actual|open|final|override)\\s+)*\\s*fun\\s+(?:<[^>]+>\\s*)?((?:${receiverSegment})*)([A-Za-z_$][\\w$]*)\\s*\\(`,
       "gm"
     );
-    for (const match of stripped.matchAll(functionPattern)) declarations.add(match[1]);
+    for (const match of stripped.matchAll(functionPattern)) {
+      const receiver = match[1].replace(/\s+/g, "").replace(/\.$/, "");
+      if (!receiver) {
+        declarations.add(match[2]);
+        continue;
+      }
+      if (jvmBraceDepthAt(stripped, match.index) !== 0) continue;
+      declarations.add(match[2]);
+      extensionFunctions.push({ name: match[2], receiver });
+    }
   }
 
-  return { packageName, imports, declarations: [...declarations], content: stripped };
+  return { packageName, imports, declarations: [...declarations], extensionFunctions, content: stripped };
+}
+
+function jvmBraceDepthAt(content, index) {
+  let depth = 0;
+  for (let position = 0; position < index; position += 1) {
+    if (content[position] === "{") depth += 1;
+    else if (content[position] === "}") depth = Math.max(0, depth - 1);
+  }
+  return depth;
 }
 
 function containsJvmReference(content, reference) {
