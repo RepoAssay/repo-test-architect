@@ -213,7 +213,14 @@ let package = Package(name: "Flow", targets: [.target(name: "Flow"), .testTarget
       ["WatchKit", "watchOS Simulator", { "Sources/PricingKit/Face.swift": "public import WatchKit\npublic struct Face { public func style() -> Int { if Bool.random() { return 1 }; return 2 } }\n" }],
       ["TVUIKit", "tvOS Simulator", { "Tests/PricingKitTests/PosterTests.swift": "import XCTest\n@preconcurrency import TVUIKit\n@testable import PricingKit\nfinal class PosterTests: XCTestCase { func testPoster() { XCTAssertTrue(true) } }\n" }],
       ["UIKit", "iOS Simulator", { "Sources/PricingKit/Color.swift": "import struct UIKit.UIColor\npublic struct Color { public func value() -> Int { if Bool.random() { return 1 }; return 0 } }\n" }],
-      ["UIKit", "iOS Simulator", { "Sources/PricingKit/Debug.swift": "#if DEBUG\nimport UIKit\n#endif\npublic struct Debug { public func on() -> Bool { if Bool.random() { return true }; return false } }\n" }]
+      ["UIKit", "iOS Simulator", { "Sources/PricingKit/Debug.swift": "#if DEBUG\nimport UIKit\n#endif\npublic struct Debug { public func on() -> Bool { if Bool.random() { return true }; return false } }\n" }],
+      ["UIKit", "iOS Simulator", { "Tests/PricingKitTests/BadgeTests.swift": "import XCTest\nimport UIKit\n@testable import PricingKit\nfinal class BadgeTests: XCTestCase { func testBadge() { XCTAssertTrue(true) } }\n" }],
+      ["WatchKit", "watchOS Simulator", { "Tests/PricingKitTests/FaceTests.swift": "import XCTest\n@testable import PricingKit\nimport WatchKit\nfinal class FaceTests: XCTestCase { func testFace() { XCTAssertTrue(true) } }\n" }],
+      ["TVUIKit", "tvOS Simulator", { "Sources/PricingKit/Poster.swift": "import TVUIKit\npublic struct Poster { public func rows() -> Int { if Bool.random() { return 1 }; return 2 } }\n" }],
+      // Negated predicates and the else branch of an unresolved condition are active on macOS.
+      ["UIKit", "iOS Simulator", { "Sources/PricingKit/NotIOS.swift": "#if !os(iOS)\nimport UIKit\n#endif\npublic struct NotIOS { public func on() -> Bool { if Bool.random() { return true }; return false } }\n" }],
+      ["UIKit", "iOS Simulator", { "Sources/PricingKit/NoSimulator.swift": "#if !targetEnvironment(simulator)\nimport UIKit\n#endif\npublic struct NoSimulator { public func on() -> Bool { if Bool.random() { return true }; return false } }\n" }],
+      ["UIKit", "iOS Simulator", { "Sources/PricingKit/DebugElse.swift": "#if DEBUG\nimport Foundation\n#else\nimport UIKit\n#endif\npublic struct DebugElse { public func on() -> Bool { if Bool.random() { return true }; return false } }\n" }]
     ];
     for (const [framework, simulator, files] of withheld) {
       const result = commandOf(makePackage(files));
@@ -230,6 +237,11 @@ let package = Package(name: "Flow", targets: [.target(name: "Flow"), .testTarget
       "canImport guard with portable fallback": { "Sources/PricingKit/Platform.swift": "#if canImport(UIKit)\nimport UIKit\npublic typealias PlatformColor = UIColor\n#else\nimport Foundation\npublic typealias PlatformColor = Int\n#endif\npublic struct Platform { public func make() -> Int { if Bool.random() { return 1 }; return 0 } }\n" },
       "os guard combined with ||": { "Sources/PricingKit/Device.swift": "#if os(iOS) || os(tvOS)\nimport UIKit\n#elseif os(macOS)\nimport AppKit\n#endif\npublic struct Device { public func kind() -> Int { if Bool.random() { return 1 }; return 0 } }\n" },
       "mac catalyst guard": { "Sources/PricingKit/Catalyst.swift": "#if targetEnvironment(macCatalyst)\nimport UIKit\n#endif\npublic struct Catalyst { public func on() -> Bool { if Bool.random() { return true }; return false } }\n" },
+      "negated canImport with a UIKit else branch": { "Sources/PricingKit/Fallback.swift": "#if !canImport(UIKit)\nimport AppKit\n#else\nimport UIKit\n#endif\npublic struct Fallback { public func on() -> Bool { if Bool.random() { return true }; return false } }\n" },
+      "macOS branch with a trailing else": { "Sources/PricingKit/Host.swift": "#if os(macOS)\nimport AppKit\n#else\nimport UIKit\n#endif\npublic struct Host { public func on() -> Bool { if Bool.random() { return true }; return false } }\n" },
+      "elseif macOS with a trailing else": { "Sources/PricingKit/Chain.swift": "#if os(iOS)\nimport UIKit\n#elseif os(macOS)\nimport AppKit\n#else\nimport UIKit\n#endif\npublic struct Chain { public func on() -> Bool { if Bool.random() { return true }; return false } }\n" },
+      "os guard combined with && and parentheses": { "Sources/PricingKit/Mixed.swift": "#if (os(iOS) || os(tvOS)) && !DEBUG\nimport UIKit\n#endif\npublic struct Mixed { public func on() -> Bool { if Bool.random() { return true }; return false } }\n" },
+      "multiline string literal": { "Sources/PricingKit/Banner.swift": "public struct Banner {\n    public func text() -> String {\n        let body = \"\"\"\n        import UIKit\n        \"\"\"\n        if Bool.random() { return body }; return \"\"\n    }\n}\n" },
       "SwiftUI only": { "Sources/PricingKit/Screen.swift": "import SwiftUI\npublic struct Screen { public func title() -> String { if Bool.random() { return \"a\" }; return \"b\" } }\n" },
       "snippet outside the package targets": { "Snippets/Demo.swift": "import UIKit\nlet color = UIColor.red\n" }
     };
@@ -246,6 +258,15 @@ let package = Package(name: "Flow", targets: [.target(name: "Flow"), .testTarget
     ));
     assert.equal(excluded.command, "swift test");
     assert.deepEqual(excluded.blockers, []);
+
+    // Test files the manifest excludes, or leaves out of an explicit sources list, are not compiled either.
+    const uiTest = { "Tests/PricingKitTests/BadgeUITests.swift": "import XCTest\nimport UIKit\nfinal class BadgeUITests: XCTestCase { func testBadge() { XCTAssertTrue(true) } }\n" };
+    const excludedTest = commandOf(makePackage(uiTest, "        .target(name: \"PricingKit\"),\n        .testTarget(name: \"PricingKitTests\", dependencies: [\"PricingKit\"], exclude: [\"BadgeUITests.swift\"])"));
+    assert.equal(excludedTest.command, "swift test", "excluded test file");
+    assert.deepEqual(excludedTest.blockers, [], "excluded test file");
+    const omittedTest = commandOf(makePackage(uiTest, "        .target(name: \"PricingKit\"),\n        .testTarget(name: \"PricingKitTests\", dependencies: [\"PricingKit\"], sources: [\"PriceCalculatorTests.swift\"])"));
+    assert.equal(omittedTest.command, "swift test", "test file omitted from explicit sources");
+    assert.deepEqual(omittedTest.blockers, [], "test file omitted from explicit sources");
 
     // Bazel precedence is untouched: a swift_test rule still selects bazel even when UIKit is imported.
     const bazel = commandOf(makePackage({

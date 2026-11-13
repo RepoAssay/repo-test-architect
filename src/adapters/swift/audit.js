@@ -329,15 +329,21 @@ function detectTestCommand(paths, frameworks, bazelGraph, files) {
 const NON_MACOS_FRAMEWORKS = Object.freeze({ UIKit: "iOS Simulator", WatchKit: "watchOS Simulator", TVUIKit: "tvOS Simulator" });
 // Import declarations may carry attributes, an access level and a kind: `@preconcurrency public import struct UIKit.UIColor`.
 const SWIFT_IMPORT_PREFIX = "^[ \\t]*(?:@[A-Za-z_][A-Za-z0-9_]*(?:\\([^)\\n]*\\))?\\s+)*(?:(?:public|package|internal|fileprivate|private|open)\\s+)?import\\s+(?:(?:class|struct|enum|protocol|typealias|func|var|let)\\s+)?";
-const MACOS_INACTIVE_PREDICATE = /^!?\s*(?:os\s*\(\s*(?:iOS|watchOS|tvOS|visionOS)\s*\)|canImport\s*\(\s*(?:UIKit|WatchKit|TVUIKit)\s*\)|targetEnvironment\s*\(\s*(?:macCatalyst|simulator)\s*\))$/;
+// What a `#if` predicate evaluates to for the native macOS target; anything absent here is unresolved.
+const MACOS_PREDICATES = Object.freeze({
+  os: Object.freeze({ macOS: true, iOS: false, watchOS: false, tvOS: false, visionOS: false, Linux: false, Windows: false, Android: false }),
+  canImport: Object.freeze({ AppKit: true, Cocoa: true, UIKit: false, WatchKit: false, TVUIKit: false }),
+  targetEnvironment: Object.freeze({ macCatalyst: false, simulator: false })
+});
 
 /**
  * The frameworks named by NON_MACOS_FRAMEWORKS are unavailable when `swift test` builds on macOS. Only
- * sources the package compiles are considered (owned sources and test sources, minus `exclude`d files),
- * and an import inside a `#if` branch that is provably inactive on macOS (`os(iOS)`, `canImport(UIKit)`,
- * `targetEnvironment(macCatalyst)` and their `||` combinations) does not count, while the `#else` branch
- * of such a condition does. Unresolved conditions such as `#if DEBUG` keep the import, which withholds
- * the command rather than guessing.
+ * sources the package compiles are considered (owned sources and test sources, minus files an `exclude`
+ * or an explicit `sources` list leaves out), and an import inside a `#if` branch that is provably
+ * inactive on macOS does not count: conditions are evaluated with `!`, `&&`, `||` and parentheses over
+ * the predicates in MACOS_PREDICATES, and a later `#elseif` or `#else` branch is inactive once an
+ * earlier branch was provably active. Anything unresolved, such as `#if DEBUG` or the `#else` of an
+ * unresolved condition, keeps the import, which withholds the command rather than guessing.
  */
 function detectNonMacOsFrameworkImport(files, sourceGraph) {
   const compiled = files.filter((file) => isCompiledSwiftPmSource(file.path, sourceGraph));
@@ -358,8 +364,9 @@ function isCompiledSwiftPmSource(currentPath, sourceGraph) {
 }
 
 // Returns the lines of a Swift file that are compiled for the native macOS target, dropping lines
-// inside `#if` branches whose condition is provably inactive there. Each disjunct of an `||` condition
-// must be inactive; anything else (including `&&` and unknown flags) is treated as active.
+// inside `#if` branches that are provably inactive there. A branch is kept unless its condition is
+// provably false, or an earlier branch of the same `#if` was provably true (which makes every later
+// `#elseif` and the `#else` unreachable). Unresolved conditions keep their lines.
 function swiftLinesActiveOnMacOs(content) {
   const active = [];
   const stack = [];
@@ -371,16 +378,16 @@ function swiftLinesActiveOnMacOs(content) {
     }
     const [, keyword, rest] = directive;
     if (keyword === "if") {
-      const inactive = isSwiftConditionInactiveOnMacOs(rest);
-      stack.push({ active: !inactive, sawInactive: inactive });
+      const value = evaluateSwiftConditionOnMacOs(rest);
+      stack.push({ active: value !== false, taken: value === true });
     } else if (keyword === "elseif" && stack.length > 0) {
       const frame = stack[stack.length - 1];
-      const inactive = isSwiftConditionInactiveOnMacOs(rest);
-      frame.active = !inactive;
-      frame.sawInactive = frame.sawInactive || inactive;
+      const value = frame.taken ? false : evaluateSwiftConditionOnMacOs(rest);
+      frame.active = value !== false;
+      frame.taken = frame.taken || value === true;
     } else if (keyword === "else" && stack.length > 0) {
       const frame = stack[stack.length - 1];
-      frame.active = true;
+      frame.active = !frame.taken;
     } else if (keyword === "endif") {
       stack.pop();
     }
@@ -388,10 +395,57 @@ function swiftLinesActiveOnMacOs(content) {
   return active;
 }
 
-function isSwiftConditionInactiveOnMacOs(condition) {
-  const trimmed = condition.trim().replace(/\/\/.*$/, "").trim();
-  if (!trimmed) return false;
-  return trimmed.split("||").every((part) => MACOS_INACTIVE_PREDICATE.test(part.trim().replace(/^\((.*)\)$/, "$1").trim()));
+// Three-valued evaluation of a `#if` condition for the native macOS target: true when provably active,
+// false when provably inactive, undefined when it depends on something not modeled here (build flags,
+// `arch`, `swift`/`compiler` versions, other `canImport` modules) or on syntax this parser does not read.
+function evaluateSwiftConditionOnMacOs(condition) {
+  const source = condition.replace(/\/\/.*$/, "").trim();
+  let index = 0;
+  const skipSpace = () => { while (index < source.length && /\s/.test(source[index])) index += 1; };
+  const consume = (text) => {
+    skipSpace();
+    if (!source.startsWith(text, index)) return false;
+    index += text.length;
+    return true;
+  };
+  const not3 = (value) => (value === undefined ? undefined : !value);
+  const and3 = (left, right) => (left === false || right === false ? false : left === true && right === true ? true : undefined);
+  const or3 = (left, right) => (left === true || right === true ? true : left === false && right === false ? false : undefined);
+  const parseOr = () => {
+    let value = parseAnd();
+    while (consume("||")) value = or3(value, parseAnd());
+    return value;
+  };
+  const parseAnd = () => {
+    let value = parseUnary();
+    while (consume("&&")) value = and3(value, parseUnary());
+    return value;
+  };
+  const parseUnary = () => {
+    if (consume("!")) return not3(parseUnary());
+    if (consume("(")) {
+      const value = parseOr();
+      if (!consume(")")) throw new SyntaxError("unbalanced parenthesis");
+      return value;
+    }
+    skipSpace();
+    const predicate = source.slice(index).match(/^([A-Za-z_]\w*)(?:\s*\(([^()]*)\))?/);
+    if (!predicate) throw new SyntaxError("unexpected token");
+    index += predicate[0].length;
+    const [, name, argument] = predicate;
+    if (argument === undefined) return undefined;
+    const module = name === "canImport" ? argument.trim().split(".")[0] : argument.trim();
+    return MACOS_PREDICATES[name]?.[module];
+  };
+
+  try {
+    const value = parseOr();
+    skipSpace();
+    return index === source.length ? value : undefined;
+  } catch (error) {
+    if (error instanceof SyntaxError) return undefined;
+    throw error;
+  }
 }
 
 function detectExistingTestLocations(paths, bazelGraph) {
@@ -1280,7 +1334,7 @@ function applyConventionalSwiftPmOwnership(swiftPaths, declaredTargetNames, sour
   }
 
   for (const swiftPath of swiftPaths) {
-    if (!isTestPath(swiftPath) && !/(?:Tests?|Spec)\.swift$/.test(swiftPath)) continue;
+    if (ignoredSources.has(swiftPath) || (!isTestPath(swiftPath) && !/(?:Tests?|Spec)\.swift$/.test(swiftPath))) continue;
     const inferredOwner = inferTestOwner(swiftPath);
     const dependency = inferredOwner && targetNames.get(normalizeModuleName(inferredOwner));
     if (!dependency) continue;
