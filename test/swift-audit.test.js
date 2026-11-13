@@ -1147,7 +1147,7 @@ final class BehaviorTests: XCTestCase {
     ]);
   });
 
-  it("credits unique instance extension members only through direct constructor receivers", (t) => {
+  it("credits unique instance extension members through direct constructor receivers and constructor-bound locals", (t) => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-swift-instance-extension-evidence-"));
     t.after(() => fs.rmSync(root, { recursive: true, force: true }));
     fs.mkdirSync(path.join(root, "Sources", "Core"), { recursive: true });
@@ -1229,13 +1229,79 @@ private func makeValue(fallback: String) -> String { fallback }
         usage: "called"
       }
     ]);
+    // #317: a local bound directly to a constructor result carries its receiver type.
+    const tracking = audit.coveredButRisky.find((target) => target.name === "Shipment+Tracking");
+    assert.deepEqual(tracking.existingTestEvidence, [
+      {
+        testPath: "Tests/CoreTests/BehaviorTests.swift",
+        kind: "swift-symbol-reference",
+        strength: "referenced",
+        usage: "asserted"
+      }
+    ]);
+    // A test-local type shadowing the receiver still blocks crediting.
     assert.deepEqual(
       audit.untestedCandidates
         .filter((target) => target.name.includes("+"))
         .map((target) => target.name)
         .sort(),
-      ["Payment+Validation", "Shipment+Tracking"]
+      ["Payment+Validation"]
     );
+  });
+
+  it("links Type+Feature extension files to their tests by member, initializer, and normalized file name", (t) => {
+    // #317: extension files on foreign or separately declared types reported untested.
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-swift-extension-files-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "Sources", "Utilities", "Extensions"), { recursive: true });
+    fs.mkdirSync(path.join(root, "Tests", "UtilitiesTests", "Utils"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "Package.swift"),
+      "// swift-tools-version:5.9\nimport PackageDescription\nlet package = Package(name: \"Utilities\", targets: [.target(name: \"Utilities\"), .testTarget(name: \"UtilitiesTests\", dependencies: [\"Utilities\"])])\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "Sources", "Utilities", "URL+Utils.swift"),
+      "import Foundation\n\npublic extension URL {\n    func adding(queryItem name: String, value: String?) -> URL {\n        guard var components = URLComponents(url: self, resolvingAgainstBaseURL: false) else { return self }\n        components.queryItems = (components.queryItems ?? []) + [URLQueryItem(name: name, value: value)]\n        return components.url ?? self\n    }\n}\n"
+    );
+    fs.writeFileSync(path.join(root, "Sources", "Utilities", "Activity.swift"), "public struct Activity {\n    public let id: String\n    public init(id: String) { self.id = id }\n}\n");
+    fs.writeFileSync(
+      path.join(root, "Sources", "Utilities", "Extensions", "Activity+DeepLink.swift"),
+      "import Foundation\n\npublic extension Activity {\n    init?(deepLink: URL) {\n        guard let id = deepLink.host, !id.isEmpty else { return nil }\n        self.init(id: id)\n    }\n    func toDeepLink() -> URL { URL(string: \"app://\\(id)\")! }\n}\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "Sources", "Utilities", "Extensions", "URL+DebugWebViewHost.swift"),
+      "import Foundation\n\npublic extension URL {\n    func applyingDebugWebViewHost(_ host: String?) -> URL {\n        guard let host, var components = URLComponents(url: self, resolvingAgainstBaseURL: false) else { return self }\n        components.host = host\n        return components.url ?? self\n    }\n}\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "Sources", "Utilities", "Extensions", "URL+Reassigned.swift"),
+      "import Foundation\n\npublic extension URL {\n    func reassignedProbe(_ flag: Bool) -> Bool {\n        if flag { return absoluteString.isEmpty }\n        return false\n    }\n}\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "Tests", "UtilitiesTests", "URLUtilsTests.swift"),
+      "import XCTest\n@testable import Utilities\n\nfinal class URLUtilsTests: XCTestCase {\n    func testAddingQueryItem() {\n        let url = URL(string: \"https://example.com\")!\n        XCTAssertEqual(url.adding(queryItem: \"a\", value: \"1\").query, \"a=1\")\n    }\n}\n"
+    );
+    fs.writeFileSync(
+      path.join(root, "Tests", "UtilitiesTests", "ActivitiesTests.swift"),
+      "import XCTest\n@testable import Utilities\n\nfinal class ActivitiesTests: XCTestCase {\n    func testDeepLinkRoundTrip() {\n        let activity = Activity(deepLink: URL(string: \"app://abc\")!)\n        XCTAssertEqual(activity?.toDeepLink().host, \"abc\")\n    }\n}\n"
+    );
+    // Only the normalized file name links this one: the receiver is a parameter, not a bound local.
+    fs.writeFileSync(
+      path.join(root, "Tests", "UtilitiesTests", "Utils", "URLDebugWebViewHostTests.swift"),
+      "import XCTest\n@testable import Utilities\n\nfinal class URLDebugWebViewHostTests: XCTestCase {\n    private func check(_ url: URL) -> String? { url.applyingDebugWebViewHost(\"debug.local\").host }\n    func testHost() { XCTAssertEqual(check(URL(string: \"https://e.com\")!), \"debug.local\") }\n}\n"
+    );
+    // A reassigned local and a chained constructor result do not bind a receiver.
+    fs.writeFileSync(
+      path.join(root, "Tests", "UtilitiesTests", "ReceiverBindingTests.swift"),
+      "import XCTest\n@testable import Utilities\n\nfinal class ReceiverBindingTests: XCTestCase {\n    func testReassigned() {\n        var probe = URL(string: \"https://a.com\")!\n        probe = makeOther()\n        XCTAssertFalse(probe.reassignedProbe(true))\n    }\n    func testChained() {\n        let query = URL(string: \"https://a.com\")!.query\n        XCTAssertNil(query)\n    }\n    private func makeOther() -> URL { URL(string: \"https://b.com\")! }\n}\n"
+    );
+
+    const audit = auditSwiftRepo(root);
+    const evidence = (name) => (audit.coveredButRisky.find((target) => target.name === name) ?? { existingTestEvidence: [] }).existingTestEvidence;
+
+    assert.deepEqual(evidence("URL+Utils"), [{ testPath: "Tests/UtilitiesTests/URLUtilsTests.swift", kind: "swift-symbol-reference", strength: "referenced", usage: "asserted" }]);
+    assert.deepEqual(evidence("Activity+DeepLink"), [{ testPath: "Tests/UtilitiesTests/ActivitiesTests.swift", kind: "swift-symbol-reference", strength: "referenced", usage: "asserted" }]);
+    assert.deepEqual(evidence("URL+DebugWebViewHost"), [{ testPath: "Tests/UtilitiesTests/Utils/URLDebugWebViewHostTests.swift", kind: "filename-convention", strength: "naming" }]);
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.name), ["URL+Reassigned"]);
   });
 
   it("does not credit concrete Swift implementations from protocol-only test references", (t) => {
