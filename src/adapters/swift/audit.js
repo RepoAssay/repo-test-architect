@@ -1085,12 +1085,17 @@ function collectSwiftConstructorBoundLocals(content) {
   return bound;
 }
 
+// Keywords the shadow checks read structurally; a backtick-quoted identifier with one of these names
+// (a closure parameter called `in`, say) must not be mistaken for the keyword.
+const SWIFT_SHADOW_KEYWORDS = new Set(["in", "for", "let", "var", "case"]);
+
 // Any other way the file could introduce the same name disqualifies the binding. The checks are broad
 // on purpose: a name followed by `:` (a parameter in any label form, an argument label or a key), a
 // `for … in` header or a closure header that mentions it, and a tuple or pattern element.
 function isSwiftNameBoundElsewhere(rawContent, escaped) {
-  // Backtick-quoted identifiers such as a parameter named `in` must not end a closure header early.
-  const content = rawContent.replace(/`[^`\n]*`/g, "__quoted__");
+  // A quoted identifier keeps its name so a quoted parameter still shadows; only a quoted keyword becomes
+  // a placeholder, so that a parameter named `in` does not end a closure header early.
+  const content = rawContent.replace(/`([^`\n]*)`/g, (_, name) => (SWIFT_SHADOW_KEYWORDS.has(name) ? "__quoted__" : name));
   if (new RegExp(`\\b${escaped}\\s*:(?!:)`).test(content)) return true;
   if (new RegExp(`\\bfor\\b[^{\\n]*\\b${escaped}\\b[^{\\n]*\\bin\\b`).test(content)) return true;
   if (new RegExp(`\\b(?:let|var|case)\\s*\\([^)]*\\b${escaped}\\b`).test(content)) return true;

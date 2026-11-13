@@ -1289,6 +1289,8 @@ private func makeValue(fallback: String) -> String { fallback }
     write("Sources/Core/Crate+Sealing.swift", "extension Crate { public func sealed() -> Bool { if value.isEmpty { return false }; return true } }\n");
     write("Sources/Core/Crate.swift", "public struct Crate {\n    public let value: String\n    public init(value: String) { self.value = value }\n}\n");
     write("Tests/CoreTests/ShadowLeakTests.swift", "import XCTest\n@testable import Core\nfinal class ShadowLeakTests: XCTestCase {\n    func testBinding() {\n        let item = Crate(value: \"v\")\n        XCTAssertEqual(item.value, \"v\")\n    }\n    func check(with item: Token) {\n        XCTAssertTrue(item.sealed())\n    }\n    func testClosure() {\n        let run: (Token, Int) -> Void = { item,\n            _ in\n            XCTAssertTrue(item.sealed())\n        }\n        run(Token(value: \"t\"), 1)\n    }\n    func testLoop() {\n        for (index, item) in [Token(value: \"a\")].enumerated() where index >= 0 {\n            XCTAssertTrue(item.sealed())\n        }\n    }\n    func testBacktickParameter() {\n        let run: (Int, Token) -> Void = { `in`, item in\n            XCTAssertTrue(item.sealed())\n        }\n        run(1, Token(value: \"t\"))\n    }\n}\n");
+    // A quoted parameter that shares the binding's name shadows it too (kept in its own file so the case stands alone).
+    write("Tests/CoreTests/QuotedShadowTests.swift", "import XCTest\n@testable import Core\nfinal class QuotedShadowTests: XCTestCase {\n    func testBinding() {\n        let item = Crate(value: \"q\")\n        XCTAssertEqual(item.value, \"q\")\n    }\n    func testQuotedParameter() {\n        let run: (Token, Int) -> Void = { `item`, _ in\n            XCTAssertTrue(item.sealed())\n        }\n        run(Token(value: \"t\"), 1)\n    }\n}\n");
     write("Tests/CoreTests/InitializerTests.swift", "import XCTest\n@testable import Core\nfinal class InitializerTests: XCTestCase {\n    func testCoupon() { XCTAssertNotNil(Coupon(code: \"SAVE\")) }\n    func testToken() { XCTAssertNotNil(Token(value: \"t\", format: \"f\")) }\n}\n");
     write("Tests/CoreTests/URLUtilsTests.swift", "import XCTest\n@testable import Core\nfinal class URLUtilsTests: XCTestCase { func testUsed() { _ = URLUtils().used() } }\n");
 
@@ -1303,7 +1305,7 @@ private func makeValue(fallback: String) -> String { fallback }
     assert.deepEqual(evidence("Parcel+Weight"), [], "a chained result is not bound to the constructor type");
     assert.deepEqual(evidence("Ticket+Weight"), [], "a same-named member on the chained type is not credited either");
     assert.deepEqual(evidence("Badge+Rendering"), [], "a name used as a parameter elsewhere never binds");
-    assert.deepEqual(evidence("Crate+Sealing"), [], "two-token parameters, multi-line closure parameters, tuple loop variables and a backtick-named closure parameter shadow the binding");
+    assert.deepEqual(evidence("Crate+Sealing"), [], "two-token parameters, multi-line closure parameters, tuple loop variables, a closure parameter named `in` and a quoted parameter sharing the name shadow the binding");
     assert.deepEqual(evidence("URLUtils"), ["URLUtilsTests.swift:swift-symbol-reference:called"], "the exact-name file keeps its test (here through its type symbol)");
     assert.deepEqual(evidence("URL+Utils"), [], "the normalized basename does not share a colliding test");
   });
