@@ -1088,8 +1088,11 @@ function collectSwiftConstructorBoundLocals(content) {
 // Keywords the shadow checks read structurally; a backtick-quoted identifier with one of these names
 // (a closure parameter called `in`, say) must not be mistaken for the keyword.
 const SWIFT_SHADOW_KEYWORDS = new Set(["in", "for", "let", "var", "case"]);
-// The closure and loop keyword `in` must stand alone: `\b` alone would split an identifier such as `in🐶`.
-const SWIFT_IN_KEYWORD = "(?<![\\w\\u0080-\\uFFFF])in(?![\\w\\u0080-\\uFFFF])";
+// Swift's identifier characters (The Swift Programming Language, Lexical Structure: identifier-head and
+// identifier-character). The keyword `in` is only the keyword when neither neighbour is one of these, so an
+// identifier such as `in🐶` does not end a closure header while a non-breaking space after `in` still does.
+const SWIFT_IDENTIFIER_CHARACTER = "[A-Za-z0-9_\\u00A8\\u00AA\\u00AD\\u00AF\\u00B2-\\u00B5\\u00B7-\\u00BA\\u00BC-\\u00BE\\u00C0-\\u00D6\\u00D8-\\u00F6\\u00F8-\\u02FF\\u0300-\\u036F\\u0370-\\u167F\\u1681-\\u180D\\u180F-\\u1DBF\\u1DC0-\\u1DFF\\u1E00-\\u1FFF\\u200B-\\u200D\\u202A-\\u202E\\u203F-\\u2040\\u2054\\u2060-\\u206F\\u2070-\\u20CF\\u20D0-\\u20FF\\u2100-\\u218F\\u2460-\\u24FF\\u2776-\\u2793\\u2C00-\\u2DFF\\u2E80-\\u2FFF\\u3004-\\u3007\\u3021-\\u302F\\u3031-\\u303F\\u3040-\\uD7FF\\uF900-\\uFD3D\\uFD40-\\uFDCF\\uFDF0-\\uFE1F\\uFE20-\\uFE2F\\uFE30-\\uFE44\\uFE47-\\uFFFD\\u{10000}-\\u{1FFFD}\\u{20000}-\\u{2FFFD}\\u{30000}-\\u{3FFFD}\\u{40000}-\\u{4FFFD}\\u{50000}-\\u{5FFFD}\\u{60000}-\\u{6FFFD}\\u{70000}-\\u{7FFFD}\\u{80000}-\\u{8FFFD}\\u{90000}-\\u{9FFFD}\\u{A0000}-\\u{AFFFD}\\u{B0000}-\\u{BFFFD}\\u{C0000}-\\u{CFFFD}\\u{D0000}-\\u{DFFFD}\\u{E0000}-\\u{EFFFD}]";
+const SWIFT_IN_KEYWORD = `(?<!${SWIFT_IDENTIFIER_CHARACTER})in(?!${SWIFT_IDENTIFIER_CHARACTER})`;
 
 // Any other way the file could introduce the same name disqualifies the binding. The checks are broad
 // on purpose: a name followed by `:` (a parameter in any label form, an argument label or a key), a
@@ -1100,10 +1103,10 @@ function isSwiftNameBoundElsewhere(rawContent, escaped) {
   // not end a closure header early.
   const content = rawContent.replace(/`([^`\n]*)`/g, (_, name) => (/^[A-Za-z_]\w*$/.test(name) && !SWIFT_SHADOW_KEYWORDS.has(name) ? name : "__quoted__"));
   if (new RegExp(`\\b${escaped}\\s*:(?!:)`).test(content)) return true;
-  if (new RegExp(`\\bfor\\b[^{\\n]*\\b${escaped}\\b[^{\\n]*${SWIFT_IN_KEYWORD}`).test(content)) return true;
+  if (new RegExp(`\\bfor\\b[^{\\n]*\\b${escaped}\\b[^{\\n]*${SWIFT_IN_KEYWORD}`, "u").test(content)) return true;
   if (new RegExp(`\\b(?:let|var|case)\\s*\\([^)]*\\b${escaped}\\b`).test(content)) return true;
   const nameInHeader = new RegExp(`\\b${escaped}\\b`);
-  for (const header of content.matchAll(new RegExp(`\\{([^{}]*?)${SWIFT_IN_KEYWORD}`, "g"))) {
+  for (const header of content.matchAll(new RegExp(`\\{([^{}]*?)${SWIFT_IN_KEYWORD}`, "gu"))) {
     if (nameInHeader.test(header[1])) return true;
   }
   return false;
