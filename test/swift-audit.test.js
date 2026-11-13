@@ -1249,6 +1249,60 @@ private func makeValue(fallback: String) -> String { fallback }
     );
   });
 
+  it("keeps extension-member crediting exact: direct receivers, isolated initializers, and no leaks through other bindings", (t) => {
+    // #317 review: each rule must be provable on its own and must not credit through parameters,
+    // chained results, multi-line chains, colliding file names or ambiguous initializers.
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-swift-extension-guards-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    const write = (relative, content) => {
+      fs.mkdirSync(path.dirname(path.join(root, relative)), { recursive: true });
+      fs.writeFileSync(path.join(root, relative), content);
+    };
+    write("Package.swift", "// swift-tools-version:5.9\nimport PackageDescription\nlet package = Package(name: \"Core\", targets: [.target(name: \"Core\"), .testTarget(name: \"CoreTests\", dependencies: [\"Core\"])])\n");
+    for (const type of ["Ticket", "Badge", "Coupon", "Token"]) {
+      write(`Sources/Core/${type}.swift`, `public struct ${type} {\n    public let value: String\n    public init(value: String) { self.value = value }\n}\n`);
+    }
+    // Failable initializers in the type bodies allow `Type(...)!.member()` and `Type(...)?.member()` receivers.
+    for (const type of ["Shipment", "Receipt"]) {
+      write(`Sources/Core/${type}.swift`, `public struct ${type} {\n    public let value: String\n    public init(value: String) { self.value = value }\n    public init?(code: String) { if code.isEmpty { return nil }; self.value = code }\n}\n`);
+    }
+    write("Sources/Core/Parcel.swift", "public struct Parcel {\n    public let value: String\n    public init(value: String) { self.value = value }\n    public func asTicket() -> Ticket { Ticket(value: value) }\n}\n");
+    // Direct receivers with ! and ? after the constructor.
+    write("Sources/Core/Shipment+Tracking.swift", "extension Shipment { public func tracked() -> Bool { if value.isEmpty { return false }; return true } }\n");
+    write("Sources/Core/Receipt+Serialization.swift", "extension Receipt { public func serialized() -> String { if value.isEmpty { return \"missing\" }; return value } }\n");
+    // Same-named member on two receivers: chained and multi-line results must credit neither.
+    write("Sources/Core/Parcel+Weight.swift", "extension Parcel { public func measured() -> Int { if value.isEmpty { return 0 }; return value.count } }\n");
+    write("Sources/Core/Ticket+Weight.swift", "extension Ticket { public func measured() -> Int { if value.isEmpty { return 1 }; return value.count + 1 } }\n");
+    // Parameter leak: a local bound in one test shares its name with a parameter elsewhere.
+    write("Sources/Core/Badge+Rendering.swift", "extension Badge { public func rendered() -> String { if value.isEmpty { return \"-\" }; return value.uppercased() } }\n");
+    // Initializer-only evidence, and an ambiguous initializer first label.
+    write("Sources/Core/Coupon+Parsing.swift", "extension Coupon {\n    public init?(code: String) {\n        guard !code.isEmpty else { return nil }\n        self.init(value: code)\n    }\n}\n");
+    write("Sources/Core/Token+Parsing.swift", "extension Token {\n    public init?(value: String, format: String) {\n        guard !value.isEmpty, !format.isEmpty else { return nil }\n        self.init(value: value)\n    }\n}\n");
+    // File-name collision: the exact name keeps its test; the normalized one gets nothing from it.
+    write("Sources/Core/URLUtils.swift", "public struct URLUtils { public func used() -> Bool { if Bool.random() { return true }; return false } }\n");
+    write("Sources/Core/URL+Utils.swift", "import Foundation\npublic extension URL { func trimmedPath() -> String { if path.isEmpty { return \"/\" }; return path } }\n");
+
+    write("Tests/CoreTests/DirectReceiverTests.swift", "import XCTest\n@testable import Core\nfinal class DirectReceiverTests: XCTestCase {\n    func testBang() { XCTAssertTrue(Shipment(code: \"v\")!.tracked()) }\n    func testOptionalChain() { XCTAssertEqual(Receipt(code: \"v\")?.serialized(), \"v\") }\n}\n");
+    write("Tests/CoreTests/ChainedResultTests.swift", "import XCTest\n@testable import Core\nfinal class ChainedResultTests: XCTestCase {\n    func testChainedSameLine() {\n        let ticket = Parcel(value: \"v\").asTicket()\n        XCTAssertEqual(ticket.measured(), 2)\n    }\n    func testChainedNextLine() {\n        let other = Parcel(value: \"w\")\n            .asTicket()\n        XCTAssertEqual(other.measured(), 2)\n    }\n}\n");
+    write("Tests/CoreTests/ParameterLeakTests.swift", "import XCTest\n@testable import Core\nfinal class ParameterLeakTests: XCTestCase {\n    func testBinding() {\n        let badge = Badge(value: \"v\")\n        XCTAssertEqual(badge.value, \"v\")\n    }\n    func testParameter(badge: Token = Token(value: \"t\")) {\n        XCTAssertEqual(badge.rendered(), \"T\")\n    }\n}\n");
+    write("Tests/CoreTests/InitializerTests.swift", "import XCTest\n@testable import Core\nfinal class InitializerTests: XCTestCase {\n    func testCoupon() { XCTAssertNotNil(Coupon(code: \"SAVE\")) }\n    func testToken() { XCTAssertNotNil(Token(value: \"t\", format: \"f\")) }\n}\n");
+    write("Tests/CoreTests/URLUtilsTests.swift", "import XCTest\n@testable import Core\nfinal class URLUtilsTests: XCTestCase { func testUsed() { _ = URLUtils().used() } }\n");
+
+    const audit = auditSwiftRepo(root);
+    const evidence = (name) => (audit.coveredButRisky.find((target) => target.name === name) ?? { existingTestEvidence: [] }).existingTestEvidence
+      .map((entry) => `${path.posix.basename(entry.testPath)}:${entry.kind}:${entry.usage ?? entry.strength}`);
+
+    assert.deepEqual(evidence("Shipment+Tracking"), ["DirectReceiverTests.swift:swift-symbol-reference:asserted"], "Type(...)!.member() is a direct receiver");
+    assert.deepEqual(evidence("Receipt+Serialization"), ["DirectReceiverTests.swift:swift-symbol-reference:asserted"], "Type(...)?.member() is a direct receiver");
+    assert.deepEqual(evidence("Coupon+Parsing"), ["InitializerTests.swift:swift-symbol-reference:asserted"], "initializer label alone credits the extension file");
+    assert.deepEqual(evidence("Token+Parsing"), [], "an extension initializer sharing its first label with the type's own initializer stays ambiguous");
+    assert.deepEqual(evidence("Parcel+Weight"), [], "a chained result is not bound to the constructor type");
+    assert.deepEqual(evidence("Ticket+Weight"), [], "a same-named member on the chained type is not credited either");
+    assert.deepEqual(evidence("Badge+Rendering"), [], "a name used as a parameter elsewhere never binds");
+    assert.deepEqual(evidence("URLUtils"), ["URLUtilsTests.swift:swift-symbol-reference:called"], "the exact-name file keeps its test (here through its type symbol)");
+    assert.deepEqual(evidence("URL+Utils"), [], "the normalized basename does not share a colliding test");
+  });
+
   it("links Type+Feature extension files to their tests by member, initializer, and normalized file name", (t) => {
     // #317: extension files on foreign or separately declared types reported untested.
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-swift-extension-files-"));

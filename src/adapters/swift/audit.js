@@ -37,6 +37,7 @@ export function auditSwiftRepo(root, options = {}) {
   phaseStartedAt = startAuditPhase(onPhaseTiming);
   const sourceSymbols = collectUniqueSwiftSourceSymbols(files, sourceGraph);
   const sourceFiles = files.filter((candidate) => isSourceFile(candidate.path, sourceGraph) && isIncludedByChangedPaths(candidate.path, changedPaths));
+  const sourceNameKeyCounts = countSwiftSourceNameKeys(files, sourceGraph);
   finishAuditPhase(onPhaseTiming, "swift", "source-discovery-and-index", phaseStartedAt);
 
   phaseStartedAt = startAuditPhase(onPhaseTiming);
@@ -55,7 +56,7 @@ export function auditSwiftRepo(root, options = {}) {
   for (const file of sourceFiles) {
     const name = basenameWithoutExtension(file.path);
     const classification = classifySourceFile(file, sourceGraph);
-    const existingTestEvidence = findExistingTestEvidence(file.path, testFiles, sourceGraph, sourceSymbols);
+    const existingTestEvidence = findExistingTestEvidence(file.path, testFiles, sourceGraph, sourceSymbols, sourceNameKeyCounts);
     const existingTestPaths = existingTestEvidence.map((evidence) => evidence.testPath);
 
     if (classification.skipReason) {
@@ -787,7 +788,7 @@ function isTestFile(currentPath, bazelGraph) {
   return (isTestPath(normalized) || /(?:Tests?|Spec)\.swift$/.test(normalized) || bazelGraph.testSources.has(normalized)) && normalized.endsWith(".swift");
 }
 
-function findExistingTestEvidence(sourcePath, testFiles, sourceGraph, sourceSymbols) {
+function findExistingTestEvidence(sourcePath, testFiles, sourceGraph, sourceSymbols, sourceNameKeyCounts = new Map()) {
   const sourceBase = basenameWithoutExtension(sourcePath);
   const sourceNameKey = normalizeSwiftFileNameKey(sourceBase);
   const sourceOwner = sourceGraph.sourceOwners.get(normalizePath(sourcePath)) ?? inferSourceOwner(sourcePath);
@@ -804,15 +805,37 @@ function findExistingTestEvidence(sourcePath, testFiles, sourceGraph, sourceSymb
         ...(symbolUsage !== "referenced" ? { usage: symbolUsage } : {})
       }];
     }
-    if (testFile.testBase !== sourceNameKey) return [];
+    if (!matchesSwiftFileName(testFile, sourceBase, sourceNameKey, sourceOwner, sourceNameKeyCounts)) return [];
     if (GENERIC_SOURCE_BASENAMES.has(sourceBase.toLowerCase()) && !testExplicitlyMatchesSourceOwner(testFile, sourceOwner)) return [];
     return [{ testPath: testFile.path, kind: "filename-convention", strength: "naming" }];
   });
 }
 
 // `Type+Feature.swift` is the Swift convention for extension files; its test is `TypeFeatureTests.swift` (#317).
+// An exact basename match always counts; the normalized match counts only when it identifies one source
+// file in the owning module, so `URLUtils.swift` next to `URL+Utils.swift` keeps its exact test to itself.
+function matchesSwiftFileName(testFile, sourceBase, sourceNameKey, sourceOwner, sourceNameKeyCounts) {
+  if (testFile.testBaseRaw === sourceBase) return true;
+  if (testFile.testBase !== sourceNameKey) return false;
+  return (sourceNameKeyCounts.get(normalizeModuleName(sourceOwner ?? "__root__"))?.get(sourceNameKey) ?? 0) === 1;
+}
+
 function normalizeSwiftFileNameKey(name) {
   return name.replace(/\+/g, "");
+}
+
+function countSwiftSourceNameKeys(files, sourceGraph) {
+  const counts = new Map();
+  for (const file of files) {
+    if (!isSourceFile(file.path, sourceGraph)) continue;
+    const currentPath = normalizePath(file.path);
+    const owner = normalizeModuleName(sourceGraph.sourceOwners.get(currentPath) ?? inferSourceOwner(currentPath) ?? "__root__");
+    const key = normalizeSwiftFileNameKey(basenameWithoutExtension(currentPath));
+    const ownerCounts = counts.get(owner) ?? new Map();
+    ownerCounts.set(key, (ownerCounts.get(key) ?? 0) + 1);
+    counts.set(owner, ownerCounts);
+  }
+  return counts;
 }
 
 function buildSwiftTestFacts(file, sourceGraph) {
@@ -826,6 +849,7 @@ function buildSwiftTestFacts(file, sourceGraph) {
 
   return Object.freeze({
     path: currentPath,
+    testBaseRaw: basenameWithoutExtension(currentPath).replace(/(?:Tests?|Spec)$/, ""),
     testBase: normalizeSwiftFileNameKey(basenameWithoutExtension(currentPath).replace(/(?:Tests?|Spec)$/, "")),
     constructorBoundLocals: Object.freeze(collectSwiftConstructorBoundLocals(maskedContent)),
     importedModules: Object.freeze(collectImportedModules(file.content).map(normalizeModuleName)),
@@ -968,29 +992,29 @@ function collectSwiftMemberDeclarations(content) {
         isStatic: /\b(?:static|class)\s*$/.test(prefix)
       });
     }
-    // Extension initializers are credited through their labeled call, `Type(label:` (#317). An
-    // initializer whose first parameter has no external label is indistinguishable from the type's
-    // other initializers at a call site, so it is not indexed.
-    if (container[1] === "extension") {
-      const initializerPattern = /\binit\s*[?!]?\s*\(/g;
-      initializerPattern.lastIndex = openBrace + 1;
-      let initializer;
-      while ((initializer = initializerPattern.exec(masked)) !== null && initializer.index < closeBrace) {
-        if (depths[initializer.index] !== 1) continue;
-        const openParenthesis = initializerPattern.lastIndex - 1;
-        const closeParenthesis = findClosingSwiftParenthesis(masked, openParenthesis);
-        if (closeParenthesis === -1) continue;
-        const labels = swiftParameterLabels(masked.slice(openParenthesis + 1, closeParenthesis));
-        if (labels.length === 0 || labels[0] === "_") continue;
-        declarations.push({
-          containerKind: container[1],
-          receiver: container[2],
-          name: `init(${labels.join(":")}:)`,
-          labels,
-          isStatic: false,
-          isInitializer: true
-        });
-      }
+    // Extension initializers are credited through their labeled call, `Type(label:` (#317). Calls are
+    // matched on the first label, so initializers are keyed on receiver plus first label and collected
+    // from every container: a type-body `init(value:)` makes an extension `init(value:format:)` in
+    // another file ambiguous, and an initializer whose first parameter has no external label is
+    // indistinguishable from the type's other initializers at a call site, so it is not indexed.
+    const initializerPattern = /\binit\s*[?!]?\s*\(/g;
+    initializerPattern.lastIndex = openBrace + 1;
+    let initializer;
+    while ((initializer = initializerPattern.exec(masked)) !== null && initializer.index < closeBrace) {
+      if (depths[initializer.index] !== 1) continue;
+      const openParenthesis = initializerPattern.lastIndex - 1;
+      const closeParenthesis = findClosingSwiftParenthesis(masked, openParenthesis);
+      if (closeParenthesis === -1) continue;
+      const labels = swiftParameterLabels(masked.slice(openParenthesis + 1, closeParenthesis));
+      if (labels.length === 0 || labels[0] === "_") continue;
+      declarations.push({
+        containerKind: container[1],
+        receiver: container[2],
+        name: `init(${labels[0]}:)`,
+        labels,
+        isStatic: false,
+        isInitializer: true
+      });
     }
   }
 
@@ -1023,8 +1047,11 @@ function swiftParameterLabels(parameterList) {
 
 /**
  * Locals bound directly to a constructor result, `let url = URL(string: "…")!`, carry that receiver type
- * for the rest of the test (#317). A binding is dropped when the constructor result is chained into a
- * further call, when a type annotation names a different type, or when the local is reassigned.
+ * for the rest of the test file (#317). Bindings are file-wide, so the rule is conservative: a name is
+ * bound only when the file declares it exactly once, by that one constructor binding, and never uses
+ * it as a parameter, closure parameter, loop variable or tuple element. The binding is also dropped when
+ * the constructor result is chained into a further call (on the same line or the next), when a type
+ * annotation names a different type, or when the local is reassigned.
  */
 function collectSwiftConstructorBoundLocals(content) {
   const candidates = new Map();
@@ -1037,16 +1064,28 @@ function collectSwiftConstructorBoundLocals(content) {
     if (annotatedType && annotatedType !== constructor) continue;
     const closeParenthesis = findClosingSwiftParenthesis(content, bindingPattern.lastIndex - 1);
     if (closeParenthesis === -1) continue;
-    if (!/^[!?]?\s*(?:$|[\n;)},])/.test(content.slice(closeParenthesis + 1))) continue;
-    candidates.set(name, candidates.has(name) && candidates.get(name) !== constructor ? undefined : constructor);
+    const tail = content.slice(closeParenthesis + 1).replace(/^[!?]?[ \t]*/, "");
+    if (!/^(?:$|[\n;)},])/.test(tail)) continue;
+    // A member access or cast on the next non-blank line continues the expression.
+    if (/^\s*(?:\.|as\b|\?\?)/.test(tail)) continue;
+    candidates.set(name, candidates.has(name) ? undefined : constructor);
   }
 
   const bound = [];
   for (const [name, receiver] of candidates) {
     if (!receiver) continue;
-    const assignments = [...content.matchAll(new RegExp(`(?<![\\w.])${escapeRegex(name)}\\s*=(?!=)`, "g"))].length;
-    const declarations = [...content.matchAll(new RegExp(`\\b(?:let|var)\\s+${escapeRegex(name)}\\b`, "g"))].length;
-    if (assignments > declarations) continue;
+    const escaped = escapeRegex(name);
+    const declarations = [...content.matchAll(new RegExp(`\\b(?:let|var)\\s+${escaped}\\b`, "g"))].length;
+    if (declarations !== 1) continue;
+    const assignments = [...content.matchAll(new RegExp(`(?<![\\w.])${escaped}\\s*=(?!=)`, "g"))].length;
+    if (assignments > 1) continue;
+    const otherBinding = new RegExp(
+      `[(,]\\s*(?:_\\s+)?${escaped}\\s*:` +            // function or closure parameter, or an argument label
+      `|\\{[^}\\n]*\\b${escaped}\\b[^}\\n]*\\bin\\b` +  // closure parameter list
+      `|\\bfor\\s+${escaped}\\b` +                      // loop variable
+      `|\\b(?:let|var|case)\\s*\\([^)]*\\b${escaped}\\b` // tuple or pattern element
+    );
+    if (otherBinding.test(content)) continue;
     bound.push({ name, receiver });
   }
   return bound;
