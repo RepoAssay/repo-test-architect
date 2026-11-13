@@ -1079,16 +1079,24 @@ function collectSwiftConstructorBoundLocals(content) {
     if (declarations !== 1) continue;
     const assignments = [...content.matchAll(new RegExp(`(?<![\\w.])${escaped}\\s*=(?!=)`, "g"))].length;
     if (assignments > 1) continue;
-    const otherBinding = new RegExp(
-      `[(,]\\s*(?:_\\s+)?${escaped}\\s*:` +            // function or closure parameter, or an argument label
-      `|\\{[^}\\n]*\\b${escaped}\\b[^}\\n]*\\bin\\b` +  // closure parameter list
-      `|\\bfor\\s+${escaped}\\b` +                      // loop variable
-      `|\\b(?:let|var|case)\\s*\\([^)]*\\b${escaped}\\b` // tuple or pattern element
-    );
-    if (otherBinding.test(content)) continue;
+    if (isSwiftNameBoundElsewhere(content, escaped)) continue;
     bound.push({ name, receiver });
   }
   return bound;
+}
+
+// Any other way the file could introduce the same name disqualifies the binding. The checks are broad
+// on purpose: a name followed by `:` (a parameter in any label form, an argument label or a key), a
+// `for … in` header or a closure header that mentions it, and a tuple or pattern element.
+function isSwiftNameBoundElsewhere(content, escaped) {
+  if (new RegExp(`\\b${escaped}\\s*:(?!:)`).test(content)) return true;
+  if (new RegExp(`\\bfor\\b[^{\\n]*\\b${escaped}\\b[^{\\n]*\\bin\\b`).test(content)) return true;
+  if (new RegExp(`\\b(?:let|var|case)\\s*\\([^)]*\\b${escaped}\\b`).test(content)) return true;
+  const nameInHeader = new RegExp(`\\b${escaped}\\b`);
+  for (const header of content.matchAll(/\{([^{}]*?)\bin\b/g)) {
+    if (nameInHeader.test(header[1])) return true;
+  }
+  return false;
 }
 
 function swiftBraceDepths(content) {
