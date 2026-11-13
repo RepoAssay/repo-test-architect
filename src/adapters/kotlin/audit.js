@@ -1240,7 +1240,15 @@ function analyzeJvmFile(content, currentPath) {
   const typePattern = /\b(?:class|interface|object|enum\s+class|enum|record)\s+([A-Za-z_$][\w$]*)/g;
   for (const match of stripped.matchAll(typePattern)) declarations.add(match[1]);
   if (currentPath.endsWith(".kt")) {
-    const functionPattern = /^(?:\s*(?:public|internal|private|protected|inline|tailrec|suspend|operator|infix|external|expect|actual|open|final|override)\s+)*\s*fun\s+(?:<[^>]+>\s*)?([A-Za-z_$][\w$]*)\s*\(/gm;
+    // Top-level functions, including extension functions (#315): an optional receiver type precedes the
+    // name as dotted segments, each with optional generic arguments and an optional `?`, for example
+    // `fun LinkDto.asLink(`, `fun ImageDto?.asImage(`, `fun com.example.api.ChannelDto.asChannel(`,
+    // `fun ApiTag.asTag(` (import alias) or `fun <T> List<T>.firstOrNull(`.
+    const receiverSegment = "[A-Za-z_$][\\w$]*(?:\\s*<[^<>]*(?:<[^<>]*>[^<>]*)*>)?\\s*\\??\\s*\\.\\s*";
+    const functionPattern = new RegExp(
+      `^(?:\\s*(?:public|internal|private|protected|inline|tailrec|suspend|operator|infix|external|expect|actual|open|final|override)\\s+)*\\s*fun\\s+(?:<[^>]+>\\s*)?(?:${receiverSegment})*([A-Za-z_$][\\w$]*)\\s*\\(`,
+      "gm"
+    );
     for (const match of stripped.matchAll(functionPattern)) declarations.add(match[1]);
   }
 
