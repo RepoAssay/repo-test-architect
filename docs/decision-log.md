@@ -933,3 +933,19 @@ Decision: treat `src/androidTest` as a conventional test source set over `src/ma
 Rationale: on a multi-module Android app (#316) the blocker claimed unit tests were unsupported while they were in fact linked, and a class tested only from `src/androidTest` was reported as `missing-coverage` with no hint that its test had been dropped. Naming the evidence kind lets consumers tell device-only coverage apart; the `audit/v1` schema enum and the TypeScript evidence union gain the value, which is additive, so existing artifacts stay valid. Instrumented tests compile against the module's `api`, `implementation` and `compileOnly` project dependencies plus `androidTestImplementation`, `androidTestApi` and `androidTestCompileOnly`, not against `testImplementation`, so cross-module visibility is resolved separately for the two test sets. Whether such a bounded gap should outrank real findings is the open cross-adapter question tracked with #312.
 
 Revisit when: the finding model distinguishes audit blockers from bounded coverage gaps, or when a validation repository shows that `androidTest` references need variant-aware source-set resolution.
+
+### 2026-11-13: a product-monorepo validation role for every adapter
+
+Decision: add a fourth live-validation role, "product monorepo", beside the conventional library or service, framework-heavy application and difficult ownership graph roles, and run a hunt pass per adapter against an open-source repository of that shape before the next adapter promotion or the next minor release that touches the adapter. Candidate repositories, the selection criteria and the triage procedure are in [Product-Monorepo Validation](product-monorepo-validation.md).
+
+Rationale: two private product monorepos (a Swift application with about eighteen local packages and a multi-module Android application) produced eight adapter issues (#309–#312, #315–#318) and the oversized-result failure behind #306 and #307 within two runs, on adapters whose live validation had passed. Every one is a shape problem the public corpus does not contain: nested packages, platform-only targets, multiple shared schemes, Android source sets, cross-package tests, team naming conventions reached through bound locals, and scale. The pinned corpus repositories are public libraries and frameworks chosen because the adapter could explain them, so they confirmed the heuristics the adapters already had rather than hunting for shapes they did not model. The other adapters were validated to the same depth, so comparable results are expected on their first product monorepo. Most of the failures were conservative (missing evidence or a blocker); #311 was a false high-confidence command, which is the class that erodes trust fastest.
+
+Revisit when: every adapter has a pinned product-monorepo case with a passing scorecard, or when a user-reported issue from a real repository is not explained by a missing corpus shape.
+
+# Publish 1.3.0 Minor Release
+
+Decision (2026-11-13): following owner approval, prepare and publish `1.3.0` as a compatible minor release under npm `latest`, with matching Official MCP Registry metadata and a stable GitHub release from the same verified commit.
+
+Rationale: #320, #321, #323 and #324 fix the Swift and Kotlin/JVM findings from the first product-monorepo runs (#311, #315, #316, #317). They change audit results on affected repositories (a command withheld, candidates and evidence added, a blocker reworded) and add one value, `android-instrumented-symbol-reference`, to the `audit/v1` evidence-kind enum. No field is removed or renamed and 1.2.x artifacts remain valid, so a minor release with compatibility notes is appropriate. #310, #312 and #318 remain open design questions and are not part of this release.
+
+Scope: no CLI command, MCP tool name, input, or artifact field is removed or renamed. The exact-commit release checklist and three-OS release matrix remain mandatory.
