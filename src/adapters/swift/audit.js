@@ -434,8 +434,11 @@ function evaluateSwiftConditionOnMacOs(condition) {
     index += predicate[0].length;
     const [, name, argument] = predicate;
     if (argument === undefined) return undefined;
-    const module = name === "canImport" ? argument.trim().split(".")[0] : argument.trim();
-    return MACOS_PREDICATES[name]?.[module];
+    // Only own, modeled entries resolve: `canImport(AppKit.Submodule)` or an unknown module stays
+    // unresolved, and inherited object properties never count.
+    const table = Object.hasOwn(MACOS_PREDICATES, name) ? MACOS_PREDICATES[name] : undefined;
+    const key = argument.trim();
+    return table && Object.hasOwn(table, key) && typeof table[key] === "boolean" ? table[key] : undefined;
   };
 
   try {

@@ -220,7 +220,10 @@ let package = Package(name: "Flow", targets: [.target(name: "Flow"), .testTarget
       // Negated predicates and the else branch of an unresolved condition are active on macOS.
       ["UIKit", "iOS Simulator", { "Sources/PricingKit/NotIOS.swift": "#if !os(iOS)\nimport UIKit\n#endif\npublic struct NotIOS { public func on() -> Bool { if Bool.random() { return true }; return false } }\n" }],
       ["UIKit", "iOS Simulator", { "Sources/PricingKit/NoSimulator.swift": "#if !targetEnvironment(simulator)\nimport UIKit\n#endif\npublic struct NoSimulator { public func on() -> Bool { if Bool.random() { return true }; return false } }\n" }],
-      ["UIKit", "iOS Simulator", { "Sources/PricingKit/DebugElse.swift": "#if DEBUG\nimport Foundation\n#else\nimport UIKit\n#endif\npublic struct DebugElse { public func on() -> Bool { if Bool.random() { return true }; return false } }\n" }]
+      ["UIKit", "iOS Simulator", { "Sources/PricingKit/DebugElse.swift": "#if DEBUG\nimport Foundation\n#else\nimport UIKit\n#endif\npublic struct DebugElse { public func on() -> Bool { if Bool.random() { return true }; return false } }\n" }],
+      // A submodule or an unknown module in canImport is unresolved, so a guarded import stays active.
+      ["UIKit", "iOS Simulator", { "Sources/PricingKit/Submodule.swift": "#if !canImport(AppKit.NotARealSubmodule)\nimport UIKit\n#endif\npublic struct Submodule { public func on() -> Bool { if Bool.random() { return true }; return false } }\n" }],
+      ["UIKit", "iOS Simulator", { "Sources/PricingKit/Inherited.swift": "#if !canImport(constructor)\nimport UIKit\n#endif\npublic struct Inherited { public func on() -> Bool { if Bool.random() { return true }; return false } }\n" }]
     ];
     for (const [framework, simulator, files] of withheld) {
       const result = commandOf(makePackage(files));
