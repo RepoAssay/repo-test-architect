@@ -20,7 +20,7 @@ A clean installation of `repo-test-architect@1.3.0` from the public npm registry
 sha512-1NukDwTwhZcvBotkEr5VNSFcmI+jE33vcTgkzIbW9zR2rkBFrqZ1w3Q0TMp6L/IS8gIuZTJqF101Cj9k1g01+g==
 ```
 
-npm required browser-based two-factor confirmation, which the owner completed interactively. The MCP Registry login used the documented `login github --token` route with the existing GitHub CLI credential; no credential was printed, stored or added to CI. The GitHub release was created from the same commit with the prepared notes.
+npm required browser-based two-factor confirmation, which the owner completed interactively. The MCP Registry login used the documented `login github --token` route with the existing GitHub CLI credential; no credential was printed, stored or added to CI. The GitHub release was created from the same commit with the 1.3.0 release notes.
 
 ## Minor 1.2.0 Publication — 2026-11-10
 
