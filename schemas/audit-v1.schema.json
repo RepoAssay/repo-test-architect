@@ -123,6 +123,7 @@
                   "python-pytest-fixture",
                   "python-test-client-route",
                   "jvm-symbol-reference",
+                  "android-instrumented-symbol-reference",
                   "go-symbol-reference",
                   "go-source-dependency",
                   "rust-symbol-reference",

@@ -4,7 +4,10 @@ import os from "node:os";
 import path from "node:path";
 import { describe, it } from "node:test";
 import { auditKotlinRepo } from "../src/adapters/kotlin/audit.js";
+import { assertMatchesSchema } from "./support/json-schema-validator.js";
 import { assertNoProjectTestCommand } from "./support/ownership-evidence.js";
+
+const auditSchema = JSON.parse(fs.readFileSync("schemas/audit-v1.schema.json", "utf8"));
 
 it("withholds commands for empty or commented JVM build metadata", (t) => {
   for (const wrap of [() => "", text => `/* outer /* nested */\n${text}\n*/`, text => text.split("\n").map(line => `// ${line}`).join("\n")]) {
@@ -1170,11 +1173,45 @@ describe("Kotlin audit adapter", () => {
     const audit = auditKotlinRepo(root);
     const evidence = (name) => audit.coveredButRisky.find((target) => target.name === name).existingTestEvidence;
 
+    assertMatchesSchema(audit, auditSchema, "Android instrumented audit");
     assert.equal(audit.profile.testCommand, "gradle test");
     assert.ok(audit.profile.blockers.some((blocker) => blocker.startsWith("Android modules are audited with JVM conventions:")));
     assert.deepEqual(audit.untestedCandidates, []);
     assert.deepEqual(evidence("PriceFormatter"), [{ testPath: "lib/src/test/java/com/example/lib/PriceFormatterTest.kt", kind: "jvm-symbol-reference", strength: "referenced", usage: "asserted" }]);
     assert.deepEqual(evidence("Clock"), [{ testPath: "lib/src/androidTest/java/com/example/lib/ClockInstrumentedTest.kt", kind: "android-instrumented-symbol-reference", strength: "referenced", usage: "asserted" }]);
+  });
+
+  it("resolves instrumented test visibility from androidTest configurations rather than testImplementation", () => {
+    // #316 review: an instrumented test sees project(":core") through androidTestImplementation or a main
+    // configuration, never through testImplementation; a unit test sees the reverse.
+    const build = (configuration, testSourceSet) => {
+      const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-android-visibility-"));
+      const write = (relative, content) => {
+        fs.mkdirSync(path.dirname(path.join(root, relative)), { recursive: true });
+        fs.writeFileSync(path.join(root, relative), content);
+      };
+      write("settings.gradle.kts", 'rootProject.name = "shop"\ninclude(":app", ":core")\n');
+      write("build.gradle.kts", 'plugins {\n    id("com.android.library") version "8.5.0" apply false\n    kotlin("android") version "2.0.0" apply false\n    kotlin("jvm") version "2.0.0" apply false\n}\n');
+      write("core/build.gradle.kts", 'plugins { kotlin("jvm") }\n');
+      write("core/src/main/kotlin/com/example/core/Totals.kt", "package com.example.core\n\nclass Totals {\n    fun sum(left: Int, right: Int): Int {\n        if (left < 0 || right < 0) throw IllegalArgumentException(\"negative\")\n        return left + right\n    }\n}\n");
+      write("app/build.gradle.kts", `plugins {\n    id("com.android.library")\n    kotlin("android")\n}\nandroid { namespace = "com.example.app"; compileSdk = 34 }\ndependencies {\n    ${configuration}(project(":core"))\n    testImplementation("junit:junit:4.13.2")\n    androidTestImplementation("androidx.test.ext:junit:1.2.1")\n}\n`);
+      write(`app/src/${testSourceSet}/java/com/example/app/TotalsTest.kt`, "package com.example.app\n\nimport com.example.core.Totals\nimport org.junit.Assert.assertEquals\nimport org.junit.Test\n\nclass TotalsTest {\n    @Test\n    fun sums() {\n        assertEquals(3, Totals().sum(1, 2))\n    }\n}\n");
+      return auditKotlinRepo(root);
+    };
+    const outcome = (audit) => {
+      const covered = audit.coveredButRisky.find((target) => target.name === "Totals");
+      if (covered) return covered.existingTestEvidence;
+      assert.ok(audit.untestedCandidates.some((target) => target.name === "Totals"), "an unlinked Totals is reported as untested");
+      return [];
+    };
+    const instrumented = (strength) => [{ testPath: "app/src/androidTest/java/com/example/app/TotalsTest.kt", kind: "android-instrumented-symbol-reference", strength, usage: "asserted" }];
+    const unit = [{ testPath: "app/src/test/java/com/example/app/TotalsTest.kt", kind: "jvm-symbol-reference", strength: "direct", usage: "asserted" }];
+
+    assert.deepEqual(outcome(build("androidTestImplementation", "androidTest")), instrumented("direct"), "androidTestImplementation links an instrumented test");
+    assert.deepEqual(outcome(build("implementation", "androidTest")), instrumented("direct"), "main configurations are visible to instrumented tests");
+    assert.deepEqual(outcome(build("testImplementation", "androidTest")), [], "testImplementation is invisible to instrumented tests");
+    assert.deepEqual(outcome(build("testImplementation", "test")), unit, "testImplementation links a unit test");
+    assert.deepEqual(outcome(build("androidTestImplementation", "test")), [], "androidTestImplementation is invisible to unit tests");
   });
 
   it("keeps mixed JVM and Kotlin Multiplatform aggregates outside the bounded KMP ownership slice", () => {
