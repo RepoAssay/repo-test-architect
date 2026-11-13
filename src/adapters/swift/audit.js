@@ -37,6 +37,7 @@ export function auditSwiftRepo(root, options = {}) {
   phaseStartedAt = startAuditPhase(onPhaseTiming);
   const sourceSymbols = collectUniqueSwiftSourceSymbols(files, sourceGraph);
   const sourceFiles = files.filter((candidate) => isSourceFile(candidate.path, sourceGraph) && isIncludedByChangedPaths(candidate.path, changedPaths));
+  const sourceNameKeyCounts = countSwiftSourceNameKeys(files, sourceGraph);
   finishAuditPhase(onPhaseTiming, "swift", "source-discovery-and-index", phaseStartedAt);
 
   phaseStartedAt = startAuditPhase(onPhaseTiming);
@@ -55,7 +56,7 @@ export function auditSwiftRepo(root, options = {}) {
   for (const file of sourceFiles) {
     const name = basenameWithoutExtension(file.path);
     const classification = classifySourceFile(file, sourceGraph);
-    const existingTestEvidence = findExistingTestEvidence(file.path, testFiles, sourceGraph, sourceSymbols);
+    const existingTestEvidence = findExistingTestEvidence(file.path, testFiles, sourceGraph, sourceSymbols, sourceNameKeyCounts);
     const existingTestPaths = existingTestEvidence.map((evidence) => evidence.testPath);
 
     if (classification.skipReason) {
@@ -787,8 +788,9 @@ function isTestFile(currentPath, bazelGraph) {
   return (isTestPath(normalized) || /(?:Tests?|Spec)\.swift$/.test(normalized) || bazelGraph.testSources.has(normalized)) && normalized.endsWith(".swift");
 }
 
-function findExistingTestEvidence(sourcePath, testFiles, sourceGraph, sourceSymbols) {
+function findExistingTestEvidence(sourcePath, testFiles, sourceGraph, sourceSymbols, sourceNameKeyCounts = new Map()) {
   const sourceBase = basenameWithoutExtension(sourcePath);
+  const sourceNameKey = normalizeSwiftFileNameKey(sourceBase);
   const sourceOwner = sourceGraph.sourceOwners.get(normalizePath(sourcePath)) ?? inferSourceOwner(sourcePath);
   const symbols = sourceSymbols.get(normalizePath(sourcePath)) ?? new Map();
 
@@ -803,10 +805,37 @@ function findExistingTestEvidence(sourcePath, testFiles, sourceGraph, sourceSymb
         ...(symbolUsage !== "referenced" ? { usage: symbolUsage } : {})
       }];
     }
-    if (testFile.testBase !== sourceBase) return [];
+    if (!matchesSwiftFileName(testFile, sourceBase, sourceNameKey, sourceOwner, sourceNameKeyCounts)) return [];
     if (GENERIC_SOURCE_BASENAMES.has(sourceBase.toLowerCase()) && !testExplicitlyMatchesSourceOwner(testFile, sourceOwner)) return [];
     return [{ testPath: testFile.path, kind: "filename-convention", strength: "naming" }];
   });
+}
+
+// `Type+Feature.swift` is the Swift convention for extension files; its test is `TypeFeatureTests.swift` (#317).
+// An exact basename match always counts; the normalized match counts only when it identifies one source
+// file in the owning module, so `URLUtils.swift` next to `URL+Utils.swift` keeps its exact test to itself.
+function matchesSwiftFileName(testFile, sourceBase, sourceNameKey, sourceOwner, sourceNameKeyCounts) {
+  if (testFile.testBaseRaw === sourceBase) return true;
+  if (testFile.testBase !== sourceNameKey) return false;
+  return (sourceNameKeyCounts.get(normalizeModuleName(sourceOwner ?? "__root__"))?.get(sourceNameKey) ?? 0) === 1;
+}
+
+function normalizeSwiftFileNameKey(name) {
+  return name.replace(/\+/g, "");
+}
+
+function countSwiftSourceNameKeys(files, sourceGraph) {
+  const counts = new Map();
+  for (const file of files) {
+    if (!isSourceFile(file.path, sourceGraph)) continue;
+    const currentPath = normalizePath(file.path);
+    const owner = normalizeModuleName(sourceGraph.sourceOwners.get(currentPath) ?? inferSourceOwner(currentPath) ?? "__root__");
+    const key = normalizeSwiftFileNameKey(basenameWithoutExtension(currentPath));
+    const ownerCounts = counts.get(owner) ?? new Map();
+    ownerCounts.set(key, (ownerCounts.get(key) ?? 0) + 1);
+    counts.set(owner, ownerCounts);
+  }
+  return counts;
 }
 
 function buildSwiftTestFacts(file, sourceGraph) {
@@ -820,7 +849,9 @@ function buildSwiftTestFacts(file, sourceGraph) {
 
   return Object.freeze({
     path: currentPath,
-    testBase: basenameWithoutExtension(currentPath).replace(/(?:Tests?|Spec)$/, ""),
+    testBaseRaw: basenameWithoutExtension(currentPath).replace(/(?:Tests?|Spec)$/, ""),
+    testBase: normalizeSwiftFileNameKey(basenameWithoutExtension(currentPath).replace(/(?:Tests?|Spec)$/, "")),
+    constructorBoundLocals: Object.freeze(collectSwiftConstructorBoundLocals(maskedContent)),
     importedModules: Object.freeze(collectImportedModules(file.content).map(normalizeModuleName)),
     declaredDependencies: Object.freeze([...(sourceGraph.testDependencies.get(currentPath) ?? [])].map(normalizeModuleName)),
     testOwner: normalizeOptionalModuleName(inferTestOwner(currentPath)),
@@ -906,7 +937,7 @@ function collectUniqueSwiftSourceSymbols(files, sourceGraph) {
     for (const member of record.members) {
       if (member.containerKind !== "extension") continue;
       if (declarationPaths.get(`${record.owner}:member:${member.receiver}:${member.name}`)?.size !== 1) continue;
-      symbols.set(`member:${member.receiver}:${member.name}`, { ...member, kind: "extension-func" });
+      symbols.set(`member:${member.receiver}:${member.name}`, { ...member, kind: member.isInitializer ? "extension-init" : "extension-func" });
     }
     return [record.currentPath, symbols];
   }));
@@ -961,9 +992,124 @@ function collectSwiftMemberDeclarations(content) {
         isStatic: /\b(?:static|class)\s*$/.test(prefix)
       });
     }
+    // Extension initializers are credited through their labeled call, `Type(label:` (#317). Calls are
+    // matched on the first label, so initializers are keyed on receiver plus first label and collected
+    // from every container: a type-body `init(value:)` makes an extension `init(value:format:)` in
+    // another file ambiguous, and an initializer whose first parameter has no external label is
+    // indistinguishable from the type's other initializers at a call site, so it is not indexed.
+    const initializerPattern = /\binit\s*[?!]?\s*\(/g;
+    initializerPattern.lastIndex = openBrace + 1;
+    let initializer;
+    while ((initializer = initializerPattern.exec(masked)) !== null && initializer.index < closeBrace) {
+      if (depths[initializer.index] !== 1) continue;
+      const openParenthesis = initializerPattern.lastIndex - 1;
+      const closeParenthesis = findClosingSwiftParenthesis(masked, openParenthesis);
+      if (closeParenthesis === -1) continue;
+      const labels = swiftParameterLabels(masked.slice(openParenthesis + 1, closeParenthesis));
+      if (labels.length === 0 || labels[0] === "_") continue;
+      declarations.push({
+        containerKind: container[1],
+        receiver: container[2],
+        name: `init(${labels[0]}:)`,
+        labels,
+        isStatic: false,
+        isInitializer: true
+      });
+    }
   }
 
   return declarations;
+}
+
+function swiftParameterLabels(parameterList) {
+  const labels = [];
+  let depth = 0;
+  let current = "";
+  const parameters = [];
+  for (const character of parameterList) {
+    if ("([<".includes(character)) depth += 1;
+    if (")]>".includes(character)) depth = Math.max(0, depth - 1);
+    if (character === "," && depth === 0) {
+      parameters.push(current);
+      current = "";
+      continue;
+    }
+    current += character;
+  }
+  if (current.trim()) parameters.push(current);
+  for (const parameter of parameters) {
+    const match = parameter.match(/^\s*(?:(_|[A-Za-z_][A-Za-z0-9_]*)\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*:/);
+    if (!match) return [];
+    labels.push(match[1] ?? match[2]);
+  }
+  return labels;
+}
+
+/**
+ * Locals bound directly to a constructor result, `let url = URL(string: "…")!`, carry that receiver type
+ * for the rest of the test file (#317). Bindings are file-wide, so the rule is conservative: a name is
+ * bound only when the file declares it exactly once, by that one constructor binding, and never uses
+ * it as a parameter, closure parameter, loop variable or tuple element. The binding is also dropped when
+ * the constructor result is chained into a further call (on the same line or the next), when a type
+ * annotation names a different type, or when the local is reassigned.
+ */
+function collectSwiftConstructorBoundLocals(content) {
+  const candidates = new Map();
+  const bindingPattern = /\b(?:let|var)\s+([A-Za-z_][A-Za-z0-9_]*)\s*(?::\s*([A-Za-z_][A-Za-z0-9_]*)\s*[?!]?)?\s*=\s*(?:try[?!]?\s+)?(?:await\s+)?([A-Z][A-Za-z0-9_]*)\s*(?:<[^>\n]+>)?\s*\(/g;
+  let binding;
+  while ((binding = bindingPattern.exec(content)) !== null) {
+    const [, name, annotatedType, constructor] = binding;
+    const constructorIndex = binding.index + binding[0].lastIndexOf(constructor);
+    if (isSwiftMemberReference(content, constructorIndex)) continue;
+    if (annotatedType && annotatedType !== constructor) continue;
+    const closeParenthesis = findClosingSwiftParenthesis(content, bindingPattern.lastIndex - 1);
+    if (closeParenthesis === -1) continue;
+    const tail = content.slice(closeParenthesis + 1).replace(/^[!?]?[ \t]*/, "");
+    if (!/^(?:$|[\n;)},])/.test(tail)) continue;
+    // A member access or cast on the next non-blank line continues the expression.
+    if (/^\s*(?:\.|as\b|\?\?)/.test(tail)) continue;
+    candidates.set(name, candidates.has(name) ? undefined : constructor);
+  }
+
+  const bound = [];
+  for (const [name, receiver] of candidates) {
+    if (!receiver) continue;
+    const escaped = escapeRegex(name);
+    const declarations = [...content.matchAll(new RegExp(`\\b(?:let|var)\\s+${escaped}\\b`, "g"))].length;
+    if (declarations !== 1) continue;
+    const assignments = [...content.matchAll(new RegExp(`(?<![\\w.])${escaped}\\s*=(?!=)`, "g"))].length;
+    if (assignments > 1) continue;
+    if (isSwiftNameBoundElsewhere(content, escaped)) continue;
+    bound.push({ name, receiver });
+  }
+  return bound;
+}
+
+// Keywords the shadow checks read structurally; a backtick-quoted identifier with one of these names
+// (a closure parameter called `in`, say) must not be mistaken for the keyword.
+const SWIFT_SHADOW_KEYWORDS = new Set(["in", "for", "let", "var", "case"]);
+// Swift's identifier characters (The Swift Programming Language, Lexical Structure: identifier-head and
+// identifier-character). The keyword `in` is only the keyword when neither neighbour is one of these, so an
+// identifier such as `in🐶` does not end a closure header while a non-breaking space after `in` still does.
+const SWIFT_IDENTIFIER_CHARACTER = "[A-Za-z0-9_\\u00A8\\u00AA\\u00AD\\u00AF\\u00B2-\\u00B5\\u00B7-\\u00BA\\u00BC-\\u00BE\\u00C0-\\u00D6\\u00D8-\\u00F6\\u00F8-\\u02FF\\u0300-\\u036F\\u0370-\\u167F\\u1681-\\u180D\\u180F-\\u1DBF\\u1DC0-\\u1DFF\\u1E00-\\u1FFF\\u200B-\\u200D\\u202A-\\u202E\\u203F-\\u2040\\u2054\\u2060-\\u206F\\u2070-\\u20CF\\u20D0-\\u20FF\\u2100-\\u218F\\u2460-\\u24FF\\u2776-\\u2793\\u2C00-\\u2DFF\\u2E80-\\u2FFF\\u3004-\\u3007\\u3021-\\u302F\\u3031-\\u303F\\u3040-\\uD7FF\\uF900-\\uFD3D\\uFD40-\\uFDCF\\uFDF0-\\uFE1F\\uFE20-\\uFE2F\\uFE30-\\uFE44\\uFE47-\\uFFFD\\u{10000}-\\u{1FFFD}\\u{20000}-\\u{2FFFD}\\u{30000}-\\u{3FFFD}\\u{40000}-\\u{4FFFD}\\u{50000}-\\u{5FFFD}\\u{60000}-\\u{6FFFD}\\u{70000}-\\u{7FFFD}\\u{80000}-\\u{8FFFD}\\u{90000}-\\u{9FFFD}\\u{A0000}-\\u{AFFFD}\\u{B0000}-\\u{BFFFD}\\u{C0000}-\\u{CFFFD}\\u{D0000}-\\u{DFFFD}\\u{E0000}-\\u{EFFFD}]";
+const SWIFT_IN_KEYWORD = `(?<!${SWIFT_IDENTIFIER_CHARACTER})in(?!${SWIFT_IDENTIFIER_CHARACTER})`;
+
+// Any other way the file could introduce the same name disqualifies the binding. The checks are broad
+// on purpose: a name followed by `:` (a parameter in any label form, an argument label or a key), a
+// `for … in` header or a closure header that mentions it, and a tuple or pattern element.
+function isSwiftNameBoundElsewhere(rawContent, escaped) {
+  // A quoted plain identifier keeps its name so a quoted parameter still shadows; a quoted keyword, or
+  // anything a bound local could not be named, becomes a placeholder so that a parameter named `in` does
+  // not end a closure header early.
+  const content = rawContent.replace(/`([^`\n]*)`/g, (_, name) => (/^[A-Za-z_]\w*$/.test(name) && !SWIFT_SHADOW_KEYWORDS.has(name) ? name : "__quoted__"));
+  if (new RegExp(`\\b${escaped}\\s*:(?!:)`).test(content)) return true;
+  if (new RegExp(`\\bfor\\b[^{\\n]*\\b${escaped}\\b[^{\\n]*${SWIFT_IN_KEYWORD}`, "u").test(content)) return true;
+  if (new RegExp(`\\b(?:let|var|case)\\s*\\([^)]*\\b${escaped}\\b`).test(content)) return true;
+  const nameInHeader = new RegExp(`\\b${escaped}\\b`);
+  for (const header of content.matchAll(new RegExp(`\\{([^{}]*?)${SWIFT_IN_KEYWORD}`, "gu"))) {
+    if (nameInHeader.test(header[1])) return true;
+  }
+  return false;
 }
 
 function swiftBraceDepths(content) {
@@ -987,35 +1133,67 @@ function findClosingSwiftBrace(content, openBrace) {
   return -1;
 }
 
+const SWIFT_USAGE_RANK = Object.freeze({ asserted: 3, called: 2, referenced: 1 });
+
+// The strongest usage across a file's unique symbols wins, so the result does not depend on the
+// sort order of symbol keys when one test exercises several symbols of the same source file.
 function findSwiftSymbolUsage(testFile, symbols) {
   if (symbols.size === 0) return undefined;
+  let strongest;
 
   for (const [, descriptor] of [...symbols].sort(([left], [right]) => compareText(left, right))) {
-    if (descriptor.kind === "extension-func") {
-      const extensionUsage = findSwiftExtensionMemberUsage(testFile, descriptor);
-      if (extensionUsage) return extensionUsage;
-      continue;
-    }
-    const { name: symbol, kind } = descriptor;
-    if (testFile.localSymbols.includes(symbol)) continue;
-    if (!hasSwiftSymbolReference(testFile.maskedContent, symbol, kind, testFile.identifierIndexes)) continue;
-    if (testFile.assertionBodies.some((body) =>
-      hasSwiftSymbolReference(body.content, symbol, kind, body.identifierIndexes)
-    )) return "asserted";
-    if (hasSwiftSymbolCall(testFile.maskedContent, symbol, kind, testFile.identifierIndexes)) return "called";
-    return "referenced";
+    const usage = findSwiftDescriptorUsage(testFile, descriptor);
+    if (usage && (!strongest || SWIFT_USAGE_RANK[usage] > SWIFT_USAGE_RANK[strongest])) strongest = usage;
+    if (strongest === "asserted") break;
   }
 
-  return undefined;
+  return strongest;
+}
+
+function findSwiftDescriptorUsage(testFile, descriptor) {
+  if (descriptor.kind === "extension-func" || descriptor.kind === "extension-init") {
+    return findSwiftExtensionMemberUsage(testFile, descriptor);
+  }
+  const { name: symbol, kind } = descriptor;
+  if (testFile.localSymbols.includes(symbol)) return undefined;
+  if (!hasSwiftSymbolReference(testFile.maskedContent, symbol, kind, testFile.identifierIndexes)) return undefined;
+  if (testFile.assertionBodies.some((body) =>
+    hasSwiftSymbolReference(body.content, symbol, kind, body.identifierIndexes)
+  )) return "asserted";
+  if (hasSwiftSymbolCall(testFile.maskedContent, symbol, kind, testFile.identifierIndexes)) return "called";
+  return "referenced";
 }
 
 function findSwiftExtensionMemberUsage(testFile, descriptor) {
   if (testFile.localReceiverSymbols.includes(descriptor.receiver)) return undefined;
-  const hasCall = descriptor.isStatic
-    ? (body) => hasSwiftStaticExtensionCall(body, descriptor)
-    : (body) => hasSwiftDirectInstanceExtensionCall(body, descriptor);
+  const boundLocals = testFile.constructorBoundLocals.filter((local) => local.receiver === descriptor.receiver);
+  const hasCall = descriptor.isInitializer
+    ? (body) => hasSwiftExtensionInitializerCall(body, descriptor)
+    : descriptor.isStatic
+      ? (body) => hasSwiftStaticExtensionCall(body, descriptor)
+      : (body) => hasSwiftDirectInstanceExtensionCall(body, descriptor) || hasSwiftBoundLocalExtensionCall(body, descriptor, boundLocals);
   if (testFile.assertionBodies.some((body) => hasCall(body.content))) return "asserted";
   return hasCall(testFile.maskedContent) ? "called" : undefined;
+}
+
+function hasSwiftExtensionInitializerCall(content, descriptor) {
+  const pattern = new RegExp(`\\b${escapeRegex(descriptor.receiver)}\\s*(?:<[^>\\n]+>)?\\s*\\(\\s*${escapeRegex(descriptor.labels[0])}\\s*:`, "g");
+  let match;
+  while ((match = pattern.exec(content)) !== null) {
+    if (!isSwiftMemberReference(content, match.index)) return true;
+  }
+  return false;
+}
+
+function hasSwiftBoundLocalExtensionCall(content, descriptor, boundLocals) {
+  return boundLocals.some((local) => {
+    const pattern = new RegExp(`\\b${escapeRegex(local.name)}\\s*[!?]?\\s*\\.\\s*${escapeRegex(descriptor.name)}\\s*(?:<[^>\\n]+>\\s*)?\\(`, "g");
+    let match;
+    while ((match = pattern.exec(content)) !== null) {
+      if (!isSwiftMemberReference(content, match.index)) return true;
+    }
+    return false;
+  });
 }
 
 function collectSwiftLocalDeclarations(content) {
@@ -1045,7 +1223,8 @@ function hasSwiftDirectInstanceExtensionCall(content, descriptor) {
     const openParenthesis = constructor.lastIndex - 1;
     const closeParenthesis = findClosingSwiftParenthesis(content, openParenthesis);
     if (closeParenthesis === -1) continue;
-    const memberCall = new RegExp(`^\\s*\\.\\s*${escapeRegex(descriptor.name)}\\s*(?:<[^>\\n]+>\\s*)?\\(`);
+    // `Type(...)!.member(` and `Type(...)?.member(` are still direct constructor receivers.
+    const memberCall = new RegExp(`^[!?]?\\s*\\.\\s*${escapeRegex(descriptor.name)}\\s*(?:<[^>\\n]+>\\s*)?\\(`);
     if (memberCall.test(content.slice(closeParenthesis + 1))) return true;
   }
   return false;
