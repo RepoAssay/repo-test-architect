@@ -588,8 +588,14 @@ function moduleForPath(currentPath, modules, sourceSet) {
         : `(?:commonMain/kotlin/.+\\.kt|${targetName}Main/(?:kotlin/.+\\.kt|java/.+\\.java))`;
       return new RegExp(`^${escapeRegExp(prefix)}src/${kmpSource}$`).test(normalized);
     }
-    return new RegExp(`^${escapeRegExp(prefix)}src/${sourceSet}/${sourceDirectory}/.+\\.${sourceExtension}$`).test(normalized);
+    // Android instrumented tests live in src/androidTest beside the conventional src/test set (#316).
+    const sourceSetDirectory = sourceSet === "test" ? "(?:test|androidTest)" : sourceSet;
+    return new RegExp(`^${escapeRegExp(prefix)}src/${sourceSetDirectory}/${sourceDirectory}/.+\\.${sourceExtension}$`).test(normalized);
   });
+}
+
+function isAndroidInstrumentedTestPath(currentPath) {
+  return /(?:^|\/)src\/androidTest\//.test(normalizePath(currentPath));
 }
 
 function buildProfile(root, files, modules) {
@@ -728,7 +734,9 @@ function detectUnsupportedProjectShapes(buildText, paths, modules) {
     /\bcom\.android\.(?:application|library|test)\b|\bid\s*\(?\s*["']com\.android\./i.test(buildText) ||
     paths.some((currentPath) => /(?:^|\/)src\/androidTest\//.test(currentPath))
   ) {
-    shapes.push("Android unit and instrumentation source sets are outside the supported JVM module boundary.");
+    // #316: unit tests under src/test are audited like any JVM module and instrumented tests under
+    // src/androidTest supply instrumented evidence, but the Android build itself is not modeled.
+    shapes.push("Android modules are audited with JVM conventions: src/test unit tests count as evidence and src/androidTest instrumented tests count as instrumented evidence, but build variants, flavors, Robolectric semantics and device execution are not modeled, and the suggested command runs unit tests only.");
   }
   const hasKmpMarkers =
     modules.some((module) => module.isKmp) ||
@@ -1176,7 +1184,7 @@ function collectJvmTestEvidence(sourceSymbols, testFiles, modules) {
       if (!match) continue;
       evidence.push({
         testPath: testFile.path,
-        kind: "jvm-symbol-reference",
+        kind: isAndroidInstrumentedTestPath(testFile.path) ? "android-instrumented-symbol-reference" : "jvm-symbol-reference",
         strength: match.strength,
         ...(match.usage ? { usage: match.usage } : {})
       });
@@ -1188,7 +1196,9 @@ function collectJvmTestEvidence(sourceSymbols, testFiles, modules) {
 }
 
 function canTestSourceSet(testFile, source, modules) {
-  const testSourceSet = normalizePath(testFile.path).match(/(?:^|\/)src\/([A-Za-z][A-Za-z0-9_]*Test)\//)?.[1];
+  const matchedTestSourceSet = normalizePath(testFile.path).match(/(?:^|\/)src\/([A-Za-z][A-Za-z0-9_]*Test)\//)?.[1];
+  // androidTest is a conventional Android set over src/main, not a KMP target set.
+  const testSourceSet = matchedTestSourceSet === "androidTest" ? undefined : matchedTestSourceSet;
   const productionSourceSet = normalizePath(source.path).match(/(?:^|\/)src\/([A-Za-z][A-Za-z0-9_]*Main)\//)?.[1];
   if (!testSourceSet && !productionSourceSet) return true;
   if (!testSourceSet || !productionSourceSet) return false;

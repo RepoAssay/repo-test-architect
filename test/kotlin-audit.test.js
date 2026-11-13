@@ -1149,7 +1149,32 @@ describe("Kotlin audit adapter", () => {
     const audit = auditKotlinRepo(root);
 
     assert.equal(audit.profile.confidence, "medium");
-    assert.ok(audit.profile.blockers.includes("Android unit and instrumentation source sets are outside the supported JVM module boundary."));
+    assert.ok(audit.profile.blockers.some((blocker) => blocker.startsWith("Android modules are audited with JVM conventions:")));
+  });
+
+  it("links Android instrumented tests as instrumented evidence beside unit tests", () => {
+    // #316: src/androidTest was ignored and the blocker claimed unit tests were unsupported.
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-android-instrumented-"));
+    const write = (relative, content) => {
+      fs.mkdirSync(path.dirname(path.join(root, relative)), { recursive: true });
+      fs.writeFileSync(path.join(root, relative), content);
+    };
+    write("settings.gradle.kts", 'rootProject.name = "app"\ninclude(":lib")\n');
+    write("build.gradle.kts", 'plugins {\n    id("com.android.library") version "8.5.0" apply false\n    kotlin("android") version "2.0.0" apply false\n}\n');
+    write("lib/build.gradle.kts", 'plugins {\n    id("com.android.library")\n    kotlin("android")\n}\nandroid { namespace = "com.example.lib"; compileSdk = 34 }\ndependencies {\n    testImplementation("junit:junit:4.13.2")\n    androidTestImplementation("androidx.test.ext:junit:1.2.1")\n}\n');
+    write("lib/src/main/java/com/example/lib/PriceFormatter.kt", "package com.example.lib\n\nclass PriceFormatter {\n    fun format(cents: Int): String {\n        if (cents < 0) throw IllegalArgumentException(\"negative\")\n        return \"${cents / 100}.${cents % 100}\"\n    }\n}\n");
+    write("lib/src/main/java/com/example/lib/Clock.kt", "package com.example.lib\n\nclass Clock {\n    fun label(hour: Int): String {\n        if (hour < 0 || hour > 23) throw IllegalArgumentException(\"hour\")\n        return if (hour < 12) \"am\" else \"pm\"\n    }\n}\n");
+    write("lib/src/test/java/com/example/lib/PriceFormatterTest.kt", "package com.example.lib\n\nimport org.junit.Assert.assertEquals\nimport org.junit.Test\n\nclass PriceFormatterTest {\n    @Test\n    fun formats() {\n        assertEquals(\"1.5\", PriceFormatter().format(105))\n    }\n}\n");
+    write("lib/src/androidTest/java/com/example/lib/ClockInstrumentedTest.kt", "package com.example.lib\n\nimport androidx.test.ext.junit.runners.AndroidJUnit4\nimport org.junit.Assert.assertEquals\nimport org.junit.Test\nimport org.junit.runner.RunWith\n\n@RunWith(AndroidJUnit4::class)\nclass ClockInstrumentedTest {\n    @Test\n    fun labels() {\n        assertEquals(\"am\", Clock().label(9))\n    }\n}\n");
+
+    const audit = auditKotlinRepo(root);
+    const evidence = (name) => audit.coveredButRisky.find((target) => target.name === name).existingTestEvidence;
+
+    assert.equal(audit.profile.testCommand, "gradle test");
+    assert.ok(audit.profile.blockers.some((blocker) => blocker.startsWith("Android modules are audited with JVM conventions:")));
+    assert.deepEqual(audit.untestedCandidates, []);
+    assert.deepEqual(evidence("PriceFormatter"), [{ testPath: "lib/src/test/java/com/example/lib/PriceFormatterTest.kt", kind: "jvm-symbol-reference", strength: "referenced", usage: "asserted" }]);
+    assert.deepEqual(evidence("Clock"), [{ testPath: "lib/src/androidTest/java/com/example/lib/ClockInstrumentedTest.kt", kind: "android-instrumented-symbol-reference", strength: "referenced", usage: "asserted" }]);
   });
 
   it("keeps mixed JVM and Kotlin Multiplatform aggregates outside the bounded KMP ownership slice", () => {

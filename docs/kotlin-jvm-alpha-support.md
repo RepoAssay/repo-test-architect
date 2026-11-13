@@ -24,7 +24,7 @@ Existing coverage emits `jvm-symbol-reference` provenance with direct or referen
 
 The current support claim does not include:
 
-- Android application/library unit-test semantics, Robolectric, or `src/androidTest` instrumentation tests
+- Android build variants, flavors, Robolectric semantics and device execution; Android modules are audited with JVM conventions, where `src/test` unit tests give `jvm-symbol-reference` evidence and `src/androidTest` instrumented tests give `android-instrumented-symbol-reference` evidence, while the suggested command runs unit tests only and a blocker records the gap
 - mixed KMP/conventional-JVM aggregates, incomplete or remapped KMP child graphs, transitive KMP `implementation`/`compileOnly` edges, dependency exclusions, computed or type-safe project accessors, top-level experimental dependency inference, computed JVM target names, multiple JVM targets in one module, custom/intermediate source-set ownership, nonconventional source directories, target hierarchy inference, and ownership or commands for non-JVM targets
 - Kotest, Spock, TestNG, Groovy tests, or custom test execution inside Kotlin Multiplatform builds
 - Maven profile-activated modules, property-expanded or escaping module paths at any reactor level, inherited dependencies, non-compile/optional/exclusion-bearing transitive edges, dynamic coordinates, and nonstandard module layouts
