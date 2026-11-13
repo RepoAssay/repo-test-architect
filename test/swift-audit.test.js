@@ -186,6 +186,36 @@ let package = Package(name: "Flow", targets: [.target(name: "Flow"), .testTarget
     assert.deepEqual(audit.coveredButRisky[0].existingTestPaths, ["Disposable+CombineTests.swift"]);
   });
 
+  it("withholds swift test for packages whose sources import a framework that is not available on macOS", (t) => {
+    // #311: swift test builds for the macOS host; UIKit-dependent packages need an xcodebuild destination.
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-swift-ios-only-package-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    const write = (relative, content) => {
+      fs.mkdirSync(path.dirname(path.join(root, relative)), { recursive: true });
+      fs.writeFileSync(path.join(root, relative), content);
+    };
+    write("Package.swift", "// swift-tools-version:5.9\nimport PackageDescription\nlet package = Package(\n    name: \"PricingKit\",\n    platforms: [.iOS(.v16)],\n    targets: [\n        .target(name: \"PricingKit\"),\n        .testTarget(name: \"PricingKitTests\", dependencies: [\"PricingKit\"])\n    ]\n)\n");
+    write("Sources/PricingKit/PriceCalculator.swift", "import UIKit\n\npublic struct PriceCalculator {\n    public func discounted(_ price: Int, percent: Int) -> Int { price - price * percent / 100 }\n    public func badge() -> UIColor { .systemGreen }\n}\n");
+    write("Tests/PricingKitTests/PriceCalculatorTests.swift", "import XCTest\n@testable import PricingKit\nfinal class PriceCalculatorTests: XCTestCase { func testDiscount() { XCTAssertEqual(PriceCalculator().discounted(100, percent: 10), 90) } }\n");
+
+    const audit = auditSwiftRepo(root);
+
+    assert.equal(audit.profile.testCommand, undefined);
+    assert.deepEqual(audit.profile.blockers, [
+      "Swift sources import UIKit, which swift test cannot build on macOS; run xcodebuild test with a simulator destination such as -destination 'platform=iOS Simulator,name=<device>' instead."
+    ]);
+    assert.deepEqual(audit.profile.testFrameworks, ["XCTest"]);
+    // The audit itself is unaffected: the source stays covered by its test.
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["Sources/PricingKit/PriceCalculator.swift"]);
+
+    // Only iOS minimum versions, without a non-macOS framework import, keep swift test: the platforms
+    // list declares deployment minimums, not the set of buildable platforms.
+    fs.writeFileSync(path.join(root, "Sources", "PricingKit", "PriceCalculator.swift"), "import Foundation\n// import UIKit stays a comment\n\npublic struct PriceCalculator {\n    public func discounted(_ price: Int, percent: Int) -> Int { price - price * percent / 100 }\n}\n");
+    const portable = auditSwiftRepo(root);
+    assert.equal(portable.profile.testCommand, "swift test");
+    assert.deepEqual(portable.profile.blockers, []);
+  });
+
   it("excludes common vendored and checked-out Swift dependency roots", (t) => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-swift-dependencies-"));
     t.after(() => fs.rmSync(root, { recursive: true, force: true }));

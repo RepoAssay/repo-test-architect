@@ -294,6 +294,16 @@ function detectTestCommand(paths, frameworks, bazelGraph, files) {
     if (!hasSwiftPmPackageDeclaration(manifest.content)) {
       return { command: undefined, blockers: ["No active SwiftPM package declaration was found; swift test cannot be established."] };
     }
+    const hostOnlyFramework = detectNonMacOsFrameworkImport(files);
+    if (hostOnlyFramework) {
+      // #311: `swift test` builds for the macOS host, so a package whose Swift sources import an
+      // iOS-, watchOS- or tvOS-only framework cannot run under it. A simulator destination is a host
+      // choice the audit must not guess, so the command is withheld with the required shape.
+      return {
+        command: undefined,
+        blockers: [`Swift sources import ${hostOnlyFramework}, which swift test cannot build on macOS; run xcodebuild test with a simulator destination such as -destination 'platform=iOS Simulator,name=<device>' instead.`]
+      };
+    }
     return { command: "swift test", blockers: [] };
   }
   if (hasXcodeContainer(paths)) {
@@ -313,6 +323,18 @@ function detectTestCommand(paths, frameworks, bazelGraph, files) {
     return { command: `xcodebuild test${containerOption}`, blockers: [] };
   }
   return { command: undefined, blockers: [] };
+}
+
+const NON_MACOS_FRAMEWORKS = ["UIKit", "WatchKit", "TVUIKit"];
+
+function detectNonMacOsFrameworkImport(files) {
+  for (const framework of NON_MACOS_FRAMEWORKS) {
+    const pattern = new RegExp(`^\\s*(?:@testable\\s+)?import\\s+${framework}\\b`, "m");
+    if (files.some((file) => normalizePath(file.path).endsWith(".swift") && pattern.test(maskSwiftCommentsAndStrings(file.content)))) {
+      return framework;
+    }
+  }
+  return undefined;
 }
 
 function detectExistingTestLocations(paths, bazelGraph) {
