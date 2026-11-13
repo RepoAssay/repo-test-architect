@@ -1088,7 +1088,9 @@ function collectSwiftConstructorBoundLocals(content) {
 // Any other way the file could introduce the same name disqualifies the binding. The checks are broad
 // on purpose: a name followed by `:` (a parameter in any label form, an argument label or a key), a
 // `for … in` header or a closure header that mentions it, and a tuple or pattern element.
-function isSwiftNameBoundElsewhere(content, escaped) {
+function isSwiftNameBoundElsewhere(rawContent, escaped) {
+  // Backtick-quoted identifiers such as a parameter named `in` must not end a closure header early.
+  const content = rawContent.replace(/`[^`\n]*`/g, "__quoted__");
   if (new RegExp(`\\b${escaped}\\s*:(?!:)`).test(content)) return true;
   if (new RegExp(`\\bfor\\b[^{\\n]*\\b${escaped}\\b[^{\\n]*\\bin\\b`).test(content)) return true;
   if (new RegExp(`\\b(?:let|var|case)\\s*\\([^)]*\\b${escaped}\\b`).test(content)) return true;
