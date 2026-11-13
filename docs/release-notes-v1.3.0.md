@@ -10,7 +10,7 @@ The 20 MCP tool names, the CLI commands, configuration and artifact schemas are 
 
 ## Why
 
-Run through Claude Code against a Swift application with about eighteen local packages and against a multi-module Android application, the 1.2.0 adapters produced eight issues within two runs. Four are fixed here (#311, #315, #316, #317); #309 shipped in 1.2.0; #310, #312 and #318 are open design questions. All of them are shape problems the public validation corpus did not contain, which is recorded in the [product-monorepo validation plan](product-monorepo-validation.md) together with the repositories that close the gap for every adapter.
+Run through Claude Code against a Swift application with about eighteen local packages and against a multi-module Android application, the first two product-monorepo runs exposed eight adapter issues. Four are fixed here (#311, #315, #316, #317); #309 shipped in 1.2.0; #310, #312 and #318 are open design questions. All of them are shape problems the public validation corpus did not contain, which is recorded in the [product-monorepo validation plan](product-monorepo-validation.md) together with the repositories that close the gap for every adapter.
 
 ## Correctness Fixes
 
