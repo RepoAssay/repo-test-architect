@@ -18,6 +18,7 @@ import {
 } from "../../src/core/tool-api.js";
 
 const portableEvidenceStrengths = {
+  "android-instrumented-symbol-reference": ["direct", "referenced"],
   "bounded-dependency": ["indirect"],
   "browser-route-match": ["indirect"],
   "csharp-symbol-reference": ["direct"],

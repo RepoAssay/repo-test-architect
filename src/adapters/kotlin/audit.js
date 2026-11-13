@@ -169,6 +169,7 @@ function resolveGradleModules(files, settings) {
     const declaredDependencies = declaredGradleProjectDependencies(buildText);
     for (const dependency of declaredDependencies.direct) module.dependencies.add(dependency);
     for (const dependency of declaredDependencies.exported) module.exportedDependencies.add(dependency);
+    module.instrumentedDependencies = declaredDependencies.instrumented;
     module.kmpCommonTestDependencies = declaredKmpSourceSetProjectDependencies(buildText, "commonTest").direct;
     module.kmpJvmTestDependencies = module.hasKmpJvmTarget
       ? declaredKmpSourceSetProjectDependencies(buildText, `${module.kmpJvmTargetName}Test`).direct
@@ -302,9 +303,9 @@ function resolveMavenModules(files, rootPom) {
 
 function populateReachableModuleDependencies(modules) {
   const modulesByProjectPath = new Map(modules.map((module) => [module.projectPath, module]));
-  for (const module of modules) {
-    const reachable = new Set(module.dependencies);
-    const pending = [...module.dependencies];
+  const reachableFrom = (module, directDependencies) => {
+    const reachable = new Set(directDependencies);
+    const pending = [...directDependencies];
     const visited = new Set([module.projectPath]);
     for (let index = 0; index < pending.length; index += 1) {
       const currentProjectPath = pending[index];
@@ -317,7 +318,14 @@ function populateReachableModuleDependencies(modules) {
         if (!visited.has(dependency)) pending.push(dependency);
       }
     }
-    module.reachableDependencies = reachable;
+    return reachable;
+  };
+  for (const module of modules) {
+    module.reachableDependencies = reachableFrom(module, module.dependencies);
+    // Only Gradle modules declare androidTest configurations; elsewhere instrumented visibility equals unit visibility.
+    module.reachableInstrumentedDependencies = module.instrumentedDependencies
+      ? reachableFrom(module, module.instrumentedDependencies)
+      : module.reachableDependencies;
   }
 }
 
@@ -443,12 +451,21 @@ function declaredGradleProjectDependencies(content) {
     .replace(/\/\/.*$/gm, "")
     .replace(/\bconstraints\s*\{[\s\S]*?\}/g, " ");
   const hasExclusions = /\bexclude\b/.test(buildText);
-  const dependencyPattern = /\b(api|implementation|testImplementation|compileOnly|testCompileOnly)\s*(?:\(\s*)?project\s*\(\s*["'](:[^"']+)["']\s*\)/g;
+  // `direct` is what unit tests compile against (main plus test configurations); `instrumented` is what
+  // Android instrumented tests compile against (main plus androidTest configurations), never testImplementation.
+  const instrumented = new Set();
+  const dependencyPattern = /\b(api|implementation|compileOnly|testImplementation|testCompileOnly|androidTestImplementation|androidTestApi|androidTestCompileOnly)\s*(?:\(\s*)?project\s*\(\s*["'](:[^"']+)["']\s*\)/g;
   for (const match of buildText.matchAll(dependencyPattern)) {
-    direct.add(match[2]);
-    if (match[1] === "api" && !hasExclusions) exported.add(match[2]);
+    const [, configuration, projectPath] = match;
+    if (configuration.startsWith("androidTest")) {
+      instrumented.add(projectPath);
+      continue;
+    }
+    direct.add(projectPath);
+    if (!configuration.startsWith("test")) instrumented.add(projectPath);
+    if (configuration === "api" && !hasExclusions) exported.add(projectPath);
   }
-  return { direct, exported };
+  return { direct, exported, instrumented };
 }
 
 function declaredKmpSourceSetProjectDependencies(content, sourceSetName) {
@@ -588,8 +605,14 @@ function moduleForPath(currentPath, modules, sourceSet) {
         : `(?:commonMain/kotlin/.+\\.kt|${targetName}Main/(?:kotlin/.+\\.kt|java/.+\\.java))`;
       return new RegExp(`^${escapeRegExp(prefix)}src/${kmpSource}$`).test(normalized);
     }
-    return new RegExp(`^${escapeRegExp(prefix)}src/${sourceSet}/${sourceDirectory}/.+\\.${sourceExtension}$`).test(normalized);
+    // Android instrumented tests live in src/androidTest beside the conventional src/test set (#316).
+    const sourceSetDirectory = sourceSet === "test" ? "(?:test|androidTest)" : sourceSet;
+    return new RegExp(`^${escapeRegExp(prefix)}src/${sourceSetDirectory}/${sourceDirectory}/.+\\.${sourceExtension}$`).test(normalized);
   });
+}
+
+function isAndroidInstrumentedTestPath(currentPath) {
+  return /(?:^|\/)src\/androidTest\//.test(normalizePath(currentPath));
 }
 
 function buildProfile(root, files, modules) {
@@ -728,7 +751,9 @@ function detectUnsupportedProjectShapes(buildText, paths, modules) {
     /\bcom\.android\.(?:application|library|test)\b|\bid\s*\(?\s*["']com\.android\./i.test(buildText) ||
     paths.some((currentPath) => /(?:^|\/)src\/androidTest\//.test(currentPath))
   ) {
-    shapes.push("Android unit and instrumentation source sets are outside the supported JVM module boundary.");
+    // #316: unit tests under src/test are audited like any JVM module and instrumented tests under
+    // src/androidTest supply instrumented evidence, but the Android build itself is not modeled.
+    shapes.push("Android modules are audited with JVM conventions: src/test unit tests count as evidence and src/androidTest instrumented tests count as instrumented evidence, but build variants, flavors, Robolectric semantics and device execution are not modeled, and the suggested command runs unit tests only.");
   }
   const hasKmpMarkers =
     modules.some((module) => module.isKmp) ||
@@ -1170,13 +1195,13 @@ function collectJvmTestEvidence(sourceSymbols, testFiles, modules) {
   for (const source of sourceSymbols) {
     const evidence = [];
     for (const testFile of testFiles) {
-      if (!canModuleTestSource(testFile.moduleProjectPath, source.moduleProjectPath, modules)) continue;
+      if (!canModuleTestSource(testFile, source.moduleProjectPath, modules)) continue;
       if (!canTestSourceSet(testFile, source, modules)) continue;
       const match = findJvmTestMatch(source, testFile.analysis);
       if (!match) continue;
       evidence.push({
         testPath: testFile.path,
-        kind: "jvm-symbol-reference",
+        kind: isAndroidInstrumentedTestPath(testFile.path) ? "android-instrumented-symbol-reference" : "jvm-symbol-reference",
         strength: match.strength,
         ...(match.usage ? { usage: match.usage } : {})
       });
@@ -1188,7 +1213,9 @@ function collectJvmTestEvidence(sourceSymbols, testFiles, modules) {
 }
 
 function canTestSourceSet(testFile, source, modules) {
-  const testSourceSet = normalizePath(testFile.path).match(/(?:^|\/)src\/([A-Za-z][A-Za-z0-9_]*Test)\//)?.[1];
+  const matchedTestSourceSet = normalizePath(testFile.path).match(/(?:^|\/)src\/([A-Za-z][A-Za-z0-9_]*Test)\//)?.[1];
+  // androidTest is a conventional Android set over src/main, not a KMP target set.
+  const testSourceSet = matchedTestSourceSet === "androidTest" ? undefined : matchedTestSourceSet;
   const productionSourceSet = normalizePath(source.path).match(/(?:^|\/)src\/([A-Za-z][A-Za-z0-9_]*Main)\//)?.[1];
   if (!testSourceSet && !productionSourceSet) return true;
   if (!testSourceSet || !productionSourceSet) return false;
@@ -1213,13 +1240,16 @@ function canTestSourceSet(testFile, source, modules) {
     productionSourceSet === `${sourceModule.kmpJvmTargetName}Main`;
 }
 
-function canModuleTestSource(testModuleProjectPath, sourceModuleProjectPath, modules) {
+function canModuleTestSource(testFile, sourceModuleProjectPath, modules) {
+  const testModuleProjectPath = testFile.moduleProjectPath;
   if (!testModuleProjectPath || !sourceModuleProjectPath) return false;
   if (testModuleProjectPath === sourceModuleProjectPath) return true;
   const testModule = modules.find((module) => module.projectPath === testModuleProjectPath);
   const sourceModule = modules.find((module) => module.projectPath === sourceModuleProjectPath);
   if (testModule?.supportsKmpJvm && sourceModule?.supportsKmpJvm) return true;
-  return testModule?.reachableDependencies.has(sourceModuleProjectPath) ?? false;
+  // Instrumented tests see androidTest configurations but not testImplementation, and unit tests the reverse (#316).
+  const reachable = isAndroidInstrumentedTestPath(testFile.path) ? testModule?.reachableInstrumentedDependencies : testModule?.reachableDependencies;
+  return reachable?.has(sourceModuleProjectPath) ?? false;
 }
 
 function findJvmTestMatch(source, test) {

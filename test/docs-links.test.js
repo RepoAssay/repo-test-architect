@@ -375,7 +375,8 @@ describe("docs links", () => {
     assert.ok(support.includes("TestNG class-level tests, lifecycle hooks, data providers"));
     assert.ok(support.includes("conventional Spock feature methods in direct `Specification` subclasses"));
     assert.ok(support.includes("Spock fixture methods, annotations/extensions, `where:`/`filter:` data-driven features"));
-    assert.ok(support.includes("Android application/library unit-test semantics"));
+    assert.ok(support.includes("Android build variants, flavors, Robolectric semantics and device execution"));
+    assert.ok(support.includes("`android-instrumented-symbol-reference`"));
     assert.ok(support.includes("one KMP module or a settings-owned all-KMP aggregate whose source modules each declare exactly one literal `jvm()` or `jvm(\"name\")` target"));
     assert.ok(support.includes("`commonTest` can cover only `commonMain` while `<targetName>Test` can cover common and JVM-target production"));
     assert.ok(support.includes("registered as `supported`"));
