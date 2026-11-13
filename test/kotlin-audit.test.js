@@ -575,6 +575,81 @@ describe("Kotlin audit adapter", () => {
     assert.equal(audit.coveredButRisky[0].existingTestEvidence[0].strength, "direct");
   });
 
+  it("indexes file-scope Kotlin extension functions for common receiver forms", () => {
+    // #315: mapper files holding only extension functions were reported as missing coverage.
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-kotlin-extension-functions-"));
+    const main = path.join(root, "src", "main", "kotlin", "com", "example");
+    const test = path.join(root, "src", "test", "kotlin", "com", "example", "mappers");
+    fs.mkdirSync(path.join(main, "mappers"), { recursive: true });
+    fs.mkdirSync(path.join(main, "api"), { recursive: true });
+    fs.mkdirSync(test, { recursive: true });
+    fs.writeFileSync(path.join(root, "build.gradle.kts"), 'dependencies { testImplementation(kotlin("test")) }\n');
+    fs.writeFileSync(path.join(main, "api", "Dtos.kt"), "package com.example.api\n\ndata class LinkDto(val url: String?)\ndata class ImageDto(val url: String?)\ndata class ChannelDto(val id: String)\ndata class TagDto(val name: String?)\n");
+    const mappers = {
+      "LinkMapper.kt": "package com.example.mappers\n\nimport com.example.api.LinkDto\n\nfun LinkDto.asLink(): String? = url?.takeIf { it.isNotBlank() }?.let { it.trim() }\n",
+      "ImageMapper.kt": "package com.example.mappers\n\nimport com.example.api.ImageDto\n\nfun ImageDto?.asImage(): String? {\n    val url = this?.url ?: return null\n    return if (url.isBlank()) null else url\n}\n",
+      "ChannelMapper.kt": "package com.example.mappers\n\nfun com.example.api.ChannelDto.asChannel(): String {\n    return id.trim()\n}\n",
+      "TagMapper.kt": "package com.example.mappers\n\nimport com.example.api.TagDto as ApiTag\n\nfun ApiTag.asTag(): String? {\n    val value = name ?: return null\n    return value.trim()\n}\n",
+      "ListMapper.kt": "package com.example.mappers\n\nfun <T : Any> List<T?>.compacted(): List<T> {\n    if (isEmpty()) return emptyList()\n    return filterNotNull()\n}\n"
+    };
+    for (const [name, content] of Object.entries(mappers)) fs.writeFileSync(path.join(main, "mappers", name), content);
+    const tests = {
+      "LinkMapperTest.kt": "package com.example.mappers\n\nimport kotlin.test.Test\nimport kotlin.test.assertNotNull\n\nclass LinkMapperTest { @Test fun `asLink maps value`() { assertNotNull(com.example.api.LinkDto(\"u\").asLink()) } }\n",
+      "ImageMapperTest.kt": "package com.example.mappers\n\nimport com.example.api.ImageDto\nimport kotlin.test.Test\nimport kotlin.test.assertNotNull\n\nclass ImageMapperTest { @Test fun `asImage maps value`() { assertNotNull(ImageDto(\"u\").asImage()) } }\n",
+      "ChannelMapperTest.kt": "package com.example.mappers\n\nimport com.example.api.ChannelDto\nimport kotlin.test.Test\nimport kotlin.test.assertEquals\n\nclass ChannelMapperTest { @Test fun `asChannel trims`() { assertEquals(\"c\", ChannelDto(\" c \").asChannel()) } }\n",
+      "TagMapperTest.kt": "package com.example.mappers\n\nimport com.example.api.TagDto\nimport kotlin.test.Test\nimport kotlin.test.assertNotNull\n\nclass TagMapperTest { @Test fun `asTag maps value`() { assertNotNull(TagDto(\"t\").asTag()) } }\n",
+      "ListMapperTest.kt": "package com.example.mappers\n\nimport kotlin.test.Test\nimport kotlin.test.assertEquals\n\nclass ListMapperTest { @Test fun `compacted drops nulls`() { assertEquals(listOf(1), listOf(1, null).compacted()) } }\n"
+    };
+    for (const [name, content] of Object.entries(tests)) fs.writeFileSync(path.join(test, name), content);
+
+    const audit = auditKotlinRepo(root);
+
+    assert.deepEqual(audit.untestedCandidates, []);
+    assert.deepEqual(
+      audit.coveredButRisky.map((target) => [target.name, target.existingTestPaths.map((testPath) => path.posix.basename(testPath)), target.existingTestEvidence[0].strength, target.existingTestEvidence[0].usage]),
+      [
+        ["ChannelMapper", ["ChannelMapperTest.kt"], "referenced", "asserted"],
+        ["ImageMapper", ["ImageMapperTest.kt"], "referenced", "asserted"],
+        ["LinkMapper", ["LinkMapperTest.kt"], "referenced", "asserted"],
+        ["ListMapper", ["ListMapperTest.kt"], "referenced", "asserted"],
+        ["TagMapper", ["TagMapperTest.kt"], "referenced", "asserted"]
+      ]
+    );
+  });
+
+  it("withholds same-package extension names declared on different receivers and ignores member extensions", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-kotlin-extension-ambiguity-"));
+    const main = path.join(root, "src", "main", "kotlin", "com", "example", "mappers");
+    const test = path.join(root, "src", "test", "kotlin", "com", "example", "mappers");
+    fs.mkdirSync(main, { recursive: true });
+    fs.mkdirSync(test, { recursive: true });
+    fs.writeFileSync(path.join(root, "build.gradle.kts"), 'dependencies { testImplementation(kotlin("test")) }\n');
+    // Two files declare `asDto` on different receivers: a call site cannot be attributed without inference.
+    fs.writeFileSync(path.join(main, "StringDtoMapper.kt"), "package com.example.mappers\n\nfun String.asDto(): String? {\n    if (isBlank()) return null\n    return trim()\n}\n");
+    fs.writeFileSync(path.join(main, "IntDtoMapper.kt"), "package com.example.mappers\n\nfun Int.asDto(): String? {\n    if (this < 0) return null\n    return toString()\n}\n");
+    // A member extension inside a class is not a package symbol.
+    fs.writeFileSync(path.join(main, "HiddenMapper.kt"), "package com.example.mappers\n\nclass HiddenMapper {\n    private fun String.asLink(): String? {\n        if (isBlank()) return null\n        return trim()\n    }\n    fun run(value: String): String? = value.asLink()\n}\n");
+    fs.writeFileSync(path.join(main, "LinkMapper.kt"), "package com.example.mappers\n\nfun Long.asLink(): String? {\n    if (this < 0) return null\n    return toString()\n}\n");
+    fs.writeFileSync(path.join(test, "DtoMapperTest.kt"), "package com.example.mappers\n\nimport kotlin.test.Test\nimport kotlin.test.assertNotNull\n\nclass DtoMapperTest { @Test fun `string dto`() { assertNotNull(\"x\".asDto()) } }\n");
+    fs.writeFileSync(path.join(test, "LinkMapperTest.kt"), "package com.example.mappers\n\nimport kotlin.test.Test\nimport kotlin.test.assertNotNull\n\nclass LinkMapperTest { @Test fun `long link`() { assertNotNull(7L.asLink()) } }\n");
+    // A plain member named like the ambiguous extension keeps its own file's ownership.
+    fs.writeFileSync(path.join(main, "WorkerMapper.kt"), "package com.example.mappers\n\nclass WorkerMapper {\n    fun asDto(): String? {\n        if (hashCode() < 0) return null\n        return toString()\n    }\n}\n\nfun Double.asDto(): String? {\n    if (this < 0) return null\n    return toString()\n}\n");
+    // The factory lives in a helper file so the test credits WorkerMapper only through the plain member name.
+    fs.writeFileSync(path.join(test, "Factories.kt"), "package com.example.mappers\n\nfun workerFactory() = WorkerMapper()\n");
+    fs.writeFileSync(path.join(test, "WorkerMapperTest.kt"), "package com.example.mappers\n\nimport kotlin.test.Test\nimport kotlin.test.assertNotNull\n\nclass WorkerMapperTest {\n    @Test fun `worker dto`() { assertNotNull(workerFactory().asDto()) }\n}\n");
+
+    const audit = auditKotlinRepo(root);
+
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.name).sort(), ["LinkMapper", "WorkerMapper"]);
+    assert.deepEqual(audit.coveredButRisky.find((target) => target.name === "LinkMapper").existingTestPaths.map((testPath) => path.posix.basename(testPath)), ["LinkMapperTest.kt"]);
+    // Bare member names were matched package-wide before this change; the point here is that the plain
+    // member keeps crediting its own test although the extension name is withheld.
+    const worker = audit.coveredButRisky.find((target) => target.name === "WorkerMapper");
+    const workerEvidence = worker.existingTestEvidence.find((entry) => path.posix.basename(entry.testPath) === "WorkerMapperTest.kt");
+    assert.equal(workerEvidence?.usage, "asserted");
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.name).sort(), ["HiddenMapper", "IntDtoMapper", "StringDtoMapper"]);
+  });
+
   it("maps Java static member imports back to the declaring source file", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-java-static-"));
     fs.mkdirSync(path.join(root, "src", "main", "java", "com", "example"), { recursive: true });
