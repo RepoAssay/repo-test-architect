@@ -4,6 +4,8 @@ import { describe, it } from "node:test";
 import {
   corpusRoles,
   loadValidationCorpus,
+  optionalCorpusRoles,
+  requiredCorpusRoles,
   scorecardAreas,
   validateValidationCorpus
 } from "../scripts/check-validation-corpus.js";
@@ -48,12 +50,35 @@ describe("adapter validation corpus", () => {
   });
 
   it("contains every required role and scorecard area for every corpus adapter", () => {
+    assert.deepEqual(corpusRoles, [...requiredCorpusRoles, ...optionalCorpusRoles]);
+    assert.deepEqual(optionalCorpusRoles, ["product-monorepo"]);
     for (const adapter of corpus.adapters) {
-      assert.deepEqual(adapter.cases.map((entry) => entry.role).sort(), [...corpusRoles].sort());
+      const roles = adapter.cases.map((entry) => entry.role);
+      for (const role of requiredCorpusRoles) assert.ok(roles.includes(role), `${adapter.adapterId} pins a ${role} case`);
+      for (const role of roles) assert.ok(corpusRoles.includes(role), `${adapter.adapterId} uses an accepted role (${role})`);
       for (const entry of adapter.cases) {
         assert.deepEqual(Object.keys(entry.scorecard).sort(), [...scorecardAreas].sort());
       }
     }
+  });
+
+  it("accepts a product-monorepo case ahead of enforcement and requires one for enforced adapters", () => {
+    // #325: the fourth role is accepted everywhere and required adapter by adapter as pins land.
+    const staged = structuredClone(corpus);
+    const javascript = staged.adapters.find((adapter) => adapter.adapterId === "javascript");
+    javascript.cases.push({ ...structuredClone(javascript.cases[0]), id: "javascript-product-monorepo-probe", role: "product-monorepo" });
+    assertMatchesSchema(staged, schema, "validation corpus with a product-monorepo case");
+    assert.deepEqual(validateValidationCorpus(staged).errors, []);
+    assert.deepEqual(validateValidationCorpus(staged, { productMonorepoRequiredAdapters: new Set(["javascript"]) }).errors, []);
+
+    const enforced = validateValidationCorpus(corpus, { productMonorepoRequiredAdapters: new Set(["swift"]) }).errors;
+    assert.ok(enforced.some((error) => error.includes("swift needs at least 4 corpus cases")));
+    assert.ok(enforced.some((error) => error.includes("swift is missing corpus role product-monorepo")));
+    assert.ok(!enforced.some((error) => error.includes("javascript")), "adapters outside the enforced set are unaffected");
+
+    const unknown = structuredClone(corpus);
+    unknown.adapters[0].cases[0].role = "product-monorepo-app";
+    assert.ok(validateValidationCorpus(unknown).errors.some((error) => error.includes("unsupported corpus role product-monorepo-app")));
   });
 
   it("requires every supported adapter and only accepts complete registered experimental cohorts", () => {

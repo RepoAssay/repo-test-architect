@@ -48,6 +48,10 @@ These are starting points, not pins. A hunt pass verifies the current layout, re
 | C# | `bitwarden/server` | a multi-project solution with many test projects and shared build properties; `jellyfin/jellyfin` as the second case |
 | Dart | `immich-app/immich` | a Flutter mobile application inside a polyglot monorepo with a TypeScript server, which also exercises the JavaScript adapter |
 
+## Corpus Role And Enforcement
+
+`validation-corpus/v1` accepts the role `product-monorepo` beside the three existing roles. `scripts/check-validation-corpus.js` keeps the three existing roles required for every adapter and requires `product-monorepo` only for the adapters listed in its `productMonorepoRequiredAdapters` set, so a pin can land adapter by adapter; once every adapter has one, the role joins the required list. A pin needs what every other corpus case needs: the full 40-character commit, the project root and audit options, the support boundary, the hunt report, the observed command (or `null` when withholding passed command review), candidate counts, at least three timing samples with their median, repeated identical canonical digests, and a reviewed seven-area scorecard. A failing scorecard area stays in the hunt report as an open finding; it is not pinned as passing.
+
 ## Procedure
 
 1. Shallow-clone the candidate at an exact commit and run `repo-test-architect review <root>` and `analyze <root> --format json` without executing repository code.
@@ -57,4 +61,4 @@ These are starting points, not pins. A hunt pass verifies the current layout, re
 
 ## Order
 
-The Swift and Kotlin/JVM private repositories are re-run after 1.3.0 to confirm the fixes and to collect what remains (#310, #312, #318). The public candidates then follow in the order the adapters are used: JavaScript/TypeScript, Python, Go, Rust, Ruby, PHP, Elixir, C#, Dart, with Swift and Kotlin/JVM pinned from their public candidates last, since the private repositories already cover their shapes.
+The first public pass is `calcom/cal.com` for JavaScript/TypeScript, the most used adapter; it starts at once rather than waiting for re-runs of the private repositories, which only the owner can perform and which remain follow-up validation. `Dimillian/IceCubesApp` and `android/nowinandroid` come next, as public release gates for the Swift and Kotlin/JVM changes that follow 1.3.0 (#310, #312, #318), so that those changes ship with reproducible evidence. The remaining candidates then follow in usage order: Python, Go, Rust, Ruby, PHP, Elixir, C#, Dart. Each pass verifies the candidate's current shape first and replaces a candidate whose layout has drifted, recording the reason here.
