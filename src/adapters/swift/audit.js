@@ -1088,19 +1088,22 @@ function collectSwiftConstructorBoundLocals(content) {
 // Keywords the shadow checks read structurally; a backtick-quoted identifier with one of these names
 // (a closure parameter called `in`, say) must not be mistaken for the keyword.
 const SWIFT_SHADOW_KEYWORDS = new Set(["in", "for", "let", "var", "case"]);
+// The closure and loop keyword `in` must stand alone: `\b` alone would split an identifier such as `in🐶`.
+const SWIFT_IN_KEYWORD = "(?<![\\w\\u0080-\\uFFFF])in(?![\\w\\u0080-\\uFFFF])";
 
 // Any other way the file could introduce the same name disqualifies the binding. The checks are broad
 // on purpose: a name followed by `:` (a parameter in any label form, an argument label or a key), a
 // `for … in` header or a closure header that mentions it, and a tuple or pattern element.
 function isSwiftNameBoundElsewhere(rawContent, escaped) {
-  // A quoted identifier keeps its name so a quoted parameter still shadows; only a quoted keyword becomes
-  // a placeholder, so that a parameter named `in` does not end a closure header early.
-  const content = rawContent.replace(/`([^`\n]*)`/g, (_, name) => (SWIFT_SHADOW_KEYWORDS.has(name) ? "__quoted__" : name));
+  // A quoted plain identifier keeps its name so a quoted parameter still shadows; a quoted keyword, or
+  // anything a bound local could not be named, becomes a placeholder so that a parameter named `in` does
+  // not end a closure header early.
+  const content = rawContent.replace(/`([^`\n]*)`/g, (_, name) => (/^[A-Za-z_]\w*$/.test(name) && !SWIFT_SHADOW_KEYWORDS.has(name) ? name : "__quoted__"));
   if (new RegExp(`\\b${escaped}\\s*:(?!:)`).test(content)) return true;
-  if (new RegExp(`\\bfor\\b[^{\\n]*\\b${escaped}\\b[^{\\n]*\\bin\\b`).test(content)) return true;
+  if (new RegExp(`\\bfor\\b[^{\\n]*\\b${escaped}\\b[^{\\n]*${SWIFT_IN_KEYWORD}`).test(content)) return true;
   if (new RegExp(`\\b(?:let|var|case)\\s*\\([^)]*\\b${escaped}\\b`).test(content)) return true;
   const nameInHeader = new RegExp(`\\b${escaped}\\b`);
-  for (const header of content.matchAll(/\{([^{}]*?)\bin\b/g)) {
+  for (const header of content.matchAll(new RegExp(`\\{([^{}]*?)${SWIFT_IN_KEYWORD}`, "g"))) {
     if (nameInHeader.test(header[1])) return true;
   }
   return false;
