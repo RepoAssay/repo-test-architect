@@ -294,6 +294,17 @@ function detectTestCommand(paths, frameworks, bazelGraph, files) {
     if (!hasSwiftPmPackageDeclaration(manifest.content)) {
       return { command: undefined, blockers: ["No active SwiftPM package declaration was found; swift test cannot be established."] };
     }
+    const hostOnlyFramework = detectNonMacOsFrameworkImport(files, bazelGraph);
+    if (hostOnlyFramework) {
+      // #311: `swift test` builds for the macOS host, so a package whose compiled Swift sources import
+      // an iOS-, watchOS- or tvOS-only framework cannot run under it. A simulator destination is a host
+      // choice the audit must not guess, so the command is withheld with the required shape.
+      const simulator = NON_MACOS_FRAMEWORKS[hostOnlyFramework];
+      return {
+        command: undefined,
+        blockers: [`Swift sources import ${hostOnlyFramework}, which swift test cannot build on macOS; run xcodebuild test with a simulator destination such as -destination 'platform=${simulator},name=<device>' after selecting a device.`]
+      };
+    }
     return { command: "swift test", blockers: [] };
   }
   if (hasXcodeContainer(paths)) {
@@ -313,6 +324,131 @@ function detectTestCommand(paths, frameworks, bazelGraph, files) {
     return { command: `xcodebuild test${containerOption}`, blockers: [] };
   }
   return { command: undefined, blockers: [] };
+}
+
+const NON_MACOS_FRAMEWORKS = Object.freeze({ UIKit: "iOS Simulator", WatchKit: "watchOS Simulator", TVUIKit: "tvOS Simulator" });
+// Import declarations may carry attributes, an access level and a kind: `@preconcurrency public import struct UIKit.UIColor`.
+const SWIFT_IMPORT_PREFIX = "^[ \\t]*(?:@[A-Za-z_][A-Za-z0-9_]*(?:\\([^)\\n]*\\))?\\s+)*(?:(?:public|package|internal|fileprivate|private|open)\\s+)?import\\s+(?:(?:class|struct|enum|protocol|typealias|func|var|let)\\s+)?";
+// What a `#if` predicate evaluates to for the native macOS target; anything absent here is unresolved.
+const MACOS_PREDICATES = Object.freeze({
+  os: Object.freeze({ macOS: true, iOS: false, watchOS: false, tvOS: false, visionOS: false, Linux: false, Windows: false, Android: false }),
+  canImport: Object.freeze({ AppKit: true, Cocoa: true, UIKit: false, WatchKit: false, TVUIKit: false }),
+  targetEnvironment: Object.freeze({ macCatalyst: false, simulator: false })
+});
+
+/**
+ * The frameworks named by NON_MACOS_FRAMEWORKS are unavailable when `swift test` builds on macOS. Only
+ * sources the package compiles are considered (owned sources and test sources, minus files an `exclude`
+ * or an explicit `sources` list leaves out), and an import inside a `#if` branch that is provably
+ * inactive on macOS does not count: conditions are evaluated with `!`, `&&`, `||` and parentheses over
+ * the predicates in MACOS_PREDICATES, and a later `#elseif` or `#else` branch is inactive once an
+ * earlier branch was provably active. Anything unresolved, such as `#if DEBUG` or the `#else` of an
+ * unresolved condition, keeps the import, which withholds the command rather than guessing.
+ */
+function detectNonMacOsFrameworkImport(files, sourceGraph) {
+  const compiled = files.filter((file) => isCompiledSwiftPmSource(file.path, sourceGraph));
+  const candidates = compiled.length > 0 ? compiled : files.filter((file) => normalizePath(file.path).endsWith(".swift"));
+  for (const framework of Object.keys(NON_MACOS_FRAMEWORKS)) {
+    const importPattern = new RegExp(`${SWIFT_IMPORT_PREFIX}${framework}\\b`);
+    for (const file of candidates) {
+      if (swiftLinesActiveOnMacOs(maskSwiftCommentsAndStrings(file.content)).some((line) => importPattern.test(line))) return framework;
+    }
+  }
+  return undefined;
+}
+
+function isCompiledSwiftPmSource(currentPath, sourceGraph) {
+  const normalized = normalizePath(currentPath);
+  if (!normalized.endsWith(".swift") || sourceGraph.ignoredSources.has(normalized)) return false;
+  return sourceGraph.sourceOwners.has(normalized) || sourceGraph.testSources.has(normalized);
+}
+
+// Returns the lines of a Swift file that are compiled for the native macOS target, dropping lines
+// inside `#if` branches that are provably inactive there. A branch is kept unless its condition is
+// provably false, or an earlier branch of the same `#if` was provably true (which makes every later
+// `#elseif` and the `#else` unreachable). Unresolved conditions keep their lines.
+function swiftLinesActiveOnMacOs(content) {
+  const active = [];
+  const stack = [];
+  for (const line of content.split("\n")) {
+    const directive = line.match(/^\s*#(if|elseif|else|endif)\b(.*)$/);
+    if (!directive) {
+      if (stack.every((frame) => frame.active)) active.push(line);
+      continue;
+    }
+    const [, keyword, rest] = directive;
+    if (keyword === "if") {
+      const value = evaluateSwiftConditionOnMacOs(rest);
+      stack.push({ active: value !== false, taken: value === true });
+    } else if (keyword === "elseif" && stack.length > 0) {
+      const frame = stack[stack.length - 1];
+      const value = frame.taken ? false : evaluateSwiftConditionOnMacOs(rest);
+      frame.active = value !== false;
+      frame.taken = frame.taken || value === true;
+    } else if (keyword === "else" && stack.length > 0) {
+      const frame = stack[stack.length - 1];
+      frame.active = !frame.taken;
+    } else if (keyword === "endif") {
+      stack.pop();
+    }
+  }
+  return active;
+}
+
+// Three-valued evaluation of a `#if` condition for the native macOS target: true when provably active,
+// false when provably inactive, undefined when it depends on something not modeled here (build flags,
+// `arch`, `swift`/`compiler` versions, other `canImport` modules) or on syntax this parser does not read.
+function evaluateSwiftConditionOnMacOs(condition) {
+  const source = condition.replace(/\/\/.*$/, "").trim();
+  let index = 0;
+  const skipSpace = () => { while (index < source.length && /\s/.test(source[index])) index += 1; };
+  const consume = (text) => {
+    skipSpace();
+    if (!source.startsWith(text, index)) return false;
+    index += text.length;
+    return true;
+  };
+  const not3 = (value) => (value === undefined ? undefined : !value);
+  const and3 = (left, right) => (left === false || right === false ? false : left === true && right === true ? true : undefined);
+  const or3 = (left, right) => (left === true || right === true ? true : left === false && right === false ? false : undefined);
+  const parseOr = () => {
+    let value = parseAnd();
+    while (consume("||")) value = or3(value, parseAnd());
+    return value;
+  };
+  const parseAnd = () => {
+    let value = parseUnary();
+    while (consume("&&")) value = and3(value, parseUnary());
+    return value;
+  };
+  const parseUnary = () => {
+    if (consume("!")) return not3(parseUnary());
+    if (consume("(")) {
+      const value = parseOr();
+      if (!consume(")")) throw new SyntaxError("unbalanced parenthesis");
+      return value;
+    }
+    skipSpace();
+    const predicate = source.slice(index).match(/^([A-Za-z_]\w*)(?:\s*\(([^()]*)\))?/);
+    if (!predicate) throw new SyntaxError("unexpected token");
+    index += predicate[0].length;
+    const [, name, argument] = predicate;
+    if (argument === undefined) return undefined;
+    // Only own, modeled entries resolve: `canImport(AppKit.Submodule)` or an unknown module stays
+    // unresolved, and inherited object properties never count.
+    const table = Object.hasOwn(MACOS_PREDICATES, name) ? MACOS_PREDICATES[name] : undefined;
+    const key = argument.trim();
+    return table && Object.hasOwn(table, key) && typeof table[key] === "boolean" ? table[key] : undefined;
+  };
+
+  try {
+    const value = parseOr();
+    skipSpace();
+    return index === source.length ? value : undefined;
+  } catch (error) {
+    if (error instanceof SyntaxError) return undefined;
+    throw error;
+  }
 }
 
 function detectExistingTestLocations(paths, bazelGraph) {
@@ -1201,7 +1337,7 @@ function applyConventionalSwiftPmOwnership(swiftPaths, declaredTargetNames, sour
   }
 
   for (const swiftPath of swiftPaths) {
-    if (!isTestPath(swiftPath) && !/(?:Tests?|Spec)\.swift$/.test(swiftPath)) continue;
+    if (ignoredSources.has(swiftPath) || (!isTestPath(swiftPath) && !/(?:Tests?|Spec)\.swift$/.test(swiftPath))) continue;
     const inferredOwner = inferTestOwner(swiftPath);
     const dependency = inferredOwner && targetNames.get(normalizeModuleName(inferredOwner));
     if (!dependency) continue;
