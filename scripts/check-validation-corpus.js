@@ -5,11 +5,19 @@ import { fileURLToPath } from "node:url";
 import { listAdapters } from "../src/core/adapter-registry.js";
 import { validationScorecardAreas } from "../src/core/validation-scorecard.js";
 
-export const corpusRoles = [
+export const requiredCorpusRoles = [
   "conventional-library-or-service",
   "framework-heavy-application",
   "difficult-ownership-graph"
 ];
+
+// A product monorepo (an application or service built from several packages or modules, with
+// platform constraints and team conventions; see docs/product-monorepo-validation.md) is accepted
+// for every adapter and required only for the adapters listed below, until all adapters carry a
+// pinned case (#325).
+export const optionalCorpusRoles = ["product-monorepo"];
+export const corpusRoles = [...requiredCorpusRoles, ...optionalCorpusRoles];
+export const productMonorepoRequiredAdapters = new Set([]);
 
 export const scorecardAreas = validationScorecardAreas;
 
@@ -42,6 +50,7 @@ export function loadValidationCorpus(manifestPath = path.resolve("evals/validati
 export function validateValidationCorpus(corpus, options = {}) {
   const root = options.root ?? process.cwd();
   const registeredAdapters = options.adapters ?? listAdapters();
+  const enforcedProductMonorepoAdapters = options.productMonorepoRequiredAdapters ?? productMonorepoRequiredAdapters;
   const registeredAdaptersById = new Map(registeredAdapters.map((adapter) => [adapter.id, adapter]));
   const supportedAdapterIds = registeredAdapters
     .filter((adapter) => adapter.maturity === "supported")
@@ -78,15 +87,19 @@ export function validateValidationCorpus(corpus, options = {}) {
     const label = adapter.adapterId || "<missing adapter>";
     const cases = Array.isArray(adapter.cases) ? adapter.cases : [];
     const roles = new Set(cases.map((entry) => entry.role));
+    const requiredRoles = [
+      ...requiredCorpusRoles,
+      ...(enforcedProductMonorepoAdapters.has(adapter.adapterId) ? ["product-monorepo"] : [])
+    ];
 
     if (typeof adapter.adapterId !== "string" || adapter.adapterId.length === 0) {
       errors.push("every corpus adapter needs a non-empty adapterId");
     }
-    if (cases.length < corpusRoles.length) {
-      errors.push(`${label} needs at least ${corpusRoles.length} corpus cases`);
+    if (cases.length < requiredRoles.length) {
+      errors.push(`${label} needs at least ${requiredRoles.length} corpus cases`);
     }
 
-    for (const role of corpusRoles) {
+    for (const role of requiredRoles) {
       if (!roles.has(role)) errors.push(`${label} is missing corpus role ${role}`);
     }
 

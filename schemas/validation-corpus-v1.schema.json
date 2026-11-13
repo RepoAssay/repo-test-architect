@@ -57,7 +57,8 @@
           "enum": [
             "conventional-library-or-service",
             "framework-heavy-application",
-            "difficult-ownership-graph"
+            "difficult-ownership-graph",
+            "product-monorepo"
           ]
         },
         "repository": {
