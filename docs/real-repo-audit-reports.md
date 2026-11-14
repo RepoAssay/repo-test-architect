@@ -8,6 +8,7 @@ The purpose is product validation, not regression locking. These reports record 
 
 | Report | Ecosystem | Source | Command focus | Status |
 | --- | --- | --- | --- | --- |
+| [cal.com product-monorepo hunt](javascript-calcom-validation-hunt-report.md) | TypeScript, Turborepo/Yarn workspaces, root Vitest workspace, Playwright, Jest | `calcom/cal.com` at `ef7954d` | 119-root detection, workspace-inherited runner boundary, false `npx jest`, package-root source ownership | current; first product-monorepo pass, not pinned (#329, #330, #331) |
 | [C# TDD live validation](csharp-tdd-validation-report.md) | C#, literal SDK production/test pair, xUnit | `aelassas/tdd` at `aa81c10` | pair ownership, exact test-project command, native build/test comparison, external-boundary portability finding | current; first C# live probe |
 | [C# Sharp Cast live validation](csharp-sharp-cast-validation-report.md) | C#, unique literal test edge amid unrelated SDK projects, xUnit | `jjosh102/sharp-cast` at `57cd4f3` | selective pair ownership, unrelated-project isolation, exact command, field-receiver pressure | current; second C# live probe |
 | [C# Glob live validation](csharp-glob-validation-report.md) | C#, inherited static framework, unique literal test edge, xUnit | `kthompson/glob` at `719a859` | nearest `Directory.Build.props`, conditional unrelated metadata, exact command, native test comparison | current; third C# live probe |
