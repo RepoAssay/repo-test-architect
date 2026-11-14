@@ -15,10 +15,15 @@
     "setupSignals": [
       "tsconfig"
     ],
-    "confidence": "low",
-    "blockers": [
-      "No supported JS test framework detected.",
-      "No runnable test command detected from package scripts or framework config."
+    "confidence": "medium",
+    "blockers": [],
+    "diagnostics": [
+      {
+        "code": "missing-test-framework",
+        "scope": "test-infrastructure",
+        "severity": "medium",
+        "message": "No test framework or test files were found; add a test runner such as vitest, jest, mocha or node:test with a test script so that candidates can be covered."
+      }
     ]
   },
   "untestedCandidates": [

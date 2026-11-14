@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { createDiagnostic, diagnosticsToBlockers, scoreAuditConfidence } from "../../core/audit-diagnostics.js";
 import { compareText } from "../../core/ordering.js";
 import { normalizePlatformSeparators, readRepositoryTextFiles } from "../../core/repository-text-files.js";
 import { findSkippedJavaScriptTestRanges } from "./skips.js";
@@ -193,7 +194,7 @@ function buildProfile(root, files, packageData, workspaceContext, runnerConfig, 
   const existingTestLocations = detectExistingTestLocations(paths, testFilePaths);
   const detectedConventions = detectConventions(paths, testFilePaths);
   const setupSignals = detectSetupSignals(paths, packageData, workspaceContext, runnerConfig);
-  const blockers = detectBlockers(packageJson !== undefined, testCommand, testFrameworks, packageManagerInfo);
+  const diagnostics = detectDiagnostics(packageJson !== undefined, testCommand, testFrameworks, packageManagerInfo, testFilePaths);
 
   return {
     root,
@@ -205,8 +206,9 @@ function buildProfile(root, files, packageData, workspaceContext, runnerConfig, 
     detectedConventions,
     existingTestLocations,
     setupSignals,
-    confidence: scoreProfileConfidence(testFrameworks, existingTestLocations, blockers),
-    blockers
+    confidence: scoreAuditConfidence({ diagnostics, testFrameworks, existingTestLocations }),
+    blockers: diagnosticsToBlockers(diagnostics),
+    diagnostics
   };
 }
 
@@ -970,32 +972,35 @@ function detectSetupSignals(paths, packageData, workspaceContext, runnerConfig) 
   return [...signals];
 }
 
-function detectBlockers(hasPackageJson, testCommand, frameworks, packageManagerInfo) {
-  const blockers = [];
+// Diagnostics (#312): a package with neither a test framework nor test files has a coverage gap, not
+// an audit blocker; an ambiguous or missing command only withholds the command; a missing package.json
+// and an unrecognised framework in existing tests bound the audit.
+function detectDiagnostics(hasPackageJson, testCommand, frameworks, packageManagerInfo, testFilePaths = []) {
+  const diagnostics = [];
+  const hasTests = testFilePaths.length > 0;
 
   if (!hasPackageJson) {
-    blockers.push("No package.json found, so JavaScript package conventions are uncertain.");
+    diagnostics.push(createDiagnostic({ code: "missing-package-manifest", scope: "audit", severity: "medium", message: "No package.json found, so JavaScript package conventions are uncertain." }));
   }
 
-  if (frameworks.length === 0) {
-    blockers.push("No supported JS test framework detected.");
+  if (frameworks.length === 0 && !hasTests) {
+    diagnostics.push(createDiagnostic({
+      code: "missing-test-framework",
+      scope: "test-infrastructure",
+      severity: "medium",
+      message: "No test framework or test files were found; add a test runner such as vitest, jest, mocha or node:test with a test script so that candidates can be covered."
+    }));
+  } else if (frameworks.length === 0) {
+    diagnostics.push(createDiagnostic({ code: "missing-test-framework", scope: "audit", severity: "medium", message: "No supported JS test framework detected." }));
   }
 
   if (packageManagerInfo.ambiguous) {
-    blockers.push(`Multiple package managers detected (${packageManagerInfo.managers.join(", ")}) without an explicit packageManager field, so the package-script command is ambiguous.`);
-  } else if (!testCommand) {
-    blockers.push("No runnable test command detected from package scripts or framework config.");
+    diagnostics.push(createDiagnostic({ code: "ambiguous-package-manager", scope: "command", severity: "medium", message: `Multiple package managers detected (${packageManagerInfo.managers.join(", ")}) without an explicit packageManager field, so the package-script command is ambiguous.` }));
+  } else if (!testCommand && (frameworks.length > 0 || hasTests)) {
+    diagnostics.push(createDiagnostic({ code: "missing-test-command", scope: "command", severity: "medium", message: "No runnable test command detected from package scripts or framework config." }));
   }
 
-  return blockers;
-}
-
-function scoreProfileConfidence(testFrameworks, existingTestLocations, blockers) {
-  if (blockers.length > 1) return "low";
-  if (blockers.length === 1) return "medium";
-  if (testFrameworks.length > 0 && existingTestLocations.length > 0) return "high";
-  if (testFrameworks.length > 0) return "medium";
-  return "low";
+  return diagnostics;
 }
 
 function detectArchitectures(paths, packageData) {

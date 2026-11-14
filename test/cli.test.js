@@ -100,8 +100,8 @@ describe("CLI", () => {
     assert.equal(Object.hasOwn(review, "projectAudits"), false);
     assert.equal(Object.hasOwn(review.topCandidates[0], "existingTestEvidence"), false);
     assert.equal(review.topCandidates[0].existingTestCount, 0);
-    assert.equal(review.findings.summary.findingCount, 5);
-    assert.equal(review.findings.items.length, 5);
+    assert.equal(review.findings.summary.findingCount, 4);
+    assert.equal(review.findings.items.length, 4);
     assert.equal(Object.hasOwn(review.findings.items[0], "existingTestPaths"), false);
   });
 
@@ -516,9 +516,9 @@ describe("CLI", () => {
 
     assert.match(output, /^# Project Findings/);
     assert.match(output, /Audit coverage: complete/);
-    assert.match(output, /Findings: 5 of 5/);
-    assert.match(output, /Finding categories: missing-coverage: 3, weak-existing-coverage: 0, misplaced-coverage: 0, low-value-direct-test: 0, blocked-project: 2/);
-    assert.match(output, /services\/api: blocked-project, high, priority 9/);
+    assert.match(output, /Findings: 4 of 4/);
+    assert.match(output, /Finding categories: missing-coverage: 4, weak-existing-coverage: 0, misplaced-coverage: 0, low-value-direct-test: 0, blocked-project: 0, command-withheld: 0/);
+    assert.match(output, /services\/api: missing-coverage, medium, priority 4/);
     assert.match(output, /apps\/android: missing-coverage, high, priority 7: CheckoutCalculator/);
     assert.match(output, /Source: src\/main\/kotlin\/CheckoutCalculator\.kt/);
     assert.match(output, /Recommended level: unit/);
@@ -537,11 +537,12 @@ describe("CLI", () => {
     const findings = JSON.parse(output);
 
     assert.equal(findings.schemaVersion, "project-findings/v1");
-    assert.equal(findings.summary.findingCount, 5);
+    assert.equal(findings.summary.findingCount, 4);
     assert.deepEqual(
       findings.findings.map((finding) => finding.category),
-      ["blocked-project", "blocked-project", "missing-coverage", "missing-coverage", "missing-coverage"]
+      ["missing-coverage", "missing-coverage", "missing-coverage", "missing-coverage"]
     );
+    assert.equal(findings.findings[3].code, "missing-test-infrastructure");
   });
 
   it("emits project test placement findings in markdown", () => {

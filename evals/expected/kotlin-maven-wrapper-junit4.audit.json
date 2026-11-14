@@ -28,7 +28,8 @@
       "junit 4"
     ],
     "confidence": "high",
-    "blockers": []
+    "blockers": [],
+    "diagnostics": []
   },
   "untestedCandidates": [],
   "coveredButRisky": [

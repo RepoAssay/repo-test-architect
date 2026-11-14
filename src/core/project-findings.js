@@ -3,18 +3,15 @@ import { validateProjectAudits } from "./project-audits-validation.js";
 import { failedProjectCountField, failedProjectsField, normalizeFailedProjects } from "./project-failures.js";
 import { collectUnsupportedReasons, normalizeUnsupportedProjects } from "./project-unsupported.js";
 import { analyzeProjectTestPlacement } from "./project-test-placement-analysis.js";
+import { resolveAuditDiagnostics } from "./audit-diagnostics.js";
 import { compareText } from "./ordering.js";
 
 const DEFAULT_MAX_FINDINGS = 10;
 const AUXILIARY_PROJECT_ROOT_NAMES = new Set(["docs", "examples", "playground"]);
 const AUXILIARY_PROJECT_PATH_SEGMENTS = new Set(["benchmarks"]);
-const MISSING_TEST_INFRASTRUCTURE_BLOCKERS = new Set([
-  "No supported JS test framework detected.",
-  "No runnable test command detected from package scripts or framework config."
-]);
 
 /**
- * @typedef {"missing-coverage" | "weak-existing-coverage" | "misplaced-coverage" | "low-value-direct-test" | "blocked-project"} ProjectFindingCategory
+ * @typedef {"missing-coverage" | "weak-existing-coverage" | "misplaced-coverage" | "low-value-direct-test" | "blocked-project" | "command-withheld"} ProjectFindingCategory
  * @typedef {"high" | "medium" | "low"} ProjectFindingSeverity
  *
  * @typedef {object} ProjectFindings
@@ -74,27 +71,70 @@ export function createProjectFindings(projectAudits, options = {}) {
 
 function toAuditFindings(entry) {
   const findings = [];
+  const profileEvidence = [
+    `confidence: ${entry.audit.profile.confidence}`,
+    `test command: ${entry.audit.profile.testCommand ?? "none detected"}`
+  ];
+  const diagnostics = resolveAuditDiagnostics(entry.audit.profile);
 
-  for (const blocker of entry.audit.profile.blockers ?? []) {
-    const auxiliaryInfrastructureBlocker =
-      isAuxiliaryProjectRoot(entry.projectRoot) && MISSING_TEST_INFRASTRUCTURE_BLOCKERS.has(blocker);
+  // Audit-scope diagnostics stay blocked-project findings: the audit itself is bounded (medium) or
+  // cannot be trusted (high). Command-scope diagnostics only withhold the command. Missing test
+  // infrastructure is one coverage gap per project, ranked below actionable findings (#312).
+  for (const diagnostic of diagnostics.filter((candidate) => candidate.scope === "audit")) {
+    const trusted = diagnostic.severity !== "high";
     findings.push({
-      id: `${entry.projectId}:blocked:${slug(blocker)}`,
+      id: `${entry.projectId}:blocked:${slug(diagnostic.message)}`,
       category: "blocked-project",
-      severity: auxiliaryInfrastructureBlocker ? "low" : "high",
-      priority: auxiliaryInfrastructureBlocker ? 1 : 9,
+      code: diagnostic.code,
+      severity: diagnostic.severity,
+      priority: trusted ? 7 : 9,
       projectId: entry.projectId,
       projectRoot: entry.projectRoot,
       adapterId: entry.adapterId,
-      title: auxiliaryInfrastructureBlocker
-        ? `${entry.projectRoot} is auxiliary and lacks independent test setup`
+      title: trusted
+        ? `${entry.projectRoot} is audited within a bounded model`
         : `${entry.projectRoot} cannot be fully audited`,
-      rationale: [blocker],
-      evidence: [
-        ...(auxiliaryInfrastructureBlocker ? ["project role: auxiliary"] : []),
-        `confidence: ${entry.audit.profile.confidence}`,
-        `test command: ${entry.audit.profile.testCommand ?? "none detected"}`
-      ],
+      rationale: [diagnostic.message],
+      evidence: profileEvidence,
+      existingTestPaths: []
+    });
+  }
+
+  for (const diagnostic of diagnostics.filter((candidate) => candidate.scope === "command")) {
+    findings.push({
+      id: `${entry.projectId}:command:${slug(diagnostic.message)}`,
+      category: "command-withheld",
+      code: diagnostic.code,
+      severity: diagnostic.severity,
+      priority: 6,
+      projectId: entry.projectId,
+      projectRoot: entry.projectRoot,
+      adapterId: entry.adapterId,
+      title: `${entry.projectRoot} has no runnable test command`,
+      rationale: [diagnostic.message],
+      evidence: profileEvidence,
+      existingTestPaths: []
+    });
+  }
+
+  const infrastructure = diagnostics.filter((candidate) => candidate.scope === "test-infrastructure");
+  if (infrastructure.length > 0) {
+    const auxiliary = isAuxiliaryProjectRoot(entry.projectRoot);
+    const code = infrastructure.length === 1 ? infrastructure[0].code : "missing-test-infrastructure";
+    findings.push({
+      id: `${entry.projectId}:infrastructure:${code}`,
+      category: "missing-coverage",
+      code,
+      severity: auxiliary ? "low" : "medium",
+      priority: auxiliary ? 1 : 4,
+      projectId: entry.projectId,
+      projectRoot: entry.projectRoot,
+      adapterId: entry.adapterId,
+      title: auxiliary
+        ? `${entry.projectRoot} is auxiliary and lacks independent test setup`
+        : `${entry.projectRoot} has no test infrastructure`,
+      rationale: infrastructure.map((diagnostic) => diagnostic.message),
+      evidence: [...(auxiliary ? ["project role: auxiliary"] : []), ...profileEvidence],
       existingTestPaths: []
     });
   }
@@ -245,7 +285,8 @@ function countByCategory(findings) {
     "weak-existing-coverage": 0,
     "misplaced-coverage": 0,
     "low-value-direct-test": 0,
-    "blocked-project": 0
+    "blocked-project": 0,
+    "command-withheld": 0
   };
 
   for (const finding of findings) {

@@ -61,7 +61,8 @@
             "weak-existing-coverage": { "type": "integer", "minimum": 0 },
             "misplaced-coverage": { "type": "integer", "minimum": 0 },
             "low-value-direct-test": { "type": "integer", "minimum": 0 },
-            "blocked-project": { "type": "integer", "minimum": 0 }
+            "blocked-project": { "type": "integer", "minimum": 0 },
+            "command-withheld": { "type": "integer", "minimum": 0 }
           }
         }
       }
@@ -91,9 +92,11 @@
               "weak-existing-coverage",
               "misplaced-coverage",
               "low-value-direct-test",
-              "blocked-project"
+              "blocked-project",
+              "command-withheld"
             ]
           },
+          "code": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
           "severity": { "enum": ["high", "medium", "low"] },
           "priority": { "type": "integer" },
           "projectId": { "type": "string", "minLength": 1 },

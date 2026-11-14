@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { createDiagnostic, diagnosticsToBlockers, scoreAuditConfidence } from "../../core/audit-diagnostics.js";
 import { analyzeGradleSettings } from "../../core/gradle-settings.js";
 import { compareText } from "../../core/ordering.js";
 import { readRepositoryTextFiles } from "../../core/repository-text-files.js";
@@ -629,18 +630,19 @@ function buildProfile(root, files, modules) {
   if (!buildText.trim() && paths.some(currentPath => /(?:^|\/)(?:build\.gradle(?:\.kts)?|pom\.xml)$/.test(currentPath))) {
     ownershipBlockers.push("No active JVM build metadata remains; a runnable test task cannot be established.");
   }
-  const commandBlockers = [...testCommandResolution.blockers, ...ownershipBlockers];
   const testCommand = ownershipBlockers.length === 0 ? testCommandResolution.command : undefined;
   const existingTestLocations = detectExistingTestLocations(paths, modules);
-  const blockers = detectBlockers(
+  const diagnostics = detectDiagnostics({
     paths,
     files,
     modules,
     testCommand,
     testFrameworks,
+    existingTestLocations,
     unsupportedProjectShapes,
-    commandBlockers
-  );
+    commandBlockers: testCommandResolution.blockers,
+    ownershipBlockers
+  });
 
   return {
     root,
@@ -652,8 +654,9 @@ function buildProfile(root, files, modules) {
     detectedConventions: detectConventions(paths, modules),
     existingTestLocations,
     setupSignals: detectSetupSignals(paths, buildText, testText, testCommandResolution, modules),
-    confidence: scoreProfileConfidence(testFrameworks, existingTestLocations, blockers),
-    blockers
+    confidence: scoreAuditConfidence({ diagnostics, testFrameworks, existingTestLocations }),
+    blockers: diagnosticsToBlockers(diagnostics),
+    diagnostics
   };
 }
 
@@ -943,24 +946,48 @@ function detectSetupSignals(paths, buildText, testText, testCommandResolution, m
   return [...signals];
 }
 
-function detectBlockers(paths, files, modules, testCommand, frameworks, unsupportedProjectShapes, commandBlockers = []) {
-  const blockers = [];
-  if (frameworks.length === 0) blockers.push("No supported JVM test framework detected.");
-  blockers.push(...commandBlockers);
-  if (!testCommand && commandBlockers.length === 0) blockers.push("No runnable JVM test command detected from Gradle or Maven markers.");
+// Diagnostics (#312): a module with no tests at all has a coverage gap, not an audit blocker; a
+// withheld command does not bound the source audit; unresolved ownership, a missing source set and an
+// unsupported multiplatform shape do (high), while bounded framework evidence and the Android
+// JVM-conventions boundary are known limits (medium).
+function detectDiagnostics({ paths, files, modules, testCommand, testFrameworks, existingTestLocations, unsupportedProjectShapes, commandBlockers, ownershipBlockers }) {
+  const diagnostics = [];
+  const push = (code, scope, severity, message) => diagnostics.push(createDiagnostic({ code, scope, severity, message }));
+  const hasTests = existingTestLocations.length > 0;
+
+  if (testFrameworks.length === 0 && !hasTests) {
+    push("missing-test-target", "test-infrastructure", "medium", "No JVM test source set or test files were found; add src/test/kotlin or src/test/java with a JUnit, Kotest, Spock or TestNG dependency so that candidates can be covered.");
+  } else if (testFrameworks.length === 0) {
+    push("missing-test-framework", "audit", "medium", "No supported JVM test framework detected.");
+  }
+  for (const message of commandBlockers) push("command-withheld", "command", "medium", message);
+  // Unresolved aggregate or reactor ownership bounds the audit to the modules it can own literally; when
+  // no build metadata is active at all, nothing can be attributed.
+  for (const message of ownershipBlockers) {
+    push("unresolved-module-ownership", "audit", message.startsWith("No active JVM build metadata remains") ? "high" : "medium", message);
+  }
+  if (!testCommand && commandBlockers.length === 0 && ownershipBlockers.length === 0 && (testFrameworks.length > 0 || hasTests)) {
+    push("missing-test-command", "command", "medium", "No runnable JVM test command detected from Gradle or Maven markers.");
+  }
   if (!paths.some((currentPath) => isSourceFile(currentPath, modules))) {
     const hasNestedSourceSet = paths.some((currentPath) => /(?:^|\/)src\/(?:main\/(?:kotlin|java)|(?:common|jvm)Main\/(?:kotlin|java))\/.+\.(?:kt|java)$/.test(currentPath));
-    blockers.push(
+    push(
+      "missing-source-set",
+      "audit",
+      "high",
       hasNestedSourceSet
         ? "No supported root JVM source set detected; audit a Gradle or Maven module root."
         : "No supported src/main/java or src/main/kotlin source set detected."
     );
   }
-  blockers.push(...detectKotestBlockers(files, modules));
-  blockers.push(...detectSpockBlockers(files, modules));
-  blockers.push(...detectTestNgBlockers(files, modules));
-  blockers.push(...unsupportedProjectShapes);
-  return blockers;
+  for (const message of [...detectKotestBlockers(files, modules), ...detectSpockBlockers(files, modules), ...detectTestNgBlockers(files, modules)]) {
+    push("bounded-test-framework-evidence", "audit", "medium", message);
+  }
+  // An unsupported shape bounds the audit to its supported subset; it does not make the audited part unreliable.
+  for (const message of unsupportedProjectShapes) {
+    push(message.startsWith("Android modules are audited with JVM conventions:") ? "android-jvm-conventions" : "unsupported-project-shape", "audit", "medium", message);
+  }
+  return diagnostics;
 }
 
 function detectKotestBlockers(files, modules) {
@@ -1068,13 +1095,6 @@ function hasUnsupportedTestNgSemantics(content) {
   return advancedAnnotation.test(stripped) || classLevelTest.test(stripped) || /\b(?:dataProvider|dataProviderClass|dependsOnMethods|dependsOnGroups|groups|invocationCount|threadPoolSize|timeOut|expectedExceptions|retryAnalyzer|priority)\s*=|\benabled\s*=\s*false\b/.test(stripped);
 }
 
-function scoreProfileConfidence(testFrameworks, existingTestLocations, blockers) {
-  if (testFrameworks.length === 0 || blockers.some((blocker) => blocker.startsWith("No supported root") || blocker.startsWith("No supported src/main"))) return "low";
-  if (blockers.length > 0) return "medium";
-  if (testFrameworks.length > 0 && existingTestLocations.length > 0) return "high";
-  if (testFrameworks.length > 0) return "medium";
-  return "low";
-}
 
 function classifySourceFile(file) {
   const currentPath = normalizePath(file.path);

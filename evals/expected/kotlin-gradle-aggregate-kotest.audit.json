@@ -31,7 +31,8 @@
       "gradle module graph"
     ],
     "confidence": "high",
-    "blockers": []
+    "blockers": [],
+    "diagnostics": []
   },
   "untestedCandidates": [
     {

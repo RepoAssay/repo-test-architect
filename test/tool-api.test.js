@@ -37,7 +37,7 @@ describe("tool API", () => {
       unsupportedProjectCount: 0,
       auditCoverage: "complete",
       blockerCount: 2,
-      findingCount: 5,
+      findingCount: 4,
       candidateCount: 3,
       planItemCount: 3,
       verificationCommandCount: 2
@@ -218,8 +218,9 @@ describe("tool API", () => {
     const findings = collectRepoProjectFindings(projectAudits);
 
     assert.equal(findings.schemaVersion, "project-findings/v1");
-    assert.equal(findings.summary.findingCount, 5);
-    assert.equal(findings.findings[0].category, "blocked-project");
+    assert.equal(findings.summary.findingCount, 4);
+    assert.equal(findings.findings[0].category, "missing-coverage");
+    assert.equal(findings.findings[3].code, "missing-test-infrastructure");
   });
 
   it("analyzes test placement from detected repository project audits", () => {

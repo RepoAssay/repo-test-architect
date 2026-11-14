@@ -56,7 +56,7 @@ Recognition of a test framework is separate from evidence that a test covers a s
 
 ## Known Alpha Gaps
 
-The adapter reports blockers or conservative findings rather than guessing when it encounters patterns outside this matrix. Known gaps include:
+The adapter reports blockers or conservative findings rather than guessing when it encounters patterns outside this matrix. Each blocker is also a structured `profile.diagnostics` entry: an ambiguous package manager or a missing test script is a `command` diagnostic that leaves audit confidence unchanged, a missing `package.json` or an unrecognised framework in existing tests is a medium `audit` diagnostic, and a package with neither a test framework nor test files reports a `test-infrastructure` diagnostic (`missing-test-framework`) instead of blockers. Known gaps include:
 
 - custom runners such as Jasmine, Tape, uvu, and repository-specific harnesses
 - computed runner configuration, imported/merged configuration, regex discovery fields, advanced glob syntax, and inheritance not explicitly selected by an owned package script

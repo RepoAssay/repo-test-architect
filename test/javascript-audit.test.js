@@ -230,10 +230,11 @@ describe("JavaScript audit adapter", () => {
     assert.deepEqual(audit.profile.packageManagers, ["npm"]);
     assert.deepEqual(audit.profile.testFrameworks, []);
     assert.equal(audit.profile.testCommand, undefined);
-    assert.equal(audit.profile.confidence, "low");
+    assert.equal(audit.profile.confidence, "medium");
     assert.ok(audit.profile.setupSignals.includes("tsconfig"));
-    assert.ok(audit.profile.blockers.includes("No supported JS test framework detected."));
-    assert.ok(audit.profile.blockers.includes("No runnable test command detected from package scripts or framework config."));
+    // No framework and no tests is a test-infrastructure gap, not an audit blocker (#312).
+    assert.deepEqual(audit.profile.blockers, []);
+    assert.deepEqual(audit.profile.diagnostics.map((diagnostic) => [diagnostic.scope, diagnostic.code, diagnostic.severity]), [["test-infrastructure", "missing-test-framework", "medium"]]);
   });
 
   it("still identifies useful candidates in a repo without tests", () => {
@@ -1770,8 +1771,9 @@ test("browser near misses", async ({ page }) => {
         assert.ok(audit.profile.setupSignals.includes("yarn workspace"));
       } else {
         assert.equal(audit.profile.testCommand, undefined);
-        assert.equal(audit.profile.confidence, "medium");
+        assert.equal(audit.profile.confidence, "high");
         assert.ok(audit.profile.blockers.some((blocker) => blocker.includes("Multiple package managers detected (pnpm, yarn)")));
+        assert.ok(audit.profile.diagnostics.some((diagnostic) => diagnostic.scope === "command" && diagnostic.code === "ambiguous-package-manager"));
         assert.ok(audit.profile.setupSignals.includes("package workspace"));
       }
     }

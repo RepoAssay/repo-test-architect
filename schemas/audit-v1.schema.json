@@ -43,7 +43,22 @@
         "existingTestLocations": { "type": "array", "items": { "type": "string" } },
         "setupSignals": { "type": "array", "items": { "type": "string" } },
         "confidence": { "enum": ["low", "medium", "high"] },
-        "blockers": { "type": "array", "items": { "type": "string" } }
+        "blockers": { "type": "array", "items": { "type": "string" } },
+        "diagnostics": {
+          "description": "Structured audit diagnostics; blockers is the string projection of the audit and command scopes.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["code", "scope", "severity", "message"],
+            "properties": {
+              "code": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+              "scope": { "enum": ["audit", "command", "test-infrastructure"] },
+              "severity": { "enum": ["high", "medium", "low"] },
+              "message": { "type": "string", "minLength": 1 }
+            }
+          }
+        }
       }
     },
     "untestedCandidates": {

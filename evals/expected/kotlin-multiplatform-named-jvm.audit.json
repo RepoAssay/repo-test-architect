@@ -34,7 +34,8 @@
       "named jvm target"
     ],
     "confidence": "high",
-    "blockers": []
+    "blockers": [],
+    "diagnostics": []
   },
   "untestedCandidates": [
     {

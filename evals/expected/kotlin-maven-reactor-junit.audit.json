@@ -29,7 +29,8 @@
       "maven reactor graph"
     ],
     "confidence": "high",
-    "blockers": []
+    "blockers": [],
+    "diagnostics": []
   },
   "untestedCandidates": [
     {

@@ -36,7 +36,8 @@
               "gradle kotlin dsl"
             ],
             "confidence": "medium",
-            "blockers": []
+            "blockers": [],
+            "diagnostics": []
           },
           "untestedCandidates": [
             {
@@ -112,7 +113,8 @@
             "existingTestLocations": [],
             "setupSignals": [],
             "confidence": "medium",
-            "blockers": []
+            "blockers": [],
+            "diagnostics": []
           },
           "untestedCandidates": [
             {

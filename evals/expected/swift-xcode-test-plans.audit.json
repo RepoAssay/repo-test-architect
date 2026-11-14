@@ -30,7 +30,8 @@
       "xcode scheme test plan"
     ],
     "confidence": "high",
-    "blockers": []
+    "blockers": [],
+    "diagnostics": []
   },
   "untestedCandidates": [],
   "coveredButRisky": [

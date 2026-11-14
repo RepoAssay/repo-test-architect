@@ -30,7 +30,8 @@
       "junit platform"
     ],
     "confidence": "high",
-    "blockers": []
+    "blockers": [],
+    "diagnostics": []
   },
   "untestedCandidates": [
     {

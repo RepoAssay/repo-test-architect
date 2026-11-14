@@ -231,7 +231,8 @@ describe("Kotlin audit adapter", () => {
 
     assert.deepEqual(audit.profile.packageManagers, ["gradle", "maven"]);
     assert.equal(audit.profile.testCommand, undefined);
-    assert.equal(audit.profile.confidence, "medium");
+    assert.equal(audit.profile.confidence, "high");
+    assert.ok(audit.profile.diagnostics.some((diagnostic) => diagnostic.scope === "command"));
     assert.ok(audit.profile.setupSignals.includes("gradle wrapper"));
     assert.ok(audit.profile.setupSignals.includes("maven wrapper"));
     assert.ok(audit.profile.blockers.includes("Multiple runnable JVM test commands detected from project markers: ./gradlew test, ./mvnw test."));
@@ -456,9 +457,10 @@ describe("Kotlin audit adapter", () => {
 
     assert.deepEqual(audit.profile.testFrameworks, []);
     assert.equal(audit.profile.testCommand, undefined);
-    assert.equal(audit.profile.confidence, "low");
-    assert.ok(audit.profile.blockers.includes("No supported JVM test framework detected."));
-    assert.ok(audit.profile.blockers.includes("No runnable JVM test command detected from Gradle or Maven markers."));
+    assert.equal(audit.profile.confidence, "medium");
+    // No framework and no tests is a test-infrastructure gap, not an audit blocker (#312).
+    assert.deepEqual(audit.profile.blockers, []);
+    assert.deepEqual(audit.profile.diagnostics.map((diagnostic) => [diagnostic.scope, diagnostic.code, diagnostic.severity]), [["test-infrastructure", "missing-test-target", "medium"]]);
     assert.deepEqual(
       audit.untestedCandidates.map((target) => target.name),
       ["TokenParser"]

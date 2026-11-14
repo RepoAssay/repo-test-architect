@@ -28,7 +28,8 @@
       "bazel swift_test target"
     ],
     "confidence": "high",
-    "blockers": []
+    "blockers": [],
+    "diagnostics": []
   },
   "untestedCandidates": [
     {
