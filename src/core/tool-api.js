@@ -1,7 +1,8 @@
 import { getAdapter, getAdapterRegistry as readAdapterRegistry } from "./adapter-registry.js";
 import { ArtifactValidationError, assertValidArtifact } from "./artifact-validation.js";
 import { explainTarget } from "./explain-target.js";
-import { auditDetectedProjects } from "./project-auditor.js";
+import { InvalidOptionError } from "./invalid-option-error.js";
+import { auditDetectedProjects, normalizeSwiftSchemeSelections } from "./project-auditor.js";
 import { summarizeProjectAudits } from "./project-audit-summary.js";
 import { detectProjects, getProjectDetectionRules as readProjectDetectionRules } from "./project-detector.js";
 import { rankProjectTestCandidates } from "./project-candidate-ranking.js";
@@ -43,16 +44,19 @@ export { ArtifactValidationError } from "./artifact-validation.js";
  * @property {string} [adapterId]
  * @property {string[]} [changedPaths]
  * @property {{ goos: string, goarch: string, tags?: string[] }} [goTarget]
+ * @property {Record<string, string>} [swiftSchemes] shared Xcode scheme per project root; a lone root uses the key "."
  *
  * @typedef {object} AuditRepoProjectsOptions
  * @property {string[]} [changedPaths]
  * @property {string[]} [excludeProjectRoots]
  * @property {{ goos: string, goarch: string, tags?: string[] }} [goTarget]
+ * @property {Record<string, string>} [swiftSchemes]
  *
  * @typedef {object} ReviewRepositoryOptions
  * @property {string[]} [changedPaths]
  * @property {string[]} [excludeProjectRoots]
  * @property {{ goos: string, goarch: string, tags?: string[] }} [goTarget]
+ * @property {Record<string, string>} [swiftSchemes]
  * @property {number} [limit]
  *
  * @typedef {object} DetectRepoProjectsOptions
@@ -100,7 +104,8 @@ export function auditRepoProjects(repoRoot, options = {}) {
   return auditDetectedProjects(repoRoot, {
     changedPaths: validateChangedPaths(options.changedPaths),
     excludeProjectRoots: validateProjectRootPatterns(options.excludeProjectRoots),
-    goTarget: validateGoTarget(options.goTarget)
+    goTarget: validateGoTarget(options.goTarget),
+    swiftSchemes: validateSwiftSchemes(options.swiftSchemes)
   });
 }
 
@@ -207,8 +212,24 @@ export function collectRepoProjectStats(projectAudits) {
 export function auditRepo(repoRoot, options = {}) {
   return getAdapter(options.adapterId).audit(repoRoot, {
     changedPaths: validateChangedPaths(options.changedPaths),
-    goTarget: validateGoTarget(options.goTarget)
+    goTarget: validateGoTarget(options.goTarget),
+    swiftScheme: selectLoneRootSwiftScheme(validateSwiftSchemes(options.swiftSchemes))
   });
+}
+
+/**
+ * A single-project audit has exactly one root, so the selection map may only address it as ".".
+ * @param {Record<string, string> | undefined} swiftSchemes
+ * @returns {string | undefined}
+ */
+function selectLoneRootSwiftScheme(swiftSchemes) {
+  const selections = normalizeSwiftSchemeSelections(swiftSchemes);
+  if (selections.size === 0) return undefined;
+  const foreign = [...selections.keys()].filter((root) => root !== ".");
+  if (foreign.length > 0 || selections.size > 1) {
+    throw new InvalidOptionError(`swiftSchemes for a single-project audit must use the key "." for the audited root, not ${JSON.stringify(foreign[0] ?? [...selections.values()][1].rawRoot)}.`, { option: "swiftSchemes" });
+  }
+  return selections.get(".").scheme;
 }
 
 /**
@@ -324,6 +345,12 @@ function validateProjectRootPatterns(projectRoots) {
   }
 
   return projectRoots;
+}
+
+function validateSwiftSchemes(swiftSchemes) {
+  if (swiftSchemes === undefined) return undefined;
+  normalizeSwiftSchemeSelections(swiftSchemes);
+  return { ...swiftSchemes };
 }
 
 function validateGoTarget(goTarget) {

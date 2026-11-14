@@ -40,6 +40,7 @@ import { describeFailedProject, sortFailedProjects } from "./project-failures.js
  * @property {string[]} [changedPaths]
  * @property {string[]} [excludeProjectRoots]
  * @property {{ goos: string, goarch: string, tags?: string[] }} [goTarget]
+ * @property {Record<string, string>} [swiftSchemes] shared Xcode scheme to use per detected project root (#310)
  */
 
 /**
@@ -58,6 +59,7 @@ export function auditDetectedProjects(repoRoot, options = {}) {
   const detection = detectProjects(repoRoot, {
     excludeProjectRoots: options.excludeProjectRoots
   });
+  const swiftSchemes = normalizeSwiftSchemes(options.swiftSchemes, detection.projects);
   const audits = [];
   const skippedProjects = [];
   const failedProjects = [];
@@ -83,6 +85,7 @@ export function auditDetectedProjects(repoRoot, options = {}) {
       changedPaths: selectProjectChangedPaths(detection.root, project.root, options.changedPaths),
       repositoryRoot: detection.root,
       goTarget: options.goTarget,
+      swiftScheme: swiftSchemes.get(normalizeProjectRootKey(project.root)),
       // Detected projects inside this one receive their own audit; an adapter may leave their
       // sources to that audit instead of counting them again. Unsupported or excluded roots are
       // not listed, so nothing is dropped without a replacement audit.
@@ -137,6 +140,70 @@ function isInvalidOptionError(error) {
  * @param {{ root: string }} project
  * @returns {NestedProject[]}
  */
+/**
+ * Validates the per-project scheme selections and keys them by normalized project root. A key that
+ * names no detected project is a usage error rather than a silent no-op (#310).
+ * @param {unknown} swiftSchemes
+ * @param {Array<{ root: string }>} projects
+ * @returns {Map<string, string>}
+ */
+function normalizeSwiftSchemes(swiftSchemes, projects) {
+  const selections = normalizeSwiftSchemeSelections(swiftSchemes);
+  const detectedRoots = new Set(projects.map((project) => normalizeProjectRootKey(project.root)));
+  for (const [root, { rawRoot }] of selections) {
+    if (!detectedRoots.has(root)) {
+      throw new InvalidOptionError(`swiftSchemes names a project root that was not detected: ${rawRoot}.`, { option: "swiftSchemes" });
+    }
+  }
+  return new Map([...selections].map(([root, { scheme }]) => [root, scheme]));
+}
+
+/**
+ * Validates the shape of a `swiftSchemes` selection map and keys it by normalized project root
+ * (`./Apps/Shop/` and `Apps/Shop` are the same root; `"."` is the audited root). Two raw keys that
+ * name the same root, an absolute or escaping key, and an empty scheme name are usage errors.
+ * @param {unknown} swiftSchemes
+ * @returns {Map<string, { rawRoot: string, scheme: string }>}
+ */
+export function normalizeSwiftSchemeSelections(swiftSchemes) {
+  const selections = new Map();
+  if (swiftSchemes === undefined) return selections;
+  if (!swiftSchemes || typeof swiftSchemes !== "object" || Array.isArray(swiftSchemes)) {
+    throw new InvalidOptionError("swiftSchemes must be an object mapping project roots to shared Xcode scheme names.", { option: "swiftSchemes" });
+  }
+  for (const [rawRoot, scheme] of Object.entries(swiftSchemes)) {
+    if (typeof scheme !== "string" || scheme.length === 0) {
+      throw new InvalidOptionError(`swiftSchemes[${JSON.stringify(rawRoot)}] must be a non-empty scheme name.`, { option: "swiftSchemes" });
+    }
+    const root = normalizeSwiftSchemeRoot(rawRoot);
+    if (root === undefined) {
+      throw new InvalidOptionError(`swiftSchemes keys must be repository-relative project roots, not ${JSON.stringify(rawRoot)}.`, { option: "swiftSchemes" });
+    }
+    if (selections.has(root)) {
+      throw new InvalidOptionError(`swiftSchemes names project root ${root} more than once (${JSON.stringify(selections.get(root).rawRoot)} and ${JSON.stringify(rawRoot)}).`, { option: "swiftSchemes" });
+    }
+    selections.set(root, { rawRoot, scheme });
+  }
+  return selections;
+}
+
+/**
+ * The normalized form of a project-root key, or undefined when it is not a repository-relative root.
+ * @param {unknown} rawRoot
+ * @returns {string | undefined}
+ */
+export function normalizeSwiftSchemeRoot(rawRoot) {
+  if (typeof rawRoot !== "string" || rawRoot.length === 0) return undefined;
+  const normalized = normalizePath(rawRoot);
+  if (normalized.startsWith("/") || /^[A-Za-z]:/.test(normalized) || normalized.split("/").includes("..")) return undefined;
+  return normalizeProjectRootKey(normalized);
+}
+
+function normalizeProjectRootKey(root) {
+  const normalized = stripCurrentDirectoryPrefix(normalizePath(String(root))).replace(/\/+$/, "").replace(/^(?:\.\/)+/, "");
+  return normalized === "" || normalized === "." ? "." : normalized;
+}
+
 function collectNestedProjects(projects, project) {
   return projects
     .filter((candidate) => candidate.root !== project.root && candidate.adapterIds.length > 0 && isInsideProject(project.root, candidate.root))

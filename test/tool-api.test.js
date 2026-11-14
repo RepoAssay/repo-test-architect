@@ -352,3 +352,19 @@ describe("tool API", () => {
     );
   });
 });
+
+describe("Swift scheme selection (#310)", () => {
+  it("passes swiftSchemes through direct and detected-project audits and keys a lone root as \".\"", async (t) => {
+    const { createAmbiguousSchemeProject, SELECTED_SCHEME_COMMAND } = await import("./support/xcode-schemes-fixture.js");
+    const root = createAmbiguousSchemeProject(t);
+    const direct = auditRepo(root, { adapterId: "swift", swiftSchemes: { ".": "Shop Beta" } });
+    const projects = auditRepoProjects(root, { swiftSchemes: { ".": "Shop Beta" } });
+
+    assert.equal(direct.profile.testCommand, SELECTED_SCHEME_COMMAND);
+    assert.equal(projects.audits[0].audit.profile.testCommand, SELECTED_SCHEME_COMMAND);
+    assert.equal(auditRepo(root, { adapterId: "swift" }).profile.testCommand, undefined);
+    assert.throws(() => auditRepo(root, { adapterId: "swift", swiftSchemes: { "Apps/Shop": "Shop Beta" } }), /must use the key "\." for the audited root/);
+    assert.throws(() => auditRepo(root, { adapterId: "swift", swiftSchemes: { ".": 7 } }), /must be a non-empty scheme name/);
+    assert.throws(() => auditRepoProjects(root, { swiftSchemes: "Shop Beta" }), /swiftSchemes must be an object/);
+  });
+});

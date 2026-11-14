@@ -165,7 +165,8 @@ const toolDefinitions = [
         description: "Optional repository-relative source paths to limit target selection.",
         items: { type: "string", minLength: 1 }
       },
-      goTarget: goTargetSchema()
+      goTarget: goTargetSchema(),
+      swiftSchemes: swiftSchemesSchema("Key \".\" names the audited root.")
     }, ["repoRoot"])
   },
   {
@@ -281,7 +282,8 @@ export function callTool(name, args = {}) {
         return auditRepo(requireString(args.repoRoot, "repoRoot"), {
           adapterId: optionalString(args.adapterId, "adapterId"),
           changedPaths: optionalStringArray(args.changedPaths, "changedPaths"),
-          goTarget: optionalGoTarget(args.goTarget)
+          goTarget: optionalGoTarget(args.goTarget),
+          swiftSchemes: optionalSwiftSchemes(args.swiftSchemes)
         });
       case "get_audit_graph":
         return getAuditGraph(resolveAudit(tool, args));
@@ -336,12 +338,13 @@ function repositoryScanOptions(args) {
   return {
     changedPaths: optionalStringArray(args.changedPaths, "changedPaths"),
     excludeProjectRoots: optionalStringArray(args.excludeProjectRoots, "excludeProjectRoots"),
-    goTarget: optionalGoTarget(args.goTarget)
+    goTarget: optionalGoTarget(args.goTarget),
+    swiftSchemes: optionalSwiftSchemes(args.swiftSchemes)
   };
 }
 
 // Arguments that only make sense when the tool scans a repository itself.
-const scanOnlyArguments = ["changedPaths", "excludeProjectRoots", "goTarget", "projectRoot"];
+const scanOnlyArguments = ["changedPaths", "excludeProjectRoots", "goTarget", "swiftSchemes", "projectRoot"];
 
 /**
  * Artifact-consuming tools accept either the saved artifact or repoRoot. Scanning again is deterministic
@@ -401,7 +404,8 @@ function resolveAudit(tool, args) {
     const projectRoot = normalizeProjectRoot(requireString(args.projectRoot, "projectRoot"));
     const projectAudits = auditRepoProjects(requireString(args.repoRoot, "repoRoot"), {
       changedPaths: optionalStringArray(args.changedPaths, "changedPaths"),
-      goTarget: optionalGoTarget(args.goTarget)
+      goTarget: optionalGoTarget(args.goTarget),
+      swiftSchemes: optionalSwiftSchemes(args.swiftSchemes)
     });
     const entry = projectAudits.audits.find((candidate) => normalizeProjectRoot(candidate.projectRoot) === projectRoot);
 
@@ -463,7 +467,8 @@ function repositoryScanProperties(excludePhrase, repoRootDescription = "Reposito
       description: `Optional project roots or subtree patterns such as examples/** to exclude ${excludePhrase}.`,
       items: { type: "string", minLength: 1 }
     },
-    goTarget: goTargetSchema()
+    goTarget: goTargetSchema(),
+    swiftSchemes: swiftSchemesSchema("Keys are detected project roots.")
   };
 }
 
@@ -488,7 +493,16 @@ function auditSourceProperties() {
     repoRoot: { type: "string", description: "Repository root to audit instead of passing audit; requires projectRoot." },
     projectRoot: { type: "string", description: "Project root relative to repoRoot as detected, such as . or packages/api." },
     changedPaths: changedPathsProperty(),
-    goTarget: goTargetSchema()
+    goTarget: goTargetSchema(),
+    swiftSchemes: swiftSchemesSchema("Keys are detected project roots.")
+  };
+}
+
+function swiftSchemesSchema(keyHint) {
+  return {
+    type: "object",
+    description: `Optional shared Xcode scheme per Swift project root. ${keyHint}`,
+    additionalProperties: { type: "string", minLength: 1 }
   };
 }
 
@@ -582,6 +596,16 @@ function optionalStringArray(value, name) {
   }
 
   return value;
+}
+
+function optionalSwiftSchemes(value) {
+  if (value === undefined) return undefined;
+  const selections = requireObject(value, "swiftSchemes");
+  for (const [root, scheme] of Object.entries(selections)) {
+    if (root.length === 0) throw new McpToolError("invalid-arguments", "swiftSchemes keys must be non-empty project roots.", { argument: "swiftSchemes" });
+    requireString(scheme, `swiftSchemes[${JSON.stringify(root)}]`);
+  }
+  return { ...selections };
 }
 
 function optionalGoTarget(value) {

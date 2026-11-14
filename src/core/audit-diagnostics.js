@@ -107,6 +107,9 @@ const LEGACY_EXACT = new Map([
 
 const LEGACY_PREFIXES = [
   ["Multiple shared Xcode schemes", { code: "ambiguous-xcode-scheme", scope: "command", severity: "medium" }],
+
+  ["No shared Xcode scheme declares a test action", { code: "no-testable-xcode-scheme", scope: "command", severity: "medium" }],
+  ["Selected Xcode scheme", { code: "invalid-xcode-scheme-selection", scope: "command", severity: "medium" }],
   ["Multiple Xcode workspaces detected", { code: "ambiguous-xcode-container", scope: "command", severity: "medium" }],
   ["Multiple Xcode projects detected", { code: "ambiguous-xcode-container", scope: "command", severity: "medium" }],
   ["Multiple Xcode test plans detected", { code: "ambiguous-xcode-test-plan", scope: "command", severity: "medium" }],

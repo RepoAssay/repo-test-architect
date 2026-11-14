@@ -31,7 +31,7 @@ export function auditSwiftRepo(root, options = {}) {
   const bazelGraph = parseBazelSwiftGraph(files);
   const swiftPmGraph = parseSwiftPmGraph(files);
   const sourceGraph = mergeSourceGraphs(bazelGraph, swiftPmGraph);
-  const profile = buildProfile(root, files, sourceGraph);
+  const profile = buildProfile(root, files, sourceGraph, { swiftScheme: typeof options.swiftScheme === "string" ? options.swiftScheme : undefined });
   const changedPaths = options.changedPaths ? new Set(options.changedPaths.map((currentPath) => normalizeChangedPath(root, currentPath))) : undefined;
   finishAuditPhase(onPhaseTiming, "swift", "project-and-build-ownership", phaseStartedAt);
 
@@ -201,11 +201,11 @@ function collectRootSwiftPmTestTargetPaths(files) {
     .filter(Boolean);
 }
 
-function buildProfile(root, files, bazelGraph) {
+function buildProfile(root, files, bazelGraph, auditOptions = {}) {
   const paths = files.map((file) => normalizePath(file.path));
   const packageText = swiftPmManifestText(files);
   const testFrameworks = detectTestFrameworks(files, packageText);
-  const testCommandResolution = detectTestCommand(paths, testFrameworks, bazelGraph, files);
+  const testCommandResolution = detectTestCommand(paths, testFrameworks, bazelGraph, files, auditOptions.swiftScheme);
   const testCommand = testCommandResolution.command;
   const existingTestLocations = detectExistingTestLocations(paths, bazelGraph);
   const diagnostics = detectDiagnostics(testCommand, testFrameworks, existingTestLocations, testCommandResolution.blockers);
@@ -219,7 +219,7 @@ function buildProfile(root, files, bazelGraph) {
     testCommand,
     detectedConventions: detectConventions(paths, bazelGraph),
     existingTestLocations,
-    setupSignals: detectSetupSignals(paths, packageText, bazelGraph, files),
+    setupSignals: [...detectSetupSignals(paths, packageText, bazelGraph, files, testCommandResolution.scheme), ...(testCommandResolution.selectedScheme ? ["xcode scheme selected by input"] : [])],
     confidence: scoreAuditConfidence({ diagnostics, testFrameworks, existingTestLocations }),
     blockers: diagnosticsToBlockers(diagnostics),
     diagnostics
@@ -289,7 +289,7 @@ function detectTestFrameworks(files, packageText) {
   return [...frameworks].sort();
 }
 
-function detectTestCommand(paths, frameworks, bazelGraph, files) {
+function detectTestCommand(paths, frameworks, bazelGraph, files, selectedSchemeName) {
   if (frameworks.length === 0) return { command: undefined, blockers: [] };
   if (bazelGraph.hasSwiftTest) return { command: "bazel test //...", blockers: [] };
   if (paths.includes("Package.swift")) {
@@ -311,20 +311,21 @@ function detectTestCommand(paths, frameworks, bazelGraph, files) {
     return { command: "swift test", blockers: [] };
   }
   if (hasXcodeContainer(paths)) {
-    const scheme = detectXcodeScheme(paths);
-    const schemeBlocker = detectXcodeSchemeBlocker(paths, scheme);
-    if (schemeBlocker) return { command: undefined, blockers: [schemeBlocker] };
+    const selectedScheme = Boolean(selectedSchemeName);
+    const selection = selectXcodeScheme(paths, files, selectedSchemeName);
+    if (selection.blocker) return { command: undefined, blockers: [selection.blocker], selectedScheme };
+    const scheme = selection.scheme?.name;
     const containerResolution = detectXcodeContainer(paths, scheme);
-    if (containerResolution.blockers.length > 0) return { command: undefined, blockers: containerResolution.blockers };
-    const testPlan = detectXcodeTestPlan(paths, files, scheme);
+    if (containerResolution.blockers.length > 0) return { command: undefined, blockers: containerResolution.blockers, selectedScheme };
+    const testPlan = detectXcodeTestPlan(paths, files, scheme, selection.scheme?.path);
     const testPlanBlocker = detectXcodeTestPlanBlocker(paths, testPlan);
-    if (testPlanBlocker) return { command: undefined, blockers: [testPlanBlocker] };
+    if (testPlanBlocker) return { command: undefined, blockers: [testPlanBlocker], selectedScheme };
     const containerOption = containerResolution.workspace
       ? ` -workspace ${quoteShellArgument(containerResolution.workspace)}`
       : containerResolution.project ? ` -project ${quoteShellArgument(containerResolution.project)}` : "";
-    if (scheme && testPlan) return { command: `xcodebuild test${containerOption} -scheme ${quoteShellArgument(scheme)} -testPlan ${quoteShellArgument(testPlan)}`, blockers: [] };
-    if (scheme) return { command: `xcodebuild test${containerOption} -scheme ${quoteShellArgument(scheme)}`, blockers: [] };
-    return { command: `xcodebuild test${containerOption}`, blockers: [] };
+    if (scheme && testPlan) return { command: `xcodebuild test${containerOption} -scheme ${quoteShellArgument(scheme)} -testPlan ${quoteShellArgument(testPlan)}`, blockers: [], selectedScheme, scheme: selection.scheme };
+    if (scheme) return { command: `xcodebuild test${containerOption} -scheme ${quoteShellArgument(scheme)}`, blockers: [], selectedScheme, scheme: selection.scheme };
+    return { command: `xcodebuild test${containerOption}`, blockers: [], selectedScheme };
   }
   return { command: undefined, blockers: [] };
 }
@@ -476,7 +477,7 @@ function detectConventions(paths, bazelGraph) {
   return [...conventions];
 }
 
-function detectSetupSignals(paths, packageText, bazelGraph, files) {
+function detectSetupSignals(paths, packageText, bazelGraph, files, resolvedScheme) {
   const signals = new Set();
   const sourceText = files.map((file) => file.content).join("\n");
   if (paths.includes("Package.swift")) signals.add("swift package manager");
@@ -485,9 +486,10 @@ function detectSetupSignals(paths, packageText, bazelGraph, files) {
   if (paths.some(isXcodeWorkspaceDataPath)) signals.add("xcode workspace");
   if (paths.some(isSharedXcodeSchemePath)) signals.add("xcode shared scheme");
   if (paths.some((item) => item.endsWith(".xctestplan"))) signals.add("xcode test plan");
-  const scheme = detectXcodeScheme(paths);
+  // The scheme the command resolution chose (explicit selection included) decides the test-plan signal.
+  const selectedScheme = resolvedScheme ?? selectXcodeScheme(paths, files).scheme;
   const testPlans = new Set(paths.filter((item) => item.endsWith(".xctestplan")).map(basenameWithoutExtension));
-  if (scheme && detectSchemeTestPlan(files, scheme, testPlans)) signals.add("xcode scheme test plan");
+  if (selectedScheme && detectSchemeTestPlan(files, selectedScheme.name, testPlans, selectedScheme.path)) signals.add("xcode scheme test plan");
   if (packageText.includes("Vapor") || packageText.includes("vapor.git")) signals.add("vapor dependency");
   if (/\bFluent\b|fluent(?:-[a-z]+)?\.git|fluent-[a-z]+-driver/i.test(packageText)) signals.add("fluent orm");
   for (const driver of detectDatabaseDrivers(packageText)) signals.add(`${driver} database driver`);
@@ -1891,36 +1893,85 @@ function firstTestDirectory(currentPath) {
   return normalizePath(currentPath).split("/").find((segment) => /Tests?$|UITests?$/.test(segment));
 }
 
-function detectXcodeScheme(paths) {
-  const schemeNames = paths
-    .filter(isSharedXcodeSchemePath)
-    .map((item) => basenameWithoutExtension(item))
-    .sort();
-  if (schemeNames.length === 0) return undefined;
-
-  const workspaceNames = paths
-    .filter(isXcodeWorkspaceDataPath)
-    .map((item) => item.split("/").at(-2)?.replace(/\.xcworkspace$/, ""))
-    .filter(Boolean);
-  const workspaceScheme = schemeNames.find((schemeName) => workspaceNames.includes(schemeName));
-  if (workspaceScheme) return workspaceScheme;
-  const projectNames = paths
-    .filter((item) => item.endsWith(".xcodeproj/project.pbxproj"))
-    .map((item) => item.split("/").at(-2)?.replace(/\.xcodeproj$/, ""))
-    .filter(Boolean)
-    .sort();
-
-  const projectScheme = schemeNames.find((schemeName) => projectNames.includes(schemeName));
-  if (projectScheme) return projectScheme;
-  if (schemeNames.length === 1) return schemeNames[0];
-  return undefined;
+/**
+ * Shared Xcode schemes (`xcshareddata/xcschemes/*.xcscheme`) with what their `TestAction` declares
+ * statically: testables that are not skipped, and test-plan references. A scheme is test-capable when
+ * it has at least one enabled testable or a test plan whose file exists in the repository (#310).
+ */
+function collectSharedXcodeSchemes(paths, files) {
+  const testPlanNames = new Set(paths.filter((item) => item.endsWith(".xctestplan")).map(basenameWithoutExtension));
+  return files
+    .filter((file) => isSharedXcodeSchemePath(file.path))
+    .map((file) => {
+      const schemePath = normalizePath(file.path);
+      const testAction = file.content.match(/<TestAction\b[^>]*\/>|<TestAction\b[\s\S]*?<\/TestAction>/)?.[0] ?? "";
+      const enabledTestables = [...testAction.matchAll(/<TestableReference\b([^>]*)>([\s\S]*?)<\/TestableReference>/g)]
+        .filter(([, attributes]) => !/\bskipped\s*=\s*"YES"/.test(attributes))
+        .map(([, , body]) => body.match(/\bBlueprintName\s*=\s*"([^"]+)"/)?.[1])
+        .filter(Boolean);
+      const testPlanReferences = [...testAction.matchAll(/<TestPlanReference\b[^>]*>/g)]
+        .map((match) => match[0].match(/\breference\s*=\s*"(?:container:)?([^"]+\.xctestplan)"/)?.[1])
+        .filter(Boolean)
+        .map(basenameWithoutExtension);
+      // Xcode keeps the testables beside the test plans once a scheme uses plans, and runs the plans; a
+      // scheme whose referenced plans are all missing therefore cannot run, whatever its testables say.
+      const testCapable = testPlanReferences.length > 0
+        ? testPlanReferences.some((name) => testPlanNames.has(name))
+        : enabledTestables.length > 0;
+      return Object.freeze({
+        name: basenameWithoutExtension(schemePath),
+        path: schemePath,
+        container: schemePath.replace(/\/xcshareddata\/xcschemes\/[^/]+$/, ""),
+        enabledTestables: Object.freeze(enabledTestables),
+        testCapable
+      });
+    })
+    .sort((left, right) => compareText(left.name, right.name) || compareText(left.path, right.path));
 }
 
-function detectXcodeSchemeBlocker(paths, selectedScheme) {
-  const schemePaths = paths.filter(isSharedXcodeSchemePath);
-  const schemeNames = [...new Set(schemePaths.map((item) => basenameWithoutExtension(item)))].sort();
-  if (selectedScheme || schemePaths.length <= 1) return undefined;
-  return `Multiple shared Xcode schemes detected without a unique workspace or project name match: ${schemeNames.join(", ")}.`;
+/**
+ * Selects the scheme `xcodebuild test -scheme` should name. An explicit selection must name a shared,
+ * test-capable scheme that exists in exactly one container; it is never silently replaced. Without a
+ * selection only test-capable schemes are eligible: a unique workspace-name match wins, then a unique
+ * project-name match, then the sole eligible scheme; anything else withholds the command and lists the
+ * candidates, because running the wrong scheme is a guess the audit must not make (#310).
+ * @returns {{ scheme?: { name: string, path: string }, blocker?: string }}
+ */
+function selectXcodeScheme(paths, files, selectedSchemeName) {
+  const schemes = collectSharedXcodeSchemes(paths, files);
+  if (schemes.length === 0) {
+    return selectedSchemeName
+      ? { blocker: `Selected Xcode scheme ${selectedSchemeName} is not a shared scheme in this project; no shared schemes are checked in.` }
+      : {};
+  }
+  // A name that several containers share is shown with its container so the list stays unambiguous.
+  const nameCounts = new Map();
+  for (const scheme of schemes) nameCounts.set(scheme.name, (nameCounts.get(scheme.name) ?? 0) + 1);
+  const describe = (entries) => entries.map((scheme) => (nameCounts.get(scheme.name) > 1 ? `${scheme.container}/${scheme.name}` : scheme.name)).join(", ");
+
+  if (selectedSchemeName) {
+    const matches = schemes.filter((scheme) => scheme.name === selectedSchemeName);
+    if (matches.length === 0) return { blocker: `Selected Xcode scheme ${selectedSchemeName} is not a shared scheme in this project; shared schemes: ${describe(schemes)}.` };
+    if (matches.length > 1) return { blocker: `Selected Xcode scheme ${selectedSchemeName} exists in several containers: ${matches.map((scheme) => scheme.container).join(", ")}.` };
+    if (!matches[0].testCapable) return { blocker: `Selected Xcode scheme ${selectedSchemeName} declares no test action with enabled testables or a resolvable test plan.` };
+    return { scheme: matches[0] };
+  }
+
+  const eligible = schemes.filter((scheme) => scheme.testCapable);
+  if (eligible.length === 0) {
+    return { blocker: `No shared Xcode scheme declares a test action with enabled testables or a resolvable test plan: ${describe(schemes)}.` };
+  }
+  const workspaceNames = paths.filter(isXcodeWorkspaceDataPath).map((item) => item.split("/").at(-2)?.replace(/\.xcworkspace$/, "")).filter(Boolean);
+  const projectNames = paths.filter((item) => item.endsWith(".xcodeproj/project.pbxproj")).map((item) => item.split("/").at(-2)?.replace(/\.xcodeproj$/, "")).filter(Boolean);
+  for (const names of [workspaceNames, projectNames]) {
+    const matched = eligible.filter((scheme) => names.includes(scheme.name));
+    if (matched.length === 1) return { scheme: matched[0] };
+    if (matched.length > 1) break;
+  }
+  if (eligible.length === 1) return { scheme: eligible[0] };
+  return {
+    blocker: `Multiple shared Xcode schemes declare a test action without a unique workspace or project name match: ${describe(eligible)}; select one with swiftSchemes.`
+  };
 }
 
 function detectXcodeContainer(paths, scheme) {
@@ -1977,12 +2028,12 @@ function isSharedXcodeSchemePath(currentPath) {
   return /(?:^|\/)xcshareddata\/xcschemes\/[^/]+\.xcscheme$/.test(normalizePath(currentPath));
 }
 
-function detectXcodeTestPlan(paths, files, scheme) {
+function detectXcodeTestPlan(paths, files, scheme, schemePath) {
   const testPlanNames = paths
     .filter((item) => item.endsWith(".xctestplan"))
     .map((item) => basenameWithoutExtension(item))
     .sort();
-  const schemePlan = scheme ? detectSchemeTestPlan(files, scheme, new Set(testPlanNames)) : undefined;
+  const schemePlan = scheme ? detectSchemeTestPlan(files, scheme, new Set(testPlanNames), schemePath) : undefined;
   if (schemePlan) return schemePlan;
   if (testPlanNames.length === 1) return testPlanNames[0];
   return undefined;
@@ -1996,8 +2047,11 @@ function detectXcodeTestPlanBlocker(paths, selectedTestPlan) {
   return `Multiple Xcode test plans detected without a unique default or sole scheme reference: ${testPlanNames.join(", ")}.`;
 }
 
-function detectSchemeTestPlan(files, scheme, availablePlans) {
-  const schemeFile = files.find((file) => isSharedXcodeSchemePath(file.path) && basenameWithoutExtension(file.path) === scheme);
+function detectSchemeTestPlan(files, scheme, availablePlans, schemePath) {
+  // The selected scheme's own file wins over a same-named scheme in another container.
+  const schemeFile = files.find((file) => schemePath !== undefined
+    ? normalizePath(file.path) === schemePath
+    : isSharedXcodeSchemePath(file.path) && basenameWithoutExtension(file.path) === scheme);
   if (!schemeFile) return undefined;
   const references = [...schemeFile.content.matchAll(/<TestPlanReference\b[^>]*>/g)].flatMap((match) => {
     const reference = match[0].match(/\breference\s*=\s*"(?:container:)?([^"]+\.xctestplan)"/)?.[1];

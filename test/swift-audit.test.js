@@ -9,6 +9,11 @@ import { auditDetectedProjects } from "../src/core/project-auditor.js";
 import { copyTrustFixture } from "./support/non-code-evidence.js";
 import { assertNoProjectTestCommand } from "./support/ownership-evidence.js";
 
+// A shared scheme as Xcode writes it: a TestAction with one enabled testable (#310 requires a test action).
+function sharedSchemeXml(testable = "AppTests", { skipped = "NO", container = "App.xcodeproj" } = {}) {
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<Scheme LastUpgradeVersion = "1610" version = "1.7">\n   <TestAction buildConfiguration = "Debug">\n      <Testables>\n         <TestableReference skipped = "${skipped}" parallelizable = "YES">\n            <BuildableReference BuildableIdentifier = "primary" BlueprintIdentifier = "T1" BuildableName = "${testable}.xctest" BlueprintName = "${testable}" ReferencedContainer = "container:${container}"/>\n         </TestableReference>\n      </Testables>\n   </TestAction>\n</Scheme>\n`;
+}
+
 it("withholds swift test for empty, commented, or string-only package declarations", (t) => {
   for (const wrap of [() => "", text => `/* outer /* nested */\n${text}\n*/`, text => text.split("\n").map(line => `// ${line}`).join("\n"), text => `let documentation = """\n${text}\n"""`]) {
     const root = copyTrustFixture(t, "swift-spm-xctest");
@@ -2127,9 +2132,7 @@ struct URLBuilder {
     );
     fs.writeFileSync(
       path.join(root, "SampleApp.xcodeproj", "xcshareddata", "xcschemes", "SampleApp.xcscheme"),
-      `<?xml version="1.0" encoding="UTF-8"?>
-<Scheme LastUpgradeVersion="1610" version="1.7"></Scheme>
-`
+      sharedSchemeXml("SampleAppTests", { container: "SampleApp.xcodeproj" })
     );
     fs.writeFileSync(
       path.join(root, "SampleApp", "Services", "SessionService.swift"),
@@ -2197,8 +2200,8 @@ final class SampleAppUITests: XCTestCase {
     fs.mkdirSync(path.join(root, "Collector's GrimoireTests"), { recursive: true });
 
     fs.writeFileSync(path.join(root, "Collector's Grimoire.xcodeproj", "project.pbxproj"), "{}\n");
-    fs.writeFileSync(path.join(root, "Collector's Grimoire.xcodeproj", "xcshareddata", "xcschemes", "Collector's Grimoire Beta.xcscheme"), "<Scheme></Scheme>\n");
-    fs.writeFileSync(path.join(root, "Collector's Grimoire.xcodeproj", "xcshareddata", "xcschemes", "Collector's Grimoire.xcscheme"), "<Scheme></Scheme>\n");
+    fs.writeFileSync(path.join(root, "Collector's Grimoire.xcodeproj", "xcshareddata", "xcschemes", "Collector's Grimoire Beta.xcscheme"), sharedSchemeXml());
+    fs.writeFileSync(path.join(root, "Collector's Grimoire.xcodeproj", "xcshareddata", "xcschemes", "Collector's Grimoire.xcscheme"), sharedSchemeXml());
     fs.writeFileSync(
       path.join(root, "Collector's GrimoireTests", "CollectorTests.swift"),
       `import XCTest
@@ -2222,8 +2225,8 @@ final class CollectorTests: XCTestCase {
     fs.mkdirSync(schemesRoot, { recursive: true });
     fs.mkdirSync(path.join(root, "SampleAppTests"), { recursive: true });
     fs.writeFileSync(path.join(root, "SampleApp.xcodeproj", "project.pbxproj"), "{}\n");
-    fs.writeFileSync(path.join(schemesRoot, "Beta.xcscheme"), "<Scheme></Scheme>\n");
-    fs.writeFileSync(path.join(schemesRoot, "Preview.xcscheme"), "<Scheme></Scheme>\n");
+    fs.writeFileSync(path.join(schemesRoot, "Beta.xcscheme"), sharedSchemeXml());
+    fs.writeFileSync(path.join(schemesRoot, "Preview.xcscheme"), sharedSchemeXml());
     fs.writeFileSync(
       path.join(root, "SampleAppTests", "SampleAppTests.swift"),
       "import XCTest\nfinal class SampleAppTests: XCTestCase { func testExample() {} }\n"
@@ -2235,7 +2238,7 @@ final class CollectorTests: XCTestCase {
     assert.equal(audit.profile.confidence, "high");
     assert.ok(audit.profile.diagnostics.some((diagnostic) => diagnostic.scope === "command" && diagnostic.code === "ambiguous-xcode-scheme"));
     assert.ok(audit.profile.setupSignals.includes("xcode shared scheme"));
-    assert.ok(audit.profile.blockers.includes("Multiple shared Xcode schemes detected without a unique workspace or project name match: Beta, Preview."));
+    assert.ok(audit.profile.blockers.includes("Multiple shared Xcode schemes declare a test action without a unique workspace or project name match: Beta, Preview; select one with swiftSchemes."));
     assert.ok(!audit.profile.blockers.includes("No runnable Swift test command detected from Package.swift or Xcode project/workspace markers."));
   });
 
@@ -2258,7 +2261,7 @@ final class CollectorTests: XCTestCase {
       path.join(fixturePackageRoot, "Tests", "FixturePackageTests")
     ]) fs.mkdirSync(directory, { recursive: true });
     fs.writeFileSync(path.join(root, "CheckoutApp.xcodeproj", "project.pbxproj"), "{}\n");
-    fs.writeFileSync(path.join(schemesRoot, "CheckoutApp.xcscheme"), "<Scheme></Scheme>\n");
+    fs.writeFileSync(path.join(schemesRoot, "CheckoutApp.xcscheme"), sharedSchemeXml());
     fs.writeFileSync(path.join(root, "CheckoutApp", "Sources", "CartService.swift"), "import Foundation\nfinal class CartService {\n    func total(for items: [Int]) -> Int { items.reduce(0, +) }\n}\n");
     fs.writeFileSync(path.join(root, "CheckoutApp", "Sources", "ReceiptCalculator.swift"), "public struct ReceiptCalculator {\n    public func discounted(_ price: Int, percent: Int) -> Int { price - price * percent / 100 }\n}\n");
     fs.writeFileSync(path.join(root, "CheckoutAppTests", "CartServiceTests.swift"), "import XCTest\n@testable import CheckoutApp\nfinal class CartServiceTests: XCTestCase { func testTotal() { XCTAssertEqual(CartService().total(for: [1, 2]), 3) } }\n");
@@ -2355,7 +2358,7 @@ final class CollectorTests: XCTestCase {
     ]) fs.mkdirSync(directory, { recursive: true });
     fs.writeFileSync(path.join(root, "Root.xcworkspace", "contents.xcworkspacedata"), "<?xml version=\"1.0\"?><Workspace version=\"1.0\"><FileRef location=\"group:Modules/Child/Child.xcodeproj\"></FileRef></Workspace>\n");
     fs.writeFileSync(path.join(childProject, "project.pbxproj"), "{}\n");
-    fs.writeFileSync(path.join(childProject, "xcshareddata", "xcschemes", "Child.xcscheme"), "<Scheme></Scheme>\n");
+    fs.writeFileSync(path.join(childProject, "xcshareddata", "xcschemes", "Child.xcscheme"), sharedSchemeXml());
     fs.writeFileSync(path.join(root, "Modules", "Child", "Sources", "ChildCalculator.swift"), "final class ChildCalculator {\n    func discounted(_ price: Int, percent: Int) -> Int { price - price * percent / 100 }\n}\n");
     fs.writeFileSync(path.join(root, "Modules", "Child", "ChildTests", "ChildCalculatorTests.swift"), "import XCTest\n@testable import Child\nfinal class ChildCalculatorTests: XCTestCase { func testDiscount() { XCTAssertEqual(ChildCalculator().discounted(100, percent: 10), 90) } }\n");
     fs.writeFileSync(path.join(root, "Packages", "Kit", "Package.swift"), "// swift-tools-version:5.9\nimport PackageDescription\nlet package = Package(name: \"Kit\", targets: [.target(name: \"Kit\")])\n");
@@ -2441,7 +2444,7 @@ final class CollectorTests: XCTestCase {
     fs.mkdirSync(path.join(root, "StorefrontTests"), { recursive: true });
     fs.writeFileSync(path.join(root, "Admin.xcodeproj", "project.pbxproj"), "{}\n");
     fs.writeFileSync(path.join(storefrontProject, "project.pbxproj"), "{}\n");
-    fs.writeFileSync(path.join(schemesRoot, "CI.xcscheme"), "<Scheme></Scheme>\n");
+    fs.writeFileSync(path.join(schemesRoot, "CI.xcscheme"), sharedSchemeXml());
     fs.writeFileSync(
       path.join(root, "StorefrontTests", "StorefrontTests.swift"),
       "import XCTest\nfinal class StorefrontTests: XCTestCase { func testExample() {} }\n"
@@ -2484,11 +2487,11 @@ final class CollectorTests: XCTestCase {
     fs.writeFileSync(path.join(projectRoot, "project.pbxproj"), "{}\n");
     fs.writeFileSync(
       path.join(projectRoot, "xcshareddata", "xcschemes", "SampleApp-CI.xcscheme"),
-      "<Scheme></Scheme>\n"
+      sharedSchemeXml()
     );
     fs.writeFileSync(
       path.join(projectRoot, "xcuserdata", "developer.xcuserdatad", "xcschemes", "SampleApp.xcscheme"),
-      "<Scheme></Scheme>\n"
+      sharedSchemeXml()
     );
     fs.writeFileSync(
       path.join(root, "SampleAppTests", "SampleAppTests.swift"),
@@ -2510,7 +2513,7 @@ final class CollectorTests: XCTestCase {
     fs.mkdirSync(path.join(root, "SampleAppTests"), { recursive: true });
     fs.writeFileSync(path.join(projectRoot, "project.pbxproj"), "{}\n");
     fs.writeFileSync(path.join(projectRoot, "project.xcworkspace", "contents.xcworkspacedata"), "<Workspace></Workspace>\n");
-    fs.writeFileSync(path.join(projectRoot, "xcshareddata", "xcschemes", "SampleApp.xcscheme"), "<Scheme></Scheme>\n");
+    fs.writeFileSync(path.join(projectRoot, "xcshareddata", "xcschemes", "SampleApp.xcscheme"), sharedSchemeXml());
     fs.writeFileSync(
       path.join(root, "SampleAppTests", "SampleAppTests.swift"),
       "import XCTest\nfinal class SampleAppTests: XCTestCase {}\n"
@@ -2531,7 +2534,7 @@ final class CollectorTests: XCTestCase {
     fs.writeFileSync(path.join(workspaceRoot, "contents.xcworkspacedata"), '<Workspace version="1.0"></Workspace>\n');
     fs.writeFileSync(
       path.join(workspaceRoot, "xcshareddata", "xcschemes", "Checkout.xcscheme"),
-      "<Scheme></Scheme>\n"
+      sharedSchemeXml()
     );
     fs.writeFileSync(
       path.join(root, "Checkout", "Services", "SessionService.swift"),
@@ -2561,7 +2564,7 @@ final class CollectorTests: XCTestCase {
     fs.mkdirSync(path.join(root, "StorefrontTests"), { recursive: true });
     fs.writeFileSync(path.join(root, "Admin.xcworkspace", "contents.xcworkspacedata"), "<Workspace></Workspace>\n");
     fs.writeFileSync(path.join(storefrontWorkspace, "contents.xcworkspacedata"), "<Workspace></Workspace>\n");
-    fs.writeFileSync(path.join(schemesRoot, "CI.xcscheme"), "<Scheme></Scheme>\n");
+    fs.writeFileSync(path.join(schemesRoot, "CI.xcscheme"), sharedSchemeXml());
     fs.writeFileSync(
       path.join(root, "StorefrontTests", "StorefrontTests.swift"),
       "import XCTest\nfinal class StorefrontTests: XCTestCase { func testExample() {} }\n"
@@ -2585,7 +2588,7 @@ final class CollectorTests: XCTestCase {
     fs.writeFileSync(path.join(root, "Admin.xcworkspace", "contents.xcworkspacedata"), "<Workspace></Workspace>\n");
     fs.writeFileSync(path.join(root, "Beta.xcworkspace", "contents.xcworkspacedata"), "<Workspace></Workspace>\n");
     fs.writeFileSync(path.join(projectRoot, "project.pbxproj"), "{}\n");
-    fs.writeFileSync(path.join(schemesRoot, "Shared.xcscheme"), "<Scheme></Scheme>\n");
+    fs.writeFileSync(path.join(schemesRoot, "Shared.xcscheme"), sharedSchemeXml());
     fs.writeFileSync(
       path.join(root, "SharedTests", "SharedTests.swift"),
       "import XCTest\nfinal class SharedTests: XCTestCase { func testExample() {} }\n"
@@ -2703,7 +2706,7 @@ final class FeatureFlagsSpec: QuickSpec {
     fs.mkdirSync(path.join(root, "SampleAppTests"), { recursive: true });
 
     fs.writeFileSync(path.join(root, "SampleApp.xcodeproj", "project.pbxproj"), "{}\n");
-    fs.writeFileSync(path.join(root, "SampleApp.xcodeproj", "xcshareddata", "xcschemes", "SampleApp.xcscheme"), "<Scheme></Scheme>\n");
+    fs.writeFileSync(path.join(root, "SampleApp.xcodeproj", "xcshareddata", "xcschemes", "SampleApp.xcscheme"), sharedSchemeXml());
     fs.writeFileSync(path.join(root, "SampleApp.xctestplan"), "{}\n");
     fs.writeFileSync(
       path.join(root, "SampleAppTests", "SampleAppTests.swift"),
@@ -2774,6 +2777,140 @@ final class SampleAppTests: XCTestCase {
       }
     ]);
     assert.deepEqual(audit.skipped.map((target) => target.path), ["CheckoutApp/Views/LoginView.swift"]);
+  });
+});
+
+describe("Xcode scheme selection (#310)", () => {
+  const noTestAction = `<?xml version="1.0" encoding="UTF-8"?>\n<Scheme version = "1.7">\n   <BuildAction parallelizeBuildables = "YES"/>\n   <LaunchAction buildConfiguration = "Debug"/>\n</Scheme>\n`;
+  const planScheme = (plan) => `<?xml version="1.0" encoding="UTF-8"?>\n<Scheme version = "1.7">\n   <TestAction>\n      <TestPlans>\n         <TestPlanReference reference = "container:${plan}.xctestplan" default = "YES"/>\n      </TestPlans>\n   </TestAction>\n</Scheme>\n`;
+  const makeProject = (t, schemes, { projectName = "ShopApp", extraFiles = {} } = {}) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-xcode-schemes-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    const write = (relative, content) => {
+      fs.mkdirSync(path.dirname(path.join(root, relative)), { recursive: true });
+      fs.writeFileSync(path.join(root, relative), content);
+    };
+    write(`${projectName}.xcodeproj/project.pbxproj`, "// !$*UTF8*$!\n{ archiveVersion = 1; objectVersion = 56; objects = { }; rootObject = 0; }\n");
+    for (const [name, content] of Object.entries(schemes)) write(`${projectName}.xcodeproj/xcshareddata/xcschemes/${name}.xcscheme`, content);
+    write("Shop/PriceFormatter.swift", "import Foundation\nstruct PriceFormatter {\n    func format(_ cents: Int) -> String {\n        if cents < 0 { return \"-\" }\n        return \"\\(cents / 100).\\(cents % 100)\"\n    }\n}\n");
+    write("ShopTests/PriceFormatterTests.swift", "import XCTest\n@testable import Shop\nfinal class PriceFormatterTests: XCTestCase { func testFormat() { XCTAssertEqual(PriceFormatter().format(105), \"1.5\") } }\n");
+    for (const [relative, content] of Object.entries(extraFiles)) write(relative, content);
+    return root;
+  };
+  const outcome = (root, options) => {
+    const audit = auditSwiftRepo(root, options);
+    return {
+      command: audit.profile.testCommand,
+      blockers: audit.profile.blockers,
+      codes: audit.profile.diagnostics.map((diagnostic) => `${diagnostic.scope}:${diagnostic.code}`),
+      confidence: audit.profile.confidence,
+      signals: audit.profile.setupSignals,
+      covered: audit.coveredButRisky.map((target) => target.path)
+    };
+  };
+
+  it("selects the sole scheme whose test action has enabled testables, ignoring skipped and test-less schemes", (t) => {
+    const root = makeProject(t, { Shop: sharedSchemeXml("ShopTests"), "Shop Beta": sharedSchemeXml("ShopTests", { skipped: "YES" }), ShopWidget: noTestAction });
+    const result = outcome(root);
+    assert.equal(result.command, "xcodebuild test -project ShopApp.xcodeproj -scheme Shop");
+    assert.deepEqual(result.blockers, []);
+    assert.equal(result.confidence, "high");
+    assert.deepEqual(result.covered, ["Shop/PriceFormatter.swift"]);
+  });
+
+  it("withholds the command when several schemes declare a test action and honours an explicit selection", (t) => {
+    const root = makeProject(t, { Shop: sharedSchemeXml("ShopTests"), "Shop Beta": sharedSchemeXml("ShopTests"), ShopWidget: noTestAction });
+    const withheld = outcome(root);
+    assert.equal(withheld.command, undefined);
+    assert.deepEqual(withheld.blockers, ["Multiple shared Xcode schemes declare a test action without a unique workspace or project name match: Shop, Shop Beta; select one with swiftSchemes."]);
+    assert.deepEqual(withheld.codes, ["command:ambiguous-xcode-scheme"]);
+    assert.equal(withheld.confidence, "high", "a withheld command does not lower confidence in the source audit");
+    assert.deepEqual(withheld.covered, ["Shop/PriceFormatter.swift"], "auditing is unaffected by the withheld command");
+    assert.ok(!withheld.signals.includes("xcode scheme selected by input"));
+
+    const selected = outcome(root, { swiftScheme: "Shop Beta" });
+    assert.equal(selected.command, "xcodebuild test -project ShopApp.xcodeproj -scheme \"Shop Beta\"");
+    assert.deepEqual(selected.blockers, []);
+    assert.ok(selected.signals.includes("xcode scheme selected by input"));
+  });
+
+  it("never replaces an explicit selection that names an unknown or test-less scheme", (t) => {
+    const root = makeProject(t, { Shop: sharedSchemeXml("ShopTests"), ShopWidget: noTestAction });
+    const unknown = outcome(root, { swiftScheme: "Nope" });
+    assert.equal(unknown.command, undefined);
+    assert.deepEqual(unknown.blockers, ["Selected Xcode scheme Nope is not a shared scheme in this project; shared schemes: Shop, ShopWidget."]);
+    assert.deepEqual(unknown.codes, ["command:invalid-xcode-scheme-selection"]);
+    const testless = outcome(root, { swiftScheme: "ShopWidget" });
+    assert.equal(testless.command, undefined);
+    assert.deepEqual(testless.blockers, ["Selected Xcode scheme ShopWidget declares no test action with enabled testables or a resolvable test plan."]);
+    assert.deepEqual(testless.codes, ["command:invalid-xcode-scheme-selection"]);
+  });
+
+  it("withholds the command when no shared scheme declares a test action", (t) => {
+    const root = makeProject(t, { Shop: noTestAction, "Shop Beta": sharedSchemeXml("ShopTests", { skipped: "YES" }) });
+    const result = outcome(root);
+    assert.equal(result.command, undefined);
+    assert.deepEqual(result.blockers, ["No shared Xcode scheme declares a test action with enabled testables or a resolvable test plan: Shop, Shop Beta."]);
+    assert.deepEqual(result.codes, ["command:no-testable-xcode-scheme"]);
+  });
+
+  it("treats a scheme as test-capable through a test plan only when the plan file exists", (t) => {
+    const resolvable = outcome(makeProject(t, { CI: planScheme("Unit"), ShopWidget: noTestAction }, { extraFiles: { "Unit.xctestplan": "{}\n" } }));
+    assert.equal(resolvable.command, "xcodebuild test -project ShopApp.xcodeproj -scheme CI -testPlan Unit");
+    const dangling = outcome(makeProject(t, { CI: planScheme("Missing"), ShopWidget: noTestAction }));
+    assert.equal(dangling.command, undefined);
+    assert.deepEqual(dangling.codes, ["command:no-testable-xcode-scheme"]);
+    // Xcode keeps the testables beside the plans once a scheme uses plans; the plans decide what runs.
+    const planWithTestables = `<?xml version="1.0" encoding="UTF-8"?>\n<Scheme version = "1.7">\n   <TestAction>\n      <TestPlans>\n         <TestPlanReference reference = "container:Missing.xctestplan" default = "YES"/>\n      </TestPlans>\n      <Testables>\n         <TestableReference skipped = "NO">\n            <BuildableReference BuildableIdentifier = "primary" BlueprintIdentifier = "T1" BuildableName = "ShopTests.xctest" BlueprintName = "ShopTests" ReferencedContainer = "container:ShopApp.xcodeproj"/>\n         </TestableReference>\n      </Testables>\n   </TestAction>\n</Scheme>\n`;
+    const danglingWithTestables = outcome(makeProject(t, { CI: planWithTestables }));
+    assert.equal(danglingWithTestables.command, undefined, "a missing plan is not rescued by the testables Xcode leaves beside it");
+    assert.deepEqual(danglingWithTestables.codes, ["command:no-testable-xcode-scheme"]);
+  });
+
+  it("reports the test-plan signal for the explicitly selected scheme", (t) => {
+    const root = makeProject(t, { A: planScheme("Unit"), B: planScheme("Integration") }, { extraFiles: { "Unit.xctestplan": "{}\n", "Integration.xctestplan": "{}\n" } });
+    const selected = outcome(root, { swiftScheme: "B" });
+    assert.equal(selected.command, "xcodebuild test -project ShopApp.xcodeproj -scheme B -testPlan Integration");
+    assert.ok(selected.signals.includes("xcode scheme test plan"));
+  });
+
+  it("names the container when a scheme name exists in several containers", (t) => {
+    const root = makeProject(t, { CI: sharedSchemeXml("ShopTests") });
+    fs.mkdirSync(path.join(root, "Admin.xcodeproj", "xcshareddata", "xcschemes"), { recursive: true });
+    fs.writeFileSync(path.join(root, "Admin.xcodeproj", "project.pbxproj"), "{}\n");
+    fs.writeFileSync(path.join(root, "Admin.xcodeproj", "xcshareddata", "xcschemes", "CI.xcscheme"), sharedSchemeXml("AdminTests", { container: "Admin.xcodeproj" }));
+    const implicit = outcome(root);
+    assert.equal(implicit.command, undefined);
+    assert.deepEqual(implicit.blockers, ["Multiple shared Xcode schemes declare a test action without a unique workspace or project name match: Admin.xcodeproj/CI, ShopApp.xcodeproj/CI; select one with swiftSchemes."]);
+    const explicit = outcome(root, { swiftScheme: "CI" });
+    assert.equal(explicit.command, undefined);
+    assert.deepEqual(explicit.blockers, ["Selected Xcode scheme CI exists in several containers: Admin.xcodeproj, ShopApp.xcodeproj."]);
+  });
+
+  it("applies swiftSchemes per detected project root and rejects roots that were not detected", (t) => {
+    const root = makeProject(t, { Shop: sharedSchemeXml("ShopTests"), "Shop Beta": sharedSchemeXml("ShopTests") });
+    const audits = auditDetectedProjects(root, { swiftSchemes: { "./": "Shop Beta" } });
+    assert.equal(audits.audits.length, 1);
+    assert.equal(audits.audits[0].audit.profile.testCommand, "xcodebuild test -project ShopApp.xcodeproj -scheme \"Shop Beta\"");
+    assert.throws(() => auditDetectedProjects(root, { swiftSchemes: { "Apps/Missing": "Shop" } }), /swiftSchemes names a project root that was not detected: Apps\/Missing/);
+    assert.throws(() => auditDetectedProjects(root, { swiftSchemes: { ".": "" } }), /must be a non-empty scheme name/);
+    assert.throws(() => auditDetectedProjects(root, { swiftSchemes: ["Shop"] }), /swiftSchemes must be an object/);
+    assert.throws(() => auditDetectedProjects(root, { swiftSchemes: { ".": "Shop", "./": "Shop Beta" } }), /names project root \. more than once/);
+    assert.throws(() => auditDetectedProjects(root, { swiftSchemes: { "/": "Shop" } }), /must be repository-relative project roots/);
+    assert.throws(() => auditDetectedProjects(root, { swiftSchemes: { "../elsewhere": "Shop" } }), /must be repository-relative project roots/);
+  });
+
+  it("addresses one nested project root and leaves the others untouched", async (t) => {
+    const { createNestedSchemeProjects } = await import("./support/xcode-schemes-fixture.js");
+    const root = createNestedSchemeProjects(t);
+    const commands = (audits) => Object.fromEntries(audits.audits.map((entry) => [entry.projectRoot, entry.audit.profile.testCommand]));
+    assert.deepEqual(commands(auditDetectedProjects(root)), { "Apps/Admin": "xcodebuild test -project AdminApp.xcodeproj -scheme Admin", "Apps/Shop": undefined });
+    for (const key of ["Apps/Shop", "./Apps/Shop", "Apps/Shop/", "Apps\\Shop"]) {
+      assert.deepEqual(commands(auditDetectedProjects(root, { swiftSchemes: { [key]: "Shop Beta" } })), {
+        "Apps/Admin": "xcodebuild test -project AdminApp.xcodeproj -scheme Admin",
+        "Apps/Shop": "xcodebuild test -project ShopApp.xcodeproj -scheme \"Shop Beta\""
+      }, key);
+    }
   });
 });
 

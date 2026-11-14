@@ -1281,3 +1281,42 @@ function writeTempJson(value) {
   fs.writeFileSync(filePath, `${JSON.stringify(value)}\n`);
   return filePath;
 }
+
+describe("--swift-scheme (#310)", () => {
+  it("selects a shared Xcode scheme for single-project and repository audits", async (t) => {
+    const { createAmbiguousSchemeProject, SELECTED_SCHEME_COMMAND } = await import("./support/xcode-schemes-fixture.js");
+    const root = createAmbiguousSchemeProject(t);
+
+    const direct = JSON.parse(execFileSync(process.execPath, [cliPath, "audit", root, "--adapter=swift", "--swift-scheme", "Shop Beta", "--format=json"], { encoding: "utf8" }));
+    assert.equal(direct.profile.testCommand, SELECTED_SCHEME_COMMAND);
+    assert.deepEqual(direct.profile.blockers, []);
+
+    const projects = JSON.parse(execFileSync(process.execPath, [cliPath, "audit-projects", root, "--swift-scheme=.=Shop Beta", "--format=json"], { encoding: "utf8" }));
+    assert.equal(projects.audits[0].audit.profile.testCommand, SELECTED_SCHEME_COMMAND);
+
+    const withheld = JSON.parse(execFileSync(process.execPath, [cliPath, "audit", root, "--adapter=swift", "--format=json"], { encoding: "utf8" }));
+    assert.equal(withheld.profile.testCommand, undefined);
+
+    assert.throws(
+      () => execFileSync(process.execPath, [cliPath, "audit", root, "--adapter=swift", "--swift-scheme", "Shop Beta", "--swift-scheme", "Shop"], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }),
+      (error) => /names project root \. more than once/.test(error.stderr)
+    );
+    assert.throws(
+      () => execFileSync(process.execPath, [cliPath, "plan", "--from-audit=evals/expected/swift-spm-xctest.audit.json", "--swift-scheme=Shop"], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }),
+      (error) => /--swift-scheme requires a repository scan/.test(error.stderr)
+    );
+    assert.throws(
+      () => execFileSync(process.execPath, [cliPath, "audit-projects", root, "--swift-scheme=Apps/Missing=Shop"], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }),
+      (error) => /swiftSchemes names a project root that was not detected: Apps\/Missing/.test(error.stderr)
+    );
+    // Keys that normalize to the same root collide, and a single-project command only accepts the audited root.
+    assert.throws(
+      () => execFileSync(process.execPath, [cliPath, "audit-projects", root, "--swift-scheme=Apps/Shop=Shop", "--swift-scheme=./Apps/Shop/=Shop Beta"], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }),
+      (error) => /names project root Apps\/Shop more than once/.test(error.stderr)
+    );
+    assert.throws(
+      () => execFileSync(process.execPath, [cliPath, "audit", root, "--adapter=swift", "--swift-scheme=Apps/X=Shop"], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }),
+      (error) => /must use the key "\." for the audited root/.test(error.stderr) && !/\n\s+at /.test(error.stderr)
+    );
+  });
+});
