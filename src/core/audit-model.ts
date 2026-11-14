@@ -2,6 +2,15 @@ export type RiskLevel = "low" | "medium" | "high";
 
 export type TestLevel = "unit" | "integration" | "component" | "ui" | "none";
 
+export type AuditDiagnosticScope = "audit" | "command" | "test-infrastructure";
+
+export interface AuditDiagnostic {
+  code: string;
+  scope: AuditDiagnosticScope;
+  severity: RiskLevel;
+  message: string;
+}
+
 export interface RepoProfile {
   root: string;
   languages: string[];
@@ -14,6 +23,7 @@ export interface RepoProfile {
   setupSignals: string[];
   confidence: RiskLevel;
   blockers: string[];
+  diagnostics?: AuditDiagnostic[];
 }
 
 export interface AuditTarget {

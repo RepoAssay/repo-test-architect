@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import path from "node:path";
 import { getAdapter } from "../../src/core/adapter-registry.js";
+import { createDiagnostic, diagnosticsToBlockers, resolveAuditDiagnostics } from "../../src/core/audit-diagnostics.js";
 import { explainTarget } from "../../src/core/explain-target.js";
 import { rankTestCandidates } from "../../src/core/rank-test-candidates.js";
 import { renderMarkdownReport } from "../../src/core/report.js";
@@ -316,9 +317,18 @@ function assertProjectEvidenceAgreement(audit, ranking, plan, findings, adapterI
     assert.deepEqual(item.existingTestEvidence, target.existingTestEvidence, `${adapterId} plan evidence must agree`);
   }
 
-  assert.equal(findings.summary.categoryCounts["missing-coverage"], audit.untestedCandidates.length, `${adapterId} missing findings must agree`);
+  // Diagnostics (#312): audit-scope entries are blocked-project findings, command-scope entries are
+  // command-withheld findings, and missing test infrastructure is one extra missing-coverage finding.
+  const diagnostics = resolveAuditDiagnostics(audit.profile);
+  const infrastructureFindingCount = diagnostics.some((diagnostic) => diagnostic.scope === "test-infrastructure") ? 1 : 0;
+  assert.equal(findings.summary.categoryCounts["missing-coverage"], audit.untestedCandidates.length + infrastructureFindingCount, `${adapterId} missing findings must agree`);
   assert.equal(findings.summary.categoryCounts["weak-existing-coverage"], audit.coveredButRisky.length, `${adapterId} weak findings must agree`);
-  assert.equal(findings.summary.categoryCounts["blocked-project"], audit.profile.blockers.length, `${adapterId} blocker findings must agree`);
+  assert.equal(findings.summary.categoryCounts["blocked-project"], diagnostics.filter((diagnostic) => diagnostic.scope === "audit").length, `${adapterId} blocker findings must agree`);
+  assert.equal(findings.summary.categoryCounts["command-withheld"], diagnostics.filter((diagnostic) => diagnostic.scope === "command").length, `${adapterId} command findings must agree`);
+  if (audit.profile.diagnostics !== undefined) {
+    for (const diagnostic of audit.profile.diagnostics) createDiagnostic(diagnostic);
+    assert.deepEqual(audit.profile.blockers, diagnosticsToBlockers(audit.profile.diagnostics), `${adapterId} blockers must be the audit and command projection of diagnostics`);
+  }
 
   for (const target of audit.coveredButRisky) {
     const finding = findings.findings.find((entry) => entry.category === "weak-existing-coverage" && entry.targetId === target.id);

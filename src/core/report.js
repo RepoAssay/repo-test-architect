@@ -24,6 +24,12 @@ export function renderMarkdownReport(audit) {
   } else {
     for (const blocker of audit.profile.blockers) lines.push(`- ${blocker}`);
   }
+  const infrastructureGaps = (audit.profile.diagnostics ?? []).filter((diagnostic) => diagnostic.scope === "test-infrastructure");
+  if (infrastructureGaps.length > 0) {
+    lines.push("");
+    lines.push("## Test Infrastructure");
+    for (const diagnostic of infrastructureGaps) lines.push(`- ${diagnostic.message}`);
+  }
   lines.push("");
   lines.push("## Untested Candidates");
 

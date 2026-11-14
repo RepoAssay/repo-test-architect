@@ -231,7 +231,8 @@ describe("Kotlin audit adapter", () => {
 
     assert.deepEqual(audit.profile.packageManagers, ["gradle", "maven"]);
     assert.equal(audit.profile.testCommand, undefined);
-    assert.equal(audit.profile.confidence, "medium");
+    assert.equal(audit.profile.confidence, "high");
+    assert.ok(audit.profile.diagnostics.some((diagnostic) => diagnostic.scope === "command"));
     assert.ok(audit.profile.setupSignals.includes("gradle wrapper"));
     assert.ok(audit.profile.setupSignals.includes("maven wrapper"));
     assert.ok(audit.profile.blockers.includes("Multiple runnable JVM test commands detected from project markers: ./gradlew test, ./mvnw test."));
@@ -456,9 +457,10 @@ describe("Kotlin audit adapter", () => {
 
     assert.deepEqual(audit.profile.testFrameworks, []);
     assert.equal(audit.profile.testCommand, undefined);
-    assert.equal(audit.profile.confidence, "low");
-    assert.ok(audit.profile.blockers.includes("No supported JVM test framework detected."));
-    assert.ok(audit.profile.blockers.includes("No runnable JVM test command detected from Gradle or Maven markers."));
+    assert.equal(audit.profile.confidence, "medium");
+    // No framework and no tests is a test-infrastructure gap, not an audit blocker (#312).
+    assert.deepEqual(audit.profile.blockers, []);
+    assert.deepEqual(audit.profile.diagnostics.map((diagnostic) => [diagnostic.scope, diagnostic.code, diagnostic.severity]), [["test-infrastructure", "missing-test-target", "medium"]]);
     assert.deepEqual(
       audit.untestedCandidates.map((target) => target.name),
       ["TokenParser"]
@@ -1569,5 +1571,31 @@ describe("Kotlin audit adapter", () => {
     const audit = auditKotlinRepo(root);
 
     assert.equal(audit.coveredButRisky[0].existingTestEvidence[0].usage, "called");
+  });
+});
+
+describe("Kotlin diagnostics for tests without a recognised framework (#312)", () => {
+  it("bounds the audit and withholds the command instead of reporting missing infrastructure", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-kotlin-unknown-framework-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "src", "main", "kotlin"), { recursive: true });
+    fs.mkdirSync(path.join(root, "src", "test", "kotlin"), { recursive: true });
+    fs.writeFileSync(path.join(root, "build.gradle.kts"), 'plugins { kotlin("jvm") version "2.0.0" }\n');
+    fs.writeFileSync(path.join(root, "src", "main", "kotlin", "TokenParser.kt"), "class TokenParser {\n    fun parse(input: String): String {\n        if (input.isBlank()) throw IllegalArgumentException(\"blank\")\n        return input.trim()\n    }\n}\n");
+    fs.writeFileSync(path.join(root, "src", "test", "kotlin", "TokenParserSpec.kt"), "import org.spekframework.spek2.Spek\nimport org.spekframework.spek2.style.specification.describe\n\nobject TokenParserSpec : Spek({\n    describe(\"parse\") { it(\"trims\") { check(TokenParser().parse(\" x \") == \"x\") } }\n})\n");
+
+    const audit = auditKotlinRepo(root);
+
+    assert.deepEqual(audit.profile.testFrameworks, []);
+    assert.ok(audit.profile.existingTestLocations.length > 0, "the test source set is seen");
+    assert.deepEqual(audit.profile.diagnostics.map((diagnostic) => [diagnostic.scope, diagnostic.code]), [
+      ["audit", "missing-test-framework"],
+      ["command", "missing-test-command"]
+    ]);
+    assert.deepEqual(audit.profile.blockers, [
+      "No supported JVM test framework detected.",
+      "No runnable JVM test command detected from Gradle or Maven markers."
+    ]);
+    assert.equal(audit.profile.confidence, "medium");
   });
 });

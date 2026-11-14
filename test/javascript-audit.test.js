@@ -230,10 +230,11 @@ describe("JavaScript audit adapter", () => {
     assert.deepEqual(audit.profile.packageManagers, ["npm"]);
     assert.deepEqual(audit.profile.testFrameworks, []);
     assert.equal(audit.profile.testCommand, undefined);
-    assert.equal(audit.profile.confidence, "low");
+    assert.equal(audit.profile.confidence, "medium");
     assert.ok(audit.profile.setupSignals.includes("tsconfig"));
-    assert.ok(audit.profile.blockers.includes("No supported JS test framework detected."));
-    assert.ok(audit.profile.blockers.includes("No runnable test command detected from package scripts or framework config."));
+    // No framework and no tests is a test-infrastructure gap, not an audit blocker (#312).
+    assert.deepEqual(audit.profile.blockers, []);
+    assert.deepEqual(audit.profile.diagnostics.map((diagnostic) => [diagnostic.scope, diagnostic.code, diagnostic.severity]), [["test-infrastructure", "missing-test-framework", "medium"]]);
   });
 
   it("still identifies useful candidates in a repo without tests", () => {
@@ -1770,8 +1771,9 @@ test("browser near misses", async ({ page }) => {
         assert.ok(audit.profile.setupSignals.includes("yarn workspace"));
       } else {
         assert.equal(audit.profile.testCommand, undefined);
-        assert.equal(audit.profile.confidence, "medium");
+        assert.equal(audit.profile.confidence, "high");
         assert.ok(audit.profile.blockers.some((blocker) => blocker.includes("Multiple package managers detected (pnpm, yarn)")));
+        assert.ok(audit.profile.diagnostics.some((diagnostic) => diagnostic.scope === "command" && diagnostic.code === "ambiguous-package-manager"));
         assert.ok(audit.profile.setupSignals.includes("package workspace"));
       }
     }
@@ -2250,5 +2252,32 @@ describe("JavaScript skipped tests", () => {
       assert.equal(evidence?.[0].usage, "asserted");
       assert.ok(elapsed < 250, `took ${elapsed} ms`);
     }
+  });
+});
+
+describe("JavaScript diagnostics for tests without a recognised runner (#312)", () => {
+  it("bounds the audit and withholds the command instead of reporting missing infrastructure", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-js-unknown-runner-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "src"), { recursive: true });
+    fs.mkdirSync(path.join(root, "test"), { recursive: true });
+    fs.writeFileSync(path.join(root, "package.json"), JSON.stringify({ name: "pricing", version: "1.0.0", private: true, type: "module", devDependencies: { uvu: "^0.5.6" } }, null, 2));
+    fs.writeFileSync(path.join(root, "src", "pricing.js"), "export function discount(price, percent) {\n  if (percent < 0) throw new Error(\"negative\");\n  return price - (price * percent) / 100;\n}\n");
+    fs.writeFileSync(path.join(root, "test", "pricing.test.js"), "import { test } from \"uvu\";\nimport * as assert from \"uvu/assert\";\nimport { discount } from \"../src/pricing.js\";\ntest(\"discount\", () => { assert.is(discount(100, 10), 90); });\ntest.run();\n");
+
+    const audit = auditJavaScriptRepo(root);
+
+    assert.deepEqual(audit.profile.testFrameworks, []);
+    assert.deepEqual(audit.profile.existingTestLocations, ["test/"]);
+    assert.equal(audit.profile.testCommand, undefined);
+    assert.deepEqual(audit.profile.diagnostics.map((diagnostic) => [diagnostic.scope, diagnostic.code, diagnostic.severity]), [
+      ["audit", "missing-test-framework", "medium"],
+      ["command", "missing-test-command", "medium"]
+    ]);
+    assert.deepEqual(audit.profile.blockers, [
+      "No supported JS test framework detected.",
+      "No runnable test command detected from package scripts or framework config."
+    ]);
+    assert.equal(audit.profile.confidence, "medium");
   });
 });

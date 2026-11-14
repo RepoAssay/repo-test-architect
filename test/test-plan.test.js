@@ -44,12 +44,14 @@ describe("test plan generator", () => {
     const audit = auditJavaScriptRepo(path.resolve("examples/node-no-tests-yet"));
     const plan = createTestPlan(audit);
 
-    assert.equal(plan.summary.confidence, "low");
+    // A repository with no tests at all has a test-infrastructure diagnostic, not blockers (#312).
+    assert.equal(plan.summary.confidence, "medium");
     assert.equal(plan.summary.verificationCommand, undefined);
     assert.equal(Object.hasOwn(plan.summary, "verificationCommand"), false);
     assert.deepEqual(JSON.parse(JSON.stringify(plan)), plan);
-    assert.equal(plan.summary.blockerCount, 2);
-    assert.ok(plan.blockers.includes("No supported JS test framework detected."));
+    assert.equal(plan.summary.blockerCount, 0);
+    assert.deepEqual(plan.blockers, []);
+    assert.deepEqual(audit.profile.diagnostics.map((diagnostic) => [diagnostic.scope, diagnostic.code]), [["test-infrastructure", "missing-test-framework"]]);
   });
 
   it("adds generic database and MongoDB-specific coverage guidance from source signals", () => {

@@ -20,10 +20,15 @@
       "vapor dependency",
       "swiftpm executable target"
     ],
-    "confidence": "low",
-    "blockers": [
-      "No supported Swift test framework detected.",
-      "No runnable Swift test command detected from Package.swift or Xcode project/workspace markers."
+    "confidence": "medium",
+    "blockers": [],
+    "diagnostics": [
+      {
+        "code": "missing-test-target",
+        "scope": "test-infrastructure",
+        "severity": "medium",
+        "message": "No Swift test target or test files were found; add a .testTarget to Package.swift under Tests/<Module>Tests, or a test bundle to the Xcode project, so that candidates can be covered."
+      }
     ]
   },
   "untestedCandidates": [

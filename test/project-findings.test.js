@@ -17,30 +17,32 @@ describe("project findings", () => {
       unsupportedProjectCount: 0,
       auditCoverage: "complete",
       unsupportedReasons: [],
-      findingCount: 5,
-      displayedFindingCount: 5,
+      findingCount: 4,
+      displayedFindingCount: 4,
       maxFindings: 10,
-      highSeverityCount: 5,
+      highSeverityCount: 3,
       placementFindingCount: 0,
-      blockedProjectCount: 2,
+      blockedProjectCount: 0,
       categoryCounts: {
-        "missing-coverage": 3,
+        "missing-coverage": 4,
         "weak-existing-coverage": 0,
         "misplaced-coverage": 0,
         "low-value-direct-test": 0,
-        "blocked-project": 2
+        "blocked-project": 0,
+        "command-withheld": 0
       }
     });
+    // services/api has no test framework or command: that is one coverage gap below the target findings, not two blockers (#312).
     assert.deepEqual(
       findings.findings.map((finding) => `${finding.category}:${finding.projectRoot}:${finding.target ?? finding.title}`),
       [
-        "blocked-project:services/api:services/api cannot be fully audited",
-        "blocked-project:services/api:services/api cannot be fully audited",
         "missing-coverage:apps/android:CheckoutCalculator",
         "missing-coverage:services/api:app",
-        "missing-coverage:apps/web:sessionClient"
+        "missing-coverage:apps/web:sessionClient",
+        "missing-coverage:services/api:services/api has no test infrastructure"
       ]
     );
+    assert.equal(findings.findings[3].code, "missing-test-infrastructure");
     assert.deepEqual(findings.unsupportedProjects, []);
   });
 
@@ -48,7 +50,7 @@ describe("project findings", () => {
     const projectAudits = auditDetectedProjects(path.resolve("examples/polyglot-workspace"));
     const findings = createProjectFindings(projectAudits, { maxFindings: 2 });
 
-    assert.equal(findings.summary.findingCount, 5);
+    assert.equal(findings.summary.findingCount, 4);
     assert.equal(findings.summary.displayedFindingCount, 2);
     assert.equal(findings.findings.length, 2);
   });
@@ -120,10 +122,12 @@ describe("project findings", () => {
     const findings = createProjectFindings(projectAudits);
 
     assert.equal(findings.summary.highSeverityCount, 1);
-    assert.equal(findings.summary.blockedProjectCount, 4);
+    assert.equal(findings.summary.blockedProjectCount, 0);
     assert.equal(findings.findings[0].category, "missing-coverage");
     assert.deepEqual(
       findings.findings.slice(1).map((finding) => ({
+        category: finding.category,
+        code: finding.code,
         severity: finding.severity,
         priority: finding.priority,
         title: finding.title,
@@ -131,24 +135,16 @@ describe("project findings", () => {
       })),
       [
         {
+          category: "missing-coverage",
+          code: "missing-test-infrastructure",
           severity: "low",
           priority: 1,
           title: "benchmarks/routers is auxiliary and lacks independent test setup",
           evidence: ["project role: auxiliary", "confidence: low", "test command: none detected"]
         },
         {
-          severity: "low",
-          priority: 1,
-          title: "benchmarks/routers is auxiliary and lacks independent test setup",
-          evidence: ["project role: auxiliary", "confidence: low", "test command: none detected"]
-        },
-        {
-          severity: "low",
-          priority: 1,
-          title: "packages/docs is auxiliary and lacks independent test setup",
-          evidence: ["project role: auxiliary", "confidence: low", "test command: none detected"]
-        },
-        {
+          category: "missing-coverage",
+          code: "missing-test-infrastructure",
           severity: "low",
           priority: 1,
           title: "packages/docs is auxiliary and lacks independent test setup",
@@ -156,6 +152,72 @@ describe("project findings", () => {
         }
       ]
     );
+  });
+
+  it("classifies diagnostics into bounded audits, withheld commands and missing infrastructure", () => {
+    // #312: audit-scope diagnostics stay blocked-project findings (high when attribution cannot be trusted,
+    // medium for a known bound), command-scope diagnostics only withhold the command, and missing test
+    // infrastructure is one coverage gap per project. Saved artifacts without diagnostics are classified
+    // from their blocker strings.
+    const audit = (profile) => ({ schemaVersion: "audit/v1", profile, untestedCandidates: [], coveredButRisky: [], skipped: [], risks: [] });
+    const projectAudits = {
+      schemaVersion: "project-audits/v1",
+      root: ".",
+      summary: { projectCount: 3, auditedProjectCount: 3, skippedProjectCount: 0 },
+      audits: [
+        {
+          projectId: "packages/ios",
+          projectRoot: "packages/ios",
+          adapterId: "swift",
+          audit: audit({ confidence: "high", blockers: ["Swift sources import UIKit, which swift test cannot build on macOS; run xcodebuild test with a simulator destination such as -destination 'platform=iOS Simulator,name=<device>' after selecting a device."] })
+        },
+        {
+          projectId: "apps/android",
+          projectRoot: "apps/android",
+          adapterId: "kotlin",
+          audit: audit({
+            confidence: "medium",
+            testCommand: "gradle test",
+            blockers: ["Android modules are audited with JVM conventions: build variants are not modeled."],
+            diagnostics: [
+              { code: "android-jvm-conventions", scope: "audit", severity: "medium", message: "Android modules are audited with JVM conventions: build variants are not modeled." },
+              { code: "missing-test-target", scope: "test-infrastructure", severity: "medium", message: "No test source set was found; add src/test/kotlin." }
+            ]
+          })
+        },
+        {
+          projectId: "tools/legacy",
+          projectRoot: "tools/legacy",
+          adapterId: "kotlin",
+          audit: audit({ confidence: "low", blockers: ["Custom Gradle build graphs are outside the supported ownership boundary."] })
+        }
+      ],
+      skippedProjects: []
+    };
+
+    const findings = createProjectFindings(projectAudits);
+
+    assert.deepEqual(findings.summary.categoryCounts, {
+      "missing-coverage": 1,
+      "weak-existing-coverage": 0,
+      "misplaced-coverage": 0,
+      "low-value-direct-test": 0,
+      "blocked-project": 2,
+      "command-withheld": 1
+    });
+    assert.equal(findings.summary.blockedProjectCount, 2);
+    assert.equal(findings.summary.highSeverityCount, 1);
+    assert.deepEqual(
+      findings.findings.map((finding) => [finding.category, finding.code, finding.severity, finding.priority, finding.title]),
+      [
+        ["blocked-project", "audit-blocker", "high", 9, "tools/legacy cannot be fully audited"],
+        ["blocked-project", "android-jvm-conventions", "medium", 7, "apps/android is audited within a bounded model"],
+        ["command-withheld", "host-unavailable-framework", "medium", 6, "packages/ios has no runnable test command"],
+        ["missing-coverage", "missing-test-target", "medium", 4, "apps/android has no test infrastructure"]
+      ]
+    );
+    assert.deepEqual(findings.findings[2].evidence, ["confidence: high", "test command: none detected"]);
+    assert.deepEqual(findings.findings[3].rationale, ["No test source set was found; add src/test/kotlin."]);
   });
 
   it("keeps placement-only fixture targets from becoming weak coverage findings", () => {

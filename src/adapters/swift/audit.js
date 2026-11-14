@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { classifyLegacyBlocker, createDiagnostic, diagnosticsToBlockers, scoreAuditConfidence } from "../../core/audit-diagnostics.js";
 import { finishAuditPhase, startAuditPhase } from "../../core/audit-phase-timing.js";
 import { compareText } from "../../core/ordering.js";
 import { normalizePlatformSeparators, readRepositoryTextFiles } from "../../core/repository-text-files.js";
@@ -207,7 +208,7 @@ function buildProfile(root, files, bazelGraph) {
   const testCommandResolution = detectTestCommand(paths, testFrameworks, bazelGraph, files);
   const testCommand = testCommandResolution.command;
   const existingTestLocations = detectExistingTestLocations(paths, bazelGraph);
-  const blockers = detectBlockers(testCommand, testFrameworks, testCommandResolution.blockers);
+  const diagnostics = detectDiagnostics(testCommand, testFrameworks, existingTestLocations, testCommandResolution.blockers);
 
   return {
     root,
@@ -219,8 +220,9 @@ function buildProfile(root, files, bazelGraph) {
     detectedConventions: detectConventions(paths, bazelGraph),
     existingTestLocations,
     setupSignals: detectSetupSignals(paths, packageText, bazelGraph, files),
-    confidence: scoreProfileConfidence(testFrameworks, existingTestLocations, blockers),
-    blockers
+    confidence: scoreAuditConfidence({ diagnostics, testFrameworks, existingTestLocations }),
+    blockers: diagnosticsToBlockers(diagnostics),
+    diagnostics
   };
 }
 
@@ -525,20 +527,34 @@ function detectArchitectures(paths, files, bazelGraph) {
   return [...architectures].sort();
 }
 
-function detectBlockers(testCommand, frameworks, commandBlockers = []) {
-  const blockers = [];
-  if (frameworks.length === 0) blockers.push("No supported Swift test framework detected.");
-  blockers.push(...commandBlockers);
-  if (!testCommand && commandBlockers.length === 0) blockers.push("No runnable Swift test command detected from Package.swift or Xcode project/workspace markers.");
-  return blockers;
-}
-
-function scoreProfileConfidence(testFrameworks, existingTestLocations, blockers) {
-  if (blockers.length > 1) return "low";
-  if (blockers.length === 1) return "medium";
-  if (testFrameworks.length > 0 && existingTestLocations.length > 0) return "high";
-  if (testFrameworks.length > 0) return "medium";
-  return "low";
+// Diagnostics (#312): a package with no tests at all has a coverage gap, not an audit blocker; a
+// withheld command does not bound the source audit; an unrecognised framework in existing tests does.
+function detectDiagnostics(testCommand, frameworks, existingTestLocations, commandBlockers = []) {
+  const diagnostics = [];
+  const hasTests = existingTestLocations.length > 0;
+  if (frameworks.length === 0 && !hasTests) {
+    diagnostics.push(createDiagnostic({
+      code: "missing-test-target",
+      scope: "test-infrastructure",
+      severity: "medium",
+      message: "No Swift test target or test files were found; add a .testTarget to Package.swift under Tests/<Module>Tests, or a test bundle to the Xcode project, so that candidates can be covered."
+    }));
+  } else if (frameworks.length === 0) {
+    diagnostics.push(createDiagnostic({ code: "missing-test-framework", scope: "audit", severity: "medium", message: "No supported Swift test framework detected." }));
+  }
+  for (const message of commandBlockers) {
+    // An empty or commented-out manifest leaves package ownership to conventions, which bounds the audit itself.
+    if (message.startsWith("No active SwiftPM package declaration")) {
+      diagnostics.push(createDiagnostic({ code: "unreadable-package-manifest", scope: "audit", severity: "medium", message }));
+      continue;
+    }
+    const classified = classifyLegacyBlocker(message);
+    diagnostics.push(createDiagnostic({ code: classified.scope === "command" ? classified.code : "command-withheld", scope: "command", severity: "medium", message }));
+  }
+  if (!testCommand && commandBlockers.length === 0 && (frameworks.length > 0 || hasTests)) {
+    diagnostics.push(createDiagnostic({ code: "missing-test-command", scope: "command", severity: "medium", message: "No runnable Swift test command detected from Package.swift or Xcode project/workspace markers." }));
+  }
+  return diagnostics;
 }
 
 function classifySourceFile(file, sourceGraph) {

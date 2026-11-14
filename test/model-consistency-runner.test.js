@@ -151,7 +151,7 @@ describe("model consistency runner", () => {
       scenarioCount: 65,
       passedScenarioCount: 65,
       failedScenarioCount: 0,
-      checkedFieldCount: 564,
+      checkedFieldCount: 563,
       failureCount: 0
     });
     assert.equal(summary.scenarios[24].scenarioId, "node-ava-basic-plan");
@@ -218,7 +218,7 @@ describe("model consistency runner", () => {
       driftedScenarioCount: 1,
       missingScenarioCount: 1,
       unexpectedScenarioCount: 1,
-      checkedFieldDelta: -409,
+      checkedFieldDelta: -408,
       failureDelta: 3
     });
     assert.deepEqual(

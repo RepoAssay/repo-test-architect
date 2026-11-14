@@ -1,7 +1,7 @@
 {
   "schemaVersion": "model-consistency-scenario/v1",
   "id": "vapor-service-tests-plan",
-  "description": "Different model profiles should preserve Vapor planning decisions, including missing test setup blockers, route integration coverage, service unit coverage, and DTO deferral.",
+  "description": "Different model profiles should preserve Vapor planning decisions for a package with no test target, including route integration coverage, service unit coverage, and DTO deferral.",
   "sourceArtifact": {
     "path": "evals/expected/vapor-service-tests.audit.json",
     "schemaVersion": "audit/v1"
@@ -13,13 +13,13 @@
   "lockedFields": [
     {
       "path": "summary.confidence",
-      "expected": "low",
-      "reason": "Repos without a detected Swift test framework or runnable test command should remain low confidence."
+      "expected": "medium",
+      "reason": "A package with no test target is fully audited but nothing has exercised the evidence rules, so confidence is medium rather than low (#312)."
     },
     {
       "path": "summary.blockerCount",
-      "expected": 2,
-      "reason": "The plan must preserve both missing Swift test setup blockers."
+      "expected": 0,
+      "reason": "Missing test infrastructure is a test-infrastructure diagnostic on the audit, not a plan blocker."
     },
     {
       "path": "summary.addTestCount",
@@ -30,11 +30,6 @@
       "path": "summary.deferredCount",
       "expected": 1,
       "reason": "The DTO should stay deferred from direct unit testing."
-    },
-    {
-      "path": "blockers[0]",
-      "expected": "No supported Swift test framework detected.",
-      "reason": "The strategy must surface the missing native Swift test framework before generation."
     },
     {
       "path": "items[0].id",
@@ -66,7 +61,7 @@
     "direct DTO test recommendation",
     "missing Vapor route integration candidate",
     "missing async service candidate",
-    "missing no-framework blocker",
+    "invented blockers for a package that simply has no tests",
     "invented Swift test command"
   ]
 }

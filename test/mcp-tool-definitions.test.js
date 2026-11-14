@@ -237,7 +237,7 @@ describe("MCP tool definitions", () => {
     assert.equal(projectTestPlan.schemaVersion, "project-test-plan/v1");
     assert.equal(projectTestPlan.summary.itemCount, 3);
     assert.equal(projectFindings.schemaVersion, "project-findings/v1");
-    assert.equal(projectFindings.summary.findingCount, 5);
+    assert.equal(projectFindings.summary.findingCount, 4);
     assert.equal(projectPlacement.schemaVersion, "test-placement-findings/v1");
     assert.equal(projectPlacement.findings.length, 0);
     assert.equal(projectStats.schemaVersion, "project-stats/v1");

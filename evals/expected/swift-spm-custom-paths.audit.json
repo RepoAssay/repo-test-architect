@@ -30,7 +30,8 @@
       "swiftpm explicit sources"
     ],
     "confidence": "high",
-    "blockers": []
+    "blockers": [],
+    "diagnostics": []
   },
   "untestedCandidates": [
     {

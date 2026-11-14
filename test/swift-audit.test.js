@@ -204,7 +204,7 @@ let package = Package(name: "Flow", targets: [.target(name: "Flow"), .testTarget
     };
     const commandOf = (root) => {
       const audit = auditSwiftRepo(root);
-      return { command: audit.profile.testCommand, blockers: audit.profile.blockers, confidence: audit.profile.confidence, covered: audit.coveredButRisky.map((target) => target.path) };
+      return { command: audit.profile.testCommand, blockers: audit.profile.blockers, diagnostics: audit.profile.diagnostics, confidence: audit.profile.confidence, covered: audit.coveredButRisky.map((target) => target.path) };
     };
 
     // Each framework, imported from production and from test code, with import modifiers.
@@ -229,7 +229,8 @@ let package = Package(name: "Flow", targets: [.target(name: "Flow"), .testTarget
       const result = commandOf(makePackage(files));
       assert.equal(result.command, undefined, `${framework} via ${Object.keys(files)[0]}`);
       assert.deepEqual(result.blockers, [blockerFor(framework, simulator)]);
-      assert.notEqual(result.confidence, "high");
+      assert.deepEqual(result.diagnostics.map((diagnostic) => [diagnostic.scope, diagnostic.code, diagnostic.severity]), [["command", "host-unavailable-framework", "medium"]]);
+      assert.equal(result.confidence, "high", "a withheld command does not lower confidence in the source audit (#312)");
       assert.ok(result.covered.includes("Sources/PricingKit/PriceCalculator.swift"), "auditing is unaffected by the withheld command");
     }
 
@@ -397,8 +398,10 @@ let package = Package(name: "Core", targets: [.target(name: "Core"), .testTarget
     assert.equal(audit.profile.testCommand, undefined);
     assert.ok(audit.profile.architectures.includes("apple-xcode"));
     assert.ok(audit.profile.architectures.includes("swiftui"));
-    assert.ok(audit.profile.blockers.includes("No supported Swift test framework detected."));
-    assert.ok(audit.profile.blockers.includes("No runnable Swift test command detected from Package.swift or Xcode project/workspace markers."));
+    // A project with no tests at all has a test-infrastructure gap, not an audit blocker (#312).
+    assert.ok(!audit.profile.blockers.includes("No supported Swift test framework detected."));
+    assert.ok(!audit.profile.blockers.includes("No runnable Swift test command detected from Package.swift or Xcode project/workspace markers."));
+    assert.ok(audit.profile.diagnostics.some((diagnostic) => diagnostic.scope === "test-infrastructure" && diagnostic.code === "missing-test-target"));
     assert.deepEqual(
       audit.skipped.map((target) => target.name),
       ["CheckoutView", "LegacyPaymentClient"]
@@ -1457,13 +1460,13 @@ final class MockAccessibilityTrustProvider: AccessibilityTrustProviding {
     assert.deepEqual(audit.profile.packageManagers, ["swiftpm"]);
     assert.deepEqual(audit.profile.testFrameworks, []);
     assert.equal(audit.profile.testCommand, undefined);
-    assert.equal(audit.profile.confidence, "low");
+    assert.equal(audit.profile.confidence, "medium");
     assert.ok(audit.profile.architectures.includes("swift-package"));
     assert.ok(audit.profile.architectures.includes("vapor"));
     assert.ok(audit.profile.setupSignals.includes("vapor dependency"));
     assert.ok(audit.profile.setupSignals.includes("swiftpm executable target"));
-    assert.ok(audit.profile.blockers.includes("No supported Swift test framework detected."));
-    assert.ok(audit.profile.blockers.includes("No runnable Swift test command detected from Package.swift or Xcode project/workspace markers."));
+    assert.deepEqual(audit.profile.blockers, []);
+    assert.deepEqual(audit.profile.diagnostics.map((diagnostic) => [diagnostic.scope, diagnostic.code, diagnostic.severity]), [["test-infrastructure", "missing-test-target", "medium"]]);
     assert.deepEqual(
       audit.untestedCandidates.map((target) => `${target.name}:${target.kind}:${target.recommendedTestLevel}`),
       ["UserRoutes:http-route:integration", "UserService:service:unit"]
@@ -2229,7 +2232,8 @@ final class CollectorTests: XCTestCase {
     const audit = auditSwiftRepo(root);
 
     assert.equal(audit.profile.testCommand, undefined);
-    assert.equal(audit.profile.confidence, "medium");
+    assert.equal(audit.profile.confidence, "high");
+    assert.ok(audit.profile.diagnostics.some((diagnostic) => diagnostic.scope === "command" && diagnostic.code === "ambiguous-xcode-scheme"));
     assert.ok(audit.profile.setupSignals.includes("xcode shared scheme"));
     assert.ok(audit.profile.blockers.includes("Multiple shared Xcode schemes detected without a unique workspace or project name match: Beta, Preview."));
     assert.ok(!audit.profile.blockers.includes("No runnable Swift test command detected from Package.swift or Xcode project/workspace markers."));
@@ -2465,7 +2469,8 @@ final class CollectorTests: XCTestCase {
     const audit = auditSwiftRepo(root);
 
     assert.equal(audit.profile.testCommand, undefined);
-    assert.equal(audit.profile.confidence, "medium");
+    assert.equal(audit.profile.confidence, "high");
+    assert.ok(audit.profile.diagnostics.some((diagnostic) => diagnostic.scope === "command" && diagnostic.code === "ambiguous-xcode-container"));
     assert.ok(audit.profile.blockers.includes("Multiple Xcode projects detected without a unique scheme-name match: Admin.xcodeproj, Storefront.xcodeproj."));
     assert.ok(!audit.profile.blockers.includes("No runnable Swift test command detected from Package.swift or Xcode project/workspace markers."));
   });
@@ -2589,7 +2594,8 @@ final class CollectorTests: XCTestCase {
     const audit = auditSwiftRepo(root);
 
     assert.equal(audit.profile.testCommand, undefined);
-    assert.equal(audit.profile.confidence, "medium");
+    assert.equal(audit.profile.confidence, "high");
+    assert.ok(audit.profile.diagnostics.some((diagnostic) => diagnostic.scope === "command" && diagnostic.code === "ambiguous-xcode-container"));
     assert.ok(audit.profile.blockers.includes("Multiple Xcode workspaces detected without a unique scheme-name match: Admin.xcworkspace, Beta.xcworkspace."));
     assert.ok(!audit.profile.blockers.includes("No runnable Swift test command detected from Package.swift or Xcode project/workspace markers."));
   });
@@ -2739,7 +2745,8 @@ final class SampleAppTests: XCTestCase {
     const audit = auditSwiftRepo(root);
 
     assert.equal(audit.profile.testCommand, undefined);
-    assert.equal(audit.profile.confidence, "medium");
+    assert.equal(audit.profile.confidence, "high");
+    assert.ok(audit.profile.diagnostics.some((diagnostic) => diagnostic.scope === "command"));
     assert.ok(audit.profile.setupSignals.includes("xcode test plan"));
     assert.ok(!audit.profile.setupSignals.includes("xcode scheme test plan"));
     assert.ok(audit.profile.blockers.includes("Multiple Xcode test plans detected without a unique default or sole scheme reference: IntegrationTests, UnitTests."));
@@ -2767,5 +2774,34 @@ final class SampleAppTests: XCTestCase {
       }
     ]);
     assert.deepEqual(audit.skipped.map((target) => target.path), ["CheckoutApp/Views/LoginView.swift"]);
+  });
+});
+
+describe("Swift diagnostics for tests without a recognised framework (#312)", () => {
+  it("bounds the audit and withholds the command instead of reporting missing infrastructure", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-swift-unknown-framework-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    const write = (relative, content) => {
+      fs.mkdirSync(path.dirname(path.join(root, relative)), { recursive: true });
+      fs.writeFileSync(path.join(root, relative), content);
+    };
+    write("Package.swift", "// swift-tools-version:5.9\nimport PackageDescription\nlet package = Package(name: \"Core\", targets: [.target(name: \"Core\"), .testTarget(name: \"CoreTests\", dependencies: [\"Core\"])])\n");
+    write("Sources/Core/Parser.swift", "public struct Parser {\n    public func parse(_ input: String) throws -> String {\n        if input.isEmpty { throw NSError(domain: \"parser\", code: 1) }\n        return input.uppercased()\n    }\n}\n");
+    write("Tests/CoreTests/ParserSpec.swift", "import Spectre\n@testable import Core\nlet spec = describe(\"Parser\") { $0.it(\"parses\") { try expect(Parser().parse(\"a\")) == \"A\" } }\n");
+
+    const audit = auditSwiftRepo(root);
+
+    assert.deepEqual(audit.profile.testFrameworks, []);
+    assert.ok(audit.profile.existingTestLocations.includes("Tests"));
+    assert.equal(audit.profile.testCommand, undefined);
+    assert.deepEqual(audit.profile.diagnostics.map((diagnostic) => [diagnostic.scope, diagnostic.code]), [
+      ["audit", "missing-test-framework"],
+      ["command", "missing-test-command"]
+    ]);
+    assert.deepEqual(audit.profile.blockers, [
+      "No supported Swift test framework detected.",
+      "No runnable Swift test command detected from Package.swift or Xcode project/workspace markers."
+    ]);
+    assert.equal(audit.profile.confidence, "medium");
   });
 });

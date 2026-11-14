@@ -29,7 +29,8 @@
       "parent gradle wrapper"
     ],
     "confidence": "high",
-    "blockers": []
+    "blockers": [],
+    "diagnostics": []
   },
   "untestedCandidates": [],
   "coveredButRisky": [

@@ -13,13 +13,13 @@
   "lockedFields": [
     {
       "path": "summary.confidence",
-      "expected": "low",
-      "reason": "Confidence must remain low when no supported test framework or command is detected."
+      "expected": "medium",
+      "reason": "A package with no tests is fully audited but nothing has exercised the evidence rules, so confidence is medium rather than low (#312)."
     },
     {
       "path": "summary.blockerCount",
-      "expected": 2,
-      "reason": "Both missing framework and missing runnable command blockers must remain visible."
+      "expected": 0,
+      "reason": "Missing test infrastructure is a test-infrastructure diagnostic on the audit, not a plan blocker (#312)."
     },
     {
       "path": "summary.addTestCount",
@@ -50,7 +50,7 @@
   "unexpectedVariations": [
     "invented test framework",
     "invented verification command",
-    "missing blocker",
+    "invented blockers for a package that simply has no tests",
     "direct DTO test recommendation",
     "different priority order"
   ]

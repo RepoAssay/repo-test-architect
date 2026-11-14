@@ -82,9 +82,11 @@ node ./src/cli/index.js audit ./examples/node-vitest-basic --format json
 
 The audit artifact is the source of truth for repository facts and classification.
 
+`profile.blockers` lists the messages that bound the audit or withhold the command. Since 1.4.0 the profile may also carry `diagnostics`, structured entries `{ code, scope, severity, message }` whose `scope` says what each message is about: `audit` (the source or evidence audit is bounded, severity `medium`, or cannot be trusted, severity `high`), `command` (no runnable test command could be established while the audit stands) or `test-infrastructure` (the project has no test target, framework or runnable tests at all). `blockers` is the string projection of the `audit` and `command` scopes, so for the adapters that emit diagnostics (Swift, Kotlin/JVM and JavaScript/TypeScript in 1.4.0) a project with no tests no longer carries blockers. For those adapters `profile.confidence` is confidence in the source and evidence audit: `low` when a high-severity audit diagnostic applies, `medium` when a medium one applies or no recognised test framework has exercised the evidence rules, `high` otherwise, and a withheld command or missing test infrastructure does not change it. The other adapters keep their blocker strings and their own confidence rules until they are migrated. Artifacts without `diagnostics` (older artifacts, and those adapters) are classified for findings from their blocker strings by a finite table of historical messages read together with the profile's `testFrameworks` and `existingTestLocations`: a "no supported framework" message with tests present bounds the audit, a "no runnable command" message with a framework or tests present withholds the command, and only a project with neither has missing infrastructure; unknown messages stay high-severity audit diagnostics.
+
 It contains:
 
-- repository profile
+- repository profile, with `blockers` and optional `diagnostics`
 - detected package/test framework conventions
 - untested candidates
 - covered-but-risky targets
@@ -554,6 +556,8 @@ collect_project_findings
 ```
 
 The findings artifact turns project audits into a bounded review queue for missing, weak, misplaced, low-value, and blocked coverage. Weak-existing-coverage priority uses the strongest normalized provenance available: direct asserted usage receives the largest review discount, followed by called usage and structural direct/referenced reachability. Naming-only, bounded-indirect, and legacy evidence remain at the target's base review priority. This changes review ordering only; it does not reclassify audit targets or claim branch completeness.
+
+Findings derived from profile diagnostics carry a `code`. An `audit` diagnostic becomes a `blocked-project` finding (`high`, "cannot be fully audited", or `medium`, "is audited within a bounded model"); a `command` diagnostic becomes a `command-withheld` finding (`medium`); the `test-infrastructure` diagnostics of a project become one `missing-coverage` finding for the project (`medium`, or `low` on auxiliary roots such as `docs`, `examples` and `benchmarks`) whose `code` names the gap, for example `missing-test-target`, ranked below target findings. `summary.blockedProjectCount` counts `blocked-project` findings only, and `categoryCounts["command-withheld"]` is present in new artifacts while older ones remain valid without it.
 
 ## Project Candidate Ranking Artifact
 

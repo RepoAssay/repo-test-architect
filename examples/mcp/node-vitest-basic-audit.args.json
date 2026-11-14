@@ -27,7 +27,8 @@
         "vitest config"
       ],
       "confidence": "high",
-      "blockers": []
+      "blockers": [],
+      "diagnostics": []
     },
     "untestedCandidates": [
       {

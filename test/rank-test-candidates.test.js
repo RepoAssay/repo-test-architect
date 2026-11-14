@@ -30,9 +30,10 @@ describe("test candidate ranking", () => {
     const audit = auditJavaScriptRepo(path.resolve("examples/node-no-tests-yet"));
     const ranking = rankTestCandidates(audit);
 
-    assert.equal(ranking.summary.confidence, "low");
+    assert.equal(ranking.summary.confidence, "medium");
     assert.equal(ranking.summary.verificationCommand, undefined);
-    assert.ok(ranking.blockers.includes("No supported JS test framework detected."));
+    assert.deepEqual(ranking.blockers, [], "missing test infrastructure is a diagnostic, not a blocker (#312)");
+    assert.ok(audit.profile.diagnostics.some((diagnostic) => diagnostic.scope === "test-infrastructure"));
   });
 
   it("defaults optional target arrays in ranked candidates", () => {
