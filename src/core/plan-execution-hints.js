@@ -1,3 +1,4 @@
+import path from "node:path";
 import { copyUntrustedFailedProjects, failedProjectsField } from "./project-failures.js";
 
 const PROJECT_BOUNDARY_SIGNALS = new Set([
@@ -265,7 +266,8 @@ function executionReasons(item, complexity, includeBuildConfiguration, paralleli
 
 function qualifyProjectPath(projectRoot, filePath) {
   if (!projectRoot || projectRoot === ".") return filePath;
-  return `${projectRoot.replace(/\/+$/g, "")}/${filePath.replace(/^\.?\//, "")}`;
+  // A test path that escapes its project root (../B/Tests/...) resolves to the sibling's path.
+  return path.posix.normalize(`${projectRoot.replace(/\/+$/g, "")}/${filePath.replace(/^\.?\//, "")}`);
 }
 
 function count(items, predicate) {

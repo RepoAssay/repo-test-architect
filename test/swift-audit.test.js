@@ -2916,7 +2916,7 @@ describe("Xcode scheme selection (#310)", () => {
 });
 
 describe("cross-project test evidence (#318)", () => {
-  const makeRepo = (t, { testBody, bModuleIsAlsoA = false, testImportsA = true } = {}) => {
+  const makeRepo = (t, { testBody, bModuleIsAlsoA = false, testImportsA = true, withThirdProject = false } = {}) => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-swift-cross-project-"));
     t.after(() => fs.rmSync(root, { recursive: true, force: true }));
     const write = (relative, content) => {
@@ -2929,6 +2929,12 @@ describe("cross-project test evidence (#318)", () => {
     write(`B/Sources/${bModuleIsAlsoA ? "A" : "B"}/Bar.swift`, "public struct Bar {\n    public func twice(_ value: Int) -> Int {\n        if value == 0 { return 0 }\n        return value * 2\n    }\n}\n");
     write("B/Tests/BTests/FooTests.swift", `import XCTest\n${testImportsA ? "@testable import A\n" : ""}final class FooTests: XCTestCase {\n${testBody ?? "    func testLabel() { XCTAssertEqual(Foo().label(-1), \"negative\") }\n"}}\n`);
     write("B/Tests/BTests/BarTests.swift", `import XCTest\n@testable import ${bModuleIsAlsoA ? "A" : "B"}\nfinal class BarTests: XCTestCase { func testTwice() { XCTAssertEqual(Bar().twice(2), 4) } }\n`);
+    if (withThirdProject) {
+      // C declares nothing called A but tests through it, so an import of A from C is the ambiguous case.
+      write("C/Package.swift", "// swift-tools-version:5.9\nimport PackageDescription\nlet package = Package(name: \"C\", targets: [.target(name: \"C\"), .testTarget(name: \"CTests\", dependencies: [\"C\"])])\n");
+      write("C/Sources/C/Baz.swift", "public struct Baz {\n    public func thrice(_ value: Int) -> Int {\n        if value == 0 { return 0 }\n        return value * 3\n    }\n}\n");
+      write("C/Tests/CTests/FooFromCTests.swift", "import XCTest\n@testable import A\nfinal class FooFromCTests: XCTestCase { func testLabel() { XCTAssertEqual(Foo().label(2), \"ok\") } }\n");
+    }
     return root;
   };
   const projectAudit = (projectAudits, projectRoot) => projectAudits.audits.find((entry) => entry.projectRoot === projectRoot).audit;
@@ -2975,18 +2981,71 @@ describe("cross-project test evidence (#318)", () => {
     assert.deepEqual(noImport.untestedCandidates.map((target) => target.path), ["Sources/A/Foo.swift"]);
   });
 
-  it("does not link a module name that several detected projects declare, and records the bound", (t) => {
-    const projectAudits = auditDetectedProjects(makeRepo(t, { bModuleIsAlsoA: true }));
+  it("does not link a module name that several detected projects declare, and records the bound only where a third project's test imports it", (t) => {
+    const projectAudits = auditDetectedProjects(makeRepo(t, { bModuleIsAlsoA: true, testImportsA: false, withThirdProject: true }));
     const a = projectAudit(projectAudits, "A");
-    assert.deepEqual(a.untestedCandidates.map((target) => target.path), ["Sources/A/Foo.swift"]);
+    assert.deepEqual(a.untestedCandidates.map((target) => target.path), ["Sources/A/Foo.swift"], "C's test is not linked through the shared name");
     const shared = a.profile.diagnostics.find((diagnostic) => diagnostic.code === "ambiguous-cross-project-module");
     assert.equal(shared.scope, "audit");
     assert.equal(shared.severity, "medium");
-    assert.equal(shared.message, "Module name a is declared by several detected Swift projects (A, B), so tests importing it from other projects were not linked.");
+    assert.equal(shared.message, "Module name A is declared by several detected Swift projects (A, B), so tests importing it from other projects were not linked.");
     assert.ok(a.profile.blockers.includes(shared.message));
     assert.equal(a.profile.confidence, "medium");
-    const b = projectAudit(projectAudits, "B");
-    assert.ok(b.profile.diagnostics.some((diagnostic) => diagnostic.code === "ambiguous-cross-project-module"));
+    // B declares the same name, so C's import is ambiguous for B too.
+    assert.ok(projectAudit(projectAudits, "B").profile.diagnostics.some((diagnostic) => diagnostic.code === "ambiguous-cross-project-module"));
+    assert.deepEqual(projectAudit(projectAudits, "C").profile.diagnostics, []);
+
+    // Two packages sharing a module name with only their own tests: nothing to say about either, and B's
+    // test importing its own module A stays local.
+    const quiet = auditDetectedProjects(makeRepo(t, { bModuleIsAlsoA: true }));
+    for (const root of ["A", "B"]) {
+      assert.ok(!projectAudit(quiet, root).profile.diagnostics.some((diagnostic) => diagnostic.code === "ambiguous-cross-project-module"), `${root} carries no shared-module diagnostic`);
+      assert.deepEqual(projectAudit(quiet, root).profile.blockers, []);
+    }
+  });
+
+  it("does not credit a symbol the sibling declares itself or qualifies with another module", (t) => {
+    // B declares its own Foo and its test uses that one (qualified or through a test-local helper type).
+    const qualified = makeRepo(t, { testBody: "    func testOwnFoo() { XCTAssertEqual(B.Foo().twice(1), 2) }\n" });
+    fs.writeFileSync(path.join(qualified, "B", "Sources", "B", "Foo.swift"), "public struct Foo {\n    public func twice(_ value: Int) -> Int {\n        if value == 0 { return 0 }\n        return value * 2\n    }\n}\n");
+    const qualifiedAudits = auditDetectedProjects(qualified);
+    assert.deepEqual(projectAudit(qualifiedAudits, "A").untestedCandidates.map((target) => target.path), ["Sources/A/Foo.swift"], "B.Foo is not A's Foo");
+
+    const shadowed = makeRepo(t, { testBody: "    func testLocalFoo() { XCTAssertEqual(Foo().label(1), \"local\") }\n" });
+    fs.mkdirSync(path.join(shadowed, "B", "Tests", "BTests", "Support"), { recursive: true });
+    fs.writeFileSync(path.join(shadowed, "B", "Tests", "BTests", "Support", "Foo.swift"), "struct Foo {\n    func label(_ value: Int) -> String { value > 0 ? \"local\" : \"none\" }\n}\n");
+    assert.deepEqual(projectAudit(auditDetectedProjects(shadowed), "A").untestedCandidates.map((target) => target.path), ["Sources/A/Foo.swift"], "a test-local Foo shadows A's Foo");
+
+    // Without the shadowing declaration the same unqualified call does link.
+    assert.deepEqual(projectAudit(auditDetectedProjects(makeRepo(t, { testBody: "    func testLabel() { XCTAssertEqual(Foo().label(1), \"ok\") }\n" })), "A").untestedCandidates, []);
+  });
+
+  it("keeps the module-name uniqueness guard in changed-path runs and adds external evidence to locally covered targets", (t) => {
+    const shared = makeRepo(t, { bModuleIsAlsoA: true, testImportsA: false, withThirdProject: true });
+    const changed = auditDetectedProjects(shared, { changedPaths: ["A/Sources/A/Foo.swift"] });
+    assert.deepEqual(projectAudit(changed, "A").untestedCandidates.map((target) => target.path), ["Sources/A/Foo.swift"], "a changed-paths run must not link through a shared module name");
+    assert.ok(projectAudit(changed, "A").profile.diagnostics.some((diagnostic) => diagnostic.code === "ambiguous-cross-project-module"));
+
+    const covered = makeRepo(t);
+    fs.mkdirSync(path.join(covered, "A", "Tests", "ATests"), { recursive: true });
+    fs.writeFileSync(path.join(covered, "A", "Package.swift"), "// swift-tools-version:5.9\nimport PackageDescription\nlet package = Package(name: \"A\", targets: [.target(name: \"A\"), .testTarget(name: \"ATests\", dependencies: [\"A\"])])\n");
+    fs.writeFileSync(path.join(covered, "A", "Tests", "ATests", "FooTests.swift"), "import XCTest\n@testable import A\nfinal class FooTests: XCTestCase { func testOk() { XCTAssertEqual(Foo().label(1), \"ok\") } }\n");
+    const a = projectAudit(auditDetectedProjects(covered), "A");
+    assert.deepEqual(a.coveredButRisky.map((target) => target.existingTestPaths), [["Tests/ATests/FooTests.swift", "../B/Tests/BTests/FooTests.swift"]], "local evidence first, then the sibling's");
+    assert.deepEqual(a.profile.diagnostics, [], "a package with its own tests has no infrastructure gap");
+    const findings = createProjectFindings(auditDetectedProjects(covered));
+    assert.ok(findings.findings.some((finding) => finding.category === "weak-existing-coverage" && finding.projectRoot === "A"), "locally covered targets keep their weak-coverage finding");
+    assert.ok(findings.findings.some((finding) => finding.category === "misplaced-coverage" && finding.suggestedOwner === "A"));
+  });
+
+  it("contains a failure of the linking pass and leaves the audits as produced", async (t) => {
+    const { mock } = await import("node:test");
+    const swiftAdapter = adapters.find((adapter) => adapter.id === "swift");
+    mock.method(swiftAdapter, "linkCrossProjectTestEvidence", () => { throw new TypeError("boom"); });
+    t.after(() => mock.restoreAll());
+    const projectAudits = auditDetectedProjects(makeRepo(t));
+    assert.deepEqual(projectAudit(projectAudits, "A").untestedCandidates.map((target) => target.path), ["Sources/A/Foo.swift"]);
+    assert.equal(projectAudits.summary.auditedProjectCount, 2);
   });
 });
 

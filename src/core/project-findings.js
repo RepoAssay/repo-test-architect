@@ -1,3 +1,4 @@
+import path from "node:path";
 import { classifyProjectAuditCoverage } from "./project-audit-coverage.js";
 import { validateProjectAudits } from "./project-audits-validation.js";
 import { failedProjectCountField, failedProjectsField, normalizeFailedProjects } from "./project-failures.js";
@@ -158,7 +159,12 @@ function toAuditFindings(entry) {
 
 function hasOnlyExternalCoverage(target) {
   const paths = target.existingTestPaths ?? [];
-  return paths.length > 0 && paths.every((testPath) => testPath.replaceAll("\\", "/").startsWith("../"));
+  return paths.length > 0 && paths.every((testPath) => escapesProjectRoot(testPath));
+}
+
+function escapesProjectRoot(testPath) {
+  const normalized = path.posix.normalize(testPath.replaceAll("\\", "/"));
+  return normalized === ".." || normalized.startsWith("../");
 }
 
 function isAuxiliaryProjectRoot(projectRoot) {
