@@ -194,7 +194,7 @@ function buildProfile(root, files, packageData, workspaceContext, runnerConfig, 
   const existingTestLocations = detectExistingTestLocations(paths, testFilePaths);
   const detectedConventions = detectConventions(paths, testFilePaths);
   const setupSignals = detectSetupSignals(paths, packageData, workspaceContext, runnerConfig);
-  const diagnostics = detectDiagnostics(packageJson !== undefined, testCommand, testFrameworks, packageManagerInfo, testFilePaths);
+  const diagnostics = detectDiagnostics(packageJson !== undefined, testCommand, testFrameworks, packageManagerInfo, existingTestLocations.length > 0);
 
   return {
     root,
@@ -975,9 +975,8 @@ function detectSetupSignals(paths, packageData, workspaceContext, runnerConfig) 
 // Diagnostics (#312): a package with neither a test framework nor test files has a coverage gap, not
 // an audit blocker; an ambiguous or missing command only withholds the command; a missing package.json
 // and an unrecognised framework in existing tests bound the audit.
-function detectDiagnostics(hasPackageJson, testCommand, frameworks, packageManagerInfo, testFilePaths = []) {
+function detectDiagnostics(hasPackageJson, testCommand, frameworks, packageManagerInfo, hasTests) {
   const diagnostics = [];
-  const hasTests = testFilePaths.length > 0;
 
   if (!hasPackageJson) {
     diagnostics.push(createDiagnostic({ code: "missing-package-manifest", scope: "audit", severity: "medium", message: "No package.json found, so JavaScript package conventions are uncertain." }));

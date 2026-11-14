@@ -1573,3 +1573,29 @@ describe("Kotlin audit adapter", () => {
     assert.equal(audit.coveredButRisky[0].existingTestEvidence[0].usage, "called");
   });
 });
+
+describe("Kotlin diagnostics for tests without a recognised framework (#312)", () => {
+  it("bounds the audit and withholds the command instead of reporting missing infrastructure", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-kotlin-unknown-framework-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "src", "main", "kotlin"), { recursive: true });
+    fs.mkdirSync(path.join(root, "src", "test", "kotlin"), { recursive: true });
+    fs.writeFileSync(path.join(root, "build.gradle.kts"), 'plugins { kotlin("jvm") version "2.0.0" }\n');
+    fs.writeFileSync(path.join(root, "src", "main", "kotlin", "TokenParser.kt"), "class TokenParser {\n    fun parse(input: String): String {\n        if (input.isBlank()) throw IllegalArgumentException(\"blank\")\n        return input.trim()\n    }\n}\n");
+    fs.writeFileSync(path.join(root, "src", "test", "kotlin", "TokenParserSpec.kt"), "import org.spekframework.spek2.Spek\nimport org.spekframework.spek2.style.specification.describe\n\nobject TokenParserSpec : Spek({\n    describe(\"parse\") { it(\"trims\") { check(TokenParser().parse(\" x \") == \"x\") } }\n})\n");
+
+    const audit = auditKotlinRepo(root);
+
+    assert.deepEqual(audit.profile.testFrameworks, []);
+    assert.ok(audit.profile.existingTestLocations.length > 0, "the test source set is seen");
+    assert.deepEqual(audit.profile.diagnostics.map((diagnostic) => [diagnostic.scope, diagnostic.code]), [
+      ["audit", "missing-test-framework"],
+      ["command", "missing-test-command"]
+    ]);
+    assert.deepEqual(audit.profile.blockers, [
+      "No supported JVM test framework detected.",
+      "No runnable JVM test command detected from Gradle or Maven markers."
+    ]);
+    assert.equal(audit.profile.confidence, "medium");
+  });
+});

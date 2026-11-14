@@ -112,7 +112,8 @@ export interface ProjectFindings {
 
 export interface ProjectFinding {
   id: string;
-  category: "missing-coverage" | "weak-existing-coverage" | "misplaced-coverage" | "low-value-direct-test" | "blocked-project";
+  category: "missing-coverage" | "weak-existing-coverage" | "misplaced-coverage" | "low-value-direct-test" | "blocked-project" | "command-withheld";
+  code?: string;
   severity: "high" | "medium" | "low";
   priority: number;
   projectId: string;

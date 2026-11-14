@@ -2776,3 +2776,32 @@ final class SampleAppTests: XCTestCase {
     assert.deepEqual(audit.skipped.map((target) => target.path), ["CheckoutApp/Views/LoginView.swift"]);
   });
 });
+
+describe("Swift diagnostics for tests without a recognised framework (#312)", () => {
+  it("bounds the audit and withholds the command instead of reporting missing infrastructure", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-swift-unknown-framework-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    const write = (relative, content) => {
+      fs.mkdirSync(path.dirname(path.join(root, relative)), { recursive: true });
+      fs.writeFileSync(path.join(root, relative), content);
+    };
+    write("Package.swift", "// swift-tools-version:5.9\nimport PackageDescription\nlet package = Package(name: \"Core\", targets: [.target(name: \"Core\"), .testTarget(name: \"CoreTests\", dependencies: [\"Core\"])])\n");
+    write("Sources/Core/Parser.swift", "public struct Parser {\n    public func parse(_ input: String) throws -> String {\n        if input.isEmpty { throw NSError(domain: \"parser\", code: 1) }\n        return input.uppercased()\n    }\n}\n");
+    write("Tests/CoreTests/ParserSpec.swift", "import Spectre\n@testable import Core\nlet spec = describe(\"Parser\") { $0.it(\"parses\") { try expect(Parser().parse(\"a\")) == \"A\" } }\n");
+
+    const audit = auditSwiftRepo(root);
+
+    assert.deepEqual(audit.profile.testFrameworks, []);
+    assert.ok(audit.profile.existingTestLocations.includes("Tests"));
+    assert.equal(audit.profile.testCommand, undefined);
+    assert.deepEqual(audit.profile.diagnostics.map((diagnostic) => [diagnostic.scope, diagnostic.code]), [
+      ["audit", "missing-test-framework"],
+      ["command", "missing-test-command"]
+    ]);
+    assert.deepEqual(audit.profile.blockers, [
+      "No supported Swift test framework detected.",
+      "No runnable Swift test command detected from Package.swift or Xcode project/workspace markers."
+    ]);
+    assert.equal(audit.profile.confidence, "medium");
+  });
+});

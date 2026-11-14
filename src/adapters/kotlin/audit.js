@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { createDiagnostic, diagnosticsToBlockers, scoreAuditConfidence } from "../../core/audit-diagnostics.js";
+import { classifyLegacyBlocker, createDiagnostic, diagnosticsToBlockers, scoreAuditConfidence } from "../../core/audit-diagnostics.js";
 import { analyzeGradleSettings } from "../../core/gradle-settings.js";
 import { compareText } from "../../core/ordering.js";
 import { readRepositoryTextFiles } from "../../core/repository-text-files.js";
@@ -960,7 +960,10 @@ function detectDiagnostics({ paths, files, modules, testCommand, testFrameworks,
   } else if (testFrameworks.length === 0) {
     push("missing-test-framework", "audit", "medium", "No supported JVM test framework detected.");
   }
-  for (const message of commandBlockers) push("command-withheld", "command", "medium", message);
+  for (const message of commandBlockers) {
+    const classified = classifyLegacyBlocker(message);
+    push(classified.scope === "command" ? classified.code : "command-withheld", "command", "medium", message);
+  }
   // Unresolved aggregate or reactor ownership bounds the audit to the modules it can own literally; when
   // no build metadata is active at all, nothing can be attributed.
   for (const message of ownershipBlockers) {

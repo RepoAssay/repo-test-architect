@@ -50,7 +50,7 @@ export function diagnosticsToBlockers(diagnostics) {
 }
 
 /**
- * @param {{ diagnostics?: unknown, blockers?: unknown }} profile
+ * @param {{ diagnostics?: unknown, blockers?: unknown, testFrameworks?: unknown, existingTestLocations?: unknown }} profile
  * @returns {AuditDiagnostic[]}
  */
 export function resolveAuditDiagnostics(profile) {
@@ -67,47 +67,76 @@ export function resolveAuditDiagnostics(profile) {
   // A blocker string that no diagnostic explains (an artifact written before diagnostics existed, or
   // one edited afterwards) is classified from the known historical messages so that it is never dropped.
   const explained = new Set(explicit.map((diagnostic) => diagnostic.message));
-  const blockers = Array.isArray(profile?.blockers) ? profile.blockers.filter((entry) => typeof entry === "string" && entry.length > 0 && !explained.has(entry)) : [];
-  return [...explicit, ...blockers.map((message) => createDiagnostic({ ...classifyLegacyBlocker(message), message }))];
+  const blockers = Array.isArray(profile?.blockers)
+    ? [...new Set(profile.blockers.filter((entry) => typeof entry === "string" && entry.length > 0 && !explained.has(entry)))]
+    : [];
+  const context = {
+    testFrameworks: Array.isArray(profile?.testFrameworks) ? profile.testFrameworks : [],
+    existingTestLocations: Array.isArray(profile?.existingTestLocations) ? profile.existingTestLocations : []
+  };
+  return [...explicit, ...blockers.map((message) => createDiagnostic({ ...classifyLegacyBlocker(message, context), message }))];
 }
 
-// Known historical blocker messages, matched exactly or by prefix. Anything else stays what it
-// always was: a high-severity audit blocker.
+// Known historical blocker messages, matched exactly or by prefix. Two kinds depend on the profile:
+// a "framework" message means missing infrastructure only when the project has no test files at all
+// (with tests present it bounds the evidence audit), and a "command" message withholds the command
+// when a framework or tests exist and means missing infrastructure otherwise. Anything unknown stays
+// what it always was: a high-severity audit blocker.
 const LEGACY_EXACT = new Map([
-  ["No supported JS test framework detected.", { code: "missing-test-framework", scope: "test-infrastructure", severity: "medium" }],
-  ["No runnable test command detected from package scripts or framework config.", { code: "missing-test-command", scope: "test-infrastructure", severity: "medium" }],
-  ["No supported JVM test framework detected.", { code: "missing-test-framework", scope: "test-infrastructure", severity: "medium" }],
-  ["No runnable JVM test command detected from Gradle or Maven markers.", { code: "missing-test-command", scope: "test-infrastructure", severity: "medium" }],
-  ["No supported Swift test framework detected.", { code: "missing-test-framework", scope: "test-infrastructure", severity: "medium" }],
-  ["No runnable Swift test command detected from Package.swift or Xcode project/workspace markers.", { code: "missing-test-command", scope: "test-infrastructure", severity: "medium" }],
-  ["No supported Python test framework detected.", { code: "missing-test-framework", scope: "test-infrastructure", severity: "medium" }],
-  ["No runnable Python test command detected from project markers.", { code: "missing-test-command", scope: "test-infrastructure", severity: "medium" }],
-  ["No supported xUnit, NUnit, or MSTest package reference detected.", { code: "missing-test-framework", scope: "test-infrastructure", severity: "medium" }],
+  ["No supported JS test framework detected.", { kind: "framework" }],
+  ["No runnable test command detected from package scripts or framework config.", { kind: "command" }],
+  ["No supported JVM test framework detected.", { kind: "framework" }],
+  ["No runnable JVM test command detected from Gradle or Maven markers.", { kind: "command" }],
+  ["No supported Swift test framework detected.", { kind: "framework" }],
+  ["No runnable Swift test command detected from Package.swift or Xcode project/workspace markers.", { kind: "command" }],
+  ["No supported Python test framework detected.", { kind: "framework" }],
+  ["No runnable Python test command detected from project markers.", { kind: "command" }],
+  ["No declared package:test or SDK flutter_test dependency was found.", { kind: "framework" }],
+  // C# reports this only for a project that is already a test project, so it bounds the audit.
+  ["No supported xUnit, NUnit, or MSTest package reference detected.", { code: "missing-test-framework", scope: "audit", severity: "medium" }],
   ["No runnable attributed C# tests detected.", { code: "missing-tests", scope: "test-infrastructure", severity: "medium" }],
   ["No runnable conventional ExUnit *_test.exs module was detected.", { code: "missing-tests", scope: "test-infrastructure", severity: "medium" }],
   ["No runnable standard Go test detected.", { code: "missing-tests", scope: "test-infrastructure", severity: "medium" }],
   ["No runnable conventional PHPUnit *Test.php class was detected under the owned test roots.", { code: "missing-tests", scope: "test-infrastructure", severity: "medium" }],
   ["No runnable conventional Minitest or RSpec test detected.", { code: "missing-tests", scope: "test-infrastructure", severity: "medium" }],
   ["No runnable built-in Rust #[test] detected.", { code: "missing-tests", scope: "test-infrastructure", severity: "medium" }],
+  ["No conventional test/*_test.dart entrypoint with main() and test registration was found.", { code: "missing-tests", scope: "test-infrastructure", severity: "medium" }],
+  ["No owned Dart source files were found under lib/ or bin/.", { code: "missing-source-set", scope: "audit", severity: "high" }],
   ["No package.json found, so JavaScript package conventions are uncertain.", { code: "missing-package-manifest", scope: "audit", severity: "medium" }]
 ]);
 
 const LEGACY_PREFIXES = [
-  ["Multiple shared Xcode schemes detected", { code: "ambiguous-xcode-scheme", scope: "command", severity: "medium" }],
+  ["Multiple shared Xcode schemes", { code: "ambiguous-xcode-scheme", scope: "command", severity: "medium" }],
   ["Multiple Xcode workspaces detected", { code: "ambiguous-xcode-container", scope: "command", severity: "medium" }],
   ["Multiple Xcode projects detected", { code: "ambiguous-xcode-container", scope: "command", severity: "medium" }],
+  ["Multiple Xcode test plans detected", { code: "ambiguous-xcode-test-plan", scope: "command", severity: "medium" }],
   ["Swift sources import ", { code: "host-unavailable-framework", scope: "command", severity: "medium" }],
   ["Multiple package managers detected", { code: "ambiguous-package-manager", scope: "command", severity: "medium" }],
+  ["Multiple runnable JVM test commands detected", { code: "competing-test-commands", scope: "command", severity: "medium" }],
+  ["Multiple runnable Python test commands detected", { code: "competing-test-commands", scope: "command", severity: "medium" }],
   ["Android modules are audited with JVM conventions:", { code: "android-jvm-conventions", scope: "audit", severity: "medium" }],
   ["Android unit and instrumentation source sets are outside", { code: "android-jvm-conventions", scope: "audit", severity: "medium" }]
 ];
 
 /**
  * @param {string} message
+ * @param {{ testFrameworks?: string[], existingTestLocations?: string[] }} [context] the profile's recognised frameworks and test locations; without it a framework or command message is read as missing infrastructure
  * @returns {{ code: string, scope: "audit" | "command" | "test-infrastructure", severity: "high" | "medium" | "low" }}
  */
-export function classifyLegacyBlocker(message) {
+export function classifyLegacyBlocker(message, context = {}) {
+  const hasFrameworks = (context.testFrameworks?.length ?? 0) > 0;
+  const hasTests = (context.existingTestLocations?.length ?? 0) > 0;
   const exact = LEGACY_EXACT.get(message);
+  if (exact?.kind === "framework") {
+    return hasTests
+      ? { code: "missing-test-framework", scope: "audit", severity: "medium" }
+      : { code: "missing-test-framework", scope: "test-infrastructure", severity: "medium" };
+  }
+  if (exact?.kind === "command") {
+    return hasFrameworks || hasTests
+      ? { code: "missing-test-command", scope: "command", severity: "medium" }
+      : { code: "missing-test-command", scope: "test-infrastructure", severity: "medium" };
+  }
   if (exact) return exact;
   for (const [prefix, classification] of LEGACY_PREFIXES) {
     if (message.startsWith(prefix)) return classification;

@@ -40,6 +40,30 @@ describe("audit diagnostics", () => {
     assert.deepEqual(classifyLegacyBlocker("Android unit and instrumentation source sets are outside the supported JVM module boundary."), { code: "android-jvm-conventions", scope: "audit", severity: "medium" });
     assert.deepEqual(classifyLegacyBlocker("No package.json found, so JavaScript package conventions are uncertain."), { code: "missing-package-manifest", scope: "audit", severity: "medium" });
     assert.deepEqual(classifyLegacyBlocker("Custom Gradle projectDir remaps are outside the supported aggregate ownership boundary: :tokens."), { code: "audit-blocker", scope: "audit", severity: "high" });
+    assert.deepEqual(classifyLegacyBlocker("Multiple runnable JVM test commands detected from project markers: ./gradlew test, ./mvnw test."), { code: "competing-test-commands", scope: "command", severity: "medium" });
+    assert.deepEqual(classifyLegacyBlocker("Multiple Xcode test plans detected without a unique default or sole scheme reference: A, B."), { code: "ambiguous-xcode-test-plan", scope: "command", severity: "medium" });
+    assert.deepEqual(classifyLegacyBlocker("No declared package:test or SDK flutter_test dependency was found."), { code: "missing-test-framework", scope: "test-infrastructure", severity: "medium" });
+    assert.deepEqual(classifyLegacyBlocker("No conventional test/*_test.dart entrypoint with main() and test registration was found."), { code: "missing-tests", scope: "test-infrastructure", severity: "medium" });
+    assert.deepEqual(classifyLegacyBlocker("No owned Dart source files were found under lib/ or bin/."), { code: "missing-source-set", scope: "audit", severity: "high" });
+  });
+
+  it("reads framework and command messages against the profile's frameworks and test locations", () => {
+    // A framework message with tests present bounds the evidence audit; a command message with a framework
+    // or tests present withholds the command; only a project with neither has missing infrastructure.
+    const framework = "No supported JS test framework detected.";
+    const command = "No runnable test command detected from package scripts or framework config.";
+    assert.deepEqual(classifyLegacyBlocker(framework, { testFrameworks: [], existingTestLocations: ["test/"] }), { code: "missing-test-framework", scope: "audit", severity: "medium" });
+    assert.deepEqual(classifyLegacyBlocker(framework, { testFrameworks: [], existingTestLocations: [] }), { code: "missing-test-framework", scope: "test-infrastructure", severity: "medium" });
+    assert.deepEqual(classifyLegacyBlocker(command, { testFrameworks: ["jest"], existingTestLocations: ["__tests__ directories"] }), { code: "missing-test-command", scope: "command", severity: "medium" });
+    assert.deepEqual(classifyLegacyBlocker(command, { testFrameworks: [], existingTestLocations: ["test/"] }), { code: "missing-test-command", scope: "command", severity: "medium" });
+    assert.deepEqual(classifyLegacyBlocker(command, { testFrameworks: [], existingTestLocations: [] }), { code: "missing-test-command", scope: "test-infrastructure", severity: "medium" });
+    // The C# framework message is reported only for a project that is already a test project.
+    assert.deepEqual(classifyLegacyBlocker("No supported xUnit, NUnit, or MSTest package reference detected.", { testFrameworks: [], existingTestLocations: [] }), { code: "missing-test-framework", scope: "audit", severity: "medium" });
+
+    const saved = resolveAuditDiagnostics({ testFrameworks: ["jest"], existingTestLocations: ["__tests__ directories"], blockers: [command, command] });
+    assert.deepEqual(saved.map((diagnostic) => [diagnostic.scope, diagnostic.code]), [["command", "missing-test-command"]], "a saved artifact with a framework keeps the command scope and duplicate strings count once");
+    const python = resolveAuditDiagnostics({ testFrameworks: ["pytest"], existingTestLocations: ["tests/"], blockers: ["No runnable Python test command detected from project markers."] });
+    assert.deepEqual(python.map((diagnostic) => diagnostic.scope), ["command"]);
   });
 
   it("resolves diagnostics from a profile, preferring explicit entries and sanitising them", () => {
