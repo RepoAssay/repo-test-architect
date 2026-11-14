@@ -322,7 +322,8 @@ function assertProjectEvidenceAgreement(audit, ranking, plan, findings, adapterI
   const diagnostics = resolveAuditDiagnostics(audit.profile);
   const infrastructureFindingCount = diagnostics.some((diagnostic) => diagnostic.scope === "test-infrastructure") ? 1 : 0;
   assert.equal(findings.summary.categoryCounts["missing-coverage"], audit.untestedCandidates.length + infrastructureFindingCount, `${adapterId} missing findings must agree`);
-  const locallyCovered = audit.coveredButRisky.filter((target) => (target.existingTestPaths ?? []).length === 0 || !(target.existingTestPaths ?? []).every((testPath) => testPath.startsWith("../")));
+  const escapesRoot = (testPath) => { const normalized = path.posix.normalize(testPath.replaceAll("\\", "/")); return normalized === ".." || normalized.startsWith("../"); };
+  const locallyCovered = audit.coveredButRisky.filter((target) => (target.existingTestPaths ?? []).length === 0 || !(target.existingTestPaths ?? []).every(escapesRoot));
   assert.equal(findings.summary.categoryCounts["weak-existing-coverage"], locallyCovered.length, `${adapterId} weak findings must agree`);
   assert.equal(findings.summary.categoryCounts["blocked-project"], diagnostics.filter((diagnostic) => diagnostic.scope === "audit").length, `${adapterId} blocker findings must agree`);
   assert.equal(findings.summary.categoryCounts["command-withheld"], diagnostics.filter((diagnostic) => diagnostic.scope === "command").length, `${adapterId} command findings must agree`);

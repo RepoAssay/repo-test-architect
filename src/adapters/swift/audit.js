@@ -129,9 +129,12 @@ export function auditSwiftRepo(root, options = {}) {
     const owner = sourceGraph.sourceOwners.get(normalizePath(file.path)) ?? inferSourceOwner(file.path);
     if (owner && !moduleLabels.has(normalizeModuleName(owner))) moduleLabels.set(normalizeModuleName(owner), owner);
   }
+  // Every top-level name this project declares anywhere (not only the uniquely indexed ones), plus the
+  // names its tests declare locally: a sibling test using such a name resolves to this project's own.
   const declaredNames = new Set();
-  for (const symbols of sourceSymbols.values()) {
-    for (const [key, descriptor] of symbols) if (key.startsWith("top:")) declaredNames.add(descriptor.name);
+  for (const file of files) {
+    if (!isSourceFile(file.path, sourceGraph) || !file.path.endsWith(".swift")) continue;
+    for (const declaration of collectTopLevelSwiftDeclarations(file.content)) declaredNames.add(declaration.name);
   }
   for (const testFile of testFiles) for (const symbol of testFile.localSymbols) declaredNames.add(symbol);
   SWIFT_AUDIT_FACTS.set(audit, Object.freeze({
