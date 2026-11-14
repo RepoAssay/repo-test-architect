@@ -120,8 +120,122 @@ export function auditSwiftRepo(root, options = {}) {
     skipped: skipped.sort((a, b) => compareText(a.name, b.name)),
     risks
   };
+  // In-memory facts for the cross-project linking pass (#318); never serialized with the artifact.
+  SWIFT_AUDIT_FACTS.set(audit, Object.freeze({
+    testFiles,
+    sourceSymbols,
+    moduleNames: Object.freeze(new Set(sourceFiles
+      .map((file) => normalizeOptionalModuleName(sourceGraph.sourceOwners.get(normalizePath(file.path)) ?? inferSourceOwner(file.path)))
+      .filter(Boolean))),
+    testFrameworks: profile.testFrameworks,
+    existingTestLocations: profile.existingTestLocations
+  }));
   finishAuditPhase(onPhaseTiming, "swift", "evidence-classification-and-artifact", phaseStartedAt);
   return audit;
+}
+
+const SWIFT_AUDIT_FACTS = new WeakMap();
+
+/**
+ * Links tests that live in another detected Swift project to the targets they exercise (#318). A test
+ * counts when it imports a module that exactly one of the scanned projects declares and uses a symbol of
+ * the target's source file; the evidence keeps the usual kind, strength and usage, with the test path
+ * relative to the target's project root (`../Mobile/Tests/...`). Targets covered only this way move from
+ * untestedCandidates to coveredButRisky, so the plan stops asking for a duplicate test and placement
+ * analysis reports where the test lives. A module name declared by several projects is not linked and
+ * is recorded as a bounded-audit diagnostic on each of them. Lone-root audits never reach this pass.
+ *
+ * @param {Array<{ projectRoot: string, audit: object }>} entries Swift audits of one repository scan, in detection order.
+ */
+export function linkSwiftCrossProjectTestEvidence(entries) {
+  const known = entries
+    .map((entry) => ({ entry, facts: SWIFT_AUDIT_FACTS.get(entry.audit) }))
+    .filter((item) => item.facts !== undefined);
+  if (known.length < 2) return;
+
+  const declaringProjects = new Map();
+  for (const item of known) {
+    for (const moduleName of item.facts.moduleNames) {
+      declaringProjects.set(moduleName, [...(declaringProjects.get(moduleName) ?? []), item]);
+    }
+  }
+
+  for (const target of known) {
+    const uniqueModules = [...target.facts.moduleNames].filter((moduleName) => declaringProjects.get(moduleName).length === 1);
+    const sharedModules = [...target.facts.moduleNames].filter((moduleName) => declaringProjects.get(moduleName).length > 1).sort();
+    if (sharedModules.length > 0) {
+      recordSharedModuleDiagnostic(target, sharedModules, declaringProjects);
+    }
+    if (uniqueModules.length === 0) continue;
+
+    const additions = new Map();
+    for (const sibling of known) {
+      if (sibling === target) continue;
+      for (const testFile of sibling.facts.testFiles) {
+        if (!testFile.importedModules.some((moduleName) => uniqueModules.includes(moduleName))) continue;
+        const testPath = relativeProjectPath(target.entry.projectRoot, path.posix.join(normalizeProjectRootForJoin(sibling.entry.projectRoot), testFile.path));
+        for (const candidate of [...target.entry.audit.untestedCandidates, ...target.entry.audit.coveredButRisky]) {
+          const usage = findSwiftSymbolUsage(testFile, target.facts.sourceSymbols.get(normalizePath(candidate.path)) ?? new Map());
+          if (!usage) continue;
+          const evidence = additions.get(candidate.id) ?? [];
+          if (evidence.some((entry) => entry.testPath === testPath)) continue;
+          evidence.push({ testPath, kind: "swift-symbol-reference", strength: "referenced", ...(usage !== "referenced" ? { usage } : {}) });
+          additions.set(candidate.id, evidence);
+        }
+      }
+    }
+    if (additions.size > 0) applySwiftCrossProjectEvidence(target.entry.audit, additions);
+  }
+}
+
+function recordSharedModuleDiagnostic(target, sharedModules, declaringProjects) {
+  const audit = target.entry.audit;
+  const roots = [...new Set(sharedModules.flatMap((moduleName) => declaringProjects.get(moduleName).map((item) => item.entry.projectRoot)))].sort(compareText);
+  const message = `Module name${sharedModules.length > 1 ? "s" : ""} ${sharedModules.join(", ")} ${sharedModules.length > 1 ? "are" : "is"} declared by several detected Swift projects (${roots.join(", ")}), so tests importing ${sharedModules.length > 1 ? "them" : "it"} from other projects were not linked.`;
+  const diagnostics = [...(audit.profile.diagnostics ?? []), createDiagnostic({ code: "ambiguous-cross-project-module", scope: "audit", severity: "medium", message })];
+  audit.profile.diagnostics = diagnostics;
+  audit.profile.blockers = diagnosticsToBlockers(diagnostics);
+  audit.profile.confidence = scoreAuditConfidence({ diagnostics, testFrameworks: target.facts.testFrameworks, existingTestLocations: target.facts.existingTestLocations });
+}
+
+function applySwiftCrossProjectEvidence(audit, additions) {
+  const stillUntested = [];
+  for (const candidate of audit.untestedCandidates) {
+    const evidence = additions.get(candidate.id);
+    if (!evidence) {
+      stillUntested.push(candidate);
+      continue;
+    }
+    candidate.existingTestPaths = evidence.map((entry) => entry.testPath);
+    candidate.existingTestEvidence = evidence;
+    candidate.signals = [...candidate.signals, "matching-test"];
+    candidate.reasons = [...candidate.reasons, "Existing test file detected; review missing edge cases"];
+    audit.coveredButRisky.push(candidate);
+    const riskIndex = audit.risks.findIndex((risk) => risk.startsWith(`${candidate.name} has `) && risk.endsWith(" and has no matching test file."));
+    if (riskIndex >= 0) audit.risks[riskIndex] = audit.risks[riskIndex].replace(/ and has no matching test file\.$/, " and needs edge-case review.");
+  }
+  for (const candidate of audit.coveredButRisky) {
+    const evidence = additions.get(candidate.id);
+    if (!evidence || candidate.existingTestEvidence?.some((entry) => evidence.some((added) => added.testPath === entry.testPath))) continue;
+    if (!audit.untestedCandidates.includes(candidate)) {
+      candidate.existingTestPaths = [...candidate.existingTestPaths, ...evidence.map((entry) => entry.testPath)];
+      candidate.existingTestEvidence = [...(candidate.existingTestEvidence ?? []), ...evidence];
+    }
+  }
+  audit.untestedCandidates = stillUntested.sort(byRiskThenName);
+  audit.coveredButRisky.sort(byRiskThenName);
+  audit.recommended = [...audit.untestedCandidates, ...audit.coveredButRisky].sort(byRiskThenName);
+}
+
+function normalizeProjectRootForJoin(projectRoot) {
+  const normalized = normalizePath(projectRoot).replace(/^\.\/+/, "").replace(/\/+$/, "");
+  return normalized === "." ? "" : normalized;
+}
+
+// A test path relative to the target's project root, escaping it with `..` when the test's project is a sibling.
+function relativeProjectPath(targetRoot, repoRelativeTestPath) {
+  const from = normalizeProjectRootForJoin(targetRoot);
+  return path.posix.relative(from === "" ? "." : from, repoRelativeTestPath);
 }
 
 function readRepoFiles(root) {

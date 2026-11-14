@@ -6,6 +6,7 @@ import { describe, it } from "node:test";
 import { adapters } from "../src/core/adapter-registry.js";
 import { auditSwiftRepo } from "../src/adapters/swift/audit.js";
 import { auditDetectedProjects } from "../src/core/project-auditor.js";
+import { createProjectFindings } from "../src/core/project-findings.js";
 import { copyTrustFixture } from "./support/non-code-evidence.js";
 import { assertNoProjectTestCommand } from "./support/ownership-evidence.js";
 
@@ -2911,6 +2912,81 @@ describe("Xcode scheme selection (#310)", () => {
         "Apps/Shop": "xcodebuild test -project ShopApp.xcodeproj -scheme \"Shop Beta\""
       }, key);
     }
+  });
+});
+
+describe("cross-project test evidence (#318)", () => {
+  const makeRepo = (t, { testBody, bModuleIsAlsoA = false, testImportsA = true } = {}) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-swift-cross-project-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    const write = (relative, content) => {
+      fs.mkdirSync(path.dirname(path.join(root, relative)), { recursive: true });
+      fs.writeFileSync(path.join(root, relative), content);
+    };
+    write("A/Package.swift", "// swift-tools-version:5.9\nimport PackageDescription\nlet package = Package(name: \"A\", targets: [.target(name: \"A\")])\n");
+    write("A/Sources/A/Foo.swift", "public struct Foo {\n    public func label(_ value: Int) -> String {\n        if value < 0 { return \"negative\" }\n        return \"ok\"\n    }\n}\n");
+    write("B/Package.swift", `// swift-tools-version:5.9\nimport PackageDescription\nlet package = Package(name: "B", dependencies: [.package(path: "../A")], targets: [.target(name: "${bModuleIsAlsoA ? "A" : "B"}"), .testTarget(name: "BTests", dependencies: ["${bModuleIsAlsoA ? "A" : "B"}"])])\n`);
+    write(`B/Sources/${bModuleIsAlsoA ? "A" : "B"}/Bar.swift`, "public struct Bar {\n    public func twice(_ value: Int) -> Int {\n        if value == 0 { return 0 }\n        return value * 2\n    }\n}\n");
+    write("B/Tests/BTests/FooTests.swift", `import XCTest\n${testImportsA ? "@testable import A\n" : ""}final class FooTests: XCTestCase {\n${testBody ?? "    func testLabel() { XCTAssertEqual(Foo().label(-1), \"negative\") }\n"}}\n`);
+    write("B/Tests/BTests/BarTests.swift", `import XCTest\n@testable import ${bModuleIsAlsoA ? "A" : "B"}\nfinal class BarTests: XCTestCase { func testTwice() { XCTAssertEqual(Bar().twice(2), 4) } }\n`);
+    return root;
+  };
+  const projectAudit = (projectAudits, projectRoot) => projectAudits.audits.find((entry) => entry.projectRoot === projectRoot).audit;
+
+  it("credits a package's source through a sibling package's test that imports its module, and reports the placement", (t) => {
+    const root = makeRepo(t);
+    const projectAudits = auditDetectedProjects(root);
+    const a = projectAudit(projectAudits, "A");
+
+    assert.deepEqual(a.untestedCandidates, []);
+    assert.deepEqual(a.coveredButRisky.map((target) => [target.path, target.existingTestPaths, target.existingTestEvidence]), [
+      ["Sources/A/Foo.swift", ["../B/Tests/BTests/FooTests.swift"], [{ testPath: "../B/Tests/BTests/FooTests.swift", kind: "swift-symbol-reference", strength: "referenced", usage: "asserted" }]]
+    ]);
+    assert.ok(a.coveredButRisky[0].signals.includes("matching-test"));
+    assert.deepEqual(a.recommended.map((target) => target.path), ["Sources/A/Foo.swift"]);
+    // A still has no local test target: that gap stays visible beside the linked evidence (#312).
+    assert.deepEqual(a.profile.diagnostics.map((diagnostic) => diagnostic.code), ["missing-test-target"]);
+    assert.deepEqual(a.profile.blockers, []);
+
+    const findings = createProjectFindings(projectAudits);
+    const misplaced = findings.findings.find((finding) => finding.category === "misplaced-coverage");
+    assert.deepEqual(
+      [misplaced.testFile, misplaced.currentOwner, misplaced.suggestedOwner, misplaced.action, misplaced.projectRoot],
+      ["B/Tests/BTests/FooTests.swift", "B", "A", "move", "A"]
+    );
+    assert.ok(!findings.findings.some((finding) => finding.category === "weak-existing-coverage" && finding.projectRoot === "A"), "external-only coverage is reported once, as placement");
+    assert.ok(findings.findings.some((finding) => finding.code === "missing-test-target" && finding.projectRoot === "A"));
+    assert.deepEqual(createProjectFindings(JSON.parse(JSON.stringify(projectAudits))), findings, "saved artifacts replay without the filesystem");
+
+    // B's own target keeps its local evidence and nothing from A leaks into it.
+    const b = projectAudit(projectAudits, "B");
+    assert.deepEqual(b.coveredButRisky.map((target) => [target.path, target.existingTestPaths]), [["Sources/B/Bar.swift", ["Tests/BTests/BarTests.swift"]]]);
+  });
+
+  it("never links across projects for a lone-root audit, an import without symbol use, or a missing import", (t) => {
+    const lone = auditSwiftRepo(path.join(makeRepo(t), "A"));
+    assert.deepEqual(lone.untestedCandidates.map((target) => target.path), ["Sources/A/Foo.swift"]);
+
+    const importOnly = projectAudit(auditDetectedProjects(makeRepo(t, { testBody: "    func testNothing() { XCTAssertTrue(true) }\n" })), "A");
+    assert.deepEqual(importOnly.untestedCandidates.map((target) => target.path), ["Sources/A/Foo.swift"]);
+    assert.deepEqual(importOnly.coveredButRisky, []);
+
+    const noImport = projectAudit(auditDetectedProjects(makeRepo(t, { testImportsA: false })), "A");
+    assert.deepEqual(noImport.untestedCandidates.map((target) => target.path), ["Sources/A/Foo.swift"]);
+  });
+
+  it("does not link a module name that several detected projects declare, and records the bound", (t) => {
+    const projectAudits = auditDetectedProjects(makeRepo(t, { bModuleIsAlsoA: true }));
+    const a = projectAudit(projectAudits, "A");
+    assert.deepEqual(a.untestedCandidates.map((target) => target.path), ["Sources/A/Foo.swift"]);
+    const shared = a.profile.diagnostics.find((diagnostic) => diagnostic.code === "ambiguous-cross-project-module");
+    assert.equal(shared.scope, "audit");
+    assert.equal(shared.severity, "medium");
+    assert.equal(shared.message, "Module name a is declared by several detected Swift projects (A, B), so tests importing it from other projects were not linked.");
+    assert.ok(a.profile.blockers.includes(shared.message));
+    assert.equal(a.profile.confidence, "medium");
+    const b = projectAudit(projectAudits, "B");
+    assert.ok(b.profile.diagnostics.some((diagnostic) => diagnostic.code === "ambiguous-cross-project-module"));
   });
 });
 
