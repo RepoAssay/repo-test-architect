@@ -120,8 +120,163 @@ export function auditSwiftRepo(root, options = {}) {
     skipped: skipped.sort((a, b) => compareText(a.name, b.name)),
     risks
   };
+  // In-memory facts for the cross-project linking pass (#318); never serialized with the artifact. Module
+  // names come from every owned source, not only the changed-path selection, so the uniqueness guard
+  // does not weaken in a changed-paths run.
+  const moduleLabels = new Map();
+  for (const file of files) {
+    if (!isSourceFile(file.path, sourceGraph)) continue;
+    const owner = sourceGraph.sourceOwners.get(normalizePath(file.path)) ?? inferSourceOwner(file.path);
+    if (owner && !moduleLabels.has(normalizeModuleName(owner))) moduleLabels.set(normalizeModuleName(owner), owner);
+  }
+  // Every top-level name this project declares anywhere (not only the uniquely indexed ones), plus the
+  // names its tests declare locally: a sibling test using such a name resolves to this project's own.
+  const declaredNames = new Set();
+  for (const file of files) {
+    if (!isSourceFile(file.path, sourceGraph) || !file.path.endsWith(".swift")) continue;
+    for (const declaration of collectTopLevelSwiftDeclarations(file.content)) declaredNames.add(declaration.name);
+  }
+  for (const testFile of testFiles) for (const symbol of testFile.localSymbols) declaredNames.add(symbol);
+  SWIFT_AUDIT_FACTS.set(audit, Object.freeze({
+    testFiles,
+    sourceSymbols,
+    moduleNames: new Set(moduleLabels.keys()),
+    moduleLabels,
+    declaredNames,
+    testFrameworks: profile.testFrameworks,
+    existingTestLocations: profile.existingTestLocations
+  }));
   finishAuditPhase(onPhaseTiming, "swift", "evidence-classification-and-artifact", phaseStartedAt);
   return audit;
+}
+
+const SWIFT_AUDIT_FACTS = new WeakMap();
+
+/**
+ * Links tests that live in another detected Swift project to the targets they exercise (#318). A test
+ * counts when it imports a module that exactly one of the scanned projects declares and uses a symbol of
+ * the target's source file that the test's own project does not declare itself and does not qualify with
+ * another module; the evidence keeps the usual kind, strength and usage, with the test path relative to
+ * the target's project root (`../Mobile/Tests/...`). Targets covered only this way move from
+ * untestedCandidates to coveredButRisky, so the plan stops asking for a duplicate test and placement
+ * analysis reports where the test lives. A module name that several projects declare is not linked; when
+ * a sibling test imports such a name, each declaring project records a bounded-audit diagnostic. The pass
+ * computes everything first and applies it second, so a failure leaves every audit as produced. Lone-root
+ * audits never reach this pass.
+ *
+ * @param {Array<{ projectRoot: string, audit: object }>} entries Swift audits of one repository scan, in detection order.
+ */
+export function linkSwiftCrossProjectTestEvidence(entries) {
+  const known = entries
+    .map((entry) => ({ entry, facts: SWIFT_AUDIT_FACTS.get(entry.audit) }))
+    .filter((item) => item.facts !== undefined);
+  if (known.length < 2) return;
+
+  const declaringProjects = new Map();
+  for (const item of known) {
+    for (const moduleName of item.facts.moduleNames) {
+      declaringProjects.set(moduleName, [...(declaringProjects.get(moduleName) ?? []), item]);
+    }
+  }
+
+  const planned = known.map((target) => ({ target, additions: new Map(), sharedModules: [] }));
+  for (const plan of planned) {
+    const { target } = plan;
+    const uniqueModules = [...target.facts.moduleNames].filter((moduleName) => declaringProjects.get(moduleName).length === 1);
+    const sharedModules = [...target.facts.moduleNames].filter((moduleName) => declaringProjects.get(moduleName).length > 1);
+    const siblings = known.filter((sibling) => sibling !== target);
+    // The shared-name diagnostic is only true when a project that does not declare the name has a test
+    // importing it; a project's own tests importing its own module are local and prove nothing about others.
+    plan.sharedModules = sharedModules
+      .filter((moduleName) => siblings.some((sibling) => !sibling.facts.moduleNames.has(moduleName) && sibling.facts.testFiles.some((testFile) => testFile.importedModules.includes(moduleName))))
+      .sort(compareText);
+    if (uniqueModules.length === 0) continue;
+
+    for (const sibling of siblings) {
+      for (const testFile of sibling.facts.testFiles) {
+        if (!testFile.importedModules.some((moduleName) => uniqueModules.includes(moduleName))) continue;
+        const testPath = relativeProjectPath(target.entry.projectRoot, path.posix.join(normalizeProjectRootForJoin(sibling.entry.projectRoot), testFile.path));
+        for (const candidate of [...target.entry.audit.untestedCandidates, ...target.entry.audit.coveredButRisky]) {
+          const symbols = linkableSymbols(target.facts.sourceSymbols.get(normalizePath(candidate.path)), sibling.facts.declaredNames, testFile, target.facts.moduleNames);
+          const usage = findSwiftSymbolUsage(testFile, symbols);
+          if (!usage) continue;
+          const evidence = plan.additions.get(candidate.id) ?? [];
+          if (evidence.some((entry) => entry.testPath === testPath) || candidate.existingTestPaths.includes(testPath)) continue;
+          evidence.push({ testPath, kind: "swift-symbol-reference", strength: "referenced", ...(usage !== "referenced" ? { usage } : {}) });
+          plan.additions.set(candidate.id, evidence);
+        }
+      }
+    }
+  }
+
+  for (const { target, additions, sharedModules } of planned) {
+    if (sharedModules.length > 0) recordSharedModuleDiagnostic(target, sharedModules, declaringProjects);
+    if (additions.size > 0) applySwiftCrossProjectEvidence(target.entry.audit, additions);
+  }
+}
+
+// Symbols of a target file that a sibling test may be credited for: not a name the sibling project
+// declares in its own sources or tests (the test would resolve to that one), and not one the test
+// qualifies with a module other than the target's (Other.Foo).
+function linkableSymbols(symbols, siblingDeclaredNames, testFile, targetModuleNames) {
+  if (!symbols || symbols.size === 0) return new Map();
+  return new Map([...symbols].filter(([, descriptor]) => {
+    const name = descriptor.kind === "extension-func" || descriptor.kind === "extension-init" ? descriptor.receiver : descriptor.name;
+    if (siblingDeclaredNames.has(name)) return false;
+    const qualifiers = [...testFile.maskedContent.matchAll(new RegExp("\\b([A-Z]\\w*)\\." + escapeRegex(name) + "\\b", "g"))].map((match) => normalizeModuleName(match[1]));
+    return qualifiers.every((qualifier) => targetModuleNames.has(qualifier));
+  }));
+}
+
+function recordSharedModuleDiagnostic(target, sharedModules, declaringProjects) {
+  const audit = target.entry.audit;
+  const labels = sharedModules.map((moduleName) => target.facts.moduleLabels.get(moduleName) ?? moduleName);
+  const roots = [...new Set(sharedModules.flatMap((moduleName) => declaringProjects.get(moduleName).map((item) => item.entry.projectRoot)))].sort(compareText);
+  const plural = labels.length > 1;
+  const message = "Module name" + (plural ? "s " : " ") + labels.join(", ") + (plural ? " are" : " is") + " declared by several detected Swift projects (" + roots.join(", ") + "), so tests importing " + (plural ? "them" : "it") + " from other projects were not linked.";
+  const diagnostics = [...(audit.profile.diagnostics ?? []), createDiagnostic({ code: "ambiguous-cross-project-module", scope: "audit", severity: "medium", message })];
+  audit.profile.diagnostics = diagnostics;
+  audit.profile.blockers = diagnosticsToBlockers(diagnostics);
+  audit.profile.confidence = scoreAuditConfidence({ diagnostics, testFrameworks: target.facts.testFrameworks, existingTestLocations: target.facts.existingTestLocations });
+}
+
+function applySwiftCrossProjectEvidence(audit, additions) {
+  const stillUntested = [];
+  for (const candidate of audit.untestedCandidates) {
+    const evidence = additions.get(candidate.id);
+    if (!evidence) {
+      stillUntested.push(candidate);
+      continue;
+    }
+    const untestedRisk = candidate.name + " has " + candidate.reasons.join(", ").toLowerCase() + " and has no matching test file.";
+    const riskIndex = audit.risks.indexOf(untestedRisk);
+    if (riskIndex >= 0) audit.risks[riskIndex] = untestedRisk.replace(/ and has no matching test file\.$/, " and needs edge-case review.");
+    candidate.existingTestPaths = evidence.map((entry) => entry.testPath);
+    candidate.existingTestEvidence = evidence;
+    candidate.signals = [...candidate.signals, "matching-test"];
+    candidate.reasons = [...candidate.reasons, "Existing test file detected; review missing edge cases"];
+    audit.coveredButRisky.push(candidate);
+  }
+  for (const candidate of audit.coveredButRisky) {
+    const evidence = additions.get(candidate.id);
+    if (!evidence || candidate.existingTestEvidence === evidence) continue;
+    candidate.existingTestPaths = [...candidate.existingTestPaths, ...evidence.map((entry) => entry.testPath)];
+    candidate.existingTestEvidence = [...(candidate.existingTestEvidence ?? []), ...evidence];
+  }
+  audit.untestedCandidates = stillUntested.sort(byRiskThenName);
+  audit.coveredButRisky.sort(byRiskThenName);
+  audit.recommended = [...audit.untestedCandidates, ...audit.coveredButRisky].sort(byRiskThenName);
+}
+
+function normalizeProjectRootForJoin(projectRoot) {
+  const normalized = normalizePath(projectRoot).replace(/^\.\/+/, "").replace(/\/+$/, "");
+  return normalized === "." ? "" : normalized;
+}
+
+// A test path relative to the target's project root, escaping it with .. when the test's project is a sibling.
+function relativeProjectPath(targetRoot, repoRelativeTestPath) {
+  const from = normalizeProjectRootForJoin(targetRoot);
+  return path.posix.relative(from === "" ? "." : from, repoRelativeTestPath);
 }
 
 function readRepoFiles(root) {

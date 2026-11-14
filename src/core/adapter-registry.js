@@ -8,7 +8,7 @@ import { auditPhpRepo } from "../adapters/php/audit.js";
 import { auditPythonRepo } from "../adapters/python/audit.js";
 import { auditRustRepo } from "../adapters/rust/audit.js";
 import { auditRubyRepo } from "../adapters/ruby/audit.js";
-import { auditSwiftRepo } from "../adapters/swift/audit.js";
+import { auditSwiftRepo, linkSwiftCrossProjectTestEvidence } from "../adapters/swift/audit.js";
 
 /**
  * @typedef {object} AuditRepoOptions
@@ -190,6 +190,9 @@ export const adapters = [
         swiftScheme: options.swiftScheme,
         onPhaseTiming: options.onPhaseTiming
       });
+    },
+    linkCrossProjectTestEvidence(entries) {
+      linkSwiftCrossProjectTestEvidence(entries);
     }
   },
   {

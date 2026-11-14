@@ -111,6 +111,8 @@ export function auditDetectedProjects(repoRoot, options = {}) {
     });
   }
 
+  linkCrossProjectTestEvidence(audits);
+
   return {
     schemaVersion: "project-audits/v1",
     root: detection.root,
@@ -124,6 +126,28 @@ export function auditDetectedProjects(repoRoot, options = {}) {
     skippedProjects,
     failedProjects: sortFailedProjects(failedProjects)
   };
+}
+
+/**
+ * Once every project has its own audit, an adapter that can read sibling projects links the tests that
+ * live in one project but exercise another (#318). The adapter sees only the audits it produced in
+ * this scan, in detection order; lone-root audits never reach this pass. A defect in the pass is
+ * contained like a per-project adapter defect: the audits stay exactly as produced, which only means
+ * fewer links, and the other adapters still get their pass.
+ * @param {Array<{ projectId: string, projectRoot: string, adapterId: string, audit: object }>} audits
+ */
+function linkCrossProjectTestEvidence(audits) {
+  const byAdapter = new Map();
+  for (const entry of audits) byAdapter.set(entry.adapterId, [...(byAdapter.get(entry.adapterId) ?? []), entry]);
+  for (const [adapterId, entries] of byAdapter) {
+    const adapter = getAdapter(adapterId);
+    if (entries.length <= 1 || typeof adapter.linkCrossProjectTestEvidence !== "function") continue;
+    try {
+      adapter.linkCrossProjectTestEvidence(entries);
+    } catch (error) {
+      if (isInvalidOptionError(error)) throw error;
+    }
+  }
 }
 
 function isInvalidOptionError(error) {

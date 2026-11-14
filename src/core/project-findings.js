@@ -1,3 +1,4 @@
+import path from "node:path";
 import { classifyProjectAuditCoverage } from "./project-audit-coverage.js";
 import { validateProjectAudits } from "./project-audits-validation.js";
 import { failedProjectCountField, failedProjectsField, normalizeFailedProjects } from "./project-failures.js";
@@ -143,7 +144,9 @@ function toAuditFindings(entry) {
     findings.push(toTargetFinding(entry, target, "missing-coverage"));
   }
 
-  for (const target of entry.audit.coveredButRisky.filter(isReportableCoverageTarget)) {
+  // A target whose only tests live in another project is reported through placement analysis as
+  // misplaced coverage; a weak-coverage finding on top of that would repeat it (#318).
+  for (const target of entry.audit.coveredButRisky.filter((candidate) => isReportableCoverageTarget(candidate) && !hasOnlyExternalCoverage(candidate))) {
     findings.push(toTargetFinding(entry, target, "weak-existing-coverage"));
   }
 
@@ -152,6 +155,16 @@ function toAuditFindings(entry) {
   }
 
   return findings;
+}
+
+function hasOnlyExternalCoverage(target) {
+  const paths = target.existingTestPaths ?? [];
+  return paths.length > 0 && paths.every((testPath) => escapesProjectRoot(testPath));
+}
+
+function escapesProjectRoot(testPath) {
+  const normalized = path.posix.normalize(testPath.replaceAll("\\", "/"));
+  return normalized === ".." || normalized.startsWith("../");
 }
 
 function isAuxiliaryProjectRoot(projectRoot) {

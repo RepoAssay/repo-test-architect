@@ -322,7 +322,9 @@ function assertProjectEvidenceAgreement(audit, ranking, plan, findings, adapterI
   const diagnostics = resolveAuditDiagnostics(audit.profile);
   const infrastructureFindingCount = diagnostics.some((diagnostic) => diagnostic.scope === "test-infrastructure") ? 1 : 0;
   assert.equal(findings.summary.categoryCounts["missing-coverage"], audit.untestedCandidates.length + infrastructureFindingCount, `${adapterId} missing findings must agree`);
-  assert.equal(findings.summary.categoryCounts["weak-existing-coverage"], audit.coveredButRisky.length, `${adapterId} weak findings must agree`);
+  const escapesRoot = (testPath) => { const normalized = path.posix.normalize(testPath.replaceAll("\\", "/")); return normalized === ".." || normalized.startsWith("../"); };
+  const locallyCovered = audit.coveredButRisky.filter((target) => (target.existingTestPaths ?? []).length === 0 || !(target.existingTestPaths ?? []).every(escapesRoot));
+  assert.equal(findings.summary.categoryCounts["weak-existing-coverage"], locallyCovered.length, `${adapterId} weak findings must agree`);
   assert.equal(findings.summary.categoryCounts["blocked-project"], diagnostics.filter((diagnostic) => diagnostic.scope === "audit").length, `${adapterId} blocker findings must agree`);
   assert.equal(findings.summary.categoryCounts["command-withheld"], diagnostics.filter((diagnostic) => diagnostic.scope === "command").length, `${adapterId} command findings must agree`);
   if (audit.profile.diagnostics !== undefined) {
@@ -331,6 +333,11 @@ function assertProjectEvidenceAgreement(audit, ranking, plan, findings, adapterI
   }
 
   for (const target of audit.coveredButRisky) {
+    if (!locallyCovered.includes(target)) {
+      // External-only coverage is reported through placement analysis instead (#318).
+      assert.ok(findings.findings.some((entry) => entry.category === "misplaced-coverage"), `${adapterId} externally covered target ${target.id} must have a placement finding`);
+      continue;
+    }
     const finding = findings.findings.find((entry) => entry.category === "weak-existing-coverage" && entry.targetId === target.id);
     assert.ok(finding, `${adapterId} covered target ${target.id} must have a weak-coverage finding`);
     assert.deepEqual(finding.existingTestPaths, target.existingTestPaths, `${adapterId} finding test paths must agree`);
