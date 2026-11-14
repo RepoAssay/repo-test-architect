@@ -1309,5 +1309,14 @@ describe("--swift-scheme (#310)", () => {
       () => execFileSync(process.execPath, [cliPath, "audit-projects", root, "--swift-scheme=Apps/Missing=Shop"], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }),
       (error) => /swiftSchemes names a project root that was not detected: Apps\/Missing/.test(error.stderr)
     );
+    // Keys that normalize to the same root collide, and a single-project command only accepts the audited root.
+    assert.throws(
+      () => execFileSync(process.execPath, [cliPath, "audit-projects", root, "--swift-scheme=Apps/Shop=Shop", "--swift-scheme=./Apps/Shop/=Shop Beta"], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }),
+      (error) => /names project root Apps\/Shop more than once/.test(error.stderr)
+    );
+    assert.throws(
+      () => execFileSync(process.execPath, [cliPath, "audit", root, "--adapter=swift", "--swift-scheme=Apps/X=Shop"], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }),
+      (error) => /must use the key "\." for the audited root/.test(error.stderr) && !/\n\s+at /.test(error.stderr)
+    );
   });
 });

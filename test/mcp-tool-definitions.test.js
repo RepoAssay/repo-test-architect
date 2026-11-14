@@ -628,5 +628,21 @@ describe("Swift scheme selection inputs (#310)", () => {
       () => callTool("generate_project_test_plan", { projectAudits: projects, swiftSchemes: { ".": "Shop Beta" } }),
       (error) => error.kind === "invalid-arguments" && error.details.argument === "swiftSchemes"
     );
+    // A lone-root audit only accepts the key "."; anything else is a clean usage error, not a stack trace.
+    assert.throws(
+      () => callTool("audit_repo", { repoRoot, adapterId: "swift", swiftSchemes: { "Apps/Shop": "Shop Beta" } }),
+      (error) => error.kind === "invalid-arguments" && /swiftSchemes/.test(error.message)
+    );
+  });
+
+  it("applies swiftSchemes to a single-project tool addressed by repoRoot and projectRoot", async (t) => {
+    const { createNestedSchemeProjects } = await import("./support/xcode-schemes-fixture.js");
+    const repoRoot = createNestedSchemeProjects(t);
+    const withheld = callTool("rank_test_candidates", { repoRoot, projectRoot: "Apps/Shop" });
+    assert.equal(withheld.summary.verificationCommand, undefined);
+    assert.ok(withheld.blockers.some((blocker) => blocker.startsWith("Multiple shared Xcode schemes declare a test action")));
+    const selected = callTool("rank_test_candidates", { repoRoot, projectRoot: "Apps/Shop", swiftSchemes: { "Apps/Shop": "Shop Beta" } });
+    assert.equal(selected.summary.verificationCommand, "xcodebuild test -project ShopApp.xcodeproj -scheme \"Shop Beta\"");
+    assert.deepEqual(selected.blockers, []);
   });
 });

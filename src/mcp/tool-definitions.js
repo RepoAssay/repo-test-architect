@@ -501,7 +501,7 @@ function auditSourceProperties() {
 function swiftSchemesSchema(keyHint) {
   return {
     type: "object",
-    description: `Optional shared Xcode scheme per Swift project root when several schemes declare a test action. ${keyHint}`,
+    description: `Optional shared Xcode scheme per Swift project root. ${keyHint}`,
     additionalProperties: { type: "string", minLength: 1 }
   };
 }

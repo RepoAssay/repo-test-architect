@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { readGitChangedPathsSince, readGitWorkingTreeChangedPaths } from "../core/git-changed-paths.js";
 import { InvalidOptionError } from "../core/invalid-option-error.js";
+import { normalizeSwiftSchemeRoot } from "../core/project-auditor.js";
 import { renderMarkdownReport } from "../core/report.js";
 import {
   createDiagnosticBundle,
@@ -445,6 +446,7 @@ function parseArgs(args) {
   // --swift-scheme <project-root>=<scheme> selects the shared Xcode scheme for one detected project;
   // a bare <scheme> addresses the audited root (".") of a single-project command.
   let swiftSchemes;
+  const swiftSchemeRoots = new Map();
   for (const option of swiftSchemeOptions) {
     const separator = option.indexOf("=");
     const projectRoot = separator >= 0 ? option.slice(0, separator) : ".";
@@ -453,12 +455,18 @@ function parseArgs(args) {
       console.error("--swift-scheme requires <project-root>=<scheme>, or a non-empty <scheme> for a single-project command.");
       process.exit(1);
     }
-    swiftSchemes ??= {};
-    if (swiftSchemes[projectRoot] !== undefined) {
-      console.error(`--swift-scheme names project root ${projectRoot} more than once.`);
+    const normalizedRoot = normalizeSwiftSchemeRoot(projectRoot);
+    if (normalizedRoot === undefined) {
+      console.error(`--swift-scheme project roots must be repository-relative, not ${projectRoot}.`);
       process.exit(1);
     }
-    swiftSchemes[projectRoot] = scheme;
+    if (swiftSchemeRoots.has(normalizedRoot)) {
+      console.error(`--swift-scheme names project root ${normalizedRoot} more than once (${swiftSchemeRoots.get(normalizedRoot)} and ${projectRoot}).`);
+      process.exit(1);
+    }
+    swiftSchemeRoots.set(normalizedRoot, projectRoot);
+    swiftSchemes ??= {};
+    swiftSchemes[normalizedRoot] = scheme;
   }
 
   if (limit !== undefined && (!/^\d+$/.test(limit) || Number(limit) < 1 || Number(limit) > 500)) {

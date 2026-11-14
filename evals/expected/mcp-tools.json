@@ -67,7 +67,7 @@
           },
           "swiftSchemes": {
             "type": "object",
-            "description": "Optional shared Xcode scheme per Swift project root when several schemes declare a test action. Keys are detected project roots.",
+            "description": "Optional shared Xcode scheme per Swift project root. Keys are detected project roots.",
             "additionalProperties": {
               "type": "string",
               "minLength": 1
@@ -206,7 +206,7 @@
           },
           "swiftSchemes": {
             "type": "object",
-            "description": "Optional shared Xcode scheme per Swift project root when several schemes declare a test action. Keys are detected project roots.",
+            "description": "Optional shared Xcode scheme per Swift project root. Keys are detected project roots.",
             "additionalProperties": {
               "type": "string",
               "minLength": 1
@@ -483,7 +483,7 @@
           },
           "swiftSchemes": {
             "type": "object",
-            "description": "Optional shared Xcode scheme per Swift project root when several schemes declare a test action. Keys are detected project roots.",
+            "description": "Optional shared Xcode scheme per Swift project root. Keys are detected project roots.",
             "additionalProperties": {
               "type": "string",
               "minLength": 1
@@ -597,7 +597,7 @@
           },
           "swiftSchemes": {
             "type": "object",
-            "description": "Optional shared Xcode scheme per Swift project root when several schemes declare a test action. Keys are detected project roots.",
+            "description": "Optional shared Xcode scheme per Swift project root. Keys are detected project roots.",
             "additionalProperties": {
               "type": "string",
               "minLength": 1
@@ -711,7 +711,7 @@
           },
           "swiftSchemes": {
             "type": "object",
-            "description": "Optional shared Xcode scheme per Swift project root when several schemes declare a test action. Keys are detected project roots.",
+            "description": "Optional shared Xcode scheme per Swift project root. Keys are detected project roots.",
             "additionalProperties": {
               "type": "string",
               "minLength": 1
@@ -825,7 +825,7 @@
           },
           "swiftSchemes": {
             "type": "object",
-            "description": "Optional shared Xcode scheme per Swift project root when several schemes declare a test action. Keys are detected project roots.",
+            "description": "Optional shared Xcode scheme per Swift project root. Keys are detected project roots.",
             "additionalProperties": {
               "type": "string",
               "minLength": 1
@@ -943,7 +943,7 @@
           },
           "swiftSchemes": {
             "type": "object",
-            "description": "Optional shared Xcode scheme per Swift project root when several schemes declare a test action. Keys are detected project roots.",
+            "description": "Optional shared Xcode scheme per Swift project root. Keys are detected project roots.",
             "additionalProperties": {
               "type": "string",
               "minLength": 1
@@ -1057,7 +1057,7 @@
           },
           "swiftSchemes": {
             "type": "object",
-            "description": "Optional shared Xcode scheme per Swift project root when several schemes declare a test action. Keys are detected project roots.",
+            "description": "Optional shared Xcode scheme per Swift project root. Keys are detected project roots.",
             "additionalProperties": {
               "type": "string",
               "minLength": 1
@@ -1168,7 +1168,7 @@
           },
           "swiftSchemes": {
             "type": "object",
-            "description": "Optional shared Xcode scheme per Swift project root when several schemes declare a test action. Keys are detected project roots.",
+            "description": "Optional shared Xcode scheme per Swift project root. Keys are detected project roots.",
             "additionalProperties": {
               "type": "string",
               "minLength": 1
@@ -1284,7 +1284,7 @@
           },
           "swiftSchemes": {
             "type": "object",
-            "description": "Optional shared Xcode scheme per Swift project root when several schemes declare a test action. Key \".\" names the audited root.",
+            "description": "Optional shared Xcode scheme per Swift project root. Key \".\" names the audited root.",
             "additionalProperties": {
               "type": "string",
               "minLength": 1
@@ -1399,7 +1399,7 @@
           },
           "swiftSchemes": {
             "type": "object",
-            "description": "Optional shared Xcode scheme per Swift project root when several schemes declare a test action. Keys are detected project roots.",
+            "description": "Optional shared Xcode scheme per Swift project root. Keys are detected project roots.",
             "additionalProperties": {
               "type": "string",
               "minLength": 1
@@ -1514,7 +1514,7 @@
           },
           "swiftSchemes": {
             "type": "object",
-            "description": "Optional shared Xcode scheme per Swift project root when several schemes declare a test action. Keys are detected project roots.",
+            "description": "Optional shared Xcode scheme per Swift project root. Keys are detected project roots.",
             "additionalProperties": {
               "type": "string",
               "minLength": 1
@@ -1625,7 +1625,7 @@
           },
           "swiftSchemes": {
             "type": "object",
-            "description": "Optional shared Xcode scheme per Swift project root when several schemes declare a test action. Keys are detected project roots.",
+            "description": "Optional shared Xcode scheme per Swift project root. Keys are detected project roots.",
             "additionalProperties": {
               "type": "string",
               "minLength": 1
@@ -1737,7 +1737,7 @@
           },
           "swiftSchemes": {
             "type": "object",
-            "description": "Optional shared Xcode scheme per Swift project root when several schemes declare a test action. Keys are detected project roots.",
+            "description": "Optional shared Xcode scheme per Swift project root. Keys are detected project roots.",
             "additionalProperties": {
               "type": "string",
               "minLength": 1
@@ -1912,7 +1912,7 @@
           },
           "swiftSchemes": {
             "type": "object",
-            "description": "Optional shared Xcode scheme per Swift project root when several schemes declare a test action. Keys are detected project roots.",
+            "description": "Optional shared Xcode scheme per Swift project root. Keys are detected project roots.",
             "additionalProperties": {
               "type": "string",
               "minLength": 1
@@ -2015,7 +2015,7 @@
           },
           "swiftSchemes": {
             "type": "object",
-            "description": "Optional shared Xcode scheme per Swift project root when several schemes declare a test action. Keys are detected project roots.",
+            "description": "Optional shared Xcode scheme per Swift project root. Keys are detected project roots.",
             "additionalProperties": {
               "type": "string",
               "minLength": 1

@@ -1,7 +1,8 @@
 import { getAdapter, getAdapterRegistry as readAdapterRegistry } from "./adapter-registry.js";
 import { ArtifactValidationError, assertValidArtifact } from "./artifact-validation.js";
 import { explainTarget } from "./explain-target.js";
-import { auditDetectedProjects } from "./project-auditor.js";
+import { InvalidOptionError } from "./invalid-option-error.js";
+import { auditDetectedProjects, normalizeSwiftSchemeSelections } from "./project-auditor.js";
 import { summarizeProjectAudits } from "./project-audit-summary.js";
 import { detectProjects, getProjectDetectionRules as readProjectDetectionRules } from "./project-detector.js";
 import { rankProjectTestCandidates } from "./project-candidate-ranking.js";
@@ -222,13 +223,13 @@ export function auditRepo(repoRoot, options = {}) {
  * @returns {string | undefined}
  */
 function selectLoneRootSwiftScheme(swiftSchemes) {
-  if (swiftSchemes === undefined) return undefined;
-  const keys = Object.keys(swiftSchemes);
-  const foreign = keys.filter((key) => !["."].includes(key.replace(/^\.\//, "").replace(/\/+$/, "") || "."));
-  if (foreign.length > 0) {
-    throw new Error(`swiftSchemes for a single-project audit must use the key "." for the audited root, not ${foreign[0]}.`);
+  const selections = normalizeSwiftSchemeSelections(swiftSchemes);
+  if (selections.size === 0) return undefined;
+  const foreign = [...selections.keys()].filter((root) => root !== ".");
+  if (foreign.length > 0 || selections.size > 1) {
+    throw new InvalidOptionError(`swiftSchemes for a single-project audit must use the key "." for the audited root, not ${JSON.stringify(foreign[0] ?? [...selections.values()][1].rawRoot)}.`, { option: "swiftSchemes" });
   }
-  return keys.length > 0 ? swiftSchemes[keys[0]] : undefined;
+  return selections.get(".").scheme;
 }
 
 /**
@@ -348,15 +349,7 @@ function validateProjectRootPatterns(projectRoots) {
 
 function validateSwiftSchemes(swiftSchemes) {
   if (swiftSchemes === undefined) return undefined;
-  if (!swiftSchemes || typeof swiftSchemes !== "object" || Array.isArray(swiftSchemes)) {
-    throw new Error("swiftSchemes must be an object mapping project roots to shared Xcode scheme names.");
-  }
-  for (const [root, scheme] of Object.entries(swiftSchemes)) {
-    if (root.length === 0) throw new Error("swiftSchemes keys must be non-empty project roots.");
-    if (typeof scheme !== "string" || scheme.length === 0) {
-      throw new Error(`swiftSchemes[${JSON.stringify(root)}] must be a non-empty scheme name.`);
-    }
-  }
+  normalizeSwiftSchemeSelections(swiftSchemes);
   return { ...swiftSchemes };
 }
 

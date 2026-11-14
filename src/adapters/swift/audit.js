@@ -219,7 +219,7 @@ function buildProfile(root, files, bazelGraph, auditOptions = {}) {
     testCommand,
     detectedConventions: detectConventions(paths, bazelGraph),
     existingTestLocations,
-    setupSignals: [...detectSetupSignals(paths, packageText, bazelGraph, files), ...(testCommandResolution.selectedScheme ? ["xcode scheme selected by input"] : [])],
+    setupSignals: [...detectSetupSignals(paths, packageText, bazelGraph, files, testCommandResolution.scheme), ...(testCommandResolution.selectedScheme ? ["xcode scheme selected by input"] : [])],
     confidence: scoreAuditConfidence({ diagnostics, testFrameworks, existingTestLocations }),
     blockers: diagnosticsToBlockers(diagnostics),
     diagnostics
@@ -323,8 +323,8 @@ function detectTestCommand(paths, frameworks, bazelGraph, files, selectedSchemeN
     const containerOption = containerResolution.workspace
       ? ` -workspace ${quoteShellArgument(containerResolution.workspace)}`
       : containerResolution.project ? ` -project ${quoteShellArgument(containerResolution.project)}` : "";
-    if (scheme && testPlan) return { command: `xcodebuild test${containerOption} -scheme ${quoteShellArgument(scheme)} -testPlan ${quoteShellArgument(testPlan)}`, blockers: [], selectedScheme };
-    if (scheme) return { command: `xcodebuild test${containerOption} -scheme ${quoteShellArgument(scheme)}`, blockers: [], selectedScheme };
+    if (scheme && testPlan) return { command: `xcodebuild test${containerOption} -scheme ${quoteShellArgument(scheme)} -testPlan ${quoteShellArgument(testPlan)}`, blockers: [], selectedScheme, scheme: selection.scheme };
+    if (scheme) return { command: `xcodebuild test${containerOption} -scheme ${quoteShellArgument(scheme)}`, blockers: [], selectedScheme, scheme: selection.scheme };
     return { command: `xcodebuild test${containerOption}`, blockers: [], selectedScheme };
   }
   return { command: undefined, blockers: [] };
@@ -477,7 +477,7 @@ function detectConventions(paths, bazelGraph) {
   return [...conventions];
 }
 
-function detectSetupSignals(paths, packageText, bazelGraph, files) {
+function detectSetupSignals(paths, packageText, bazelGraph, files, resolvedScheme) {
   const signals = new Set();
   const sourceText = files.map((file) => file.content).join("\n");
   if (paths.includes("Package.swift")) signals.add("swift package manager");
@@ -486,7 +486,8 @@ function detectSetupSignals(paths, packageText, bazelGraph, files) {
   if (paths.some(isXcodeWorkspaceDataPath)) signals.add("xcode workspace");
   if (paths.some(isSharedXcodeSchemePath)) signals.add("xcode shared scheme");
   if (paths.some((item) => item.endsWith(".xctestplan"))) signals.add("xcode test plan");
-  const selectedScheme = selectXcodeScheme(paths, files).scheme;
+  // The scheme the command resolution chose (explicit selection included) decides the test-plan signal.
+  const selectedScheme = resolvedScheme ?? selectXcodeScheme(paths, files).scheme;
   const testPlans = new Set(paths.filter((item) => item.endsWith(".xctestplan")).map(basenameWithoutExtension));
   if (selectedScheme && detectSchemeTestPlan(files, selectedScheme.name, testPlans, selectedScheme.path)) signals.add("xcode scheme test plan");
   if (packageText.includes("Vapor") || packageText.includes("vapor.git")) signals.add("vapor dependency");
@@ -1912,12 +1913,17 @@ function collectSharedXcodeSchemes(paths, files) {
         .map((match) => match[0].match(/\breference\s*=\s*"(?:container:)?([^"]+\.xctestplan)"/)?.[1])
         .filter(Boolean)
         .map(basenameWithoutExtension);
+      // Xcode keeps the testables beside the test plans once a scheme uses plans, and runs the plans; a
+      // scheme whose referenced plans are all missing therefore cannot run, whatever its testables say.
+      const testCapable = testPlanReferences.length > 0
+        ? testPlanReferences.some((name) => testPlanNames.has(name))
+        : enabledTestables.length > 0;
       return Object.freeze({
         name: basenameWithoutExtension(schemePath),
         path: schemePath,
         container: schemePath.replace(/\/xcshareddata\/xcschemes\/[^/]+$/, ""),
         enabledTestables: Object.freeze(enabledTestables),
-        testCapable: enabledTestables.length > 0 || testPlanReferences.some((name) => testPlanNames.has(name))
+        testCapable
       });
     })
     .sort((left, right) => compareText(left.name, right.name) || compareText(left.path, right.path));

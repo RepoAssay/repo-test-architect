@@ -2860,6 +2860,18 @@ describe("Xcode scheme selection (#310)", () => {
     const dangling = outcome(makeProject(t, { CI: planScheme("Missing"), ShopWidget: noTestAction }));
     assert.equal(dangling.command, undefined);
     assert.deepEqual(dangling.codes, ["command:no-testable-xcode-scheme"]);
+    // Xcode keeps the testables beside the plans once a scheme uses plans; the plans decide what runs.
+    const planWithTestables = `<?xml version="1.0" encoding="UTF-8"?>\n<Scheme version = "1.7">\n   <TestAction>\n      <TestPlans>\n         <TestPlanReference reference = "container:Missing.xctestplan" default = "YES"/>\n      </TestPlans>\n      <Testables>\n         <TestableReference skipped = "NO">\n            <BuildableReference BuildableIdentifier = "primary" BlueprintIdentifier = "T1" BuildableName = "ShopTests.xctest" BlueprintName = "ShopTests" ReferencedContainer = "container:ShopApp.xcodeproj"/>\n         </TestableReference>\n      </Testables>\n   </TestAction>\n</Scheme>\n`;
+    const danglingWithTestables = outcome(makeProject(t, { CI: planWithTestables }));
+    assert.equal(danglingWithTestables.command, undefined, "a missing plan is not rescued by the testables Xcode leaves beside it");
+    assert.deepEqual(danglingWithTestables.codes, ["command:no-testable-xcode-scheme"]);
+  });
+
+  it("reports the test-plan signal for the explicitly selected scheme", (t) => {
+    const root = makeProject(t, { A: planScheme("Unit"), B: planScheme("Integration") }, { extraFiles: { "Unit.xctestplan": "{}\n", "Integration.xctestplan": "{}\n" } });
+    const selected = outcome(root, { swiftScheme: "B" });
+    assert.equal(selected.command, "xcodebuild test -project ShopApp.xcodeproj -scheme B -testPlan Integration");
+    assert.ok(selected.signals.includes("xcode scheme test plan"));
   });
 
   it("names the container when a scheme name exists in several containers", (t) => {
@@ -2883,6 +2895,22 @@ describe("Xcode scheme selection (#310)", () => {
     assert.throws(() => auditDetectedProjects(root, { swiftSchemes: { "Apps/Missing": "Shop" } }), /swiftSchemes names a project root that was not detected: Apps\/Missing/);
     assert.throws(() => auditDetectedProjects(root, { swiftSchemes: { ".": "" } }), /must be a non-empty scheme name/);
     assert.throws(() => auditDetectedProjects(root, { swiftSchemes: ["Shop"] }), /swiftSchemes must be an object/);
+    assert.throws(() => auditDetectedProjects(root, { swiftSchemes: { ".": "Shop", "./": "Shop Beta" } }), /names project root \. more than once/);
+    assert.throws(() => auditDetectedProjects(root, { swiftSchemes: { "/": "Shop" } }), /must be repository-relative project roots/);
+    assert.throws(() => auditDetectedProjects(root, { swiftSchemes: { "../elsewhere": "Shop" } }), /must be repository-relative project roots/);
+  });
+
+  it("addresses one nested project root and leaves the others untouched", async (t) => {
+    const { createNestedSchemeProjects } = await import("./support/xcode-schemes-fixture.js");
+    const root = createNestedSchemeProjects(t);
+    const commands = (audits) => Object.fromEntries(audits.audits.map((entry) => [entry.projectRoot, entry.audit.profile.testCommand]));
+    assert.deepEqual(commands(auditDetectedProjects(root)), { "Apps/Admin": "xcodebuild test -project AdminApp.xcodeproj -scheme Admin", "Apps/Shop": undefined });
+    for (const key of ["Apps/Shop", "./Apps/Shop", "Apps/Shop/", "Apps\\Shop"]) {
+      assert.deepEqual(commands(auditDetectedProjects(root, { swiftSchemes: { [key]: "Shop Beta" } })), {
+        "Apps/Admin": "xcodebuild test -project AdminApp.xcodeproj -scheme Admin",
+        "Apps/Shop": "xcodebuild test -project ShopApp.xcodeproj -scheme \"Shop Beta\""
+      }, key);
+    }
   });
 });
 

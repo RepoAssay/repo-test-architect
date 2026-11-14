@@ -148,28 +148,60 @@ function isInvalidOptionError(error) {
  * @returns {Map<string, string>}
  */
 function normalizeSwiftSchemes(swiftSchemes, projects) {
+  const selections = normalizeSwiftSchemeSelections(swiftSchemes);
+  const detectedRoots = new Set(projects.map((project) => normalizeProjectRootKey(project.root)));
+  for (const [root, { rawRoot }] of selections) {
+    if (!detectedRoots.has(root)) {
+      throw new InvalidOptionError(`swiftSchemes names a project root that was not detected: ${rawRoot}.`, { option: "swiftSchemes" });
+    }
+  }
+  return new Map([...selections].map(([root, { scheme }]) => [root, scheme]));
+}
+
+/**
+ * Validates the shape of a `swiftSchemes` selection map and keys it by normalized project root
+ * (`./Apps/Shop/` and `Apps/Shop` are the same root; `"."` is the audited root). Two raw keys that
+ * name the same root, an absolute or escaping key, and an empty scheme name are usage errors.
+ * @param {unknown} swiftSchemes
+ * @returns {Map<string, { rawRoot: string, scheme: string }>}
+ */
+export function normalizeSwiftSchemeSelections(swiftSchemes) {
   const selections = new Map();
   if (swiftSchemes === undefined) return selections;
   if (!swiftSchemes || typeof swiftSchemes !== "object" || Array.isArray(swiftSchemes)) {
     throw new InvalidOptionError("swiftSchemes must be an object mapping project roots to shared Xcode scheme names.", { option: "swiftSchemes" });
   }
-  const detectedRoots = new Set(projects.map((project) => normalizeProjectRootKey(project.root)));
   for (const [rawRoot, scheme] of Object.entries(swiftSchemes)) {
     if (typeof scheme !== "string" || scheme.length === 0) {
       throw new InvalidOptionError(`swiftSchemes[${JSON.stringify(rawRoot)}] must be a non-empty scheme name.`, { option: "swiftSchemes" });
     }
-    const root = normalizeProjectRootKey(rawRoot);
-    if (!detectedRoots.has(root)) {
-      throw new InvalidOptionError(`swiftSchemes names a project root that was not detected: ${rawRoot}.`, { option: "swiftSchemes" });
+    const root = normalizeSwiftSchemeRoot(rawRoot);
+    if (root === undefined) {
+      throw new InvalidOptionError(`swiftSchemes keys must be repository-relative project roots, not ${JSON.stringify(rawRoot)}.`, { option: "swiftSchemes" });
     }
-    selections.set(root, scheme);
+    if (selections.has(root)) {
+      throw new InvalidOptionError(`swiftSchemes names project root ${root} more than once (${JSON.stringify(selections.get(root).rawRoot)} and ${JSON.stringify(rawRoot)}).`, { option: "swiftSchemes" });
+    }
+    selections.set(root, { rawRoot, scheme });
   }
   return selections;
 }
 
+/**
+ * The normalized form of a project-root key, or undefined when it is not a repository-relative root.
+ * @param {unknown} rawRoot
+ * @returns {string | undefined}
+ */
+export function normalizeSwiftSchemeRoot(rawRoot) {
+  if (typeof rawRoot !== "string" || rawRoot.length === 0) return undefined;
+  const normalized = normalizePath(rawRoot);
+  if (normalized.startsWith("/") || /^[A-Za-z]:/.test(normalized) || normalized.split("/").includes("..")) return undefined;
+  return normalizeProjectRootKey(normalized);
+}
+
 function normalizeProjectRootKey(root) {
-  const normalized = stripCurrentDirectoryPrefix(normalizePath(String(root))).replace(/\/+$/, "");
-  return normalized === "" ? "." : normalized;
+  const normalized = stripCurrentDirectoryPrefix(normalizePath(String(root))).replace(/\/+$/, "").replace(/^(?:\.\/)+/, "");
+  return normalized === "" || normalized === "." ? "." : normalized;
 }
 
 function collectNestedProjects(projects, project) {
