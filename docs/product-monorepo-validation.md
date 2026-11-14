@@ -59,6 +59,12 @@ These are starting points, not pins. A hunt pass verifies the current layout, re
 3. Fix issues through reviewed pull requests, each with a regression fixture, a support-matrix update and a decision-log entry when a rule changes.
 4. Pin the repository as the adapter's product-monorepo corpus case with a scorecard and a validation report, and keep it in the live-validation refresh.
 
+## Passes
+
+| Adapter | Repository | Commit | Report | Outcome |
+| --- | --- | --- | --- | --- |
+| JavaScript/TypeScript | `calcom/cal.com` | `ef7954d16ab50882ca2f263c551537115b8a8bb1` | [cal.com hunt](javascript-calcom-validation-hunt-report.md) | three adapter issues (#329 root-owned runner configuration not inherited, #330 stale `jest.config.json` selects `npx jest`, #331 package-root sources not audited); not pinned until they are fixed |
+
 ## Order
 
-The first public pass is `calcom/cal.com` for JavaScript/TypeScript, the most used adapter; it starts at once rather than waiting for re-runs of the private repositories, which only the owner can perform and which remain follow-up validation. `Dimillian/IceCubesApp` and `android/nowinandroid` come next, as public release gates for the Swift and Kotlin/JVM changes that follow 1.3.0 (#310, #312, #318), so that those changes ship with reproducible evidence. The remaining candidates then follow in usage order: Python, Go, Rust, Ruby, PHP, Elixir, C#, Dart. Each pass verifies the candidate's current shape first and replaces a candidate whose layout has drifted, recording the reason here.
+The first public pass was `calcom/cal.com` for JavaScript/TypeScript, the most used adapter (see Passes above); it ran at once rather than waiting for re-runs of the private repositories, which only the owner can perform and which remain follow-up validation. `Dimillian/IceCubesApp` and `android/nowinandroid` come next, as public release gates for the Swift and Kotlin/JVM changes that follow 1.3.0 (#310, #312, #318), so that those changes ship with reproducible evidence. The remaining candidates then follow in usage order: Python, Go, Rust, Ruby, PHP, Elixir, C#, Dart. Each pass verifies the candidate's current shape first and replaces a candidate whose layout has drifted, recording the reason here.
