@@ -141,6 +141,11 @@ if (options.goTarget && (options.fromAuditPath !== undefined || options.fromProj
   process.exit(1);
 }
 
+if (options.swiftSchemes && (options.fromAuditPath !== undefined || options.fromProjectAuditsPath !== undefined)) {
+  console.error("--swift-scheme requires a repository scan and cannot be combined with saved audit artifacts.");
+  process.exit(1);
+}
+
 const repoRoot = path.resolve(process.cwd(), options.repoPath);
 const diagnosticsOutput = selectDiagnosticsOutput(repoRoot, options);
 const adapterRegistry = options.command === "adapters" ? getAdapterRegistry() : undefined;
@@ -154,7 +159,8 @@ const projectAudits = options.fromProjectAuditsPath !== undefined
     ? runWithOptionValidation(() => auditRepoProjects(repoRoot, {
       changedPaths: readSelectedChangedPaths(repoRoot, options),
       excludeProjectRoots: options.excludeProjectRoots,
-      goTarget: options.goTarget
+      goTarget: options.goTarget,
+      swiftSchemes: options.swiftSchemes
     }))
     : undefined;
 const audit = options.fromAuditPath !== undefined
@@ -164,7 +170,8 @@ const audit = options.fromAuditPath !== undefined
     : runWithOptionValidation(() => auditRepo(repoRoot, {
       adapterId: options.adapterId,
       changedPaths: readSelectedChangedPaths(repoRoot, options),
-      goTarget: options.goTarget
+      goTarget: options.goTarget,
+      swiftSchemes: options.swiftSchemes
     }));
 const output = diagnosticsOutput ?? adapterRegistry ?? detectionRules ?? detection ?? selectProjectOutput(projectAudits, options) ?? selectOutput(audit, options);
 
@@ -237,6 +244,7 @@ function parseArgs(args) {
   let diagnosticsFilePath;
   let limit;
   const excludeProjectRoots = [];
+  const swiftSchemeOptions = [];
   let goos;
   let goarch;
   const goTags = [];
@@ -396,6 +404,17 @@ function parseArgs(args) {
       continue;
     }
 
+    if (arg === "--swift-scheme") {
+      swiftSchemeOptions.push(rest[index + 1] ?? "");
+      index += 1;
+      continue;
+    }
+
+    if (arg.startsWith("--swift-scheme=")) {
+      swiftSchemeOptions.push(arg.slice("--swift-scheme=".length));
+      continue;
+    }
+
     if (arg === "--diagnostics-file") {
       diagnosticsFilePath = rest[index + 1] ?? "";
       index += 1;
@@ -423,6 +442,25 @@ function parseArgs(args) {
   }
   const goTarget = hasGoTargetOption ? { goos, goarch, tags: goTags } : undefined;
 
+  // --swift-scheme <project-root>=<scheme> selects the shared Xcode scheme for one detected project;
+  // a bare <scheme> addresses the audited root (".") of a single-project command.
+  let swiftSchemes;
+  for (const option of swiftSchemeOptions) {
+    const separator = option.indexOf("=");
+    const projectRoot = separator >= 0 ? option.slice(0, separator) : ".";
+    const scheme = separator >= 0 ? option.slice(separator + 1) : option;
+    if (!projectRoot || !scheme) {
+      console.error("--swift-scheme requires <project-root>=<scheme>, or a non-empty <scheme> for a single-project command.");
+      process.exit(1);
+    }
+    swiftSchemes ??= {};
+    if (swiftSchemes[projectRoot] !== undefined) {
+      console.error(`--swift-scheme names project root ${projectRoot} more than once.`);
+      process.exit(1);
+    }
+    swiftSchemes[projectRoot] = scheme;
+  }
+
   if (limit !== undefined && (!/^\d+$/.test(limit) || Number(limit) < 1 || Number(limit) > 500)) {
     console.error("--limit must be an integer between 1 and 500.");
     process.exit(1);
@@ -443,6 +481,7 @@ function parseArgs(args) {
     diagnosticsFilePath,
     excludeProjectRoots,
     goTarget,
+    swiftSchemes,
     limit: limit === undefined ? undefined : Number(limit)
   };
 }
@@ -640,6 +679,7 @@ function renderCommandHelp(command) {
     lines.push("  --goos value                Select GOOS for target-aware Go audits");
     lines.push("  --goarch value              Select GOARCH for target-aware Go audits");
     lines.push("  --go-tag value              Add a custom Go build tag; repeat as needed");
+    lines.push("  --swift-scheme value        Select a shared Xcode scheme: <project-root>=<scheme>, or <scheme> for a single project; repeat per project");
   }
   if (["plan", "hints", "explain", "rank", "placement"].includes(command)) {
     lines.push("  --from-audit file            Reuse a saved audit/v1 artifact");

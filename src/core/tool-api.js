@@ -43,16 +43,19 @@ export { ArtifactValidationError } from "./artifact-validation.js";
  * @property {string} [adapterId]
  * @property {string[]} [changedPaths]
  * @property {{ goos: string, goarch: string, tags?: string[] }} [goTarget]
+ * @property {Record<string, string>} [swiftSchemes] shared Xcode scheme per project root; a lone root uses the key "."
  *
  * @typedef {object} AuditRepoProjectsOptions
  * @property {string[]} [changedPaths]
  * @property {string[]} [excludeProjectRoots]
  * @property {{ goos: string, goarch: string, tags?: string[] }} [goTarget]
+ * @property {Record<string, string>} [swiftSchemes]
  *
  * @typedef {object} ReviewRepositoryOptions
  * @property {string[]} [changedPaths]
  * @property {string[]} [excludeProjectRoots]
  * @property {{ goos: string, goarch: string, tags?: string[] }} [goTarget]
+ * @property {Record<string, string>} [swiftSchemes]
  * @property {number} [limit]
  *
  * @typedef {object} DetectRepoProjectsOptions
@@ -100,7 +103,8 @@ export function auditRepoProjects(repoRoot, options = {}) {
   return auditDetectedProjects(repoRoot, {
     changedPaths: validateChangedPaths(options.changedPaths),
     excludeProjectRoots: validateProjectRootPatterns(options.excludeProjectRoots),
-    goTarget: validateGoTarget(options.goTarget)
+    goTarget: validateGoTarget(options.goTarget),
+    swiftSchemes: validateSwiftSchemes(options.swiftSchemes)
   });
 }
 
@@ -207,8 +211,24 @@ export function collectRepoProjectStats(projectAudits) {
 export function auditRepo(repoRoot, options = {}) {
   return getAdapter(options.adapterId).audit(repoRoot, {
     changedPaths: validateChangedPaths(options.changedPaths),
-    goTarget: validateGoTarget(options.goTarget)
+    goTarget: validateGoTarget(options.goTarget),
+    swiftScheme: selectLoneRootSwiftScheme(validateSwiftSchemes(options.swiftSchemes))
   });
+}
+
+/**
+ * A single-project audit has exactly one root, so the selection map may only address it as ".".
+ * @param {Record<string, string> | undefined} swiftSchemes
+ * @returns {string | undefined}
+ */
+function selectLoneRootSwiftScheme(swiftSchemes) {
+  if (swiftSchemes === undefined) return undefined;
+  const keys = Object.keys(swiftSchemes);
+  const foreign = keys.filter((key) => !["."].includes(key.replace(/^\.\//, "").replace(/\/+$/, "") || "."));
+  if (foreign.length > 0) {
+    throw new Error(`swiftSchemes for a single-project audit must use the key "." for the audited root, not ${foreign[0]}.`);
+  }
+  return keys.length > 0 ? swiftSchemes[keys[0]] : undefined;
 }
 
 /**
@@ -324,6 +344,20 @@ function validateProjectRootPatterns(projectRoots) {
   }
 
   return projectRoots;
+}
+
+function validateSwiftSchemes(swiftSchemes) {
+  if (swiftSchemes === undefined) return undefined;
+  if (!swiftSchemes || typeof swiftSchemes !== "object" || Array.isArray(swiftSchemes)) {
+    throw new Error("swiftSchemes must be an object mapping project roots to shared Xcode scheme names.");
+  }
+  for (const [root, scheme] of Object.entries(swiftSchemes)) {
+    if (root.length === 0) throw new Error("swiftSchemes keys must be non-empty project roots.");
+    if (typeof scheme !== "string" || scheme.length === 0) {
+      throw new Error(`swiftSchemes[${JSON.stringify(root)}] must be a non-empty scheme name.`);
+    }
+  }
+  return { ...swiftSchemes };
 }
 
 function validateGoTarget(goTarget) {

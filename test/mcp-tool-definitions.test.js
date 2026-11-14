@@ -594,3 +594,39 @@ function minimalArgsFor(toolName) {
   if (toolName === "generate_selected_test") return { planItemId: "add-test:src/example.ts" };
   return { audit: {} };
 }
+
+describe("Swift scheme selection inputs (#310)", () => {
+  it("declares swiftSchemes on repository and single-project audit tools and rejects it beside saved artifacts", async (t) => {
+    const { createAmbiguousSchemeProject, SELECTED_SCHEME_COMMAND } = await import("./support/xcode-schemes-fixture.js");
+    for (const toolName of ["review_repository", "analyze_repository", "audit_projects", "audit_repo", "explain_target", "generate_project_test_plan"]) {
+      const schema = mcpTools.find((tool) => tool.name === toolName).inputSchema.properties.swiftSchemes;
+      assert.equal(schema.type, "object", toolName);
+      assert.deepEqual(schema.additionalProperties, { type: "string", minLength: 1 }, toolName);
+    }
+
+    const repoRoot = createAmbiguousSchemeProject(t);
+    const withheld = callTool("audit_repo", { repoRoot, adapterId: "swift" });
+    assert.equal(withheld.profile.testCommand, undefined);
+    assert.ok(withheld.profile.diagnostics.some((diagnostic) => diagnostic.code === "ambiguous-xcode-scheme"));
+
+    const direct = callTool("audit_repo", { repoRoot, adapterId: "swift", swiftSchemes: { ".": "Shop Beta" } });
+    const projects = callTool("audit_projects", { repoRoot, swiftSchemes: { ".": "Shop Beta" } });
+    const review = callTool("review_repository", { repoRoot, swiftSchemes: { ".": "Shop Beta" } });
+    assert.equal(direct.profile.testCommand, SELECTED_SCHEME_COMMAND);
+    assert.equal(projects.audits[0].audit.profile.testCommand, SELECTED_SCHEME_COMMAND);
+    assert.deepEqual(review.verificationCommands, [{ command: SELECTED_SCHEME_COMMAND, projectCount: 1 }]);
+
+    assert.throws(
+      () => callTool("audit_repo", { repoRoot, adapterId: "swift", swiftSchemes: { ".": "" } }),
+      (error) => error.kind === "invalid-arguments" && /swiftSchemes/.test(error.message)
+    );
+    assert.throws(
+      () => callTool("audit_repo", { repoRoot, adapterId: "swift", swiftSchemes: ["Shop Beta"] }),
+      (error) => error.kind === "invalid-arguments" && /swiftSchemes/.test(error.message)
+    );
+    assert.throws(
+      () => callTool("generate_project_test_plan", { projectAudits: projects, swiftSchemes: { ".": "Shop Beta" } }),
+      (error) => error.kind === "invalid-arguments" && error.details.argument === "swiftSchemes"
+    );
+  });
+});

@@ -40,6 +40,7 @@ import { describeFailedProject, sortFailedProjects } from "./project-failures.js
  * @property {string[]} [changedPaths]
  * @property {string[]} [excludeProjectRoots]
  * @property {{ goos: string, goarch: string, tags?: string[] }} [goTarget]
+ * @property {Record<string, string>} [swiftSchemes] shared Xcode scheme to use per detected project root (#310)
  */
 
 /**
@@ -58,6 +59,7 @@ export function auditDetectedProjects(repoRoot, options = {}) {
   const detection = detectProjects(repoRoot, {
     excludeProjectRoots: options.excludeProjectRoots
   });
+  const swiftSchemes = normalizeSwiftSchemes(options.swiftSchemes, detection.projects);
   const audits = [];
   const skippedProjects = [];
   const failedProjects = [];
@@ -83,6 +85,7 @@ export function auditDetectedProjects(repoRoot, options = {}) {
       changedPaths: selectProjectChangedPaths(detection.root, project.root, options.changedPaths),
       repositoryRoot: detection.root,
       goTarget: options.goTarget,
+      swiftScheme: swiftSchemes.get(normalizeProjectRootKey(project.root)),
       // Detected projects inside this one receive their own audit; an adapter may leave their
       // sources to that audit instead of counting them again. Unsupported or excluded roots are
       // not listed, so nothing is dropped without a replacement audit.
@@ -137,6 +140,38 @@ function isInvalidOptionError(error) {
  * @param {{ root: string }} project
  * @returns {NestedProject[]}
  */
+/**
+ * Validates the per-project scheme selections and keys them by normalized project root. A key that
+ * names no detected project is a usage error rather than a silent no-op (#310).
+ * @param {unknown} swiftSchemes
+ * @param {Array<{ root: string }>} projects
+ * @returns {Map<string, string>}
+ */
+function normalizeSwiftSchemes(swiftSchemes, projects) {
+  const selections = new Map();
+  if (swiftSchemes === undefined) return selections;
+  if (!swiftSchemes || typeof swiftSchemes !== "object" || Array.isArray(swiftSchemes)) {
+    throw new InvalidOptionError("swiftSchemes must be an object mapping project roots to shared Xcode scheme names.", { option: "swiftSchemes" });
+  }
+  const detectedRoots = new Set(projects.map((project) => normalizeProjectRootKey(project.root)));
+  for (const [rawRoot, scheme] of Object.entries(swiftSchemes)) {
+    if (typeof scheme !== "string" || scheme.length === 0) {
+      throw new InvalidOptionError(`swiftSchemes[${JSON.stringify(rawRoot)}] must be a non-empty scheme name.`, { option: "swiftSchemes" });
+    }
+    const root = normalizeProjectRootKey(rawRoot);
+    if (!detectedRoots.has(root)) {
+      throw new InvalidOptionError(`swiftSchemes names a project root that was not detected: ${rawRoot}.`, { option: "swiftSchemes" });
+    }
+    selections.set(root, scheme);
+  }
+  return selections;
+}
+
+function normalizeProjectRootKey(root) {
+  const normalized = stripCurrentDirectoryPrefix(normalizePath(String(root))).replace(/\/+$/, "");
+  return normalized === "" ? "." : normalized;
+}
+
 function collectNestedProjects(projects, project) {
   return projects
     .filter((candidate) => candidate.root !== project.root && candidate.adapterIds.length > 0 && isInsideProject(project.root, candidate.root))

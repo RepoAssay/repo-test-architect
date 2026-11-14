@@ -79,11 +79,12 @@ Use these when one project root and, if needed, one adapter have already been se
 | `--goos <value>` | Select `GOOS` for target-aware Go audits; requires `--goarch` |
 | `--goarch <value>` | Select `GOARCH` for target-aware Go audits; requires `--goos` |
 | `--go-tag <value>` | Add a custom Go build tag; repeat as needed |
+| `--swift-scheme <value>` | Select the shared Xcode scheme for a Swift project as `<project-root>=<scheme>`, or `<scheme>` alone for a single-project command; repeat per project |
 | `--help` | Show command-specific help without scanning |
 
 Unknown options fail instead of being silently ignored. Use quoted glob patterns such as `"examples/**"` so the shell does not expand them first.
 
-Go target options apply to `analyze`, `audit-projects`, and direct single-project scans. They cannot be combined with saved audit artifacts because target selection must happen during evidence collection. For example: `repo-test-architect audit ./service --adapter go --goos darwin --goarch arm64 --go-tag integration`.
+Go target options apply to `analyze`, `audit-projects`, and direct single-project scans. They cannot be combined with saved audit artifacts because target selection must happen during evidence collection. `--swift-scheme` follows the same rule: it names the shared Xcode scheme `xcodebuild test` should use when several schemes declare a test action (for example `repo-test-architect review . --swift-scheme "Apps/Shop=Shop Beta"`), it must name a checked-in shared scheme with a test action, and a root that was not detected is an error rather than a silent no-op. For example: `repo-test-architect audit ./service --adapter go --goos darwin --goarch arm64 --go-tag integration`.
 
 ## Exit Status
 
