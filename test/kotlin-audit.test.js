@@ -1599,3 +1599,117 @@ describe("Kotlin diagnostics for tests without a recognised framework (#312)", (
     assert.equal(audit.profile.confidence, "medium");
   });
 });
+
+describe("Android product flavors: flavor source sets (#336) and the flavored test task (#341)", () => {
+  function createAndroidGraph(t, files) {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-android-flavors-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    const write = (relativePath, content) => {
+      fs.mkdirSync(path.dirname(path.join(root, relativePath)), { recursive: true });
+      fs.writeFileSync(path.join(root, relativePath), content);
+    };
+    write("settings.gradle.kts", 'rootProject.name = "nia"\ninclude(":app")\ninclude(":core:network")\ninclude(":lint")\n');
+    write("build.gradle.kts", "plugins { }\n");
+    write("gradlew", "#!/bin/sh\n");
+    write("app/build.gradle.kts", 'plugins {\n    id("com.android.application")\n    kotlin("android")\n}\nandroid { namespace = "com.example.app"; compileSdk = 34 }\ndependencies {\n    implementation(project(":core:network"))\n    testImplementation("junit:junit:4.13.2")\n}\n');
+    write("core/network/build.gradle.kts", 'plugins {\n    id("com.android.library")\n    kotlin("android")\n}\nandroid { namespace = "com.example.network"; compileSdk = 34 }\ndependencies {\n    testImplementation("junit:junit:4.13.2")\n}\n');
+    write("lint/build.gradle.kts", 'plugins {\n    kotlin("jvm")\n}\ndependencies {\n    testImplementation("junit:junit:4.13.2")\n}\n');
+    write("app/src/main/kotlin/com/example/app/NiaAppState.kt", "package com.example.app\n\nclass NiaAppState(private val online: Boolean) {\n    fun banner(): String = if (online) \"online\" else \"offline\"\n}\n");
+    write("core/network/src/main/kotlin/com/example/network/Client.kt", "package com.example.network\n\nclass Client {\n    fun fetch(path: String): String = if (path.isEmpty()) throw IllegalArgumentException(\"empty\") else path\n}\n");
+    write("lint/src/main/kotlin/com/example/lint/Rule.kt", "package com.example.lint\n\nclass Rule {\n    fun check(value: String): Boolean = if (value.isBlank()) false else true\n}\n");
+    for (const [relativePath, content] of Object.entries(files)) write(relativePath, content);
+    return root;
+  }
+  const appStateTest = "package com.example.app\n\nimport org.junit.Assert.assertEquals\nimport org.junit.Test\n\nclass NiaAppStateTest {\n    @Test\n    fun banner() {\n        assertEquals(\"online\", NiaAppState(true).banner())\n    }\n}\n";
+  const demoSource = "package com.example.network\n\nclass DemoDataSource {\n    fun load(name: String): String = if (name.isEmpty()) throw IllegalArgumentException(\"empty\") else name\n}\n";
+
+  it("treats src/test<Flavor> as a unit-test set, shares the flavor across the graph and targets its debug unit-test task", (t) => {
+    // #336 / #341: nowinandroid's app keeps src/testDemo beside src/prod; core modules keep src/demo sources.
+    const root = createAndroidGraph(t, {
+      "app/src/prod/kotlin/com/example/app/ProdConfig.kt": "package com.example.app\n\nobject ProdConfig { const val HOST = \"api\" }\n",
+      "app/src/testDemo/kotlin/com/example/app/NiaAppStateTest.kt": appStateTest,
+      "core/network/src/demo/kotlin/com/example/network/DemoDataSource.kt": demoSource
+    });
+
+    const audit = auditKotlinRepo(root);
+    const target = (name) => [...audit.untestedCandidates, ...audit.coveredButRisky].find((candidate) => candidate.path.endsWith(`/${name}`));
+
+    assert.equal(audit.profile.testCommand, "./gradlew testDemoDebugUnitTest");
+    assert.ok(audit.profile.setupSignals.includes("android product flavors (demo)"));
+    assert.ok(audit.profile.setupSignals.includes("android flavor unit tests (demo)"));
+    assert.ok(audit.profile.detectedConventions.includes("flavor test source sets"));
+    assert.ok(audit.profile.existingTestLocations.includes("app/src/testDemo"));
+    assert.deepEqual(target("NiaAppState.kt").existingTestEvidence, [{ testPath: "app/src/testDemo/kotlin/com/example/app/NiaAppStateTest.kt", kind: "jvm-symbol-reference", strength: "referenced", usage: "asserted" }]);
+    assert.equal(target("DemoDataSource.kt").existingTestPaths.length, 0, "demo flavor sources of an Android module are production sources");
+    assert.equal(target("ProdConfig.kt"), undefined, "a flavor that no test set or literal block declares stays outside the audit");
+    assert.deepEqual(audit.profile.diagnostics.map((diagnostic) => [diagnostic.scope, diagnostic.code]), [["audit", "android-jvm-conventions"]]);
+    assert.match(audit.profile.diagnostics[0].message, /^Android modules are audited with JVM conventions: src\/test and src\/test<Flavor> unit tests count as evidence/);
+  });
+
+  it("counts src/androidTest<Flavor> as instrumented evidence", (t) => {
+    const root = createAndroidGraph(t, {
+      "app/src/androidTestDemo/kotlin/com/example/app/NiaAppStateInstrumentedTest.kt": appStateTest.replace("NiaAppStateTest", "NiaAppStateInstrumentedTest")
+    });
+
+    const audit = auditKotlinRepo(root);
+    const target = [...audit.untestedCandidates, ...audit.coveredButRisky].find((candidate) => candidate.path.endsWith("/NiaAppState.kt"));
+
+    assert.deepEqual(target.existingTestEvidence.map((evidence) => evidence.kind), ["android-instrumented-symbol-reference"]);
+    assert.deepEqual(audit.profile.diagnostics.map((diagnostic) => [diagnostic.scope, diagnostic.code]), [["command", "ambiguous-android-variant"], ["audit", "android-jvm-conventions"]]);
+    assert.equal(audit.profile.testCommand, undefined, "no flavor has unit tests, so no flavor task can be chosen");
+    assert.match(audit.profile.blockers[0], /^Multiple Android flavor test tasks detected \(testDemoDebugUnitTest\)/);
+  });
+
+  it("withholds the command when several flavors have unit tests and when flavors come only from a literal productFlavors block", (t) => {
+    const twoFlavors = createAndroidGraph(t, {
+      "app/src/testDemo/kotlin/com/example/app/NiaAppStateTest.kt": appStateTest,
+      "app/src/testProd/kotlin/com/example/app/ProdAppStateTest.kt": appStateTest.replace("NiaAppStateTest", "ProdAppStateTest")
+    });
+    const two = auditKotlinRepo(twoFlavors);
+    assert.equal(two.profile.testCommand, undefined);
+    assert.match(two.profile.blockers[0], /^Multiple Android flavor test tasks detected \(testDemoDebugUnitTest, testProdDebugUnitTest\)/);
+    assert.equal(two.profile.confidence, "medium", "a withheld command does not lower confidence; the Android boundary already caps it");
+    assert.ok(two.profile.setupSignals.includes("android product flavors (demo, prod)"));
+
+    const declared = createAndroidGraph(t, {
+      "app/build.gradle.kts": 'plugins {\n    id("com.android.application")\n    kotlin("android")\n}\nandroid {\n    namespace = "com.example.app"\n    compileSdk = 34\n    flavorDimensions += "tier"\n    productFlavors {\n        create("free") { dimension = "tier" }\n        create("paid") { dimension = "tier" }\n    }\n}\ndependencies {\n    testImplementation("junit:junit:4.13.2")\n}\n',
+      "app/src/test/kotlin/com/example/app/NiaAppStateTest.kt": appStateTest,
+      "app/src/paid/kotlin/com/example/app/PaidConfig.kt": "package com.example.app\n\nclass PaidConfig {\n    fun price(cents: Int): Int = if (cents < 0) throw IllegalArgumentException(\"negative\") else cents\n}\n"
+    });
+    const literal = auditKotlinRepo(declared);
+    assert.equal(literal.profile.testCommand, undefined);
+    assert.match(literal.profile.blockers[0], /^Multiple Android flavor test tasks detected \(testFreeDebugUnitTest, testPaidDebugUnitTest\)/);
+    assert.ok([...literal.untestedCandidates].some((candidate) => candidate.path.endsWith("/PaidConfig.kt")), "literal flavors make src/<flavor> production sources");
+    const appState = [...literal.untestedCandidates, ...literal.coveredButRisky].find((candidate) => candidate.path.endsWith("/NiaAppState.kt"));
+    assert.equal(appState.existingTestPaths.length, 1, "src/test stays a unit-test set");
+  });
+
+  it("ignores directories that are not flavors and leaves JVM-only graphs unchanged", (t) => {
+    const root = createAndroidGraph(t, {
+      "app/src/sharedTest/kotlin/com/example/app/Shared.kt": "package com.example.app\n\nobject Shared\n",
+      "app/src/integration/kotlin/com/example/app/Integration.kt": "package com.example.app\n\nclass Integration {\n    fun run(flag: Boolean): Int = if (flag) 1 else 0\n}\n",
+      "app/src/testDebug/kotlin/com/example/app/DebugTest.kt": appStateTest.replace("NiaAppStateTest", "DebugTest"),
+      "app/src/test/kotlin/com/example/app/NiaAppStateTest.kt": appStateTest
+    });
+
+    const audit = auditKotlinRepo(root);
+    const paths = [...audit.untestedCandidates, ...audit.coveredButRisky, ...audit.skipped].map((candidate) => candidate.path);
+
+    assert.equal(audit.profile.testCommand, "./gradlew test");
+    assert.ok(!audit.profile.setupSignals.some((signal) => signal.startsWith("android product flavors")));
+    assert.ok(!paths.some((candidate) => candidate.includes("/src/sharedTest/") || candidate.includes("/src/integration/")));
+    assert.ok(!audit.profile.existingTestLocations.includes("app/src/testDebug"));
+  });
+
+  it("targets the module's flavor task through a parent wrapper when a flavored module is audited directly", (t) => {
+    const root = createAndroidGraph(t, {
+      "app/src/testDemo/kotlin/com/example/app/NiaAppStateTest.kt": appStateTest
+    });
+
+    const audit = auditKotlinRepo(path.join(root, "app"));
+
+    assert.equal(audit.profile.testCommand, "../gradlew :app:testDemoDebugUnitTest");
+    assert.ok(audit.profile.setupSignals.includes("parent gradle wrapper"));
+    assert.ok(audit.profile.setupSignals.includes("android flavor unit tests (demo)"));
+  });
+});
