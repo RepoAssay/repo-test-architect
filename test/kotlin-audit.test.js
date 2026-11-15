@@ -1609,8 +1609,10 @@ describe("Android product flavors: flavor source sets (#336) and the flavored te
       fs.writeFileSync(path.join(root, relativePath), content);
     };
     write("settings.gradle.kts", 'rootProject.name = "nia"\ninclude(":app")\ninclude(":core:network")\ninclude(":lint")\n');
-    write("build.gradle.kts", "plugins { }\n");
+    write("build.gradle.kts", 'plugins {\n    alias(libs.plugins.android.application) apply false\n    alias(libs.plugins.android.library) apply false\n    alias(libs.plugins.android.test) apply false\n    kotlin("jvm") version "2.0.0" apply false\n}\n');
     write("gradlew", "#!/bin/sh\n");
+    write("lint/src/demo/kotlin/com/example/lint/LintDemo.kt", "package com.example.lint\n\nclass LintDemo {\n    fun run(flag: Boolean): Int = if (flag) 1 else 0\n}\n");
+    write("lint/src/testIntegration/kotlin/com/example/lint/IntegrationTest.kt", "package com.example.lint\n\nimport org.junit.Test\n\nclass IntegrationTest {\n    @Test\n    fun runs() {\n        Rule().check(\"x\")\n    }\n}\n");
     write("app/build.gradle.kts", 'plugins {\n    id("com.android.application")\n    kotlin("android")\n}\nandroid { namespace = "com.example.app"; compileSdk = 34 }\ndependencies {\n    implementation(project(":core:network"))\n    testImplementation("junit:junit:4.13.2")\n}\n');
     write("core/network/build.gradle.kts", 'plugins {\n    id("com.android.library")\n    kotlin("android")\n}\nandroid { namespace = "com.example.network"; compileSdk = 34 }\ndependencies {\n    testImplementation("junit:junit:4.13.2")\n}\n');
     write("lint/build.gradle.kts", 'plugins {\n    kotlin("jvm")\n}\ndependencies {\n    testImplementation("junit:junit:4.13.2")\n}\n');
@@ -1697,8 +1699,68 @@ describe("Android product flavors: flavor source sets (#336) and the flavored te
 
     assert.equal(audit.profile.testCommand, "./gradlew test");
     assert.ok(!audit.profile.setupSignals.some((signal) => signal.startsWith("android product flavors")));
-    assert.ok(!paths.some((candidate) => candidate.includes("/src/sharedTest/") || candidate.includes("/src/integration/")));
+    assert.ok(!paths.some((candidate) => candidate.includes("/src/sharedTest/") || candidate.includes("/src/integration/") || candidate.startsWith("lint/src/demo/")));
     assert.ok(!audit.profile.existingTestLocations.includes("app/src/testDebug"));
+    assert.ok(!audit.profile.existingTestLocations.includes("lint/src/testIntegration"), "a JVM module's src/test<X> set is not a flavor test set even when the root declares Android plugins with apply false");
+  });
+
+  it("reads flavor names at depth 0 of a literal block and ignores nested blocks, in Kotlin and Groovy DSL", (t) => {
+    const kotlin = auditKotlinRepo(createAndroidGraph(t, {
+      "app/build.gradle.kts": 'plugins {\n    id("com.android.application")\n    kotlin("android")\n}\nandroid {\n    namespace = "com.example.app"\n    compileSdk = 34\n    flavorDimensions += "tier"\n    productFlavors {\n        create("free") {\n            dimension = "tier"\n            ndk { abiFilters += "arm64-v8a" }\n            externalNativeBuild { cmake { arguments += "-DX" } }\n        }\n        create("paid") { dimension = "tier" }\n    }\n}\ndependencies {\n    testImplementation("junit:junit:4.13.2")\n}\n',
+      "app/src/test/kotlin/com/example/app/NiaAppStateTest.kt": appStateTest
+    }));
+    assert.ok(kotlin.profile.setupSignals.includes("android product flavors (free, paid)"));
+    assert.match(kotlin.profile.blockers[0], /^Multiple Android flavor test tasks detected \(testFreeDebugUnitTest, testPaidDebugUnitTest\)/);
+
+    const groovy = auditKotlinRepo(createAndroidGraph(t, {
+      "app/build.gradle": "plugins {\n    id 'com.android.application'\n}\nandroid {\n    flavorDimensions 'mode'\n    productFlavors {\n        demo {\n            dimension 'mode'\n            ndk { abiFilters 'x86' }\n        }\n    }\n}\n",
+      "app/src/test/kotlin/com/example/app/NiaAppStateTest.kt": appStateTest
+    }));
+    assert.ok(groovy.profile.setupSignals.includes("android product flavors (demo)"));
+    assert.equal(groovy.profile.testCommand, undefined, "flavors without a flavor test set cannot select a task");
+    assert.match(groovy.profile.blockers[0], /^Multiple Android flavor test tasks detected \(testDemoDebugUnitTest\)/);
+  });
+
+  it("withholds the command when flavors span several dimensions", (t) => {
+    const audit = auditKotlinRepo(createAndroidGraph(t, {
+      "app/build.gradle.kts": 'plugins {\n    id("com.android.application")\n    kotlin("android")\n}\nandroid {\n    namespace = "com.example.app"\n    compileSdk = 34\n    flavorDimensions += listOf("tier", "mode")\n    productFlavors {\n        create("free") { dimension = "tier" }\n        create("paid") { dimension = "tier" }\n        create("demo") { dimension = "mode" }\n        create("full") { dimension = "mode" }\n    }\n}\ndependencies {\n    testImplementation("junit:junit:4.13.2")\n}\n',
+      "app/src/testDemo/kotlin/com/example/app/NiaAppStateTest.kt": appStateTest
+    }));
+
+    assert.equal(audit.profile.testCommand, undefined);
+    assert.match(audit.profile.blockers[0], /^Multiple Android flavor dimensions detected \(mode, tier\)/);
+    assert.deepEqual(audit.profile.diagnostics.map((diagnostic) => [diagnostic.scope, diagnostic.code]), [["command", "ambiguous-android-variant"], ["audit", "android-jvm-conventions"]]);
+    assert.ok(audit.profile.existingTestLocations.includes("app/src/testDemo"), "the flavor test set still counts as a test set");
+  });
+
+  it("does not mistake a declared build type's test set for a flavor", (t) => {
+    const audit = auditKotlinRepo(createAndroidGraph(t, {
+      "app/build.gradle.kts": 'plugins {\n    id("com.android.application")\n    kotlin("android")\n}\nandroid {\n    namespace = "com.example.app"\n    compileSdk = 34\n    buildTypes {\n        create("staging") { initWith(getByName("debug")) }\n    }\n}\ndependencies {\n    testImplementation("junit:junit:4.13.2")\n}\n',
+      "app/src/testStaging/kotlin/com/example/app/StagingTest.kt": appStateTest.replace("NiaAppStateTest", "StagingTest"),
+      "app/src/testDemo/kotlin/com/example/app/NiaAppStateTest.kt": appStateTest
+    }));
+
+    assert.equal(audit.profile.testCommand, "./gradlew testDemoDebugUnitTest");
+    assert.ok(audit.profile.setupSignals.includes("android product flavors (demo)"));
+    assert.ok(!audit.profile.existingTestLocations.includes("app/src/testStaging"));
+  });
+
+  it("applies the Android boundary to a module known only through a flavor instrumented set and lists a withheld flavor task beside a Maven command", (t) => {
+    const instrumentedOnly = auditKotlinRepo(createAndroidGraph(t, {
+      "app/build.gradle.kts": 'plugins {\n    kotlin("jvm")\n}\ndependencies {\n    testImplementation("junit:junit:4.13.2")\n}\n',
+      "app/src/androidTestDemo/kotlin/com/example/app/NiaAppStateInstrumentedTest.kt": appStateTest.replace("NiaAppStateTest", "NiaAppStateInstrumentedTest")
+    }));
+    assert.ok(instrumentedOnly.profile.diagnostics.some((diagnostic) => diagnostic.code === "android-jvm-conventions"));
+    assert.equal(instrumentedOnly.profile.confidence, "medium");
+
+    const withMaven = auditKotlinRepo(createAndroidGraph(t, {
+      "pom.xml": "<project><modelVersion>4.0.0</modelVersion><groupId>com.example</groupId><artifactId>nia</artifactId><version>1</version></project>\n",
+      "app/src/testDemo/kotlin/com/example/app/NiaAppStateTest.kt": appStateTest,
+      "app/src/testProd/kotlin/com/example/app/ProdAppStateTest.kt": appStateTest.replace("NiaAppStateTest", "ProdAppStateTest")
+    }));
+    assert.equal(withMaven.profile.testCommand, undefined);
+    assert.match(withMaven.profile.blockers[0], /^Multiple runnable JVM test commands detected from project markers: a withheld Android flavor task, mvn test\.$/);
+    assert.match(withMaven.profile.blockers[1], /^Multiple Android flavor test tasks detected/);
   });
 
   it("targets the module's flavor task through a parent wrapper when a flavored module is audited directly", (t) => {

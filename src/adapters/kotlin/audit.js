@@ -142,12 +142,16 @@ function resolveJvmModules(files) {
   return modules;
 }
 
-// Android product flavors (#336, #341). A flavor is known statically when a module's build file
+// Android product flavors (#336, #341). A flavor is known statically when a module's own build file
 // declares it in a literal `productFlavors` block, or when an Android module keeps a flavor test set
-// (`src/test<Flavor>/` or `src/androidTest<Flavor>/`, one capitalised segment that is not a build
-// type). Flavors are shared across the module graph, because convention plugins usually declare them
-// once: `src/<flavor>/kotlin|java` of every Android module becomes production sources and the flavor
-// test sets become test sources of their module. Variant-specific build configuration stays unmodeled.
+// (`src/test<Flavor>/` or `src/androidTest<Flavor>/`, one capitalised segment that is not a known
+// build type). Flavors are shared across the module graph, because convention plugins usually declare
+// them once: `src/<flavor>/kotlin|java` of every Android module becomes production sources and the
+// flavor test sets become test sources of their module. Only the module's own build file is read (the
+// root build file declares plugins with `apply false`); variant-specific configuration stays unmodeled.
+const ANDROID_PLUGIN_APPLICATION = /(?:\bid\s*\(?\s*["']com\.android\.(?:application|library|test|dynamic-feature)["']\s*\)?|\bapply\s*\(?\s*plugin\s*[:=]\s*["']com\.android\.(?:application|library|test|dynamic-feature)["']\s*\)?|\balias\s*\(\s*libs\.plugins(?:\.[A-Za-z0-9_]+)*?\.(?:android|[A-Za-z0-9_]*Android)(?:\.[A-Za-z0-9_]+)*\s*\))(?!\s*apply\s+false)/;
+const DEFAULT_BUILD_TYPES = new Set(["debug", "release"]);
+
 function populateModuleFlavors(modules, files) {
   const paths = files.map((file) => normalizePath(file.path));
   const entries = modules.map((module) => {
@@ -159,24 +163,37 @@ function populateModuleFlavors(modules, files) {
       const name = rest.split("/")[0];
       if (name && rest.includes("/")) sourceSets.add(name);
     }
-    const buildText = moduleBuildText(module, files);
-    const android = /\bcom\.android\.|\blibs\.plugins\.[A-Za-z0-9_.]*android/i.test(buildText) || [...sourceSets].some((name) => /^androidTest/.test(name));
+    const buildText = ownModuleBuildText(module, files);
+    const android = ANDROID_PLUGIN_APPLICATION.test(buildText) || [...sourceSets].some((name) => /^androidTest/.test(name));
     const flavors = new Set(declaredProductFlavors(buildText));
+    const buildTypes = new Set([...DEFAULT_BUILD_TYPES, ...declaredBuildTypes(buildText)]);
     if (android) {
       for (const name of sourceSets) {
         const match = /^(?:test|androidTest)([A-Z][a-z0-9_]*)$/.exec(name);
-        if (match && !["Debug", "Release", "Fixtures"].includes(match[1])) flavors.add(match[1][0].toLowerCase() + match[1].slice(1));
+        if (!match) continue;
+        const candidate = match[1][0].toLowerCase() + match[1].slice(1);
+        if (!buildTypes.has(candidate) && candidate !== "fixtures") flavors.add(candidate);
       }
     }
-    return { module, sourceSets, android, flavors };
+    return { module, sourceSets, android, flavors, dimensions: declaredFlavorDimensions(buildText) };
   });
   const graphFlavors = [...new Set(entries.flatMap((entry) => [...entry.flavors]))].sort();
+  const graphDimensions = [...new Set(entries.flatMap((entry) => entry.dimensions))].sort();
   for (const entry of entries) {
     const flavors = entry.android || entry.flavors.size > 0 ? graphFlavors : [];
     entry.module.flavors = flavors;
+    entry.module.flavorDimensions = flavors.length > 0 ? graphDimensions : [];
     entry.module.flavorTestSets = flavors.filter((flavor) => entry.sourceSets.has(`test${capitalizeFlavor(flavor)}`));
     entry.module.flavorInstrumentedSets = flavors.filter((flavor) => entry.sourceSets.has(`androidTest${capitalizeFlavor(flavor)}`));
   }
+}
+
+function ownModuleBuildText(module, files) {
+  const prefix = module.directory === "." ? "" : `${module.directory}/`;
+  return files
+    .filter((file) => [`${prefix}build.gradle`, `${prefix}build.gradle.kts`].includes(normalizePath(file.path)))
+    .map((file) => file.content)
+    .join("\n");
 }
 
 function capitalizeFlavor(flavor) {
@@ -184,16 +201,44 @@ function capitalizeFlavor(flavor) {
 }
 
 function declaredProductFlavors(buildText) {
-  const index = buildText.search(/\bproductFlavors\s*\{/);
+  return declaredAndroidBlockNames(buildText, "productFlavors", ["flavorDimensions", "productFlavors", "all", "configureEach", "each", "forEach", "named", "getByName"]);
+}
+
+function declaredBuildTypes(buildText) {
+  return declaredAndroidBlockNames(buildText, "buildTypes", ["buildTypes", "all", "configureEach", "each", "forEach", "named", "getByName"]);
+}
+
+// Names declared at depth 0 of a literal `productFlavors { }` or `buildTypes { }` block: `create("x") { }`,
+// `register("x")`, `maybeCreate("x")`, or the Groovy and Kotlin DSL form `x { }`. Nested blocks such as
+// `ndk { }` or `externalNativeBuild { }` inside a flavor body are not names.
+function declaredAndroidBlockNames(buildText, blockName, reservedNames) {
+  const index = buildText.search(new RegExp(`\\b${blockName}\\s*\\{`));
   if (index < 0) return [];
   const block = balancedGradleBlock(buildText, buildText.indexOf("{", index));
   if (!block) return [];
-  const flavors = new Set();
+  const names = new Set();
   for (const match of block.matchAll(/\b(?:create|register|maybeCreate)\s*\(\s*["']([a-z][A-Za-z0-9_]*)["']\s*\)|(?:^|[\s;{}])([a-z][A-Za-z0-9_]*)\s*\{/g)) {
+    if (jvmBraceDepthAt(block, match.index) !== 0) continue;
     const name = match[1] ?? match[2];
-    if (name && !["flavorDimensions", "productFlavors", "all", "configureEach", "each", "forEach"].includes(name)) flavors.add(name);
+    if (name && !reservedNames.includes(name)) names.add(name);
   }
-  return [...flavors];
+  return [...names];
+}
+
+// Flavor dimensions declared literally: `flavorDimensions += "tier"`, `flavorDimensions("tier", "mode")`,
+// `flavorDimensions += listOf("a", "b")`, Groovy `flavorDimensions "a", "b"`, and each flavor's
+// `dimension = "x"` or `dimension "x"` inside the productFlavors block.
+function declaredFlavorDimensions(buildText) {
+  const dimensions = new Set();
+  for (const match of buildText.matchAll(/\bflavorDimensions\b[^\n;]*/g)) {
+    for (const quoted of match[0].matchAll(/["']([^"']+)["']/g)) dimensions.add(quoted[1]);
+  }
+  const index = buildText.search(/\bproductFlavors\s*\{/);
+  if (index >= 0) {
+    const block = balancedGradleBlock(buildText, buildText.indexOf("{", index));
+    for (const match of block.matchAll(/\bdimension\s*(?:=|\()?\s*["']([^"']+)["']/g)) dimensions.add(match[1]);
+  }
+  return [...dimensions].sort();
 }
 
 function flavorSourceSetAlternation(module, kind) {
@@ -824,7 +869,7 @@ function detectUnsupportedProjectShapes(buildText, paths, modules) {
   const shapes = [];
   if (
     /\bcom\.android\.(?:application|library|test)\b|\bid\s*\(?\s*["']com\.android\./i.test(buildText) ||
-    paths.some((currentPath) => /(?:^|\/)src\/androidTest\//.test(currentPath))
+    paths.some((currentPath) => /(?:^|\/)src\/androidTest(?:[A-Z][A-Za-z0-9_]*)?\//.test(currentPath))
   ) {
     // #316: unit tests under src/test are audited like any JVM module and instrumented tests under
     // src/androidTest supply instrumented evidence, but the Android build itself is not modeled.
@@ -881,8 +926,12 @@ function detectTestCommand(root, paths, frameworks, modules) {
   const flavorBlocker = candidates.find((candidate) => candidate.flavorBlocker)?.flavorBlocker;
   if (flavorBlocker && candidates.length === 1) return { blockers: [flavorBlocker], inheritedSignals };
   if (candidates.length > 1) {
+    const commands = candidates.map((candidate) => candidate.command ?? "a withheld Android flavor task");
     return {
-      blockers: [`Multiple runnable JVM test commands detected from project markers: ${candidates.map((candidate) => candidate.command).join(", ")}.`],
+      blockers: [
+        `Multiple runnable JVM test commands detected from project markers: ${commands.join(", ")}.`,
+        ...(flavorBlocker ? [flavorBlocker] : [])
+      ],
       inheritedSignals
     };
   }
@@ -896,8 +945,15 @@ function detectTestCommand(root, paths, frameworks, modules) {
 function flavorTestCandidate(executable, taskPrefix, modules) {
   const flavors = [...new Set(modules.flatMap((module) => module.flavors ?? []))].sort();
   if (flavors.length === 0) return undefined;
-  const flavorsWithTests = flavors.filter((flavor) => modules.some((module) => (module.flavorTestSets ?? []).includes(flavor)));
+  const dimensions = [...new Set(modules.flatMap((module) => module.flavorDimensions ?? []))].sort();
   const task = (flavor) => `${taskPrefix}test${capitalizeFlavor(flavor)}DebugUnitTest`;
+  if (dimensions.length > 1) {
+    return {
+      command: undefined,
+      flavorBlocker: `Multiple Android flavor dimensions detected (${dimensions.join(", ")}); the variant unit-test task combines one flavor per dimension and the aggregate test task runs every build variant, so select the task that matches the repository's documented variant.`
+    };
+  }
+  const flavorsWithTests = flavors.filter((flavor) => modules.some((module) => (module.flavorTestSets ?? []).includes(flavor)));
   if (flavorsWithTests.length === 1) {
     return { command: `${executable} ${task(flavorsWithTests[0])}`, flavorSignal: `android flavor unit tests (${flavorsWithTests[0]})` };
   }
