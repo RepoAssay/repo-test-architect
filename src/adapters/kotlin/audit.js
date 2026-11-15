@@ -44,6 +44,10 @@ export function auditKotlinRepo(root, options = {}) {
   const sourceFiles = files
     .filter((candidate) => isSourceFile(candidate.path, modules))
     .map((file) => ({ ...file, moduleProjectPath: moduleForPath(file.path, modules, "main")?.projectPath }));
+  const testSupportModules = new Set(modules.filter((module) => isTestSupportModule(module, files)).map((module) => module.projectPath));
+  if (testSupportModules.size > 0) {
+    profile.setupSignals.push(`test-support modules (${modules.filter((module) => testSupportModules.has(module.projectPath)).map((module) => module.directory).sort().join(", ")})`);
+  }
   const sourceSymbols = collectSourceSymbols(sourceFiles);
   const testEvidenceBySourcePath = collectJvmTestEvidence(sourceSymbols, testFiles, modules);
   const untestedCandidates = [];
@@ -53,7 +57,7 @@ export function auditKotlinRepo(root, options = {}) {
 
   for (const file of sourceFiles.filter((candidate) => isIncludedByChangedPaths(candidate.path, changedPaths))) {
     const name = basenameWithoutExtension(file.path);
-    const classification = classifySourceFile(file);
+    const classification = testSupportModules.has(file.moduleProjectPath) ? testSupportClassification() : classifySourceFile(file);
     const existingTestEvidence = testEvidenceBySourcePath.get(normalizePath(file.path)) ?? [];
     const existingTestPaths = existingTestEvidence.map((evidence) => evidence.testPath);
 
@@ -676,6 +680,64 @@ function balancedGradleBlock(content, openingBrace) {
     }
   }
   return "";
+}
+
+// Test-support modules (#337): modules that exist to hold test doubles, rules, fixtures or benchmarks
+// for other modules' tests. Their main sources are not production candidates, but the module stays in
+// the graph so that tests importing it still resolve. The signal must be static and corroborated: a
+// test-only plugin alone, or a test-support module name together with a main-configuration dependency
+// on a test library or a main source importing one.
+const TEST_SUPPORT_MODULE_NAME = /^(?:testing|tests?|test-?fixtures|fixtures|benchmarks?|screenshot-?testing|test-?utils?|test-?support)$|(?:^|[-_])(?:test|tests|testing|fixtures|benchmark|benchmarks)(?:[-_]|$)/i;
+const TEST_SUPPORT_PLUGIN = /\bcom\.android\.test\b|\blibs\.plugins\.[A-Za-z0-9_.]*android\.test\b|["']java-test-fixtures["']|\bjava-test-fixtures\b|\bjvm-test-suite\b/;
+const TEST_SUPPORT_MAIN_DEPENDENCY = /\b(?:api|implementation|compileOnly)\s*\(\s*(?:libs\.[A-Za-z0-9_.]*(?:test|testing|junit|robolectric|roborazzi|mockk|mockito|truth|espresso|benchmark)[A-Za-z0-9_.]*|kotlin\s*\(\s*["']test["']\s*\)|["'](?:junit:|org\.junit|androidx\.test|org\.robolectric|io\.mockk|org\.mockito|androidx\.benchmark|io\.github\.takahirom\.roborazzi|com\.google\.truth|org\.jetbrains\.kotlinx:kotlinx-coroutines-test)[^"']*["'])/;
+const TEST_SUPPORT_MAIN_IMPORT = /^\s*import\s+(?:org\.junit|kotlin\.test|androidx\.test|androidx\.benchmark|org\.robolectric|kotlinx\.coroutines\.test|io\.mockk|org\.mockito|com\.google\.common\.truth)\b/m;
+
+function isTestSupportModule(module, files) {
+  if (module.directory === "." || module.buildSystem !== "gradle") return false;
+  // Only the module's own build file counts: the root build file declares plugins with `apply false`.
+  const buildText = stripTestSourceSetBlocks(ownModuleBuildText(module, files));
+  if (TEST_SUPPORT_PLUGIN.test(buildText)) return true;
+  const name = module.directory.split("/").at(-1);
+  if (!TEST_SUPPORT_MODULE_NAME.test(name)) return false;
+  if (TEST_SUPPORT_MAIN_DEPENDENCY.test(buildText)) return true;
+  const prefix = `${module.directory}/src/main/`;
+  return files.some((file) => normalizePath(file.path).startsWith(prefix) && TEST_SUPPORT_MAIN_IMPORT.test(file.content));
+}
+
+function ownModuleBuildText(module, files) {
+  const prefix = module.directory === "." ? "" : `${module.directory}/`;
+  return files
+    .filter((file) => [`${prefix}build.gradle`, `${prefix}build.gradle.kts`].includes(normalizePath(file.path)))
+    .map((file) => file.content)
+    .join("\n");
+}
+
+// Test source-set dependency blocks (`commonTest.dependencies { implementation(kotlin("test")) }`,
+// `val jvmTest by getting { dependencies { ... } }`, `testFixtures { }`) declare test-only dependencies
+// that must not read as main-configuration evidence.
+function stripTestSourceSetBlocks(content) {
+  const pattern = /\b(?:[A-Za-z]*Test|testFixtures)(?:\.dependencies)?\s*(?:\(\s*\))?\s*(?:by\s+(?:getting|creating)\s*)?\{|\b(?:named|getByName|maybeCreate|create|getting)\s*\(\s*["'][A-Za-z]*Test["']\s*\)\s*\{/g;
+  let result = content;
+  let match;
+  while ((match = pattern.exec(result)) !== null) {
+    const openingBrace = result.indexOf("{", match.index);
+    const block = balancedGradleBlock(result, openingBrace);
+    if (block === "" && result[openingBrace + 1] !== "}") break;
+    result = `${result.slice(0, match.index)} ${result.slice(openingBrace + block.length + 2)}`;
+    pattern.lastIndex = match.index;
+  }
+  return result;
+}
+
+function testSupportClassification() {
+  return skipped(
+    "test-support",
+    ["test-support-module"],
+    1,
+    2,
+    "Test-support module; its sources are test doubles, rules and fixtures consumed by other modules' tests.",
+    "Cover through the tests of the modules that consume these fixtures."
+  );
 }
 
 function hasOwnedJvmSources(module, paths) {
