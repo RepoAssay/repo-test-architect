@@ -116,6 +116,8 @@ const LEGACY_PREFIXES = [
   ["Swift sources import ", { code: "host-unavailable-framework", scope: "command", severity: "medium" }],
   ["Multiple package managers detected", { code: "ambiguous-package-manager", scope: "command", severity: "medium" }],
   ["Multiple runnable JVM test commands detected", { code: "competing-test-commands", scope: "command", severity: "medium" }],
+  ["Multiple Android flavor test tasks detected", { code: "ambiguous-android-variant", scope: "command", severity: "medium" }],
+  ["Multiple Android flavor dimensions detected", { code: "ambiguous-android-variant", scope: "command", severity: "medium" }],
   ["Multiple runnable Python test commands detected", { code: "competing-test-commands", scope: "command", severity: "medium" }],
   ["Android modules are audited with JVM conventions:", { code: "android-jvm-conventions", scope: "audit", severity: "medium" }],
   ["Android unit and instrumentation source sets are outside", { code: "android-jvm-conventions", scope: "audit", severity: "medium" }]
