@@ -149,7 +149,10 @@ function resolveJvmModules(files) {
 // them once: `src/<flavor>/kotlin|java` of every Android module becomes production sources and the
 // flavor test sets become test sources of their module. Only the module's own build file is read (the
 // root build file declares plugins with `apply false`); variant-specific configuration stays unmodeled.
-const ANDROID_PLUGIN_APPLICATION = /(?:\bid\s*\(?\s*["']com\.android\.(?:application|library|test|dynamic-feature)["']\s*\)?|\bapply\s*\(?\s*plugin\s*[:=]\s*["']com\.android\.(?:application|library|test|dynamic-feature)["']\s*\)?|\balias\s*\(\s*libs\.plugins(?:\.[A-Za-z0-9_]+)*?\.(?:android|[A-Za-z0-9_]*Android)(?:\.[A-Za-z0-9_]+)*\s*\))(?!\s*apply\s+false)/;
+// An Android plugin application: `id("com.android.application")` or a convention plugin id whose last
+// segments are `android.<kind>`, the Groovy `apply plugin:` form, or a catalog alias with an `android…`
+// segment or a segment ending in `Android`; a declaration on the same line as `apply false` does not count.
+const ANDROID_PLUGIN_APPLICATION = /(?:\bid\s*\(?\s*["'](?:[A-Za-z0-9_.]*\.)?android\.(?:application|library|test|dynamic-feature)["']\s*\)?|\bapply\s*\(?\s*plugin\s*[:=]\s*["'](?:[A-Za-z0-9_.]*\.)?android\.(?:application|library|test|dynamic-feature)["']\s*\)?|\balias\s*\(\s*libs\.plugins(?:\.[A-Za-z0-9_]+)*?\.(?:android[A-Za-z0-9_]*|[A-Za-z0-9_]*Android)(?:\.[A-Za-z0-9_]+)*\s*\))(?![^\n]*\bapply\s+false)/;
 const DEFAULT_BUILD_TYPES = new Set(["debug", "release"]);
 
 function populateModuleFlavors(modules, files) {
@@ -181,6 +184,7 @@ function populateModuleFlavors(modules, files) {
   const graphDimensions = [...new Set(entries.flatMap((entry) => entry.dimensions))].sort();
   for (const entry of entries) {
     const flavors = entry.android || entry.flavors.size > 0 ? graphFlavors : [];
+    entry.module.android = entry.android;
     entry.module.flavors = flavors;
     entry.module.flavorDimensions = flavors.length > 0 ? graphDimensions : [];
     entry.module.flavorTestSets = flavors.filter((flavor) => entry.sourceSets.has(`test${capitalizeFlavor(flavor)}`));
@@ -869,6 +873,7 @@ function detectUnsupportedProjectShapes(buildText, paths, modules) {
   const shapes = [];
   if (
     /\bcom\.android\.(?:application|library|test)\b|\bid\s*\(?\s*["']com\.android\./i.test(buildText) ||
+    modules.some((module) => module.android) ||
     paths.some((currentPath) => /(?:^|\/)src\/androidTest(?:[A-Z][A-Za-z0-9_]*)?\//.test(currentPath))
   ) {
     // #316: unit tests under src/test are audited like any JVM module and instrumented tests under

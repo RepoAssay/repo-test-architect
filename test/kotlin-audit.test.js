@@ -1763,6 +1763,26 @@ describe("Android product flavors: flavor source sets (#336) and the flavored te
     assert.match(withMaven.profile.blockers[1], /^Multiple Android flavor test tasks detected/);
   });
 
+  it("applies the Android boundary when the plugin comes only from a catalog alias or a convention plugin id", (t) => {
+    const aliasOnly = auditKotlinRepo(createAndroidGraph(t, {
+      "app/build.gradle.kts": 'plugins {\n    alias(libs.plugins.androidApplication)\n    alias(libs.plugins.kotlin.android)\n}\nandroid { namespace = "com.example.app"; compileSdk = 34 }\ndependencies {\n    testImplementation("junit:junit:4.13.2")\n}\n',
+      "core/network/build.gradle.kts": 'plugins {\n    id("nia.android.library")\n}\nandroid { namespace = "com.example.network"; compileSdk = 34 }\ndependencies {\n    testImplementation("junit:junit:4.13.2")\n}\n',
+      "app/src/testDemo/kotlin/com/example/app/NiaAppStateTest.kt": appStateTest,
+      "core/network/src/demo/kotlin/com/example/network/DemoDataSource.kt": demoSource
+    }));
+    assert.equal(aliasOnly.profile.testCommand, "./gradlew testDemoDebugUnitTest");
+    assert.ok(aliasOnly.profile.diagnostics.some((diagnostic) => diagnostic.code === "android-jvm-conventions"), "the Android boundary follows the module flag, not a com.android string");
+    assert.equal(aliasOnly.profile.confidence, "medium");
+    assert.ok([...aliasOnly.untestedCandidates, ...aliasOnly.coveredButRisky].some((candidate) => candidate.path.endsWith("/DemoDataSource.kt")), "a convention plugin id with android.<kind> marks the module Android");
+
+    const templateRoot = auditKotlinRepo(createAndroidGraph(t, {
+      "build.gradle.kts": 'plugins {\n    id("com.android.application") version "8.5.0" apply false\n    kotlin("jvm") version "2.0.0" apply false\n}\n',
+      "src/testIntegration/kotlin/com/example/RootTest.kt": appStateTest.replace("NiaAppStateTest", "RootTest").replace("package com.example.app", "package com.example"),
+      "app/src/testDemo/kotlin/com/example/app/NiaAppStateTest.kt": appStateTest
+    }));
+    assert.ok(templateRoot.profile.setupSignals.includes("android product flavors (demo)"), "a root declaration with version and apply false does not make the root Android");
+  });
+
   it("targets the module's flavor task through a parent wrapper when a flavored module is audited directly", (t) => {
     const root = createAndroidGraph(t, {
       "app/src/testDemo/kotlin/com/example/app/NiaAppStateTest.kt": appStateTest
