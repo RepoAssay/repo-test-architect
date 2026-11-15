@@ -8,7 +8,14 @@ import { findSkippedJavaScriptTestRanges } from "./skips.js";
 const IGNORED_DIRECTORIES = new Set([".git", "node_modules", "dist", "build", "coverage"]);
 const SOURCE_EXTENSIONS = [".cjs", ".cts", ".js", ".jsx", ".mjs", ".mts", ".ts", ".tsx"];
 const SOURCE_ROOTS = ["src/", "source/", "lib/"];
+// #331: when a package keeps no conventional source root, its module files are audited from the
+// package root, except tooling configuration and support folders that are never production code.
+// Support folders are matched on the first path segment only; test-double folders and dot-directories
+// at any depth. A bare tooling name (`vite.ts`, `i18n.ts`) is a module like any other.
 const GENERIC_SOURCE_BASENAMES = new Set(["handler", "index", "types", "utils"]);
+const PACKAGE_ROOT_SUPPORT_DIRECTORIES = new Set(["scripts", "docs", "examples", "e2e", "playwright", "cypress", "testing", "test-utils", "storybook"]);
+const PACKAGE_ROOT_DOUBLE_DIRECTORIES = new Set(["__mocks__", "__fixtures__", "fixtures", "mocks", "__checks__"]);
+const PACKAGE_ROOT_CONFIG_BASENAME = /^(?:\.[^/]*rc(?:\.[cm]?[jt]s|\.json|\.ya?ml)?|[^/]*\.config\.[cm]?[jt]sx?|[^/]*\.config\.json|(?:vitest|jest|playwright|cypress|babel|eslint|prettier|tailwind|postcss|webpack|rollup|vite|tsup|commitlint|lint-staged|stylelint|turbo|knip)(?:\.[A-Za-z0-9_-]+)+\.[cm]?[jt]sx?|(?:test|vitest|jest)[-.]?setup\.[cm]?[jt]sx?|setup-?(?:tests?|vitest|jest)\.[cm]?[jt]sx?|global-?(?:setup|teardown)\.[cm]?[jt]sx?|(?:knexfile|gulpfile|gruntfile)\.[cm]?[jt]s|[^/]*\.(?:mocks?|stories|story)\.[cm]?[jt]sx?)$/i;
 const MAX_TRANSITIVE_SOURCE_DEPTH = 2;
 const AVA_ASSERTION_METHODS = ["assert", "deepEqual", "false", "falsy", "is", "like", "not", "notDeepEqual", "notRegex", "notThrows", "notThrowsAsync", "regex", "snapshot", "throws", "throwsAsync", "true", "truthy"];
 const PACKAGE_MANAGER_LOCKFILES = [
@@ -40,6 +47,8 @@ export function auditJavaScriptRepo(root, options = {}) {
   const pathAliasEntries = findTsconfigPathAliasEntries(tsconfigData, moduleFiles);
   const boundedTransitiveImports = collectBoundedTransitiveImports(testFiles, moduleIndex, pathAliasEntries);
   const packageSourcePaths = findDeclaredPackageSourcePaths(packageData, moduleFiles);
+  const packageRootSources = collectPackageRootSources(files, testFilePaths);
+  if (packageRootSources) profile.detectedConventions.push("package-root sources");
   const packageEntryFiles = findSourcePackageEntries(packageData, moduleFiles);
   const packageSubpathEntries = findSourcePackageSubpathEntries(packageData, moduleFiles);
   const untestedCandidates = [];
@@ -49,10 +58,10 @@ export function auditJavaScriptRepo(root, options = {}) {
   const runtimeSourcePaths = new Set(files
     .map((file) => normalizePath(file.path))
     .filter((currentPath) => !testFilePaths.has(currentPath))
-    .filter((currentPath) => isRuntimeJavaScriptSource(currentPath) || (packageSourcePaths.has(currentPath) && /\.(cjs|mjs|js|jsx)$/.test(currentPath))));
+    .filter((currentPath) => isRuntimeJavaScriptSource(currentPath) || ((packageSourcePaths.has(currentPath) || packageRootSources?.has(currentPath)) && /\.(cjs|mjs|js|jsx)$/.test(currentPath))));
   const sourceJavaScriptRuntime = hasSourceJavaScriptRuntimeEntrypoint(files) || [...packageSourcePaths].some((currentPath) => /\.(cjs|mjs|js|jsx)$/.test(currentPath));
 
-  for (const file of files.filter((candidate) => !testFilePaths.has(normalizePath(candidate.path)) && isAuditableSourceFile(candidate.path, packageSourcePaths) && isIncludedByChangedPaths(candidate.path, changedPaths))) {
+  for (const file of files.filter((candidate) => !testFilePaths.has(normalizePath(candidate.path)) && isAuditableSourceFile(candidate.path, packageSourcePaths, packageRootSources) && isIncludedByChangedPaths(candidate.path, changedPaths))) {
     const name = basenameWithoutExtension(file.path);
     const classification = classifySourceFile(file, profile, {
       runtimeSourcePaths,
@@ -1251,9 +1260,29 @@ function isSourceFile(currentPath) {
   return isInSourceRoot(normalized) && isJavaScriptModuleFile(normalized);
 }
 
-function isAuditableSourceFile(currentPath, packageSourcePaths) {
+function isAuditableSourceFile(currentPath, packageSourcePaths, packageRootSources) {
   const normalized = normalizePath(currentPath);
-  return isSourceFile(normalized) || packageSourcePaths.has(normalized);
+  return isSourceFile(normalized) || packageSourcePaths.has(normalized) || Boolean(packageRootSources?.has(normalized));
+}
+
+// Returns the module files owned from the package root when the package has no `src/`, `source/` or
+// `lib/` directory holding module files; `undefined` when a conventional source root exists (#331).
+function collectPackageRootSources(files, testFilePaths) {
+  const modulePaths = files.map((file) => normalizePath(file.path)).filter((currentPath) => isJavaScriptModuleFile(currentPath));
+  const holdsModule = (currentPath) => !currentPath.endsWith(".d.ts") && !PACKAGE_ROOT_CONFIG_BASENAME.test(currentPath.split("/").at(-1));
+  if (modulePaths.some((currentPath) => isInSourceRoot(currentPath) && holdsModule(currentPath))) return undefined;
+  const owned = modulePaths.filter((currentPath) => !testFilePaths.has(currentPath) && isPackageRootSourcePath(currentPath));
+  return owned.length > 0 ? new Set(owned) : undefined;
+}
+
+function isPackageRootSourcePath(currentPath) {
+  const segments = currentPath.split("/");
+  const basename = segments.at(-1);
+  if (PACKAGE_ROOT_CONFIG_BASENAME.test(basename)) return false;
+  if (isTestHarnessRoot(currentPath)) return false;
+  const directories = segments.slice(0, -1);
+  if (directories.length > 0 && PACKAGE_ROOT_SUPPORT_DIRECTORIES.has(directories[0])) return false;
+  return !directories.some((segment) => PACKAGE_ROOT_DOUBLE_DIRECTORIES.has(segment) || segment.startsWith("."));
 }
 
 function findDeclaredPackageSourcePaths(packageData, moduleFiles) {
