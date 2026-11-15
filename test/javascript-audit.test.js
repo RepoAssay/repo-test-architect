@@ -2281,3 +2281,92 @@ describe("JavaScript diagnostics for tests without a recognised runner (#312)", 
     assert.equal(audit.profile.confidence, "medium");
   });
 });
+
+describe("package-root sources (#331)", () => {
+  function createPackage(t, files) {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-package-root-sources-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    for (const [relativePath, content] of Object.entries(files)) {
+      const target = path.join(root, relativePath);
+      fs.mkdirSync(path.dirname(target), { recursive: true });
+      fs.writeFileSync(target, content);
+    }
+    return root;
+  }
+  const packageJson = JSON.stringify({ name: "@acme/lib", scripts: { test: "vitest run" }, devDependencies: { vitest: "4.0.0" } });
+  const slugify = "export function slugify(value) { if (!value) throw new Error('missing'); return value.toLowerCase(); }\n";
+  const slugifyTest = "import { expect, it } from 'vitest';\nimport { slugify } from './slugify';\nit('lowers', () => { expect(slugify('A')).toBe('a'); });\n";
+  const price = "export function price(cents) { if (cents < 0) throw new Error('negative'); return cents / 100; }\n";
+
+  it("audits module files beside their tests when the package has no conventional source root", (t) => {
+    // #331: cal.com's packages/lib keeps 149 sources at the package root and reported no targets at all.
+    const root = createPackage(t, {
+      "package.json": packageJson,
+      "slugify.ts": slugify,
+      "slugify.test.ts": slugifyTest,
+      "price.ts": price,
+      "server/avatar.ts": "export function avatar(user) { if (!user) throw new Error('missing'); return user.avatarUrl; }\n",
+      "server/avatar.test.ts": "import { expect, it } from 'vitest';\nimport { avatar } from './avatar';\nit('reads', () => { expect(avatar({ avatarUrl: 'x' })).toBe('x'); });\n"
+    });
+
+    const audit = auditJavaScriptRepo(root);
+
+    assert.ok(audit.profile.detectedConventions.includes("package-root sources"));
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["server/avatar.ts", "slugify.ts"]);
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.path), ["price.ts"]);
+    assert.deepEqual(audit.coveredButRisky[1].existingTestPaths, ["slugify.test.ts"]);
+  });
+
+  it("leaves tooling configuration, support folders and test doubles out of the package-root set", (t) => {
+    const root = createPackage(t, {
+      "package.json": packageJson,
+      "slugify.ts": slugify,
+      "vitest.config.ts": "export default { test: { include: ['**/*.test.ts'] } };\n",
+      "jest.config.js": "module.exports = { testRegex: '.*\\\\.spec\\\\.ts$' };\n",
+      "tailwind.config.js": "module.exports = { content: [] };\n",
+      "next.config.mjs": "export default { reactStrictMode: true };\n",
+      ".eslintrc.js": "module.exports = {};\n",
+      "setupTests.ts": "import '@testing-library/jest-dom';\n",
+      "features.repository.mock.ts": "export const repository = { find() { if (!this) throw new Error('x'); return []; } };\n",
+      "Button.stories.tsx": "export default { title: 'Button' };\n",
+      "scripts/release.ts": "if (process.argv.length > 2) { throw new Error('usage'); }\n",
+      "__mocks__/fs.ts": "export const readFileSync = () => { if (Math.random() > 2) throw new Error('never'); return ''; };\n",
+      "fixtures/user.ts": "export const user = { id: 1 };\n",
+      ".storybook/main.ts": "export default { stories: [] };\n"
+    });
+
+    const audit = auditJavaScriptRepo(root);
+
+    const paths = [...audit.untestedCandidates, ...audit.coveredButRisky, ...audit.skipped].map((target) => target.path);
+    assert.deepEqual(paths, ["slugify.ts"]);
+  });
+
+  it("keeps the conventional root rule whenever a src, source or lib directory holds module files", (t) => {
+    const root = createPackage(t, {
+      "package.json": packageJson,
+      "src/slugify.ts": slugify,
+      "src/slugify.test.ts": slugifyTest.replace("./slugify", "./slugify"),
+      "price.ts": price
+    });
+
+    const audit = auditJavaScriptRepo(root);
+
+    assert.ok(!audit.profile.detectedConventions.includes("package-root sources"));
+    assert.deepEqual([...audit.untestedCandidates, ...audit.coveredButRisky].map((target) => target.path), ["src/slugify.ts"]);
+  });
+
+  it("treats root JavaScript modules as runtime sources so a TypeScript mirror of the same file is still recognised", (t) => {
+    const root = createPackage(t, {
+      "package.json": JSON.stringify({ name: "@acme/lib", main: "./index.js", scripts: { test: "node --test" } }),
+      "index.js": "export function slugify(value) { if (!value) throw new Error('missing'); return value.toLowerCase(); }\n",
+      "price.js": "export function price(cents) { if (cents < 0) throw new Error('negative'); return cents / 100; }\n",
+      "price.test.js": "import test from 'node:test';\nimport assert from 'node:assert';\nimport { price } from './price.js';\ntest('converts', () => { assert.equal(price(100), 1); });\n"
+    });
+
+    const audit = auditJavaScriptRepo(root);
+
+    assert.ok(audit.profile.detectedConventions.includes("package-root sources"));
+    assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["price.js"]);
+    assert.deepEqual(audit.untestedCandidates.map((target) => target.path), ["index.js"]);
+  });
+});
