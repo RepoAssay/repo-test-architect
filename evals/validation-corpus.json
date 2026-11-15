@@ -1226,6 +1226,44 @@
             "evidenceRelationshipCount": 6,
             "canonicalAuditSha256": "3bbeba0c41039511e4a32c0a24a999efc40d7abf3ac68309743b3c5ac2422fef"
           }
+        },
+        {
+          "id": "swift-icecubesapp",
+          "role": "product-monorepo",
+          "measurement": "repository",
+          "repository": {
+            "url": "https://github.com/Dimillian/IceCubesApp",
+            "commit": "98098b9c4b5928f89f338203193c2bf40ab7f38c",
+            "projectRoot": "."
+          },
+          "supportBoundary": "Xcode application over 13 local Swift packages: the root project and every package audited once, swift test where the package builds on the host and a withheld command with the xcodebuild destination shape where it imports UIKit, missing-test-target diagnostics for roots without tests, and cross-package evidence only for calls or assertions.",
+          "reportPath": "docs/swift-icecubes-validation-hunt-report.md",
+          "scorecard": {
+            "detection": "pass",
+            "ownership": "pass",
+            "command": "pass",
+            "evidence": "pass",
+            "ranking": "pass",
+            "stability": "pass",
+            "performance": "pass"
+          },
+          "observed": {
+            "testCommand": "swift test",
+            "projectCount": 14,
+            "untestedCandidates": 139,
+            "coveredButRisky": 24,
+            "skippedTargets": 232,
+            "auditDurationMs": 323,
+            "auditDurationSamplesMs": [
+              439,
+              335,
+              323,
+              323,
+              323
+            ],
+            "evidenceRelationshipCount": 40,
+            "canonicalAuditSha256": "579eb7943c27eba98810482ea0a085826fc99784c044d48ca2f69594d594dab4"
+          }
         }
       ]
     }

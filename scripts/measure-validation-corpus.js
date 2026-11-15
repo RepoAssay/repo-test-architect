@@ -7,6 +7,7 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { AUDIT_PROFILE_PHASES } from "../src/core/audit-phase-timing.js";
 import { getAdapter } from "../src/core/adapter-registry.js";
+import { auditDetectedProjects } from "../src/core/project-auditor.js";
 import { loadValidationCorpus } from "./check-validation-corpus.js";
 
 if (isMainModule()) {
@@ -38,6 +39,10 @@ export function measureValidationCorpusCase({ caseId, checkoutPath, runCount, pr
     throw new Error(`Project root does not exist for ${caseId}: ${projectRoot}`);
   }
 
+  if (corpusCase.entry.measurement === "repository") {
+    if (profilePhases) throw new Error("Phase profiling is not available for repository-scan measurements.");
+    return measureRepositoryScanCase(corpusCase, caseId, projectRoot, runCount);
+  }
   const adapter = getAdapter(corpusCase.adapterId);
   const runs = [];
   for (let index = 0; index < runCount; index += 1) {
@@ -72,6 +77,60 @@ export function measureValidationCorpusCase({ caseId, checkoutPath, runCount, pr
     ...summarizeCorpusRuns(runs),
     ...(profilePhases ? { auditPhaseTimings: summarizeAuditPhaseRuns(runs) } : {})
   };
+}
+
+// A product-monorepo case (`measurement: "repository"`) pins the repository scan rather than one
+// adapter audit: every project the adapter owns under the project root is audited through
+// auditDetectedProjects, including cross-project passes, and the summary covers them together.
+function measureRepositoryScanCase(corpusCase, caseId, projectRoot, runCount) {
+  const runs = [];
+  for (let index = 0; index < runCount; index += 1) {
+    const started = performance.now();
+    const scan = auditDetectedProjects(projectRoot, { ...(corpusCase.entry.auditOptions ?? {}) });
+    const durationMs = Math.round(performance.now() - started);
+    const entries = scan.audits.filter((entry) => entry.adapterId === corpusCase.adapterId);
+    if (entries.length === 0) throw new Error(`The repository scan audited no ${corpusCase.adapterId} project under ${projectRoot}.`);
+    runs.push({ entries, durationMs });
+  }
+  return {
+    caseId,
+    adapterId: corpusCase.adapterId,
+    commit: corpusCase.entry.repository.commit,
+    measurement: "repository",
+    ...summarizeCorpusScanRuns(runs)
+  };
+}
+
+export function summarizeCorpusScanRuns(runs) {
+  if (!Array.isArray(runs) || runs.length < 3) {
+    throw new Error("Corpus measurement requires at least three scan runs.");
+  }
+  const digests = runs.map(({ entries }) => canonicalScanDigest(entries));
+  if (new Set(digests).size !== 1) {
+    throw new Error(`Canonical scan output changed across runs: ${[...new Set(digests)].join(", ")}.`);
+  }
+  const entries = runs[0].entries;
+  const commands = [...new Set(entries.map((entry) => entry.audit.profile.testCommand).filter(Boolean))];
+  const total = (select) => entries.reduce((sum, entry) => sum + select(entry.audit), 0);
+  const auditDurationSamplesMs = runs.map(({ durationMs }) => Math.max(0, Math.round(durationMs)));
+  return {
+    testCommand: commands.length === 1 ? commands[0] : null,
+    projectCount: entries.length,
+    untestedCandidates: total((audit) => audit.untestedCandidates.length),
+    coveredButRisky: total((audit) => audit.coveredButRisky.length),
+    skippedTargets: total((audit) => audit.skipped.length),
+    auditDurationMs: medianInteger(auditDurationSamplesMs),
+    auditDurationSamplesMs,
+    evidenceRelationshipCount: total((audit) => audit.coveredButRisky.reduce((sum, target) => sum + (target.existingTestEvidence?.length ?? 0), 0)),
+    canonicalAuditSha256: digests[0]
+  };
+}
+
+export function canonicalScanDigest(entries) {
+  const normalized = [...entries]
+    .sort((left, right) => left.projectRoot.localeCompare(right.projectRoot))
+    .map((entry) => ({ projectRoot: entry.projectRoot, audit: { ...entry.audit, profile: { ...entry.audit.profile, root: "<corpus>" } } }));
+  return createHash("sha256").update(JSON.stringify(normalized)).digest("hex");
 }
 
 export function summarizeAuditPhaseRuns(runs) {

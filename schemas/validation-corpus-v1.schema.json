@@ -4,7 +4,10 @@
   "title": "Repo Test Architect Adapter Validation Corpus",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schemaVersion", "adapters"],
+  "required": [
+    "schemaVersion",
+    "adapters"
+  ],
   "properties": {
     "schemaVersion": {
       "const": "validation-corpus/v1"
@@ -21,7 +24,10 @@
     "adapterCorpus": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["adapterId", "cases"],
+      "required": [
+        "adapterId",
+        "cases"
+      ],
       "properties": {
         "adapterId": {
           "type": "string",
@@ -64,7 +70,11 @@
         "repository": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["url", "commit", "projectRoot"],
+          "required": [
+            "url",
+            "commit",
+            "projectRoot"
+          ],
           "properties": {
             "url": {
               "type": "string",
@@ -96,6 +106,13 @@
         },
         "observed": {
           "$ref": "#/$defs/observation"
+        },
+        "measurement": {
+          "description": "How the pinned numbers were produced: one adapter audit of projectRoot (the default), or the repository scan of every project this adapter owns under projectRoot (product monorepos).",
+          "enum": [
+            "project",
+            "repository"
+          ]
         }
       }
     },
@@ -106,7 +123,10 @@
         "goTarget": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["goos", "goarch"],
+          "required": [
+            "goos",
+            "goarch"
+          ],
           "properties": {
             "goos": {
               "type": "string",
@@ -141,17 +161,35 @@
         "performance"
       ],
       "properties": {
-        "detection": { "$ref": "#/$defs/scoreStatus" },
-        "ownership": { "$ref": "#/$defs/scoreStatus" },
-        "command": { "$ref": "#/$defs/scoreStatus" },
-        "evidence": { "$ref": "#/$defs/scoreStatus" },
-        "ranking": { "$ref": "#/$defs/scoreStatus" },
-        "stability": { "$ref": "#/$defs/scoreStatus" },
-        "performance": { "$ref": "#/$defs/scoreStatus" }
+        "detection": {
+          "$ref": "#/$defs/scoreStatus"
+        },
+        "ownership": {
+          "$ref": "#/$defs/scoreStatus"
+        },
+        "command": {
+          "$ref": "#/$defs/scoreStatus"
+        },
+        "evidence": {
+          "$ref": "#/$defs/scoreStatus"
+        },
+        "ranking": {
+          "$ref": "#/$defs/scoreStatus"
+        },
+        "stability": {
+          "$ref": "#/$defs/scoreStatus"
+        },
+        "performance": {
+          "$ref": "#/$defs/scoreStatus"
+        }
       }
     },
     "scoreStatus": {
-      "enum": ["pass", "fail", "pending"]
+      "enum": [
+        "pass",
+        "fail",
+        "pending"
+      ]
     },
     "observation": {
       "type": "object",
@@ -206,6 +244,11 @@
         "canonicalAuditSha256": {
           "type": "string",
           "pattern": "^[0-9a-f]{64}$"
+        },
+        "projectCount": {
+          "description": "Repository-scan measurement only: the number of projects this adapter audited in the scan.",
+          "type": "integer",
+          "minimum": 1
         }
       }
     }

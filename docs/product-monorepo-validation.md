@@ -52,6 +52,8 @@ These are starting points, not pins. A hunt pass verifies the current layout, re
 
 `validation-corpus/v1` accepts the role `product-monorepo` beside the three existing roles. `scripts/check-validation-corpus.js` keeps the three existing roles required for every adapter and requires `product-monorepo` only for the adapters listed in its `productMonorepoRequiredAdapters` set, so a pin can land adapter by adapter; once every adapter has one, the role joins the required list. A pin needs what every other corpus case needs: the full 40-character commit, the project root and audit options, the support boundary, the hunt report, the observed command (or `null` when withholding passed command review), candidate counts, at least three timing samples with their median, repeated identical canonical digests, and a reviewed seven-area scorecard. A failing scorecard area stays in the hunt report as an open finding; it is not pinned as passing.
 
+A product monorepo is pinned as a whole: the case declares `measurement: "repository"` and `scripts/measure-validation-corpus.js` then measures the repository scan (`auditDetectedProjects` from the project root, including cross-project passes) instead of one adapter audit. The observed numbers sum every project the adapter owns, `observed.projectCount` records how many, `testCommand` is the single command the projects agree on or `null` when they differ (an Xcode root beside SwiftPM packages, for example), the duration samples time the whole scan, and the canonical digest covers every project's audit in project-root order. The scorecard areas keep their meaning across the scan. Cases without `measurement` keep the single-project measurement.
+
 ## Procedure
 
 1. Shallow-clone the candidate at an exact commit and run `repo-test-architect review <root>` and `analyze <root> --format json` without executing repository code.
@@ -64,7 +66,7 @@ These are starting points, not pins. A hunt pass verifies the current layout, re
 | Adapter | Repository | Commit | Report | Outcome |
 | --- | --- | --- | --- | --- |
 | JavaScript/TypeScript | `calcom/cal.com` | `ef7954d16ab50882ca2f263c551537115b8a8bb1` | [cal.com hunt](javascript-calcom-validation-hunt-report.md) | three adapter issues (#329 root-owned runner configuration not inherited, #330 stale `jest.config.json` selects `npx jest`, #331 package-root sources not audited); not pinned until they are fixed |
-| Swift | `Dimillian/IceCubesApp` | `98098b9c4b5928f89f338203193c2bf40ab7f38c` | [Ice Cubes hunt](swift-icecubes-validation-hunt-report.md) | one adapter issue (#338 cross-package evidence linked on type mentions), fixed in #339; scorecard passes except the performance samples; pinned in the next corpus pass |
+| Swift | `Dimillian/IceCubesApp` | `98098b9c4b5928f89f338203193c2bf40ab7f38c` | [Ice Cubes hunt](swift-icecubes-validation-hunt-report.md) | one adapter issue (#338 cross-package evidence linked on type mentions), fixed in #339; pinned as `swift-icecubesapp` with a repository-scan measurement (14 projects, 139 / 24 / 232 targets, 40 evidence relationships, 323 ms median over five scans); `product-monorepo` is now required for the Swift adapter |
 | Kotlin/JVM | `android/nowinandroid` | `2982e63cb691ad49cd009aab43dc206fee6699c2` | [Now in Android hunt](kotlin-nowinandroid-validation-hunt-report.md) | three adapter issues (#336 flavor-specific test source sets not audited, #337 test-support modules audited as production, #341 aggregate `test` task suggested for a flavored app); not pinned until they are fixed |
 
 ## Order

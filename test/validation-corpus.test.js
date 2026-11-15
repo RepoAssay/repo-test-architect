@@ -24,9 +24,9 @@ describe("adapter validation corpus", () => {
     assert.equal(result.adapterCount, 11);
     assert.equal(result.supportedAdapterCount, 10);
     assert.equal(result.experimentalAdapterCount, 1);
-    assert.equal(result.caseCount, 33);
+    assert.equal(result.caseCount, 34);
     assert.deepEqual(result.scorecardCounts, {
-      pass: 231,
+      pass: 238,
       fail: 0,
       pending: 0
     });
@@ -71,10 +71,25 @@ describe("adapter validation corpus", () => {
     assert.deepEqual(validateValidationCorpus(staged).errors, []);
     assert.deepEqual(validateValidationCorpus(staged, { productMonorepoRequiredAdapters: new Set(["javascript"]) }).errors, []);
 
-    const enforced = validateValidationCorpus(corpus, { productMonorepoRequiredAdapters: new Set(["swift"]) }).errors;
-    assert.ok(enforced.some((error) => error.includes("swift needs at least 4 corpus cases")));
-    assert.ok(enforced.some((error) => error.includes("swift is missing corpus role product-monorepo")));
+    const enforced = validateValidationCorpus(corpus, { productMonorepoRequiredAdapters: new Set(["kotlin", "swift"]) }).errors;
+    assert.ok(enforced.some((error) => error.includes("kotlin needs at least 4 corpus cases")));
+    assert.ok(enforced.some((error) => error.includes("kotlin is missing corpus role product-monorepo")));
+    assert.ok(!enforced.some((error) => error.includes("swift")), "swift carries its pinned product-monorepo case (Ice Cubes)");
     assert.ok(!enforced.some((error) => error.includes("javascript")), "adapters outside the enforced set are unaffected");
+
+    // A product-monorepo pin measures the repository scan: projectCount is required there and nowhere else.
+    const swift = corpus.adapters.find((adapter) => adapter.adapterId === "swift");
+    const pinned = swift.cases.find((entry) => entry.id === "swift-icecubesapp");
+    assert.equal(pinned.measurement, "repository");
+    const missingCount = structuredClone(corpus);
+    delete missingCount.adapters.find((adapter) => adapter.adapterId === "swift").cases.find((entry) => entry.id === "swift-icecubesapp").observed.projectCount;
+    assert.ok(validateValidationCorpus(missingCount).errors.some((error) => error.includes("swift-icecubesapp observed.projectCount must be a positive integer")));
+    const strayCount = structuredClone(corpus);
+    strayCount.adapters[0].cases[0].observed.projectCount = 3;
+    assert.ok(validateValidationCorpus(strayCount).errors.some((error) => error.includes("observed.projectCount applies to repository-scan measurements only")));
+    const badMode = structuredClone(corpus);
+    badMode.adapters[0].cases[0].measurement = "workspace";
+    assert.ok(validateValidationCorpus(badMode).errors.some((error) => error.includes("measurement must be project or repository")));
 
     const unknown = structuredClone(corpus);
     unknown.adapters[0].cases[0].role = "product-monorepo-app";

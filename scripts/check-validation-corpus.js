@@ -17,12 +17,13 @@ export const requiredCorpusRoles = [
 // pinned case (#325).
 export const optionalCorpusRoles = ["product-monorepo"];
 export const corpusRoles = [...requiredCorpusRoles, ...optionalCorpusRoles];
-export const productMonorepoRequiredAdapters = new Set([]);
+export const productMonorepoRequiredAdapters = new Set(["swift"]);
 
 export const scorecardAreas = validationScorecardAreas;
 
 const scoreStatuses = new Set(["pass", "fail", "pending"]);
 const corpusMaturities = new Set(["supported", "experimental"]);
+export const corpusMeasurements = new Set(["project", "repository"]);
 
 if (isMainModule()) {
   const corpus = loadValidationCorpus();
@@ -139,6 +140,15 @@ export function validateValidationCorpus(corpus, options = {}) {
         errors.push(`${caseLabel} needs a non-empty supportBoundary`);
       }
       validateAuditOptions(entry.auditOptions, label, caseLabel, errors);
+      if (entry.measurement !== undefined && !corpusMeasurements.has(entry.measurement)) {
+        errors.push(`${caseLabel} measurement must be project or repository`);
+      }
+      if (entry.measurement === "repository" && (!Number.isInteger(entry.observed?.projectCount) || entry.observed.projectCount < 1)) {
+        errors.push(`${caseLabel} observed.projectCount must be a positive integer for a repository-scan measurement`);
+      }
+      if (entry.measurement !== "repository" && entry.observed?.projectCount !== undefined) {
+        errors.push(`${caseLabel} observed.projectCount applies to repository-scan measurements only`);
+      }
 
       for (const area of scorecardAreas) {
         const status = entry.scorecard?.[area];
