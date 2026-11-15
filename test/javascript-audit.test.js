@@ -2393,6 +2393,8 @@ describe("package-root sources (#331)", () => {
 
     assert.ok(audit.profile.detectedConventions.includes("package-root sources"));
     assert.deepEqual(audit.coveredButRisky.map((target) => target.path), ["slugify.ts"]);
+  });
+});
 
 describe("workspace-inherited runner (#329) and stale runner configuration (#330)", () => {
   function createWorkspace(t, { rootPackage, rootFiles = {}, packageFiles = {} }) {
