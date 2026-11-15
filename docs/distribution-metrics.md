@@ -11,7 +11,7 @@ Owner-approved release commit: `73f44f0f9d46a9f0ebaefc395f64ecc36300e8f3` (PR #3
 | Channel | Verified release status |
 | --- | --- |
 | [npm 1.4.0](https://www.npmjs.com/package/repo-test-architect/v/1.4.0) | Published at 15:05:42 UTC; `latest: 1.4.0`, `beta: 1.0.0-beta.2`. Published tarball integrity matches the tested artifact (843 files); `gitHead` is the release commit. |
-| [Official MCP Registry 1.4.0](https://registry.modelcontextprotocol.io/v0.1/servers/io.github.RepoAssay%2Frepo-test-architect/versions/1.4.0) | Published at 15:06:24 UTC; active and latest metadata, npm 1.4.0. The manifest was published once npm served the version (about two and a half minutes after `npm publish` reported success), so the first attempt was accepted. |
+| [Official MCP Registry 1.4.0](https://registry.modelcontextprotocol.io/v0.1/servers/io.github.RepoAssay%2Frepo-test-architect/versions/1.4.0) | Published at 15:06:24 UTC; active and latest metadata, npm 1.4.0. The manifest was published once npm served the version, 42 seconds after npm recorded it, so the first attempt was accepted. |
 | [GitHub stable release](https://github.com/RepoAssay/repo-test-architect/releases/tag/v1.4.0) | Published at 15:01:16 UTC; not a prerelease, marked latest; tag resolves to the exact tested commit. |
 
 A clean installation of `repo-test-architect@1.4.0` from the public npm registry passed on macOS: CLI `doctor`, `review` on this repository (67 project roots, a 131 KB `repository-review/v1` artifact), and MCP initialization reporting 1.4.0 with all 20 tools, `review_repository` first and the optional `swiftSchemes` input on the 16 scan-capable descriptors. Upgrades from earlier versions and public-registry installs on Linux/Windows were not separately exercised.
@@ -20,7 +20,7 @@ A clean installation of `repo-test-architect@1.4.0` from the public npm registry
 sha512-5tEAx+zQV9KYslPtBIMry6d/f+GK9BOaO+c0XokjLffJFHlGAOFkI6WdgF7FXYZHZRhuJYBxM6ogrnF+H8AzFA==
 ```
 
-npm required browser-based two-factor confirmation, which the owner completed interactively. The MCP Registry login used the documented `login github --token` route with the existing GitHub CLI credential; no credential was printed, stored or added to CI. The GitHub release was created from the same commit with a summary of the 1.4.0 release notes before npm had finished processing the upload, which is why its time precedes the npm time.
+npm required browser-based two-factor confirmation, which the owner completed interactively. The MCP Registry login used the documented `login github --token` route with the existing GitHub CLI credential; no credential was printed, stored or added to CI. The GitHub release was created from the same commit with a summary of the 1.4.0 release notes before `npm publish` had completed, which is why its time precedes the npm time.
 
 ## Minor 1.3.0 Publication — 2026-11-13
 
