@@ -28,7 +28,7 @@ const PACKAGE_MANAGER_LOCKFILES = [
 const SUPPORTED_PACKAGE_MANAGERS = new Set(["npm", "pnpm", "yarn", "bun"]);
 const UNIT_RUNNERS = ["vitest", "jest", "mocha", "ava"];
 const LOCAL_RUNNERS = [...UNIT_RUNNERS, "playwright", "cypress"];
-const RUNNER_IMPORT_MODULES = { vitest: "vitest", jest: "@jest/globals", mocha: "mocha", ava: "ava" };
+const RUNNER_IMPORT_MODULES = { vitest: "vitest", jest: "@jest/globals", mocha: "mocha", ava: "ava", playwright: "@playwright/test" };
 
 export function auditJavaScriptRepo(root, options = {}) {
   const files = scopeToPackageRoot(readRepoFiles(root));
@@ -202,7 +202,7 @@ function buildProfile(root, files, packageData, workspaceContext, runnerConfig, 
   const packageJson = files.find((file) => normalizePath(file.path) === "package.json");
   const packageManagerInfo = detectPackageManagerInfo(paths, packageData, workspaceContext);
   const frameworkResolution = detectTestFrameworks(files, packageData, runnerConfig, testFilePaths);
-  const workspaceRunner = detectWorkspaceRunner(root, files, workspaceContext, testFilePaths, frameworkResolution, packageManagerInfo);
+  const workspaceRunner = detectWorkspaceRunner(root, files, packageData, workspaceContext, testFilePaths, frameworkResolution, packageManagerInfo);
   const testFrameworks = workspaceRunner && !frameworkResolution.frameworks.includes(workspaceRunner.framework)
     ? [...frameworkResolution.frameworks, workspaceRunner.framework]
     : frameworkResolution.frameworks;
@@ -865,7 +865,7 @@ function detectTestFrameworks(files, packageData, runnerConfig, testFilePaths) {
   const testFiles = files.filter((file) => testFilePaths.has(normalizePath(file.path)));
   if (testFiles.some((file) => usesNodeTest(file.content))) add("node-test", "import");
   if (testFiles.some((file) => usesBunTest(file.content))) add("bun-test", "import");
-  for (const framework of UNIT_RUNNERS) {
+  for (const framework of [...UNIT_RUNNERS, "playwright"]) {
     if (testFiles.some((file) => importsRunnerModule(file.content, framework))) add(framework, "import");
   }
   if (hasPackageDependency(packageData, "@testing-library/react")) add("react-testing-library", "dependency");
@@ -886,10 +886,12 @@ function detectTestFrameworks(files, packageData, runnerConfig, testFilePaths) {
     evidence.delete(framework);
   }
 
+  // A unit runner known only from imports is a framework without a local binary; an end-to-end runner
+  // known from imports is local evidence that the package's specs are not the workspace's unit tests.
   return {
     frameworks: [...evidence.keys()],
-    importOnly: new Set([...evidence].filter(([framework, sources]) => UNIT_RUNNERS.includes(framework) && sources.size === 1 && sources.has("import")).map(([framework]) => framework)),
-    localRunners: [...evidence].filter(([framework, sources]) => LOCAL_RUNNERS.includes(framework) && [...sources].some((source) => source !== "import")).map(([framework]) => framework),
+    importOnly: new Set([...evidence].filter(([framework, sources]) => [...UNIT_RUNNERS, "playwright"].includes(framework) && sources.size === 1 && sources.has("import")).map(([framework]) => framework)),
+    localRunners: [...evidence].filter(([framework, sources]) => LOCAL_RUNNERS.includes(framework) && (["playwright", "cypress"].includes(framework) || [...sources].some((source) => source !== "import"))).map(([framework]) => framework),
     staleConfigs
   };
 }
@@ -897,16 +899,19 @@ function detectTestFrameworks(files, packageData, runnerConfig, testFilePaths) {
 function importsRunnerModule(content, framework) {
   const moduleName = RUNNER_IMPORT_MODULES[framework];
   if (!moduleName) return false;
-  return new RegExp(`(?:from\\s+|import\\s+|require\\(\\s*)["']${escapeRegExp(moduleName)}["']`).test(content);
+  return new RegExp(`(?:from\\s+|import\\s+|require\\(\\s*)["']${escapeRegExp(moduleName)}["']`).test(stripStaticConfigComments(content));
 }
 
-// #329: a workspace package that declares no runner of its own is run by the owning workspace's root
-// test script when that script selects vitest or jest, the root depends on the runner, and the
-// package's test files provably belong to it: they import the runner, or a literal include pattern in
-// the root's runner configuration matches them. The command runs the root script from the package
-// directory with the package path as a filter, in the owning package manager's documented form.
-function detectWorkspaceRunner(root, files, workspaceContext, testFilePaths, frameworkResolution, packageManagerInfo) {
+// #329: a workspace package that declares no runner or test script of its own is run by the owning
+// workspace's root test script when that script selects vitest or jest, the root depends on the
+// runner, and the package's test files provably belong to it. When the root's runner configuration
+// carries literal include and exclude patterns, those decide; otherwise a test file must import the
+// runner. The command runs the root script from the package directory with the package path as a
+// filter, in the owning package manager's documented form.
+function detectWorkspaceRunner(root, files, packageData, workspaceContext, testFilePaths, frameworkResolution, packageManagerInfo) {
   if (!workspaceContext || testFilePaths.size === 0 || frameworkResolution.localRunners.length > 0) return undefined;
+  const scripts = packageData.scripts ?? {};
+  if (TEST_SCRIPT_KEYS.some((key) => typeof scripts[key] === "string" && !isPlaceholderTestScript(scripts[key]))) return undefined;
   const rootPackageData = parsePackageJson(readFileIfPresent(path.join(workspaceContext.root, "package.json")));
   const testScript = typeof rootPackageData.scripts?.test === "string" ? rootPackageData.scripts.test : undefined;
   if (!testScript || isPlaceholderTestScript(testScript)) return undefined;
@@ -915,8 +920,9 @@ function detectWorkspaceRunner(root, files, workspaceContext, testFilePaths, fra
 
   const packageRoot = path.resolve(root);
   const testFiles = files.filter((file) => testFilePaths.has(normalizePath(file.path)));
+  const covered = rootRunnerRulesCover(workspaceContext, runner, testFiles);
   const importsRunner = testFiles.some((file) => importsRunnerModule(file.content, runner));
-  if (!importsRunner && !rootRunnerRulesCover(workspaceContext, runner, testFiles)) return undefined;
+  if (covered === false || (covered === undefined && !importsRunner)) return undefined;
 
   return {
     framework: runner,
@@ -935,7 +941,7 @@ function rootRunnerRulesCover(workspaceContext, runner, testFiles) {
     const content = readFileIfPresent(absolutePath);
     return content ? collectRunnerDiscoveryRules({ framework: runner, content, absolutePath }, workspaceContext.root) : [];
   });
-  if (rules.length === 0) return false;
+  if (rules.length === 0) return undefined;
   return testFiles.some((file) => {
     const workspacePath = normalizePath(path.posix.join(workspaceContext.relativePackageRoot, normalizePath(file.path)));
     return rules.some((rule) => runnerRuleMatches(workspacePath, rule));
@@ -980,12 +986,14 @@ function usesBunTest(content) {
   return /(?:from\s+|import\s+|require\(\s*)["']bun:test["']/.test(content);
 }
 
+const TEST_SCRIPT_KEYS = ["test", "test:unit", "test:e2e", "e2e", "vitest", "jest", "playwright", "cypress"];
+
 function detectTestCommand(packageData, frameworks, packageManagerInfo, runnerConfig, resolution = {}) {
   const scripts = packageData.scripts ?? {};
   const importOnly = resolution.importOnly ?? new Set();
   const runnable = (framework) => frameworks.includes(framework) && !importOnly.has(framework);
 
-  for (const key of ["test", "test:unit", "test:e2e", "e2e", "vitest", "jest", "playwright", "cypress"]) {
+  for (const key of TEST_SCRIPT_KEYS) {
     const command = scripts[key];
     if (command && !isPlaceholderTestScript(command)) {
       return packageManagerInfo.ambiguous
@@ -1005,7 +1013,7 @@ function detectTestCommand(packageData, frameworks, packageManagerInfo, runnerCo
   if (runnable("ava")) return "npx ava";
   if (runnable("mocha")) return "npx mocha";
   if (frameworks.includes("bun-test")) return "bun test";
-  if (frameworks.includes("playwright")) {
+  if (runnable("playwright")) {
     const config = runnerConfig.configPaths.find((entry) => entry.framework === "playwright")?.path;
     return config?.includes("/") ? `npx playwright test --config ${quoteCommandPath(config)}` : "npx playwright test";
   }

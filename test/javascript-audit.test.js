@@ -2501,6 +2501,84 @@ describe("workspace-inherited runner (#329) and stale runner configuration (#330
     assert.ok(!audit.profile.detectedConventions.includes("workspace-inherited runner"));
   });
 
+  it("lets literal root patterns decide: an excluded package is not inherited even though its tests import the runner", (t) => {
+    const { packageRoot } = createWorkspace(t, {
+      rootPackage: { ...vitestRoot, packageManager: "pnpm@10.0.0" },
+      rootFiles: { "vitest.workspace.ts": "export default [{ test: { include: ['packages/**/*.test.ts'], exclude: ['packages/lib/**/*'] } }];\n" }
+    });
+
+    const audit = auditJavaScriptRepo(packageRoot);
+
+    assert.equal(audit.profile.testCommand, undefined);
+    assert.ok(!audit.profile.detectedConventions.includes("workspace-inherited runner"));
+    assert.deepEqual(audit.profile.testFrameworks, ["vitest"], "the import still names the runner");
+    assert.deepEqual(audit.profile.diagnostics.map((diagnostic) => [diagnostic.scope, diagnostic.code]), [["command", "missing-test-command"]]);
+  });
+
+  it("inherits through a vitest workspace file's literal patterns when the tests use globals without imports", (t) => {
+    const { packageRoot } = createWorkspace(t, {
+      rootPackage: { ...vitestRoot, packageManager: "pnpm@10.0.0" },
+      rootFiles: { "vitest.workspace.ts": "export default [{ test: { name: 'unit', globals: true, include: ['packages/**/*.test.ts'] } }];\n" },
+      packageFiles: { "src/slug.test.ts": "import { slug } from './slug';\ndescribe('slug', () => { it('lowers', () => { expect(slug('A')).toBe('a'); }); });\n" }
+    });
+
+    const audit = auditJavaScriptRepo(packageRoot);
+
+    assert.deepEqual(audit.profile.testFrameworks, ["vitest"]);
+    assert.equal(audit.profile.testCommand, "pnpm -C ../.. run test packages/lib");
+    assert.ok(audit.profile.detectedConventions.includes("workspace-inherited runner"));
+  });
+
+  it("keeps the inherited runner but withholds the command when the package manager is ambiguous", (t) => {
+    const { packageRoot } = createWorkspace(t, {
+      rootPackage: vitestRoot,
+      rootFiles: { "package-lock.json": "{}", "yarn.lock": "# yarn lockfile v1\n" }
+    });
+
+    const audit = auditJavaScriptRepo(packageRoot);
+
+    assert.deepEqual(audit.profile.testFrameworks, ["vitest"]);
+    assert.equal(audit.profile.testCommand, undefined);
+    assert.ok(audit.profile.detectedConventions.includes("workspace-inherited runner"));
+    assert.deepEqual(audit.profile.diagnostics.map((diagnostic) => diagnostic.code), ["ambiguous-package-manager"]);
+  });
+
+  it("does not inherit into a package with its own test script or with end-to-end specs", (t) => {
+    const scripted = createWorkspace(t, {
+      rootPackage: { ...vitestRoot, packageManager: "pnpm@10.0.0" },
+      packageFiles: { "package.json": JSON.stringify({ name: "@acme/lib", scripts: { test: "node ./scripts/run.js" } }) }
+    });
+    const scriptedAudit = auditJavaScriptRepo(scripted.packageRoot);
+    assert.equal(scriptedAudit.profile.testCommand, "pnpm run test");
+    assert.ok(!scriptedAudit.profile.detectedConventions.includes("workspace-inherited runner"));
+    assert.ok(!scriptedAudit.profile.setupSignals.some((signal) => signal.endsWith("(owning workspace)")));
+
+    const e2e = createWorkspace(t, {
+      rootPackage: { ...vitestRoot, packageManager: "pnpm@10.0.0" },
+      packageFiles: { "src/slug.test.ts": "import { test, expect } from '@playwright/test';\ntest('home', async ({ page }) => { await page.goto('/'); await expect(page).toHaveTitle(/Home/); });\n" }
+    });
+    const e2eAudit = auditJavaScriptRepo(e2e.packageRoot);
+    assert.deepEqual(e2eAudit.profile.testFrameworks, ["playwright"]);
+    assert.equal(e2eAudit.profile.testCommand, undefined);
+    assert.ok(!e2eAudit.profile.detectedConventions.includes("workspace-inherited runner"));
+  });
+
+  it("ignores runner imports inside comments when judging a configuration file", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-commented-import-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "src"), { recursive: true });
+    fs.writeFileSync(path.join(root, "package.json"), JSON.stringify({ name: "lib" }));
+    fs.writeFileSync(path.join(root, "jest.config.js"), "module.exports = { testEnvironment: 'node' };\n");
+    fs.writeFileSync(path.join(root, "src", "slug.ts"), "export function slug(value) { return value; }\n");
+    fs.writeFileSync(path.join(root, "src", "slug.test.ts"), "// TODO migrate: import { it } from \"vitest\"\nconst { slug } = require('./slug');\ntest('works', () => { expect(slug('a')).toBe('a'); });\n");
+
+    const audit = auditJavaScriptRepo(root);
+
+    assert.deepEqual(audit.profile.testFrameworks, ["jest"]);
+    assert.equal(audit.profile.testCommand, "npx jest");
+    assert.deepEqual(audit.profile.diagnostics, []);
+  });
+
   it("drops a configuration-only runner that the tests contradict and withholds its command", (t) => {
     // #330: packages/lib in cal.com carries a stale jest.config.json; its tests import vitest.
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-stale-runner-config-"));
@@ -2546,7 +2624,7 @@ describe("workspace-inherited runner (#329) and stale runner configuration (#330
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-env-script-"));
     t.after(() => fs.rmSync(root, { recursive: true, force: true }));
     fs.mkdirSync(path.join(root, "src"), { recursive: true });
-    fs.writeFileSync(path.join(root, "package.json"), JSON.stringify({ name: "lib", scripts: { test: "cross-env TZ=UTC NODE_ENV=test vitest run" }, devDependencies: { vitest: "4.0.0" } }));
+    fs.writeFileSync(path.join(root, "package.json"), JSON.stringify({ name: "lib", scripts: { test: "cross-env TZ=UTC NODE_ENV=test vitest run" } }));
     fs.writeFileSync(path.join(root, "package-lock.json"), "{}");
     fs.writeFileSync(path.join(root, "src", "slug.ts"), "export function slug(value) { return value; }\n");
     assert.deepEqual(auditJavaScriptRepo(root).profile.testFrameworks, ["vitest"]);
