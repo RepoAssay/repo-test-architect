@@ -10,13 +10,13 @@ Between November 9 and November 13, 2026 the MCP server was run through Claude C
 | --- | --- | --- | --- |
 | #306, #307 | MCP server | about eighteen connected packages | a 21 MB tool result crashed the client; fixed in 1.2.0 |
 | #309 | Swift | local packages below a root workspace | nested packages audited twice; fixed in 1.2.0 |
-| #310 | Swift | several shared Xcode schemes | root project blocked; open |
+| #310 | Swift | several shared Xcode schemes | root project blocked; fixed in 1.4.0 (#334: scheme test actions are read, ambiguity is a command diagnostic, `swiftSchemes` selects) |
 | #311 | Swift | iOS-only packages | `swift test` suggested at high confidence for a package that cannot build on the host; fixed in 1.3.0 |
-| #312 | all adapters | a package without a test target | reported as a high-severity blocker rather than a finding; open design question |
+| #312 | all adapters | a package without a test target | reported as a high-severity blocker rather than a finding; fixed in 1.4.0 (#333: structured diagnostics) |
 | #315 | Kotlin/JVM | mapper files holding only top-level extension functions | reported as untested; fixed in 1.3.0 |
 | #316 | Kotlin/JVM | Android `src/test` and `src/androidTest` source sets | misleading blocker, instrumented tests dropped silently; fixed in 1.3.0 |
 | #317 | Swift | `Type+Feature.swift` extension files tested through bound locals | reported as untested; fixed in 1.3.0 |
-| #318 | Swift | tests in a sibling package that import the module | ignored; open |
+| #318 | Swift | tests in a sibling package that import the module | ignored; linked since #335, and #339 requires a call or an assertion across packages (#338, found by the Ice Cubes pass) |
 
 Every entry is a shape problem: project nesting, platform constraints, source-set layout, team naming conventions, cross-package ownership, or scale. None is a parsing defect inside a shape the corpus already covered. Most failures were conservative (missing evidence or a blocker); #311 was a false high-confidence command, the class that erodes trust fastest.
 
