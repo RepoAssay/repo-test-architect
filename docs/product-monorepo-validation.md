@@ -10,13 +10,13 @@ Between November 9 and November 13, 2026 the MCP server was run through Claude C
 | --- | --- | --- | --- |
 | #306, #307 | MCP server | about eighteen connected packages | a 21 MB tool result crashed the client; fixed in 1.2.0 |
 | #309 | Swift | local packages below a root workspace | nested packages audited twice; fixed in 1.2.0 |
-| #310 | Swift | several shared Xcode schemes | root project blocked; open |
+| #310 | Swift | several shared Xcode schemes | root project blocked; fixed in 1.4.0 (#334: scheme test actions are read, ambiguity is a command diagnostic, `swiftSchemes` selects) |
 | #311 | Swift | iOS-only packages | `swift test` suggested at high confidence for a package that cannot build on the host; fixed in 1.3.0 |
-| #312 | all adapters | a package without a test target | reported as a high-severity blocker rather than a finding; open design question |
+| #312 | all adapters | a package without a test target | reported as a high-severity blocker rather than a finding; fixed in 1.4.0 for Swift, Kotlin/JVM and JavaScript/TypeScript (#333: structured diagnostics); the other adapters' legacy blocker strings are classified the same way for findings but keep their profile blockers and confidence until migrated |
 | #315 | Kotlin/JVM | mapper files holding only top-level extension functions | reported as untested; fixed in 1.3.0 |
 | #316 | Kotlin/JVM | Android `src/test` and `src/androidTest` source sets | misleading blocker, instrumented tests dropped silently; fixed in 1.3.0 |
 | #317 | Swift | `Type+Feature.swift` extension files tested through bound locals | reported as untested; fixed in 1.3.0 |
-| #318 | Swift | tests in a sibling package that import the module | ignored; open |
+| #318 | Swift | tests in a sibling package that import the module | ignored; linked since #335, and #339 requires a call or an assertion across packages (#338, found by the Ice Cubes pass) |
 
 Every entry is a shape problem: project nesting, platform constraints, source-set layout, team naming conventions, cross-package ownership, or scale. None is a parsing defect inside a shape the corpus already covered. Most failures were conservative (missing evidence or a blocker); #311 was a false high-confidence command, the class that erodes trust fastest.
 
@@ -64,7 +64,9 @@ These are starting points, not pins. A hunt pass verifies the current layout, re
 | Adapter | Repository | Commit | Report | Outcome |
 | --- | --- | --- | --- | --- |
 | JavaScript/TypeScript | `calcom/cal.com` | `ef7954d16ab50882ca2f263c551537115b8a8bb1` | [cal.com hunt](javascript-calcom-validation-hunt-report.md) | three adapter issues (#329 root-owned runner configuration not inherited, #330 stale `jest.config.json` selects `npx jest`, #331 package-root sources not audited); not pinned until they are fixed |
+| Swift | `Dimillian/IceCubesApp` | `98098b9c4b5928f89f338203193c2bf40ab7f38c` | [Ice Cubes hunt](swift-icecubes-validation-hunt-report.md) | one adapter issue (#338 cross-package evidence linked on type mentions), fixed in #339; scorecard passes except the performance samples; pinned in the next corpus pass |
+| Kotlin/JVM | `android/nowinandroid` | `2982e63cb691ad49cd009aab43dc206fee6699c2` | [Now in Android hunt](kotlin-nowinandroid-validation-hunt-report.md) | three adapter issues (#336 flavor-specific test source sets not audited, #337 test-support modules audited as production, #341 aggregate `test` task suggested for a flavored app); not pinned until they are fixed |
 
 ## Order
 
-The first public pass was `calcom/cal.com` for JavaScript/TypeScript, the most used adapter (see Passes above); it ran at once rather than waiting for re-runs of the private repositories, which only the owner can perform and which remain follow-up validation. `Dimillian/IceCubesApp` and `android/nowinandroid` come next, as public release gates for the Swift and Kotlin/JVM changes that follow 1.3.0 (#310, #312, #318), so that those changes ship with reproducible evidence. The remaining candidates then follow in usage order: Python, Go, Rust, Ruby, PHP, Elixir, C#, Dart. Each pass verifies the candidate's current shape first and replaces a candidate whose layout has drifted, recording the reason here.
+The first public pass was `calcom/cal.com` for JavaScript/TypeScript, the most used adapter (see Passes above); it ran at once rather than waiting for re-runs of the private repositories, which only the owner can perform and which remain follow-up validation. `Dimillian/IceCubesApp` and `android/nowinandroid` followed as the public release gates for the Swift and Kotlin/JVM changes after 1.3.0 (#310, #312, #318 and the #338 follow-up), so that those changes ship with reproducible evidence; their passes are in the table above. The remaining candidates follow in usage order: Python, Go, Rust, Ruby, PHP, Elixir, C#, Dart. Each pass verifies the candidate's current shape first and replaces a candidate whose layout has drifted, recording the reason here.

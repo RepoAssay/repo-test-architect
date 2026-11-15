@@ -59,7 +59,7 @@ The bounded adapter is promoted only when all of these remain true:
 
 ## Promotion Verdict
 
-The gates are met for the common patterns above. The adapter is registered as `supported` within this matrix, not as universal Kotlin, Java, Gradle, Maven, or Android support. Live evidence and remaining gaps are recorded in [Kotlin/JVM Validation Hunt Report](kotlin-jvm-validation-hunt-report.md).
+The gates are met for the common patterns above. The adapter is registered as `supported` within this matrix, not as universal Kotlin, Java, Gradle, Maven, or Android support. Live evidence and remaining gaps are recorded in [Kotlin/JVM Validation Hunt Report](kotlin-jvm-validation-hunt-report.md). The product-monorepo pass, [Now in Android](kotlin-nowinandroid-validation-hunt-report.md), records where this matrix falls short of a multi-module Android application: flavor-specific test source sets (#336), test-support modules (#337) and the aggregate `test` task suggested for a flavored app (#341).
 
 ## Post-Promotion Pressure
 
