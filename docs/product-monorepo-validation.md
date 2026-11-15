@@ -12,7 +12,7 @@ Between November 9 and November 13, 2026 the MCP server was run through Claude C
 | #309 | Swift | local packages below a root workspace | nested packages audited twice; fixed in 1.2.0 |
 | #310 | Swift | several shared Xcode schemes | root project blocked; fixed in 1.4.0 (#334: scheme test actions are read, ambiguity is a command diagnostic, `swiftSchemes` selects) |
 | #311 | Swift | iOS-only packages | `swift test` suggested at high confidence for a package that cannot build on the host; fixed in 1.3.0 |
-| #312 | all adapters | a package without a test target | reported as a high-severity blocker rather than a finding; fixed in 1.4.0 (#333: structured diagnostics) |
+| #312 | all adapters | a package without a test target | reported as a high-severity blocker rather than a finding; fixed in 1.4.0 for Swift, Kotlin/JVM and JavaScript/TypeScript (#333: structured diagnostics); the other adapters' legacy blocker strings are classified the same way for findings but keep their profile blockers and confidence until migrated |
 | #315 | Kotlin/JVM | mapper files holding only top-level extension functions | reported as untested; fixed in 1.3.0 |
 | #316 | Kotlin/JVM | Android `src/test` and `src/androidTest` source sets | misleading blocker, instrumented tests dropped silently; fixed in 1.3.0 |
 | #317 | Swift | `Type+Feature.swift` extension files tested through bound locals | reported as untested; fixed in 1.3.0 |
@@ -65,7 +65,7 @@ These are starting points, not pins. A hunt pass verifies the current layout, re
 | --- | --- | --- | --- | --- |
 | JavaScript/TypeScript | `calcom/cal.com` | `ef7954d16ab50882ca2f263c551537115b8a8bb1` | [cal.com hunt](javascript-calcom-validation-hunt-report.md) | three adapter issues (#329 root-owned runner configuration not inherited, #330 stale `jest.config.json` selects `npx jest`, #331 package-root sources not audited); not pinned until they are fixed |
 | Swift | `Dimillian/IceCubesApp` | `98098b9c4b5928f89f338203193c2bf40ab7f38c` | [Ice Cubes hunt](swift-icecubes-validation-hunt-report.md) | one adapter issue (#338 cross-package evidence linked on type mentions), fixed in #339; scorecard passes except the performance samples; pinned in the next corpus pass |
-| Kotlin/JVM | `android/nowinandroid` | `2982e63cb691ad49cd009aab43dc206fee6699c2` | [Now in Android hunt](kotlin-nowinandroid-validation-hunt-report.md) | two adapter issues (#336 flavor-specific test source sets not audited, #337 test-support modules audited as production); not pinned until they are fixed |
+| Kotlin/JVM | `android/nowinandroid` | `2982e63cb691ad49cd009aab43dc206fee6699c2` | [Now in Android hunt](kotlin-nowinandroid-validation-hunt-report.md) | three adapter issues (#336 flavor-specific test source sets not audited, #337 test-support modules audited as production, #341 aggregate `test` task suggested for a flavored app); not pinned until they are fixed |
 
 ## Order
 
