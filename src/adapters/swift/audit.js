@@ -204,7 +204,7 @@ export function linkSwiftCrossProjectTestEvidence(entries) {
           if (!usage || usage === "referenced") continue;
           const evidence = plan.additions.get(candidate.id) ?? [];
           if (evidence.some((entry) => entry.testPath === testPath) || candidate.existingTestPaths.includes(testPath)) continue;
-          evidence.push({ testPath, kind: "swift-symbol-reference", strength: "referenced", ...(usage !== "referenced" ? { usage } : {}) });
+          evidence.push({ testPath, kind: "swift-symbol-reference", strength: "referenced", usage });
           plan.additions.set(candidate.id, evidence);
         }
       }
