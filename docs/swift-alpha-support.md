@@ -74,3 +74,5 @@ Swift is supported at the same maturity level as the JavaScript/TypeScript adapt
 4. golden audits/plans, Swift-specific model-consistency scenarios, the generated 400-source/200-test semantic and timing regression gate, blocker behavior, and the full deterministic alpha gate remain stable
 
 Supported maturity remains bounded to this matrix. The maintenance goal is the same as JavaScript/TypeScript: support popular, inspectable shapes well and report uncertainty for the long tail instead of claiming universal repository coverage. Native Objective-C source classification, manifest execution, and runtime coverage proof remain outside the supported promise.
+
+The first product-monorepo pass, [Ice Cubes](swift-icecubes-validation-hunt-report.md), audits an Xcode application built from 13 local packages on the post-1.3.0 rules (#310, #312, #318) and records the one issue it found, cross-package evidence linked on type mentions (#338, fixed in #339).
