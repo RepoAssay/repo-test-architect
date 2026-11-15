@@ -48,7 +48,8 @@ export function auditKotlinRepo(root, options = {}) {
   if (testSupportModules.size > 0) {
     profile.setupSignals.push(`test-support modules (${modules.filter((module) => testSupportModules.has(module.projectPath)).map((module) => module.directory).sort().join(", ")})`);
   }
-  const sourceSymbols = collectSourceSymbols(sourceFiles);
+  // Test doubles never enter the symbol index: they are not candidates and must not shadow production symbols.
+  const sourceSymbols = collectSourceSymbols(sourceFiles.filter((file) => !testSupportModules.has(file.moduleProjectPath)));
   const testEvidenceBySourcePath = collectJvmTestEvidence(sourceSymbols, testFiles, modules);
   const untestedCandidates = [];
   const coveredButRisky = [];
@@ -688,8 +689,12 @@ function balancedGradleBlock(content, openingBrace) {
 // test-only plugin alone, or a test-support module name together with a main-configuration dependency
 // on a test library or a main source importing one.
 const TEST_SUPPORT_MODULE_NAME = /^(?:testing|tests?|test-?fixtures|fixtures|benchmarks?|screenshot-?testing|test-?utils?|test-?support)$|(?:^|[-_])(?:test|tests|testing|fixtures|benchmark|benchmarks)(?:[-_]|$)/i;
-const TEST_SUPPORT_PLUGIN = /\bcom\.android\.test\b|\blibs\.plugins\.[A-Za-z0-9_.]*android\.test\b|["']java-test-fixtures["']|\bjava-test-fixtures\b|\bjvm-test-suite\b/;
-const TEST_SUPPORT_MAIN_DEPENDENCY = /\b(?:api|implementation|compileOnly)\s*\(\s*(?:libs\.[A-Za-z0-9_.]*(?:test|testing|junit|robolectric|roborazzi|mockk|mockito|truth|espresso|benchmark)[A-Za-z0-9_.]*|kotlin\s*\(\s*["']test["']\s*\)|["'](?:junit:|org\.junit|androidx\.test|org\.robolectric|io\.mockk|org\.mockito|androidx\.benchmark|io\.github\.takahirom\.roborazzi|com\.google\.truth|org\.jetbrains\.kotlinx:kotlinx-coroutines-test)[^"']*["'])/;
+// Only a plugin application makes a module test-only: `com.android.test` (a Macrobenchmark or separate
+// instrumented-test module). `java-test-fixtures` and `jvm-test-suite` are applied by production modules.
+const TEST_SUPPORT_PLUGIN = /(?:\bid\s*\(?\s*["']com\.android\.test["']\s*\)?|\bapply\s*\(?\s*plugin\s*[:=]\s*["']com\.android\.test["']\s*\)?|\balias\s*\(\s*libs\.plugins\.[A-Za-z0-9_.]*android\.test\s*\))(?!\s*apply\s+false)/;
+// A catalog alias corroborates only when a test keyword starts an accessor segment (`libs.androidx.test.rules`,
+// `libs.kotlinx.coroutines.test`) or a camel-case hump (`libs.composeUiTest`); `libs.attestation` does not.
+const TEST_SUPPORT_MAIN_DEPENDENCY = /\b(?:api|implementation|compileOnly)\s*\(\s*(?:libs\.(?:[A-Za-z0-9_]+\.)*(?:(?:test|testing|junit|robolectric|roborazzi|mockk|mockito|truth|espresso|benchmark)|[a-z0-9]+(?:Test|Testing|Junit|Robolectric|Roborazzi|Mockk|Mockito|Truth|Espresso|Benchmark))[A-Za-z0-9_]*(?:\.[A-Za-z0-9_]+)*|kotlin\s*\(\s*["']test["']\s*\)|["'](?:junit:|org\.junit|androidx\.test|org\.robolectric|io\.mockk|org\.mockito|androidx\.benchmark|io\.github\.takahirom\.roborazzi|com\.google\.truth|org\.jetbrains\.kotlinx:kotlinx-coroutines-test)[^"']*["'])/;
 const TEST_SUPPORT_MAIN_IMPORT = /^\s*import\s+(?:org\.junit|kotlin\.test|androidx\.test|androidx\.benchmark|org\.robolectric|kotlinx\.coroutines\.test|io\.mockk|org\.mockito|com\.google\.common\.truth)\b/m;
 
 function isTestSupportModule(module, files) {
@@ -701,7 +706,7 @@ function isTestSupportModule(module, files) {
   if (!TEST_SUPPORT_MODULE_NAME.test(name)) return false;
   if (TEST_SUPPORT_MAIN_DEPENDENCY.test(buildText)) return true;
   const prefix = `${module.directory}/src/main/`;
-  return files.some((file) => normalizePath(file.path).startsWith(prefix) && TEST_SUPPORT_MAIN_IMPORT.test(file.content));
+  return files.some((file) => normalizePath(file.path).startsWith(prefix) && TEST_SUPPORT_MAIN_IMPORT.test(stripJvmComments(file.content)));
 }
 
 function ownModuleBuildText(module, files) {
@@ -716,7 +721,7 @@ function ownModuleBuildText(module, files) {
 // `val jvmTest by getting { dependencies { ... } }`, `testFixtures { }`) declare test-only dependencies
 // that must not read as main-configuration evidence.
 function stripTestSourceSetBlocks(content) {
-  const pattern = /\b(?:[A-Za-z]*Test|testFixtures)(?:\.dependencies)?\s*(?:\(\s*\))?\s*(?:by\s+(?:getting|creating)\s*)?\{|\b(?:named|getByName|maybeCreate|create|getting)\s*\(\s*["'][A-Za-z]*Test["']\s*\)\s*\{/g;
+  const pattern = /\b(?:[A-Za-z]*Test|testFixtures)(?:\.dependencies)?\s*(?:\(\s*\))?\s*(?:by\s+(?:getting|creating|registering(?:\([^)]*\))?)\s*)?\{|\b(?:named|getByName|maybeCreate|create|getting)\s*\(\s*["'][A-Za-z]*Test["']\s*\)\s*\{/g;
   let result = content;
   let match;
   while ((match = pattern.exec(result)) !== null) {
