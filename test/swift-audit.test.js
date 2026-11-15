@@ -3020,6 +3020,14 @@ describe("cross-project test evidence (#318)", () => {
     assert.deepEqual(projectAudit(auditDetectedProjects(makeRepo(t, { testBody: "    func testLabel() { XCTAssertEqual(Foo().label(1), \"ok\") }\n" })), "A").untestedCandidates, []);
   });
 
+  it("requires a call or an assertion across packages; a type-position mention is a fixture, not coverage", (t) => {
+    const mentioned = projectAudit(auditDetectedProjects(makeRepo(t, { testBody: "    func testHoldsFoo() { let foo: Foo? = nil; XCTAssertNil(foo) }\n" })), "A");
+    assert.deepEqual(mentioned.untestedCandidates.map((target) => target.path), ["Sources/A/Foo.swift"], "referenced-only usage does not link across packages");
+    assert.deepEqual(mentioned.coveredButRisky, []);
+    const called = projectAudit(auditDetectedProjects(makeRepo(t, { testBody: "    func testCalls() { _ = Foo().label(1) }\n" })), "A");
+    assert.deepEqual(called.coveredButRisky.map((target) => [target.path, target.existingTestEvidence[0].usage]), [["Sources/A/Foo.swift", "called"]]);
+  });
+
   it("keeps the module-name uniqueness guard in changed-path runs and adds external evidence to locally covered targets", (t) => {
     const shared = makeRepo(t, { bModuleIsAlsoA: true, testImportsA: false, withThirdProject: true });
     const changed = auditDetectedProjects(shared, { changedPaths: ["A/Sources/A/Foo.swift"] });

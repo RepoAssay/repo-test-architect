@@ -199,7 +199,9 @@ export function linkSwiftCrossProjectTestEvidence(entries) {
         for (const candidate of [...target.entry.audit.untestedCandidates, ...target.entry.audit.coveredButRisky]) {
           const symbols = linkableSymbols(target.facts.sourceSymbols.get(normalizePath(candidate.path)), sibling.facts.declaredNames, testFile, target.facts.moduleNames);
           const usage = findSwiftSymbolUsage(testFile, symbols);
-          if (!usage) continue;
+          // Across packages a type-position mention is usually a fixture, not coverage: only a call or an
+          // assertion on the target's symbol counts (#338).
+          if (!usage || usage === "referenced") continue;
           const evidence = plan.additions.get(candidate.id) ?? [];
           if (evidence.some((entry) => entry.testPath === testPath) || candidate.existingTestPaths.includes(testPath)) continue;
           evidence.push({ testPath, kind: "swift-symbol-reference", strength: "referenced", ...(usage !== "referenced" ? { usage } : {}) });
