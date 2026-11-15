@@ -26,6 +26,9 @@ const PACKAGE_MANAGER_LOCKFILES = [
   ["bun.lockb", "bun"]
 ];
 const SUPPORTED_PACKAGE_MANAGERS = new Set(["npm", "pnpm", "yarn", "bun"]);
+const UNIT_RUNNERS = ["vitest", "jest", "mocha", "ava"];
+const LOCAL_RUNNERS = [...UNIT_RUNNERS, "playwright", "cypress"];
+const RUNNER_IMPORT_MODULES = { vitest: "vitest", jest: "@jest/globals", mocha: "mocha", ava: "ava" };
 
 export function auditJavaScriptRepo(root, options = {}) {
   const files = scopeToPackageRoot(readRepoFiles(root));
@@ -198,12 +201,16 @@ function buildProfile(root, files, packageData, workspaceContext, runnerConfig, 
   const paths = files.map((file) => normalizePath(file.path));
   const packageJson = files.find((file) => normalizePath(file.path) === "package.json");
   const packageManagerInfo = detectPackageManagerInfo(paths, packageData, workspaceContext);
-  const testFrameworks = detectTestFrameworks(files, packageData, runnerConfig, testFilePaths);
-  const testCommand = detectTestCommand(packageData, testFrameworks, packageManagerInfo, runnerConfig);
+  const frameworkResolution = detectTestFrameworks(files, packageData, runnerConfig, testFilePaths);
+  const workspaceRunner = detectWorkspaceRunner(root, files, workspaceContext, testFilePaths, frameworkResolution, packageManagerInfo);
+  const testFrameworks = workspaceRunner && !frameworkResolution.frameworks.includes(workspaceRunner.framework)
+    ? [...frameworkResolution.frameworks, workspaceRunner.framework]
+    : frameworkResolution.frameworks;
+  const testCommand = detectTestCommand(packageData, testFrameworks, packageManagerInfo, runnerConfig, { importOnly: frameworkResolution.importOnly, workspaceRunner });
   const existingTestLocations = detectExistingTestLocations(paths, testFilePaths);
-  const detectedConventions = detectConventions(paths, testFilePaths);
-  const setupSignals = detectSetupSignals(paths, packageData, workspaceContext, runnerConfig);
-  const diagnostics = detectDiagnostics(packageJson !== undefined, testCommand, testFrameworks, packageManagerInfo, existingTestLocations.length > 0);
+  const detectedConventions = detectConventions(paths, testFilePaths, workspaceRunner);
+  const setupSignals = detectSetupSignals(paths, packageData, workspaceContext, runnerConfig, workspaceRunner, frameworkResolution.staleConfigs);
+  const diagnostics = detectDiagnostics(packageJson !== undefined, testCommand, testFrameworks, packageManagerInfo, existingTestLocations.length > 0, frameworkResolution.staleConfigs);
 
   return {
     root,
@@ -471,7 +478,8 @@ function collectSelectedRunnerConfigs(packageRoot, files, packageData, workspace
 }
 
 function detectScriptRunner(script) {
-  const commandPrefix = "(?:^|&&\\s*|\\|\\|\\s*|;\\s*)";
+  // A script may set environment variables (`TZ=UTC vitest run`, `cross-env CI=1 jest`) before the runner.
+  const commandPrefix = "(?:^|&&\\s*|\\|\\|\\s*|;\\s*)(?:cross-env\\s+)?(?:[A-Za-z_][A-Za-z0-9_]*=\\S*\\s+)*";
   const executor = "(?:(?:npx|yarn|bunx|pnpm\\s+exec)\\s+)?";
   const checks = [
     ["playwright", new RegExp(`${commandPrefix}${executor}playwright\\s+test(?:\\s|$)`)],
@@ -833,23 +841,128 @@ function runnerRuleMatches(currentPath, rule) {
   return rule.include.test(currentPath) && !rule.excludes.some((pattern) => pattern.test(currentPath));
 }
 
+// Frameworks are collected with the evidence that supports each one, in the order consumers have
+// always seen them. A unit runner known only from an auto-discovered configuration file is dropped
+// when the package's test files import a different unit runner (#330): the configuration is stale
+// and would otherwise select a command that fails.
 function detectTestFrameworks(files, packageData, runnerConfig, testFilePaths) {
-  const frameworks = new Set(runnerConfig.frameworks);
+  const evidence = new Map();
+  const add = (framework, source) => {
+    if (!evidence.has(framework)) evidence.set(framework, new Set());
+    evidence.get(framework).add(source);
+  };
+  for (const framework of runnerConfig.frameworks) add(framework, "config");
   for (const script of Object.values(packageData.scripts ?? {}).filter((value) => typeof value === "string")) {
     const runner = detectScriptRunner(script);
-    if (runner) frameworks.add(runner);
+    if (runner) add(runner, "script");
   }
-  if (hasPackageDependency(packageData, "ava")) frameworks.add("ava");
-  if (hasPackageDependency(packageData, "mocha")) frameworks.add("mocha");
-  if (hasPackageDependency(packageData, "vitest")) frameworks.add("vitest");
-  if (hasPackageDependency(packageData, "jest")) frameworks.add("jest");
-  if (hasPackageDependency(packageData, "@playwright/test")) frameworks.add("playwright");
-  if (hasPackageDependency(packageData, "cypress")) frameworks.add("cypress");
-  if (files.some((file) => testFilePaths.has(normalizePath(file.path)) && usesNodeTest(file.content))) frameworks.add("node-test");
-  if (files.some((file) => testFilePaths.has(normalizePath(file.path)) && usesBunTest(file.content))) frameworks.add("bun-test");
-  if (hasPackageDependency(packageData, "@testing-library/react")) frameworks.add("react-testing-library");
-  if (hasPackageDependency(packageData, "supertest")) frameworks.add("supertest");
-  return [...frameworks];
+  if (hasPackageDependency(packageData, "ava")) add("ava", "dependency");
+  if (hasPackageDependency(packageData, "mocha")) add("mocha", "dependency");
+  if (hasPackageDependency(packageData, "vitest")) add("vitest", "dependency");
+  if (hasPackageDependency(packageData, "jest")) add("jest", "dependency");
+  if (hasPackageDependency(packageData, "@playwright/test")) add("playwright", "dependency");
+  if (hasPackageDependency(packageData, "cypress")) add("cypress", "dependency");
+  const testFiles = files.filter((file) => testFilePaths.has(normalizePath(file.path)));
+  if (testFiles.some((file) => usesNodeTest(file.content))) add("node-test", "import");
+  if (testFiles.some((file) => usesBunTest(file.content))) add("bun-test", "import");
+  for (const framework of UNIT_RUNNERS) {
+    if (testFiles.some((file) => importsRunnerModule(file.content, framework))) add(framework, "import");
+  }
+  if (hasPackageDependency(packageData, "@testing-library/react")) add("react-testing-library", "dependency");
+  if (hasPackageDependency(packageData, "supertest")) add("supertest", "dependency");
+
+  const importedRunners = UNIT_RUNNERS.filter((framework) => evidence.get(framework)?.has("import"));
+  const staleConfigs = [];
+  for (const framework of UNIT_RUNNERS) {
+    const sources = evidence.get(framework);
+    if (!sources || sources.size !== 1 || !sources.has("config")) continue;
+    const conflicting = importedRunners.filter((runner) => runner !== framework);
+    if (conflicting.length === 0) continue;
+    staleConfigs.push({
+      framework,
+      importedRunners: conflicting,
+      configPaths: runnerConfig.configPaths.filter((entry) => entry.framework === framework).map((entry) => entry.path)
+    });
+    evidence.delete(framework);
+  }
+
+  return {
+    frameworks: [...evidence.keys()],
+    importOnly: new Set([...evidence].filter(([framework, sources]) => UNIT_RUNNERS.includes(framework) && sources.size === 1 && sources.has("import")).map(([framework]) => framework)),
+    localRunners: [...evidence].filter(([framework, sources]) => LOCAL_RUNNERS.includes(framework) && [...sources].some((source) => source !== "import")).map(([framework]) => framework),
+    staleConfigs
+  };
+}
+
+function importsRunnerModule(content, framework) {
+  const moduleName = RUNNER_IMPORT_MODULES[framework];
+  if (!moduleName) return false;
+  return new RegExp(`(?:from\\s+|import\\s+|require\\(\\s*)["']${escapeRegExp(moduleName)}["']`).test(content);
+}
+
+// #329: a workspace package that declares no runner of its own is run by the owning workspace's root
+// test script when that script selects vitest or jest, the root depends on the runner, and the
+// package's test files provably belong to it: they import the runner, or a literal include pattern in
+// the root's runner configuration matches them. The command runs the root script from the package
+// directory with the package path as a filter, in the owning package manager's documented form.
+function detectWorkspaceRunner(root, files, workspaceContext, testFilePaths, frameworkResolution, packageManagerInfo) {
+  if (!workspaceContext || testFilePaths.size === 0 || frameworkResolution.localRunners.length > 0) return undefined;
+  const rootPackageData = parsePackageJson(readFileIfPresent(path.join(workspaceContext.root, "package.json")));
+  const testScript = typeof rootPackageData.scripts?.test === "string" ? rootPackageData.scripts.test : undefined;
+  if (!testScript || isPlaceholderTestScript(testScript)) return undefined;
+  const runner = detectScriptRunner(testScript);
+  if (!runner || !["vitest", "jest"].includes(runner) || !hasPackageDependency(rootPackageData, runner)) return undefined;
+
+  const packageRoot = path.resolve(root);
+  const testFiles = files.filter((file) => testFilePaths.has(normalizePath(file.path)));
+  const importsRunner = testFiles.some((file) => importsRunnerModule(file.content, runner));
+  if (!importsRunner && !rootRunnerRulesCover(workspaceContext, runner, testFiles)) return undefined;
+
+  return {
+    framework: runner,
+    command: workspaceTestCommand(packageManagerInfo, workspaceContext, rootPackageData, packageRoot),
+    signal: `${runner} script (owning workspace)`
+  };
+}
+
+function rootRunnerRulesCover(workspaceContext, runner, testFiles) {
+  const configNames = fs.readdirSync(workspaceContext.root, { withFileTypes: true })
+    .filter((entry) => entry.isFile())
+    .map((entry) => entry.name)
+    .filter((name) => classifyRunnerConfigPath(name) === runner || (runner === "vitest" && /^vitest\.workspace\.[cm]?[jt]s$/.test(name)));
+  const rules = configNames.flatMap((name) => {
+    const absolutePath = path.join(workspaceContext.root, name);
+    const content = readFileIfPresent(absolutePath);
+    return content ? collectRunnerDiscoveryRules({ framework: runner, content, absolutePath }, workspaceContext.root) : [];
+  });
+  if (rules.length === 0) return false;
+  return testFiles.some((file) => {
+    const workspacePath = normalizePath(path.posix.join(workspaceContext.relativePackageRoot, normalizePath(file.path)));
+    return rules.some((rule) => runnerRuleMatches(workspacePath, rule));
+  });
+}
+
+function workspaceTestCommand(packageManagerInfo, workspaceContext, rootPackageData, packageRoot) {
+  const manager = packageManagerInfo.selectedManager;
+  if (!manager || packageManagerInfo.ambiguous) return undefined;
+  const relativeRoot = normalizePath(path.relative(packageRoot, workspaceContext.root)) || ".";
+  const filter = workspaceContext.relativePackageRoot;
+  if (manager === "npm") return `npm --prefix ${quoteCommandPath(relativeRoot)} test -- ${quoteCommandPath(filter)}`;
+  if (manager === "pnpm") return `pnpm -C ${quoteCommandPath(relativeRoot)} run test ${quoteCommandPath(filter)}`;
+  if (manager === "yarn") {
+    return usesYarnBerry(workspaceContext.root, rootPackageData)
+      ? `yarn run -T test ${quoteCommandPath(filter)}`
+      : `yarn --cwd ${quoteCommandPath(relativeRoot)} test ${quoteCommandPath(filter)}`;
+  }
+  // Bun documents `--cwd` for absolute paths only, so no relative root-script form is suggested.
+  return undefined;
+}
+
+function usesYarnBerry(workspaceRoot, rootPackageData) {
+  const declared = /^yarn@(\d+)/.exec(typeof rootPackageData.packageManager === "string" ? rootPackageData.packageManager.trim() : "");
+  if (declared) return Number(declared[1]) >= 2;
+  if (fs.existsSync(path.join(workspaceRoot, ".yarnrc.yml"))) return true;
+  return /^__metadata:/m.test(readFileIfPresent(path.join(workspaceRoot, "yarn.lock")));
 }
 
 function hasPackageDependency(packageData, dependencyName) {
@@ -867,8 +980,10 @@ function usesBunTest(content) {
   return /(?:from\s+|import\s+|require\(\s*)["']bun:test["']/.test(content);
 }
 
-function detectTestCommand(packageData, frameworks, packageManagerInfo, runnerConfig) {
+function detectTestCommand(packageData, frameworks, packageManagerInfo, runnerConfig, resolution = {}) {
   const scripts = packageData.scripts ?? {};
+  const importOnly = resolution.importOnly ?? new Set();
+  const runnable = (framework) => frameworks.includes(framework) && !importOnly.has(framework);
 
   for (const key of ["test", "test:unit", "test:e2e", "e2e", "vitest", "jest", "playwright", "cypress"]) {
     const command = scripts[key];
@@ -882,11 +997,13 @@ function detectTestCommand(packageData, frameworks, packageManagerInfo, runnerCo
   if (packageManagerInfo.ambiguous && frameworks.some((framework) => !["node-test", "bun-test"].includes(framework))) {
     return undefined;
   }
-  if (frameworks.includes("vitest")) return "npx vitest run";
-  if (frameworks.includes("jest")) return "npx jest";
+  if (resolution.workspaceRunner) return resolution.workspaceRunner.command;
+  // A runner known only from test-file imports has no local binary to call (#330); the bare command is withheld.
+  if (runnable("vitest")) return "npx vitest run";
+  if (runnable("jest")) return "npx jest";
   if (frameworks.includes("node-test")) return "node --test";
-  if (frameworks.includes("ava")) return "npx ava";
-  if (frameworks.includes("mocha")) return "npx mocha";
+  if (runnable("ava")) return "npx ava";
+  if (runnable("mocha")) return "npx mocha";
   if (frameworks.includes("bun-test")) return "bun test";
   if (frameworks.includes("playwright")) {
     const config = runnerConfig.configPaths.find((entry) => entry.framework === "playwright")?.path;
@@ -936,9 +1053,10 @@ function detectExistingTestLocations(paths, testFilePaths) {
   return [...locations];
 }
 
-function detectConventions(paths, testFilePaths) {
+function detectConventions(paths, testFilePaths, workspaceRunner) {
   const conventions = new Set();
   const testPaths = paths.filter((currentPath) => testFilePaths.has(currentPath));
+  if (workspaceRunner) conventions.add("workspace-inherited runner");
 
   if (testPaths.some((currentPath) => /\.test\.[cm]?[jt]sx?$/.test(currentPath))) {
     conventions.add("*.test files");
@@ -967,11 +1085,16 @@ function detectConventions(paths, testFilePaths) {
   return [...conventions];
 }
 
-function detectSetupSignals(paths, packageData, workspaceContext, runnerConfig) {
+function detectSetupSignals(paths, packageData, workspaceContext, runnerConfig, workspaceRunner, staleConfigs = []) {
   const signals = new Set();
 
   if (paths.includes("tsconfig.json")) signals.add("tsconfig");
-  for (const signal of runnerConfig.signals) signals.add(signal);
+  for (const signal of runnerConfig.signals) {
+    if (staleConfigs.some((stale) => signal === `${stale.framework} config`)) continue;
+    signals.add(signal);
+  }
+  for (const stale of staleConfigs) signals.add(`${stale.framework} config ignored (tests import ${stale.importedRunners.join(", ")})`);
+  if (workspaceRunner) signals.add(workspaceRunner.signal);
   if (paths.includes("bunfig.toml")) signals.add("bunfig");
   if (hasPackageDependency(packageData, "msw")) signals.add("msw");
   if (hasPackageDependency(packageData, "nock")) signals.add("nock");
@@ -984,7 +1107,7 @@ function detectSetupSignals(paths, packageData, workspaceContext, runnerConfig) 
 // Diagnostics (#312): a package with neither a test framework nor test files has a coverage gap, not
 // an audit blocker; an ambiguous or missing command only withholds the command; a missing package.json
 // and an unrecognised framework in existing tests bound the audit.
-function detectDiagnostics(hasPackageJson, testCommand, frameworks, packageManagerInfo, hasTests) {
+function detectDiagnostics(hasPackageJson, testCommand, frameworks, packageManagerInfo, hasTests, staleConfigs = []) {
   const diagnostics = [];
 
   if (!hasPackageJson) {
@@ -1004,6 +1127,11 @@ function detectDiagnostics(hasPackageJson, testCommand, frameworks, packageManag
 
   if (packageManagerInfo.ambiguous) {
     diagnostics.push(createDiagnostic({ code: "ambiguous-package-manager", scope: "command", severity: "medium", message: `Multiple package managers detected (${packageManagerInfo.managers.join(", ")}) without an explicit packageManager field, so the package-script command is ambiguous.` }));
+  } else if (!testCommand && staleConfigs.length > 0) {
+    for (const stale of staleConfigs) {
+      const configs = stale.configPaths.length > 0 ? stale.configPaths.join(", ") : `${stale.framework} configuration`;
+      diagnostics.push(createDiagnostic({ code: "conflicting-runner-config", scope: "command", severity: "medium", message: `${configs} selects ${stale.framework}, but the package declares no ${stale.framework} dependency and its tests import ${stale.importedRunners.join(", ")}; the ${stale.framework} command is withheld.` }));
+    }
   } else if (!testCommand && (frameworks.length > 0 || hasTests)) {
     diagnostics.push(createDiagnostic({ code: "missing-test-command", scope: "command", severity: "medium", message: "No runnable test command detected from package scripts or framework config." }));
   }
