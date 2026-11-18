@@ -1056,7 +1056,7 @@ Revisit when: a later adapter change moves either digest without a reviewed reas
 
 # Publish 1.5.0 Minor Release
 
-Decision (2026-11-18): prepare `1.5.0` as a compatible minor release under npm `latest`, with matching Official MCP Registry metadata and a stable GitHub release from the same verified commit, and hold publication until the owner approves it.
+Decision (2026-11-18): prepare `1.5.0` as a compatible minor release under npm `latest`, with matching Official MCP Registry metadata and a stable GitHub release from the same verified commit, and hold publication until the owner approves it. Outcome: the owner approved on 2026-11-18 and the release was published that day; see the [publication ledger](distribution-metrics.md#minor-150-publication--2026-11-18).
 
 Rationale: #344, #345, #346, #347, #351 and #353 fix the eight adapter issues (#329, #330, #331, #336, #337, #341, #349, #350) and the regression found while pinning; #348 and #352 add repository-scan corpus measurement and pin three product monorepos. Audit results change on affected repositories, the `validation-corpus/v1` schema gains two optional fields, and new diagnostic codes and a `test-support` skipped kind appear; no field is removed or renamed, so a minor release with compatibility notes is appropriate.
 
