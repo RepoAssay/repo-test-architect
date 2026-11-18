@@ -225,7 +225,7 @@ function linkableSymbols(symbols, siblingDeclaredNames, testFile, targetModuleNa
   if (!symbols || symbols.size === 0) return new Map();
   return new Map([...symbols].filter(([, descriptor]) => {
     const name = descriptor.kind === "extension-func" || descriptor.kind === "extension-init" ? descriptor.receiver : descriptor.name;
-    if (siblingDeclaredNames.has(name)) return false;
+    if (siblingDeclaredNames.has(name.split(".")[0])) return false;
     const qualifiers = [...testFile.maskedContent.matchAll(new RegExp("\\b([A-Z]\\w*)\\." + escapeRegex(name) + "\\b", "g"))].map((match) => normalizeModuleName(match[1]));
     return qualifiers.every((qualifier) => targetModuleNames.has(qualifier));
   }));
@@ -945,28 +945,42 @@ function recommended(kind, signals, risk, testability, testLevel, riskReductionS
 // path is a test-double folder, when its owning SwiftPM target has a test-support name and no
 // production target depends on it, or when its primary type is named `…Mock`, `…Fake`, `…Stub` or
 // `…Spy` after the file and conforms to a protocol declared in the project.
-const SWIFT_TEST_DOUBLE_DIRECTORIES = new Set(["mocks", "mock", "fakes", "fake", "stubs", "stub", "spies", "testdoubles", "testsupport", "testing", "testhelpers", "testutils"]);
-const SWIFT_TEST_SUPPORT_TARGET = /(?:TestSupport|TestUtils|TestHelpers|TestDoubles|Mocks|Fakes|Stubs|Testing)$/;
+const SWIFT_TEST_DOUBLE_DIRECTORIES = new Set(["mocks", "mock", "fakes", "fake", "stubs", "spies", "testdoubles", "testsupport", "testhelpers", "testutils"]);
+const SWIFT_TEST_SUPPORT_TARGET = /^[A-Za-z0-9_]+(?:TestSupport|TestUtils|TestHelpers|TestDoubles|Mocks|Fakes|Stubs)$/;
 
 function collectDeclaredSwiftProtocols(files, sourceGraph) {
   const protocols = new Set();
   for (const file of files) {
-    if (!normalizePath(file.path).endsWith(".swift") || sourceGraph.testSources.has(normalizePath(file.path))) continue;
+    if (!normalizePath(file.path).endsWith(".swift") || !isSourceFile(file.path, sourceGraph)) continue;
     for (const match of maskSwiftCommentsAndStrings(file.content).matchAll(/\bprotocol\s+([A-Za-z_][A-Za-z0-9_]*)/g)) protocols.add(match[1]);
   }
   return protocols;
 }
 
 function detectSwiftTestDouble(currentPath, content, sourceGraph, declaredProtocols) {
-  const segments = currentPath.split("/");
-  if (segments.slice(0, -1).some((segment) => SWIFT_TEST_DOUBLE_DIRECTORIES.has(segment.toLowerCase()))) return "test-double-folder";
   const owner = sourceGraph.sourceOwners?.get(currentPath);
-  if (owner && SWIFT_TEST_SUPPORT_TARGET.test(owner) && !(sourceGraph.productionDependencies ?? new Set()).has(owner)) return "test-support-target";
+  // Folder names count only inside the module: below `Sources/<Target>/`, or below the owner's own
+  // directory, so that a module or monorepo folder that happens to be called `Stubs` is not skipped.
+  const directories = currentPath.split("/").slice(0, -1);
+  const sourcesIndex = directories.lastIndexOf("Sources");
+  const ownerIndex = owner ? directories.lastIndexOf(owner) : -1;
+  const moduleDirectories = sourcesIndex >= 0 ? directories.slice(sourcesIndex + 2) : ownerIndex >= 0 ? directories.slice(ownerIndex + 1) : [];
+  if (moduleDirectories.some((segment) => SWIFT_TEST_DOUBLE_DIRECTORIES.has(segment.toLowerCase()))) return "test-double-folder";
+  if (
+    owner &&
+    SWIFT_TEST_SUPPORT_TARGET.test(owner) &&
+    (sourceGraph.testDependedTargets ?? new Set()).has(owner) &&
+    !(sourceGraph.productionDependencies ?? new Set()).has(owner)
+  ) return "test-support-target";
   const baseName = basenameWithoutExtension(currentPath);
   if (!/(?:Mock|Fake|Stub|Spy)$/.test(baseName)) return undefined;
-  const declaration = new RegExp(`\\b(?:class|struct|actor|enum)\\s+${escapeRegex(baseName)}\\s*(?:<[^>{]*>)?\\s*:\\s*([^{]+)\\{`).exec(maskSwiftCommentsAndStrings(content));
+  const masked = maskSwiftCommentsAndStrings(content);
+  const declaration = new RegExp(`\\b(?:class|struct|actor|enum)\\s+${escapeRegex(baseName)}\\s*(?:<[^>{]*>)?\\s*(?::\\s*([^{]+))?\\{`).exec(masked);
   if (!declaration) return undefined;
-  const conformances = declaration[1].split(",").map((entry) => entry.replace(/@[A-Za-z_]+/g, "").trim().split(/[\s<]/)[0]).filter(Boolean);
+  const clauses = [declaration[1] ?? "", ...[...masked.matchAll(new RegExp(`\\bextension\\s+${escapeRegex(baseName)}\\s*:\\s*([^{]+)\\{`, "g"))].map((match) => match[1])];
+  const conformances = clauses.flatMap((clause) => clause.replace(/\bwhere\b[\s\S]*$/, "").split(","))
+    .map((entry) => entry.replace(/@[A-Za-z_]+/g, "").trim().split(/[\s<]/)[0].split(".").at(-1))
+    .filter(Boolean);
   return conformances.some((name) => declaredProtocols.has(name)) ? "test-double-type" : undefined;
 }
 
@@ -1240,7 +1254,48 @@ function collectSwiftMemberDeclarations(content) {
     }
   }
 
+  // Initializers declared in the body of a nested type, `enum Order { struct Line { init(title:) } }`,
+  // are recorded under the qualified receiver so that an extension `init(title:currency:)` on
+  // `Order.Line` is ambiguous at a call site exactly as it is for a top-level type (#349).
+  for (const container of masked.matchAll(/\b(struct|class|enum|actor|extension)\s+`?([A-Za-z_][A-Za-z0-9_]*(?:\s*\.\s*[A-Za-z_][A-Za-z0-9_]*)*)`?/g)) {
+    if (depths[container.index] !== 0) continue;
+    const openBrace = masked.indexOf("{", container.index + container[0].length);
+    if (openBrace === -1 || depths[openBrace] !== 0) continue;
+    const closeBrace = findClosingSwiftBrace(masked, openBrace);
+    if (closeBrace === -1) continue;
+    const outer = container[1] === "extension" ? container[2].replace(/\s+/g, "") : container[2];
+    collectNestedSwiftTypeInitializers(masked, depths, outer, openBrace, closeBrace, 1, declarations);
+  }
+
   return declarations;
+}
+
+function collectNestedSwiftTypeInitializers(masked, depths, outer, openBrace, closeBrace, depth, declarations) {
+  const nestedPattern = /\b(struct|class|enum|actor)\s+`?([A-Za-z_][A-Za-z0-9_]*)`?/g;
+  nestedPattern.lastIndex = openBrace + 1;
+  let nested;
+  while ((nested = nestedPattern.exec(masked)) !== null && nested.index < closeBrace) {
+    if (depths[nested.index] !== depth) continue;
+    const nestedOpen = masked.indexOf("{", nested.index + nested[0].length);
+    if (nestedOpen === -1 || nestedOpen > closeBrace || depths[nestedOpen] !== depth) continue;
+    const nestedClose = findClosingSwiftBrace(masked, nestedOpen);
+    if (nestedClose === -1) continue;
+    const receiver = `${outer}.${nested[2]}`;
+    const initializerPattern = /\binit\s*[?!]?\s*\(/g;
+    initializerPattern.lastIndex = nestedOpen + 1;
+    let initializer;
+    while ((initializer = initializerPattern.exec(masked)) !== null && initializer.index < nestedClose) {
+      if (depths[initializer.index] !== depth + 1) continue;
+      const openParenthesis = initializerPattern.lastIndex - 1;
+      const closeParenthesis = findClosingSwiftParenthesis(masked, openParenthesis);
+      if (closeParenthesis === -1) continue;
+      const labels = swiftParameterLabels(masked.slice(openParenthesis + 1, closeParenthesis));
+      if (labels.length === 0 || labels[0] === "_") continue;
+      declarations.push({ containerKind: nested[1], receiver, name: `init(${labels[0]}:)`, labels, isStatic: false, isInitializer: true });
+    }
+    collectNestedSwiftTypeInitializers(masked, depths, receiver, nestedOpen, nestedClose, depth + 1, declarations);
+    nestedPattern.lastIndex = nestedClose + 1;
+  }
 }
 
 function swiftParameterLabels(parameterList) {
@@ -1442,7 +1497,7 @@ function hasSwiftStaticExtensionCall(content, descriptor) {
 }
 
 function hasSwiftDirectInstanceExtensionCall(content, descriptor) {
-  const constructor = new RegExp(`\\b${escapeRegex(descriptor.receiver)}\\s*(?:<[^>\\n]+>)?\\s*\\(`, "g");
+  const constructor = new RegExp(`\\b${swiftQualifiedNamePattern(descriptor.receiver)}\\s*(?:<[^>\\n]+>)?\\s*\\(`, "g");
   let match;
   while ((match = constructor.exec(content)) !== null) {
     if (isSwiftMemberReference(content, match.index)) continue;
@@ -1602,10 +1657,12 @@ function mergeSourceGraphs(...graphs) {
   const ignoredSources = new Set(graphs.flatMap((graph) => [...graph.ignoredSources]));
   const pluginSources = new Set(graphs.flatMap((graph) => [...(graph.pluginSources ?? [])]));
   const productionDependencies = new Set(graphs.flatMap((graph) => [...(graph.productionDependencies ?? [])]));
+  const testDependedTargets = new Set(graphs.flatMap((graph) => [...(graph.testDependedTargets ?? [])]));
   for (const ownedPath of [...sourceOwners.keys(), ...testSources]) ignoredSources.delete(ownedPath);
 
   return {
     productionDependencies,
+    testDependedTargets,
     hasSwiftRules: graphs.some((graph) => graph.hasSwiftRules),
     hasSwiftTest: graphs.some((graph) => graph.hasSwiftTest),
     hasCustomTargetPaths: graphs.some((graph) => graph.hasCustomTargetPaths),
@@ -1661,6 +1718,7 @@ function parseSwiftPmManifestGraph(packageFile, files, emptyGraph) {
   const ignoredSources = new Set();
   const pluginSources = new Set();
   const productionDependencies = new Set();
+  const testOnlyDependencies = new Set();
   let hasCustomTargetPaths = false;
   let hasExplicitSourceLists = false;
   let hasAlternateSourceRoots = false;
@@ -1684,7 +1742,12 @@ function parseSwiftPmManifestGraph(packageFile, files, emptyGraph) {
       }
     }
     const dependencies = new Set(readSwiftPmTargetDependencies(rule.body, targetNames));
-    if (!isTest) for (const dependency of dependencies) productionDependencies.add(dependency);
+    if (!isTest) {
+      for (const dependency of dependencies) productionDependencies.add(dependency);
+      for (const product of rule.body.matchAll(/\.product\s*\(\s*name\s*:\s*["']([^"']+)["']/g)) productionDependencies.add(product[1]);
+    } else {
+      for (const dependency of dependencies) testOnlyDependencies.add(dependency);
+    }
 
     for (const sourcePath of ownedSources) {
       if (isTest) {
@@ -1712,7 +1775,8 @@ function parseSwiftPmManifestGraph(packageFile, files, emptyGraph) {
     testDependencies,
     ignoredSources,
     pluginSources,
-    productionDependencies
+    productionDependencies,
+    testDependedTargets: testOnlyDependencies
   };
 }
 
