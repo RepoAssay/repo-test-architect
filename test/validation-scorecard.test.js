@@ -65,7 +65,7 @@ describe("validation scorecard", () => {
     const markdown = execFileSync(process.execPath, ["scripts/render-validation-scorecard.js"], { encoding: "utf8" });
     assert.match(markdown, /# Validation Corpus Scorecard/);
     assert.match(markdown, /238\/238 areas reviewed \(100%\)/);
-    assert.match(markdown, /231\/231 reviewed checks pass \(100%\)/);
+    assert.match(markdown, /238\/238 reviewed checks pass \(100%\)/);
     assert.match(markdown, /This reports validation review status, not repository quality/);
 
     const json = JSON.parse(execFileSync(
