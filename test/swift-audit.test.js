@@ -3085,3 +3085,202 @@ describe("Swift diagnostics for tests without a recognised framework (#312)", ()
     assert.equal(audit.profile.confidence, "medium");
   });
 });
+
+describe("nested extension initializers (#349) and test doubles in Sources (#350)", () => {
+  function createShop(t, extraFiles = {}) {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-swift-shop-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    const files = {
+      "Package.swift": '// swift-tools-version:5.9\nimport PackageDescription\nlet package = Package(\n  name: "Shop",\n  targets: [\n    .target(name: "Shop"),\n    .testTarget(name: "ShopTests", dependencies: ["Shop"])\n  ]\n)\n',
+      "Sources/Shop/Product.swift": "public struct Product: Sendable {\n    public let name: String\n    public let price: Int\n    public let isDiscounted: Bool\n    public init(name: String, price: Int, isDiscounted: Bool) { self.name = name; self.price = price; self.isDiscounted = isDiscounted }\n}\n",
+      "Sources/Shop/Order.swift": "public enum Order {\n    public struct Line: Equatable, Sendable {\n        public let title: String\n        public let amount: Int\n        public init(title: String, amount: Int) { self.title = title; self.amount = amount }\n    }\n}\npublic struct Receipt: Equatable, Sendable {\n    public let text: String\n    public init(text: String) { self.text = text }\n}\n",
+      "Sources/Shop/Order.Line+Product.swift": "public extension Order.Line {\n    init(product: Product) {\n        let amount = product.isDiscounted ? product.price / 2 : product.price\n        self.init(title: product.name, amount: amount)\n    }\n}\n",
+      "Sources/Shop/Receipt+Product.swift": "public extension Receipt {\n    init(product: Product) {\n        let suffix = product.isDiscounted ? \" (discounted)\" : \"\"\n        self.init(text: product.name + suffix)\n    }\n}\n",
+      "Sources/Shop/OrderRepository.swift": "public protocol OrderRepository: Sendable {\n    func lines() async throws -> [Order.Line]\n}\npublic final class OrderService: Sendable {\n    private let repository: OrderRepository\n    public init(repository: OrderRepository) { self.repository = repository }\n    public func total() async throws -> Int {\n        try await repository.lines().reduce(0) { $0 + $1.amount }\n    }\n}\n",
+      "Sources/Shop/Mocks/OrderRepositoryMock.swift": "public final class OrderRepositoryMock: OrderRepository, @unchecked Sendable {\n    public var stubbedLines: [Order.Line] = []\n    public var error: Error?\n    public private(set) var callCount = 0\n    public init() {}\n    public func lines() async throws -> [Order.Line] {\n        callCount += 1\n        if let error { throw error }\n        return stubbedLines\n    }\n}\n",
+      "Tests/ShopTests/ProductMapperTests.swift": "import Testing\n@testable import Shop\n\n@Test func orderLineHalvesDiscountedPrice() {\n    let line = Order.Line(product: Product(name: \"Tea\", price: 10, isDiscounted: true))\n    #expect(line == Order.Line(title: \"Tea\", amount: 5))\n}\n@Test func receiptMarksDiscountedProducts() {\n    let receipt = Receipt(product: Product(name: \"Tea\", price: 10, isDiscounted: true))\n    #expect(receipt == Receipt(text: \"Tea (discounted)\"))\n}\n",
+      "Tests/ShopTests/OrderServiceTests.swift": "import Testing\n@testable import Shop\n\n@Test func totalSumsLineAmounts() async throws {\n    let repository = OrderRepositoryMock()\n    repository.stubbedLines = [Order.Line(title: \"A\", amount: 2), Order.Line(title: \"B\", amount: 3)]\n    #expect(try await OrderService(repository: repository).total() == 5)\n}\n",
+      ...extraFiles
+    };
+    for (const [relativePath, content] of Object.entries(files)) {
+      if (content === null) continue;
+      fs.mkdirSync(path.dirname(path.join(root, relativePath)), { recursive: true });
+      fs.writeFileSync(path.join(root, relativePath), content);
+    }
+    return root;
+  }
+  const targets = (audit) => [...audit.untestedCandidates, ...audit.coveredButRisky];
+
+  it("credits an initializer declared in an extension of a nested type through its qualified call", (t) => {
+    const audit = auditSwiftRepo(createShop(t));
+    const nested = audit.coveredButRisky.find((target) => target.path === "Sources/Shop/Order.Line+Product.swift");
+    const flat = audit.coveredButRisky.find((target) => target.path === "Sources/Shop/Receipt+Product.swift");
+
+    assert.ok(nested, "Order.Line+Product.swift is covered");
+    assert.deepEqual(nested.existingTestEvidence.map((evidence) => [evidence.testPath, evidence.kind, evidence.usage]), [["Tests/ShopTests/ProductMapperTests.swift", "swift-symbol-reference", "called"]]);
+    assert.deepEqual(nested.existingTestEvidence.map((evidence) => evidence.usage), flat.existingTestEvidence.map((evidence) => evidence.usage), "the nested case is linked exactly like the top-level one");
+  });
+
+  it("does not credit the nested initializer through the bare inner name or when the test shadows the outer type", (t) => {
+    const bare = auditSwiftRepo(createShop(t, {
+      "Tests/ShopTests/ProductMapperTests.swift": "import Testing\n@testable import Shop\n\nstruct Line { init(product: Product) {} }\n@Test func bare() {\n    _ = Line(product: Product(name: \"Tea\", price: 10, isDiscounted: true))\n}\n"
+    }));
+    assert.ok(bare.untestedCandidates.some((target) => target.path === "Sources/Shop/Order.Line+Product.swift"));
+
+    const shadowed = auditSwiftRepo(createShop(t, {
+      "Tests/ShopTests/ProductMapperTests.swift": "import Testing\n@testable import Shop\n\nenum Order { struct Line { init(product: Product) {} } }\n@Test func shadowed() {\n    _ = Order.Line(product: Product(name: \"Tea\", price: 10, isDiscounted: true))\n}\n"
+    }));
+    assert.ok(shadowed.untestedCandidates.some((target) => target.path === "Sources/Shop/Order.Line+Product.swift"));
+  });
+
+  it("skips a test double in a Mocks folder and keeps the production service it stands in for", (t) => {
+    const audit = auditSwiftRepo(createShop(t));
+
+    assert.ok(!targets(audit).some((target) => target.path.includes("OrderRepositoryMock")), "the mock is not a candidate");
+    const mock = audit.skipped.find((entry) => entry.path === "Sources/Shop/Mocks/OrderRepositoryMock.swift");
+    assert.equal(mock.kind, "test-support");
+    assert.deepEqual(mock.signals, ["test-double", "test-double-folder"]);
+    assert.ok(audit.coveredButRisky.some((target) => target.path === "Sources/Shop/OrderRepository.swift"), "OrderService stays a covered production candidate");
+  });
+
+  it("recognises a test double by its conforming Mock/Fake/Stub/Spy type name outside a Mocks folder, but not a production type with that suffix", (t) => {
+    const audit = auditSwiftRepo(createShop(t, {
+      "Sources/Shop/Mocks/OrderRepositoryMock.swift": null,
+      "Sources/Shop/OrderRepositoryFake.swift": "public final class OrderRepositoryFake: OrderRepository, @unchecked Sendable {\n    public var stubbed: [Order.Line] = []\n    public init() {}\n    public func lines() async throws -> [Order.Line] { if stubbed.isEmpty { throw CancellationError() }; return stubbed }\n}\n",
+      "Sources/Shop/NetworkStub.swift": "public final class NetworkStub: Codable {\n    public var value: Int = 0\n    public func load(flag: Bool) -> Int { if flag { return 1 }; return value }\n}\n",
+      "Tests/ShopTests/OrderServiceTests.swift": "import Testing\n@testable import Shop\n\n@Test func total() async throws {\n    let repository = OrderRepositoryFake()\n    #expect(try await OrderService(repository: repository).total() == 0)\n}\n"
+    }));
+    const fake = audit.skipped.find((entry) => entry.path === "Sources/Shop/OrderRepositoryFake.swift");
+    assert.deepEqual(fake?.signals, ["test-double", "test-double-type"]);
+    assert.ok(targets(audit).some((target) => target.path === "Sources/Shop/NetworkStub.swift"), "a Stub-named type conforming only to a library protocol stays production");
+  });
+
+  it("skips the sources of a test-support target that only test targets depend on", (t) => {
+    const packageSwift = (shopDependsOnMocks) => `// swift-tools-version:5.9\nimport PackageDescription\nlet package = Package(\n  name: "Shop",\n  targets: [\n    .target(name: "Shop"${shopDependsOnMocks ? ', dependencies: ["ShopMocks"]' : ""}),\n    .target(name: "ShopMocks", dependencies: ${shopDependsOnMocks ? "[]" : '["Shop"]'}),\n    .testTarget(name: "ShopTests", dependencies: ["Shop", "ShopMocks"])\n  ]\n)\n`;
+    const support = "public final class Clock {\n    public var now: Int = 0\n    public func advance(by seconds: Int) -> Int { if seconds < 0 { return now }; now += seconds; return now }\n}\n";
+    const testOnly = auditSwiftRepo(createShop(t, { "Package.swift": packageSwift(false), "Sources/ShopMocks/Clock.swift": support }));
+    assert.deepEqual(testOnly.skipped.find((entry) => entry.path === "Sources/ShopMocks/Clock.swift")?.signals, ["test-double", "test-support-target"]);
+
+    const usedByProduction = auditSwiftRepo(createShop(t, { "Package.swift": packageSwift(true), "Sources/ShopMocks/Clock.swift": support }));
+    assert.ok(targets(usedByProduction).some((target) => target.path === "Sources/ShopMocks/Clock.swift"), "a target that production code depends on is production");
+  });
+});
+
+describe("nested extensions and test doubles: review negatives (#349, #350)", () => {
+  function writeTree(t, files) {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-swift-review-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    for (const [relativePath, content] of Object.entries(files)) {
+      fs.mkdirSync(path.dirname(path.join(root, relativePath)), { recursive: true });
+      fs.writeFileSync(path.join(root, relativePath), content);
+    }
+    return root;
+  }
+  const manifest = (name, targets) => `// swift-tools-version:5.9\nimport PackageDescription\nlet package = Package(\n  name: "${name}",\n  targets: [\n${targets}\n  ]\n)\n`;
+  const all = (audit) => [...audit.untestedCandidates, ...audit.coveredButRisky];
+
+  it("treats a nested type's own initializer as making an extension initializer with the same first label ambiguous", (t) => {
+    const audit = auditSwiftRepo(writeTree(t, {
+      "Package.swift": manifest("Shop", '    .target(name: "Shop"),\n    .testTarget(name: "ShopTests", dependencies: ["Shop"])'),
+      "Sources/Shop/Order.swift": "public enum Order {\n    public struct Line: Equatable {\n        public let title: String\n        public let amount: Int\n        public init(title: String, amount: Int) { self.title = title; self.amount = amount }\n    }\n}\n",
+      "Sources/Shop/Order.Line+Currency.swift": "public extension Order.Line {\n    init(title: String, currency: String) {\n        self.init(title: currency.isEmpty ? title : title + currency, amount: 0)\n    }\n}\n",
+      "Tests/ShopTests/OrderTests.swift": "import Testing\n@testable import Shop\n\n@Test func line() {\n    #expect(Order.Line(title: \"A\", amount: 2).amount == 2)\n}\n"
+    }));
+    assert.ok(audit.untestedCandidates.some((target) => target.path === "Sources/Shop/Order.Line+Currency.swift"));
+  });
+
+  it("does not link a nested extension across packages when the sibling declares its own outer type", (t) => {
+    const root = writeTree(t, {
+      "Shop/Package.swift": manifest("Shop", '    .target(name: "Shop")'),
+      "Shop/Sources/Shop/Order.swift": "public enum Order {\n    public struct Line { public let title: String; public init(title: String) { self.title = title } }\n}\n",
+      "Shop/Sources/Shop/Order.Line+Product.swift": "public extension Order.Line {\n    init(product: String) { self.init(title: product.isEmpty ? \"-\" : product) }\n}\n",
+      "Other/Package.swift": manifest("Other", '    .target(name: "Other"),\n    .testTarget(name: "OtherTests", dependencies: ["Other"])'),
+      "Other/Sources/Other/Order.swift": "public enum Order {\n    public struct Line { public init(product: String) { if product.isEmpty { return } } }\n}\n",
+      "Other/Tests/OtherTests/OtherOrderTests.swift": "import Testing\nimport Shop\n@testable import Other\n\n@Test func line() {\n    _ = Order.Line(product: \"x\")\n}\n"
+    });
+    const scan = auditDetectedProjects(root);
+    const shop = scan.audits.find((entry) => entry.projectRoot === "Shop").audit;
+    assert.ok(shop.untestedCandidates.some((target) => target.path === "Sources/Shop/Order.Line+Product.swift"));
+  });
+
+  it("keeps a test-support-named target that production consumes as a product, and a target with only a prefix-free name", (t) => {
+    const feature = writeTree(t, {
+      "Package.swift": manifest("Feature", '    .target(name: "Feature"),\n    .target(name: "FeatureMocks", dependencies: ["Feature"]),\n    .target(name: "App", dependencies: [.product(name: "FeatureMocks", package: "Feature")]),\n    .testTarget(name: "FeatureTests", dependencies: ["Feature", "FeatureMocks"])'),
+      "Sources/Feature/Feature.swift": "public struct Feature { public init() {} }\n",
+      "Sources/FeatureMocks/PreviewData.swift": "public enum PreviewData {\n    public static func make(flag: Bool) -> Int { if flag { return 1 }; return 0 }\n}\n",
+      "Sources/App/App.swift": "public struct App { public init() {} }\n"
+    });
+    assert.ok(all(auditSwiftRepo(feature)).some((target) => target.path === "Sources/FeatureMocks/PreviewData.swift"));
+
+    const abTesting = writeTree(t, {
+      "Package.swift": manifest("Experiments", '    .target(name: "ABTesting"),\n    .testTarget(name: "ABTestingTests", dependencies: ["ABTesting"])'),
+      "Sources/ABTesting/ExperimentService.swift": "public final class ExperimentService {\n    public func variant(for user: Int) -> String { if user % 2 == 0 { return \"a\" }; return \"b\" }\n}\n"
+    });
+    assert.ok(all(auditSwiftRepo(abTesting)).some((target) => target.path === "Sources/ABTesting/ExperimentService.swift"), "Testing is not a test-support suffix");
+  });
+
+  it("matches test-double folders only inside the module and recognises qualified and extension conformances", (t) => {
+    const testingModule = writeTree(t, {
+      "Package.swift": manifest("Testing", '    .target(name: "Testing"),\n    .target(name: "Stubs"),\n    .testTarget(name: "TestingTests", dependencies: ["Testing"])'),
+      "Sources/Testing/Runner.swift": "public final class Runner {\n    public func run(flag: Bool) -> Int { if flag { return 1 }; return 0 }\n}\n",
+      "Sources/Stubs/Server.swift": "public final class Server {\n    public func start(port: Int) -> Bool { if port < 0 { return false }; return true }\n}\n"
+    });
+    const paths = all(auditSwiftRepo(testingModule)).map((target) => target.path);
+    assert.ok(paths.includes("Sources/Testing/Runner.swift"));
+    assert.ok(paths.includes("Sources/Stubs/Server.swift"), "a module named Stubs is not a test-double folder inside itself");
+
+    const doubles = writeTree(t, {
+      "Package.swift": manifest("Shop", '    .target(name: "Shop"),\n    .testTarget(name: "ShopTests", dependencies: ["Shop"])'),
+      "Sources/Shop/Repo.swift": "public protocol Repo { func load() -> Int }\n",
+      "Sources/Shop/RepoMock.swift": "public final class RepoMock: Shop.Repo {\n    public var value = 0\n    public func load() -> Int { if value < 0 { return 0 }; return value }\n}\n",
+      "Sources/Shop/RepoFake.swift": "public final class RepoFake {\n    public var value = 0\n}\nextension RepoFake: Repo {\n    public func load() -> Int { if value < 0 { return 0 }; return value }\n}\n"
+    });
+    const skipped = auditSwiftRepo(doubles).skipped.filter((entry) => entry.kind === "test-support").map((entry) => entry.path).sort();
+    assert.deepEqual(skipped, ["Sources/Shop/RepoFake.swift", "Sources/Shop/RepoMock.swift"]);
+  });
+
+  it("leaves suffix-named types without a project conformance, and folders outside a Sources root, as production", (t) => {
+    const audit = auditSwiftRepo(writeTree(t, {
+      "Package.swift": manifest("Shop", '    .target(name: "Shop", path: "Shop"),\n    .testTarget(name: "ShopTests", dependencies: ["Shop"], path: "ShopTests")'),
+      "Shop/Repo.swift": "public protocol Repo { func load() -> Int }\n",
+      "Shop/Mocks/RepoMock.swift": "public final class RepoMock: Repo {\n    public func load() -> Int { if Bool.random() { return 1 }; return 0 }\n}\n",
+      "Shop/PlainStub.swift": "public final class PlainStub {\n    public func value(flag: Bool) -> Int { if flag { return 1 }; return 0 }\n}\n",
+      "Shop/OtherSpy.swift": "public enum Spying { case on }\npublic func spy(flag: Bool) -> Int { if flag { return 1 }; return 0 }\n"
+    }));
+    const skipped = audit.skipped.filter((entry) => entry.kind === "test-support").map((entry) => [entry.path, entry.signals[1]]);
+    assert.deepEqual(skipped, [["Shop/Mocks/RepoMock.swift", "test-double-folder"]], "a custom target path uses the owner directory as the module root");
+    const paths = all(audit).map((target) => target.path);
+    assert.ok(paths.includes("Shop/PlainStub.swift"), "a suffix without a conformance clause is not a double");
+    assert.ok(paths.includes("Shop/OtherSpy.swift"), "a suffix without a file-named type is not a double");
+
+    const xcode = auditSwiftRepo(writeTree(t, {
+      "App.xcodeproj/project.pbxproj": "// !$*UTF8*$!\n{ }\n",
+      "App/Mocks/Clock.swift": "public final class Clock {\n    public func tick(flag: Bool) -> Int { if flag { return 1 }; return 0 }\n}\n"
+    }));
+    assert.ok(!xcode.skipped.some((entry) => entry.kind === "test-support"), "without a Sources root or an owner, folder names are not read");
+  });
+
+  it("requires a test dependent for the target rule, reads protocols from sources only, and matches spaced qualified constructors", (t) => {
+    const unused = auditSwiftRepo(writeTree(t, {
+      "Package.swift": manifest("Shop", '    .target(name: "Shop"),\n    .target(name: "ShopMocks"),\n    .testTarget(name: "ShopTests", dependencies: ["Shop"])'),
+      "Sources/Shop/Shop.swift": "public struct Shop { public init() {} }\n",
+      "Sources/ShopMocks/Clock.swift": "public final class Clock {\n    public func tick(flag: Bool) -> Int { if flag { return 1 }; return 0 }\n}\n"
+    }));
+    assert.ok(all(unused).some((target) => target.path === "Sources/ShopMocks/Clock.swift"), "a mocks-named target that no test depends on is not test support");
+
+    const testProtocol = auditSwiftRepo(writeTree(t, {
+      "Package.swift": manifest("Shop", '    .target(name: "Shop"),\n    .testTarget(name: "ShopTests", dependencies: ["Shop"])'),
+      "Sources/Shop/ClockMock.swift": "public final class ClockMock: Ticking {\n    public func tick(flag: Bool) -> Int { if flag { return 1 }; return 0 }\n}\n",
+      "Tests/ShopTests/Ticking.swift": "public protocol Ticking { func tick(flag: Bool) -> Int }\n"
+    }));
+    assert.ok(all(testProtocol).some((target) => target.path === "Sources/Shop/ClockMock.swift"), "a protocol declared only in tests does not make a source a double");
+
+    const spaced = auditSwiftRepo(writeTree(t, {
+      "Package.swift": manifest("Shop", '    .target(name: "Shop"),\n    .testTarget(name: "ShopTests", dependencies: ["Shop"])'),
+      "Sources/Shop/Order.swift": "public enum Order {\n    public struct Line { public let amount: Int; public init(amount: Int) { self.amount = amount } }\n}\n",
+      "Sources/Shop/Order.Line+Doubled.swift": "public extension Order.Line {\n    func doubled() -> Int { if amount < 0 { return 0 }; return amount * 2 }\n}\n",
+      "Tests/ShopTests/OrderTests.swift": "import Testing\n@testable import Shop\n\n@Test func doubled() {\n    _ = Order . Line(amount: 2).doubled()\n}\n"
+    }));
+    assert.ok(spaced.coveredButRisky.some((target) => target.path === "Sources/Shop/Order.Line+Doubled.swift"), "an instance member is credited through a spaced qualified constructor");
+  });
+});
