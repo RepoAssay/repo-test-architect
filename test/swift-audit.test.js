@@ -3238,4 +3238,25 @@ describe("nested extensions and test doubles: review negatives (#349, #350)", ()
     const skipped = auditSwiftRepo(doubles).skipped.filter((entry) => entry.kind === "test-support").map((entry) => entry.path).sort();
     assert.deepEqual(skipped, ["Sources/Shop/RepoFake.swift", "Sources/Shop/RepoMock.swift"]);
   });
+
+  it("leaves suffix-named types without a project conformance, and folders outside a Sources root, as production", (t) => {
+    const audit = auditSwiftRepo(writeTree(t, {
+      "Package.swift": manifest("Shop", '    .target(name: "Shop", path: "Shop"),\n    .testTarget(name: "ShopTests", dependencies: ["Shop"], path: "ShopTests")'),
+      "Shop/Repo.swift": "public protocol Repo { func load() -> Int }\n",
+      "Shop/Mocks/RepoMock.swift": "public final class RepoMock: Repo {\n    public func load() -> Int { if Bool.random() { return 1 }; return 0 }\n}\n",
+      "Shop/PlainStub.swift": "public final class PlainStub {\n    public func value(flag: Bool) -> Int { if flag { return 1 }; return 0 }\n}\n",
+      "Shop/OtherSpy.swift": "public enum Spying { case on }\npublic func spy(flag: Bool) -> Int { if flag { return 1 }; return 0 }\n"
+    }));
+    const skipped = audit.skipped.filter((entry) => entry.kind === "test-support").map((entry) => [entry.path, entry.signals[1]]);
+    assert.deepEqual(skipped, [["Shop/Mocks/RepoMock.swift", "test-double-folder"]], "a custom target path uses the owner directory as the module root");
+    const paths = all(audit).map((target) => target.path);
+    assert.ok(paths.includes("Shop/PlainStub.swift"), "a suffix without a conformance clause is not a double");
+    assert.ok(paths.includes("Shop/OtherSpy.swift"), "a suffix without a file-named type is not a double");
+
+    const xcode = auditSwiftRepo(writeTree(t, {
+      "App.xcodeproj/project.pbxproj": "// !$*UTF8*$!\n{ }\n",
+      "App/Mocks/Clock.swift": "public final class Clock {\n    public func tick(flag: Bool) -> Int { if flag { return 1 }; return 0 }\n}\n"
+    }));
+    assert.ok(!xcode.skipped.some((entry) => entry.kind === "test-support"), "without a Sources root or an owner, folder names are not read");
+  });
 });
