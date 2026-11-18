@@ -147,16 +147,10 @@ function resolveJvmModules(files) {
   return modules;
 }
 
-// Android product flavors (#336, #341). A flavor is known statically when a module's own build file
-// declares it in a literal `productFlavors` block, or when an Android module keeps a flavor test set
-// (`src/test<Flavor>/` or `src/androidTest<Flavor>/`, one capitalised segment that is not a known
-// build type). Flavors are shared across the module graph, because convention plugins usually declare
-// them once: `src/<flavor>/kotlin|java` of every Android module becomes production sources and the
-// flavor test sets become test sources of their module. Only the module's own build file is read (the
-// root build file declares plugins with `apply false`); variant-specific configuration stays unmodeled.
-// An Android plugin application: `id("com.android.application")` or a convention plugin id whose last
-// segments are `android.<kind>`, the Groovy `apply plugin:` form, or a catalog alias whose accessor names an Android module kind (`android.application|library|test|feature`, `androidApplication`); add-on plugins such as `android.lint` or `android.room` do not count, and
-// segment or a segment ending in `Android`; a declaration on the same line as `apply false` does not count.
+// An Android module plugin application. Id forms: `android.(application|library|test|feature|dynamic-feature)`
+// with optional suffix segments (`com.android.library`, `nia.android.library.compose`), in Kotlin or Groovy DSL.
+// Catalog aliases: an `android.<kind>` accessor or a camel-case `…Android<Kind>` segment. Add-on plugins such
+// as `android.lint` or `android.room` do not count, nor does a declaration on a line with `apply false`.
 const ANDROID_PLUGIN_APPLICATION = /(?:\bid\s*\(?\s*["'](?:[A-Za-z0-9_.]*\.)?android\.(?:application|library|test|feature|dynamic-feature)(?:\.[A-Za-z0-9_.-]+)?["']\s*\)?|\bapply\s*\(?\s*plugin\s*[:=]\s*["'](?:[A-Za-z0-9_.]*\.)?android\.(?:application|library|test|feature|dynamic-feature)(?:\.[A-Za-z0-9_.-]+)?["']\s*\)?|\balias\s*\(\s*libs\.plugins(?:\.[A-Za-z0-9_]+)*?\.(?:android\.(?:application|library|test|feature|dynamicFeature)|[A-Za-z0-9_]*[aA]ndroid(?:Application|Library|Test|Feature|DynamicFeature))(?:\.[A-Za-z0-9_]+)*\s*\))(?![^\n]*\bapply\s+false)/;
 const DEFAULT_BUILD_TYPES = new Set(["debug", "release"]);
 
