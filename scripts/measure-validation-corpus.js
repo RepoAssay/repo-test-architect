@@ -88,9 +88,7 @@ function measureRepositoryScanCase(corpusCase, caseId, projectRoot, runCount) {
     const started = performance.now();
     const scan = auditDetectedProjects(projectRoot, { ...(corpusCase.entry.auditOptions ?? {}) });
     const durationMs = Math.round(performance.now() - started);
-    const entries = scan.audits.filter((entry) => entry.adapterId === corpusCase.adapterId);
-    if (entries.length === 0) throw new Error(`The repository scan audited no ${corpusCase.adapterId} project under ${projectRoot}.`);
-    runs.push({ entries, durationMs });
+    runs.push({ entries: selectAdapterScanEntries(scan, corpusCase.adapterId, projectRoot), durationMs });
   }
   return {
     caseId,
@@ -99,6 +97,14 @@ function measureRepositoryScanCase(corpusCase, caseId, projectRoot, runCount) {
     measurement: "repository",
     ...summarizeCorpusScanRuns(runs)
   };
+}
+
+export function selectAdapterScanEntries(scan, adapterId, projectRoot = scan.root) {
+  const failed = (scan.failedProjects ?? []).filter((entry) => entry.adapterId === adapterId);
+  if (failed.length > 0) throw new Error(`The repository scan failed for ${failed.length} ${adapterId} project(s): ${failed.map((entry) => entry.projectRoot).join(", ")}.`);
+  const entries = scan.audits.filter((entry) => entry.adapterId === adapterId);
+  if (entries.length === 0) throw new Error(`The repository scan audited no ${adapterId} project under ${projectRoot}.`);
+  return entries;
 }
 
 export function summarizeCorpusScanRuns(runs) {

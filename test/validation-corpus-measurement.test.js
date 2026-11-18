@@ -6,6 +6,7 @@ import {
   medianInteger,
   summarizeAuditPhaseRuns,
   summarizeCorpusRuns,
+  selectAdapterScanEntries,
   summarizeCorpusScanRuns
 } from "../scripts/measure-validation-corpus.js";
 import { AUDIT_PROFILE_PHASES } from "../src/core/audit-phase-timing.js";
@@ -167,5 +168,16 @@ describe("validation corpus repository-scan measurement", () => {
       { entries: scanEntries("/tmp/a"), durationMs: 3 }
     ]), /Canonical scan output changed/);
     assert.throws(() => summarizeCorpusScanRuns([{ entries: scanEntries("/tmp/a"), durationMs: 1 }]), /at least three scan runs/);
+  });
+});
+
+describe("validation corpus repository-scan selection", () => {
+  it("keeps the adapter's audits and refuses scans with a failed or missing project of that adapter", () => {
+    const audit = { profile: {} };
+    const scan = { root: "/r", audits: [{ projectRoot: ".", adapterId: "swift", audit }, { projectRoot: "web", adapterId: "javascript", audit }], failedProjects: [] };
+    assert.deepEqual(selectAdapterScanEntries(scan, "swift").map((entry) => entry.projectRoot), ["."]);
+    assert.throws(() => selectAdapterScanEntries({ ...scan, failedProjects: [{ projectRoot: "Packages/Env", adapterId: "swift" }] }, "swift"), /scan failed for 1 swift project\(s\): Packages\/Env/);
+    assert.deepEqual(selectAdapterScanEntries({ ...scan, failedProjects: [{ projectRoot: "web", adapterId: "javascript" }] }, "swift").length, 1, "another adapter's failure does not block the pin");
+    assert.throws(() => selectAdapterScanEntries(scan, "kotlin"), /audited no kotlin project/);
   });
 });
