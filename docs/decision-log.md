@@ -1045,3 +1045,11 @@ Decision: a version-catalog plugin alias marks a Kotlin/JVM module as Android on
 Rationale: #346 widened alias detection to any segment starting with `android`. On Now in Android `build-logic` applies `alias(libs.plugins.android.lint)`, so the convention-plugin build was flagged as an Android module and gained a false `android-jvm-conventions` blocker and a blocked-project finding, found by the independent review of the corpus pin (#352). Module kinds are what the boundary is about; add-on plugins are applied beside one of them in real Android modules.
 
 Revisit when: a repository applies an Android module plugin through an alias whose accessor names no module kind.
+
+### 2026-11-18: cal.com and Now in Android are pinned as product-monorepo cases
+
+Decision: after the fixes for their hunt issues (#344, #345 for cal.com; #346, #347 for Now in Android), both repositories are pinned with repository-scan measurements, `javascript-calcom` and `kotlin-nowinandroid`, and `product-monorepo` becomes a required corpus role for the JavaScript/TypeScript and Kotlin/JVM adapters beside Swift.
+
+Rationale: the re-runs from fresh clones at the hunt commits show every scorecard area passing: cal.com's blockers fall from 214 to 1 with 18 packages on the inherited root runner and 62 audited from the package root, and Now in Android suggests the CI's `testDemoDebugUnitTest` with flavor sets audited and test-support modules skipped. Enforcing the role for an adapter only once its pin passes keeps the staged rule from the 2026-11-13 entry.
+
+Revisit when: a later adapter change moves either digest without a reviewed reason, or the remaining adapters gain their own product-monorepo pins.

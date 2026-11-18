@@ -218,6 +218,42 @@
             "evidenceRelationshipCount": 894,
             "canonicalAuditSha256": "3255a294e5cbc4d17173ec3e6a7935801e84fcefceaa80b88550eca23224853b"
           }
+        },
+        {
+          "id": "javascript-calcom",
+          "role": "product-monorepo",
+          "measurement": "repository",
+          "repository": {
+            "url": "https://github.com/calcom/cal.com",
+            "commit": "ef7954d16ab50882ca2f263c551537115b8a8bb1",
+            "projectRoot": "."
+          },
+          "supportBoundary": "Turborepo/Yarn 4 monorepo with 119 workspace packages: packages without a runner of their own inherit the root Vitest script when their tests import vitest or match the root's literal patterns, stale runner configuration is ignored, and packages without a conventional source root are audited from the package root.",
+          "reportPath": "docs/javascript-calcom-validation-hunt-report.md",
+          "scorecard": {
+            "detection": "pass",
+            "ownership": "pass",
+            "command": "pass",
+            "evidence": "pass",
+            "ranking": "pass",
+            "stability": "pass",
+            "performance": "pass"
+          },
+          "observed": {
+            "testCommand": null,
+            "projectCount": 119,
+            "untestedCandidates": 1041,
+            "coveredButRisky": 375,
+            "skippedTargets": 1740,
+            "auditDurationMs": 8351,
+            "auditDurationSamplesMs": [
+              8962,
+              8351,
+              6803
+            ],
+            "evidenceRelationshipCount": 581,
+            "canonicalAuditSha256": "73c072fdca6ded42c20f9569f9f92760edb03902e350eed56bc29f090135da2c"
+          }
         }
       ]
     },
@@ -668,6 +704,44 @@
             ],
             "evidenceRelationshipCount": 359,
             "canonicalAuditSha256": "382aac35a309469eaaab9c786ab32938502262928363a5c6b96d238024388857"
+          }
+        },
+        {
+          "id": "kotlin-nowinandroid",
+          "role": "product-monorepo",
+          "measurement": "repository",
+          "repository": {
+            "url": "https://github.com/android/nowinandroid",
+            "commit": "2982e63cb691ad49cd009aab43dc206fee6699c2",
+            "projectRoot": "."
+          },
+          "supportBoundary": "Settings-owned multi-module Android application with convention plugins and one product-flavor dimension: flavor source sets audited, the single flavor's debug unit-test task suggested, test-support and benchmark modules skipped, and Android build variants otherwise unmodeled.",
+          "reportPath": "docs/kotlin-nowinandroid-validation-hunt-report.md",
+          "scorecard": {
+            "detection": "pass",
+            "ownership": "pass",
+            "command": "pass",
+            "evidence": "pass",
+            "ranking": "pass",
+            "stability": "pass",
+            "performance": "pass"
+          },
+          "observed": {
+            "testCommand": "./gradlew testDemoDebugUnitTest",
+            "projectCount": 2,
+            "untestedCandidates": 38,
+            "coveredButRisky": 36,
+            "skippedTargets": 171,
+            "auditDurationMs": 279,
+            "auditDurationSamplesMs": [
+              369,
+              286,
+              276,
+              279,
+              277
+            ],
+            "evidenceRelationshipCount": 55,
+            "canonicalAuditSha256": "872d919001c299fd1c1934c1c822ca3e3e5ef368b60c1a77579a04cf6ab73674"
           }
         }
       ]

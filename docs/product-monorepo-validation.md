@@ -65,9 +65,9 @@ A product monorepo is pinned as a whole: the case declares `measurement: "reposi
 
 | Adapter | Repository | Commit | Report | Outcome |
 | --- | --- | --- | --- | --- |
-| JavaScript/TypeScript | `calcom/cal.com` | `ef7954d16ab50882ca2f263c551537115b8a8bb1` | [cal.com hunt](javascript-calcom-validation-hunt-report.md) | three adapter issues (#329 root-owned runner configuration not inherited, #330 stale `jest.config.json` selects `npx jest`, #331 package-root sources not audited); not pinned until they are fixed |
+| JavaScript/TypeScript | `calcom/cal.com` | `ef7954d16ab50882ca2f263c551537115b8a8bb1` | [cal.com hunt](javascript-calcom-validation-hunt-report.md) | three adapter issues (#329, #330, #331), fixed in #344 and #345; pinned as `javascript-calcom` with a repository-scan measurement (119 projects, 1,041 / 375 / 1,740 targets, 581 evidence relationships, 8,351 ms median); `product-monorepo` is required for the JavaScript/TypeScript adapter |
 | Swift | `Dimillian/IceCubesApp` | `98098b9c4b5928f89f338203193c2bf40ab7f38c` | [Ice Cubes hunt](swift-icecubes-validation-hunt-report.md) | one adapter issue (#338 cross-package evidence linked on type mentions), fixed in #339; pinned as `swift-icecubesapp` with a repository-scan measurement (14 projects, 139 / 24 / 232 targets, 40 evidence relationships local and cross-package, 323 ms median over five scans); `product-monorepo` is now required for the Swift adapter |
-| Kotlin/JVM | `android/nowinandroid` | `2982e63cb691ad49cd009aab43dc206fee6699c2` | [Now in Android hunt](kotlin-nowinandroid-validation-hunt-report.md) | three adapter issues (#336 flavor-specific test source sets not audited, #337 test-support modules audited as production, #341 aggregate `test` task suggested for a flavored app); not pinned until they are fixed |
+| Kotlin/JVM | `android/nowinandroid` | `2982e63cb691ad49cd009aab43dc206fee6699c2` | [Now in Android hunt](kotlin-nowinandroid-validation-hunt-report.md) | three adapter issues (#336, #337, #341), fixed in #346 and #347 (and #353 for a regression the pin review found); pinned as `kotlin-nowinandroid` with a repository-scan measurement (2 projects, 38 / 36 / 171 targets, 55 evidence relationships, 279 ms median); `product-monorepo` is required for the Kotlin/JVM adapter |
 
 ## Order
 
