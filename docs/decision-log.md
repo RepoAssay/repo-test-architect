@@ -1053,3 +1053,11 @@ Decision: after the fixes for their hunt issues (#344, #345 for cal.com; #346, #
 Rationale: the re-runs from fresh clones at the hunt commits show every scorecard area passing: cal.com's blockers fall from 214 to 1 with 18 packages on the inherited root runner and 62 audited from the package root, and Now in Android suggests the CI's `testDemoDebugUnitTest` with flavor sets audited and test-support modules skipped. Enforcing the role for an adapter only once its pin passes keeps the staged rule from the 2026-11-13 entry.
 
 Revisit when: a later adapter change moves either digest without a reviewed reason, or the remaining adapters gain their own product-monorepo pins.
+
+# Publish 1.5.0 Minor Release
+
+Decision (2026-11-18): prepare `1.5.0` as a compatible minor release under npm `latest`, with matching Official MCP Registry metadata and a stable GitHub release from the same verified commit, and hold publication until the owner approves it.
+
+Rationale: #344, #345, #346, #347, #351 and #353 fix the eight adapter issues (#329, #330, #331, #336, #337, #341, #349, #350) and the regression found while pinning; #348 and #352 add repository-scan corpus measurement and pin three product monorepos. Audit results change on affected repositories, the `validation-corpus/v1` schema gains two optional fields, and new diagnostic codes and a `test-support` skipped kind appear; no field is removed or renamed, so a minor release with compatibility notes is appropriate.
+
+Scope: no CLI command, MCP tool name, input, or artifact field is removed or renamed. The exact-commit release checklist and three-OS release matrix remain mandatory.
