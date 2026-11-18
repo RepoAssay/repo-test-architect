@@ -1795,3 +1795,89 @@ describe("Android product flavors: flavor source sets (#336) and the flavored te
     assert.ok(audit.profile.setupSignals.includes("android flavor unit tests (demo)"));
   });
 });
+
+describe("test-support modules (#337)", () => {
+  function createGraph(t, files) {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-test-support-modules-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    const write = (relativePath, content) => {
+      fs.mkdirSync(path.dirname(path.join(root, relativePath)), { recursive: true });
+      fs.writeFileSync(path.join(root, relativePath), content);
+    };
+    write("settings.gradle.kts", 'rootProject.name = "nia"\ninclude(":app")\ninclude(":core:data")\ninclude(":core:testing")\ninclude(":benchmarks")\ninclude(":macrobenchmark")\ninclude(":core:data-test")\ninclude(":core:attestation-test")\ninclude(":core:ui-test")\ninclude(":parent-test")\ninclude(":token-tests")\ninclude(":feature:foo")\n');
+    write("build.gradle.kts", 'plugins {\n    alias(libs.plugins.android.test) apply false\n    kotlin("jvm") version "2.0.0" apply false\n}\n');
+    write("gradlew", "#!/bin/sh\n");
+    write("core/data/build.gradle.kts", 'plugins {\n    kotlin("jvm")\n    `java-test-fixtures`\n    `jvm-test-suite`\n}\ndependencies {\n    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")\n    testImplementation("junit:junit:4.13.2")\n}\ntesting {\n    suites {\n        val integrationTest by registering(JvmTestSuite::class) {\n            dependencies { implementation("org.junit.jupiter:junit-jupiter:5.10.0") }\n        }\n    }\n}\n');
+    write("app/build.gradle.kts", 'plugins {\n    id("com.android.application")\n    kotlin("android")\n}\nandroid {\n    namespace = "com.example.app"\n    compileSdk = 34\n    defaultConfig { testInstrumentationRunner = "com.android.test.runner.MultiDexTestRunner" }\n}\ndependencies {\n    testImplementation("junit:junit:4.13.2")\n}\n');
+    write("app/src/main/kotlin/com/example/app/Launcher.kt", "package com.example.app\n\nclass Launcher {\n    fun start(cold: Boolean): Int = if (cold) 2 else 1\n}\n");
+    write("macrobenchmark/build.gradle", "plugins {\n    id 'com.android.test'\n}\nandroid { namespace 'com.example.macro' }\n");
+    write("macrobenchmark/src/main/kotlin/com/example/macro/ScrollBenchmark.kt", "package com.example.macro\n\nclass ScrollBenchmark {\n    fun run(iterations: Int): Int = if (iterations < 1) throw IllegalArgumentException(\"count\") else iterations\n}\n");
+    write("core/attestation-test/build.gradle.kts", 'plugins {\n    kotlin("jvm")\n}\ndependencies {\n    implementation(libs.attestation)\n    implementation(libs.latest.sdk)\n}\n');
+    write("core/attestation-test/src/main/kotlin/com/example/attest/Attestor.kt", "package com.example.attest\n\nclass Attestor {\n    fun verify(token: String): Boolean = if (token.isBlank()) throw IllegalArgumentException(\"blank\") else true\n}\n");
+    write("core/ui-test/build.gradle.kts", 'plugins {\n    kotlin("jvm")\n}\ndependencies {\n    implementation(libs.composeUiTest)\n}\n');
+    write("core/ui-test/src/main/kotlin/com/example/uitest/ComposeRule.kt", "package com.example.uitest\n\nclass ComposeRule {\n    fun apply(strict: Boolean): Int = if (strict) 1 else 0\n}\n");
+    write("parent-test/build.gradle.kts", 'plugins {\n    id("com.android.test") version "8.5.0" apply false\n    kotlin("jvm")\n}\n');
+    write("parent-test/src/main/kotlin/com/example/parent/Holder.kt", "package com.example.parent\n\nclass Holder {\n    fun pick(flag: Boolean): Int = if (flag) 1 else 0\n}\n");
+    write("feature/foo/build.gradle.kts", 'plugins {\n    kotlin("jvm")\n}\ndependencies {\n    testImplementation(project(":core:testing"))\n    testImplementation("junit:junit:4.13.2")\n}\n');
+    write("feature/foo/src/main/kotlin/com/example/foo/FooPresenter.kt", "package com.example.foo\n\nclass FooPresenter {\n    fun title(count: Int): String = if (count == 1) \"one\" else \"many\"\n}\n");
+    write("core/data/src/main/kotlin/com/example/data/UserRepository.kt", "package com.example.data\n\nclass UserRepository {\n    fun load(id: Int): String = if (id < 0) throw IllegalArgumentException(\"negative\") else \"user-$id\"\n}\n");
+    write("core/testing/build.gradle.kts", 'plugins {\n    kotlin("jvm")\n}\ndependencies {\n    api(project(":core:data"))\n    api(libs.kotlinx.coroutines.test)\n    implementation(libs.androidx.test.rules)\n    testImplementation("junit:junit:4.13.2")\n}\n');
+    write("core/testing/src/main/kotlin/com/example/testing/TestUserRepository.kt", "package com.example.testing\n\nimport kotlinx.coroutines.test.TestDispatcher\n\nclass TestUserRepository(private val dispatcher: TestDispatcher) {\n    fun load(id: Int): String = if (id < 0) throw IllegalArgumentException(\"negative\") else \"fake-$id\"\n}\n");
+    write("benchmarks/build.gradle.kts", 'plugins {\n    alias(libs.plugins.android.test)\n}\nandroid { namespace = "com.example.benchmarks"; compileSdk = 34 }\n');
+    write("benchmarks/src/main/kotlin/com/example/benchmarks/StartupBenchmark.kt", "package com.example.benchmarks\n\nclass StartupBenchmark {\n    fun run(iterations: Int): Int = if (iterations < 1) throw IllegalArgumentException(\"count\") else iterations\n}\n");
+    write("core/data-test/build.gradle.kts", 'plugins {\n    kotlin("jvm")\n}\ndependencies {\n    implementation(project(":core:data"))\n}\n');
+    write("core/data-test/src/main/kotlin/com/example/datatest/FakeUserRepository.kt", "package com.example.datatest\n\nclass FakeUserRepository {\n    fun load(id: Int): String = if (id < 0) throw IllegalArgumentException(\"negative\") else \"fake\"\n}\n");
+    write("token-tests/build.gradle.kts", 'plugins {\n    kotlin("jvm")\n}\ndependencies {\n    testImplementation(kotlin("test"))\n    testImplementation(project(":core:data"))\n}\n');
+    write("token-tests/src/main/kotlin/com/example/token/TokenParser.kt", "package com.example.token\n\nclass TokenParser {\n    fun parse(value: String): String = if (value.isBlank()) throw IllegalArgumentException(\"blank\") else value.trim()\n}\n");
+    write("token-tests/src/test/kotlin/com/example/token/TokenParserTest.kt", "package com.example.token\n\nimport kotlin.test.Test\nimport kotlin.test.assertEquals\n\nclass TokenParserTest {\n    @Test\n    fun parses() {\n        assertEquals(\"a\", TokenParser().parse(\" a \"))\n    }\n}\n");
+    for (const [relativePath, content] of Object.entries(files)) write(relativePath, content);
+    return root;
+  }
+
+  it("skips the main sources of corroborated test-support and test-only modules and keeps everything else", (t) => {
+    // #337: nowinandroid's core/testing, *-test modules and the Macrobenchmark module were production candidates.
+    const audit = auditKotlinRepo(createGraph(t, {}));
+    const skippedPaths = audit.skipped.filter((entry) => entry.kind === "test-support").map((entry) => entry.path);
+    const candidatePaths = [...audit.untestedCandidates, ...audit.coveredButRisky].map((entry) => entry.path);
+
+    assert.deepEqual(skippedPaths.sort(), [
+      "benchmarks/src/main/kotlin/com/example/benchmarks/StartupBenchmark.kt",
+      "core/testing/src/main/kotlin/com/example/testing/TestUserRepository.kt",
+      "core/ui-test/src/main/kotlin/com/example/uitest/ComposeRule.kt",
+      "macrobenchmark/src/main/kotlin/com/example/macro/ScrollBenchmark.kt"
+    ]);
+    assert.ok(candidatePaths.includes("parent-test/src/main/kotlin/com/example/parent/Holder.kt"), "a plugin declared with version and apply false is not an application");
+    assert.ok(audit.skipped.find((entry) => entry.kind === "test-support").reason.startsWith("Test-support module;"));
+    assert.ok(audit.profile.setupSignals.includes("test-support modules (benchmarks, core/testing, core/ui-test, macrobenchmark)"));
+    assert.ok(candidatePaths.includes("core/data/src/main/kotlin/com/example/data/UserRepository.kt"), "a production module depending on a test library, applying java-test-fixtures and jvm-test-suite keeps its sources");
+    assert.ok(candidatePaths.includes("app/src/main/kotlin/com/example/app/Launcher.kt"), "an instrumentation-runner string naming com.android.test is not a plugin application");
+    assert.ok(candidatePaths.includes("core/data-test/src/main/kotlin/com/example/datatest/FakeUserRepository.kt"), "a test-support name without a test-library dependency or import is not enough");
+    assert.ok(candidatePaths.includes("core/attestation-test/src/main/kotlin/com/example/attest/Attestor.kt"), "catalog aliases corroborate only at segment or camel-case boundaries");
+    assert.ok(candidatePaths.includes("token-tests/src/main/kotlin/com/example/token/TokenParser.kt"), "test configurations do not corroborate a test-support name");
+    assert.deepEqual(audit.coveredButRisky.map((entry) => entry.path), ["token-tests/src/main/kotlin/com/example/token/TokenParser.kt"]);
+  });
+
+  it("corroborates a test-support name through a main-source import of a test framework, not through test source-set blocks", (t) => {
+    const audit = auditKotlinRepo(createGraph(t, {
+      "core/data-test/src/main/kotlin/com/example/datatest/FakeUserRepository.kt": "package com.example.datatest\n\n/* import org.junit.rules.TestRule would not count inside a comment */\nimport org.junit.rules.TestRule\n\nclass FakeUserRepository {\n    fun load(id: Int): String = if (id < 0) throw IllegalArgumentException(\"negative\") else \"fake\"\n}\n",
+      "core/attestation-test/build.gradle.kts": 'plugins {\n    kotlin("jvm")\n    `jvm-test-suite`\n}\ndependencies {\n    implementation(libs.attestation)\n}\ntesting {\n    suites {\n        val integrationTest by registering(JvmTestSuite::class) {\n            dependencies { implementation("org.junit.jupiter:junit-jupiter:5.10.0") }\n        }\n    }\n}\n',
+      "token-tests/build.gradle.kts": 'plugins {\n    kotlin("multiplatform")\n}\nkotlin {\n    jvm()\n    sourceSets {\n        commonTest.dependencies {\n            implementation(kotlin("test"))\n        }\n        val jvmTest by getting {\n            dependencies { implementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0") }\n        }\n    }\n}\n'
+    }));
+    const skippedPaths = audit.skipped.filter((entry) => entry.kind === "test-support").map((entry) => entry.path);
+
+    assert.ok(skippedPaths.includes("core/data-test/src/main/kotlin/com/example/datatest/FakeUserRepository.kt"));
+    assert.ok(!skippedPaths.some((entry) => entry.startsWith("token-tests/")));
+    assert.ok(!skippedPaths.some((entry) => entry.startsWith("core/attestation-test/")), "a registering test-suite block is stripped before the dependency check");
+  });
+
+  it("keeps test-support modules in the graph so a consumer's test reaches the production module through them", (t) => {
+    const audit = auditKotlinRepo(createGraph(t, {
+      "feature/foo/src/test/kotlin/com/example/foo/FooPresenterTest.kt": "package com.example.foo\n\nimport com.example.data.UserRepository\nimport com.example.testing.TestUserRepository\nimport org.junit.Assert.assertEquals\nimport org.junit.Test\n\nclass FooPresenterTest {\n    @Test\n    fun loads() {\n        assertEquals(\"user-1\", UserRepository().load(1))\n        assertEquals(\"one\", FooPresenter().title(1))\n    }\n}\n"
+    }));
+    const repository = audit.coveredButRisky.find((entry) => entry.path === "core/data/src/main/kotlin/com/example/data/UserRepository.kt");
+
+    assert.ok(repository, "core/data is reached from feature/foo through core/testing's exported api(project(\":core:data\")) edge");
+    assert.deepEqual(repository.existingTestPaths, ["feature/foo/src/test/kotlin/com/example/foo/FooPresenterTest.kt"]);
+    assert.ok(audit.profile.setupSignals.includes("test-support modules (benchmarks, core/testing, core/ui-test, macrobenchmark)"));
+  });
+});
