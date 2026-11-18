@@ -941,10 +941,12 @@ function recommended(kind, signals, risk, testability, testLevel, riskReductionS
   return { kind, signals, risk, testability, testLevel, riskReductionScore, maintenanceCost, reasons };
 }
 
-// Test doubles shipped in Sources/ (#350). A source is a test double when a directory segment of its
-// path is a test-double folder, when its owning SwiftPM target has a test-support name and no
-// production target depends on it, or when its primary type is named `…Mock`, `…Fake`, `…Stub` or
-// `…Spy` after the file and conforms to a protocol declared in the project.
+// Test doubles shipped in Sources/ (#350). A source is a test double when a folder below its module
+// root (`Sources/<Target>/`, or below a directory named like the owning target) is a test-double
+// folder; when its owning SwiftPM target has a prefixed test-support name, a test target of the same
+// manifest depends on it and no production target of that manifest depends on it by target or product
+// name; or when its primary type is named `…Mock`, `…Fake`, `…Stub` or `…Spy` after the file and
+// conforms, in its declaration or a same-file extension, to a protocol declared in the project sources.
 const SWIFT_TEST_DOUBLE_DIRECTORIES = new Set(["mocks", "mock", "fakes", "fake", "stubs", "spies", "testdoubles", "testsupport", "testhelpers", "testutils"]);
 const SWIFT_TEST_SUPPORT_TARGET = /^[A-Za-z0-9_]+(?:TestSupport|TestUtils|TestHelpers|TestDoubles|Mocks|Fakes|Stubs)$/;
 

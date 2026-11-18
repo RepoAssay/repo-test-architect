@@ -3259,4 +3259,28 @@ describe("nested extensions and test doubles: review negatives (#349, #350)", ()
     }));
     assert.ok(!xcode.skipped.some((entry) => entry.kind === "test-support"), "without a Sources root or an owner, folder names are not read");
   });
+
+  it("requires a test dependent for the target rule, reads protocols from sources only, and matches spaced qualified constructors", (t) => {
+    const unused = auditSwiftRepo(writeTree(t, {
+      "Package.swift": manifest("Shop", '    .target(name: "Shop"),\n    .target(name: "ShopMocks"),\n    .testTarget(name: "ShopTests", dependencies: ["Shop"])'),
+      "Sources/Shop/Shop.swift": "public struct Shop { public init() {} }\n",
+      "Sources/ShopMocks/Clock.swift": "public final class Clock {\n    public func tick(flag: Bool) -> Int { if flag { return 1 }; return 0 }\n}\n"
+    }));
+    assert.ok(all(unused).some((target) => target.path === "Sources/ShopMocks/Clock.swift"), "a mocks-named target that no test depends on is not test support");
+
+    const testProtocol = auditSwiftRepo(writeTree(t, {
+      "Package.swift": manifest("Shop", '    .target(name: "Shop"),\n    .testTarget(name: "ShopTests", dependencies: ["Shop"])'),
+      "Sources/Shop/ClockMock.swift": "public final class ClockMock: Ticking {\n    public func tick(flag: Bool) -> Int { if flag { return 1 }; return 0 }\n}\n",
+      "Tests/ShopTests/Ticking.swift": "public protocol Ticking { func tick(flag: Bool) -> Int }\n"
+    }));
+    assert.ok(all(testProtocol).some((target) => target.path === "Sources/Shop/ClockMock.swift"), "a protocol declared only in tests does not make a source a double");
+
+    const spaced = auditSwiftRepo(writeTree(t, {
+      "Package.swift": manifest("Shop", '    .target(name: "Shop"),\n    .testTarget(name: "ShopTests", dependencies: ["Shop"])'),
+      "Sources/Shop/Order.swift": "public enum Order {\n    public struct Line { public let amount: Int; public init(amount: Int) { self.amount = amount } }\n}\n",
+      "Sources/Shop/Order.Line+Doubled.swift": "public extension Order.Line {\n    func doubled() -> Int { if amount < 0 { return 0 }; return amount * 2 }\n}\n",
+      "Tests/ShopTests/OrderTests.swift": "import Testing\n@testable import Shop\n\n@Test func doubled() {\n    _ = Order . Line(amount: 2).doubled()\n}\n"
+    }));
+    assert.ok(spaced.coveredButRisky.some((target) => target.path === "Sources/Shop/Order.Line+Doubled.swift"), "an instance member is credited through a spaced qualified constructor");
+  });
 });
