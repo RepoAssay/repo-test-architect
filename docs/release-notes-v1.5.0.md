@@ -1,6 +1,6 @@
 # Repo Test Architect 1.5.0
 
-Status: **prepared, not yet published**. Publication status is recorded here and in the [publication ledger](distribution-metrics.md) once the release commit is published.
+Status: **published November 18, 2026** on npm under `latest`, the Official MCP Registry, and [GitHub as a stable release](https://github.com/RepoAssay/repo-test-architect/releases/tag/v1.5.0). Release commit: `0a347b614693f7da1c00ea3d584a8b69b416581c` (PR #354). See the [publication ledger](distribution-metrics.md#minor-150-publication--2026-11-18) for verification details.
 
 ## Summary
 
@@ -53,4 +53,4 @@ Clients that pinned `1.4.0` must update their package argument to receive these 
 
 ## Verification
 
-Every change has regression tests from its issue's fixture plus the negatives found in review; each pull request (#344, #345, #346, #347, #348, #351, #352, #353) passed the Linux `pr-gate`, the Windows portability check and an independent model review before merge (the reviews ran locally and are not recorded on GitHub), with the macOS Swift check on #351. The release commit passed the full local release gate (1,810 tests) and strict distribution checks; the three-OS release matrix is recorded in the publication ledger once it has run on the release commit.
+Every change has regression tests from its issue's fixture plus the negatives found in review; each pull request (#344, #345, #346, #347, #348, #351, #352, #353) passed the Linux `pr-gate`, the Windows portability check and an independent model review before merge (the reviews ran locally and are not recorded on GitHub), with the macOS Swift check on #351. The release commit passed the full local release gate (1,810 tests) and strict distribution checks and the [manually dispatched Linux, Windows and macOS release matrix](https://github.com/RepoAssay/repo-test-architect/actions/runs/44396755478). A clean install from the public npm registry passed on macOS.

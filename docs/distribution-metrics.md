@@ -4,6 +4,24 @@ This ledger records discoverability, distribution, and external-use evidence for
 
 Metrics are evidence with different meanings. npm downloads, GitHub clones, directory impressions, stars, and completed user feedback loops must remain separate. None is a substitute for another, and automated traffic must not be presented as adoption.
 
+## Minor 1.5.0 Publication — 2026-11-18
+
+Owner-approved release commit: `0a347b614693f7da1c00ea3d584a8b69b416581c` (PR #354). The [exact-commit three-OS release matrix](https://github.com/RepoAssay/repo-test-architect/actions/runs/44396755478) passed on Linux, Windows and macOS. Local full release (1,810 tests), strict distribution-readiness and pack-contents checks passed on the release commit. Official publisher 1.8.7 validated and published the manifest.
+
+| Channel | Verified release status |
+| --- | --- |
+| [npm 1.5.0](https://www.npmjs.com/package/repo-test-architect/v/1.5.0) | Published at 21:17:03 UTC; `latest: 1.5.0`, `beta: 1.0.0-beta.2`. Published tarball integrity matches the tested artifact (844 files); `gitHead` is the release commit. |
+| [Official MCP Registry 1.5.0](https://registry.modelcontextprotocol.io/v0.1/servers/io.github.RepoAssay%2Frepo-test-architect/versions/1.5.0) | Published at 21:17:27 UTC; active and latest metadata, npm 1.5.0. The first attempt was accepted, 24 seconds after npm recorded the version. |
+| [GitHub stable release](https://github.com/RepoAssay/repo-test-architect/releases/tag/v1.5.0) | Published at 21:03:56 UTC; not a prerelease, marked latest; tag resolves to the exact tested commit. |
+
+A clean installation of `repo-test-architect@1.5.0` from the public npm registry passed on macOS: CLI `doctor`, `review` on this repository (67 project roots, a 131 KB `repository-review/v1` artifact), and MCP initialization reporting 1.5.0 with all 20 tools, `review_repository` first. Upgrades from earlier versions and public-registry installs on Linux/Windows were not separately exercised.
+
+```text
+sha512-BJqIpYBWsAAsjb2frzX91RkKnlDdJVXfZ7jPe04jGwc+9BHGVoH92WrA3R68Ak76PKV3fsP2U5WTlEy+dZZ3UA==
+```
+
+npm required browser-based two-factor confirmation, which the owner completed interactively. The MCP Registry login used the documented `login github --token` route with the existing GitHub CLI credential; no credential was printed, stored or added to CI. The GitHub release was created from the same commit with a summary of the 1.5.0 release notes before `npm publish` had completed, which is why its time precedes the npm time.
+
 ## Minor 1.4.0 Publication — 2026-11-15
 
 Owner-approved release commit: `73f44f0f9d46a9f0ebaefc395f64ecc36300e8f3` (PR #342). The [exact-commit three-OS release matrix](https://github.com/RepoAssay/repo-test-architect/actions/runs/43727045524) passed on Linux, Windows and macOS. Local full release (1,764 tests), strict distribution-readiness and pack-contents checks passed on the release commit. Official publisher 1.8.7 validated and published the manifest.
