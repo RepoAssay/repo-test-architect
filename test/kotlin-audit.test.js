@@ -1783,6 +1783,20 @@ describe("Android product flavors: flavor source sets (#336) and the flavored te
     assert.ok(templateRoot.profile.setupSignals.includes("android product flavors (demo)"), "a root declaration with version and apply false does not make the root Android");
   });
 
+  it("does not treat Android add-on plugins such as android.lint as an Android module", (t) => {
+    const audit = auditKotlinRepo(createAndroidGraph(t, {
+      "lint/build.gradle.kts": 'plugins {\n    `kotlin-dsl`\n    alias(libs.plugins.nowinandroid.android.lint)\n    alias(libs.plugins.nowinandroid.android.room)\n}\ndependencies {\n    testImplementation("junit:junit:4.13.2")\n}\n',
+      "app/build.gradle.kts": 'plugins {\n    alias(libs.plugins.nowinandroid.android.application)\n    alias(libs.plugins.nowinandroid.android.application.compose)\n}\ndependencies {\n    testImplementation("junit:junit:4.13.2")\n}\n',
+      "core/network/build.gradle.kts": 'plugins {\n    alias(libs.plugins.nowinandroid.android.feature.impl)\n}\ndependencies {\n    testImplementation("junit:junit:4.13.2")\n}\n',
+      "app/src/testDemo/kotlin/com/example/app/NiaAppStateTest.kt": appStateTest,
+      "core/network/src/demo/kotlin/com/example/network/DemoDataSource.kt": demoSource
+    }));
+    const paths = [...audit.untestedCandidates, ...audit.coveredButRisky, ...audit.skipped].map((candidate) => candidate.path);
+    assert.equal(audit.profile.testCommand, "./gradlew testDemoDebugUnitTest");
+    assert.ok(!paths.some((candidate) => candidate.startsWith("lint/src/demo/")), "a module with only lint and room add-on plugins is not Android");
+    assert.ok(paths.some((candidate) => candidate.endsWith("/DemoDataSource.kt")), "an android.feature convention plugin marks the module Android");
+  });
+
   it("targets the module's flavor task through a parent wrapper when a flavored module is audited directly", (t) => {
     const root = createAndroidGraph(t, {
       "app/src/testDemo/kotlin/com/example/app/NiaAppStateTest.kt": appStateTest

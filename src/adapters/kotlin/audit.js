@@ -155,9 +155,9 @@ function resolveJvmModules(files) {
 // flavor test sets become test sources of their module. Only the module's own build file is read (the
 // root build file declares plugins with `apply false`); variant-specific configuration stays unmodeled.
 // An Android plugin application: `id("com.android.application")` or a convention plugin id whose last
-// segments are `android.<kind>`, the Groovy `apply plugin:` form, or a catalog alias with an `android…`
+// segments are `android.<kind>`, the Groovy `apply plugin:` form, or a catalog alias whose accessor names an Android module kind (`android.application|library|test|feature`, `androidApplication`); add-on plugins such as `android.lint` or `android.room` do not count, and
 // segment or a segment ending in `Android`; a declaration on the same line as `apply false` does not count.
-const ANDROID_PLUGIN_APPLICATION = /(?:\bid\s*\(?\s*["'](?:[A-Za-z0-9_.]*\.)?android\.(?:application|library|test|dynamic-feature)["']\s*\)?|\bapply\s*\(?\s*plugin\s*[:=]\s*["'](?:[A-Za-z0-9_.]*\.)?android\.(?:application|library|test|dynamic-feature)["']\s*\)?|\balias\s*\(\s*libs\.plugins(?:\.[A-Za-z0-9_]+)*?\.(?:android[A-Za-z0-9_]*|[A-Za-z0-9_]*Android)(?:\.[A-Za-z0-9_]+)*\s*\))(?![^\n]*\bapply\s+false)/;
+const ANDROID_PLUGIN_APPLICATION = /(?:\bid\s*\(?\s*["'](?:[A-Za-z0-9_.]*\.)?android\.(?:application|library|test|feature|dynamic-feature)(?:\.[A-Za-z0-9_.-]+)?["']\s*\)?|\bapply\s*\(?\s*plugin\s*[:=]\s*["'](?:[A-Za-z0-9_.]*\.)?android\.(?:application|library|test|feature|dynamic-feature)(?:\.[A-Za-z0-9_.-]+)?["']\s*\)?|\balias\s*\(\s*libs\.plugins(?:\.[A-Za-z0-9_]+)*?\.(?:android\.(?:application|library|test|feature|dynamicFeature)|[A-Za-z0-9_]*[aA]ndroid(?:Application|Library|Test|Feature|DynamicFeature))(?:\.[A-Za-z0-9_]+)*\s*\))(?![^\n]*\bapply\s+false)/;
 const DEFAULT_BUILD_TYPES = new Set(["debug", "release"]);
 
 function populateModuleFlavors(modules, files) {
