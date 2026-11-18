@@ -709,14 +709,6 @@ function isTestSupportModule(module, files) {
   return files.some((file) => normalizePath(file.path).startsWith(prefix) && TEST_SUPPORT_MAIN_IMPORT.test(stripJvmCommentsAndStrings(file.content)));
 }
 
-function ownModuleBuildText(module, files) {
-  const prefix = module.directory === "." ? "" : `${module.directory}/`;
-  return files
-    .filter((file) => [`${prefix}build.gradle`, `${prefix}build.gradle.kts`].includes(normalizePath(file.path)))
-    .map((file) => file.content)
-    .join("\n");
-}
-
 // Test source-set dependency blocks (`commonTest.dependencies { implementation(kotlin("test")) }`,
 // `val jvmTest by getting { dependencies { ... } }`, `testFixtures { }`) declare test-only dependencies
 // that must not read as main-configuration evidence.

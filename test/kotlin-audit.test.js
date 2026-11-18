@@ -1603,10 +1603,6 @@ describe("Kotlin diagnostics for tests without a recognised framework (#312)", (
 describe("Android product flavors: flavor source sets (#336) and the flavored test task (#341)", () => {
   function createAndroidGraph(t, files) {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-android-flavors-"));
-
-describe("test-support modules (#337)", () => {
-  function createGraph(t, files) {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-test-support-modules-"));
     t.after(() => fs.rmSync(root, { recursive: true, force: true }));
     const write = (relativePath, content) => {
       fs.mkdirSync(path.dirname(path.join(root, relativePath)), { recursive: true });
@@ -1797,11 +1793,17 @@ describe("test-support modules (#337)", () => {
     assert.equal(audit.profile.testCommand, "../gradlew :app:testDemoDebugUnitTest");
     assert.ok(audit.profile.setupSignals.includes("parent gradle wrapper"));
     assert.ok(audit.profile.setupSignals.includes("android flavor unit tests (demo)"));
+  });
+});
 
-    write("settings.gradle.kts", 'rootProject.name = "nia"\ninclude(":core:data")\ninclude(":core:testing")\ninclude(":benchmarks")\ninclude(":core:data-test")\ninclude(":token-tests")\n');
-
-    write("settings.gradle.kts", 'rootProject.name = "nia"\ninclude(":app")\ninclude(":core:data")\ninclude(":core:testing")\ninclude(":benchmarks")\ninclude(":macrobenchmark")\ninclude(":core:data-test")\ninclude(":core:attestation-test")\ninclude(":token-tests")\ninclude(":feature:foo")\n');
-
+describe("test-support modules (#337)", () => {
+  function createGraph(t, files) {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "repo-test-architect-test-support-modules-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    const write = (relativePath, content) => {
+      fs.mkdirSync(path.dirname(path.join(root, relativePath)), { recursive: true });
+      fs.writeFileSync(path.join(root, relativePath), content);
+    };
     write("settings.gradle.kts", 'rootProject.name = "nia"\ninclude(":app")\ninclude(":core:data")\ninclude(":core:testing")\ninclude(":benchmarks")\ninclude(":macrobenchmark")\ninclude(":core:data-test")\ninclude(":core:attestation-test")\ninclude(":core:ui-test")\ninclude(":parent-test")\ninclude(":token-tests")\ninclude(":feature:foo")\n');
     write("build.gradle.kts", 'plugins {\n    alias(libs.plugins.android.test) apply false\n    kotlin("jvm") version "2.0.0" apply false\n}\n');
     write("gradlew", "#!/bin/sh\n");
