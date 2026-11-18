@@ -17,7 +17,7 @@ export const requiredCorpusRoles = [
 // pinned case (#325).
 export const optionalCorpusRoles = ["product-monorepo"];
 export const corpusRoles = [...requiredCorpusRoles, ...optionalCorpusRoles];
-export const productMonorepoRequiredAdapters = new Set(["swift"]);
+export const productMonorepoRequiredAdapters = new Set(["javascript", "kotlin", "swift"]);
 
 export const scorecardAreas = validationScorecardAreas;
 

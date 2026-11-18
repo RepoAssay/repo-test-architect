@@ -24,9 +24,9 @@ describe("adapter validation corpus", () => {
     assert.equal(result.adapterCount, 11);
     assert.equal(result.supportedAdapterCount, 10);
     assert.equal(result.experimentalAdapterCount, 1);
-    assert.equal(result.caseCount, 34);
+    assert.equal(result.caseCount, 36);
     assert.deepEqual(result.scorecardCounts, {
-      pass: 238,
+      pass: 252,
       fail: 0,
       pending: 0
     });
@@ -71,9 +71,9 @@ describe("adapter validation corpus", () => {
     assert.deepEqual(validateValidationCorpus(staged).errors, []);
     assert.deepEqual(validateValidationCorpus(staged, { productMonorepoRequiredAdapters: new Set(["javascript"]) }).errors, []);
 
-    const enforced = validateValidationCorpus(corpus, { productMonorepoRequiredAdapters: new Set(["kotlin", "swift"]) }).errors;
-    assert.ok(enforced.some((error) => error.includes("kotlin needs at least 4 corpus cases")));
-    assert.ok(enforced.some((error) => error.includes("kotlin is missing corpus role product-monorepo")));
+    const enforced = validateValidationCorpus(corpus, { productMonorepoRequiredAdapters: new Set(["python", "swift"]) }).errors;
+    assert.ok(enforced.some((error) => error.includes("python needs at least 4 corpus cases")));
+    assert.ok(enforced.some((error) => error.includes("python is missing corpus role product-monorepo")));
     assert.ok(!enforced.some((error) => error.includes("swift")), "swift carries its pinned product-monorepo case (Ice Cubes)");
     assert.ok(!enforced.some((error) => error.includes("javascript")), "adapters outside the enforced set are unaffected");
 
